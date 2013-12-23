@@ -1,10 +1,10 @@
-package net.sf.tail.sample;
+package eu.verdelhan.tailtest.sample;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

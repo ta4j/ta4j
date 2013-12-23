@@ -1,4 +1,4 @@
-package net.sf.tail.graphics.forms;
+package eu.verdelhan.tailtest.graphics.forms;
 
 import java.awt.Polygon;
 import java.awt.Shape;

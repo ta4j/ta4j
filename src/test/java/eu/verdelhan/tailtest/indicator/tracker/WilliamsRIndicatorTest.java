@@ -1,16 +1,16 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.simple.ClosePriceIndicator;
-import net.sf.tail.indicator.simple.MaxPriceIndicator;
-import net.sf.tail.indicator.simple.MinPriceIndicator;
-import net.sf.tail.series.DefaultTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.simple.ClosePriceIndicator;
+import eu.verdelhan.tailtest.indicator.simple.MaxPriceIndicator;
+import eu.verdelhan.tailtest.indicator.simple.MinPriceIndicator;
+import eu.verdelhan.tailtest.series.DefaultTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.junit.Before;
 import org.junit.Test;

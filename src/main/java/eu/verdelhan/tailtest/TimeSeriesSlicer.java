@@ -1,4 +1,4 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

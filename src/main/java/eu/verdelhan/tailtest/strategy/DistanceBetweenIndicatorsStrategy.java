@@ -1,6 +1,6 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
-import net.sf.tail.Indicator;
+import eu.verdelhan.tailtest.Indicator;
 
 /**
  * 

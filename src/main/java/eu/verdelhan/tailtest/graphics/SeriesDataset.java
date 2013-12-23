@@ -1,15 +1,15 @@
 
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.Operation;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.Trade;
-import net.sf.tail.indicator.simple.ClosePriceIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.indicator.simple.ClosePriceIndicator;
 
 import org.jfree.data.DefaultKeyedValues2D;
 import org.jfree.data.category.CategoryDataset;

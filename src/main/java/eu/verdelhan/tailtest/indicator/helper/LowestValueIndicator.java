@@ -1,6 +1,6 @@
-package net.sf.tail.indicator.helper;
+package eu.verdelhan.tailtest.indicator.helper;
 
-import net.sf.tail.Indicator;
+import eu.verdelhan.tailtest.Indicator;
 
 public class LowestValueIndicator implements Indicator<Double> {
 

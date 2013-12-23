@@ -1,6 +1,6 @@
-package net.sf.tail.indicator.simple;
+package eu.verdelhan.tailtest.indicator.simple;
 
-import net.sf.tail.Indicator;
+import eu.verdelhan.tailtest.Indicator;
 
 public class SimpleMultiplierIndicator implements Indicator<Double> {
 

@@ -1,4 +1,4 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -6,8 +6,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

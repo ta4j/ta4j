@@ -1,4 +1,4 @@
-package net.sf.tail.analysis.criteria;
+package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -7,11 +7,11 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.Trade;
-import net.sf.tail.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 
 import org.junit.Test;
 

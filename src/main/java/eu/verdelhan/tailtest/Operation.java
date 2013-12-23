@@ -1,4 +1,4 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
 /**
  * Operation é toda decisão tomada da classe {@link Strategy}.

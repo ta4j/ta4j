@@ -1,12 +1,12 @@
-package net.sf.tail.flow;
+package eu.verdelhan.tailtest.flow;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.sf.tail.OperationType;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.Trade;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.Trade;
 
 public class CashFlow {
 

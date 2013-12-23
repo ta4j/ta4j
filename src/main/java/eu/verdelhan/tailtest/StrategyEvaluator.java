@@ -1,6 +1,6 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
-import net.sf.tail.analysis.evaluator.Decision;
+import eu.verdelhan.tailtest.analysis.evaluator.Decision;
 
 public interface StrategyEvaluator {
 

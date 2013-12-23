@@ -1,8 +1,8 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.indicator.helper.AverageGainIndicator;
-import net.sf.tail.indicator.helper.AverageLossIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.indicator.helper.AverageGainIndicator;
+import eu.verdelhan.tailtest.indicator.helper.AverageLossIndicator;
 
 public class RSIIndicator implements Indicator<Double> {
 

@@ -1,7 +1,7 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.Strategy;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.Strategy;
 
 /**
  * A estratégia ResistanceStrategy vende quando o valor do {@link indicator} é

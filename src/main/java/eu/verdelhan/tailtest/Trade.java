@@ -1,4 +1,4 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
 /**
  * Conjunto fechado de {@link Operation} disjuntas de uma única ação.

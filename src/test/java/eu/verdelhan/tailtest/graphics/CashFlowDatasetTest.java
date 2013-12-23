@@ -1,17 +1,17 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import static junit.framework.Assert.assertEquals;
 
 import java.util.LinkedList;
 import java.util.List;
 
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.Trade;
-import net.sf.tail.flow.CashFlow;
-import net.sf.tail.series.DefaultTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.flow.CashFlow;
+import eu.verdelhan.tailtest.series.DefaultTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
 import org.junit.Before;

@@ -1,9 +1,9 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import net.sf.tail.Trade;
-import net.sf.tail.sample.SampleIndicator;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.sample.SampleIndicator;
 
 import org.junit.Before;
 import org.junit.Test;

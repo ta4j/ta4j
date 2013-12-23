@@ -1,4 +1,4 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

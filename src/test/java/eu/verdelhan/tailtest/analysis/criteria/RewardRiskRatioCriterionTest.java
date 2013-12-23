@@ -1,4 +1,4 @@
-package net.sf.tail.analysis.criteria;
+package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -8,14 +8,14 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
-import net.sf.tail.analysis.evaluator.Decision;
-import net.sf.tail.analysis.evaluator.DummyDecision;
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.series.RegularSlicer;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.analysis.evaluator.Decision;
+import eu.verdelhan.tailtest.analysis.evaluator.DummyDecision;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.series.RegularSlicer;
 
 import org.joda.time.Period;
 import org.junit.Before;

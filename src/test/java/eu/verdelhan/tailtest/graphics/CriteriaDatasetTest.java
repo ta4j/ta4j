@@ -1,4 +1,4 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -7,21 +7,21 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.analysis.criteria.TotalProfitCriterion;
-import net.sf.tail.analysis.evaluator.HigherValueEvaluatorFactory;
-import net.sf.tail.analysis.walk.WalkForward;
-import net.sf.tail.report.Report;
-import net.sf.tail.runner.HistoryRunnerFactory;
-import net.sf.tail.sample.SampleIndicator;
-import net.sf.tail.series.DefaultTimeSeries;
-import net.sf.tail.series.RegularSlicer;
-import net.sf.tail.strategiesSet.JavaStrategiesSet;
-import net.sf.tail.strategy.IndicatorCrossedIndicatorStrategy;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.tailtest.analysis.evaluator.HigherValueEvaluatorFactory;
+import eu.verdelhan.tailtest.analysis.walk.WalkForward;
+import eu.verdelhan.tailtest.report.Report;
+import eu.verdelhan.tailtest.runner.HistoryRunnerFactory;
+import eu.verdelhan.tailtest.sample.SampleIndicator;
+import eu.verdelhan.tailtest.series.DefaultTimeSeries;
+import eu.verdelhan.tailtest.series.RegularSlicer;
+import eu.verdelhan.tailtest.strategiesSet.JavaStrategiesSet;
+import eu.verdelhan.tailtest.strategy.IndicatorCrossedIndicatorStrategy;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

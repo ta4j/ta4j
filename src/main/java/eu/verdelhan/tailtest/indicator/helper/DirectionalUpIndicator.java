@@ -1,7 +1,7 @@
-package net.sf.tail.indicator.helper;
+package eu.verdelhan.tailtest.indicator.helper;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.TimeSeries;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.TimeSeries;
 
 public class DirectionalUpIndicator implements Indicator<Double>{
 

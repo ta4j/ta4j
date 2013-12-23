@@ -1,6 +1,6 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.Indicator;
+import eu.verdelhan.tailtest.Indicator;
 
 public class WMAIndicator implements Indicator<Double> {
 

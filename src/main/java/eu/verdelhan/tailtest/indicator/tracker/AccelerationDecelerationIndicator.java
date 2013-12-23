@@ -1,9 +1,9 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.cache.CachedIndicator;
-import net.sf.tail.indicator.oscilator.AwesomeOscillatorIndicator;
-import net.sf.tail.indicator.simple.AverageHighLowIndicator;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
+import eu.verdelhan.tailtest.indicator.oscilator.AwesomeOscillatorIndicator;
+import eu.verdelhan.tailtest.indicator.simple.AverageHighLowIndicator;
 
 public class AccelerationDecelerationIndicator extends CachedIndicator<Double> {
 	

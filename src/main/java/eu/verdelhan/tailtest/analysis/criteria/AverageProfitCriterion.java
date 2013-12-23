@@ -1,13 +1,13 @@
-package net.sf.tail.analysis.criteria;
+package eu.verdelhan.tailtest.analysis.criteria;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.Trade;
-import net.sf.tail.analysis.evaluator.Decision;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.analysis.evaluator.Decision;
 
 public class AverageProfitCriterion implements AnalysisCriterion {
 

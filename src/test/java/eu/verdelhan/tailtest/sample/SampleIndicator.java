@@ -1,9 +1,9 @@
-package net.sf.tail.sample;
+package eu.verdelhan.tailtest.sample;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.Indicator;
+import eu.verdelhan.tailtest.Indicator;
 
 public class SampleIndicator implements Indicator<Double> {
 

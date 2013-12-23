@@ -1,10 +1,10 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.simple.ClosePriceIndicator;
-import net.sf.tail.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.simple.ClosePriceIndicator;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 
 import org.junit.Test;
 

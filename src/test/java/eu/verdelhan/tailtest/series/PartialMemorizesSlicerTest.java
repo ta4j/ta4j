@@ -1,8 +1,8 @@
-package net.sf.tail.series;
+package eu.verdelhan.tailtest.series;
 
 import static org.junit.Assert.assertEquals;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

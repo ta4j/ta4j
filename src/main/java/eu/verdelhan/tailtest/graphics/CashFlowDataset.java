@@ -1,9 +1,9 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import java.util.List;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.flow.CashFlow;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.flow.CashFlow;
 
 import org.jfree.data.DefaultKeyedValues2D;
 import org.jfree.data.category.CategoryDataset;

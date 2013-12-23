@@ -1,17 +1,17 @@
-package net.sf.tail.analysis;
+package eu.verdelhan.tailtest.analysis;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.StrategiesSet;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.analysis.evaluator.StrategyEvaluatorFactory;
-import net.sf.tail.analysis.walk.WalkForward;
-import net.sf.tail.report.Report;
-import net.sf.tail.runner.RunnerFactory;
-import net.sf.tail.series.SerializableTimeSeries;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.StrategiesSet;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.analysis.evaluator.StrategyEvaluatorFactory;
+import eu.verdelhan.tailtest.analysis.walk.WalkForward;
+import eu.verdelhan.tailtest.report.Report;
+import eu.verdelhan.tailtest.runner.RunnerFactory;
+import eu.verdelhan.tailtest.series.SerializableTimeSeries;
 
 public class StockAnalysis implements Serializable {
 

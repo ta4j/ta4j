@@ -1,6 +1,6 @@
-package net.sf.tail.analysis.evaluator;
+package eu.verdelhan.tailtest.analysis.evaluator;
 
-import net.sf.tail.runner.HistoryRunner;
+import eu.verdelhan.tailtest.runner.HistoryRunner;
 
 public class SampleDecision extends Decision {
 

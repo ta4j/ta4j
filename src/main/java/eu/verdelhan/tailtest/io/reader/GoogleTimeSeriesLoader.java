@@ -1,4 +1,4 @@
-package net.sf.tail.io.reader;
+package eu.verdelhan.tailtest.io.reader;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,10 +9,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesLoader;
-import net.sf.tail.series.DefaultTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesLoader;
+import eu.verdelhan.tailtest.series.DefaultTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;

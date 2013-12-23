@@ -1,7 +1,7 @@
-package net.sf.tail.series;
+package eu.verdelhan.tailtest.series;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

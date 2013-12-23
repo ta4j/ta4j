@@ -1,6 +1,6 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
-import net.sf.tail.Strategy;
+import eu.verdelhan.tailtest.Strategy;
 
 public class NotSoFastStrategy extends AbstractStrategy {
 

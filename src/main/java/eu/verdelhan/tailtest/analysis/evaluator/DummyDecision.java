@@ -1,10 +1,10 @@
-package net.sf.tail.analysis.evaluator;
+package eu.verdelhan.tailtest.analysis.evaluator;
 
 import java.util.LinkedList;
 import java.util.List;
 
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
 
 public class DummyDecision extends Decision {
 

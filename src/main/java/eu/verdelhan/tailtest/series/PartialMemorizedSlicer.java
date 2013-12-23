@@ -1,11 +1,11 @@
-package net.sf.tail.series;
+package eu.verdelhan.tailtest.series;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.ConstrainedTimeSeries;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.ConstrainedTimeSeries;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
 
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;

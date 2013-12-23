@@ -1,12 +1,12 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import static junit.framework.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
 import org.junit.Test;

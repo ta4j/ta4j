@@ -1,4 +1,4 @@
-package net.sf.tail.flow;
+package eu.verdelhan.tailtest.flow;
 
 import static org.junit.Assert.assertEquals;
 
@@ -6,13 +6,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.sf.tail.ConstrainedTimeSeries;
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.Trade;
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.ConstrainedTimeSeries;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.junit.Test;
 

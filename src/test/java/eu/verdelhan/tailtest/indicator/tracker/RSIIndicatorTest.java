@@ -1,9 +1,9 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
 import static org.junit.Assert.assertEquals;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.simple.ClosePriceIndicator;
-import net.sf.tail.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.simple.ClosePriceIndicator;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 
 import org.junit.Before;
 import org.junit.Test;

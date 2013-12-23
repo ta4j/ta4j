@@ -1,8 +1,8 @@
-package net.sf.tail.indicator.simple;
+package eu.verdelhan.tailtest.indicator.simple;
 
 import static org.junit.Assert.assertEquals;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 
 import org.junit.Before;
 import org.junit.Test;

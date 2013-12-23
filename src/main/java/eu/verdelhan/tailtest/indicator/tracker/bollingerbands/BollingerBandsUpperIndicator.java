@@ -1,7 +1,7 @@
-package net.sf.tail.indicator.tracker.bollingerbands;
+package eu.verdelhan.tailtest.indicator.tracker.bollingerbands;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.indicator.helper.StandardDeviationIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.indicator.helper.StandardDeviationIndicator;
 
 /**
  * Buy - Occurs when the price line cross from down to up de Bollinger Band Low.

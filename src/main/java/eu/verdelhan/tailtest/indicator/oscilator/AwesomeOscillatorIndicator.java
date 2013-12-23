@@ -1,8 +1,8 @@
-package net.sf.tail.indicator.oscilator;
+package eu.verdelhan.tailtest.indicator.oscilator;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.indicator.cache.CachedIndicator;
-import net.sf.tail.indicator.tracker.SMAIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
+import eu.verdelhan.tailtest.indicator.tracker.SMAIndicator;
 
 public class AwesomeOscillatorIndicator extends CachedIndicator<Double> {
 

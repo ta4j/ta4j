@@ -1,11 +1,11 @@
-package net.sf.tail.io.reader;
+package eu.verdelhan.tailtest.io.reader;
 
 import static org.junit.Assert.assertEquals;
 
 import java.io.FileInputStream;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
 import org.junit.Before;

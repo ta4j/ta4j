@@ -1,11 +1,11 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.analysis.criteria.TotalProfitCriterion;
-import net.sf.tail.report.Report;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.tailtest.report.Report;
 
 import org.jfree.data.DefaultKeyedValues2D;
 import org.jfree.data.category.CategoryDataset;

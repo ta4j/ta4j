@@ -1,8 +1,8 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
 import java.util.Arrays;
 
-import net.sf.tail.Operation;
+import eu.verdelhan.tailtest.Operation;
 
 public class FakeStrategy extends AbstractStrategy {
 

@@ -1,9 +1,9 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import java.awt.Color;
 import java.awt.Font;
 
-import net.sf.tail.graphics.forms.ShapeFactory;
+import eu.verdelhan.tailtest.graphics.forms.ShapeFactory;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryAxis;

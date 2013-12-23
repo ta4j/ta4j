@@ -1,10 +1,10 @@
-package net.sf.tail.indicator.cache;
+package eu.verdelhan.tailtest.indicator.cache;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.sf.tail.Indicator;
+import eu.verdelhan.tailtest.Indicator;
 
 /**
  * Cacheia o {@link Indicator} do construtor, impedindo que seja calculado duas

@@ -1,12 +1,12 @@
-package net.sf.tail.series;
+package eu.verdelhan.tailtest.series;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import net.sf.tail.Tick;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesLoader;
+import eu.verdelhan.tailtest.Tick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesLoader;
 
 import org.joda.time.Period;
 

@@ -1,7 +1,7 @@
-package net.sf.tail.indicator.volume;
+package eu.verdelhan.tailtest.indicator.volume;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.cache.CachedIndicator;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
 
 public class OnBalanceVolumeIndicator extends CachedIndicator<Double>{
 

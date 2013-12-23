@@ -1,9 +1,9 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
 
 import static org.junit.Assert.assertEquals;
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
 
 import org.junit.Before;
 import org.junit.Test;

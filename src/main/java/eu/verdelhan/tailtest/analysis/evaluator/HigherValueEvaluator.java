@@ -1,15 +1,15 @@
-package net.sf.tail.analysis.evaluator;
+package eu.verdelhan.tailtest.analysis.evaluator;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.Runner;
-import net.sf.tail.Strategy;
-import net.sf.tail.StrategyEvaluator;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.runner.RunnerFactory;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.Runner;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.StrategyEvaluator;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.runner.RunnerFactory;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;

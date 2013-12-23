@@ -1,23 +1,23 @@
-package net.sf.tail.analysis.evaluator;
+package eu.verdelhan.tailtest.analysis.evaluator;
 
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.Runner;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
-import net.sf.tail.analysis.criteria.AverageProfitCriterion;
-import net.sf.tail.analysis.criteria.TotalProfitCriterion;
-import net.sf.tail.runner.HistoryRunner;
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.series.RegularSlicer;
-import net.sf.tail.strategy.FakeStrategy;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Runner;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.analysis.criteria.AverageProfitCriterion;
+import eu.verdelhan.tailtest.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.tailtest.runner.HistoryRunner;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.series.RegularSlicer;
+import eu.verdelhan.tailtest.strategy.FakeStrategy;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

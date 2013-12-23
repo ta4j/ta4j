@@ -1,7 +1,7 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.indicator.helper.CrossIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.indicator.helper.CrossIndicator;
 
 /**
  * 

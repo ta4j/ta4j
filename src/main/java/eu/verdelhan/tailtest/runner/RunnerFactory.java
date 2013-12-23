@@ -1,8 +1,8 @@
-package net.sf.tail.runner;
+package eu.verdelhan.tailtest.runner;
 
-import net.sf.tail.Runner;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Runner;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
 
 public interface RunnerFactory {
 	Runner create(Strategy strategy,TimeSeriesSlicer slicer);

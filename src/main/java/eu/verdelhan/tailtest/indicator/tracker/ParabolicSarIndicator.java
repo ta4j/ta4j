@@ -1,11 +1,11 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.cache.CachedIndicator;
-import net.sf.tail.indicator.helper.HighestValueIndicator;
-import net.sf.tail.indicator.helper.LowestValueIndicator;
-import net.sf.tail.indicator.simple.MaxPriceIndicator;
-import net.sf.tail.indicator.simple.MinPriceIndicator;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
+import eu.verdelhan.tailtest.indicator.helper.HighestValueIndicator;
+import eu.verdelhan.tailtest.indicator.helper.LowestValueIndicator;
+import eu.verdelhan.tailtest.indicator.simple.MaxPriceIndicator;
+import eu.verdelhan.tailtest.indicator.simple.MinPriceIndicator;
 
 public class ParabolicSarIndicator extends CachedIndicator<Double> {
 

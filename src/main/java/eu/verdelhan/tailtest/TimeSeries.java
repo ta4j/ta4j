@@ -1,6 +1,6 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.Period;
 

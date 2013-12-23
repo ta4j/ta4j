@@ -1,7 +1,7 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
-import net.sf.tail.Strategy;
-import net.sf.tail.Trade;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.Trade;
 
 public abstract class AbstractStrategy implements Strategy {
 

@@ -1,14 +1,14 @@
-package net.sf.tail.analysis.evaluator;
+package eu.verdelhan.tailtest.analysis.evaluator;
 
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.Runner;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
-import net.sf.tail.series.RegularSlicer;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.Runner;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.series.RegularSlicer;
 
 public class Decision {
 

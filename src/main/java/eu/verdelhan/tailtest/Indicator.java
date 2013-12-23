@@ -1,4 +1,4 @@
-package net.sf.tail;
+package eu.verdelhan.tailtest;
 
 /**
  * Indicator é toda a classe que recebe um {@link TimeSeries} ou

@@ -1,7 +1,7 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.cache.CachedIndicator;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
 
 public class AverageDirectionalMovementIndicator extends CachedIndicator<Double>{
 

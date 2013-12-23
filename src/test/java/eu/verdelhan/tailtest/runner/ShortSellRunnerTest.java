@@ -1,18 +1,18 @@
-package net.sf.tail.runner;
+package eu.verdelhan.tailtest.runner;
 
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.Runner;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.series.RegularSlicer;
-import net.sf.tail.strategy.FakeStrategy;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Runner;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.series.RegularSlicer;
+import eu.verdelhan.tailtest.strategy.FakeStrategy;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

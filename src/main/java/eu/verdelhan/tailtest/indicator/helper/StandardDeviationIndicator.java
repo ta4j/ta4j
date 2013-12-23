@@ -1,7 +1,7 @@
-package net.sf.tail.indicator.helper;
+package eu.verdelhan.tailtest.indicator.helper;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.indicator.tracker.SMAIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.indicator.tracker.SMAIndicator;
 
 public class StandardDeviationIndicator implements Indicator<Double> {
 

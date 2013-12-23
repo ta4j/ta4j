@@ -1,13 +1,13 @@
-package net.sf.tail.runner;
+package eu.verdelhan.tailtest.runner;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.OperationType;
-import net.sf.tail.Runner;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Runner;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;

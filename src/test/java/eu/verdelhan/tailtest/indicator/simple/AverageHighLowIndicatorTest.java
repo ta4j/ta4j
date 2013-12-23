@@ -1,13 +1,13 @@
-package net.sf.tail.indicator.simple;
+package eu.verdelhan.tailtest.indicator.simple;
 
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.tail.TimeSeries;
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.tick.DefaultTick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.junit.Before;
 import org.junit.Test;

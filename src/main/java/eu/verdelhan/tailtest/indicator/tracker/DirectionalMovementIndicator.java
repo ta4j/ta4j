@@ -1,9 +1,9 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.indicator.helper.DirectionalDownIndicator;
-import net.sf.tail.indicator.helper.DirectionalUpIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.indicator.helper.DirectionalDownIndicator;
+import eu.verdelhan.tailtest.indicator.helper.DirectionalUpIndicator;
 
 public class DirectionalMovementIndicator implements Indicator<Double>{
 

@@ -1,4 +1,4 @@
-package net.sf.tail.graphics;
+package eu.verdelhan.tailtest.graphics;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -8,17 +8,17 @@ import java.util.List;
 
 import javax.swing.JPanel;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.TimeSeriesSlicer;
-import net.sf.tail.Trade;
-import net.sf.tail.flow.CashFlow;
-import net.sf.tail.indicator.simple.ClosePriceIndicator;
-import net.sf.tail.indicator.tracker.SMAIndicator;
-import net.sf.tail.io.reader.CedroTimeSeriesLoader;
-import net.sf.tail.runner.HistoryRunner;
-import net.sf.tail.series.RegularSlicer;
-import net.sf.tail.strategy.IndicatorCrossedIndicatorStrategy;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.TimeSeriesSlicer;
+import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.flow.CashFlow;
+import eu.verdelhan.tailtest.indicator.simple.ClosePriceIndicator;
+import eu.verdelhan.tailtest.indicator.tracker.SMAIndicator;
+import eu.verdelhan.tailtest.io.reader.CedroTimeSeriesLoader;
+import eu.verdelhan.tailtest.runner.HistoryRunner;
+import eu.verdelhan.tailtest.series.RegularSlicer;
+import eu.verdelhan.tailtest.strategy.IndicatorCrossedIndicatorStrategy;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;

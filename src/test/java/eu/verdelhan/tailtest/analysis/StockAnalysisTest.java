@@ -1,4 +1,4 @@
-package net.sf.tail.analysis;
+package eu.verdelhan.tailtest.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -8,23 +8,23 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import net.sf.tail.AnalysisCriterion;
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.Strategy;
-import net.sf.tail.TimeSeries;
-import net.sf.tail.analysis.criteria.NumberOfTicksCriterion;
-import net.sf.tail.analysis.criteria.TotalProfitCriterion;
-import net.sf.tail.analysis.evaluator.HigherValueEvaluatorFactory;
-import net.sf.tail.analysis.walk.WalkForward;
-import net.sf.tail.io.reader.CedroTimeSeriesLoader;
-import net.sf.tail.report.Report;
-import net.sf.tail.runner.HistoryRunnerFactory;
-import net.sf.tail.sample.SampleTimeSeries;
-import net.sf.tail.series.RegularSlicer;
-import net.sf.tail.series.SerializableTimeSeries;
-import net.sf.tail.strategiesSet.JavaStrategiesSet;
-import net.sf.tail.strategy.FakeStrategy;
+import eu.verdelhan.tailtest.AnalysisCriterion;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.analysis.criteria.NumberOfTicksCriterion;
+import eu.verdelhan.tailtest.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.tailtest.analysis.evaluator.HigherValueEvaluatorFactory;
+import eu.verdelhan.tailtest.analysis.walk.WalkForward;
+import eu.verdelhan.tailtest.io.reader.CedroTimeSeriesLoader;
+import eu.verdelhan.tailtest.report.Report;
+import eu.verdelhan.tailtest.runner.HistoryRunnerFactory;
+import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.series.RegularSlicer;
+import eu.verdelhan.tailtest.series.SerializableTimeSeries;
+import eu.verdelhan.tailtest.strategiesSet.JavaStrategiesSet;
+import eu.verdelhan.tailtest.strategy.FakeStrategy;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;

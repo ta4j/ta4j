@@ -1,7 +1,7 @@
-package net.sf.tail.indicator.tracker;
+package eu.verdelhan.tailtest.indicator.tracker;
 
-import net.sf.tail.Indicator;
-import net.sf.tail.indicator.cache.CachedIndicator;
+import eu.verdelhan.tailtest.Indicator;
+import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
 
 public class SMAIndicator extends CachedIndicator<Double> {
 

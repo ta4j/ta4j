@@ -1,12 +1,12 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import net.sf.tail.Operation;
-import net.sf.tail.OperationType;
-import net.sf.tail.Strategy;
-import net.sf.tail.Trade;
+import eu.verdelhan.tailtest.Operation;
+import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Strategy;
+import eu.verdelhan.tailtest.Trade;
 
 import org.junit.Before;
 import org.junit.Test;

@@ -1,4 +1,4 @@
-package net.sf.tail.strategy;
+package eu.verdelhan.tailtest.strategy;
 
 public class JustBuyOnceStrategy extends AbstractStrategy {
 
