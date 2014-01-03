@@ -14,13 +14,15 @@ public class DirectionalDown implements Indicator<Double>{
 		this.atr = new AverageTrueRange(series, timeFrame);
 		this.timeFrame = timeFrame;
 	}
-	public String getName() {
-		return getClass().getSimpleName() + " timeFrame: "+ timeFrame;
-	}
 
+	@Override
 	public Double getValue(int index) {
 		
 		return  admdown.getValue(index) / atr.getValue(index);
 	}
 
+	@Override
+	public String getName() {
+		return getClass().getSimpleName() + " timeFrame: "+ timeFrame;
+	}
 }

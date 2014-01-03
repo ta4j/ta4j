@@ -1,10 +1,9 @@
 package eu.verdelhan.tailtest.indicator.cache;
 
+import eu.verdelhan.tailtest.Indicator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import eu.verdelhan.tailtest.Indicator;
 
 /**
  * Cacheia o {@link Indicator} do construtor, impedindo que seja calculado duas
@@ -21,6 +20,7 @@ public abstract class CachedIndicator<T> implements Indicator<T> {
 		results = new ArrayList<T>();
 	}
 
+	@Override
 	public T getValue(int index) {
 		
 

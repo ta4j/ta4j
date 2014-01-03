@@ -10,10 +10,8 @@ public class DirectionalMovementUp implements Indicator<Double>
 	public DirectionalMovementUp(TimeSeries series) {
 		this.series = series;
     }
-	public String getName() {
-		return getClass().getSimpleName();
-	}
 
+	@Override
 	public Double getValue(int index) {
 		if(index == 0)
 			return 0d;
@@ -26,8 +24,11 @@ public class DirectionalMovementUp implements Indicator<Double>
 			return 0d;
 		if(th - yh > yl - tl)
 			return th - yh;
-		return 0d;
-					
+		return 0d;				
 	}
 
+	@Override
+	public String getName() {
+		return getClass().getSimpleName();
+	}
 }

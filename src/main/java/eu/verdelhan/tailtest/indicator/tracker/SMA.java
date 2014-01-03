@@ -23,6 +23,7 @@ public class SMA extends CachedIndicator<Double> {
 		return sum / Math.min(timeFrame, index + 1);
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}

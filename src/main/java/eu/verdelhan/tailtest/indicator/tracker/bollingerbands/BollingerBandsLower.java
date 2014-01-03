@@ -11,8 +11,8 @@ import eu.verdelhan.tailtest.indicator.helper.StandardDeviation;
  * @author Marcio
  * 
  */
-
 public class BollingerBandsLower implements Indicator<Double> {
+
 	private final Indicator<? extends Number> indicator;
 
 	private final BollingerBandsMiddle bbm;
@@ -27,10 +27,12 @@ public class BollingerBandsLower implements Indicator<Double> {
 		this.indicator = indicator;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		return bbm.getValue(index).doubleValue() - 2 * indicator.getValue(index).doubleValue();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + "deviation: " + indicator.getName() + "series: " + bbm.getName();
 	}

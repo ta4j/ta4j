@@ -31,6 +31,7 @@ public class WilliamsR implements Indicator<Double> {
 		this.minPriceIndicator = minPriceIndicator;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		HighestValue highestHigh = new HighestValue(maxPriceIndicator, timeFrame);
 		LowestValue lowestMin = new LowestValue(minPriceIndicator, timeFrame);
@@ -42,6 +43,7 @@ public class WilliamsR implements Indicator<Double> {
 				* -100d;
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getName();
 	}

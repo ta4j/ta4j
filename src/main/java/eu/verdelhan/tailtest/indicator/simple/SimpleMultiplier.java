@@ -13,10 +13,12 @@ public class SimpleMultiplier implements Indicator<Double> {
 		this.value = value;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		return indicator.getValue(index).doubleValue() * value;
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " Value: " + value;
 	}

@@ -11,10 +11,12 @@ public class Amount implements Indicator<Double> {
 		this.data = data;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		return data.getTick(index).getAmount();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName();
 	}

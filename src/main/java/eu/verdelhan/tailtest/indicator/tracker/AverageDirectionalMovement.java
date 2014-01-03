@@ -12,6 +12,7 @@ public class AverageDirectionalMovement extends CachedIndicator<Double>{
 		this.timeFrame = timeFrame;
 		this.dm = new DirectionalMovement(series, timeFrame);
 	}
+
 	@Override
 	protected Double calculate(int index) {
 		if(index == 0)

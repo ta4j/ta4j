@@ -22,11 +22,13 @@ public class StochasticOscillatorD implements Indicator<Double> {
 		this.indicator = indicator;
 	}
 
+	@Override
 	public Double getValue(int index) {
 
 		return indicator.getValue(index).doubleValue();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " " + indicator.getName();
 	}

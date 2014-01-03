@@ -14,10 +14,6 @@ public class AverageDirectionalMovementUp extends CachedIndicator<Double> {
 		dmup = new DirectionalMovementUp(series);
 	}
 
-	public String getName() {
-		return getClass().getSimpleName()+ " timeFrame: " + timeFrame;
-	}
-
 	@Override
 	protected Double calculate(int index) {
 		//TODO: Retornar 1 mesmo?
@@ -26,4 +22,8 @@ public class AverageDirectionalMovementUp extends CachedIndicator<Double> {
 		return (getValue(index - 1) * (timeFrame - 1) / timeFrame) + (dmup.getValue(index) * 1 / timeFrame);
 	}
 
+	@Override
+	public String getName() {
+		return getClass().getSimpleName()+ " timeFrame: " + timeFrame;
+	}
 }

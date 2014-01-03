@@ -13,6 +13,7 @@ public class AverageLoss implements Indicator<Double> {
 		this.timeFrame = timeFrame;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		double result = 0;
 		for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
@@ -22,6 +23,7 @@ public class AverageLoss implements Indicator<Double> {
 		return result / Math.min(timeFrame, index + 1);
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}

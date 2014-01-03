@@ -13,6 +13,7 @@ public class LowestValue implements Indicator<Double> {
 		this.timeFrame = timeFrame;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		int start = Math.max(0, index - timeFrame + 1);
 		Double lowest = (Double) indicator.getValue(start);
@@ -23,6 +24,7 @@ public class LowestValue implements Indicator<Double> {
 		return lowest;
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}

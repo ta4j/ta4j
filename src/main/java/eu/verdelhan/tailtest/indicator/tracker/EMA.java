@@ -29,6 +29,7 @@ public class EMA extends CachedIndicator<Double> {
 		return ((indicator.getValue(index).doubleValue() - emaPrev) * multiplier()) + emaPrev;
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}

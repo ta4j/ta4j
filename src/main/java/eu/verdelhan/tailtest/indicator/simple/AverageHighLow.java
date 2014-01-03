@@ -10,11 +10,13 @@ public class AverageHighLow implements Indicator<Double> {
 	public AverageHighLow(TimeSeries data) {
 		this.data = data;
 	}
-	
+
+	@Override
 	public Double getValue(int index) {
 		return (data.getTick(index).getMaxPrice() + data.getTick(index).getMinPrice()) / 2;
 	}
-	
+
+	@Override
 	public String getName() {
 		return getClass().getSimpleName();
 	}

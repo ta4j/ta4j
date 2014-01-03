@@ -11,10 +11,12 @@ public class MinPrice implements Indicator<Double> {
 		this.data = data;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		return data.getTick(index).getMinPrice();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName();
 	}

@@ -13,10 +13,7 @@ public class WMA implements Indicator<Double> {
 		this.timeFrame = timeFrame;
 	}
 
-	public String getName() {
-		return String.format(getClass().getSimpleName() + " timeFrame: %s", timeFrame);
-	}
-
+	@Override
 	public Double getValue(int index) {
 		if(index == 0) return indicator.getValue(0).doubleValue();
 		double value = 0;
@@ -37,4 +34,8 @@ public class WMA implements Indicator<Double> {
 		return value / ((timeFrame * (timeFrame + 1)) / 2);
 	}
 
+	@Override
+	public String getName() {
+		return String.format(getClass().getSimpleName() + " timeFrame: %s", timeFrame);
+	}
 }

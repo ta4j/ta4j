@@ -17,6 +17,7 @@ public class StandardDeviation implements Indicator<Double> {
 		sma = new SMA(indicator, timeFrame);
 	}
 
+	@Override
 	public Double getValue(int index) {
 		double standardDeviation = 0.0;
 		double average = sma.getValue(index);
@@ -26,6 +27,7 @@ public class StandardDeviation implements Indicator<Double> {
 		return Math.sqrt(standardDeviation);
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}

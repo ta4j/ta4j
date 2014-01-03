@@ -16,10 +16,8 @@ public class DirectionalMovement implements Indicator<Double>{
 		dup = new DirectionalUp(series, timeFrame);
 		ddown = new DirectionalDown(series, timeFrame);
 	}
-	public String getName() {
-		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-	}
 
+	@Override
 	public Double getValue(int index) {
 		double dupValue = dup.getValue(index);
 		double ddownValue = ddown.getValue(index);
@@ -27,4 +25,8 @@ public class DirectionalMovement implements Indicator<Double>{
 		return (Math.abs((dupValue - ddownValue)) / (dupValue + ddownValue)) * 100;
 	}
 
+	@Override
+	public String getName() {
+		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+	}
 }

@@ -10,10 +10,12 @@ public class Constant<T extends Number> implements Indicator<T> {
 		this.value = t;
 	}
 
+	@Override
 	public T getValue(int index) {
 		return value;
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " Value: " + value;
 	}

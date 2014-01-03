@@ -11,10 +11,12 @@ public class TradeCount implements Indicator<Integer> {
 		this.data = data;
 	}
 
+	@Override
 	public Integer getValue(int index) {
 		return data.getTick(index).getTrades();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName();
 	}

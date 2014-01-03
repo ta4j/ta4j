@@ -13,6 +13,7 @@ public class CrossIndicator implements Indicator<Boolean> {
 		this.low = low;
 	}
 
+	@Override
 	public Boolean getValue(int index) {
 
 		int i = index;
@@ -42,6 +43,7 @@ public class CrossIndicator implements Indicator<Boolean> {
 		return up;
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " " + low.getName() + " " + up.getName();
 	}

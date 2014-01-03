@@ -26,10 +26,12 @@ public class BollingerBandsUpper implements Indicator<Double> {
 		this.indicator = indicator;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		return bbm.getValue(index).doubleValue() + 2 * indicator.getValue(index).doubleValue();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + "deviation: " + indicator.getName() + "series" + bbm.getName();
 	}

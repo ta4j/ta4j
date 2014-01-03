@@ -10,6 +10,7 @@ public class OnBalanceVolume extends CachedIndicator<Double>{
 	public OnBalanceVolume(TimeSeries series) {
 		this.series = series;
 	}
+
 	@Override
 	protected Double calculate(int index) {
 		if(index == 0)

@@ -12,6 +12,7 @@ import eu.verdelhan.tailtest.indicator.tracker.SMA;
  * 
  */
 public class BollingerBandsMiddle implements Indicator<Double> {
+
 	private final Indicator<? extends Number> indicator;
 
 	public BollingerBandsMiddle(SMA smaIndicator) {
@@ -22,10 +23,12 @@ public class BollingerBandsMiddle implements Indicator<Double> {
 		this.indicator = indicator;
 	}
 
+	@Override
 	public Double getValue(int index) {
 		return indicator.getValue(index).doubleValue();
 	}
 
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " deviation: " + indicator.getName();
 	}
