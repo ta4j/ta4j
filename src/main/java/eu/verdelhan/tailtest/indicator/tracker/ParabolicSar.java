@@ -96,5 +96,4 @@ public class ParabolicSar extends CachedIndicator<Double> {
 	public String getName() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}
-
 }
