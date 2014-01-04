@@ -1,21 +1,23 @@
 package eu.verdelhan.tailtest;
 
 /**
- * Enum com os tipos de operações.
+ * Type of operations.
+ * 
+ * @todo add ASK and BID as aliases
  */
 public enum OperationType {
-	BUY {
-		@Override
-		public OperationType complementType() {
-			return SELL;
-		}
-	},
-	SELL {
-		@Override
-		public OperationType complementType() {
-			return BUY;
-		}
-	};
+    BUY {
+        @Override
+        public OperationType complementType() {
+            return SELL;
+        }
+    },
+    SELL {
+        @Override
+        public OperationType complementType() {
+            return BUY;
+        }
+    };
 
-	public abstract OperationType complementType();
+    public abstract OperationType complementType();
 }

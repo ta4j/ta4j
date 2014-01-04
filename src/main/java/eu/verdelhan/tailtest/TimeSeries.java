@@ -1,30 +1,24 @@
 package eu.verdelhan.tailtest;
 
-import eu.verdelhan.tailtest.tick.DefaultTick;
-
 import org.joda.time.Period;
 
-
 /**
- * Time Series é um conjunto de {@link DefaultTick} ordenados por um determinado
- * período temporal.
- * 
- * @author Marcio
+ * Set of ticks separated by a predefined period (e.g. 15 minutes)
  * 
  */
 public interface TimeSeries {
 
-	Tick getTick(int i);
+    Tick getTick(int i);
 
-	int getSize();
+    int getSize();
 
-	int getBegin();
+    int getBegin();
 
-	int getEnd();
+    int getEnd();
 
-	String getName();
+    String getName();
 
-	String getPeriodName();	
-	
-	Period getPeriod();
+    String getPeriodName();
+
+    Period getPeriod();
 }

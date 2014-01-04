@@ -5,23 +5,23 @@ import org.joda.time.Period;
 
 public interface TimeSeriesSlicer {
 
-	TimeSeries getSlice(int position);
+    TimeSeries getSlice(int position);
 
-	int getSlices();
+    int getSlices();
 
-	TimeSeries getSeries();
+    TimeSeries getSeries();
 
-	String getName();
-	
-	String getPeriodName();
-	
-	Period getPeriod();
-	
-	DateTime getDateBegin();
-	
-	int getNumberOfSlices();
-	
-	double getAverageTicksPerSlice();
-	
-	TimeSeriesSlicer applyForSeries(TimeSeries series);
+    String getName();
+
+    String getPeriodName();
+
+    Period getPeriod();
+
+    DateTime getDateBegin();
+
+    int getNumberOfSlices();
+
+    double getAverageTicksPerSlice();
+
+    TimeSeriesSlicer applyForSeries(TimeSeries series);
 }

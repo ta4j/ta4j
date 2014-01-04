@@ -5,13 +5,10 @@ package eu.verdelhan.tailtest;
  * 
  * @link {@link Indicator} como parâmetro e retorna um valor interpretado T.
  * 
- * 
- * @author Marcio
- * 
- * @param <T>
+ * @param <T> the type of returned value
  */
 public interface Indicator<T> {
-	public T getValue(int index);
+    T getValue(int index);
 
-	public String getName();
+    String getName();
 }

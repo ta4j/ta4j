@@ -13,5 +13,4 @@ public interface AnalysisCriterion {
     double summarize(TimeSeries series, List<Decision> decisions);
 
     String getName();
-
 }
