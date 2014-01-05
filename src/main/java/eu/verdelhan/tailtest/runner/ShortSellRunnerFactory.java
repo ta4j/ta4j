@@ -6,8 +6,8 @@ import eu.verdelhan.tailtest.TimeSeriesSlicer;
 
 public class ShortSellRunnerFactory implements RunnerFactory {
 
-	public Runner create(Strategy strategy, TimeSeriesSlicer slicer) {
-		return new ShortSellRunner(slicer,strategy);
-	}
-
+    @Override
+    public Runner create(Strategy strategy, TimeSeriesSlicer slicer) {
+        return new ShortSellRunner(slicer, strategy);
+    }
 }

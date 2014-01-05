@@ -6,8 +6,8 @@ import eu.verdelhan.tailtest.TimeSeriesSlicer;
 
 public class HistoryRunnerFactory implements RunnerFactory {
 
-	public Runner create(Strategy strategy, TimeSeriesSlicer slicer) {
-		return new HistoryRunner(slicer,strategy);
-	}
-
+    @Override
+    public Runner create(Strategy strategy, TimeSeriesSlicer slicer) {
+        return new HistoryRunner(slicer, strategy);
+    }
 }

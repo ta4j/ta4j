@@ -3,7 +3,7 @@ package eu.verdelhan.tailtest.strategy;
 import eu.verdelhan.tailtest.Strategy;
 
 /**
- * AndStrategy returns an AND combination of two strategies
+ * AND combination of two strategies
  */
 public class AndStrategy extends AbstractStrategy {
 

@@ -10,34 +10,34 @@ import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 
 public class ShortSellRunner implements Runner {
-	private Runner runner;
+    private Runner runner;
 
-	public ShortSellRunner(TimeSeriesSlicer slicer, Strategy strategy) {
-		this.runner = new HistoryRunner(slicer, strategy);
-	}
+    public ShortSellRunner(TimeSeriesSlicer slicer, Strategy strategy) {
+        runner = new HistoryRunner(slicer, strategy);
+    }
 
-	public List<Trade> run(int slicePosition) {
-		List<Trade> trades = runner.run(slicePosition);
-		List<Trade> tradesWithShortSells = new ArrayList<Trade>();
+    @Override
+    public List<Trade> run(int slicePosition) {
+        List<Trade> trades = runner.run(slicePosition);
+        List<Trade> tradesWithShortSells = new ArrayList<Trade>();
 
-		for (int i = 0; i < trades.size() - 1; i++) {
+        for (int i = 0; i < (trades.size() - 1); i++) {
 
-			Trade trade = trades.get(i);
-			tradesWithShortSells.add(trade);
+            Trade trade = trades.get(i);
+            tradesWithShortSells.add(trade);
 
-			Trade nextTrade = trades.get(i + 1);
+            Trade nextTrade = trades.get(i + 1);
 
-			Trade shortSell = new Trade(OperationType.SELL);
-			shortSell.operate(trade.getExit().getIndex());
-			shortSell.operate(nextTrade.getEntry().getIndex());
-			tradesWithShortSells.add(shortSell);
-		}
+            Trade shortSell = new Trade(OperationType.SELL);
+            shortSell.operate(trade.getExit().getIndex());
+            shortSell.operate(nextTrade.getEntry().getIndex());
+            tradesWithShortSells.add(shortSell);
+        }
 
-		if (!trades.isEmpty()) {
-			tradesWithShortSells.add(trades.get(trades.size() - 1));
-		}
+        if (!trades.isEmpty()) {
+            tradesWithShortSells.add(trades.get(trades.size() - 1));
+        }
 
-		return tradesWithShortSells;
-	}
-
+        return tradesWithShortSells;
+    }
 }
