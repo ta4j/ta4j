@@ -2,8 +2,9 @@ package eu.verdelhan.tailtest.indicator.simple;
 
 import eu.verdelhan.tailtest.Indicator;
 import eu.verdelhan.tailtest.TimeSeries;
+import java.math.BigDecimal;
 
-public class OpenPrice implements Indicator<Double> {
+public class OpenPrice implements Indicator<BigDecimal> {
 
 	private TimeSeries data;
 
@@ -12,7 +13,7 @@ public class OpenPrice implements Indicator<Double> {
 	}
 
 	@Override
-	public Double getValue(int index) {
+	public BigDecimal getValue(int index) {
 		return data.getTick(index).getOpenPrice();
 	}
 

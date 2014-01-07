@@ -14,8 +14,6 @@ import eu.verdelhan.tailtest.indicator.simple.MinPrice;
  * over ClosePrice, or receives an indicator, MaxPrice and
  * MinPrice and returns StochasticOsiclatorK over this indicator.
  * 
- * @author tgthies
- * 
  */
 public class StochasticOscillatorK implements Indicator<Double> {
 	private final Indicator<? extends Number> indicator;

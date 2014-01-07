@@ -2,24 +2,24 @@ package eu.verdelhan.tailtest.indicator.helper;
 
 import eu.verdelhan.tailtest.Indicator;
 
-public class LowestValue implements Indicator<Double> {
+public class LowestValue<T extends Number> implements Indicator<T> {
 
-	private final Indicator<? extends Number> indicator;
+	private final Indicator<T> indicator;
 
 	private final int timeFrame;
 
-	public LowestValue(Indicator<? extends Number> indicator, int timeFrame) {
+	public LowestValue(Indicator<T> indicator, int timeFrame) {
 		this.indicator = indicator;
 		this.timeFrame = timeFrame;
 	}
 
 	@Override
-	public Double getValue(int index) {
+	public T getValue(int index) {
 		int start = Math.max(0, index - timeFrame + 1);
-		Double lowest = (Double) indicator.getValue(start);
+		T lowest = indicator.getValue(start);
 		for (int i = start + 1; i <= index; i++) {
 			if (lowest.doubleValue() > indicator.getValue(i).doubleValue())
-				lowest = (Double) indicator.getValue(i);
+				lowest = indicator.getValue(i);
 		}
 		return lowest;
 	}

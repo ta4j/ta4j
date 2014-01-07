@@ -1,10 +1,10 @@
 package eu.verdelhan.tailtest;
 
+import java.math.BigDecimal;
 import org.joda.time.DateTime;
 
 /**
  * End tick of a period.
- * 
  */
 public interface Tick {
     DateTime getDate();
@@ -13,21 +13,21 @@ public interface Tick {
 
     String getSimpleDateName();
 
-    double getClosePrice();
+    BigDecimal getClosePrice();
 
-    double getOpenPrice();
+    BigDecimal getOpenPrice();
 
     int getTrades();
 
-    double getMaxPrice();
+    BigDecimal getMaxPrice();
 
-    double getAmount();
+    BigDecimal getAmount();
 
-    double getVolume();
+    BigDecimal getVolume();
 
-    double getVariation();
+    BigDecimal getVariation();
 
-    double getMinPrice();
+    BigDecimal getMinPrice();
 
-    double getPreviousPrice();
+    BigDecimal getPreviousPrice();
 }

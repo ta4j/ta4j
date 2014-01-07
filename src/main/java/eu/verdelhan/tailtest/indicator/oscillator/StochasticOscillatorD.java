@@ -7,8 +7,6 @@ import eu.verdelhan.tailtest.indicator.tracker.SMA;
  * 
  * Receive StochasticOscillatorK and returns his SMA(3)
  * 
- * @author tgthies
- * 
  */
 public class StochasticOscillatorD implements Indicator<Double> {
 
@@ -24,7 +22,6 @@ public class StochasticOscillatorD implements Indicator<Double> {
 
 	@Override
 	public Double getValue(int index) {
-
 		return indicator.getValue(index).doubleValue();
 	}
 

@@ -1,13 +1,12 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
+import java.util.LinkedList;
+import java.util.List;
 
 public class BrazilianTotalProfitCriterion implements AnalysisCriterion {
 
@@ -28,25 +27,20 @@ public class BrazilianTotalProfitCriterion implements AnalysisCriterion {
     @Override
     public double summarize(TimeSeries series, List<Decision> decisions) {
         List<Trade> trades = new LinkedList<Trade>();
-
         for (Decision decision : decisions) {
             trades.addAll(decision.getTrades());
         }
-
         return calculate(series, trades);
     }
 
     private double calculateProfit(TimeSeries series, Trade trade) {
-        double exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
-        double entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
+        double exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice().doubleValue();
+        double entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice().doubleValue();
 
         if (trade.getEntry().getType() == OperationType.BUY) {
-
             return (exitClosePrice * 0.99965d) / (entryClosePrice * 1.00035d);
         }
-
         return (entryClosePrice * 0.99965d) / (exitClosePrice * 1.00035d);
-
     }
 
     @Override

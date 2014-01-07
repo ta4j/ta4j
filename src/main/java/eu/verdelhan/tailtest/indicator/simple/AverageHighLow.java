@@ -2,8 +2,9 @@ package eu.verdelhan.tailtest.indicator.simple;
 
 import eu.verdelhan.tailtest.Indicator;
 import eu.verdelhan.tailtest.TimeSeries;
+import java.math.BigDecimal;
 
-public class AverageHighLow implements Indicator<Double> {
+public class AverageHighLow implements Indicator<BigDecimal> {
 
 	private TimeSeries data;
 
@@ -12,8 +13,8 @@ public class AverageHighLow implements Indicator<Double> {
 	}
 
 	@Override
-	public Double getValue(int index) {
-		return (data.getTick(index).getMaxPrice() + data.getTick(index).getMinPrice()) / 2;
+	public BigDecimal getValue(int index) {
+		return data.getTick(index).getMaxPrice().add(data.getTick(index).getMinPrice()).divide(BigDecimal.valueOf(2));
 	}
 
 	@Override

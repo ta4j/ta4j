@@ -1,14 +1,13 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
 import eu.verdelhan.tailtest.flow.CashFlow;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 public class MaximumDrawDownCriterion implements AnalysisCriterion {
 
@@ -19,7 +18,7 @@ public class MaximumDrawDownCriterion implements AnalysisCriterion {
         CashFlow cashFlow = new CashFlow(series, trades);
 
         for (int i = series.getBegin(); i <= series.getEnd(); i++) {
-            double value = cashFlow.getValue(i);
+            double value = cashFlow.getValue(i).doubleValue();
             if (value > maxPeak) {
                 maxPeak = value;
             }

@@ -6,85 +6,102 @@ import eu.verdelhan.tailtest.indicator.helper.HighestValue;
 import eu.verdelhan.tailtest.indicator.helper.LowestValue;
 import eu.verdelhan.tailtest.indicator.simple.MaxPrice;
 import eu.verdelhan.tailtest.indicator.simple.MinPrice;
+import java.math.BigDecimal;
 
-public class ParabolicSar extends CachedIndicator<Double> {
+public class ParabolicSar extends CachedIndicator<BigDecimal> {
 
 	private double acceleration;
 
 	private final TimeSeries series;
 
-	private double extremePoint;
+	private BigDecimal extremePoint;
 
-	private final LowestValue lowestValueIndicator;
+	private final LowestValue<BigDecimal> lowestValueIndicator;
 
-	private final HighestValue highestValueIndicator;
+	private final HighestValue<BigDecimal> highestValueIndicator;
 	
 	private final int timeFrame;
 	
 	public ParabolicSar(TimeSeries series, int timeFrame) {
 		this.acceleration = 0.02d;
 		this.series = series;
-		this.lowestValueIndicator = new LowestValue(new MinPrice(series), timeFrame);
-		this.highestValueIndicator = new HighestValue(new MaxPrice(series), timeFrame);
+		this.lowestValueIndicator = new LowestValue<BigDecimal>(new MinPrice(series), timeFrame);
+		this.highestValueIndicator = new HighestValue<BigDecimal>(new MaxPrice(series), timeFrame);
 		this.timeFrame = timeFrame;
 	}
 
 	@Override
-	protected Double calculate(int index) {
+	protected BigDecimal calculate(int index) {
 
 		if (index <= 1) {
 			extremePoint = series.getTick(index).getClosePrice();
 			return extremePoint;
 		}
-		double sar;
+
+		BigDecimal sar;
+
+		BigDecimal n2ClosePrice = series.getTick(index - 2).getClosePrice();
+		BigDecimal n1ClosePrice = series.getTick(index - 1).getClosePrice();
+		BigDecimal nClosePrice = series.getTick(index).getClosePrice();
 
 		// trend switch
-		if (series.getTick(index - 2).getClosePrice() > series.getTick(index - 1).getClosePrice() && series.getTick(
-				index - 1).getClosePrice() < series.getTick(index).getClosePrice())
-		{
+		if(n2ClosePrice.compareTo(n1ClosePrice) == 1
+			&& n1ClosePrice.compareTo(nClosePrice) == -1) {
 			sar = extremePoint;
 			extremePoint = highestValueIndicator.getValue(index);
 			acceleration = 0.02;
 		}
 		// trend switch
-		else if((series.getTick(index - 2).getClosePrice() < series.getTick(index - 1).getClosePrice() && series
-						.getTick(index - 1).getClosePrice() > series.getTick(index).getClosePrice())) {
+		else if(n2ClosePrice.compareTo(n1ClosePrice) == -1
+				&& n1ClosePrice.compareTo(nClosePrice) == 1) {
 			
 			sar = extremePoint;
 			extremePoint = lowestValueIndicator.getValue(index);
 			acceleration = 0.02;
 			
 		}
+
 		//DownTrend
-		else if (series.getTick(index - 1).getClosePrice() >= series.getTick(index).getClosePrice()) {
-			double lowestValue = lowestValueIndicator.getValue(index);
-			if (extremePoint > lowestValue) {
+		else if (nClosePrice.compareTo(n1ClosePrice) == -1) {
+			BigDecimal lowestValue = lowestValueIndicator.getValue(index);
+			if (extremePoint.compareTo(lowestValue) == 1) {
 				acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02d;
 				extremePoint = lowestValue;
 			}
-			sar = acceleration * (extremePoint - getValue(index - 1)) + getValue(index - 1);
-			if (sar <= series.getTick(index - 1).getMaxPrice())
-				sar = series.getTick(index - 1).getMaxPrice();
-			else if (sar <= series.getTick(index - 2).getMaxPrice())
-				sar = series.getTick(index - 2).getMaxPrice();
-			if (sar <= series.getTick(index).getMaxPrice()) {
+			sar = extremePoint.subtract(getValue(index - 1)).multiply(BigDecimal.valueOf(acceleration)).add(getValue(index - 1));
+
+			BigDecimal n2MaxPrice = series.getTick(index - 2).getMaxPrice();
+			BigDecimal n1MaxPrice = series.getTick(index - 1).getMaxPrice();
+			BigDecimal nMaxPrice = series.getTick(index).getMaxPrice();
+
+			if (n1MaxPrice.compareTo(sar) == 1)
+				sar = n1MaxPrice;
+			else if (n2MaxPrice.compareTo(sar) == 1)
+				sar = n2MaxPrice;
+			if (nMaxPrice.compareTo(sar) == 1) {
 				sar = series.getTick(index).getMinPrice();
 			}
 
 		}
+
 		//UpTrend
 		else {
-			double highestValue = highestValueIndicator.getValue(index);
-			if (extremePoint < highestValue) {
+			BigDecimal highestValue = highestValueIndicator.getValue(index);
+			if (extremePoint.compareTo(highestValue) == -1) {
 				acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02;
 				extremePoint = highestValue;
 			}
-			sar = acceleration * (extremePoint - getValue(index - 1)) + getValue(index - 1);
-			if (sar >= series.getTick(index - 1).getMinPrice())
-				sar = series.getTick(index - 1).getMinPrice();
-			else if (sar >= series.getTick(index - 2).getMinPrice())
-				sar = series.getTick(index - 2).getMinPrice();
-			if (sar >= series.getTick(index).getMinPrice()) {
+			sar = extremePoint.subtract(getValue(index - 1)).multiply(BigDecimal.valueOf(acceleration)).add(getValue(index - 1));
+
+			BigDecimal n2MinPrice = series.getTick(index - 2).getMinPrice();
+			BigDecimal n1MinPrice = series.getTick(index - 1).getMinPrice();
+			BigDecimal nMinPrice = series.getTick(index).getMinPrice();
+
+			if (n1MinPrice.compareTo(sar) == -1)
+				sar = n1MinPrice;
+			else if (n2MinPrice.compareTo(sar) == -1)
+				sar = n2MinPrice;
+			if (nMinPrice.compareTo(sar) == -1) {
 				sar = series.getTick(index).getMaxPrice();
 			}
 

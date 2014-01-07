@@ -1,12 +1,13 @@
 package eu.verdelhan.tailtest.flow;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class CashFlow {
 
@@ -14,17 +15,17 @@ public class CashFlow {
 
     private final List<Trade> trades;
 
-    private List<Double> values;
+    private List<BigDecimal> values;
 
     public CashFlow(TimeSeries timeSeries, List<Trade> trades) {
         this.timeSeries = timeSeries;
         this.trades = trades;
-        values = new ArrayList<Double>();
-        values.add(1d);
+        values = new ArrayList<BigDecimal>();
+        values.add(BigDecimal.ONE);
         calculate();
     }
 
-    public double getValue(int index) {
+    public BigDecimal getValue(int index) {
         return values.get(index);
     }
 
@@ -45,20 +46,17 @@ public class CashFlow {
             }
             int end = trade.getExit().getIndex();
             for (int i = Math.max(begin, 1); i <= end; i++) {
-                double ratio;
+                BigDecimal ratio;
                 if (trade.getEntry().getType().equals(OperationType.BUY)) {
-                    ratio = timeSeries.getTick(i).getClosePrice()
-                            / timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice();
+                    ratio = timeSeries.getTick(i).getClosePrice().divide(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice(), RoundingMode.HALF_UP);
                 } else {
-                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice()
-                            / timeSeries.getTick(i).getClosePrice();
+                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice().divide(timeSeries.getTick(i).getClosePrice(), RoundingMode.HALF_UP);
                 }
-                values.add(values.get(trade.getEntry().getIndex()) * ratio);
+                values.add(values.get(trade.getEntry().getIndex()).multiply(ratio));
             }
         }
         if ((timeSeries.getEnd() - values.size()) >= 0) {
             values.addAll(Collections.nCopies((timeSeries.getEnd() - values.size()) + 1, values.get(values.size() - 1)));
         }
     }
-
 }

@@ -8,8 +8,6 @@ import eu.verdelhan.tailtest.indicator.helper.StandardDeviation;
  * Sell - Occurs when the price line cross from up to down de Bollinger Band
  * High.
  * 
- * @author Marcio
- * 
  */
 public class BollingerBandsLower implements Indicator<Double> {
 

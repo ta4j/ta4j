@@ -3,8 +3,10 @@ package eu.verdelhan.tailtest.indicator.volume;
 import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.cache.CachedIndicator;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-public class AccumulationDistribution extends CachedIndicator<Double> {
+public class AccumulationDistribution extends CachedIndicator<BigDecimal> {
 
     private TimeSeries series;
 
@@ -13,14 +15,20 @@ public class AccumulationDistribution extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    protected BigDecimal calculate(int index) {
         if (index == 0) {
-            return 0d;
+            return BigDecimal.ZERO;
         }
         Tick tick = series.getTick(index);
 
-        return ((((tick.getClosePrice() - tick.getMinPrice()) - (tick.getMaxPrice() - tick.getClosePrice())) * tick
-                .getVolume()) / (tick.getMaxPrice() - tick.getMinPrice())) + getValue(index - 1);
+        // Calculating the money flow multiplier
+		BigDecimal moneyFlowMultiplier = tick.getClosePrice().subtract(tick.getMinPrice()).subtract(tick.getMaxPrice().subtract(tick.getClosePrice()))
+				.divide(tick.getMaxPrice().subtract(tick.getMinPrice()), RoundingMode.HALF_UP);
+
+		// Calculating the money flow volume
+		BigDecimal moneyFlowVolume = moneyFlowMultiplier.multiply(tick.getVolume());
+
+        return moneyFlowVolume.add(getValue(index - 1));
     }
 
     @Override

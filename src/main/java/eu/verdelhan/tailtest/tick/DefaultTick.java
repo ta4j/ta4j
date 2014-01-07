@@ -1,46 +1,42 @@
 package eu.verdelhan.tailtest.tick;
 
 import eu.verdelhan.tailtest.Tick;
-
+import java.math.BigDecimal;
 import org.joda.time.DateTime;
 
 /**
  * Contém todos os possíveis atributos registrados de uma detrminada ação em um
  * único período de tempo.
  * 
- * @author Marcio
- * 
  */
 public class DefaultTick implements Tick {
 
 	private DateTime date;
 
-	private double openPrice;
+	private BigDecimal openPrice;
 
-	private double closePrice;
+	private BigDecimal closePrice;
 
-	private double maxPrice;
+	private BigDecimal maxPrice;
 
-	private double minPrice;
+	private BigDecimal minPrice;
 
-	private double variation;
+	private BigDecimal variation;
 
-	private double previousPrice;
+	private BigDecimal previousPrice;
 
-	private double amount;
+	private BigDecimal amount;
 
-	private double volume;
+	private BigDecimal volume;
 
 	private int trades;
 
 	public DefaultTick(double closePrice) {
-		super();
-		this.closePrice = closePrice;
+		this.closePrice = new BigDecimal(closePrice);
 	}
 
 	public DefaultTick(DateTime data, double closePrice) {
-		super();
-		this.closePrice = closePrice;
+		this.closePrice = new BigDecimal(closePrice);
 		this.date = data;
 	}
 
@@ -48,44 +44,44 @@ public class DefaultTick implements Tick {
 			double previousPrice, double amount, double volume, int trades) {
 		super();
 		this.date = data;
-		this.openPrice = openPrice;
-		this.closePrice = closePrice;
-		this.maxPrice = maxPrice;
-		this.minPrice = minPrice;
-		this.variation = variation;
-		this.previousPrice = previousPrice;
-		this.amount = amount;
-		this.volume = volume;
+		this.openPrice = new BigDecimal(openPrice);
+		this.closePrice = new BigDecimal(closePrice);
+		this.maxPrice = new BigDecimal(maxPrice);
+		this.minPrice = new BigDecimal(minPrice);
+		this.variation = new BigDecimal(variation);
+		this.previousPrice = new BigDecimal(previousPrice);
+		this.amount = new BigDecimal(amount);
+		this.volume = new BigDecimal(volume);
 		this.trades = trades;
 	}
 
 	public DefaultTick(DateTime data, double openPrice, double closePrice, double maxPrice, double minPrice) {
 		super();
 		this.date = data;
-		this.openPrice = openPrice;
-		this.closePrice = closePrice;
-		this.maxPrice = maxPrice;
-		this.minPrice = minPrice;
+		this.openPrice = new BigDecimal(openPrice);
+		this.closePrice = new BigDecimal(closePrice);
+		this.maxPrice = new BigDecimal(maxPrice);
+		this.minPrice = new BigDecimal(minPrice);
 	}
 
 	public DefaultTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
 		super();
-		this.openPrice = openPrice;
-		this.closePrice = closePrice;
-		this.maxPrice = maxPrice;
-		this.minPrice = minPrice;
+		this.openPrice = new BigDecimal(openPrice);
+		this.closePrice = new BigDecimal(closePrice);
+		this.maxPrice = new BigDecimal(maxPrice);
+		this.minPrice = new BigDecimal(minPrice);
 	}
 	
 	public DefaultTick(double d, DateTime dateTime) {
-		this.closePrice = d;
+		this.closePrice = new BigDecimal(d);
 		this.date = dateTime;
 	}
 
-	public double getClosePrice() {
+	public BigDecimal getClosePrice() {
 		return closePrice;
 	}
 
-	public double getOpenPrice() {
+	public BigDecimal getOpenPrice() {
 		return openPrice;
 	}
 
@@ -93,15 +89,15 @@ public class DefaultTick implements Tick {
 		return trades;
 	}
 
-	public double getMaxPrice() {
+	public BigDecimal getMaxPrice() {
 		return maxPrice;
 	}
 
-	public double getAmount() {
+	public BigDecimal getAmount() {
 		return amount;
 	}
 
-	public double getVolume() {
+	public BigDecimal getVolume() {
 		return volume;
 	}
 
@@ -127,15 +123,15 @@ public class DefaultTick implements Tick {
 		return 7 * date.hashCode();
 	}
 
-	public double getVariation() {
+	public BigDecimal getVariation() {
 		return variation;
 	}
 
-	public double getMinPrice() {
+	public BigDecimal getMinPrice() {
 		return minPrice;
 	}
 
-	public double getPreviousPrice() {
+	public BigDecimal getPreviousPrice() {
 		return previousPrice;
 	}
 
@@ -148,11 +144,12 @@ public class DefaultTick implements Tick {
 		return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", date
 				.toGregorianCalendar(), closePrice);
 	}
+
 	public String getDateName() {
 		return this.date.toString("hh:mm dd/MM/yyyy");
 	}
+
 	public String getSimpleDateName() {
 		return this.date.toString("dd/MM/yyyy");
 	}
-
 }
