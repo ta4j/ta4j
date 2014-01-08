@@ -16,13 +16,12 @@ public class VariationPriceTest {
 	public void setUp() {
 		timeSeries = new SampleTimeSeries();
 		variationIndicator = new Variation(timeSeries);
-
 	}
 
 	@Test
 	public void testIndicatorShouldRetrieveTickVariation() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals((double) variationIndicator.getValue(i), timeSeries.getTick(i).getVariation());
+			assertEquals(variationIndicator.getValue(i), timeSeries.getTick(i).getVariation());
 		}
 	}
 

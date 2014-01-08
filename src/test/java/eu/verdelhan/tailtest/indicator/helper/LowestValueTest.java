@@ -3,6 +3,7 @@ package eu.verdelhan.tailtest.indicator.helper;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,48 +19,48 @@ public class LowestValueTest {
 
 	@Test
 	public void testLowestValueIndicatorUsingTimeFrame5UsingClosePrice() throws Exception {
-		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 5);
+		LowestValue<BigDecimal> lowestValue = new LowestValue<BigDecimal>(new ClosePrice(data), 5);
 
-		assertEquals(1d, lowestValue.getValue(4), 0.01);
-		assertEquals(2d, lowestValue.getValue(5), 0.01);
-		assertEquals(3d, lowestValue.getValue(6), 0.01);
-		assertEquals(3d, lowestValue.getValue(7), 0.01);
-		assertEquals(3d, lowestValue.getValue(8), 0.01);
-		assertEquals(3d, lowestValue.getValue(9), 0.01);
-		assertEquals(2d, lowestValue.getValue(10), 0.01);
-		assertEquals(2d, lowestValue.getValue(11), 0.01);
-		assertEquals(2d, lowestValue.getValue(12), 0.01);
+		assertEquals(BigDecimal.valueOf(1), lowestValue.getValue(4));
+		assertEquals(BigDecimal.valueOf(2), lowestValue.getValue(5));
+		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(6));
+		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(7));
+		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(8));
+		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(9));
+		assertEquals(BigDecimal.valueOf(2), lowestValue.getValue(10));
+		assertEquals(BigDecimal.valueOf(2), lowestValue.getValue(11));
+		assertEquals(BigDecimal.valueOf(2), lowestValue.getValue(12));
 
 	}
 
 	@Test
 	public void testLowestValueShouldWorkJumpingIndexes() {
-		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 5);
-		assertEquals(2d, lowestValue.getValue(10), 0.01);
-		assertEquals(3d, lowestValue.getValue(6), 0.01);
+		LowestValue<BigDecimal> lowestValue = new LowestValue<BigDecimal>(new ClosePrice(data), 5);
+		assertEquals(BigDecimal.valueOf(2), lowestValue.getValue(10));
+		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(6));
 	}
 
 	@Test
 	public void testLowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
-		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 5);
-		assertEquals(1d, lowestValue.getValue(0), 0.01);
+		LowestValue<BigDecimal> lowestValue = new LowestValue<BigDecimal>(new ClosePrice(data), 5);
+		assertEquals(BigDecimal.valueOf(1), lowestValue.getValue(0));
 	}
 
 	@Test
 	public void testLowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
-		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 500);
-		assertEquals(1d, lowestValue.getValue(12), 0.01);
+		LowestValue<BigDecimal> lowestValue = new LowestValue<BigDecimal>(new ClosePrice(data), 500);
+		assertEquals(BigDecimal.valueOf(1), lowestValue.getValue(12));
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 5);
-		assertEquals(3d, (double) lowestValue.getValue(300));
+		LowestValue<BigDecimal> lowestValue = new LowestValue<BigDecimal>(new ClosePrice(data), 5);
+		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(300));
 	}
 
 	@Test
 	public void testGetName() {
 		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 5);
-		assertEquals("LowestValueIndicator timeFrame: 5", lowestValue.getName());
+		assertEquals("LowestValue<BigDecimal>Indicator timeFrame: 5", lowestValue.getName());
 	}
 }

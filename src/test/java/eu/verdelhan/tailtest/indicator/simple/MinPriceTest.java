@@ -20,7 +20,7 @@ public class MinPriceTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickMinPrice() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals((double) minPriceIndicator.getValue(i), timeSeries.getTick(i).getMinPrice());
+			assertEquals(minPriceIndicator.getValue(i), timeSeries.getTick(i).getMinPrice());
 		}
 	}
 

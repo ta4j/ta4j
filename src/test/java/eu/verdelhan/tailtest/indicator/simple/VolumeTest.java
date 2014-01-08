@@ -20,7 +20,7 @@ public class VolumeTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickVolume() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals((double) volumeIndicator.getValue(i), timeSeries.getTick(i).getVolume());
+			assertEquals(volumeIndicator.getValue(i), timeSeries.getTick(i).getVolume());
 		}
 	}
 

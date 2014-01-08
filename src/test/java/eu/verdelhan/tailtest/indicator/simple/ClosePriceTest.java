@@ -19,10 +19,8 @@ public class ClosePriceTest {
 
 	@Test
 	public void testIndicatorShouldRetrieveTickClosePrice() {
-
 		for (int i = 0; i < 10; i++) {
-
-			assertEquals((double) closePrice.getValue(i), timeSeries.getTick(i).getClosePrice());
+			assertEquals(closePrice.getValue(i), timeSeries.getTick(i).getClosePrice());
 		}
 	}
 

@@ -2,6 +2,7 @@ package eu.verdelhan.tailtest.indicator.tracker;
 
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
@@ -20,11 +21,11 @@ public class ParabolicSarTest {
 		ticks.add(new DefaultTick(0, 13, 15, 9));
 		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
 		
-		assertEquals(10d, (double) sar.getValue(0));
-		assertEquals(8d, (double) sar.getValue(1));
-		assertEquals(11d, (double) sar.getValue(2));
-		assertEquals(4d, (double) sar.getValue(3));
-		assertEquals(4d, (double) sar.getValue(4));
+		assertEquals(BigDecimal.valueOf(10d), sar.getValue(0));
+		assertEquals(BigDecimal.valueOf(8d), sar.getValue(1));
+		assertEquals(BigDecimal.valueOf(11d), sar.getValue(2));
+		assertEquals(BigDecimal.valueOf(4d), sar.getValue(3));
+		assertEquals(BigDecimal.valueOf(4d), sar.getValue(4));
 		
 	}
 	
@@ -40,12 +41,12 @@ public class ParabolicSarTest {
 		
 		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
 		
-		assertEquals(10d, (double) sar.getValue(0));
-		assertEquals(10d, (double) sar.getValue(1));
-		assertEquals(0.04 * (18d - 10) + 10d, (double) sar.getValue(2));
-		assertEquals(18d, (double) sar.getValue(3));
-		assertEquals(18d, (double) sar.getValue(3));
-		assertEquals(18d, (double) sar.getValue(4));
+		assertEquals(BigDecimal.valueOf(10d), sar.getValue(0));
+		assertEquals(BigDecimal.valueOf(10d), sar.getValue(1));
+		assertEquals(BigDecimal.valueOf(0.04 * (18d - 10) + 10d), sar.getValue(2));
+		assertEquals(BigDecimal.valueOf(18d), sar.getValue(3));
+		assertEquals(BigDecimal.valueOf(18d), sar.getValue(3));
+		assertEquals(BigDecimal.valueOf(18d), sar.getValue(4));
 	}
 	@Test
 	public void UpTrendTest()
@@ -59,11 +60,11 @@ public class ParabolicSarTest {
 		
 		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
 		
-		assertEquals(10d, (double) sar.getValue(0));
-		assertEquals(17d, (double) sar.getValue(1));
-		assertEquals(11.38d, (double) sar.getValue(2));
-		assertEquals(11.38d, (double) sar.getValue(3));
-		assertEquals(18d, (double) sar.getValue(4));
+		assertEquals(BigDecimal.valueOf(10d), sar.getValue(0));
+		assertEquals(BigDecimal.valueOf(17d), sar.getValue(1));
+		assertEquals(BigDecimal.valueOf(11.38d), sar.getValue(2));
+		assertEquals(BigDecimal.valueOf(11.38d), sar.getValue(3));
+		assertEquals(BigDecimal.valueOf(18d), sar.getValue(4));
 	}
 	
 	@Test
@@ -79,13 +80,13 @@ public class ParabolicSarTest {
 		
 		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
 		
-		assertEquals(20d, (double) sar.getValue(0));
-		assertEquals(19d, (double) sar.getValue(1));
-		assertEquals(0.04d * (14d - 19d) + 19d, (double) sar.getValue(2));
+		assertEquals(BigDecimal.valueOf(20d), sar.getValue(0));
+		assertEquals(BigDecimal.valueOf(19d), sar.getValue(1));
+		assertEquals(BigDecimal.valueOf(0.04d * (14d - 19d) + 19d), sar.getValue(2));
 		double value = 0.06d * (11.38d - 18.8d) + 18.8d;
-		assertEquals(0.06d * (11.38d - 18.8d) + 18.8d, (double) sar.getValue(3));
-		assertEquals(0.08d * (11d - value) + value, (double) sar.getValue(4));
-		assertEquals(11d, (double) sar.getValue(5));
+		assertEquals(BigDecimal.valueOf(value), sar.getValue(3));
+		assertEquals(BigDecimal.valueOf(0.08d * (11d - value) + value), sar.getValue(4));
+		assertEquals(BigDecimal.valueOf(11d), sar.getValue(5));
 		
 	}
 }

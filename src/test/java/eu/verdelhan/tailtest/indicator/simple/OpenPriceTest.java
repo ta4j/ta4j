@@ -20,7 +20,7 @@ public class OpenPriceTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickOpenPrice() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals((double) openPriceIndicator.getValue(i), timeSeries.getTick(i).getOpenPrice());
+			assertEquals(openPriceIndicator.getValue(i), timeSeries.getTick(i).getOpenPrice());
 		}
 	}
 

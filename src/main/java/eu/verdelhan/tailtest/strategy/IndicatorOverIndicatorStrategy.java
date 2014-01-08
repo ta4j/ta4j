@@ -1,14 +1,15 @@
 package eu.verdelhan.tailtest.strategy;
 
 import eu.verdelhan.tailtest.Indicator;
+import java.math.BigDecimal;
 
 public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
 
-    private Indicator<Double> first;
+    private Indicator<BigDecimal> first;
 
-    private Indicator<Double> second;
+    private Indicator<BigDecimal> second;
 
-    public IndicatorOverIndicatorStrategy(Indicator<Double> first, Indicator<Double> second) {
+    public IndicatorOverIndicatorStrategy(Indicator<BigDecimal> first, Indicator<BigDecimal> second) {
         this.first = first;
         this.second = second;
     }

@@ -3,6 +3,7 @@ package eu.verdelhan.tailtest.indicator.helper;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,43 +19,43 @@ public class HighestValueTest {
 
 	@Test
 	public void testHighestValueUsingTimeFrame5UsingClosePrice() throws Exception {
-		HighestValue highestValue = new HighestValue(new ClosePrice(data), 5);
+		HighestValue<BigDecimal> highestValue = new HighestValue<BigDecimal>(new ClosePrice(data), 5);
 
-		assertEquals(4d, highestValue.getValue(4), 0.01);
-		assertEquals(4d, highestValue.getValue(5), 0.01);
-		assertEquals(5d, highestValue.getValue(6), 0.01);
-		assertEquals(6d, highestValue.getValue(7), 0.01);
-		assertEquals(6d, highestValue.getValue(8), 0.01);
-		assertEquals(6d, highestValue.getValue(9), 0.01);
-		assertEquals(6d, highestValue.getValue(10), 0.01);
-		assertEquals(6d, highestValue.getValue(11), 0.01);
-		assertEquals(4d, highestValue.getValue(12), 0.01);
+		assertEquals(BigDecimal.valueOf(4), highestValue.getValue(4));
+		assertEquals(BigDecimal.valueOf(4), highestValue.getValue(5));
+		assertEquals(BigDecimal.valueOf(5), highestValue.getValue(6));
+		assertEquals(BigDecimal.valueOf(6), highestValue.getValue(7));
+		assertEquals(BigDecimal.valueOf(6), highestValue.getValue(8));
+		assertEquals(BigDecimal.valueOf(6), highestValue.getValue(9));
+		assertEquals(BigDecimal.valueOf(6), highestValue.getValue(10));
+		assertEquals(BigDecimal.valueOf(6), highestValue.getValue(11));
+		assertEquals(BigDecimal.valueOf(4), highestValue.getValue(12));
 
 	}
 
 	@Test
 	public void testFirstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
-		HighestValue highestValue = new HighestValue(new ClosePrice(data), 5);
-		assertEquals(1d, highestValue.getValue(0), 0.01);
+		HighestValue<BigDecimal> highestValue = new HighestValue<BigDecimal>(new ClosePrice(data), 5);
+		assertEquals(BigDecimal.ONE, highestValue.getValue(0));
 	}
 
 	@Test
 	public void testHighestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
-		HighestValue highestValue = new HighestValue(new ClosePrice(data), 500);
-		assertEquals(6d, highestValue.getValue(12), 0.01);
+		HighestValue<BigDecimal> highestValue = new HighestValue<BigDecimal>(new ClosePrice(data), 500);
+		assertEquals(BigDecimal.valueOf(6), highestValue.getValue(12));
 	}
 
 	@Test
 	public void testHighestValueShouldWorkJumpingIndexes() {
-		HighestValue highestValue = new HighestValue(new ClosePrice(data), 5);
-		assertEquals(5d, highestValue.getValue(6), 0.01);
-		assertEquals(4, highestValue.getValue(12), 0.01);
+		HighestValue<BigDecimal> highestValue = new HighestValue<BigDecimal>(new ClosePrice(data), 5);
+		assertEquals(BigDecimal.valueOf(5), highestValue.getValue(6));
+		assertEquals(BigDecimal.valueOf(4), highestValue.getValue(12));
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		HighestValue highestValue = new HighestValue(new ClosePrice(data), 5);
-		assertEquals(3d, (double) highestValue.getValue(300));
+		HighestValue<BigDecimal> highestValue = new HighestValue<BigDecimal>(new ClosePrice(data), 5);
+		assertEquals(BigDecimal.valueOf(3), highestValue.getValue(300));
 	}
 
 	@Test

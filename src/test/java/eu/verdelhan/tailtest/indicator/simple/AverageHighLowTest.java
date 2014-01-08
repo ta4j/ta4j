@@ -3,6 +3,8 @@ package eu.verdelhan.tailtest.indicator.simple;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
@@ -36,10 +38,10 @@ public class AverageHighLowTest {
 
 	@Test
 	public void testIndicatorShouldRetrieveTickClosePrice() {
-		double result;
+		BigDecimal result;
 		for (int i = 0; i < 10; i++) {
-			result = (timeSeries.getTick(i).getMaxPrice() + timeSeries.getTick(i).getMinPrice()) / 2;  
-			assertEquals((double) average.getValue(i), result);
+			result = timeSeries.getTick(i).getMaxPrice().add(timeSeries.getTick(i).getMinPrice()).divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP);
+			assertEquals(average.getValue(i), result);
 		}
 	}
 

@@ -7,6 +7,7 @@ import eu.verdelhan.tailtest.indicator.helper.LowestValue;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.indicator.simple.MaxPrice;
 import eu.verdelhan.tailtest.indicator.simple.MinPrice;
+import java.math.BigDecimal;
 
 public class WilliamsR implements Indicator<Double> {
 
@@ -33,11 +34,11 @@ public class WilliamsR implements Indicator<Double> {
 
 	@Override
 	public Double getValue(int index) {
-		HighestValue highestHigh = new HighestValue(maxPriceIndicator, timeFrame);
-		LowestValue lowestMin = new LowestValue(minPriceIndicator, timeFrame);
+		HighestValue<BigDecimal> highestHigh = new HighestValue<BigDecimal>(maxPriceIndicator, timeFrame);
+		LowestValue<BigDecimal> lowestMin = new LowestValue<BigDecimal>(minPriceIndicator, timeFrame);
 
-		double highestHighPrice = highestHigh.getValue(index);
-		double lowestLowPrice = lowestMin.getValue(index);
+		double highestHighPrice = highestHigh.getValue(index).doubleValue();
+		double lowestLowPrice = lowestMin.getValue(index).doubleValue();
 
 		return ((highestHighPrice - indicator.getValue(index).doubleValue()) / (highestHighPrice - lowestLowPrice))
 				* -100d;

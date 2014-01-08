@@ -10,9 +10,8 @@ public class SimpleMultiplierTest {
 
 	@Before
 	public void setUp() {
-		
 		constantIndicator = new Constant<Double>(5d);
-		this.simpleMultiplier = new SimpleMultiplier(constantIndicator, 5d);
+		simpleMultiplier = new SimpleMultiplier(constantIndicator, 5d);
 	}
 
 	@Test

@@ -1,26 +1,23 @@
 package eu.verdelhan.tailtest.sample;
 
+import eu.verdelhan.tailtest.Indicator;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import eu.verdelhan.tailtest.Indicator;
+public class SampleIndicator<T> implements Indicator<T> {
 
-public class SampleIndicator implements Indicator<Double> {
+	private List<T> values = new ArrayList<T>();
 
-	private List<Double> values;
-
-	public SampleIndicator(double[] values) {
-		this.values = new ArrayList<Double>();
-		for (double d : values) {
-			this.values.add(d);
-		}
+	public SampleIndicator(T[] values) {
+		this.values.addAll(Arrays.asList(values));
 	}
 
-	public void addValue(double value) {
+	public void addValue(T value) {
 		this.values.add(value);
 	}
 
-	public Double getValue(int index) {
+	public T getValue(int index) {
 		return values.get(index);
 	}
 

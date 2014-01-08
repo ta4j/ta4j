@@ -1,29 +1,28 @@
 package eu.verdelhan.tailtest.strategy;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.sample.SampleIndicator;
-
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
 public class PipeEnterStrategyTest {
-	private SampleIndicator upper;
+	private SampleIndicator<Double> upper;
 
-	private SampleIndicator lower;
+	private SampleIndicator<Double> lower;
 
 	@Before
 	public void setUp() {
-		upper = new SampleIndicator(new double[] { 30, 32, 33, 32, 35, 33, 32, 33, 31, 30, 31, 32, 32, 34, 35 });
-		lower = new SampleIndicator(new double[] { 10, 12, 13, 12, 15, 13, 12, 13, 11, 10, 11, 12, 12, 14, 15 });
+		upper = new SampleIndicator<Double>(new Double[] { 30d, 32d, 33d, 32d, 35d, 33d, 32d, 33d, 31d, 30d, 31d, 32d, 32d, 34d, 35d });
+		lower = new SampleIndicator<Double>(new Double[] { 10d, 12d, 13d, 12d, 15d, 13d, 12d, 13d, 11d, 10d, 11d, 12d, 12d, 14d, 15d });
 	}
 
 	@Test
 	public void testFirstSellLastBuy() {
 		Trade trade = new Trade();
-		SampleIndicator value = new SampleIndicator(new double[] { 25, 27, 28, 27, 30, 33, 35, 37, 35, 29, 11, 10, 15,
-				30, 31 });
+		SampleIndicator<Double> value = new SampleIndicator<Double>(new Double[] { 25d, 27d, 28d, 27d, 30d, 33d, 35d, 37d, 35d, 29d, 11d, 10d, 15d,
+				30d, 31d });
 
 		PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 
@@ -40,8 +39,8 @@ public class PipeEnterStrategyTest {
 	@Test
 	public void testFirstBuyLastSell() {
 		Trade trade = new Trade();
-		SampleIndicator value = new SampleIndicator(new double[] { 8, 15, 16, 33, 40, 45, 47, 40, 32, 25, 15, 16, 11,
-				10, 12 });
+		SampleIndicator<Double> value = new SampleIndicator<Double>(new Double[] { 8d, 15d, 16d, 33d, 40d, 45d, 47d, 40d, 32d, 25d, 15d, 16d, 11d,
+				10d, 12d });
 
 		PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 

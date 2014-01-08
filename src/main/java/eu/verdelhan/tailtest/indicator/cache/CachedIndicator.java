@@ -1,10 +1,9 @@
 package eu.verdelhan.tailtest.indicator.cache;
 
+import eu.verdelhan.tailtest.Indicator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import eu.verdelhan.tailtest.Indicator;
 
 /**
  * Cache the constructor of the indicator. Avoid to calculate the same index of

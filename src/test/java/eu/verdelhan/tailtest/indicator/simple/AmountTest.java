@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class AmountTest {
+
 	private Amount amountIndicator;
 
 	TimeSeries timeSeries;
@@ -15,13 +16,12 @@ public class AmountTest {
 	public void setUp() {
 		timeSeries = new SampleTimeSeries();
 		amountIndicator = new Amount(timeSeries);
-
 	}
 
 	@Test
 	public void testIndicatorShouldRetrieveTickAmountPrice() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals((double) amountIndicator.getValue(i), (double) timeSeries.getTick(i).getAmount());
+			assertEquals(amountIndicator.getValue(i), timeSeries.getTick(i).getAmount());
 		}
 	}
 

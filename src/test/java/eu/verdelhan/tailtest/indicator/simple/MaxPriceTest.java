@@ -21,7 +21,7 @@ public class MaxPriceTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickMaxPrice() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals((double) maxPriceIndicator.getValue(i), timeSeries.getTick(i).getMaxPrice());
+			assertEquals(maxPriceIndicator.getValue(i), timeSeries.getTick(i).getMaxPrice());
 		}
 	}
 

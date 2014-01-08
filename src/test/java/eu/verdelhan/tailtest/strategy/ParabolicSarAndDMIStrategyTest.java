@@ -1,11 +1,10 @@
 package eu.verdelhan.tailtest.strategy;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
-
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 

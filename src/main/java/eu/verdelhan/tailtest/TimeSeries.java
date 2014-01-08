@@ -9,8 +9,7 @@ import org.joda.time.Period;
 public interface TimeSeries {
 
     /**
-     * @param i
-     *            an index
+     * @param i an index
      * @return the tick at the i position
      */
     Tick getTick(int i);
