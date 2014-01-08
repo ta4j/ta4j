@@ -28,9 +28,4 @@ public class MinPriceTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		minPriceIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("MinPriceIndicator", minPriceIndicator.getName());
-	}
 }

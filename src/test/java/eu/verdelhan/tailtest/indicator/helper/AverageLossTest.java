@@ -61,11 +61,4 @@ public class AverageLossTest {
 		AverageLoss averageLoss = new AverageLoss(new ClosePrice(data), 5);
 		assertEquals((double) 3d, (double) averageLoss.getValue(300));
 	}
-
-	@Test
-	public void testGetName() {
-		AverageLoss averageLoss = new AverageLoss(new ClosePrice(data), 5);
-		assertEquals("AverageLossIndicator timeFrame: 5", averageLoss.getName());
-	}
-
 }

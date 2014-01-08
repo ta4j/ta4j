@@ -35,7 +35,7 @@ public class WMA implements Indicator<Double> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return String.format(getClass().getSimpleName() + " timeFrame: %s", timeFrame);
 	}
 }

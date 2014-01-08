@@ -25,9 +25,8 @@ public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), first.getName(),
-                second.getName());
+    public String toString() {
+        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), first, second);
     }
 
     @Override

@@ -51,8 +51,5 @@ public abstract class CachedIndicator<T> implements Indicator<T> {
         return name[name.length - 1];
     }
 
-    @Override
-    public abstract String getName();
-
     protected abstract T calculate(int index);
 }

@@ -110,7 +110,7 @@ public class ParabolicSar extends CachedIndicator<BigDecimal> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}
 }

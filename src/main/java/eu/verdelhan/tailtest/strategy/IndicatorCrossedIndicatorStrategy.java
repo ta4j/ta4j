@@ -37,8 +37,8 @@ public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("Cross %s over %s", upper.getName(), lower.getName());
+    public String toString() {
+        return String.format("Cross %s over %s", upper, lower);
     }
 
     @Override

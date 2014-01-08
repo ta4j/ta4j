@@ -29,9 +29,4 @@ public class AmountTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		amountIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("AmountIndicator", amountIndicator.getName());
-	}
 }

@@ -24,9 +24,8 @@ public class CombinedBuyAndSellStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("Combined strategy using buy strategy %s and sell strategy %s", buyStrategy.getName(),
-                sellStrategy.getName());
+    public String toString() {
+        return String.format("Combined strategy using buy strategy %s and sell strategy %s", buyStrategy, sellStrategy);
     }
 
     @Override

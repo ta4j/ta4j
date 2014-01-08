@@ -25,7 +25,7 @@ public class HighestValue<T extends Number> implements Indicator<T> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}
 }

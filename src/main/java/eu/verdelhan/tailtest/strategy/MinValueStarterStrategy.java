@@ -33,7 +33,7 @@ public class MinValueStarterStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
+    public String toString() {
         return String.format("%s start: %i", this.getClass().getSimpleName(), start);
     }
 

@@ -17,7 +17,7 @@ public class TradeCount implements Indicator<Integer> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName();
 	}
 }

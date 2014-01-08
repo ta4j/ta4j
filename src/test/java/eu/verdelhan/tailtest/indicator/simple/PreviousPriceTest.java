@@ -29,9 +29,4 @@ public class PreviousPriceTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		previousPriceIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("PreviousPriceIndicator", previousPriceIndicator.getName());
-	}
 }

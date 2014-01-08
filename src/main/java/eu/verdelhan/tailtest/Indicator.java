@@ -9,6 +9,4 @@ package eu.verdelhan.tailtest;
  */
 public interface Indicator<T> {
     T getValue(int index);
-
-    String getName();
 }

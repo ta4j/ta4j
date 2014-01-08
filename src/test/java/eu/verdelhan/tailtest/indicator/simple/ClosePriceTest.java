@@ -28,9 +28,4 @@ public class ClosePriceTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		closePrice.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("ClosePriceIndicator", closePrice.getName());
-	}
 }

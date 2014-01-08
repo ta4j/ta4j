@@ -20,7 +20,7 @@ public class AverageTrueRange extends CachedIndicator<Double> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " timeFrame: " + this.timeFrame;
 	}
 

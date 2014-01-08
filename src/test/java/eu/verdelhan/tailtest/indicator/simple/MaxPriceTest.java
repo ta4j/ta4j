@@ -29,10 +29,4 @@ public class MaxPriceTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		maxPriceIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("MaxPriceIndicator", maxPriceIndicator.getName());
-	}
-
 }

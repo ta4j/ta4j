@@ -22,7 +22,7 @@ public class ParabolicSarAndDMIStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
+    public String toString() {
         return getClass().getSimpleName();
     }
 

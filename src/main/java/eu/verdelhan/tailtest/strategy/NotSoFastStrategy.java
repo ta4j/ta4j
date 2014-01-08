@@ -31,8 +31,8 @@ public class NotSoFastStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return getClass().getSimpleName() + " over strategy: " + strategy.getName() + " number of ticks: "
+    public String toString() {
+        return getClass().getSimpleName() + " over strategy: " + strategy + " number of ticks: "
                 + numberOfTicks;
     }
 

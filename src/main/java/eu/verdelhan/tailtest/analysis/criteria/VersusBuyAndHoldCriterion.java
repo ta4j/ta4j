@@ -1,15 +1,14 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 public class VersusBuyAndHoldCriterion implements AnalysisCriterion {
 
@@ -47,7 +46,7 @@ public class VersusBuyAndHoldCriterion implements AnalysisCriterion {
 
     @Override
     public String getName() {
-        return "VB&H " + criterion.getName();
+        return "VB&H " + criterion;
     }
 
     @Override

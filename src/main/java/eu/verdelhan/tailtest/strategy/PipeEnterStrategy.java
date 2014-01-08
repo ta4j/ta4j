@@ -35,9 +35,9 @@ public class PipeEnterStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), crossUp.getName(),
-                crossDown.getName());
+    public String toString() {
+        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), crossUp,
+                crossDown);
     }
 
     @Override

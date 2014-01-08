@@ -29,9 +29,4 @@ public class VariationPriceTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		variationIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("VariationIndicator", variationIndicator.getName());
-	}
 }

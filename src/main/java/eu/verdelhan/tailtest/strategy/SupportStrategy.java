@@ -36,9 +36,9 @@ public class SupportStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
+    public String toString() {
         return String
-                .format("%s suport: %i strategy: %s", this.getClass().getSimpleName(), support, strategy.getName());
+                .format("%s suport: %i strategy: %s", this.getClass().getSimpleName(), support, strategy);
     }
 
     @Override

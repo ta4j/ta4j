@@ -68,10 +68,4 @@ public class CachedIndicatorTest {
 		RSI.getValue(maxIndex - 1);
 
 	}
-
-	@Test
-	public void testGetName() {
-		SMA quoteSMA = new SMA(new ClosePrice(data), 3);
-		assertEquals("SMAIndicator timeFrame: 3", quoteSMA.getName());
-	}
 }

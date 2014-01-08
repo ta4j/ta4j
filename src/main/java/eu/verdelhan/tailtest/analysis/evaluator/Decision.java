@@ -1,7 +1,5 @@
 package eu.verdelhan.tailtest.analysis.evaluator;
 
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.Runner;
 import eu.verdelhan.tailtest.Strategy;
@@ -9,6 +7,7 @@ import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.series.RegularSlicer;
+import java.util.List;
 
 public class Decision {
 
@@ -71,7 +70,7 @@ public class Decision {
 	
 	public String getName()
 	{
-		return getActualSlice().getName() + ": " + getActualSlice().getPeriodName();
+		return getActualSlice() + ": " + getActualSlice().getPeriodName();
 	}
 	
 	public String getFileName()

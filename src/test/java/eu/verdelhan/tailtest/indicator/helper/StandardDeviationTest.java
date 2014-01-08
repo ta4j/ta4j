@@ -1,10 +1,9 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
-import static org.junit.Assert.assertEquals;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
-
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,11 +64,4 @@ public class StandardDeviationTest {
 		StandardDeviation quoteSDV = new StandardDeviation(new ClosePrice(data), 3);
 		quoteSDV.getValue(13);
 	}
-
-	@Test
-	public void testGetName() {
-		StandardDeviation quoteSDV = new StandardDeviation(new ClosePrice(data), 3);
-		assertEquals("StandardDeviationIndicator timeFrame: 3", quoteSDV.getName());
-	}
-
 }

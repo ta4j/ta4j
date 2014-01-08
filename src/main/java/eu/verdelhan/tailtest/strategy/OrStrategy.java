@@ -26,8 +26,8 @@ public class OrStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("%s or %s", strategy.getName(), strategy2.getName());
+    public String toString() {
+        return String.format("%s or %s", strategy, strategy2);
     }
 
     @Override

@@ -20,9 +20,4 @@ public class ConstantTest {
 		assertEquals(30.33, (double) constantIndicator.getValue(0));
 		assertEquals(30.33, (double) constantIndicator.getValue(30));
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("ConstantIndicator Value: 30.33", constantIndicator.getName());
-	}
 }

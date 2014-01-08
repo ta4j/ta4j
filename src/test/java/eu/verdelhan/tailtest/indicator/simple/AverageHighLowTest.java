@@ -49,9 +49,4 @@ public class AverageHighLowTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		average.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("AverageHighLowIndicator", average.getName());
-	}
 }

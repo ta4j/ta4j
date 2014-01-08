@@ -45,8 +45,8 @@ public class StopLossStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("%s stoper: %s over %s", this.getClass().getSimpleName(), "" + loss, strategy.getName());
+    public String toString() {
+        return String.format("%s stoper: %s over %s", this.getClass().getSimpleName(), "" + loss, strategy);
     }
 
     @Override

@@ -22,7 +22,7 @@ public class AverageDirectionalMovementDown extends CachedIndicator<Double>{
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}
 }

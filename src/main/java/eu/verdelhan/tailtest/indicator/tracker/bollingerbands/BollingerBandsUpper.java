@@ -30,7 +30,7 @@ public class BollingerBandsUpper implements Indicator<Double> {
 	}
 
 	@Override
-	public String getName() {
-		return getClass().getSimpleName() + "deviation: " + indicator.getName() + "series" + bbm.getName();
+	public String toString() {
+		return getClass().getSimpleName() + "deviation: " + indicator + "series" + bbm;
 	}
 }

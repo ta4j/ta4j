@@ -28,9 +28,4 @@ public class VolumeTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		volumeIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("VolumeIndicator", volumeIndicator.getName());
-	}
 }

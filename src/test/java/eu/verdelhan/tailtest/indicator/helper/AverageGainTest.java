@@ -60,11 +60,4 @@ public class AverageGainTest {
 		AverageGain averageGain = new AverageGain(new ClosePrice(data), 5);
 		assertEquals((double) 3d, (double) averageGain.getValue(300));
 	}
-
-	@Test
-	public void testGetName() {
-		AverageGain averageGain = new AverageGain(new ClosePrice(data), 5);
-		assertEquals("AverageGainIndicator timeFrame: 5", averageGain.getName());
-	}
-
 }

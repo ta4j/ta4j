@@ -27,7 +27,7 @@ public class BollingerBandsMiddle implements Indicator<Double> {
 	}
 
 	@Override
-	public String getName() {
-		return getClass().getSimpleName() + " deviation: " + indicator.getName();
+	public String toString() {
+		return getClass().getSimpleName() + " deviation: " + indicator;
 	}
 }

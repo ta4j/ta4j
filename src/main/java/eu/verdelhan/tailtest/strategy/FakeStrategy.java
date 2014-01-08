@@ -1,8 +1,7 @@
 package eu.verdelhan.tailtest.strategy;
 
-import java.util.Arrays;
-
 import eu.verdelhan.tailtest.Operation;
+import java.util.Arrays;
 
 public class FakeStrategy extends AbstractStrategy {
 
@@ -26,7 +25,7 @@ public class FakeStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
+    public String toString() {
         return "Fake Strategy:0";
     }
 

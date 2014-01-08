@@ -1,17 +1,12 @@
 package eu.verdelhan.tailtest.indicator.oscillator;
 
-import eu.verdelhan.tailtest.indicator.oscillator.StochasticOscillatorK;
-import eu.verdelhan.tailtest.indicator.oscillator.StochasticOscillatorD;
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.tracker.SMA;
 import eu.verdelhan.tailtest.series.DefaultTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
-
+import java.util.ArrayList;
+import java.util.List;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -81,12 +76,5 @@ public class StochasticOscillatorDTest {
 		StochasticOscillatorD sos = new StochasticOscillatorD(sof);
 
 		sos.getValue(14);
-	}
-
-	@Test
-	public void testGetName() {
-		StochasticOscillatorK sof = new StochasticOscillatorK(data, 14);
-		StochasticOscillatorD sos = new StochasticOscillatorD(sof);
-		assertEquals("StochasticOscilatorD SMAIndicator timeFrame: 3", sos.getName());
 	}
 }

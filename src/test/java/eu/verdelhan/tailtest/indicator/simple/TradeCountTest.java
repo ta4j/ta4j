@@ -29,9 +29,4 @@ public class TradeCountTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		tradeIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("TradeIndicator", tradeIndicator.getName());
-	}
 }

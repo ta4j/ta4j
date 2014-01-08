@@ -45,9 +45,8 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), upper.getName(),
-                lower.getName());
+    public String toString() {
+        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), upper, lower);
     }
 
     @Override

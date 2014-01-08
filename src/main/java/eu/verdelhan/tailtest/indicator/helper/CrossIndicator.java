@@ -44,7 +44,7 @@ public class CrossIndicator implements Indicator<Boolean> {
 	}
 
 	@Override
-	public String getName() {
-		return getClass().getSimpleName() + " " + low.getName() + " " + up.getName();
+	public String toString() {
+		return getClass().getSimpleName() + " " + low + " " + up;
 	}
 }

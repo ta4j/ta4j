@@ -26,8 +26,8 @@ public class AndStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
-        return String.format("%s and %s", strategy.getName(), strategy2.getName());
+    public String toString() {
+        return String.format("%s and %s", strategy, strategy2);
     }
 
     @Override

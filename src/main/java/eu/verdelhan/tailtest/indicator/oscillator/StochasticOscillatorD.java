@@ -26,7 +26,7 @@ public class StochasticOscillatorD implements Indicator<Double> {
 	}
 
 	@Override
-	public String getName() {
-		return getClass().getSimpleName() + " " + indicator.getName();
+	public String toString() {
+		return getClass().getSimpleName() + " " + indicator;
 	}
 }

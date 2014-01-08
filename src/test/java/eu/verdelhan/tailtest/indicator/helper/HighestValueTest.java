@@ -57,10 +57,4 @@ public class HighestValueTest {
 		HighestValue<BigDecimal> highestValue = new HighestValue<BigDecimal>(new ClosePrice(data), 5);
 		assertEquals(BigDecimal.valueOf(3), highestValue.getValue(300));
 	}
-
-	@Test
-	public void testGetName() {
-		HighestValue highestValue = new HighestValue(new ClosePrice(data), 5);
-		assertEquals("HighestValueIndicator timeFrame: 5", highestValue.getName());
-	}
 }

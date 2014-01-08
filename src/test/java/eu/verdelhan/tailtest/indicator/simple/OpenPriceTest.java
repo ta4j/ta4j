@@ -28,9 +28,4 @@ public class OpenPriceTest {
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		openPriceIndicator.getValue(10);
 	}
-
-	@Test
-	public void testGetName() {
-		assertEquals("OpenPriceIndicator", openPriceIndicator.getName());
-	}
 }

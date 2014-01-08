@@ -18,7 +18,7 @@ public class OpenPrice implements Indicator<BigDecimal> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName();
 	}
 }

@@ -16,7 +16,7 @@ public class Constant<T extends Number> implements Indicator<T> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " Value: " + value;
 	}
 }

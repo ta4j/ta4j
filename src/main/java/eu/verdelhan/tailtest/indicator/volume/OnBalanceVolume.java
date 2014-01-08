@@ -26,7 +26,7 @@ public class OnBalanceVolume extends CachedIndicator<Double>{
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName();
 	}
 

@@ -13,7 +13,7 @@ public class AlwaysOperateStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
+    public String toString() {
         return this.getClass().getSimpleName();
     }
 }

@@ -37,9 +37,9 @@ public class ResistanceStrategy extends AbstractStrategy {
     }
 
     @Override
-    public String getName() {
+    public String toString() {
         return String.format("%s resistance: %i strategy: %s", this.getClass().getSimpleName(), resistance,
-                strategy.getName());
+                strategy);
     }
 
     @Override

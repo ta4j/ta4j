@@ -19,7 +19,7 @@ public class SimpleMultiplier implements Indicator<Double> {
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " Value: " + value;
 	}
 }

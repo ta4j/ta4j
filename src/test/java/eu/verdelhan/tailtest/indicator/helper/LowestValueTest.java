@@ -57,10 +57,4 @@ public class LowestValueTest {
 		LowestValue<BigDecimal> lowestValue = new LowestValue<BigDecimal>(new ClosePrice(data), 5);
 		assertEquals(BigDecimal.valueOf(3), lowestValue.getValue(300));
 	}
-
-	@Test
-	public void testGetName() {
-		LowestValue lowestValue = new LowestValue(new ClosePrice(data), 5);
-		assertEquals("LowestValue<BigDecimal>Indicator timeFrame: 5", lowestValue.getName());
-	}
 }

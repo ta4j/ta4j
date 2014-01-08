@@ -22,7 +22,7 @@ public class DirectionalUp implements Indicator<Double>{
 	}
 
 	@Override
-	public String getName() {
+	public String toString() {
 		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
 	}
 }

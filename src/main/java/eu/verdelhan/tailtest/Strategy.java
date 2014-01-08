@@ -26,6 +26,4 @@ public interface Strategy {
 	Strategy and(Strategy strategy);
 	
 	Strategy or(Strategy strategy);
-
-	String getName();
 }
