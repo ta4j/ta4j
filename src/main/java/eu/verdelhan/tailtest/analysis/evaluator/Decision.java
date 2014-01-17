@@ -68,13 +68,11 @@ public class Decision {
 		return criterion;
 	}
 	
-	public String getName()
-	{
+	public String getName() {
 		return getActualSlice() + ": " + getActualSlice().getPeriodName();
 	}
 	
-	public String getFileName()
-	{
+	public String getFileName() {
 		return this.getClass().getSimpleName() + getActualSlice().getTick(getActualSlice().getBegin()).getDate().toString("hhmmddMMyyyy");
 	}
 

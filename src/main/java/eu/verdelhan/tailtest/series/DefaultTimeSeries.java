@@ -1,18 +1,16 @@
 package eu.verdelhan.tailtest.series;
 
-import java.util.List;
-
-import org.joda.time.Period;
-
 import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
+import java.util.List;
+import org.joda.time.Period;
 
 /**
  * Default implementation of {@link TimeSeries}.
  */
 public class DefaultTimeSeries implements TimeSeries {
-    transient private final List<DefaultTick> ticks;
+    private final List<DefaultTick> ticks;
 
     private final String name;
 

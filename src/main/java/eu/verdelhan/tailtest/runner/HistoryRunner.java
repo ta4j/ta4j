@@ -1,16 +1,14 @@
 package eu.verdelhan.tailtest.runner;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Runner;
 import eu.verdelhan.tailtest.Strategy;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 public class HistoryRunner implements Runner {
 
@@ -49,7 +47,7 @@ public class HistoryRunner implements Runner {
 
         int begin = 0;
         int end = 0;
-        if (listTradesResults.size() == 0) {
+        if (listTradesResults.isEmpty()) {
             begin = slicer.getSlice(slicePosition).getBegin();
             end = slicer.getSlice(slicePosition).getEnd();
         } else {

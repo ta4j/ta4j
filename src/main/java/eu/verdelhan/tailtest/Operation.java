@@ -1,19 +1,21 @@
 package eu.verdelhan.tailtest;
 
 /**
- * Operation é toda decisão tomada da classe {@link Strategy}.
- * 
- * Contém um enum {@link OperationType} representando o tipo de operação e um
- * 
- * int index em que a operação foi efetuada.
+ * A decision (buy/sell) taken from a {@link Strategy}.
  * 
  */
 public class Operation {
 
+	/** Type of the operation */
     private OperationType type;
 
+	/** The index the operation was executed */
     private int index;
 
+	/**
+	 * @param index the index the operation was executed
+	 * @param type the type of the operation
+	 */
     public Operation(int index, OperationType type) {
         this.type = type;
         this.index = index;

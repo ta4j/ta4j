@@ -1,29 +1,27 @@
 package eu.verdelhan.tailtest.series;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.ConstrainedTimeSeries;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
-
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.joda.time.Period;
 
 public class PartialMemorizedSlicer implements TimeSeriesSlicer {
-	protected transient TimeSeries series;
+	protected TimeSeries series;
 
 	protected Period period;
 
-	protected transient List<TimeSeries> splittedSeries;
+	protected List<TimeSeries> splittedSeries;
 
 	protected DateTime periodBegin;
 
 	protected int periodsPerSlice;
 
-	private transient static Logger LOG = Logger.getLogger(PartialMemorizedSlicer.class);
+	private static Logger LOG = Logger.getLogger(PartialMemorizedSlicer.class);
 
 	public PartialMemorizedSlicer(TimeSeries series, Period period, DateTime periodBegin, int periodsPerSlice) {
 		if(period == null)

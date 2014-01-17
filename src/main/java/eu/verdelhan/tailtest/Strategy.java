@@ -2,20 +2,15 @@ package eu.verdelhan.tailtest;
 
 
 /**
- * Strategy é toda a classe que pode receber como parâmetro um {@link Indicator}
- * ou uma outra Strategy, e retornar uma {@link Operation} dado um index.
- * 
+ * Parameter: an {@link Indicator} or another {@link Strategy}
+ * Returns an {@link Operation} when giving an index
  */
 public interface Strategy {
 
 	/**
-	 * Retorna um boolean true, caso avalie necessario, recomendando uma
-	 * determinada acao. Caso contrario retorna false, nao recomendando nenhuma
-	 * acao.
-	 * 
-	 * @param trade
+	 * @param trade a trade
 	 * @param index
-	 * @return
+	 * @return true to recommend an operation, false otherwise (no recommendation)
 	 */
 	boolean shouldOperate(Trade trade, int index);
 

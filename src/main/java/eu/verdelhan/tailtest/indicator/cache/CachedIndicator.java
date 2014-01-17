@@ -11,7 +11,7 @@ import java.util.List;
  */
 public abstract class CachedIndicator<T> implements Indicator<T> {
 
-    private transient List<T> results;
+    private List<T> results;
 
     public CachedIndicator() {
         results = new ArrayList<T>();
