@@ -9,6 +9,9 @@ import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import java.util.List;
 
+/**
+ * A decision.
+ */
 public class Decision {
 
 	private AnalysisCriterion criterion;
@@ -23,8 +26,7 @@ public class Decision {
 
 	private int slicerPosition;
 
-	public Decision(Strategy bestStrategy, TimeSeriesSlicer slicer,int slicerPosition,AnalysisCriterion criterion, List<Trade> trades,
-			Runner runner) {
+	public Decision(Strategy bestStrategy, TimeSeriesSlicer slicer,int slicerPosition,AnalysisCriterion criterion, List<Trade> trades, Runner runner) {
 		this.strategy = bestStrategy;
 		this.slicer = new RegularSlicer(slicer.getSeries(), slicer.getPeriod(), slicer.getSlice(0).getTick(slicer.getSlice(0).getBegin()).getDate());
 		this.criterion = criterion;
@@ -34,7 +36,7 @@ public class Decision {
 	}
 
 	public double evaluateCriterion() {
-		return this.criterion.calculate(getActualSlice(), trades);
+		return criterion.calculate(getActualSlice(), trades);
 	}
 
 	public double evaluateCriterion(AnalysisCriterion otherCriterion) {
@@ -47,7 +49,7 @@ public class Decision {
 
 	public Decision applyFor(int slicePosition) {
 		List<Trade> newTrades = runner.run(slicePosition);
-		return new Decision(this.strategy,slicer,slicerPosition+1, this.criterion, newTrades, runner);
+		return new Decision(strategy, slicer, slicerPosition+1, criterion, newTrades, runner);
 	}
 
 	public List<Trade> getTrades() {
@@ -60,8 +62,7 @@ public class Decision {
 
 	@Override
 	public String toString() {
-		return String.format("[strategy %s, criterion %s, value %.3f]", strategy, criterion.getClass().getSimpleName(),
-				evaluateCriterion());
+		return String.format("[strategy %s, criterion %s, value %.3f]", strategy, criterion.getClass().getSimpleName(), evaluateCriterion());
 	}
 
 	public AnalysisCriterion getCriterion() {

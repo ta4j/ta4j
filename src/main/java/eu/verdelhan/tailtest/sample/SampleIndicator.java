@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * A sample indicator.
+ * @param <T>
+ */
 public class SampleIndicator<T> implements Indicator<T> {
 
 	private List<T> values = new ArrayList<T>();
@@ -17,6 +21,7 @@ public class SampleIndicator<T> implements Indicator<T> {
 		this.values.add(value);
 	}
 
+	@Override
 	public T getValue(int index) {
 		return values.get(index);
 	}

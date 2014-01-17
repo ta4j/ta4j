@@ -1,14 +1,15 @@
 package eu.verdelhan.tailtest.sample;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
-
+import java.util.ArrayList;
+import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 
+/**
+ * A time series with sample data.
+ */
 public class SampleTimeSeries implements TimeSeries {
 
 	private List<DefaultTick> ticks;

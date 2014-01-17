@@ -6,8 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Cache the constructor of the indicator. Avoid to calculate the same index of
- * the indicator twice.
+ * Cache the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
  */
 public abstract class CachedIndicator<T> implements Indicator<T> {
 

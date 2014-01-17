@@ -56,7 +56,7 @@ public class HistoryRunner implements Runner {
 
             int i = listTradesResults.size() - 1;
             List<Trade> lastTrades = listTradesResults.get(i);
-            while ((lastTrades.size() == 0) && (i > 0)) {
+            while ((lastTrades.isEmpty()) && (i > 0)) {
                 i--;
                 lastTrades = listTradesResults.get(i);
             }

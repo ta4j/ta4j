@@ -3,6 +3,9 @@ package eu.verdelhan.tailtest;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 
+/**
+ * Slicer for a time series.
+ */
 public interface TimeSeriesSlicer {
 
     TimeSeries getSlice(int position);

@@ -8,5 +8,10 @@ package eu.verdelhan.tailtest;
  * @param <T> the type of returned value
  */
 public interface Indicator<T> {
+
+	/**
+	 * @param index the index
+	 * @return the value of the indicator
+	 */
     T getValue(int index);
 }
