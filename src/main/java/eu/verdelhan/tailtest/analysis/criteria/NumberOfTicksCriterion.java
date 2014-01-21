@@ -1,19 +1,18 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 public class NumberOfTicksCriterion implements AnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
-        if (trades.size() == 0) {
+        if (trades.isEmpty()) {
             return 0d;
         }
 

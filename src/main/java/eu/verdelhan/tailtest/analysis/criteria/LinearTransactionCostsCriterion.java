@@ -1,51 +1,52 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
 import eu.verdelhan.tailtest.AnalysisCriterion;
-import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
-public class BrazilianTotalProfitCriterion implements AnalysisCriterion {
+public class LinearTransactionCostsCriterion implements AnalysisCriterion {
+
+	private double a;
+	private double b;
+
+	/**
+	 * Constructor
+	 * (a * x + b)
+	 * @param a a
+	 * @param b b
+	 */
+	public LinearTransactionCostsCriterion(double a, double b)
+	{
+		this.a = a;
+		this.b = b;
+	}
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-        return calculateProfit(series, trade);
+        return a + b;
     }
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
-        double value = 1d;
-        for (Trade trade : trades) {
-            value *= calculateProfit(series, trade);
-        }
-        return value;
+        return a * trades.size() + b;
     }
 
     @Override
     public double summarize(TimeSeries series, List<Decision> decisions) {
-        List<Trade> trades = new LinkedList<Trade>();
+        List<Trade> trades = new ArrayList<Trade>();
         for (Decision decision : decisions) {
             trades.addAll(decision.getTrades());
+
         }
         return calculate(series, trades);
     }
 
-    private double calculateProfit(TimeSeries series, Trade trade) {
-        double exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice().doubleValue();
-        double entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice().doubleValue();
-
-        if (trade.getEntry().getType() == OperationType.BUY) {
-            return (exitClosePrice * 0.99965d) / (entryClosePrice * 1.00035d);
-        }
-        return (entryClosePrice * 0.99965d) / (exitClosePrice * 1.00035d);
-    }
-
     @Override
     public String getName() {
-        return "Brazilian Total Profit";
+        return "Linear Transaction Costs";
     }
 
     @Override
