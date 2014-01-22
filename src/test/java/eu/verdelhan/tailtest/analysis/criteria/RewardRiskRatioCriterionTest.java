@@ -12,7 +12,7 @@ import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.DummyDecision;
+import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 
@@ -54,17 +54,17 @@ public class RewardRiskRatioCriterionTest {
 
 		List<Trade> tradesToDummy1 = new LinkedList<Trade>();
 		tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-		Decision dummy1 = new DummyDecision(tradesToDummy1, slicer);
+		Decision dummy1 = new MockDecision(tradesToDummy1, slicer);
 		decisions.add(dummy1);
 
 		List<Trade> tradesToDummy2 = new LinkedList<Trade>();
 		tradesToDummy2.add(new Trade(new Operation(2, OperationType.BUY), new Operation(4, OperationType.SELL)));
-		Decision dummy2 = new DummyDecision(tradesToDummy2, slicer);
+		Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
 		decisions.add(dummy2);
 
 		List<Trade> tradesToDummy3 = new LinkedList<Trade>();
 		tradesToDummy3.add(new Trade(new Operation(5, OperationType.BUY), new Operation(7, OperationType.SELL)));
-		Decision dummy3 = new DummyDecision(tradesToDummy3, slicer);
+		Decision dummy3 = new MockDecision(tradesToDummy3, slicer);
 		decisions.add(dummy3);
 
 		double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);

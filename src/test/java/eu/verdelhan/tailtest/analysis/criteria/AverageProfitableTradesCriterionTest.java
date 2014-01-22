@@ -7,7 +7,7 @@ import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.DummyDecision;
+import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import java.util.ArrayList;
@@ -55,12 +55,12 @@ public class AverageProfitableTradesCriterionTest {
 		List<Trade> trades = new LinkedList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
-		Decision dummy1 = new DummyDecision(trades, slicer);
+		Decision dummy1 = new MockDecision(trades, slicer);
 		decisions.add(dummy1);
 
 		List<Trade> trades2 = new LinkedList<Trade>();
 		trades2.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
-		Decision dummy2 = new DummyDecision(trades2, slicer);
+		Decision dummy2 = new MockDecision(trades2, slicer);
 		decisions.add(dummy2);
 
 		AnalysisCriterion averateProfitable = new AverageProfitableTradesCriterion();

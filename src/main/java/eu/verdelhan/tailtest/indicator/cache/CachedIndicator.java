@@ -10,19 +10,10 @@ import java.util.List;
  */
 public abstract class CachedIndicator<T> implements Indicator<T> {
 
-    private List<T> results;
-
-    public CachedIndicator() {
-        results = new ArrayList<T>();
-    }
+    private List<T> results = new ArrayList<T>();
 
     @Override
     public T getValue(int index) {
-
-        if (results == null) {
-            results = new ArrayList<T>();
-        }
-
         increaseLength(index);
         if (results.get(index) == null) {
             int i = index;
@@ -38,17 +29,16 @@ public abstract class CachedIndicator<T> implements Indicator<T> {
         return results.get(index);
     }
 
+    protected abstract T calculate(int index);
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
+
     private void increaseLength(int index) {
         if (results.size() <= index) {
             results.addAll(Collections.<T> nCopies((index - results.size()) + 1, null));
         }
     }
-
-    @Override
-    public String toString() {
-        String[] name = getClass().getName().split("\\.");
-        return name[name.length - 1];
-    }
-
-    protected abstract T calculate(int index);
 }

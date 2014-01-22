@@ -1,9 +1,5 @@
 package eu.verdelhan.tailtest.analysis.evaluator;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
@@ -18,9 +14,10 @@ import eu.verdelhan.tailtest.runner.HistoryRunner;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import eu.verdelhan.tailtest.strategy.FakeStrategy;
-
+import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,11 +25,11 @@ public class DecisionTest {
 
 	private TimeSeries series;
 
-	private AnalysisCriterion criteria;
+	private AnalysisCriterion criterion;
 
 	@Before
 	public void setUp() {
-		criteria = new TotalProfitCriterion();
+		criterion = new TotalProfitCriterion();
 	}
 
 	@Test
@@ -51,7 +48,7 @@ public class DecisionTest {
 		
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 
-		Decision decision = new Decision(fakeStrategy, slicer,0, criteria, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
+		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertEquals(45d / 21, decision.evaluateCriterion(), 0.001);
 	}
 
@@ -67,7 +64,7 @@ public class DecisionTest {
 
 		Strategy fakeStrategy = new FakeStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
-		Decision decision = new Decision(fakeStrategy, slicer,0, criteria, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
+		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertEquals(1d, decision.evaluateCriterion());
 	}
 
@@ -113,8 +110,8 @@ public class DecisionTest {
 		Strategy fakeStrategy = new FakeStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		List<Trade> trades = runner.run(0);
-		Decision decision = new Decision(fakeStrategy, slicer,0, criteria, trades, new HistoryRunner(slicer,fakeStrategy));
-		Decision nextDecision = new Decision(fakeStrategy, slicer,1, criteria, runner.run(1), new HistoryRunner(slicer,fakeStrategy));
+		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, trades, new HistoryRunner(slicer,fakeStrategy));
+		Decision nextDecision = new Decision(fakeStrategy, slicer,1, criterion, runner.run(1), new HistoryRunner(slicer,fakeStrategy));
 
 		Decision appliedDecision = decision.applyFor(1);
 

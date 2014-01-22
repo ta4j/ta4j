@@ -64,10 +64,6 @@ public class Decision {
 	public String toString() {
 		return String.format("[strategy %s, criterion %s, value %.3f]", strategy, criterion.getClass().getSimpleName(), evaluateCriterion());
 	}
-
-	public AnalysisCriterion getCriterion() {
-		return criterion;
-	}
 	
 	public String getName() {
 		return getActualSlice() + ": " + getActualSlice().getPeriodName();
