@@ -1,8 +1,6 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -70,15 +68,5 @@ public class NumberOfTradesCriterionTest {
 		NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
 
 		assertEquals(1d, tradesCriterion.calculate(null, trade));
-	}
-	@Test
-	public void testEquals()
-	{
-		NumberOfTradesCriterion criterion = new NumberOfTradesCriterion();
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new NumberOfTradesCriterion()));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
 	}
 }

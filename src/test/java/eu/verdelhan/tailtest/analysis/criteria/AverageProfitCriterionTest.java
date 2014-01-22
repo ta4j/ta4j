@@ -1,8 +1,6 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -88,6 +86,7 @@ public class AverageProfitCriterionTest {
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
 		assertEquals(1d, averageProfit.calculate(series, trades));
 	}
+
 	@Test
 	public void testCalculateWithOneTrade()
 	{
@@ -97,15 +96,4 @@ public class AverageProfitCriterionTest {
 		assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade));
 		
 	}
-	@Test
-	public void testEquals()
-	{
-		AverageProfitCriterion criterion = new AverageProfitCriterion();
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new AverageProfitCriterion()));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
-	}
-
 }

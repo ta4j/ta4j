@@ -1,8 +1,6 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -132,15 +130,5 @@ public class MaximumDrawDownCriterionTest {
 		trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
 		assertEquals(.9d, mdd.calculate(series, trades));
 		
-	}
-	@Test
-	public void testEquals()
-	{
-		MaximumDrawDownCriterion criterion = new MaximumDrawDownCriterion();
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new MaximumDrawDownCriterion()));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
 	}
 }

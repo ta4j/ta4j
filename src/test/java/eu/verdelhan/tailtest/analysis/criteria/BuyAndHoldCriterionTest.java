@@ -1,8 +1,6 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -80,19 +78,6 @@ public class BuyAndHoldCriterionTest {
 		SampleTimeSeries series = new SampleTimeSeries(new double[] {100, 105 });
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-		assertEquals(105d/100, buyAndHold.calculate(series, trade));
-		
+		assertEquals(105d/100, buyAndHold.calculate(series, trade));	
 	}
-	
-	@Test
-	public void testEquals()
-	{
-		BuyAndHoldCriterion criterion = new BuyAndHoldCriterion();
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new BuyAndHoldCriterion()));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
-	}
-
 }

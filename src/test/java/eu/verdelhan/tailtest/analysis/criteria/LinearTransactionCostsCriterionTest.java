@@ -12,8 +12,6 @@ import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 
@@ -63,20 +61,6 @@ public class LinearTransactionCostsCriterionTest {
 		decisions.add(new Decision(null, new RegularSlicer(series, new Period().withYears(2000)),0, null, trades, null));
 		
 		AnalysisCriterion transactionCosts = new LinearTransactionCostsCriterion(0, 40);
-		assertEquals(200d, transactionCosts.summarize(series, decisions));
-		
-		
+		assertEquals(200d, transactionCosts.summarize(series, decisions));	
 	}
-	
-	@Test
-	public void testEquals()
-	{
-		LinearTransactionCostsCriterion criterion = new LinearTransactionCostsCriterion(0, 40);
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new LinearTransactionCostsCriterion(0, 40)));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
-	}
-	
 }

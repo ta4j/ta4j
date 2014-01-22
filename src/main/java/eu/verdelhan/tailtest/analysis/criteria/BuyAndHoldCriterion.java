@@ -1,6 +1,5 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
-import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
@@ -9,7 +8,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BuyAndHoldCriterion implements AnalysisCriterion {
+public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
@@ -32,32 +31,5 @@ public class BuyAndHoldCriterion implements AnalysisCriterion {
         } else {
             return series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), RoundingMode.HALF_UP).doubleValue();
         }
-    }
-
-    @Override
-    public String getName() {
-        return "Buy and Hold";
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = (prime * result) + (this.getClass().hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        return true;
     }
 }

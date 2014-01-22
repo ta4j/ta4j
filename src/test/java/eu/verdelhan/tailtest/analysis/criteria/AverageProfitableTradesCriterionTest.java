@@ -1,9 +1,5 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
@@ -14,12 +10,12 @@ import eu.verdelhan.tailtest.analysis.evaluator.Decision;
 import eu.verdelhan.tailtest.analysis.evaluator.DummyDecision;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
-
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import org.joda.time.Period;
-import org.junit.Test;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 public class AverageProfitableTradesCriterionTest {
 
 	@Test
@@ -35,19 +31,17 @@ public class AverageProfitableTradesCriterionTest {
 		
 		assertEquals(2d/3, average.calculate(series, trades));
 	}
+
 	@Test
 	public void testCalculateWithOneTrade()
 	{
 		TimeSeries series = new SampleTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
-		
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
 			
 		AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
-		
 		assertEquals(0d, average.calculate(series, trade));
 		
 		trade = new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.BUY));
-		
 		assertEquals(1d, average.calculate(series, trade));
 	}
 	
@@ -71,16 +65,5 @@ public class AverageProfitableTradesCriterionTest {
 
 		AnalysisCriterion averateProfitable = new AverageProfitableTradesCriterion();
 		assertEquals(2d/3, averateProfitable.summarize(series, decisions), 0.01);
-	}
-	@Test
-	public void testEquals()
-	{
-		AverageProfitableTradesCriterion criterion = new AverageProfitableTradesCriterion();
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new AverageProfitableTradesCriterion()));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
-	}
-	
+	}	
 }

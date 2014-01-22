@@ -1,7 +1,6 @@
 package eu.verdelhan.tailtest.analysis.criteria;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -106,15 +105,4 @@ public class RewardRiskRatioCriterionTest {
 		RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
 		assertEquals((95d/100) / ((1d - 0.95d)), ratioCriterion.calculate(series, trade));
 	}
-	@Test
-	public void testEquals()
-	{
-		RewardRiskRatioCriterion criterion = new RewardRiskRatioCriterion();
-		assertTrue(criterion.equals(criterion));
-		assertTrue(criterion.equals(new RewardRiskRatioCriterion()));
-		assertFalse(criterion.equals(new TotalProfitCriterion()));
-		assertFalse(criterion.equals(5d));
-		assertFalse(criterion.equals(null));
-	}
-
 }
