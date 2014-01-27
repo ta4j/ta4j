@@ -20,7 +20,7 @@ public class JustBuyOnceStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName();
+        return getClass().getSimpleName();
     }
 
     @Override

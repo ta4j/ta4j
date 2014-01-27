@@ -14,18 +14,25 @@ public class DefaultTimeSeries implements TimeSeries {
 
     private final String name;
 
+	/**
+	 * @param name the name of the series
+	 * @param ticks the list of ticks of the series
+	 */
     public DefaultTimeSeries(String name, List<DefaultTick> ticks) {
         this.name = name;
         this.ticks = ticks;
     }
 
+	/**
+	 * @param ticks the list of ticks of the series
+	 */
     public DefaultTimeSeries(List<DefaultTick> ticks) {
-        this(null, ticks);
+        this("unnamed", ticks);
     }
 
     @Override
     public String getName() {
-        return name == null ? "not named" : name;
+        return name;
     }
 
     @Override
@@ -55,48 +62,9 @@ public class DefaultTimeSeries implements TimeSeries {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = (prime * result) + ((name == null) ? 0 : name.hashCode());
-        result = (prime * result) + ((ticks == null) ? 0 : ticks.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final DefaultTimeSeries other = (DefaultTimeSeries) obj;
-        if (name == null) {
-            if (other.name != null) {
-                return false;
-            }
-        } else if (!name.equals(other.name)) {
-            return false;
-        }
-        if (ticks == null) {
-            if (other.ticks != null) {
-                return false;
-            }
-        } else if (!ticks.equals(other.ticks)) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
     public Period getPeriod() {
         return new Period(Math.min(ticks.get(1).getDate().getMillis() - ticks.get(0).getDate().getMillis(), ticks
                 .get(2).getDate().getMillis()
                 - ticks.get(1).getDate().getMillis()));
     }
-
 }

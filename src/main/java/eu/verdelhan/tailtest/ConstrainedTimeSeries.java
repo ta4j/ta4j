@@ -10,6 +10,11 @@ public class ConstrainedTimeSeries implements TimeSeries {
 
 	private int end;
 
+	/**
+	 * @param series the original time series
+	 * @param begin the begin index of the time series
+	 * @param end the end index of the time series
+	 */
 	public ConstrainedTimeSeries(TimeSeries series, int begin, int end) {
 		if (end < begin - 1) {
 			throw new IllegalArgumentException("end cannot be < than begin - 1");
@@ -19,31 +24,38 @@ public class ConstrainedTimeSeries implements TimeSeries {
 		this.end = end;
 	}
 
+	@Override
 	public int getSize() {
 		return (end - begin) + 1;
 	}
 
-	public int getBegin() {
-		return begin;
-	}
-
+	@Override
 	public Tick getTick(int i) {
 		return series.getTick(i);
 	}
 
+	@Override
+	public int getBegin() {
+		return begin;
+	}
+
+	@Override
 	public int getEnd() {
 		return end;
 	}
 
+	@Override
 	public String getName() {
 		return series.getName();
 	}
 
+	@Override
 	public String getPeriodName() {
 		return series.getTick(begin).getDate().toString("hh:mm dd/MM/yyyy - ")
 				+ series.getTick(end).getDate().toString("hh:mm dd/MM/yyyy");
 	}
 
+	@Override
 	public Period getPeriod() {
 		return new Period(Math.min(series.getTick(series.getBegin() + 1).getDate().getMillis() - series.getTick(series.getBegin()).getDate().getMillis(), 
 				series.getTick(series.getBegin() + 2).getDate().getMillis() - series.getTick(series.getBegin() + 1).getDate().getMillis()));

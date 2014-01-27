@@ -23,16 +23,24 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 
 	private static Logger LOG = Logger.getLogger(PartialMemorizedSlicer.class);
 
+	/**
+	 * @param series the time series
+	 * @param period
+	 * @param periodBegin
+	 * @param periodsPerSlice
+	 */
 	public PartialMemorizedSlicer(TimeSeries series, Period period, DateTime periodBegin, int periodsPerSlice) {
-		if(period == null)
+		if (period == null) {
 			throw new NullPointerException("Period cannot be null");
-		if(periodsPerSlice < 1)
+		}
+		if (periodsPerSlice < 1) {
 			throw new IllegalArgumentException("Periods per slice must be greater than 1");
+		}
 		
 		int index = series.getBegin();
 
-		DateTime inicialSeriesDate = series.getTick(index).getDate();
-		if (periodBegin.isBefore(inicialSeriesDate) && !periodBegin.equals(inicialSeriesDate))
+		DateTime initialSeriesDate = series.getTick(index).getDate();
+		if (periodBegin.isBefore(initialSeriesDate) && !periodBegin.equals(initialSeriesDate))
 			periodBegin = series.getTick(series.getBegin()).getDate();
 
 		Interval interval = new Interval(periodBegin, periodBegin.plus(period));
@@ -48,51 +56,13 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		split();
 	}
 
+	/**
+	 * @param series the time series
+	 * @param period
+	 * @param periodsPerSlice
+	 */
 	public PartialMemorizedSlicer(TimeSeries series, Period period, int periodsPerSlice) {
 		this(series, period, series.getTick(series.getBegin()).getDate(), periodsPerSlice);
-	}
-
-	private void split() {
-		LOG.debug(String.format("Spliting %s  ", series));
-
-		DateTime begin = periodBegin;
-		DateTime end = begin.plus(period);
-
-		Interval interval = new Interval(begin, end);
-		int index = series.getBegin();
-
-		int sliceBeginIndex = index;
-
-		List<Integer> begins = new ArrayList<Integer>();
-		begins.add(index);
-		while (index <= series.getEnd()) {
-
-			if (interval.contains(series.getTick(index).getDate())) {
-				index++;
-			} else if (end.plus(period).isAfter(series.getTick(index).getDate())) {
-				createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), index - 1);
-
-				LOG.debug(String.format("Interval %s before  %s ", interval, series.getTick(index).getDate()));
-
-				sliceBeginIndex = index;
-				begins.add(sliceBeginIndex);
-				begin = end;
-				end = begin.plus(period);
-				interval = new Interval(begin, end);
-				index++;
-			} else {
-				begin = end;
-				end = begin.plus(period);
-				interval = new Interval(begin, end);
-			}
-		}
-		createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), series.getEnd());
-	}
-
-	private void createSlice(int begin, int end) {
-		LOG.debug(String.format("New series from %d to %d ", begin, end));
-		ConstrainedTimeSeries slice = new ConstrainedTimeSeries(series, begin, end);
-		splittedSeries.add(slice);
 	}
 
 	public TimeSeriesSlicer applyForSeries(TimeSeries series, DateTime periodBegin) {
@@ -104,9 +74,7 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 	}
 
 	public String getName() {
-		String sPeriod = "";
-		sPeriod = periodToString(sPeriod);
-		return this.getClass().getSimpleName() + " Period: " + sPeriod;
+		return getClass().getSimpleName() + " Period: " + periodToString();
 	}
 
 	public Period getPeriod() {
@@ -122,26 +90,12 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		return series;
 	}
 
+	/**
+	 * @param position the index of the sub-series
+	 * @return the sub-series
+	 */
 	public TimeSeries getSlice(int position) {
 		return splittedSeries.get(position);
-	}
-
-	public int getSlices() {
-		return splittedSeries.size();
-	}
-
-	protected String periodToString(String sPeriod) {
-		if (period.getYears() > 0)
-			sPeriod += period.getYears() + " year(s) ,";
-		if (period.getMonths() > 0)
-			sPeriod += period.getMonths() + " month(s) ,";
-		if (period.getDays() > 0)
-			sPeriod += period.getDays() + " day(s) ,";
-		if (period.getHours() > 0)
-			sPeriod += period.getHours() + " day(s) ,";
-		if (period.getMinutes() > 0)
-			sPeriod += period.getMinutes() + " day(s) ,";
-		return sPeriod.substring(0, sPeriod.length() - 2);
 	}
 
 	@Override
@@ -182,16 +136,85 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		return periodBegin;
 	}
 
+	/**
+	 * @return the number of slices (or sub-series)
+	 */
 	public int getNumberOfSlices() {
 		return splittedSeries.size();
 	}
 
+	/**
+	 * @return the average number of ticks per slice
+	 */
 	public double getAverageTicksPerSlice() {
 		double sum = 0;
-		for (TimeSeries series : splittedSeries) {
-			sum += series.getSize();
+		for (TimeSeries subSeries : splittedSeries) {
+			sum += subSeries.getSize();
 		}
-		return sum / this.getNumberOfSlices();
+		return getNumberOfSlices() > 0 ? sum / getNumberOfSlices() : 0;
 	}
 
+	private void split() {
+		LOG.debug(String.format("Spliting %s  ", series));
+
+		DateTime begin = periodBegin;
+		DateTime end = begin.plus(period);
+
+		Interval interval = new Interval(begin, end);
+		int index = series.getBegin();
+
+		List<Integer> begins = new ArrayList<Integer>();
+		begins.add(index);
+		while (index <= series.getEnd()) {
+
+			if (interval.contains(series.getTick(index).getDate())) {
+				index++;
+			} else if (end.plus(period).isAfter(series.getTick(index).getDate())) {
+				createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), index - 1);
+
+				LOG.debug(String.format("Interval %s before  %s ", interval, series.getTick(index).getDate()));
+
+				int sliceBeginIndex = index;
+				begins.add(sliceBeginIndex);
+				begin = end;
+				end = begin.plus(period);
+				interval = new Interval(begin, end);
+				index++;
+			} else {
+				begin = end;
+				end = begin.plus(period);
+				interval = new Interval(begin, end);
+			}
+		}
+		createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), series.getEnd());
+	}
+
+	private void createSlice(int begin, int end) {
+		LOG.debug(String.format("New series from %d to %d ", begin, end));
+		ConstrainedTimeSeries slice = new ConstrainedTimeSeries(series, begin, end);
+		splittedSeries.add(slice);
+	}
+
+	/**
+	 * @return the period as a string
+	 */
+	private String periodToString() {
+		StringBuilder sb = new StringBuilder("");
+		if (period.getYears() > 0) {
+			sb.append(period.getYears()).append(" year(s) ,");
+		}
+		if (period.getMonths() > 0) {
+			sb.append(period.getMonths()).append(" month(s) ,");
+		}
+		if (period.getDays() > 0) {
+			sb.append(period.getDays()).append(" day(s) ,");
+		}
+		if (period.getHours() > 0) {
+			sb.append(period.getHours()).append(" hour(s) ,");
+		}
+		if (period.getMinutes() > 0) {
+			sb.append(period.getMinutes()).append(" minute(s)");
+		}
+		return sb.toString();
+	}
 }

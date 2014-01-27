@@ -89,7 +89,7 @@ public class HistoryRunner implements Runner {
         }
         if (lastTrade.isOpened()) {
             int j = 1;
-            while (slicer.getSlices() > (slicePosition + j)) {
+            while (slicer.getNumberOfSlices() > (slicePosition + j)) {
                 int start = Math.max(slicer.getSlice(slicePosition + j).getBegin(), end);
                 int last = slicer.getSlice(slicePosition + j).getEnd();
 

@@ -21,10 +21,16 @@ public class Operation {
         this.index = index;
     }
 
+	/**
+	 * @return the type of the operation (BUY or SELL)
+	 */
     public OperationType getType() {
         return type;
     }
 
+	/**
+	 * @return  the type of the operation
+	 */
     public int getIndex() {
         return index;
     }

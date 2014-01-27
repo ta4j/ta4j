@@ -9,6 +9,10 @@ public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
 
     private Indicator<BigDecimal> second;
 
+	/**
+	 * @param first the first indicator
+	 * @param second the second indicator
+	 */
     public IndicatorOverIndicatorStrategy(Indicator<BigDecimal> first, Indicator<BigDecimal> second) {
         this.first = first;
         this.second = second;

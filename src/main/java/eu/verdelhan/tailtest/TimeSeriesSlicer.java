@@ -10,8 +10,6 @@ public interface TimeSeriesSlicer {
 
     TimeSeries getSlice(int position);
 
-    int getSlices();
-
     TimeSeries getSeries();
 
     String getName();

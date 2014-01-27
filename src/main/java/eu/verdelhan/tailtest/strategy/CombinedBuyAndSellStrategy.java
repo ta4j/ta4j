@@ -8,6 +8,10 @@ public class CombinedBuyAndSellStrategy extends AbstractStrategy {
 
     private Strategy sellStrategy;
 
+	/**
+	 * @param buyStrategy the buy strategy
+	 * @param sellStrategy the sell strategy
+	 */
     public CombinedBuyAndSellStrategy(Strategy buyStrategy, Strategy sellStrategy) {
         this.buyStrategy = buyStrategy;
         this.sellStrategy = sellStrategy;

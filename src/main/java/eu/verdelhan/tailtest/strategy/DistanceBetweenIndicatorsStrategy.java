@@ -20,6 +20,12 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
     double difference;
 
+	/**
+	 * @param upper
+	 * @param lower
+	 * @param distance
+	 * @param difference
+	 */
     public DistanceBetweenIndicatorsStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower,
             double distance, double difference) {
         this.upper = upper;

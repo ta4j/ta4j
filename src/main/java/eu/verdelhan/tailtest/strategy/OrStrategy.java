@@ -10,6 +10,10 @@ public class OrStrategy extends AbstractStrategy {
     private Strategy strategy;
     private Strategy strategy2;
 
+	/**
+	 * @param strategy the first strategy
+	 * @param strategy2  the second strategy
+	 */
     public OrStrategy(Strategy strategy, Strategy strategy2) {
         this.strategy = strategy;
         this.strategy2 = strategy2;
