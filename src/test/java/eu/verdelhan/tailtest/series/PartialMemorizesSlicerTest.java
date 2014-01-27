@@ -1,11 +1,10 @@
 package eu.verdelhan.tailtest.series;
 
-import static org.junit.Assert.assertEquals;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.sample.SampleTimeSeries;
-
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -125,7 +124,7 @@ public class PartialMemorizesSlicerTest {
 
 		newSlicer = slicer.applyForSeries(series);
 
-		assertEquals(4, newSlicer.getSlices());
+		assertEquals(4, newSlicer.getNumberOfSlices());
 
 		assertEquals(0, newSlicer.getSlice(0).getBegin());
 		assertEquals(2, newSlicer.getSlice(0).getEnd());
@@ -149,7 +148,7 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(5, split.getSlices());
+		assertEquals(5, split.getNumberOfSlices());
 
 		assertEquals(0, split.getSlice(0).getBegin());
 		assertEquals(0, split.getSlice(0).getEnd());
@@ -178,7 +177,7 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, date.withYear(2000).withMonthOfYear(7), 2);
 
-		assertEquals(3, split.getSlices());
+		assertEquals(3, split.getNumberOfSlices());
 
 		assertEquals(3, split.getSlice(0).getBegin());
 		assertEquals(4, split.getSlice(0).getEnd());
@@ -200,7 +199,7 @@ public class PartialMemorizesSlicerTest {
 		Period period = new Period().withYears(1);
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(4, split.getSlices());
+		assertEquals(4, split.getNumberOfSlices());
 
 		assertEquals(0, split.getSlice(0).getBegin());
 		assertEquals(2, split.getSlice(0).getEnd());
@@ -227,7 +226,7 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 2);
 
-		assertEquals(3, split.getSlices());
+		assertEquals(3, split.getNumberOfSlices());
 
 		assertEquals(0, split.getSlice(0).getBegin());
 		assertEquals(4, split.getSlice(0).getEnd());
@@ -249,7 +248,7 @@ public class PartialMemorizesSlicerTest {
 						.withDate(2003, 3, 3));
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, date.withDate(2000, 1, 1), 3);
 
-		assertEquals(4, split.getSlices());
+		assertEquals(4, split.getNumberOfSlices());
 
 		assertEquals(0, split.getSlice(0).getBegin());
 		assertEquals(2, split.getSlice(0).getEnd());
@@ -277,7 +276,7 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(5, split.getSlices());
+		assertEquals(5, split.getNumberOfSlices());
 
 		assertEquals(0, split.getSlice(0).getBegin());
 		assertEquals(5, split.getSlice(0).getEnd());
