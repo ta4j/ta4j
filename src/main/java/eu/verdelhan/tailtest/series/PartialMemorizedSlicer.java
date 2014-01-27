@@ -10,7 +10,12 @@ import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.joda.time.Period;
 
+/**
+ *
+ *
+ */
 public class PartialMemorizedSlicer implements TimeSeriesSlicer {
+
 	protected TimeSeries series;
 
 	protected Period period;
@@ -65,35 +70,37 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		this(series, period, series.getTick(series.getBegin()).getDate(), periodsPerSlice);
 	}
 
-	public TimeSeriesSlicer applyForSeries(TimeSeries series, DateTime periodBegin) {
-		return new PartialMemorizedSlicer(series, this.period, periodBegin, this.periodsPerSlice);
-	}
-
+	@Override
 	public TimeSeriesSlicer applyForSeries(TimeSeries series) {
 		return applyForSeries(series, this.periodBegin);
 	}
 
+	public TimeSeriesSlicer applyForSeries(TimeSeries series, DateTime periodBegin) {
+		return new PartialMemorizedSlicer(series, this.period, periodBegin, this.periodsPerSlice);
+	}
+
+	@Override
 	public String getName() {
 		return getClass().getSimpleName() + " Period: " + periodToString();
 	}
 
+	@Override
 	public Period getPeriod() {
 		return period;
 	}
 
+	@Override
 	public String getPeriodName() {
 		return this.periodBegin.toString("hh:mm dd/MM/yyyy - ")
 				+ series.getTick(series.getEnd()).getDate().toString("hh:mm dd/MM/yyyy");
 	}
 
+	@Override
 	public TimeSeries getSeries() {
 		return series;
 	}
 
-	/**
-	 * @param position the index of the sub-series
-	 * @return the sub-series
-	 */
+	@Override
 	public TimeSeries getSlice(int position) {
 		return splittedSeries.get(position);
 	}
@@ -132,20 +139,17 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		return true;
 	}
 
+	@Override
 	public DateTime getDateBegin() {
 		return periodBegin;
 	}
 
-	/**
-	 * @return the number of slices (or sub-series)
-	 */
+	@Override
 	public int getNumberOfSlices() {
 		return splittedSeries.size();
 	}
 
-	/**
-	 * @return the average number of ticks per slice
-	 */
+	@Override
 	public double getAverageTicksPerSlice() {
 		double sum = 0;
 		for (TimeSeries subSeries : splittedSeries) {

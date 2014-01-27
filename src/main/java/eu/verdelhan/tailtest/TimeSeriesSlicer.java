@@ -8,6 +8,10 @@ import org.joda.time.Period;
  */
 public interface TimeSeriesSlicer {
 
+	/**
+	 * @param position the index of the sub-series
+	 * @return the sub-series
+	 */
     TimeSeries getSlice(int position);
 
     TimeSeries getSeries();
@@ -20,8 +24,14 @@ public interface TimeSeriesSlicer {
 
     DateTime getDateBegin();
 
+	/**
+	 * @return the number of slices
+	 */
     int getNumberOfSlices();
 
+	/**
+	 * @return the average number of ticks per slice
+	 */
     double getAverageTicksPerSlice();
 
     TimeSeriesSlicer applyForSeries(TimeSeries series);
