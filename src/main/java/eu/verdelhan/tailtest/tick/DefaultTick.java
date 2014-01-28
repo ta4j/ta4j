@@ -35,15 +35,19 @@ public class DefaultTick implements Tick {
 		this.closePrice = new BigDecimal(closePrice);
 	}
 
-	public DefaultTick(DateTime data, double closePrice) {
+	public DefaultTick(DateTime date, double closePrice) {
 		this.closePrice = new BigDecimal(closePrice);
-		this.date = data;
+		this.date = date;
 	}
 
-	public DefaultTick(DateTime data, double openPrice, double closePrice, double maxPrice, double minPrice, double variation,
+	public DefaultTick(DateTime date, BigDecimal closePrice) {
+		this.closePrice = closePrice;
+		this.date = date;
+	}
+
+	public DefaultTick(DateTime date, double openPrice, double closePrice, double maxPrice, double minPrice, double variation,
 			double previousPrice, double amount, double volume, int trades) {
-		super();
-		this.date = data;
+		this.date = date;
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
@@ -55,9 +59,8 @@ public class DefaultTick implements Tick {
 		this.trades = trades;
 	}
 
-	public DefaultTick(DateTime data, double openPrice, double closePrice, double maxPrice, double minPrice) {
-		super();
-		this.date = data;
+	public DefaultTick(DateTime date, double openPrice, double closePrice, double maxPrice, double minPrice) {
+		this.date = date;
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
@@ -65,40 +68,75 @@ public class DefaultTick implements Tick {
 	}
 
 	public DefaultTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
-		super();
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
 		this.minPrice = new BigDecimal(minPrice);
 	}
 	
-	public DefaultTick(double d, DateTime dateTime) {
+	public DefaultTick(double d, DateTime date) {
 		this.closePrice = new BigDecimal(d);
-		this.date = dateTime;
+		this.date = date;
 	}
 
+	@Override
 	public BigDecimal getClosePrice() {
 		return closePrice;
 	}
 
+	@Override
 	public BigDecimal getOpenPrice() {
 		return openPrice;
 	}
 
+	@Override
 	public int getTrades() {
 		return trades;
 	}
 
+	@Override
 	public BigDecimal getMaxPrice() {
 		return maxPrice;
 	}
 
+	@Override
 	public BigDecimal getAmount() {
 		return amount;
 	}
 
+	@Override
 	public BigDecimal getVolume() {
 		return volume;
+	}
+
+	@Override
+	public void addTrade(BigDecimal tradeAmount, BigDecimal tradePrice) {
+		if (openPrice == null) {
+			openPrice = tradePrice;
+		}
+		closePrice = tradePrice;
+
+		if (maxPrice == null) {
+			maxPrice = tradePrice;
+		} else {
+			maxPrice = (maxPrice.compareTo(tradePrice) < 0) ? tradePrice : maxPrice;
+		}
+		if (minPrice == null) {
+			minPrice = tradePrice;
+		} else {
+			minPrice = (minPrice.compareTo(tradePrice) > 0) ? tradePrice : minPrice;
+		}
+		if (amount == null) {
+			amount = tradeAmount;
+		} else {
+			amount = amount.add(tradeAmount);
+		}
+		if (volume == null) {
+			volume = tradeAmount.multiply(tradePrice);
+		} else {
+			volume = volume.add(tradeAmount.multiply(tradePrice));
+		}
+		trades++;
 	}
 
 	@Override
@@ -145,10 +183,12 @@ public class DefaultTick implements Tick {
 				.toGregorianCalendar(), closePrice);
 	}
 
+	@Override
 	public String getDateName() {
 		return this.date.toString("hh:mm dd/MM/yyyy");
 	}
 
+	@Override
 	public String getSimpleDateName() {
 		return this.date.toString("dd/MM/yyyy");
 	}

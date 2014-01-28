@@ -30,4 +30,11 @@ public interface Tick {
     BigDecimal getMinPrice();
 
     BigDecimal getPreviousPrice();
+
+	/**
+	 * Adds a trade at the end of tick period.
+	 * @param tradeAmount the tradable amount
+	 * @param tradePrice the price
+	 */
+	void addTrade(BigDecimal tradeAmount, BigDecimal tradePrice);
 }
