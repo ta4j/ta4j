@@ -45,9 +45,9 @@ public class DefaultTimeSeriesTest {
 	@Test
 	public void getPeriodName() {
 		assertTrue(defaultSeries.getPeriodName().endsWith(
-				ticks.get(defaultSeries.getEnd()).getDate().toString("hh:mm dd/MM/yyyy")));
+				ticks.get(defaultSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy")));
 		assertTrue(defaultSeries.getPeriodName().startsWith(
-				ticks.get(defaultSeries.getBegin()).getDate().toString("hh:mm dd/MM/yyyy")));
+				ticks.get(defaultSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy")));
 	}
 
 	@Test
@@ -57,7 +57,7 @@ public class DefaultTimeSeriesTest {
 
 	@Test
 	public void getPeriodTest() {
-		assertEquals(new Period(ticks.get(1).getDate().getMillis() - ticks.get(0).getDate().getMillis()), defaultSeries
+		assertEquals(new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis()), defaultSeries
 				.getPeriod());
 	}
 }

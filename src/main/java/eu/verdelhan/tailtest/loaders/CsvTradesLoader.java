@@ -1,6 +1,7 @@
 package eu.verdelhan.tailtest.loaders;
 
 import au.com.bytecode.opencsv.CSVReader;
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.TimeSeriesLoader;
 import eu.verdelhan.tailtest.series.DefaultTimeSeries;
@@ -21,23 +22,16 @@ import org.joda.time.DateTime;
  */
 public class CsvTradesLoader implements TimeSeriesLoader {
 
-	List<DefaultTick> ticks;
+	List<Tick> ticks;
 
 	@Override
 	public TimeSeries load(InputStream stream, String seriesName) {
 		
-		ticks = new ArrayList<DefaultTick>();
 		CSVReader csvReader = null;
+		List<String[]> lines = null;
         try {
             csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',');
-            String[] line;
-            while ((line = csvReader.readNext()) != null) {
-//                Date timestamp = new Date(Long.parseLong(line[0]) * 1000);
-//                BigMoney price = BigMoney.of(CurrencyUnit.USD, new BigDecimal(line[1]));
-//                BigDecimal tradableAmount = new BigDecimal(line[2]);
-//                Trade trade = new Trade(null, tradableAmount, Currencies.BTC, Currencies.USD, price, timestamp, 0);
-//                trades.add(trade);
-            }
+			lines = csvReader.readAll();
         } catch (IOException ioe) {
             Logger.getLogger(CsvTradesLoader.class.getName()).log(Level.SEVERE, "Unable to load trades from CSV", ioe);
         } finally {
@@ -49,29 +43,62 @@ public class CsvTradesLoader implements TimeSeriesLoader {
             }
         }
 
+		if ((lines != null) && !lines.isEmpty()) {
+
+			// Getting the first and last trades timestamps
+			DateTime beginTime = new DateTime(Long.parseLong(lines.get(0)[0]) * 1000);
+			DateTime endTime = new DateTime(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
+			// Building the empty ticks
+			ticks = buildEmptyTicks(beginTime, endTime, 600);
+			// Filling the ticks with trades
+			for (String[] tradeLine : lines) {
+				DateTime tradeTimestamp = new DateTime(Long.parseLong(tradeLine[0]) * 1000);
+				for (Tick tick : ticks) {
+					if (tick.inPeriod(tradeTimestamp)) {
+						BigDecimal tradePrice = new BigDecimal(tradeLine[1]);
+						BigDecimal tradeAmount = new BigDecimal(tradeLine[2]);
+						tick.addTrade(tradeAmount, tradePrice);
+					}
+				}
+			}
+			// Removing still empty ticks
+			removeEmptyTicks(ticks);
+		}
+
 		return new DefaultTimeSeries(seriesName, ticks);
 	}
 
 	/**
-	 * @param tradeDate the datetime of the trade
-	 * @param tradeAmount the tradable amount
-	 * @param tradePrice the price
-     */
-    public void addTrade(DateTime tradeDate, BigDecimal tradeAmount, BigDecimal tradePrice) {
-        if (ticks.isEmpty()) {
-            // First trade
-			DefaultTick tick = new DefaultTick(tradeDate, tradePrice);
-			tick.addTrade(tradeAmount, tradePrice);
-            ticks.add(tick);
-        } else {
-            // Subsequent trades
-//            Tick lastTick = ticks.get(ticks.size() - 1);
-//            while (!lastTick.inPeriod(trade.getTimestamp())) {
-//                PREVIOUS_PERIODS.add(new Period(lastTick.getEndTimestamp()));
-//                lastTick = PREVIOUS_PERIODS.get(PREVIOUS_PERIODS.size() - 1);
-//            }
-//            lastTick.addTrade(trade);
-        }
-    }
+	 * Builds a list of empty ticks.
+	 * @param beginTime the begin time of the whole period
+	 * @param endTime the end time of the whole period
+	 * @param duration the tick duration (in seconds)
+	 * @return the list of empty ticks
+	 */
+	private static List<Tick> buildEmptyTicks(DateTime beginTime, DateTime endTime, int duration) {
 
+		List<Tick> emptyTicks = new ArrayList<Tick>();
+
+		DateTime tickBeginTime = beginTime;
+		DateTime tickEndTime;
+		do {
+			tickEndTime = tickBeginTime.plusSeconds(duration);
+			emptyTicks.add(new DefaultTick(tickBeginTime, tickEndTime));
+			tickBeginTime = tickEndTime;
+		} while (tickEndTime.isBefore(endTime));
+
+		return emptyTicks;
+	}
+
+	/**
+	 * Removes all empty (i.e. with no trade) ticks of the list.
+	 * @param ticks a list of ticks
+	 */
+	private static void removeEmptyTicks(List<Tick> ticks) {
+		for (int i = ticks.size() - 1; i >= 0; i--) {
+			if (ticks.get(i).getTrades() == 0) {
+				ticks.remove(i);
+			}
+		}
+	}
 }

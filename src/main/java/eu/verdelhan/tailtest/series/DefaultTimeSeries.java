@@ -2,7 +2,6 @@ package eu.verdelhan.tailtest.series;
 
 import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.List;
 import org.joda.time.Period;
 
@@ -10,7 +9,7 @@ import org.joda.time.Period;
  * Default implementation of {@link TimeSeries}.
  */
 public class DefaultTimeSeries implements TimeSeries {
-    private final List<DefaultTick> ticks;
+    private final List<? extends Tick> ticks;
 
     private final String name;
 
@@ -18,7 +17,7 @@ public class DefaultTimeSeries implements TimeSeries {
 	 * @param name the name of the series
 	 * @param ticks the list of ticks of the series
 	 */
-    public DefaultTimeSeries(String name, List<DefaultTick> ticks) {
+    public DefaultTimeSeries(String name, List<? extends Tick> ticks) {
         this.name = name;
         this.ticks = ticks;
     }
@@ -26,7 +25,7 @@ public class DefaultTimeSeries implements TimeSeries {
 	/**
 	 * @param ticks the list of ticks of the series
 	 */
-    public DefaultTimeSeries(List<DefaultTick> ticks) {
+    public DefaultTimeSeries(List<? extends Tick> ticks) {
         this("unnamed", ticks);
     }
 
@@ -57,14 +56,14 @@ public class DefaultTimeSeries implements TimeSeries {
 
     @Override
     public String getPeriodName() {
-        return ticks.get(0).getDate().toString("hh:mm dd/MM/yyyy - ")
-                + ticks.get(getEnd()).getDate().toString("hh:mm dd/MM/yyyy");
+        return ticks.get(0).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+                + ticks.get(getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy");
     }
 
     @Override
     public Period getPeriod() {
-        return new Period(Math.min(ticks.get(1).getDate().getMillis() - ticks.get(0).getDate().getMillis(), ticks
-                .get(2).getDate().getMillis()
-                - ticks.get(1).getDate().getMillis()));
+        return new Period(Math.min(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis(), ticks
+                .get(2).getEndTime().getMillis()
+                - ticks.get(1).getEndTime().getMillis()));
     }
 }

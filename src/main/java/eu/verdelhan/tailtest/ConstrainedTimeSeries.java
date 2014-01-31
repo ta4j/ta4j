@@ -51,13 +51,13 @@ public class ConstrainedTimeSeries implements TimeSeries {
 
 	@Override
 	public String getPeriodName() {
-		return series.getTick(begin).getDate().toString("hh:mm dd/MM/yyyy - ")
-				+ series.getTick(end).getDate().toString("hh:mm dd/MM/yyyy");
+		return series.getTick(begin).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+				+ series.getTick(end).getEndTime().toString("hh:mm dd/MM/yyyy");
 	}
 
 	@Override
 	public Period getPeriod() {
-		return new Period(Math.min(series.getTick(series.getBegin() + 1).getDate().getMillis() - series.getTick(series.getBegin()).getDate().getMillis(), 
-				series.getTick(series.getBegin() + 2).getDate().getMillis() - series.getTick(series.getBegin() + 1).getDate().getMillis()));
+		return new Period(Math.min(series.getTick(series.getBegin() + 1).getEndTime().getMillis() - series.getTick(series.getBegin()).getEndTime().getMillis(), 
+				series.getTick(series.getBegin() + 2).getEndTime().getMillis() - series.getTick(series.getBegin() + 1).getEndTime().getMillis()));
 	}
 }

@@ -44,13 +44,13 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		
 		int index = series.getBegin();
 
-		DateTime initialSeriesDate = series.getTick(index).getDate();
+		DateTime initialSeriesDate = series.getTick(index).getEndTime();
 		if (periodBegin.isBefore(initialSeriesDate) && !periodBegin.equals(initialSeriesDate))
-			periodBegin = series.getTick(series.getBegin()).getDate();
+			periodBegin = series.getTick(series.getBegin()).getEndTime();
 
 		Interval interval = new Interval(periodBegin, periodBegin.plus(period));
 
-		while (series.getTick(index).getDate().isBefore(interval.getStart()))
+		while (series.getTick(index).getEndTime().isBefore(interval.getStart()))
 			index++;
 
 		this.series = new ConstrainedTimeSeries(series, index, series.getEnd());
@@ -67,7 +67,7 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 	 * @param periodsPerSlice
 	 */
 	public PartialMemorizedSlicer(TimeSeries series, Period period, int periodsPerSlice) {
-		this(series, period, series.getTick(series.getBegin()).getDate(), periodsPerSlice);
+		this(series, period, series.getTick(series.getBegin()).getEndTime(), periodsPerSlice);
 	}
 
 	@Override
@@ -92,7 +92,7 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 	@Override
 	public String getPeriodName() {
 		return this.periodBegin.toString("hh:mm dd/MM/yyyy - ")
-				+ series.getTick(series.getEnd()).getDate().toString("hh:mm dd/MM/yyyy");
+				+ series.getTick(series.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy");
 	}
 
 	@Override
@@ -171,12 +171,12 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		begins.add(index);
 		while (index <= series.getEnd()) {
 
-			if (interval.contains(series.getTick(index).getDate())) {
+			if (interval.contains(series.getTick(index).getEndTime())) {
 				index++;
-			} else if (end.plus(period).isAfter(series.getTick(index).getDate())) {
+			} else if (end.plus(period).isAfter(series.getTick(index).getEndTime())) {
 				createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), index - 1);
 
-				LOG.debug(String.format("Interval %s before  %s ", interval, series.getTick(index).getDate()));
+				LOG.debug(String.format("Interval %s before  %s ", interval, series.getTick(index).getEndTime()));
 
 				int sliceBeginIndex = index;
 				begins.add(sliceBeginIndex);

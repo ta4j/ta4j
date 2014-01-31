@@ -7,7 +7,9 @@ import org.joda.time.DateTime;
  * End tick of a period.
  */
 public interface Tick {
-    DateTime getDate();
+    DateTime getBeginTime();
+
+    DateTime getEndTime();
 
     String getDateName();
 
@@ -30,6 +32,8 @@ public interface Tick {
     BigDecimal getMinPrice();
 
     BigDecimal getPreviousPrice();
+
+	boolean inPeriod(DateTime timestamp);
 
 	/**
 	 * Adds a trade at the end of tick period.

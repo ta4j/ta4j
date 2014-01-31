@@ -16,7 +16,7 @@ public class FullyMemorizedSlicer extends PartialMemorizedSlicer {
     }
 
     public FullyMemorizedSlicer(TimeSeries series, Period period) {
-        this(series, period, series.getTick(0).getDate());
+        this(series, period, series.getTick(0).getEndTime());
     }
 
     @Override

@@ -28,7 +28,7 @@ public class Decision {
 
 	public Decision(Strategy bestStrategy, TimeSeriesSlicer slicer,int slicerPosition,AnalysisCriterion criterion, List<Trade> trades, Runner runner) {
 		this.strategy = bestStrategy;
-		this.slicer = new RegularSlicer(slicer.getSeries(), slicer.getPeriod(), slicer.getSlice(0).getTick(slicer.getSlice(0).getBegin()).getDate());
+		this.slicer = new RegularSlicer(slicer.getSeries(), slicer.getPeriod(), slicer.getSlice(0).getTick(slicer.getSlice(0).getBegin()).getEndTime());
 		this.criterion = criterion;
 		this.trades = trades;
 		this.runner = runner;
@@ -70,7 +70,7 @@ public class Decision {
 	}
 	
 	public String getFileName() {
-		return this.getClass().getSimpleName() + getActualSlice().getTick(getActualSlice().getBegin()).getDate().toString("hhmmddMMyyyy");
+		return this.getClass().getSimpleName() + getActualSlice().getTick(getActualSlice().getBegin()).getEndTime().toString("hhmmddMMyyyy");
 	}
 
 	@Override

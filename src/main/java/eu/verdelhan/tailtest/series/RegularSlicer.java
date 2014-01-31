@@ -13,7 +13,7 @@ public class RegularSlicer extends PartialMemorizedSlicer {
     }
 
     public RegularSlicer(TimeSeries series, Period period) {
-        this(series, period, series.getTick(0).getDate());
+        this(series, period, series.getTick(0).getEndTime());
     }
 
     @Override

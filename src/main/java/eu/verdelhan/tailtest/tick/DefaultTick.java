@@ -11,7 +11,9 @@ import org.joda.time.DateTime;
  */
 public class DefaultTick implements Tick {
 
-	private DateTime date;
+	private DateTime beginTime;
+
+	private DateTime endTime;
 
 	private BigDecimal openPrice;
 
@@ -31,23 +33,28 @@ public class DefaultTick implements Tick {
 
 	private int trades;
 
+	public DefaultTick(DateTime beginTime, DateTime endTime) {
+		this.beginTime = beginTime;
+		this.endTime = endTime;
+	}
+
 	public DefaultTick(double closePrice) {
 		this.closePrice = new BigDecimal(closePrice);
 	}
 
-	public DefaultTick(DateTime date, double closePrice) {
+	public DefaultTick(DateTime endTime, double closePrice) {
 		this.closePrice = new BigDecimal(closePrice);
-		this.date = date;
+		this.endTime = endTime;
 	}
 
-	public DefaultTick(DateTime date, BigDecimal closePrice) {
+	public DefaultTick(DateTime endTime, BigDecimal closePrice) {
 		this.closePrice = closePrice;
-		this.date = date;
+		this.endTime = endTime;
 	}
 
-	public DefaultTick(DateTime date, double openPrice, double closePrice, double maxPrice, double minPrice, double variation,
+	public DefaultTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double variation,
 			double previousPrice, double amount, double volume, int trades) {
-		this.date = date;
+		this.endTime = endTime;
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
@@ -59,8 +66,8 @@ public class DefaultTick implements Tick {
 		this.trades = trades;
 	}
 
-	public DefaultTick(DateTime date, double openPrice, double closePrice, double maxPrice, double minPrice) {
-		this.date = date;
+	public DefaultTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice) {
+		this.endTime = endTime;
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
@@ -74,9 +81,9 @@ public class DefaultTick implements Tick {
 		this.minPrice = new BigDecimal(minPrice);
 	}
 	
-	public DefaultTick(double d, DateTime date) {
+	public DefaultTick(double d, DateTime endTime) {
 		this.closePrice = new BigDecimal(d);
-		this.date = date;
+		this.endTime = endTime;
 	}
 
 	@Override
@@ -145,7 +152,7 @@ public class DefaultTick implements Tick {
 			DefaultTick tick = (DefaultTick) obj;
 			return (hashCode() == tick.hashCode() && (variation == tick.getVariation()) && (closePrice == tick
 					.getClosePrice()))
-					&& (date.equals(tick.getDate()))
+					&& (endTime.equals(tick.getEndTime()))
 					&& (maxPrice == tick.getMaxPrice())
 					&& (minPrice == tick.getMinPrice())
 					&& (openPrice == tick.getOpenPrice())
@@ -158,7 +165,7 @@ public class DefaultTick implements Tick {
 
 	@Override
 	public int hashCode() {
-		return 7 * date.hashCode();
+		return 7 * endTime.hashCode();
 	}
 
 	public BigDecimal getVariation() {
@@ -173,23 +180,31 @@ public class DefaultTick implements Tick {
 		return previousPrice;
 	}
 
-	public DateTime getDate() {
-		return date;
+	public DateTime getBeginTime() {
+		return beginTime;
+	}
+
+	public DateTime getEndTime() {
+		return endTime;
+	}
+
+	public boolean inPeriod(DateTime timestamp) {
+		return timestamp == null ? false : (!timestamp.isBefore(beginTime) && timestamp.isBefore(endTime));
 	}
 
 	@Override
 	public String toString() {
-		return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", date
+		return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", endTime
 				.toGregorianCalendar(), closePrice);
 	}
 
 	@Override
 	public String getDateName() {
-		return this.date.toString("hh:mm dd/MM/yyyy");
+		return endTime.toString("hh:mm dd/MM/yyyy");
 	}
 
 	@Override
 	public String getSimpleDateName() {
-		return this.date.toString("dd/MM/yyyy");
+		return endTime.toString("dd/MM/yyyy");
 	}
 }

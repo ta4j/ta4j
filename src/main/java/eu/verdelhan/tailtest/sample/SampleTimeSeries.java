@@ -72,12 +72,12 @@ public class SampleTimeSeries implements TimeSeries {
 	}
 
 	public String getPeriodName() {
-		return ticks.get(0).getDate().toString("hh:mm dd/MM/yyyy - ")
-				+ ticks.get(this.getEnd()).getDate().toString("hh:mm dd/MM/yyyy");
+		return ticks.get(0).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+				+ ticks.get(this.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy");
 	}
 
 	public Period getPeriod() {
-		return new Period(Math.min(ticks.get(1).getDate().getMillis() - ticks.get(0).getDate().getMillis(), 
-				ticks.get(2).getDate().getMillis()- ticks.get(1).getDate().getMillis()));
+		return new Period(Math.min(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis(), 
+				ticks.get(2).getEndTime().getMillis()- ticks.get(1).getEndTime().getMillis()));
 	}
 }
