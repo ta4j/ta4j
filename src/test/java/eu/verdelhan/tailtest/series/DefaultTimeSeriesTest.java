@@ -1,16 +1,15 @@
 package eu.verdelhan.tailtest.series;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
+import eu.verdelhan.tailtest.Tick;
+import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import java.util.LinkedList;
 import java.util.List;
 
-import eu.verdelhan.tailtest.TimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
-
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -18,17 +17,17 @@ public class DefaultTimeSeriesTest {
 
 	private TimeSeries defaultSeries;
 
-	private List<DefaultTick> ticks;
+	private List<Tick> ticks;
 
 	private String defaultName;
 
 	@Before
 	public void setUp() {
-		ticks = new LinkedList<DefaultTick>();
-		ticks.add(new DefaultTick(new DateTime().withDate(2007, 6, 6), 1d));
-		ticks.add(new DefaultTick(new DateTime().withDate(2007, 6, 7), 2d));
-		ticks.add(new DefaultTick(new DateTime().withDate(2007, 6, 9), 3d));
-		ticks.add(new DefaultTick(new DateTime().withDate(2007, 6, 10), 4d));
+		ticks = new LinkedList<Tick>();
+		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 6), 1d));
+		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 7), 2d));
+		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 9), 3d));
+		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 10), 4d));
 
 		defaultName = "Series Name";
 

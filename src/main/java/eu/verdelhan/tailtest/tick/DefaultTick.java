@@ -36,52 +36,6 @@ public class DefaultTick implements Tick {
 		this.endTime = endTime;
 	}
 
-	public DefaultTick(double closePrice) {
-		this.closePrice = new BigDecimal(closePrice);
-	}
-
-	public DefaultTick(DateTime endTime, double closePrice) {
-		this.closePrice = new BigDecimal(closePrice);
-		this.endTime = endTime;
-	}
-
-	public DefaultTick(DateTime endTime, BigDecimal closePrice) {
-		this.closePrice = closePrice;
-		this.endTime = endTime;
-	}
-
-	public DefaultTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double variation, double amount, double volume, int trades) {
-		this.endTime = endTime;
-		this.openPrice = new BigDecimal(openPrice);
-		this.closePrice = new BigDecimal(closePrice);
-		this.maxPrice = new BigDecimal(maxPrice);
-		this.minPrice = new BigDecimal(minPrice);
-		this.variation = new BigDecimal(variation);
-		this.amount = new BigDecimal(amount);
-		this.volume = new BigDecimal(volume);
-		this.trades = trades;
-	}
-
-	public DefaultTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice) {
-		this.endTime = endTime;
-		this.openPrice = new BigDecimal(openPrice);
-		this.closePrice = new BigDecimal(closePrice);
-		this.maxPrice = new BigDecimal(maxPrice);
-		this.minPrice = new BigDecimal(minPrice);
-	}
-
-	public DefaultTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
-		this.openPrice = new BigDecimal(openPrice);
-		this.closePrice = new BigDecimal(closePrice);
-		this.maxPrice = new BigDecimal(maxPrice);
-		this.minPrice = new BigDecimal(minPrice);
-	}
-	
-	public DefaultTick(double d, DateTime endTime) {
-		this.closePrice = new BigDecimal(d);
-		this.endTime = endTime;
-	}
-
 	@Override
 	public BigDecimal getClosePrice() {
 		return closePrice;
@@ -112,7 +66,11 @@ public class DefaultTick implements Tick {
 		return volume;
 	}
 
-	@Override
+	/**
+	 * Adds a trade at the end of tick period.
+	 * @param tradeAmount the tradable amount
+	 * @param tradePrice the price
+	 */
 	public void addTrade(BigDecimal tradeAmount, BigDecimal tradePrice) {
 		if (openPrice == null) {
 			openPrice = tradePrice;

@@ -3,10 +3,11 @@ package eu.verdelhan.tailtest.flow;
 import eu.verdelhan.tailtest.ConstrainedTimeSeries;
 import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.Trade;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -212,9 +213,8 @@ public class CashFlowTest {
 
 	@Test
 	public void testReallyLongCashFlow() {
-		DefaultTick tick = new DefaultTick(10);
 		int size = 1000000;
-		TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, tick));
+		TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Tick) new MockTick(10)));
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(size - 1, OperationType.SELL)));
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);

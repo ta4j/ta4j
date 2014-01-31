@@ -1,7 +1,8 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
+import eu.verdelhan.tailtest.Tick;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
@@ -14,9 +15,9 @@ public class DirectionalMovementDownTest {
 	@Test
 	public void testZeroDirectionalMovement()
 	{
-		DefaultTick yesterdayTick = new DefaultTick(0, 0, 10, 2);
-		DefaultTick todayTick = new DefaultTick(0, 0, 6, 6);
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		MockTick yesterdayTick = new MockTick(0, 0, 10, 2);
+		MockTick todayTick = new MockTick(0, 0, 6, 6);
+		List<Tick> ticks = new ArrayList<Tick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
@@ -27,9 +28,9 @@ public class DirectionalMovementDownTest {
 	@Test
 	public void testZeroDirectionalMovement2()
 	{
-		DefaultTick yesterdayTick = new DefaultTick(0, 0, 6, 12);
-		DefaultTick todayTick = new DefaultTick(0, 0, 12, 6);
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		MockTick yesterdayTick = new MockTick(0, 0, 6, 12);
+		MockTick todayTick = new MockTick(0, 0, 12, 6);
+		List<Tick> ticks = new ArrayList<Tick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
@@ -39,9 +40,9 @@ public class DirectionalMovementDownTest {
 	@Test
 	public void testZeroDirectionalMovement3()
 	{
-		DefaultTick yesterdayTick = new DefaultTick(0, 0, 6, 6);
-		DefaultTick todayTick = new DefaultTick(0, 0, 12, 4);
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		MockTick yesterdayTick = new MockTick(0, 0, 6, 6);
+		MockTick todayTick = new MockTick(0, 0, 12, 4);
+		List<Tick> ticks = new ArrayList<Tick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
@@ -51,9 +52,9 @@ public class DirectionalMovementDownTest {
 	@Test
 	public void testPositiveDirectionalMovement()
 	{
-		DefaultTick yesterdayTick = new DefaultTick(0, 0, 6, 20);
-		DefaultTick todayTick = new DefaultTick(0, 0, 12, 4);
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		MockTick yesterdayTick = new MockTick(0, 0, 6, 20);
+		MockTick todayTick = new MockTick(0, 0, 12, 4);
+		List<Tick> ticks = new ArrayList<Tick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);

@@ -1,7 +1,6 @@
 package eu.verdelhan.tailtest.loaders;
 
 import au.com.bytecode.opencsv.CSVReader;
-import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.TimeSeriesLoader;
 import eu.verdelhan.tailtest.series.DefaultTimeSeries;
@@ -22,7 +21,7 @@ import org.joda.time.DateTime;
  */
 public class CsvTradesLoader implements TimeSeriesLoader {
 
-	List<Tick> ticks;
+	List<DefaultTick> ticks;
 
 	@Override
 	public TimeSeries load(InputStream stream, String seriesName) {
@@ -53,7 +52,7 @@ public class CsvTradesLoader implements TimeSeriesLoader {
 			// Filling the ticks with trades
 			for (String[] tradeLine : lines) {
 				DateTime tradeTimestamp = new DateTime(Long.parseLong(tradeLine[0]) * 1000);
-				for (Tick tick : ticks) {
+				for (DefaultTick tick : ticks) {
 					if (tick.inPeriod(tradeTimestamp)) {
 						BigDecimal tradePrice = new BigDecimal(tradeLine[1]);
 						BigDecimal tradeAmount = new BigDecimal(tradeLine[2]);
@@ -75,9 +74,9 @@ public class CsvTradesLoader implements TimeSeriesLoader {
 	 * @param duration the tick duration (in seconds)
 	 * @return the list of empty ticks
 	 */
-	private static List<Tick> buildEmptyTicks(DateTime beginTime, DateTime endTime, int duration) {
+	private static List<DefaultTick> buildEmptyTicks(DateTime beginTime, DateTime endTime, int duration) {
 
-		List<Tick> emptyTicks = new ArrayList<Tick>();
+		List<DefaultTick> emptyTicks = new ArrayList<DefaultTick>();
 
 		DateTime tickBeginTime = beginTime;
 		DateTime tickEndTime;
@@ -94,7 +93,7 @@ public class CsvTradesLoader implements TimeSeriesLoader {
 	 * Removes all empty (i.e. with no trade) ticks of the list.
 	 * @param ticks a list of ticks
 	 */
-	private static void removeEmptyTicks(List<Tick> ticks) {
+	private static void removeEmptyTicks(List<DefaultTick> ticks) {
 		for (int i = ticks.size() - 1; i >= 0; i--) {
 			if (ticks.get(i).getTrades() == 0) {
 				ticks.remove(i);

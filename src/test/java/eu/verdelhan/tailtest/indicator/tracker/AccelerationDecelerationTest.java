@@ -1,8 +1,9 @@
 package eu.verdelhan.tailtest.indicator.tracker;
 
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +18,13 @@ public class AccelerationDecelerationTest {
 	@Before
 	public void setUp() throws Exception {
 
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		List<Tick> ticks = new ArrayList<Tick>();
 
-		ticks.add(new DefaultTick(0, 0, 16, 8));
-		ticks.add(new DefaultTick(0, 0, 12, 6));
-		ticks.add(new DefaultTick(0, 0, 18, 14));
-		ticks.add(new DefaultTick(0, 0, 10, 6));
-		ticks.add(new DefaultTick(0, 0, 8, 4));
+		ticks.add(new MockTick(0, 0, 16, 8));
+		ticks.add(new MockTick(0, 0, 12, 6));
+		ticks.add(new MockTick(0, 0, 18, 14));
+		ticks.add(new MockTick(0, 0, 10, 6));
+		ticks.add(new MockTick(0, 0, 8, 4));
 
 		series = new MockTimeSeries(ticks);
 	}

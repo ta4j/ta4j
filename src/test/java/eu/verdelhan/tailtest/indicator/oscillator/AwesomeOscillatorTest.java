@@ -1,9 +1,10 @@
 package eu.verdelhan.tailtest.indicator.oscillator;
 
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.AverageHighLow;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
@@ -16,13 +17,13 @@ public class AwesomeOscillatorTest {
 	@Before
 	public void setUp() throws Exception {
 
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		List<Tick> ticks = new ArrayList<Tick>();
 
-		ticks.add(new DefaultTick(0, 0, 16, 8));//12
-		ticks.add(new DefaultTick(0, 0, 12, 6));//9
-		ticks.add(new DefaultTick(0, 0, 18, 14));//16
-		ticks.add(new DefaultTick(0, 0, 10, 6));//8
-		ticks.add(new DefaultTick(0, 0, 8, 4));//6
+		ticks.add(new MockTick(0, 0, 16, 8));//12
+		ticks.add(new MockTick(0, 0, 12, 6));//9
+		ticks.add(new MockTick(0, 0, 18, 14));//16
+		ticks.add(new MockTick(0, 0, 10, 6));//8
+		ticks.add(new MockTick(0, 0, 8, 4));//6
 
 		this.series = new MockTimeSeries(ticks);
 	}

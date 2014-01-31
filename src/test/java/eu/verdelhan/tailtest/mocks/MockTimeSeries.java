@@ -1,7 +1,7 @@
 package eu.verdelhan.tailtest.mocks;
 
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
 import org.joda.time.DateTime;
@@ -12,16 +12,16 @@ import org.joda.time.Period;
  */
 public class MockTimeSeries implements TimeSeries {
 
-	private List<DefaultTick> ticks;
+	private List<Tick> ticks;
 
 	public MockTimeSeries(double... data) {
-		ticks = new ArrayList<DefaultTick>();
+		ticks = new ArrayList<Tick>();
 		for (int i = 0; i < data.length; i++) {
-			ticks.add(new DefaultTick(new DateTime().withMillisOfSecond(i),data[i]));
+			ticks.add(new MockTick(new DateTime().withMillisOfSecond(i),data[i]));
 		}
 	}
 
-	public MockTimeSeries(List<DefaultTick> ticks) {
+	public MockTimeSeries(List<Tick> ticks) {
 		this.ticks = ticks;
 	}
 
@@ -29,29 +29,28 @@ public class MockTimeSeries implements TimeSeries {
 		if (data.length != times.length) {
 			throw new IllegalArgumentException();
 		}
-		ticks = new ArrayList<DefaultTick>();
+		ticks = new ArrayList<Tick>();
 		for (int i = 0; i < data.length; i++) {
-			ticks.add(new DefaultTick(data[i], times[i]));
+			ticks.add(new MockTick(times[i], data[i]));
 		}
 	}
 
 	public MockTimeSeries(DateTime... dates) {
-		ticks = new ArrayList<DefaultTick>();
+		ticks = new ArrayList<Tick>();
 		int i = 1;
 		for (DateTime date : dates) {
-			ticks.add(new DefaultTick(date, i++));
+			ticks.add(new MockTick(date, i++));
 		}
 	}
 
 	public MockTimeSeries() {
-		ticks = new ArrayList<DefaultTick>();
+		ticks = new ArrayList<Tick>();
 		for (double i = 0d; i < 10; i++) {
-			DefaultTick tick = new DefaultTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, (int) (i + 7));
-			ticks.add(tick);
+			ticks.add(new MockTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, (int) (i + 7)));
 		}
 	}
 
-	public DefaultTick getTick(int i) {
+	public Tick getTick(int i) {
 		return ticks.get(i);
 	}
 

@@ -1,8 +1,9 @@
 package eu.verdelhan.tailtest.indicator.simple;
 
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -18,18 +19,18 @@ public class AverageHighLowTest {
 
 	@Before
 	public void setUp() {
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		List<Tick> ticks = new ArrayList<Tick>();
 
-		ticks.add(new DefaultTick(0, 0, 16, 8));
-		ticks.add(new DefaultTick(0, 0, 12, 6));
-		ticks.add(new DefaultTick(0, 0, 18, 14));
-		ticks.add(new DefaultTick(0, 0, 10, 6));
-		ticks.add(new DefaultTick(0, 0, 32, 6));
-		ticks.add(new DefaultTick(0, 0, 2, 2));
-		ticks.add(new DefaultTick(0, 0, 0, 0));
-		ticks.add(new DefaultTick(0, 0, 8, 1));
-		ticks.add(new DefaultTick(0, 0, 83, 32));
-		ticks.add(new DefaultTick(0, 0, 9, 3));
+		ticks.add(new MockTick(0, 0, 16, 8));
+		ticks.add(new MockTick(0, 0, 12, 6));
+		ticks.add(new MockTick(0, 0, 18, 14));
+		ticks.add(new MockTick(0, 0, 10, 6));
+		ticks.add(new MockTick(0, 0, 32, 6));
+		ticks.add(new MockTick(0, 0, 2, 2));
+		ticks.add(new MockTick(0, 0, 0, 0));
+		ticks.add(new MockTick(0, 0, 8, 1));
+		ticks.add(new MockTick(0, 0, 83, 32));
+		ticks.add(new MockTick(0, 0, 9, 3));
 		
 
 		this.timeSeries = new MockTimeSeries(ticks);

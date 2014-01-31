@@ -1,13 +1,11 @@
 package eu.verdelhan.tailtest.indicator.tracker;
 
-import static junit.framework.Assert.assertEquals;
-
+import eu.verdelhan.tailtest.Tick;
+import eu.verdelhan.tailtest.mocks.MockTick;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-
-import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
-
+import static junit.framework.Assert.assertEquals;
 import org.junit.Test;
 
 
@@ -16,11 +14,11 @@ public class DirectionalMovementTest {
 	@Test
 	public void testGetValue()
 	{
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+		List<Tick> ticks = new ArrayList<Tick>();
 		
-		ticks.add(new DefaultTick(0, 0, 10, 2));
-		ticks.add(new DefaultTick(0, 0, 12, 2));
-		ticks.add(new DefaultTick(0, 0, 15, 2));
+		ticks.add(new MockTick(0, 0, 10, 2));
+		ticks.add(new MockTick(0, 0, 12, 2));
+		ticks.add(new MockTick(0, 0, 15, 2));
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovement dm = new DirectionalMovement(series, 3);
 		assertEquals(0d, dm.getValue(0));

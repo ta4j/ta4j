@@ -1,17 +1,16 @@
 package eu.verdelhan.tailtest.indicator.tracker;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-
+import eu.verdelhan.tailtest.Tick;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.indicator.simple.MaxPrice;
 import eu.verdelhan.tailtest.indicator.simple.MinPrice;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.series.DefaultTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -21,20 +20,20 @@ public class WilliamsRTest {
 	@Before
 	public void setUp() throws Exception {
 
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
-		ticks.add(new DefaultTick(44.98, 45.05, 45.17, 44.96));
-		ticks.add(new DefaultTick(45.05, 45.10, 45.15, 44.99));
-		ticks.add(new DefaultTick(45.11, 45.19, 45.32, 45.11));
-		ticks.add(new DefaultTick(45.19, 45.14, 45.25, 45.04));
-		ticks.add(new DefaultTick(45.12, 45.15, 45.20, 45.10));
-		ticks.add(new DefaultTick(45.15, 45.14, 45.20, 45.10));
-		ticks.add(new DefaultTick(45.13, 45.10, 45.16, 45.07));
-		ticks.add(new DefaultTick(45.12, 45.15, 45.22, 45.10));
-		ticks.add(new DefaultTick(45.15, 45.22, 45.27, 45.14));
-		ticks.add(new DefaultTick(45.24, 45.43, 45.45, 45.20));
-		ticks.add(new DefaultTick(45.43, 45.44, 45.50, 45.39));
-		ticks.add(new DefaultTick(45.43, 45.55, 45.60, 45.35));
-		ticks.add(new DefaultTick(45.58, 45.55, 45.61, 45.39));
+		List<Tick> ticks = new ArrayList<Tick>();
+		ticks.add(new MockTick(44.98, 45.05, 45.17, 44.96));
+		ticks.add(new MockTick(45.05, 45.10, 45.15, 44.99));
+		ticks.add(new MockTick(45.11, 45.19, 45.32, 45.11));
+		ticks.add(new MockTick(45.19, 45.14, 45.25, 45.04));
+		ticks.add(new MockTick(45.12, 45.15, 45.20, 45.10));
+		ticks.add(new MockTick(45.15, 45.14, 45.20, 45.10));
+		ticks.add(new MockTick(45.13, 45.10, 45.16, 45.07));
+		ticks.add(new MockTick(45.12, 45.15, 45.22, 45.10));
+		ticks.add(new MockTick(45.15, 45.22, 45.27, 45.14));
+		ticks.add(new MockTick(45.24, 45.43, 45.45, 45.20));
+		ticks.add(new MockTick(45.43, 45.44, 45.50, 45.39));
+		ticks.add(new MockTick(45.43, 45.55, 45.60, 45.35));
+		ticks.add(new MockTick(45.58, 45.55, 45.61, 45.39));
 
 		data = new DefaultTimeSeries(ticks);
 

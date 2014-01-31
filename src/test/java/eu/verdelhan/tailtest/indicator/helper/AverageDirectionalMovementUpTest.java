@@ -1,7 +1,8 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
+import eu.verdelhan.tailtest.Tick;
+import eu.verdelhan.tailtest.mocks.MockTick;
 import eu.verdelhan.tailtest.mocks.MockTimeSeries;
-import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
@@ -14,12 +15,12 @@ public class AverageDirectionalMovementUpTest {
 	public void testAverageDirectionalMovement()
 	{
 		
-		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
-		ticks.add(new DefaultTick(0, 0, 10, 2));
-		ticks.add(new DefaultTick(0, 0, 12, 2));
-		ticks.add(new DefaultTick(0, 0, 15, 2));
-		ticks.add(new DefaultTick(0, 0, 11, 2));
-		ticks.add(new DefaultTick(0, 0, 13, 7));
+		List<Tick> ticks = new ArrayList<Tick>();
+		ticks.add(new MockTick(0, 0, 10, 2));
+		ticks.add(new MockTick(0, 0, 12, 2));
+		ticks.add(new MockTick(0, 0, 15, 2));
+		ticks.add(new MockTick(0, 0, 11, 2));
+		ticks.add(new MockTick(0, 0, 13, 7));
 		
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		AverageDirectionalMovementUp admup = new AverageDirectionalMovementUp(series, 3);
