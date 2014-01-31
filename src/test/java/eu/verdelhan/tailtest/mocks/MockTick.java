@@ -21,8 +21,6 @@ public class MockTick implements Tick {
 
 	private BigDecimal minPrice = BigDecimal.ZERO;
 
-	private BigDecimal variation = BigDecimal.ONE;
-
 	private BigDecimal amount = BigDecimal.ZERO;
 
 	private BigDecimal volume = BigDecimal.ZERO;
@@ -45,13 +43,12 @@ public class MockTick implements Tick {
 		this.minPrice = new BigDecimal(minPrice);
 	}
 
-	public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double variation, double amount, double volume, int trades) {
+	public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
 		this.endTime = endTime;
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
 		this.minPrice = new BigDecimal(minPrice);
-		this.variation = new BigDecimal(variation);
 		this.amount = new BigDecimal(amount);
 		this.volume = new BigDecimal(volume);
 		this.trades = trades;
@@ -95,10 +92,6 @@ public class MockTick implements Tick {
 
 	public BigDecimal getVolume() {
 		return volume;
-	}
-
-	public BigDecimal getVariation() {
-		return variation;
 	}
 
 	public BigDecimal getMinPrice() {

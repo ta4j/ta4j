@@ -46,7 +46,7 @@ public class MockTimeSeries implements TimeSeries {
 	public MockTimeSeries() {
 		ticks = new ArrayList<Tick>();
 		for (double i = 0d; i < 10; i++) {
-			ticks.add(new MockTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, (int) (i + 7)));
+			ticks.add(new MockTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
 		}
 	}
 

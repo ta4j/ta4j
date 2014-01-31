@@ -28,7 +28,5 @@ public interface Tick {
 
     BigDecimal getVolume();
 
-    BigDecimal getVariation();
-
     BigDecimal getMinPrice();
 }

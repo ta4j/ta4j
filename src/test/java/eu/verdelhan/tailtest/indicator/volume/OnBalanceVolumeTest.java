@@ -13,12 +13,12 @@ public class OnBalanceVolumeTest {
 	public void testGetValue()
 	{
 		List<Tick> ticks = new ArrayList<Tick>();
-		ticks.add(new MockTick(null, 0, 10, 0, 0, 0, 0, 4, 0));
-		ticks.add(new MockTick(null, 0, 5, 0, 0, 0, 0, 2, 0));
-		ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 0, 3, 0));
-		ticks.add(new MockTick(null, 0, 7, 0, 0, 0, 0, 8, 0));
-		ticks.add(new MockTick(null, 0, 7, 0, 0, 0, 0, 6, 0));
-		ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 0, 10, 0));
+		ticks.add(new MockTick(null, 0, 10, 0, 0, 0, 4, 0));
+		ticks.add(new MockTick(null, 0, 5, 0, 0, 0, 2, 0));
+		ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 3, 0));
+		ticks.add(new MockTick(null, 0, 7, 0, 0, 0, 8, 0));
+		ticks.add(new MockTick(null, 0, 7, 0, 0, 0, 6, 0));
+		ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 10, 0));
 		OnBalanceVolume onBalance = new OnBalanceVolume(new MockTimeSeries(ticks));
 		
 		assertEquals(0d, onBalance.getValue(0));

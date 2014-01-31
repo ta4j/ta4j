@@ -23,8 +23,6 @@ public class DefaultTick implements Tick {
 
 	private BigDecimal minPrice;
 
-	private BigDecimal variation;
-
 	private BigDecimal amount;
 
 	private BigDecimal volume;
@@ -104,7 +102,7 @@ public class DefaultTick implements Tick {
 	public boolean equals(Object obj) {
 		if (obj instanceof DefaultTick) {
 			DefaultTick tick = (DefaultTick) obj;
-			return (hashCode() == tick.hashCode() && (variation == tick.getVariation()) && (closePrice == tick
+			return (hashCode() == tick.hashCode() && (closePrice == tick
 					.getClosePrice()))
 					&& (endTime.equals(tick.getEndTime()))
 					&& (maxPrice == tick.getMaxPrice())
@@ -119,10 +117,6 @@ public class DefaultTick implements Tick {
 	@Override
 	public int hashCode() {
 		return 7 * endTime.hashCode();
-	}
-
-	public BigDecimal getVariation() {
-		return variation;
 	}
 
 	public BigDecimal getMinPrice() {

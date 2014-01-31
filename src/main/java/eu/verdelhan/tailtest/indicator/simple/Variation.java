@@ -14,7 +14,9 @@ public class Variation implements Indicator<BigDecimal> {
 
 	@Override
 	public BigDecimal getValue(int index) {
-		return data.getTick(index).getVariation();
+		BigDecimal previousTickClosePrice = data.getTick(Math.max(0, index - 1)).getClosePrice();
+		BigDecimal currentTickClosePrice = data.getTick(index).getClosePrice();
+		return currentTickClosePrice.divide(previousTickClosePrice);
 	}
 
 	@Override
