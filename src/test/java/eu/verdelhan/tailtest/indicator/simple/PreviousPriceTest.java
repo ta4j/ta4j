@@ -20,8 +20,9 @@ public class PreviousPriceTest {
 
 	@Test
 	public void testIndicatorShouldRetrieveTickPreviousPrice() {
-		for (int i = 0; i < 10; i++) {
-			assertEquals(previousPriceIndicator.getValue(i), timeSeries.getTick(i).getPreviousPrice());
+		assertEquals(previousPriceIndicator.getValue(0), timeSeries.getTick(0).getClosePrice());
+		for (int i = 1; i < 10; i++) {
+			assertEquals(previousPriceIndicator.getValue(i), timeSeries.getTick(i-1).getClosePrice());
 		}
 	}
 

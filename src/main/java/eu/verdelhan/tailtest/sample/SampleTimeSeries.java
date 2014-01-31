@@ -46,7 +46,7 @@ public class SampleTimeSeries implements TimeSeries {
 	public SampleTimeSeries() {
 		ticks = new ArrayList<DefaultTick>();
 		for (double i = 0d; i < 10; i++) {
-			DefaultTick tick = new DefaultTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7, (int) (i + 8));
+			DefaultTick tick = new DefaultTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, (int) (i + 7));
 			ticks.add(tick);
 		}
 	}
@@ -77,7 +77,7 @@ public class SampleTimeSeries implements TimeSeries {
 	}
 
 	public Period getPeriod() {
-		return new Period(Math.min(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis(), 
+		return new Period(Math.min(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis(),
 				ticks.get(2).getEndTime().getMillis()- ticks.get(1).getEndTime().getMillis()));
 	}
 }

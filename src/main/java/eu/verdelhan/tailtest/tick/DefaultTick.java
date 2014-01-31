@@ -25,8 +25,6 @@ public class DefaultTick implements Tick {
 
 	private BigDecimal variation;
 
-	private BigDecimal previousPrice;
-
 	private BigDecimal amount;
 
 	private BigDecimal volume;
@@ -52,15 +50,13 @@ public class DefaultTick implements Tick {
 		this.endTime = endTime;
 	}
 
-	public DefaultTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double variation,
-			double previousPrice, double amount, double volume, int trades) {
+	public DefaultTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double variation, double amount, double volume, int trades) {
 		this.endTime = endTime;
 		this.openPrice = new BigDecimal(openPrice);
 		this.closePrice = new BigDecimal(closePrice);
 		this.maxPrice = new BigDecimal(maxPrice);
 		this.minPrice = new BigDecimal(minPrice);
 		this.variation = new BigDecimal(variation);
-		this.previousPrice = new BigDecimal(previousPrice);
 		this.amount = new BigDecimal(amount);
 		this.volume = new BigDecimal(volume);
 		this.trades = trades;
@@ -156,7 +152,6 @@ public class DefaultTick implements Tick {
 					&& (maxPrice == tick.getMaxPrice())
 					&& (minPrice == tick.getMinPrice())
 					&& (openPrice == tick.getOpenPrice())
-					&& (previousPrice == getPreviousPrice())
 					&& (trades == tick.getTrades())
 					&& (amount == tick.getAmount()) && (volume == tick.getVolume());
 		}
@@ -174,10 +169,6 @@ public class DefaultTick implements Tick {
 
 	public BigDecimal getMinPrice() {
 		return minPrice;
-	}
-
-	public BigDecimal getPreviousPrice() {
-		return previousPrice;
 	}
 
 	public DateTime getBeginTime() {

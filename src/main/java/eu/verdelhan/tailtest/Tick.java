@@ -31,8 +31,6 @@ public interface Tick {
 
     BigDecimal getMinPrice();
 
-    BigDecimal getPreviousPrice();
-
 	boolean inPeriod(DateTime timestamp);
 
 	/**

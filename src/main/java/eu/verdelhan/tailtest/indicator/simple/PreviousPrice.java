@@ -14,7 +14,7 @@ public class PreviousPrice implements Indicator<BigDecimal> {
 
 	@Override
 	public BigDecimal getValue(int index) {
-		return data.getTick(index).getPreviousPrice();
+		return data.getTick(Math.max(0, index - 1)).getClosePrice();
 	}
 
 	@Override
