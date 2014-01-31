@@ -5,7 +5,7 @@ import static junit.framework.Assert.assertEquals;
 import java.util.ArrayList;
 import java.util.List;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.junit.Test;
@@ -24,7 +24,7 @@ public class DirectionalUpTest {
 		ticks.add(new DefaultTick(0, 0, 11, 2));
 		ticks.add(new DefaultTick(0, 0, 13, 7));
 		
-		SampleTimeSeries series = new SampleTimeSeries(ticks);
+		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalUp dup = new DirectionalUp(series, 3);
 		assertEquals(1d, dup.getValue(0));
 		assertEquals((2d / 3 + 2d/3) / (2d/3 + 12d/3) , dup.getValue(1));

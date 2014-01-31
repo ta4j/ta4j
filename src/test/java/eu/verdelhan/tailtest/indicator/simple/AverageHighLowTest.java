@@ -1,7 +1,7 @@
 package eu.verdelhan.tailtest.indicator.simple;
 
 import eu.verdelhan.tailtest.TimeSeries;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,7 +32,7 @@ public class AverageHighLowTest {
 		ticks.add(new DefaultTick(0, 0, 9, 3));
 		
 
-		this.timeSeries = new SampleTimeSeries(ticks);
+		this.timeSeries = new MockTimeSeries(ticks);
 		average = new AverageHighLow(timeSeries);
 	}
 

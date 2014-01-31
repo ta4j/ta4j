@@ -1,7 +1,7 @@
 package eu.verdelhan.tailtest.indicator.simple;
 
 import eu.verdelhan.tailtest.TimeSeries;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,7 +13,7 @@ public class PreviousPriceTest {
 
 	@Before
 	public void setUp() {
-		timeSeries = new SampleTimeSeries();
+		timeSeries = new MockTimeSeries();
 		previousPriceIndicator = new PreviousPrice(timeSeries);
 
 	}

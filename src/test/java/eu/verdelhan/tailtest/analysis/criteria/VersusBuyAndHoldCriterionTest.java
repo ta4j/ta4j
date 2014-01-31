@@ -12,8 +12,8 @@ import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockDecision;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 
 import org.joda.time.Period;
@@ -23,7 +23,7 @@ public class VersusBuyAndHoldCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithGainTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -34,7 +34,7 @@ public class VersusBuyAndHoldCriterionTest {
 
 	@Test
 	public void testSummarize() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		List<Decision> decisions = new LinkedList<Decision>();
 
@@ -53,7 +53,7 @@ public class VersusBuyAndHoldCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithLossTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -64,7 +64,7 @@ public class VersusBuyAndHoldCriterionTest {
 	
 	@Test
 	public void testCalculateWithOnlyOneTrade() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
 		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
@@ -73,7 +73,7 @@ public class VersusBuyAndHoldCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		List<Trade> trades = new ArrayList<Trade>();
 
 		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
@@ -82,7 +82,7 @@ public class VersusBuyAndHoldCriterionTest {
 	@Test
 	public void testCalculateWithAverageProfit()
 	{
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 130 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 130 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -94,7 +94,7 @@ public class VersusBuyAndHoldCriterionTest {
 	@Test
 	public void testCalculateWithNumberOfTicks()
 	{
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 130 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 130 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));

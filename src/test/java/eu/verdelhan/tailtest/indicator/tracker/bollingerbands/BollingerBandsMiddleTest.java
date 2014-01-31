@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.indicator.tracker.SMA;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -14,7 +14,7 @@ public class BollingerBandsMiddleTest {
 
 	@Before
 	public void setUp() throws Exception {
-		data = new SampleTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2 });
+		data = new MockTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2 });
 	}
 
 	@Test

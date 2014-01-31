@@ -6,7 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.LinkedList;
 import java.util.List;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 
 import org.joda.time.DateTime;
@@ -30,7 +30,7 @@ public class ConstrainedTimeSeriesTest {
 		ticks.add(new DefaultTick(new DateTime().withDate(2007, 6, 9), 3d));
 		ticks.add(new DefaultTick(new DateTime().withDate(2007, 6, 10), 4d));
 		
-		series = new SampleTimeSeries(ticks);
+		series = new MockTimeSeries(ticks);
 		constrained = new ConstrainedTimeSeries(series, series.getBegin(), series.getEnd());
 	}
 

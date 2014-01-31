@@ -5,7 +5,7 @@ import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Strategy;
 import eu.verdelhan.tailtest.Trade;
-import eu.verdelhan.tailtest.sample.SampleIndicator;
+import eu.verdelhan.tailtest.mocks.MockIndicator;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -16,8 +16,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 	@Test
 	public void testCrossedIndicatorShouldBuyIndex2SellIndex4() {
-		Indicator<Double> first = new SampleIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
-		Indicator<Double> second = new SampleIndicator<Double>(new Double[] { 3d, 6d, 10d, 8d, 2d, 1d });
+		Indicator<Double> first = new MockIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
+		Indicator<Double> second = new MockIndicator<Double>(new Double[] { 3d, 6d, 10d, 8d, 2d, 1d });
 
 		Strategy s = new IndicatorCrossedIndicatorStrategy(first, second);
 		Trade trade = new Trade();
@@ -41,7 +41,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 	@Test
 	public void testCrossedIndicatorShouldNotEnterWhenIndicatorsAreEquals() {
-		Indicator<Double> first = new SampleIndicator<Double>(new Double[] { 2d, 3d, 4d, 5d, 6d, 7d });
+		Indicator<Double> first = new MockIndicator<Double>(new Double[] { 2d, 3d, 4d, 5d, 6d, 7d });
 		Trade trade = new Trade();
 
 		Strategy s = new IndicatorCrossedIndicatorStrategy(first, first);
@@ -53,8 +53,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 	@Test
 	public void testCrossedIndicatorShouldNotExitWhenIndicatorsBecameEquals() {
-		Indicator<Double> first = new SampleIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
-		Indicator<Double> second = new SampleIndicator<Double>(new Double[] { 3d, 6d, 10d, 6d, 3d, 2d });
+		Indicator<Double> first = new MockIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
+		Indicator<Double> second = new MockIndicator<Double>(new Double[] { 3d, 6d, 10d, 6d, 3d, 2d });
 		Trade trade = new Trade();
 
 		Strategy s = new IndicatorCrossedIndicatorStrategy(first, second);
@@ -71,8 +71,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 	@Test
 	public void testEqualIndicatorsShouldNotExitWhenIndicatorsBecameEquals() {
-		Indicator<Double> firstEqual = new SampleIndicator<Double>(new Double[] { 2d, 1d, 4d, 5d, 6d, 7d });
-		Indicator<Double> secondEqual = new SampleIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d });
+		Indicator<Double> firstEqual = new MockIndicator<Double>(new Double[] { 2d, 1d, 4d, 5d, 6d, 7d });
+		Indicator<Double> secondEqual = new MockIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d });
 		Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
 		Trade trade = new Trade();
 
@@ -91,8 +91,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 	@Test
 	public void testShouldNotSellWhileIndicatorAreEquals() {
-		Indicator<Double> firstEqual = new SampleIndicator<Double>(new Double[] { 2d, 1d, 4d, 5d, 6d, 7d, 10d });
-		Indicator<Double> secondEqual = new SampleIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d, 9d });
+		Indicator<Double> firstEqual = new MockIndicator<Double>(new Double[] { 2d, 1d, 4d, 5d, 6d, 7d, 10d });
+		Indicator<Double> secondEqual = new MockIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d, 9d });
 		Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
 		Trade trade = new Trade();
 
@@ -114,8 +114,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 	@Test
 	public void testCrossShouldNotReturnNullOperations() {
-		Indicator<Double> firstEqual = new SampleIndicator<Double>(new Double[] { 2d, 3d, 4d, 5d, 6d, 7d, 10d });
-		Indicator<Double> secondEqual = new SampleIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d, 9d });
+		Indicator<Double> firstEqual = new MockIndicator<Double>(new Double[] { 2d, 3d, 4d, 5d, 6d, 7d, 10d });
+		Indicator<Double> secondEqual = new MockIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d, 9d });
 		Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
 		Trade trade = new Trade();
 

@@ -12,8 +12,8 @@ import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockDecision;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 
 import org.joda.time.Period;
@@ -36,7 +36,7 @@ public class RewardRiskRatioCriterionTest {
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(4, OperationType.SELL)));
 		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(7, OperationType.SELL)));
 
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 95, 100, 90, 95, 80, 120 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 95, 100, 90, 95, 80, 120 });
 
 		double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
 		double peak = (105d / 100) * (100d / 95);
@@ -48,7 +48,7 @@ public class RewardRiskRatioCriterionTest {
 
 	@Test
 	public void testSummarize() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 95, 100, 90, 95, 80, 120 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 95, 100, 90, 95, 80, 120 });
 		List<Decision> decisions = new LinkedList<Decision>();
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 
@@ -77,7 +77,7 @@ public class RewardRiskRatioCriterionTest {
 
 	@Test
 	public void testRewardRiskRatioCriterionOnlyWithGain() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -88,7 +88,7 @@ public class RewardRiskRatioCriterionTest {
 
 	@Test
 	public void testRewardRiskRatioCriterionWithNoTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
 		List<Trade> trades = new ArrayList<Trade>();
 
 		assertTrue(Double.isInfinite(rrc.calculate(series, trades)));
@@ -99,7 +99,7 @@ public class RewardRiskRatioCriterionTest {
 	public void testWithOneTrade() {
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 95, 100, 90, 95, 80, 120 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 95, 100, 90, 95, 80, 120 });
 
 			
 		RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();

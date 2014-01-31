@@ -5,7 +5,7 @@ import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Strategy;
 import eu.verdelhan.tailtest.Trade;
-import eu.verdelhan.tailtest.sample.SampleIndicator;
+import eu.verdelhan.tailtest.mocks.MockIndicator;
 import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -22,7 +22,7 @@ public class IndicatorOverIndicatorStrategyTest {
 	@Before
 	public void setUp() throws Exception {
 
-		first = new SampleIndicator<BigDecimal>(new BigDecimal[] {
+		first = new MockIndicator<BigDecimal>(new BigDecimal[] {
 			BigDecimal.valueOf(4),
 			BigDecimal.valueOf(7),
 			BigDecimal.valueOf(9),
@@ -30,7 +30,7 @@ public class IndicatorOverIndicatorStrategyTest {
 			BigDecimal.valueOf(3),
 			BigDecimal.valueOf(2)
 		});
-		second = new SampleIndicator<BigDecimal>(new BigDecimal[] {
+		second = new MockIndicator<BigDecimal>(new BigDecimal[] {
 			BigDecimal.valueOf(3),
 			BigDecimal.valueOf(6),
 			BigDecimal.valueOf(10),

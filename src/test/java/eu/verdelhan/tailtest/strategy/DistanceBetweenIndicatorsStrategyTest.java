@@ -1,23 +1,23 @@
 package eu.verdelhan.tailtest.strategy;
 
 import eu.verdelhan.tailtest.Trade;
-import eu.verdelhan.tailtest.sample.SampleIndicator;
+import eu.verdelhan.tailtest.mocks.MockIndicator;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
 public class DistanceBetweenIndicatorsStrategyTest {
-	private SampleIndicator<Double> upper;
+	private MockIndicator<Double> upper;
 
-	private SampleIndicator<Double> lower;
+	private MockIndicator<Double> lower;
 
 	private AbstractStrategy distanceEnter;
 
 	@Before
 	public void setUp() {
-		upper = new SampleIndicator<Double>(new Double[] { 30d, 32d, 33d, 32d, 35d, 33d, 32d });
-		lower = new SampleIndicator<Double>(new Double[] { 10d, 10d, 10d, 12d, 14d, 15d, 15d });
+		upper = new MockIndicator<Double>(new Double[] { 30d, 32d, 33d, 32d, 35d, 33d, 32d });
+		lower = new MockIndicator<Double>(new Double[] { 10d, 10d, 10d, 12d, 14d, 15d, 15d });
 		distanceEnter = new DistanceBetweenIndicatorsStrategy(upper, lower, 20, 0.1);
 	}
 

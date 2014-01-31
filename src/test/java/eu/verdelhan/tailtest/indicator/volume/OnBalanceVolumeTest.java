@@ -1,6 +1,6 @@
 package eu.verdelhan.tailtest.indicator.volume;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +18,7 @@ public class OnBalanceVolumeTest {
 		ticks.add(new DefaultTick(null, 0, 7, 0, 0, 0, 0, 8, 0));
 		ticks.add(new DefaultTick(null, 0, 7, 0, 0, 0, 0, 6, 0));
 		ticks.add(new DefaultTick(null, 0, 6, 0, 0, 0, 0, 10, 0));
-		OnBalanceVolume onBalance = new OnBalanceVolume(new SampleTimeSeries(ticks));
+		OnBalanceVolume onBalance = new OnBalanceVolume(new MockTimeSeries(ticks));
 		
 		assertEquals(0d, onBalance.getValue(0));
 		assertEquals(-2d, onBalance.getValue(1));

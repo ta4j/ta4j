@@ -11,7 +11,7 @@ import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.tailtest.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.tailtest.runner.HistoryRunner;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import eu.verdelhan.tailtest.strategy.FakeStrategy;
 import java.util.List;
@@ -35,7 +35,7 @@ public class DecisionTest {
 	@Test
 	public void testEvaluateCriterion() {
 
-		series = new SampleTimeSeries(3d, 5d, 7d, 9d);
+		series = new MockTimeSeries(3d, 5d, 7d, 9d);
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
@@ -54,7 +54,7 @@ public class DecisionTest {
 
 	@Test
 	public void testEvaluateCriterionNotSelling() {
-		series = new SampleTimeSeries(3d, 1d, 7d, 9d);
+		series = new MockTimeSeries(3d, 1d, 7d, 9d);
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
@@ -70,7 +70,7 @@ public class DecisionTest {
 
 	@Test
 	public void testEvaluateCriterionWithAnotherCriteria() {
-		series = new SampleTimeSeries(3d, 1d, 7d, 9d);
+		series = new MockTimeSeries(3d, 1d, 7d, 9d);
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null };
@@ -85,7 +85,7 @@ public class DecisionTest {
 	
 	@Test
 	public void testAverageProfitWithZeroNumberOfTicks() {
-		series = new SampleTimeSeries(3d, 1d, 7d, 9d);
+		series = new MockTimeSeries(3d, 1d, 7d, 9d);
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
@@ -102,7 +102,7 @@ public class DecisionTest {
 	@Test
 	public void testApplyFor() {
 		DateTime date = new DateTime();
-		series = new SampleTimeSeries(new double[] { 1d, 2d, 3d, 4d, 5d,5d, 5d, 5d, 5d, 5d},new DateTime[]{date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),});
+		series = new MockTimeSeries(new double[] { 1d, 2d, 3d, 4d, 5d,5d, 5d, 5d, 5d, 5d},new DateTime[]{date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),});
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
 
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };

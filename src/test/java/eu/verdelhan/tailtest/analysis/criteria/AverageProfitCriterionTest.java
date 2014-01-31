@@ -12,8 +12,8 @@ import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockDecision;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 
 import org.joda.time.Period;
@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class AverageProfitCriterionTest {
-	private SampleTimeSeries series;
+	private MockTimeSeries series;
 
 	private List<Trade> trades;
 
@@ -32,7 +32,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithGainTrades() {
-		series = new SampleTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
+		series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
 		trades.clear();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -42,7 +42,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testSummarize() {
-		series = new SampleTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
+		series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
 		List<Decision> decisions = new LinkedList<Decision>();
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 
@@ -62,7 +62,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testCalculateWithASimpleTrade() {
-		series = new SampleTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
+		series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
 		trades.clear();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
@@ -71,7 +71,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithLossTrades() {
-		series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		trades.clear();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -81,7 +81,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTicksShouldReturn1() {
-		series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		trades.clear();
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
 		assertEquals(1d, averageProfit.calculate(series, trades));
@@ -90,7 +90,7 @@ public class AverageProfitCriterionTest {
 	@Test
 	public void testCalculateWithOneTrade()
 	{
-		series = new SampleTimeSeries(new double[] {100, 105});
+		series = new MockTimeSeries(new double[] {100, 105});
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion average = new AverageProfitCriterion();
 		assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade));

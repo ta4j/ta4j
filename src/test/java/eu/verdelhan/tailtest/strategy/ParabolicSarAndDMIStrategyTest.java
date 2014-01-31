@@ -2,7 +2,7 @@ package eu.verdelhan.tailtest.strategy;
 
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -13,8 +13,8 @@ public class ParabolicSarAndDMIStrategyTest {
 	@Test
 	public void shouldEnterTest()
 	{
-		TimeSeries series1 = new SampleTimeSeries(new double[] {10, 9, 6, 10, 5 });
-		TimeSeries series2 = new SampleTimeSeries(new double[] {8, 7, 7, 8, 6 });
+		TimeSeries series1 = new MockTimeSeries(new double[] {10, 9, 6, 10, 5 });
+		TimeSeries series2 = new MockTimeSeries(new double[] {8, 7, 7, 8, 6 });
 		
 		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePrice(series1), new ClosePrice(series2));
 		ParabolicSarAndDMIStrategy parabolicStrategy = new ParabolicSarAndDMIStrategy(indicatorCrossedIndicator, null);
@@ -28,11 +28,11 @@ public class ParabolicSarAndDMIStrategyTest {
 	@Test
 	public void shouldExitTest()
 	{
-		TimeSeries series1 = new SampleTimeSeries(new double[] {6, 11, 6, 5, 9 });
-		TimeSeries series2 = new SampleTimeSeries(new double[] {10, 9, 7, 6, 6 });
+		TimeSeries series1 = new MockTimeSeries(new double[] {6, 11, 6, 5, 9 });
+		TimeSeries series2 = new MockTimeSeries(new double[] {10, 9, 7, 6, 6 });
 		
-		TimeSeries series3 = new SampleTimeSeries(new double[] {1, 1, 1, 1, 1} );
-		TimeSeries series4 = new SampleTimeSeries(new double[] {2, 2, 2, 2, 0} );
+		TimeSeries series3 = new MockTimeSeries(new double[] {1, 1, 1, 1, 1} );
+		TimeSeries series4 = new MockTimeSeries(new double[] {2, 2, 2, 2, 0} );
 		
 		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePrice(series1), new ClosePrice(series2));
 		IndicatorOverIndicatorStrategy indicatorOverIndicator = new IndicatorOverIndicatorStrategy(new ClosePrice(series3), new ClosePrice(series4));

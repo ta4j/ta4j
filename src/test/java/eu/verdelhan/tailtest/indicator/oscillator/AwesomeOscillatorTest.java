@@ -2,7 +2,7 @@ package eu.verdelhan.tailtest.indicator.oscillator;
 
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.AverageHighLow;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +24,7 @@ public class AwesomeOscillatorTest {
 		ticks.add(new DefaultTick(0, 0, 10, 6));//8
 		ticks.add(new DefaultTick(0, 0, 8, 4));//6
 
-		this.series = new SampleTimeSeries(ticks);
+		this.series = new MockTimeSeries(ticks);
 	}
 
 	@Test

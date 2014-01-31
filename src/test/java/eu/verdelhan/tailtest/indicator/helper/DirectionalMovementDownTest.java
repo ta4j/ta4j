@@ -1,6 +1,6 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ public class DirectionalMovementDownTest {
 		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
-		SampleTimeSeries series = new SampleTimeSeries(ticks);
+		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
 		assertEquals(0d, (double) down.getValue(1));
 	}
@@ -32,7 +32,7 @@ public class DirectionalMovementDownTest {
 		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
-		SampleTimeSeries series = new SampleTimeSeries(ticks);
+		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
 		assertEquals(0d, (double) down.getValue(1));
 	}
@@ -44,7 +44,7 @@ public class DirectionalMovementDownTest {
 		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
-		SampleTimeSeries series = new SampleTimeSeries(ticks);
+		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
 		assertEquals(0d, (double) down.getValue(1));
 	}
@@ -56,7 +56,7 @@ public class DirectionalMovementDownTest {
 		List<DefaultTick> ticks = new ArrayList<DefaultTick>();
 		ticks.add(yesterdayTick);
 		ticks.add(todayTick);
-		SampleTimeSeries series = new SampleTimeSeries(ticks);
+		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
 		assertEquals(16d, (double) down.getValue(1));
 	}

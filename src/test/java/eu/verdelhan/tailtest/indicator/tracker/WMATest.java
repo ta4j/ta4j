@@ -2,7 +2,7 @@ package eu.verdelhan.tailtest.indicator.tracker;
 
 import eu.verdelhan.tailtest.Indicator;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
@@ -11,7 +11,7 @@ public class WMATest {
 	@Test
 	public void testWMACalculate()
 	{
-		SampleTimeSeries series = new SampleTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
+		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
 		Indicator<BigDecimal> close = new ClosePrice(series);
 		Indicator<Double> wmaIndicator = new WMA(close, 3);
 		
@@ -26,7 +26,7 @@ public class WMATest {
 	@Test
 	public void testWMACalculateJumpingIndex()
 	{
-		SampleTimeSeries series = new SampleTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
+		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
 		Indicator<BigDecimal> close = new ClosePrice(series);
 		Indicator<Double> wmaIndicator = new WMA(close, 3);
 		
@@ -36,7 +36,7 @@ public class WMATest {
 	@Test
 	public void testWMACalculateWithTimeFrameGreaterThanSeriesSize()
 	{
-		SampleTimeSeries series = new SampleTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
+		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
 		Indicator<BigDecimal> close = new ClosePrice(series);
 		Indicator<Double> wmaIndicator = new WMA(close, 55);
 		

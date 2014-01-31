@@ -1,6 +1,6 @@
 package eu.verdelhan.tailtest.indicator.tracker;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class ParabolicSarTest {
 		ticks.add(new DefaultTick(0, 6, 9, 4));
 		ticks.add(new DefaultTick(0, 11, 15, 9));
 		ticks.add(new DefaultTick(0, 13, 15, 9));
-		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
+		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
 		assertEquals(BigDecimal.valueOf(10d), sar.getValue(0));
 		assertEquals(BigDecimal.valueOf(8d), sar.getValue(1));
@@ -39,7 +39,7 @@ public class ParabolicSarTest {
 		ticks.add(new DefaultTick(0, 10, 15, 9));
 		ticks.add(new DefaultTick(0, 9, 15, 9));
 		
-		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
+		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
 		assertEquals(BigDecimal.valueOf(10d), sar.getValue(0));
 		assertEquals(BigDecimal.valueOf(10d), sar.getValue(1));
@@ -58,7 +58,7 @@ public class ParabolicSarTest {
 		ticks.add(new DefaultTick(0, 19, 17, 12));
 		ticks.add(new DefaultTick(0, 20, 18, 9));
 		
-		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
+		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
 		assertEquals(BigDecimal.valueOf(10d), sar.getValue(0));
 		assertEquals(BigDecimal.valueOf(17d), sar.getValue(1));
@@ -78,7 +78,7 @@ public class ParabolicSarTest {
 		ticks.add(new DefaultTick(0, 10, 13, 11));
 		ticks.add(new DefaultTick(0, 10, 30, 11));
 		
-		ParabolicSar sar = new ParabolicSar(new SampleTimeSeries(ticks), 1);
+		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
 		assertEquals(BigDecimal.valueOf(20d), sar.getValue(0));
 		assertEquals(BigDecimal.valueOf(19d), sar.getValue(1));

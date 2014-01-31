@@ -5,7 +5,7 @@ import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ public class LinearTransactionCostsCriterionTest {
 	
 	@Test
 	public void testCalculate() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		List<Trade> trades = new ArrayList<Trade>();
 		AnalysisCriterion transactionCost = new LinearTransactionCostsCriterion(0, 40);
 		
@@ -37,7 +37,7 @@ public class LinearTransactionCostsCriterionTest {
 
 	@Test
 	public void testCalculateWithOneTrade() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion transactionCost = new LinearTransactionCostsCriterion(0, 40);
 		assertEquals(40d, transactionCost.calculate(series, trade));
@@ -46,7 +46,7 @@ public class LinearTransactionCostsCriterionTest {
 	public void testSummarize() {
 		DateTime date = new DateTime();
 		
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 }, new DateTime[]{date, date, date, date, date, date});
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 }, new DateTime[]{date, date, date, date, date, date});
 		List<Trade> trades = new ArrayList<Trade>();
 		List<Decision> decisions = new ArrayList<Decision>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));

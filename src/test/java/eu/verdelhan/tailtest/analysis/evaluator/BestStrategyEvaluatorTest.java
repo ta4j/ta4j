@@ -9,7 +9,7 @@ import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Strategy;
 import eu.verdelhan.tailtest.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.tailtest.runner.HistoryRunnerFactory;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import eu.verdelhan.tailtest.strategy.AlwaysOperateStrategy;
 import eu.verdelhan.tailtest.strategy.FakeStrategy;
@@ -45,7 +45,7 @@ public class BestStrategyEvaluatorTest {
 	@Test
 	public void bestShouldBeAlwaysOperateOnProfit() {
 		DateTime date = new DateTime();
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 6.0, 9.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
+		MockTimeSeries series = new MockTimeSeries(new double[] { 6.0, 9.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
 		
 		HigherValueEvaluator evaluator = new HigherValueEvaluator(new HistoryRunnerFactory(), strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
 		Decision decision = evaluator.evaluate(0);
@@ -56,7 +56,7 @@ public class BestStrategyEvaluatorTest {
 	@Test
 	public void bestShouldBeBuyAndHoldOnLoss() {
 		DateTime date = new DateTime();
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 6.0, 3.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
+		MockTimeSeries series = new MockTimeSeries(new double[] { 6.0, 3.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
 		
 
 		HigherValueEvaluator evaluator = new HigherValueEvaluator(new HistoryRunnerFactory(), strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());

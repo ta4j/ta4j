@@ -5,7 +5,7 @@ import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
 import eu.verdelhan.tailtest.indicator.tracker.EMA;
 import eu.verdelhan.tailtest.indicator.tracker.RSI;
 import eu.verdelhan.tailtest.indicator.tracker.SMA;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,7 +21,7 @@ public class CachedIndicatorTest {
 
 	@Before
 	public void setUp() throws Exception {
-		data = new SampleTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2 });
+		data = new MockTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2 });
 	}
 
 	@Test
@@ -36,7 +36,7 @@ public class CachedIndicatorTest {
 	public void testIncreaseArrayMethod() {
 		double[] d = new double[200];
 		Arrays.fill(d, 10);
-		TimeSeries dataMax = new SampleTimeSeries(d);
+		TimeSeries dataMax = new MockTimeSeries(d);
 		SMA quoteSMA = new SMA(new ClosePrice(dataMax), 100);
 		assertEquals((double) 10d, (double) quoteSMA.getValue(105));
 	}
@@ -51,7 +51,7 @@ public class CachedIndicatorTest {
 	public void testReallyBigCachedEMAExtendsCachedIndicator() {
 		int maxIndex = 1000000;
 		List<DefaultTick> ticks = new ArrayList<DefaultTick>(Collections.nCopies(maxIndex, new DefaultTick(0)));
-		TimeSeries longData = new SampleTimeSeries(ticks);
+		TimeSeries longData = new MockTimeSeries(ticks);
 		EMA quoteEMA = new EMA(new ClosePrice(longData), 10);
 
 		quoteEMA.getValue(maxIndex - 1);
@@ -62,7 +62,7 @@ public class CachedIndicatorTest {
 	public void testReallyCachedBigRSINotExtendsCachedIndicator() {
 		int maxIndex = 1000000;
 		List<DefaultTick> ticks = new ArrayList<DefaultTick>(Collections.nCopies(maxIndex, new DefaultTick(0)));
-		TimeSeries longData = new SampleTimeSeries(ticks);
+		TimeSeries longData = new MockTimeSeries(ticks);
 		RSI RSI = new RSI(new ClosePrice(longData), 10);
 
 		RSI.getValue(maxIndex - 1);

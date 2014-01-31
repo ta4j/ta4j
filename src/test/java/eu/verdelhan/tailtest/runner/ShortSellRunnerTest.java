@@ -10,7 +10,7 @@ import eu.verdelhan.tailtest.Runner;
 import eu.verdelhan.tailtest.Strategy;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import eu.verdelhan.tailtest.strategy.FakeStrategy;
 
@@ -26,12 +26,12 @@ public class ShortSellRunnerTest {
 
 	private Strategy strategy;
 
-	private SampleTimeSeries series;
+	private MockTimeSeries series;
 
 	@Before
 	public void setUp() {
 		DateTime date = new DateTime();
-		series = new SampleTimeSeries(new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d},
+		series = new MockTimeSeries(new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d},
 				new DateTime[]{date.withYear(2000), date.withYear(2000), date.withYear(2000), date.withYear(2000), date.withYear(2001),
 							   date.withYear(2001), date.withYear(2002), date.withYear(2002), date.withYear(2002)});
 	

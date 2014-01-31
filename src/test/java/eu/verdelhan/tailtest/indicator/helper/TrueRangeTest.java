@@ -1,6 +1,6 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +17,7 @@ public class TrueRangeTest {
 		ticks.add(new DefaultTick(0, 15, 17, 14));
 		ticks.add(new DefaultTick(0, 15, 17, 14));
 		ticks.add(new DefaultTick(0, 0, 0, 2));
-		TrueRange tr = new TrueRange(new SampleTimeSeries(ticks));
+		TrueRange tr = new TrueRange(new MockTimeSeries(ticks));
 		
 		assertEquals(7d, (double) tr.getValue(0));
 		assertEquals(6d, (double) tr.getValue(1));

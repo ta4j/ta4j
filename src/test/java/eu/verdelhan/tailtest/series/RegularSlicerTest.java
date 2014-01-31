@@ -1,7 +1,7 @@
 package eu.verdelhan.tailtest.series;
 
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class RegularSlicerTest {
 
-	private SampleTimeSeries series;
+	private MockTimeSeries series;
 
 	private DateTime date;
 
@@ -21,7 +21,7 @@ public class RegularSlicerTest {
 	
 	@Test
 	public void testApllyForSeries(){
-		series = new SampleTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+		series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
 				.withYear(2003), date.withYear(2004));
 		Period period = new Period().withYears(1);
 
@@ -33,7 +33,7 @@ public class RegularSlicerTest {
 		
 		
 
-		series = new SampleTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
+		series = new MockTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
 				.withYear(2001), date.withYear(2001), date.withYear(2001), date.withYear(2002), date.withYear(2002),
 				date.withYear(2002), date.withYear(2002), date.withYear(2003));
 
@@ -58,7 +58,7 @@ public class RegularSlicerTest {
 	@Test
 	public void testSplitByYearOneDatePerYear() {
 
-		series = new SampleTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+		series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
 				.withYear(2003), date.withYear(2004));
 		Period period = new Period().withYears(1);
 
@@ -81,7 +81,7 @@ public class RegularSlicerTest {
 	@Test
 	public void testSplitByYear() {
 
-		series = new SampleTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
+		series = new MockTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
 				.withYear(2001), date.withYear(2001), date.withYear(2001), date.withYear(2002), date.withYear(2002),
 				date.withYear(2002), date.withYear(2002), date.withYear(2003));
 
@@ -108,7 +108,7 @@ public class RegularSlicerTest {
 	public void testSplitByYearForcingJuly() {
 		Period period = new Period().withYears(1);
 
-		series = new SampleTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 2, 1), date.withDate(2000, 3, 1),
+		series = new MockTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 2, 1), date.withDate(2000, 3, 1),
 				date.withDate(2001, 1, 1), date.withDate(2001, 2, 1), date.withDate(2001, 12, 12), date.withDate(2002,
 						1, 1), date.withDate(2002, 2, 1), date.withDate(2002, 3, 1), date.withDate(2002, 5, 1), date
 						.withDate(2003, 3, 1));
@@ -130,7 +130,7 @@ public class RegularSlicerTest {
 	@Test
 	public void testSplitByYearWithHolesBetweenSlices() {
 
-		series = new SampleTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
+		series = new MockTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
 				.withYear(2001), date.withYear(2001), date.withYear(2001), date.withYear(2002), date.withYear(2002),
 				date.withYear(2002), date.withYear(2002), date.withYear(2005), date.withYear(2005));
 
@@ -158,7 +158,7 @@ public class RegularSlicerTest {
 	public void testSplitByYearBeginningInJuly() {
 		Period period = new Period().withYears(1);
 
-		series = new SampleTimeSeries(date.withDate(2000, 7, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
+		series = new MockTimeSeries(date.withDate(2000, 7, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
 				date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
 						1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
 						.withDate(2003, 3, 3));
@@ -180,7 +180,7 @@ public class RegularSlicerTest {
 	public void testSplitByYearBeginingInJulyOverridingPeriodBeginTo1of1of2000() {
 		Period period = new Period().withYears(1);
 
-		series = new SampleTimeSeries(date.withDate(2000, 7, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
+		series = new MockTimeSeries(date.withDate(2000, 7, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
 				date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
 						1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
 						.withDate(2003, 3, 3));
@@ -204,7 +204,7 @@ public class RegularSlicerTest {
 
 		DateTime openTime = new DateTime(0).withTime(10, 0, 0, 0);
 
-		series = new SampleTimeSeries(openTime, openTime.plusMinutes(1), openTime.plusMinutes(2), openTime
+		series = new MockTimeSeries(openTime, openTime.plusMinutes(1), openTime.plusMinutes(2), openTime
 				.plusMinutes(10), openTime.plusMinutes(15), openTime.plusMinutes(25), openTime.plusHours(1), openTime
 				.plusHours(2), openTime.plusHours(7), openTime.plusHours(10).plusMinutes(5), openTime.plusHours(10)
 				.plusMinutes(10), openTime.plusHours(10).plusMinutes(20), openTime.plusHours(10).plusMinutes(30));

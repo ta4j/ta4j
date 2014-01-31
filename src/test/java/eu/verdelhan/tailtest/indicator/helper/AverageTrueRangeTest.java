@@ -1,6 +1,6 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +17,7 @@ public class AverageTrueRangeTest {
 		ticks.add(new DefaultTick(0, 15, 17, 14));
 		ticks.add(new DefaultTick(0, 15, 17, 14));
 		ticks.add(new DefaultTick(0, 0, 0, 2));
-		AverageTrueRange atr = new AverageTrueRange(new SampleTimeSeries(ticks), 3);
+		AverageTrueRange atr = new AverageTrueRange(new MockTimeSeries(ticks), 3);
 		
 		assertEquals((double) 1d, (double) atr.getValue(0));
 		assertEquals((double) 2d/3 + 6d/3, (double) atr.getValue(1));

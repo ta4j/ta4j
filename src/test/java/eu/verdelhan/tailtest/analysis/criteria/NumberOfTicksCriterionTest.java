@@ -12,8 +12,8 @@ import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockDecision;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 
 import org.joda.time.Period;
@@ -23,7 +23,7 @@ public class NumberOfTicksCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		List<Trade> trades = new ArrayList<Trade>();
 
 		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
@@ -32,7 +32,7 @@ public class NumberOfTicksCriterionTest {
 
 	@Test
 	public void testCalculateWithTwoTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -43,7 +43,7 @@ public class NumberOfTicksCriterionTest {
 
 	@Test
 	public void testSummarize() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		List<Decision> decisions = new LinkedList<Decision>();
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		List<Trade> tradesToDummy1 = new LinkedList<Trade>();

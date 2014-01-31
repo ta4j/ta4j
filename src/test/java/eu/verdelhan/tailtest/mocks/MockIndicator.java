@@ -1,4 +1,4 @@
-package eu.verdelhan.tailtest.sample;
+package eu.verdelhan.tailtest.mocks;
 
 import eu.verdelhan.tailtest.Indicator;
 import java.util.ArrayList;
@@ -9,11 +9,11 @@ import java.util.List;
  * A sample indicator.
  * @param <T>
  */
-public class SampleIndicator<T> implements Indicator<T> {
+public class MockIndicator<T> implements Indicator<T> {
 
 	private List<T> values = new ArrayList<T>();
 
-	public SampleIndicator(T[] values) {
+	public MockIndicator(T[] values) {
 		this.values.addAll(Arrays.asList(values));
 	}
 

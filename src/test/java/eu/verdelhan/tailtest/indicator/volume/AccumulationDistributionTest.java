@@ -1,7 +1,7 @@
 package eu.verdelhan.tailtest.indicator.volume;
 
 import eu.verdelhan.tailtest.TimeSeries;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ public class AccumulationDistributionTest {
 		ticks.add(new DefaultTick(null, 0d, 20d, 40d, 5d, 0d, 0d, 50d,0));//15-20 *50 / 35
 		ticks.add(new DefaultTick(null, 0d, 30d, 30d, 3d, 0d, 0d, 600d,0));//27-0 *600 /27
 		
-		TimeSeries series = new SampleTimeSeries(ticks);
+		TimeSeries series = new MockTimeSeries(ticks);
 		AccumulationDistribution ac = new AccumulationDistribution(series);
 //		Assert.assertEquals(0d, ac.getValue(0));
 //		assertEquals(-100d / 3, ac.getValue(1));

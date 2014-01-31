@@ -7,8 +7,8 @@ import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.TimeSeriesSlicer;
 import eu.verdelhan.tailtest.Trade;
 import eu.verdelhan.tailtest.analysis.evaluator.Decision;
-import eu.verdelhan.tailtest.analysis.evaluator.MockDecision;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockDecision;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.series.RegularSlicer;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -21,7 +21,7 @@ public class AverageProfitableTradesCriterionTest {
 	@Test
 	public void testCalculate()
 	{
-		TimeSeries series = new SampleTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
+		TimeSeries series = new MockTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.BUY)));
@@ -35,7 +35,7 @@ public class AverageProfitableTradesCriterionTest {
 	@Test
 	public void testCalculateWithOneTrade()
 	{
-		TimeSeries series = new SampleTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
+		TimeSeries series = new MockTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
 			
 		AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
@@ -48,7 +48,7 @@ public class AverageProfitableTradesCriterionTest {
 	@Test
 	public void testSummarize() {
 		
-		TimeSeries series = new SampleTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
+		TimeSeries series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		List<Decision> decisions = new LinkedList<Decision>();
 

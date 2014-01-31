@@ -9,7 +9,7 @@ import eu.verdelhan.tailtest.AnalysisCriterion;
 import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Trade;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 
 import org.junit.Test;
 
@@ -17,7 +17,7 @@ public class TotalProfitCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithGainTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 110, 100, 95, 105 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -28,7 +28,7 @@ public class TotalProfitCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithLossTrades() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -39,7 +39,7 @@ public class TotalProfitCriterionTest {
 
 	@Test
 	public void testCalculateProfitWithTradesThatStartSelling() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.SELL), new Operation(1, OperationType.BUY)));
 		trades.add(new Trade(new Operation(2, OperationType.SELL), new Operation(5, OperationType.BUY)));
@@ -50,7 +50,7 @@ public class TotalProfitCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTradesShouldReturn1() {
-		SampleTimeSeries series = new SampleTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		List<Trade> trades = new ArrayList<Trade>();
 
 		AnalysisCriterion profit = new TotalProfitCriterion();

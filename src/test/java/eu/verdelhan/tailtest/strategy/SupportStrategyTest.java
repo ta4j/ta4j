@@ -4,7 +4,7 @@ import eu.verdelhan.tailtest.Operation;
 import eu.verdelhan.tailtest.OperationType;
 import eu.verdelhan.tailtest.Strategy;
 import eu.verdelhan.tailtest.Trade;
-import eu.verdelhan.tailtest.sample.SampleIndicator;
+import eu.verdelhan.tailtest.mocks.MockIndicator;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -13,11 +13,11 @@ import org.junit.Test;
 
 public class SupportStrategyTest {
 
-	private SampleIndicator<Double> indicator;
+	private MockIndicator<Double> indicator;
 
 	@Before
 	public void setUp() throws Exception {
-		indicator = new SampleIndicator<Double>(new Double[] { 96d, 90d, 94d, 97d, 95d, 110d });
+		indicator = new MockIndicator<Double>(new Double[] { 96d, 90d, 94d, 97d, 95d, 110d });
 	}
 
 	@Test

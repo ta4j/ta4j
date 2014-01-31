@@ -1,6 +1,6 @@
 package eu.verdelhan.tailtest.indicator.helper;
 
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import eu.verdelhan.tailtest.tick.DefaultTick;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ public class AverageDirectionalMovementUpTest {
 		ticks.add(new DefaultTick(0, 0, 11, 2));
 		ticks.add(new DefaultTick(0, 0, 13, 7));
 		
-		SampleTimeSeries series = new SampleTimeSeries(ticks);
+		MockTimeSeries series = new MockTimeSeries(ticks);
 		AverageDirectionalMovementUp admup = new AverageDirectionalMovementUp(series, 3);
 		assertEquals((double) 1d, (double) admup.getValue(0));
 		assertEquals((double) 2d / 3 + 2d/3 , (double) admup.getValue(1));

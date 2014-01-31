@@ -2,7 +2,7 @@ package eu.verdelhan.tailtest.indicator.tracker;
 
 import eu.verdelhan.tailtest.TimeSeries;
 import eu.verdelhan.tailtest.indicator.simple.ClosePrice;
-import eu.verdelhan.tailtest.sample.SampleTimeSeries;
+import eu.verdelhan.tailtest.mocks.MockTimeSeries;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,7 +14,7 @@ public class EMATest {
 	@Before
 	public void setUp() {
 
-		data = new SampleTimeSeries(new double[] { 64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95,
+		data = new MockTimeSeries(new double[] { 64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95,
 				63.37, 61.33, 61.51 });
 	}
 
