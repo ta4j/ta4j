@@ -1,2 +1,5 @@
+# ta4j
 
-From peas/tail
+Technical Analysis For Java
+
+Previously forked from peas/tail
