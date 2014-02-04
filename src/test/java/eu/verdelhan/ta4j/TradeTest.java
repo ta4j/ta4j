@@ -1,12 +1,8 @@
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Trade;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-
 import org.junit.Before;
 import org.junit.Test;
 
@@ -101,28 +97,6 @@ public class TradeTest {
 		uncoveredTrade.operate(1);
 
 		assertEquals(new Operation(1, OperationType.BUY), uncoveredTrade.getExit());
-	}
-
-	@Test
-	public void testOverrideOperationEquals() {
-		assertTrue(trEquals1.equals(trEquals2));
-		assertTrue(trEquals2.equals(trEquals1));
-
-		assertFalse(trEquals1.equals(trNotEquals1));
-		assertFalse(trEquals1.equals(trNotEquals2));
-
-		assertFalse(trEquals2.equals(trNotEquals1));
-		assertFalse(trEquals2.equals(trNotEquals2));
-
-	}
-
-	@Test
-	public void testOverrideOperationHashCode() {
-		assertEquals(trEquals1.hashCode(), trEquals2.hashCode());
-
-		assertTrue(trEquals1.hashCode() != trNotEquals1.hashCode());
-		assertTrue(trEquals1.hashCode() != trNotEquals2.hashCode());
-
 	}
 
 	@Test

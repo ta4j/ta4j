@@ -1,7 +1,7 @@
 package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.MinValueStarterStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -35,7 +35,7 @@ public class MinValueStarterStrategyTest {
 				new Operation(2, OperationType.BUY), new Operation(3, OperationType.BUY),
 				new Operation(4, OperationType.BUY) };
 		exit = new Operation[] { null, null, null, null, null };
-		alwaysBuy = new FakeStrategy(enter, exit);
+		alwaysBuy = new MockStrategy(enter, exit);
 		starter = new MinValueStarterStrategy(indicator, alwaysBuy, startValue);
 	}
 

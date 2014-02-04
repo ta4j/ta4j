@@ -39,42 +39,4 @@ public class PipeEnterStrategy extends AbstractStrategy {
         return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), crossUp,
                 crossDown);
     }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = (prime * result) + ((crossDown == null) ? 0 : crossDown.hashCode());
-        result = (prime * result) + ((crossUp == null) ? 0 : crossUp.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final PipeEnterStrategy other = (PipeEnterStrategy) obj;
-        if (crossDown == null) {
-            if (other.crossDown != null) {
-                return false;
-            }
-        } else if (!crossDown.equals(other.crossDown)) {
-            return false;
-        }
-        if (crossUp == null) {
-            if (other.crossUp != null) {
-                return false;
-            }
-        } else if (!crossUp.equals(other.crossUp)) {
-            return false;
-        }
-        return true;
-    }
 }

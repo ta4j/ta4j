@@ -1,7 +1,7 @@
 package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.ResistanceStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
@@ -24,7 +24,7 @@ public class ResistanceStrategyTest {
 	public void testResistanceShouldSell() {
 		Operation[] enter = new Operation[] { null, null, null, null, null, null, null };
 
-		Strategy neverSell = new FakeStrategy(enter, enter);
+		Strategy neverSell = new MockStrategy(enter, enter);
 
 		Trade trade = new Trade();
 

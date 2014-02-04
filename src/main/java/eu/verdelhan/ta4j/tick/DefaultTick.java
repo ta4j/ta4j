@@ -98,27 +98,6 @@ public class DefaultTick implements Tick {
 		trades++;
 	}
 
-	@Override
-	public boolean equals(Object obj) {
-		if (obj instanceof DefaultTick) {
-			DefaultTick tick = (DefaultTick) obj;
-			return (hashCode() == tick.hashCode() && (closePrice == tick
-					.getClosePrice()))
-					&& (endTime.equals(tick.getEndTime()))
-					&& (maxPrice == tick.getMaxPrice())
-					&& (minPrice == tick.getMinPrice())
-					&& (openPrice == tick.getOpenPrice())
-					&& (trades == tick.getTrades())
-					&& (amount == tick.getAmount()) && (volume == tick.getVolume());
-		}
-		return false;
-	}
-
-	@Override
-	public int hashCode() {
-		return 7 * endTime.hashCode();
-	}
-
 	public BigDecimal getMinPrice() {
 		return minPrice;
 	}

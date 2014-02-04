@@ -1,7 +1,7 @@
 package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.SupportStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -26,7 +26,7 @@ public class SupportStrategyTest {
 	public void testSupportShouldBuy() {
 		Operation[] enter = new Operation[] { null, null, null, null, null, null };
 
-		Strategy neverBuy = new FakeStrategy(enter, enter);
+		Strategy neverBuy = new MockStrategy(enter, enter);
 
 		Strategy support = new SupportStrategy(indicator, neverBuy, 95);
 

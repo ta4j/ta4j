@@ -1,7 +1,7 @@
 package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.NotSoFastStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import eu.verdelhan.ta4j.Operation;
@@ -18,7 +18,7 @@ public class NotSoFastStrategyTest {
 
 	private Operation[] exit;
 
-	private FakeStrategy fakeStrategy;
+	private MockStrategy fakeStrategy;
 
 	@Before
 	public void setUp() {
@@ -28,7 +28,7 @@ public class NotSoFastStrategyTest {
 				new Operation(3, OperationType.SELL), new Operation(4, OperationType.SELL),
 				new Operation(5, OperationType.SELL), };
 
-		fakeStrategy = new FakeStrategy(enter, exit);
+		fakeStrategy = new MockStrategy(enter, exit);
 	}
 
 	@Test

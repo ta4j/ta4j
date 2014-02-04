@@ -14,7 +14,7 @@ import eu.verdelhan.ta4j.runner.HistoryRunnerFactory;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import eu.verdelhan.ta4j.strategy.AlwaysOperateStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -29,7 +29,7 @@ public class BestStrategyEvaluatorTest {
 
 	private AlwaysOperateStrategy alwaysStrategy;
 
-	private FakeStrategy buyAndHoldStrategy;
+	private MockStrategy buyAndHoldStrategy;
 
 	private HashSet<Strategy> strategies;
 
@@ -38,7 +38,7 @@ public class BestStrategyEvaluatorTest {
 		enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null };
 		exit = new Operation[] { null, null, null, new Operation(4, OperationType.SELL) };
 		alwaysStrategy = new AlwaysOperateStrategy();
-		buyAndHoldStrategy = new FakeStrategy(enter, exit);
+		buyAndHoldStrategy = new MockStrategy(enter, exit);
 		strategies = new HashSet<Strategy>();
 		strategies.add(alwaysStrategy);
 		strategies.add(buyAndHoldStrategy);

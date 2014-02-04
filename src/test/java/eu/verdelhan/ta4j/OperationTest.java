@@ -1,12 +1,7 @@
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.Operation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
-
 import org.junit.Before;
 import org.junit.Test;
 
@@ -24,28 +19,6 @@ public class OperationTest {
 	}
 
 	@Test
-	public void testOverrideOperationEquals() {
-		assertTrue(opEquals1.equals(opEquals2));
-		assertTrue(opEquals2.equals(opEquals1));
-
-		assertFalse(opEquals1.equals(opNotEquals1));
-		assertFalse(opEquals1.equals(opNotEquals2));
-
-		assertFalse(opEquals2.equals(opNotEquals1));
-		assertFalse(opEquals2.equals(opNotEquals2));
-
-	}
-
-	@Test
-	public void testOverrideOperationHashCode() {
-		assertEquals(opEquals1.hashCode(), opEquals2.hashCode());
-
-		assertTrue(opEquals1.hashCode() != opNotEquals1.hashCode());
-		assertTrue(opEquals1.hashCode() != opNotEquals2.hashCode());
-
-	}
-
-	@Test
 	public void testOverrideToString() {
 		assertEquals(opEquals1.toString(), opEquals2.toString());
 
@@ -53,9 +26,4 @@ public class OperationTest {
 		assertFalse(opEquals1.toString().equals(opNotEquals2.toString()));
 
 	}
-
-	public static junit.framework.Test suite() {
-		return new JUnit4TestAdapter(OperationTest.class);
-	}
-
 }

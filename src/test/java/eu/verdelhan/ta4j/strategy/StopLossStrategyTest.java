@@ -2,7 +2,7 @@ package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.JustBuyOnceStrategy;
 import eu.verdelhan.ta4j.strategy.StopLossStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -50,7 +50,7 @@ public class StopLossStrategyTest {
 		Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null };
 		Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null };
 
-		Strategy sell1 = new FakeStrategy(enter, exit);
+		Strategy sell1 = new MockStrategy(enter, exit);
 
 		Strategy stopper = new StopLossStrategy(indicator, sell1, 500);
 

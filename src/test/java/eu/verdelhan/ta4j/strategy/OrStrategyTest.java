@@ -2,7 +2,7 @@ package eu.verdelhan.ta4j.strategy;
 
 
 import eu.verdelhan.ta4j.strategy.OrStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.assertEquals;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -17,8 +17,8 @@ public class OrStrategyTest {
 	private Operation[] exit;
 	private Operation[] enter2;
 	private Operation[] exit2;
-	private FakeStrategy fakeStrategy;
-	private FakeStrategy fakeStrategy2;
+	private MockStrategy fakeStrategy;
+	private MockStrategy fakeStrategy2;
 	private Strategy orStrategy;
 
 	@Before
@@ -55,8 +55,8 @@ public class OrStrategyTest {
 				null,
 				new Operation(5, OperationType.SELL)
 		};
-		this.fakeStrategy = new FakeStrategy(enter,exit);
-		this.fakeStrategy2 = new FakeStrategy(enter2,exit2);
+		this.fakeStrategy = new MockStrategy(enter,exit);
+		this.fakeStrategy2 = new MockStrategy(enter2,exit2);
 		
 		this.orStrategy = new OrStrategy(fakeStrategy,fakeStrategy2);
 	}

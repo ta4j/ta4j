@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.assertEquals;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -15,8 +15,8 @@ public class AbstractStrategyTest {
 	private Operation[] exit;
 	private Operation[] enter2;
 	private Operation[] exit2;
-	private FakeStrategy fakeStrategy;
-	private FakeStrategy fakeStrategy2;
+	private MockStrategy fakeStrategy;
+	private MockStrategy fakeStrategy2;
 
 	@Before
 	public void setUp() throws Exception {
@@ -52,8 +52,8 @@ public class AbstractStrategyTest {
 				new Operation(4, OperationType.SELL),
 				new Operation(5, OperationType.SELL)
 		};
-		this.fakeStrategy = new FakeStrategy(enter,exit);
-		this.fakeStrategy2 = new FakeStrategy(enter2,exit2);
+		this.fakeStrategy = new MockStrategy(enter,exit);
+		this.fakeStrategy2 = new MockStrategy(enter2,exit2);
 	}
 
 	@Test

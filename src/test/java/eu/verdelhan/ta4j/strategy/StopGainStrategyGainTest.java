@@ -2,7 +2,7 @@ package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.StopGainStrategy;
 import eu.verdelhan.ta4j.strategy.JustBuyOnceStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -50,7 +50,7 @@ public class StopGainStrategyGainTest {
 		Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, new Operation(2, OperationType.BUY), null, null };
 		Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, new Operation(4, OperationType.SELL) };
 
-		Strategy sell1 = new FakeStrategy(enter, exit);
+		Strategy sell1 = new MockStrategy(enter, exit);
 
 		Strategy stopper = new StopGainStrategy(indicator, sell1, 5);
 

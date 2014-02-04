@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.analysis.evaluator;
 
-import eu.verdelhan.ta4j.analysis.evaluator.Decision;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -11,10 +10,10 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.runner.HistoryRunner;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import eu.verdelhan.ta4j.runner.HistoryRunner;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -45,10 +44,10 @@ public class DecisionTest {
 		Operation[] sell = new Operation[] { null, new Operation(1, OperationType.SELL), null,
 				new Operation(3, OperationType.SELL) };
 
-		Strategy fakeStrategy = new FakeStrategy(buy, sell);
+		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
-
+ 
 		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertEquals(45d / 21, decision.evaluateCriterion(), 0.001);
 	}
@@ -63,7 +62,7 @@ public class DecisionTest {
 
 		Operation[] sell = new Operation[] { null, null, null, null };
 
-		Strategy fakeStrategy = new FakeStrategy(buy, sell);
+		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertEquals(1d, decision.evaluateCriterion());
@@ -78,7 +77,7 @@ public class DecisionTest {
 
 		Operation[] sell = new Operation[] { null, null, null, new Operation(3, OperationType.SELL) };
 
-		Strategy fakeStrategy = new FakeStrategy(buy, sell);
+		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertEquals(Math.pow(3d, 1d / 4), decision.evaluateCriterion(new AverageProfitCriterion()), 0.0001);
@@ -94,7 +93,7 @@ public class DecisionTest {
 
 		Operation[] sell = new Operation[] { null, null, null, null };
 
-		Strategy fakeStrategy = new FakeStrategy(buy, sell);
+		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertEquals(1d, decision.evaluateCriterion(new AverageProfitCriterion()));
@@ -108,7 +107,7 @@ public class DecisionTest {
 
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };
 		Operation[] sell = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null, null, null,null };
-		Strategy fakeStrategy = new FakeStrategy(buy, sell);
+		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		List<Trade> trades = runner.run(0);
 		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, trades, new HistoryRunner(slicer,fakeStrategy));

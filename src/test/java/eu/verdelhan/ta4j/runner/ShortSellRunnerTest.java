@@ -13,7 +13,7 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -40,7 +40,7 @@ public class ShortSellRunnerTest {
 				null, null, new Operation(6, OperationType.BUY), null, null };
 		exit = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null,
 				new Operation(7, OperationType.SELL), new Operation(8, OperationType.SELL) };
-		strategy = new FakeStrategy(enter, exit);
+		strategy = new MockStrategy(enter, exit);
 	}
 
 	@Test
@@ -67,7 +67,7 @@ public class ShortSellRunnerTest {
 		Operation[] exit = { null, null, null, new Operation(3, OperationType.SELL), null, null, null, null, null };
 
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
-		Strategy strategy = new FakeStrategy(enter, exit);
+		Strategy strategy = new MockStrategy(enter, exit);
 		Runner runner = new ShortSellRunner(slicer, strategy);
 		List<Trade> trades = runner.run(0);
 		assertEquals(1, trades.size());
@@ -82,7 +82,7 @@ public class ShortSellRunnerTest {
 		Operation[] exit = { null, null, null, null, null, null, null, null, null };
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 				
-		Strategy strategy = new FakeStrategy(enter, exit);
+		Strategy strategy = new MockStrategy(enter, exit);
 		Runner runner = new ShortSellRunner(slicer, strategy);
 		List<Trade> trades = runner.run(0);
 		assertEquals(0, trades.size());

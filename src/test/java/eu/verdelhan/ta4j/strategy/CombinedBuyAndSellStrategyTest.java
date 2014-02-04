@@ -2,7 +2,7 @@ package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.strategy.IndicatorCrossedIndicatorStrategy;
 import eu.verdelhan.ta4j.strategy.CombinedBuyAndSellStrategy;
-import eu.verdelhan.ta4j.strategy.FakeStrategy;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -19,9 +19,9 @@ public class CombinedBuyAndSellStrategyTest {
 
 	private Operation[] exit;
 
-	private FakeStrategy buyStrategy;
+	private MockStrategy buyStrategy;
 
-	private FakeStrategy sellStrategy;
+	private MockStrategy sellStrategy;
 
 	private CombinedBuyAndSellStrategy combined;
 
@@ -32,8 +32,8 @@ public class CombinedBuyAndSellStrategyTest {
 				new Operation(4, OperationType.BUY) };
 		exit = new Operation[] { null, null, null, null, null };
 
-		buyStrategy = new FakeStrategy(enter, null);
-		sellStrategy = new FakeStrategy(null, exit);
+		buyStrategy = new MockStrategy(enter, null);
+		sellStrategy = new MockStrategy(null, exit);
 
 		combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
 
@@ -59,8 +59,8 @@ public class CombinedBuyAndSellStrategyTest {
 
 		enter = new Operation[] { null, null, null, null, null };
 
-		buyStrategy = new FakeStrategy(enter, null);
-		sellStrategy = new FakeStrategy(null, exit);
+		buyStrategy = new MockStrategy(enter, null);
+		sellStrategy = new MockStrategy(null, exit);
 
 		combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
 
