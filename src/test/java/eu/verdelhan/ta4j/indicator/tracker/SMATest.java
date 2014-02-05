@@ -25,14 +25,14 @@ public class SMATest {
 		assertThat((double) sma.getValue(1)).isEqualTo(1.5);
 		assertThat((double) sma.getValue(2)).isEqualTo(2.0);
 		assertThat((double) sma.getValue(3)).isEqualTo(3.0);
-		assertEquals(10.0 / 3, (double) sma.getValue(4));
-		assertEquals(11.0 / 3, (double) sma.getValue(5));
+		assertThat((double) sma.getValue(4)).isEqualTo(10.0 / 3);
+		assertThat((double) sma.getValue(5)).isEqualTo(11.0 / 3);
 		assertThat((double) sma.getValue(6)).isEqualTo(4.0);
-		assertEquals(13.0 / 3, (double) sma.getValue(7));
+		assertThat((double) sma.getValue(7)).isEqualTo(13.0 / 3);
 		assertThat((double) sma.getValue(8)).isEqualTo(4.0);
-		assertEquals(10.0 / 3, (double) sma.getValue(9));
-		assertEquals(10.0 / 3, (double) sma.getValue(10));
-		assertEquals(10.0 / 3, (double) sma.getValue(11));
+		assertThat((double) sma.getValue(9)).isEqualTo(10.0 / 3);
+		assertThat((double) sma.getValue(10)).isEqualTo(10.0 / 3);
+		assertThat((double) sma.getValue(11)).isEqualTo(10.0 / 3);
 		assertThat((double) sma.getValue(12)).isEqualTo(3.0);
 
 	}

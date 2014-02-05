@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.indicator.tracker;
 
-import eu.verdelhan.ta4j.indicator.tracker.WilliamsR;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
@@ -10,7 +9,7 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.series.DefaultTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,13 +44,13 @@ public class WilliamsRTest {
 		WilliamsR wr = new WilliamsR(new ClosePrice(data), 5, new MaxPrice(data),
 				new MinPrice(data));
 
-		assertEquals(-47.22, wr.getValue(4), 0.01);
-		assertEquals(-54.55, wr.getValue(5), 0.01);
-		assertEquals(-78.57, wr.getValue(6), 0.01);
-		assertEquals(-47.62, wr.getValue(7), 0.01);
-		assertEquals(-25.00, wr.getValue(8), 0.01);
-		assertEquals(-5.26, wr.getValue(9), 0.01);
-		assertEquals(-13.95, wr.getValue(10), 0.01);
+		assertThat(wr.getValue(4)).isEqualTo(-47.22);
+		assertThat(wr.getValue(5)).isEqualTo(-54.55);
+		assertThat(wr.getValue(6)).isEqualTo(-78.57);
+		assertThat(wr.getValue(7)).isEqualTo(-47.62);
+		assertThat(wr.getValue(8)).isEqualTo(-25.00);
+		assertThat(wr.getValue(9)).isEqualTo(-5.26);
+		assertThat(wr.getValue(10)).isEqualTo(-13.95);
 
 	}
 
@@ -59,8 +58,8 @@ public class WilliamsRTest {
 	public void testWilliamsRShouldWorkJumpingIndexes() {
 		WilliamsR wr = new WilliamsR(new ClosePrice(data), 5, new MaxPrice(data),
 				new MinPrice(data));
-		assertEquals(-13.95, wr.getValue(10), 0.01);
-		assertEquals(-47.22, wr.getValue(4), 0.01);
+		assertThat(wr.getValue(10)).isEqualTo(-13.95);
+		assertThat(wr.getValue(4)).isEqualTo(-47.22);
 	}
 
 	@Test
@@ -68,10 +67,10 @@ public class WilliamsRTest {
 		WilliamsR wr = new WilliamsR(new ClosePrice(data), 10, new MaxPrice(data),
 				new MinPrice(data));
 
-		assertEquals(-4.08, wr.getValue(9), 0.01);
-		assertEquals(-11.77, wr.getValue(10), 0.01);
-		assertEquals(-8.93, wr.getValue(11), 0.01);
-		assertEquals(-10.53, wr.getValue(12), 0.01);
+		assertThat(wr.getValue(9)).isEqualTo(-4.08);
+		assertThat(wr.getValue(10)).isEqualTo(-11.77);
+		assertThat(wr.getValue(11)).isEqualTo(-8.93);
+		assertThat(wr.getValue(12)).isEqualTo(-10.53);
 
 	}
 

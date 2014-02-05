@@ -1,11 +1,8 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.AlwaysOperateStrategy;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
-
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,7 +17,7 @@ public class AlwaysOperateStrategyTest {
 	@Test
 	public void shouldEnterBuyingIfTradeIsNew() {
 		Trade trade = new Trade();
-		assertTrue(strategy.shouldOperate(trade, 0));
+		assertThat(strategy.shouldOperate(trade, 0)).isTrue();
 	}
 
 	@Test
@@ -28,7 +25,7 @@ public class AlwaysOperateStrategyTest {
 		Trade trade = new Trade();
 		trade.operate(0);
 
-		assertTrue(strategy.shouldOperate(trade, 1));
+		assertThat(strategy.shouldOperate(trade, 1)).isTrue();
 	}
 
 	@Test
@@ -37,13 +34,13 @@ public class AlwaysOperateStrategyTest {
 		trade.operate(0);
 		trade.operate(1);
 
-		assertFalse(strategy.shouldOperate(trade, 2));
+		assertThat(strategy.shouldOperate(trade, 2)).isFalse();
 	}
 
 	@Test
 	public void shouldEnterSellingIfUncoveredTradeIsNew() {
 		Trade uncoveredTrade = new Trade(OperationType.SELL);
-		assertTrue(strategy.shouldOperate(uncoveredTrade, 0));
+		assertThat(strategy.shouldOperate(uncoveredTrade, 0)).isTrue();
 	}
 
 	@Test
@@ -51,6 +48,6 @@ public class AlwaysOperateStrategyTest {
 		Trade uncoveredTrade = new Trade(OperationType.SELL);
 		uncoveredTrade.operate(0);
 
-		assertTrue(strategy.shouldOperate(uncoveredTrade, 1));
+		assertThat(strategy.shouldOperate(uncoveredTrade, 1)).isTrue();
 	}
 }

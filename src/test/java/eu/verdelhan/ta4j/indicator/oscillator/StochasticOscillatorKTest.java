@@ -42,8 +42,8 @@ public class StochasticOscillatorKTest {
 
 		StochasticOscillatorK sof = new StochasticOscillatorK(data, 14);
 
-		assertEquals(313d / 3.50, sof.getValue(0), 0.01);
-		assertEquals(1000d / 10.81, sof.getValue(12), 0.01);
+		assertThat(sof.getValue(0)).isEqualTo(313d / 3.50);
+		assertThat(sof.getValue(12)).isEqualTo(1000d / 10.81);
 		assertThat(sof.getValue(13)).isEqualTo(57.81);
 	}
 

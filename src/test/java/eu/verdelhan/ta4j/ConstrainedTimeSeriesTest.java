@@ -53,13 +53,13 @@ public class ConstrainedTimeSeriesTest {
 
 	@Test
 	public void getPeriodName() {
-		assertTrue(constrained.getPeriodName().endsWith(series.getTick(series.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy")));
-		assertTrue(constrained.getPeriodName().startsWith(series.getTick(series.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy")));
+		assertThat(constrained.getPeriodName().endsWith(series.getTick(series.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy"))).isTrue();
+		assertThat(constrained.getPeriodName().startsWith(series.getTick(series.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy"))).isTrue();
 	}
 	
 	@Test
 	public void getName() {
-		assertTrue(constrained.getName().endsWith(series.getName()));
+		assertThat(constrained.getName().endsWith(series.getName())).isTrue();
 	}
 	
 	@Test

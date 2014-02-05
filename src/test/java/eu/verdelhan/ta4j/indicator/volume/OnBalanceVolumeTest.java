@@ -23,11 +23,11 @@ public class OnBalanceVolumeTest {
 		OnBalanceVolume onBalance = new OnBalanceVolume(new MockTimeSeries(ticks));
 		
 		assertThat(onBalance.getValue(0)).isEqualTo(0d);
-		assertEquals(-2d, onBalance.getValue(1));
+		assertThat(onBalance.getValue(1)).isEqualTo(-2d);
 		assertThat(onBalance.getValue(2)).isEqualTo(1d);
 		assertThat(onBalance.getValue(3)).isEqualTo(9d);
 		assertThat(onBalance.getValue(4)).isEqualTo(9d);
-		assertEquals(-1d, onBalance.getValue(5));
+		assertThat(onBalance.getValue(5)).isEqualTo(-1d);
 
 	}
 }

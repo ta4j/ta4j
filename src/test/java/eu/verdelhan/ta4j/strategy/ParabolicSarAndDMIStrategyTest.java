@@ -1,13 +1,9 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.IndicatorOverIndicatorStrategy;
-import eu.verdelhan.ta4j.strategy.IndicatorCrossedIndicatorStrategy;
-import eu.verdelhan.ta4j.strategy.ParabolicSarAndDMIStrategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -21,11 +17,11 @@ public class ParabolicSarAndDMIStrategyTest {
 		
 		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePrice(series1), new ClosePrice(series2));
 		ParabolicSarAndDMIStrategy parabolicStrategy = new ParabolicSarAndDMIStrategy(indicatorCrossedIndicator, null);
-		assertFalse(parabolicStrategy.shouldEnter(0));
-		assertFalse(parabolicStrategy.shouldEnter(1));
-		assertTrue(parabolicStrategy.shouldEnter(2));
-		assertFalse(parabolicStrategy.shouldEnter(3));
-		assertTrue(parabolicStrategy.shouldEnter(4));
+		assertThat(parabolicStrategy.shouldEnter(0)).isFalse();
+		assertThat(parabolicStrategy.shouldEnter(1)).isFalse();
+		assertThat(parabolicStrategy.shouldEnter(2)).isTrue();
+		assertThat(parabolicStrategy.shouldEnter(3)).isFalse();
+		assertThat(parabolicStrategy.shouldEnter(4)).isTrue();
 	}
 	
 	@Test
@@ -42,10 +38,10 @@ public class ParabolicSarAndDMIStrategyTest {
 		
 		ParabolicSarAndDMIStrategy parabolicStrategy = new ParabolicSarAndDMIStrategy(indicatorCrossedIndicator, indicatorOverIndicator);
 		
-		assertFalse(parabolicStrategy.shouldExit(0));
-		assertFalse(parabolicStrategy.shouldExit(1));
-		assertFalse(parabolicStrategy.shouldExit(2));
-		assertFalse(parabolicStrategy.shouldExit(3));
-		assertTrue(parabolicStrategy.shouldExit(4));
+		assertThat(parabolicStrategy.shouldExit(0)).isFalse();
+		assertThat(parabolicStrategy.shouldExit(1)).isFalse();
+		assertThat(parabolicStrategy.shouldExit(2)).isFalse();
+		assertThat(parabolicStrategy.shouldExit(3)).isFalse();
+		assertThat(parabolicStrategy.shouldExit(4)).isTrue();
 	}
 }

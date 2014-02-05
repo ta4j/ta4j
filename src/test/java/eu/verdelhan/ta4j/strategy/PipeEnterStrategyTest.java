@@ -1,10 +1,8 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.PipeEnterStrategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -27,14 +25,14 @@ public class PipeEnterStrategyTest {
 
 		PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 
-		assertFalse(pipeEnter.shouldOperate(trade, 1));
-		assertFalse(pipeEnter.shouldOperate(trade, 8));
-		assertFalse(pipeEnter.shouldOperate(trade, 10));
+		assertThat(pipeEnter.shouldOperate(trade, 1)).isFalse();
+		assertThat(pipeEnter.shouldOperate(trade, 8)).isFalse();
+		assertThat(pipeEnter.shouldOperate(trade, 10)).isFalse();
 		trade.operate(8);
-		assertTrue(pipeEnter.shouldOperate(trade, 9));
+		assertThat(pipeEnter.shouldOperate(trade, 9)).isTrue();
 		trade = new Trade();
-		assertFalse(pipeEnter.shouldOperate(trade, 11));
-		assertTrue(pipeEnter.shouldOperate(trade, 12));
+		assertThat(pipeEnter.shouldOperate(trade, 11)).isFalse();
+		assertThat(pipeEnter.shouldOperate(trade, 12)).isTrue();
 	}
 
 	@Test
@@ -45,13 +43,13 @@ public class PipeEnterStrategyTest {
 
 		PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 
-		assertFalse(pipeEnter.shouldOperate(trade, 0));
-		assertTrue(pipeEnter.shouldOperate(trade, 1));
+		assertThat(pipeEnter.shouldOperate(trade, 0)).isFalse();
+		assertThat(pipeEnter.shouldOperate(trade, 1)).isTrue();
 		trade.operate(1);
-		assertFalse(pipeEnter.shouldOperate(trade, 8));
-		assertFalse(pipeEnter.shouldOperate(trade, 10));
+		assertThat(pipeEnter.shouldOperate(trade, 8)).isFalse();
+		assertThat(pipeEnter.shouldOperate(trade, 10)).isFalse();
 
-		assertFalse(pipeEnter.shouldOperate(trade, 8));
-		assertTrue(pipeEnter.shouldOperate(trade, 9));
+		assertThat(pipeEnter.shouldOperate(trade, 8)).isFalse();
+		assertThat(pipeEnter.shouldOperate(trade, 9)).isTrue();
 	}
 }

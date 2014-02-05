@@ -21,7 +21,7 @@ public class TotalProfitCriterionTest {
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
 		AnalysisCriterion profit = new TotalProfitCriterion();
-		assertEquals(1.10 * 1.05, profit.calculate(series, trades));
+		assertThat(profit.calculate(series, trades)).isEqualTo(1.10 * 1.05);
 	}
 
 	@Test
@@ -32,7 +32,7 @@ public class TotalProfitCriterionTest {
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
 		AnalysisCriterion profit = new TotalProfitCriterion();
-		assertEquals(0.95 * 0.7, profit.calculate(series, trades));
+		assertThat(profit.calculate(series, trades)).isEqualTo(0.95 * 0.7);
 	}
 
 	@Test

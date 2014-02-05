@@ -305,7 +305,7 @@ public class PartialMemorizesSlicerTest {
 						1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
 						.withDate(2003, 3, 3));
 		PartialMemorizedSlicer slicer = new PartialMemorizedSlicer(series, period, 3);
-		assertEquals(27d/4, slicer.getAverageTicksPerSlice());
+		assertThat(slicer.getAverageTicksPerSlice()).isEqualTo(27d/4);
 	}
 
 }

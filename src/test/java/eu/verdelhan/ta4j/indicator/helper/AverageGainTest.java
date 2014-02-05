@@ -21,21 +21,21 @@ public class AverageGainTest {
 	public void testAverageGainUsingTimeFrame5UsingClosePrice() throws Exception {
 		AverageGain averageGain = new AverageGain(new ClosePrice(data), 5);
 
-		assertEquals(4d / 5d, averageGain.getValue(5), 0.01);
-		assertEquals(4d / 5d, averageGain.getValue(6), 0.01);
-		assertEquals(3d / 5d, averageGain.getValue(7), 0.01);
-		assertEquals(2d / 5d, averageGain.getValue(8), 0.01);
-		assertEquals(2d / 5d, averageGain.getValue(9), 0.01);
-		assertEquals(2d / 5d, averageGain.getValue(10), 0.01);
-		assertEquals(1d / 5d, averageGain.getValue(11), 0.01);
-		assertEquals(1d / 5d, averageGain.getValue(12), 0.01);
+		assertThat(averageGain.getValue(5)).isEqualTo(4d / 5d);
+		assertThat(averageGain.getValue(6)).isEqualTo(4d / 5d);
+		assertThat(averageGain.getValue(7)).isEqualTo(3d / 5d);
+		assertThat(averageGain.getValue(8)).isEqualTo(2d / 5d);
+		assertThat(averageGain.getValue(9)).isEqualTo(2d / 5d);
+		assertThat(averageGain.getValue(10)).isEqualTo(2d / 5d);
+		assertThat(averageGain.getValue(11)).isEqualTo(1d / 5d);
+		assertThat(averageGain.getValue(12)).isEqualTo(1d / 5d);
 	}
 
 	@Test
 	public void testAverageGainShouldWorkJumpingIndexes() {
 		AverageGain averageGain = new AverageGain(new ClosePrice(data), 5);
-		assertEquals(2d / 5d, averageGain.getValue(10), 0.01);
-		assertEquals(1d / 5d, averageGain.getValue(12), 0.01);
+		assertThat(averageGain.getValue(10)).isEqualTo(2d / 5d);
+		assertThat(averageGain.getValue(12)).isEqualTo(1d / 5d);
 	}
 
 	@Test

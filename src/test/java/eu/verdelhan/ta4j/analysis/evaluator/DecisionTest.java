@@ -50,7 +50,7 @@ public class DecisionTest {
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
  
 		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertEquals(45d / 21, decision.evaluateCriterion(), 0.001);
+		assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21);
 	}
 
 	@Test

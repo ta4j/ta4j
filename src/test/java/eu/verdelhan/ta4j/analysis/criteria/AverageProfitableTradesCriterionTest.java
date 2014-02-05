@@ -30,7 +30,7 @@ public class AverageProfitableTradesCriterionTest {
 		
 		AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
 		
-		assertEquals(2d/3, average.calculate(series, trades));
+		assertThat(average.calculate(series, trades)).isEqualTo(2d/3);
 	}
 
 	@Test
@@ -65,6 +65,6 @@ public class AverageProfitableTradesCriterionTest {
 		decisions.add(dummy2);
 
 		AnalysisCriterion averateProfitable = new AverageProfitableTradesCriterion();
-		assertEquals(2d/3, averateProfitable.summarize(series, decisions), 0.01);
+		assertThat(averateProfitable.summarize(series, decisions)).isEqualTo(2d/3);
 	}	
 }

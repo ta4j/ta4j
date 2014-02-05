@@ -41,7 +41,7 @@ public class TradeTest {
 	@Test
 	public void whenNewShouldNotExit() {
 		Trade trade = new Trade();
-		assertFalse(trade.isOpened());
+		assertThat(trade.isOpened()).isFalse();
 	}
 
 	@Test
@@ -58,9 +58,9 @@ public class TradeTest {
 		Trade trade = new Trade();
 		trade.operate(0);
 		trade.operate(1);
-		assertTrue(trade.isClosed());
+		assertThat(trade.isClosed()).isTrue();
 		trade.operate(2);
-		assertTrue(trade.isClosed());
+		assertThat(trade.isClosed()).isTrue();
 	}
 
 	@Test(expected = IllegalStateException.class)
@@ -75,7 +75,7 @@ public class TradeTest {
 		Trade trade = new Trade();
 		trade.operate(3);
 		trade.operate(3);
-		assertTrue(trade.isClosed());
+		assertThat(trade.isClosed()).isTrue();
 	}
 
 	@Test(expected = NullPointerException.class)

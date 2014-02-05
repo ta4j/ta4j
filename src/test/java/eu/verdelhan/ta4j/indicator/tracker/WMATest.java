@@ -17,11 +17,11 @@ public class WMATest {
 		Indicator<Double> wmaIndicator = new WMA(close, 3);
 		
 		assertThat((double) wmaIndicator.getValue(0)).isEqualTo(1d);
-		assertEquals(5d/3, (double) wmaIndicator.getValue(1));
-		assertEquals(14d/6, (double) wmaIndicator.getValue(2));
-		assertEquals(20d/6, (double) wmaIndicator.getValue(3));
-		assertEquals(26d/6, (double) wmaIndicator.getValue(4));
-		assertEquals(32d/6, (double) wmaIndicator.getValue(5));
+		assertThat((double) wmaIndicator.getValue(1)).isEqualTo(5d/3);
+		assertThat((double) wmaIndicator.getValue(2)).isEqualTo(14d/6);
+		assertThat((double) wmaIndicator.getValue(3)).isEqualTo(20d/6);
+		assertThat((double) wmaIndicator.getValue(4)).isEqualTo(26d/6);
+		assertThat((double) wmaIndicator.getValue(5)).isEqualTo(32d/6);
 	}
 	
 	@Test
@@ -31,7 +31,7 @@ public class WMATest {
 		Indicator<BigDecimal> close = new ClosePrice(series);
 		Indicator<Double> wmaIndicator = new WMA(close, 3);
 		
-		assertEquals(32d/6, (double) wmaIndicator.getValue(5));
+		assertThat((double) wmaIndicator.getValue(5)).isEqualTo(32d/6);
 	}
 	
 	@Test
@@ -42,11 +42,11 @@ public class WMATest {
 		Indicator<Double> wmaIndicator = new WMA(close, 55);
 		
 		assertThat((double) wmaIndicator.getValue(0)).isEqualTo(1d);
-		assertEquals(5d/3, (double) wmaIndicator.getValue(1));
-		assertEquals(14d/6, (double) wmaIndicator.getValue(2));
-		assertEquals(30d/10, (double) wmaIndicator.getValue(3));
-		assertEquals(55d/15, (double) wmaIndicator.getValue(4));
-		assertEquals(91d/21, (double) wmaIndicator.getValue(5));
+		assertThat((double) wmaIndicator.getValue(1)).isEqualTo(5d/3);
+		assertThat((double) wmaIndicator.getValue(2)).isEqualTo(14d/6);
+		assertThat((double) wmaIndicator.getValue(3)).isEqualTo(30d/10);
+		assertThat((double) wmaIndicator.getValue(4)).isEqualTo(55d/15);
+		assertThat((double) wmaIndicator.getValue(5)).isEqualTo(91d/21);
 	}
 
 }

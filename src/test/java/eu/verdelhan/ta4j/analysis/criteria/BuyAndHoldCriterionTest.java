@@ -76,6 +76,6 @@ public class BuyAndHoldCriterionTest {
 		MockTimeSeries series = new MockTimeSeries(new double[] {100, 105 });
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-		assertEquals(105d/100, buyAndHold.calculate(series, trade));	
+		assertThat(buyAndHold.calculate(series, trade)).isEqualTo(105d/100);	
 	}
 }

@@ -1,15 +1,13 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.SupportStrategy;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,19 +30,19 @@ public class SupportStrategyTest {
 
 		Trade trade = new Trade();
 
-		assertFalse(support.shouldOperate(trade, 0));
-		assertTrue(support.shouldOperate(trade, 1));
+		assertThat(support.shouldOperate(trade, 0)).isFalse();
+		assertThat(support.shouldOperate(trade, 1)).isTrue();
 		trade.operate(1);
 		assertEquals(new Operation(1, OperationType.BUY), trade.getEntry());
 		trade = new Trade();
-		assertTrue(support.shouldOperate(trade, 2));
+		assertThat(support.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
 		assertEquals(new Operation(2, OperationType.BUY), trade.getEntry());
 		trade = new Trade();
-		assertFalse(support.shouldOperate(trade, 3));
-		assertTrue(support.shouldOperate(trade, 4));
+		assertThat(support.shouldOperate(trade, 3)).isFalse();
+		assertThat(support.shouldOperate(trade, 4)).isTrue();
 		trade.operate(4);
 		assertEquals(new Operation(4, OperationType.BUY), trade.getEntry());
-		assertFalse(support.shouldOperate(trade, 5));
+		assertThat(support.shouldOperate(trade, 5)).isFalse();
 	}
 }

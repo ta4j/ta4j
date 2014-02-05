@@ -1,16 +1,13 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.StopGainStrategy;
-import eu.verdelhan.ta4j.strategy.JustBuyOnceStrategy;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,13 +30,13 @@ public class StopGainStrategyGainTest {
 		Operation sell = new Operation(3, OperationType.SELL);
 
 		Trade trade = new Trade();
-		assertTrue(stopper.shouldOperate(trade, 0));
+		assertThat(stopper.shouldOperate(trade, 0)).isTrue();
 		trade.operate(0);
 		assertEquals(buy, trade.getEntry());
-		assertFalse(stopper.shouldOperate(trade, 1));
-		assertFalse(stopper.shouldOperate(trade, 2));
+		assertThat(stopper.shouldOperate(trade, 1)).isFalse();
+		assertThat(stopper.shouldOperate(trade, 2)).isFalse();
 
-		assertTrue(stopper.shouldOperate(trade, 3));
+		assertThat(stopper.shouldOperate(trade, 3)).isTrue();
 		trade.operate(3);
 		assertEquals(sell, trade.getExit());
 	}
@@ -58,12 +55,12 @@ public class StopGainStrategyGainTest {
 		Operation sell = new Operation(1, OperationType.SELL);
 
 		Trade trade = new Trade();
-		assertTrue(stopper.shouldOperate(trade, 0));
+		assertThat(stopper.shouldOperate(trade, 0)).isTrue();
 		trade.operate(0);
 
 		assertEquals(buy, trade.getEntry());
 
-		assertTrue(stopper.shouldOperate(trade, 1));
+		assertThat(stopper.shouldOperate(trade, 1)).isTrue();
 		trade.operate(1);
 
 		assertEquals(sell, trade.getExit());
@@ -72,12 +69,12 @@ public class StopGainStrategyGainTest {
 		buy = new Operation(2, OperationType.BUY);
 		sell = new Operation(3, OperationType.SELL);
 		
-		assertTrue(stopper.shouldOperate(trade, 2));
+		assertThat(stopper.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
 
 		assertEquals(buy, trade.getEntry());
 
-		assertTrue(stopper.shouldOperate(trade, 3));
+		assertThat(stopper.shouldOperate(trade, 3)).isTrue();
 		trade.operate(3);
 
 		assertEquals(sell, trade.getExit());

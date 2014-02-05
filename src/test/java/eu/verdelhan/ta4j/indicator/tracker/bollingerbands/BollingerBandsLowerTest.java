@@ -37,7 +37,7 @@ public class BollingerBandsLowerTest {
 
 		assertThat((double) bblSMA.getValue(0)).isEqualTo(1d);
 		assertThat(bblSMA.getValue(1)).isEqualTo(0.08);
-		assertEquals(-0.82, bblSMA.getValue(2), 0.01);
+		assertThat(bblSMA.getValue(2)).isEqualTo(-0.82);
 		assertThat(bblSMA.getValue(3)).isEqualTo(0.17);
 		assertThat(bblSMA.getValue(4)).isEqualTo(1.70);
 		assertThat(bblSMA.getValue(5)).isEqualTo(2.03);

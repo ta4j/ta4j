@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.IndicatorOverIndicatorStrategy;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -8,9 +7,8 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import java.math.BigDecimal;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,23 +45,23 @@ public class IndicatorOverIndicatorStrategyTest {
 		Trade trade = new Trade();
 
 		Strategy s = new IndicatorOverIndicatorStrategy(first, second);
-		assertFalse(s.shouldOperate(trade, 0));
-		assertFalse(s.shouldOperate(trade, 1));
+		assertThat(s.shouldOperate(trade, 0)).isFalse();
+		assertThat(s.shouldOperate(trade, 1)).isFalse();
 		assertEquals(null, trade.getEntry());
 		Operation buy = new Operation(2, OperationType.BUY);
-		assertTrue(s.shouldOperate(trade, 2));
+		assertThat(s.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
 		assertEquals(buy, trade.getEntry());
 		trade = new Trade();
 		buy = new Operation(3, OperationType.BUY);
-		assertTrue(s.shouldOperate(trade, 3));
+		assertThat(s.shouldOperate(trade, 3)).isTrue();
 		trade.operate(3);
 		assertEquals(buy, trade.getEntry());
 
-		assertFalse(s.shouldOperate(trade, 3));
+		assertThat(s.shouldOperate(trade, 3)).isFalse();
 
 		Operation sell = new Operation(4, OperationType.SELL);
-		assertTrue(s.shouldOperate(trade, 4));
+		assertThat(s.shouldOperate(trade, 4)).isTrue();
 		trade.operate(4);
 		assertEquals(sell, trade.getExit());
 

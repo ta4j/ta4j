@@ -1,11 +1,8 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.DistanceBetweenIndicatorsStrategy;
-import eu.verdelhan.ta4j.strategy.AbstractStrategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -27,12 +24,12 @@ public class DistanceBetweenIndicatorsStrategyTest {
 	public void testStrategyIsBuyingCorreclty() {
 		Trade trade = new Trade();
 
-		assertFalse(distanceEnter.shouldOperate(trade, 0));
-		assertTrue(distanceEnter.shouldOperate(trade, 1));
+		assertThat(distanceEnter.shouldOperate(trade, 0)).isFalse();
+		assertThat(distanceEnter.shouldOperate(trade, 1)).isTrue();
 		trade = new Trade();
-		assertTrue(distanceEnter.shouldOperate(trade, 2));
-		assertFalse(distanceEnter.shouldOperate(trade, 3));
-		assertFalse(distanceEnter.shouldOperate(trade, 4));
+		assertThat(distanceEnter.shouldOperate(trade, 2)).isTrue();
+		assertThat(distanceEnter.shouldOperate(trade, 3)).isFalse();
+		assertThat(distanceEnter.shouldOperate(trade, 4)).isFalse();
 	}
 
 	@Test
@@ -40,15 +37,15 @@ public class DistanceBetweenIndicatorsStrategyTest {
 		Trade trade = new Trade();
 		trade.operate(2);
 
-		assertFalse(distanceEnter.shouldOperate(trade, 0));
-		assertTrue(distanceEnter.shouldOperate(trade, 5));
+		assertThat(distanceEnter.shouldOperate(trade, 0)).isFalse();
+		assertThat(distanceEnter.shouldOperate(trade, 5)).isTrue();
 
 		trade = new Trade();
 		trade.operate(2);
 
-		assertTrue(distanceEnter.shouldOperate(trade, 6));
-		assertFalse(distanceEnter.shouldOperate(trade, 3));
-		assertFalse(distanceEnter.shouldOperate(trade, 4));
+		assertThat(distanceEnter.shouldOperate(trade, 6)).isTrue();
+		assertThat(distanceEnter.shouldOperate(trade, 3)).isFalse();
+		assertThat(distanceEnter.shouldOperate(trade, 4)).isFalse();
 
 	}
 }

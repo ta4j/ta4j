@@ -51,7 +51,7 @@ public class DefaultTimeSeriesTest {
 
 	@Test
 	public void getName() {
-		assertTrue(defaultSeries.getName().equals(defaultName));
+		assertThat(defaultSeries.getName().equals(defaultName)).isTrue();
 	}
 
 	@Test

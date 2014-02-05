@@ -1,16 +1,13 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.strategy.IndicatorCrossedIndicatorStrategy;
-import eu.verdelhan.ta4j.strategy.CombinedBuyAndSellStrategy;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class CombinedBuyAndSellStrategyTest {
@@ -37,17 +34,17 @@ public class CombinedBuyAndSellStrategyTest {
 
 		combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
 
-		assertTrue(combined.shouldEnter(0));
-		assertFalse(combined.shouldEnter(1));
-		assertTrue(combined.shouldEnter(2));
-		assertFalse(combined.shouldEnter(3));
-		assertTrue(combined.shouldEnter(4));
+		assertThat(combined.shouldEnter(0)).isTrue();
+		assertThat(combined.shouldEnter(1)).isFalse();
+		assertThat(combined.shouldEnter(2)).isTrue();
+		assertThat(combined.shouldEnter(3)).isFalse();
+		assertThat(combined.shouldEnter(4)).isTrue();
 
-		assertFalse(combined.shouldExit(0));
-		assertFalse(combined.shouldExit(1));
-		assertFalse(combined.shouldExit(2));
-		assertFalse(combined.shouldExit(3));
-		assertFalse(combined.shouldExit(4));
+		assertThat(combined.shouldExit(0)).isFalse();
+		assertThat(combined.shouldExit(1)).isFalse();
+		assertThat(combined.shouldExit(2)).isFalse();
+		assertThat(combined.shouldExit(3)).isFalse();
+		assertThat(combined.shouldExit(4)).isFalse();
 
 	}
 
@@ -64,17 +61,17 @@ public class CombinedBuyAndSellStrategyTest {
 
 		combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
 
-		assertTrue(combined.shouldExit(0));
-		assertFalse(combined.shouldExit(1));
-		assertTrue(combined.shouldExit(2));
-		assertFalse(combined.shouldExit(3));
-		assertTrue(combined.shouldExit(4));
+		assertThat(combined.shouldExit(0)).isTrue();
+		assertThat(combined.shouldExit(1)).isFalse();
+		assertThat(combined.shouldExit(2)).isTrue();
+		assertThat(combined.shouldExit(3)).isFalse();
+		assertThat(combined.shouldExit(4)).isTrue();
 
-		assertFalse(combined.shouldEnter(0));
-		assertFalse(combined.shouldEnter(1));
-		assertFalse(combined.shouldEnter(2));
-		assertFalse(combined.shouldEnter(3));
-		assertFalse(combined.shouldEnter(4));
+		assertThat(combined.shouldEnter(0)).isFalse();
+		assertThat(combined.shouldEnter(1)).isFalse();
+		assertThat(combined.shouldEnter(2)).isFalse();
+		assertThat(combined.shouldEnter(3)).isFalse();
+		assertThat(combined.shouldEnter(4)).isFalse();
 	}
 
 	@Test
