@@ -1,7 +1,6 @@
 package eu.verdelhan.ta4j;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,10 +19,9 @@ public class OperationTest {
 
 	@Test
 	public void testOverrideToString() {
-		assertEquals(opEquals1.toString(), opEquals2.toString());
+		assertThat(opEquals2.toString()).isEqualTo(opEquals1.toString());
 
-		assertFalse(opEquals1.toString().equals(opNotEquals1.toString()));
-		assertFalse(opEquals1.toString().equals(opNotEquals2.toString()));
-
+		assertThat(opNotEquals1.toString()).isNotEqualTo(opEquals1.toString());
+		assertThat(opNotEquals2.toString()).isNotEqualTo(opEquals1.toString());
 	}
 }

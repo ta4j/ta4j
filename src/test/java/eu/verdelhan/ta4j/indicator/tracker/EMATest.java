@@ -1,10 +1,9 @@
 package eu.verdelhan.ta4j.indicator.tracker;
 
-import eu.verdelhan.ta4j.indicator.tracker.EMA;
-import eu.verdelhan.ta4j.indicator.tracker.SMA;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,16 +23,16 @@ public class EMATest {
 	public void testEMAUsingTimeFrame10UsingClosePrice() {
 		EMA ema = new EMA(new ClosePrice(data), 10);
 
-		assertEquals(63.65, ema.getValue(9), 0.01);
-		assertEquals(63.23, ema.getValue(10), 0.01);
-		assertEquals(62.91, ema.getValue(11), 0.01);
+		assertThat(ema.getValue(9)).isEqualTo(63.65);
+		assertThat(ema.getValue(10)).isEqualTo(63.23);
+		assertThat(ema.getValue(11)).isEqualTo(62.91);
 	}
 
 	@Test
 	public void testEMAFirstValueShouldBeEqualsToFirstDataValue() {
 		EMA ema = new EMA(new ClosePrice(data), 10);
 
-		assertEquals(64.75, ema.getValue(0), 0.01);
+		assertThat(ema.getValue(0)).isEqualTo(64.75);
 	}
 
 	@Test
@@ -51,20 +50,20 @@ public class EMATest {
 	@Test
 	public void testEMAShouldWorkJumpingIndexes() {
 		EMA ema = new EMA(new ClosePrice(data), 10);
-		assertEquals(63.23, ema.getValue(10), 0.01);
+		assertThat(ema.getValue(10)).isEqualTo(63.23);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		EMA ema = new EMA(new ClosePrice(data), 10);
-		assertEquals(3d, (double) ema.getValue(14));
+		assertThat((double) ema.getValue(14)).isEqualTo(3d);
 	}
 	
 	@Test
 	public void testSmallTimeFrame()
 	{
 		EMA ema = new EMA(new ClosePrice(data), 1);
-		assertEquals(64.75d, (double) ema.getValue(0));
+		assertThat((double) ema.getValue(0)).isEqualTo(64.75d);
 	}
 	
 }

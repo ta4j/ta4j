@@ -1,12 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.NumberOfTradesCriterion;
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -16,7 +9,10 @@ import eu.verdelhan.ta4j.analysis.evaluator.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
 import org.junit.Test;
 
@@ -28,7 +24,7 @@ public class NumberOfTradesCriterionTest {
 		List<Trade> trades = new ArrayList<Trade>();
 
 		AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-		assertEquals(0d, buyAndHold.calculate(series, trades));
+		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(0d);
 	}
 
 	@Test
@@ -39,7 +35,7 @@ public class NumberOfTradesCriterionTest {
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
 		AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-		assertEquals(2d, buyAndHold.calculate(series, trades));
+		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(2d);
 	}
 
 	@Test
@@ -60,7 +56,7 @@ public class NumberOfTradesCriterionTest {
 		decisions.add(dummy2);
 
 		AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-		assertEquals(2d, buyAndHold.summarize(series, decisions), 0.01);
+		assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(2d);
 	}
 	@Test
 	public void testCalculateWithOneTrade()
@@ -68,6 +64,6 @@ public class NumberOfTradesCriterionTest {
 		Trade trade = new Trade();
 		NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
 
-		assertEquals(1d, tradesCriterion.calculate(null, trade));
+		assertThat(tradesCriterion.calculate(null, trade)).isEqualTo(1d);
 	}
 }

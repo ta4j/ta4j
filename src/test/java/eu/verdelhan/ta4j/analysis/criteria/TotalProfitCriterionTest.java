@@ -1,17 +1,14 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-
+import java.util.ArrayList;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class TotalProfitCriterionTest {
@@ -55,6 +52,6 @@ public class TotalProfitCriterionTest {
 		List<Trade> trades = new ArrayList<Trade>();
 
 		AnalysisCriterion profit = new TotalProfitCriterion();
-		assertEquals(1d, profit.calculate(series, trades));
+		assertThat(profit.calculate(series, trades)).isEqualTo(1d);
 	}
 }

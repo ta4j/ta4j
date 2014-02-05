@@ -1,12 +1,12 @@
 package eu.verdelhan.ta4j.indicator.tracker;
 
-import eu.verdelhan.ta4j.indicator.tracker.AverageDirectionalMovement;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static junit.framework.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -22,7 +22,7 @@ public class AverageDirectionalMovementTest {
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		AverageDirectionalMovement adm = new AverageDirectionalMovement(series, 3);
 		
-		assertEquals(1d, adm.getValue(0));
+		assertThat(adm.getValue(0)).isEqualTo(1d);
 		double dup = (2d / 3 + 2d/3) / (2d/3 + 12d/3);
 		double ddown = (2d/3) /(2d/3 + 12d/3);
 		double firstdm = (dup - ddown) / (dup + ddown) * 100;

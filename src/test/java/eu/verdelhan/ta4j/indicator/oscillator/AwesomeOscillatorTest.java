@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.indicator.oscillator;
 
-import eu.verdelhan.ta4j.indicator.oscillator.AwesomeOscillator;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.AverageHighLow;
@@ -8,6 +7,7 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,10 +33,10 @@ public class AwesomeOscillatorTest {
 	public void testCalculateWithSma2AndSma3() throws Exception {
 		AwesomeOscillator awesome = new AwesomeOscillator(new AverageHighLow(series), 2, 3);
 
-		assertEquals(0d, (double) awesome.getValue(0));
-		assertEquals(0d, (double) awesome.getValue(1));
-		assertEquals(0.1666666d, awesome.getValue(2), 0.001);
-		assertEquals(1d, awesome.getValue(3), 0.001);
+		assertThat((double) awesome.getValue(0)).isEqualTo(0d);
+		assertThat((double) awesome.getValue(1)).isEqualTo(0d);
+		assertThat(awesome.getValue(2)).isEqualTo(0.1666666d);
+		assertThat(awesome.getValue(3)).isEqualTo(1d);
 		assertEquals(-3d, (double) awesome.getValue(4));
 	}
 
@@ -44,9 +44,9 @@ public class AwesomeOscillatorTest {
 	public void testWithSma1AndSma2() throws Exception {
 		AwesomeOscillator awesome = new AwesomeOscillator(new AverageHighLow(series), 1, 2);
 
-		assertEquals(0d, (double) awesome.getValue(0));
+		assertThat((double) awesome.getValue(0)).isEqualTo(0d);
 		assertEquals(-1.5d, (double) awesome.getValue(1));
-		assertEquals(3.5d, (double) awesome.getValue(2));
+		assertThat((double) awesome.getValue(2)).isEqualTo(3.5d);
 		assertEquals(-4d, (double) awesome.getValue(3));
 		assertEquals(-1d, (double) awesome.getValue(4));
 	}
@@ -55,11 +55,11 @@ public class AwesomeOscillatorTest {
 	public void testWithSmaDefault() throws Exception {
 		AwesomeOscillator awesome = new AwesomeOscillator(new AverageHighLow(series));
 
-		assertEquals(0d, (double) awesome.getValue(0));
-		assertEquals(0d, (double) awesome.getValue(1));
-		assertEquals(0d, (double) awesome.getValue(2));
-		assertEquals(0d, (double) awesome.getValue(3));
-		assertEquals(0d, (double) awesome.getValue(4));
+		assertThat((double) awesome.getValue(0)).isEqualTo(0d);
+		assertThat((double) awesome.getValue(1)).isEqualTo(0d);
+		assertThat((double) awesome.getValue(2)).isEqualTo(0d);
+		assertThat((double) awesome.getValue(3)).isEqualTo(0d);
+		assertThat((double) awesome.getValue(4)).isEqualTo(0d);
 	}
 
 }

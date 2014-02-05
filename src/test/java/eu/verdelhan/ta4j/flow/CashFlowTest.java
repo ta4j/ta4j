@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.flow;
 
-import eu.verdelhan.ta4j.flow.CashFlow;
 import eu.verdelhan.ta4j.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -13,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
@@ -22,7 +22,7 @@ public class CashFlowTest {
 	public void testCashFlowSize() {
 		TimeSeries sampleTimeSeries = new MockTimeSeries(new double[] { 1d, 2d, 3d, 4d, 5d });
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, new ArrayList<Trade>());
-		assertEquals(5, cashFlow.getSize());
+		assertThat(cashFlow.getSize()).isEqualTo(5);
 	}
 
 	@Test
@@ -118,7 +118,7 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(3, cashFlow.getSize());
+		assertThat(cashFlow.getSize()).isEqualTo(3);
 		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
 		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(1));
 		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(2));

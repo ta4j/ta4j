@@ -1,12 +1,11 @@
 package eu.verdelhan.ta4j.series;
 
-import eu.verdelhan.ta4j.series.DefaultTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import java.util.LinkedList;
 import java.util.List;
-
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
@@ -37,9 +36,9 @@ public class DefaultTimeSeriesTest {
 
 	@Test
 	public void getEndSizeBegin() {
-		assertEquals(0, defaultSeries.getBegin());
+		assertThat(defaultSeries.getBegin()).isEqualTo(0);
 		assertEquals(ticks.size() - 1, defaultSeries.getEnd());
-		assertEquals(ticks.size(), defaultSeries.getSize());
+		assertThat(defaultSeries.getSize()).isEqualTo(ticks.size());
 	}
 
 	@Test

@@ -1,10 +1,6 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.AbstractAnalysisCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.BuyAndHoldCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -13,11 +9,11 @@ public class AbstractAnalysisCriterionTest {
 	@Test
 	public void testToString() {
 		AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
-		assertEquals("Average Profit", c1.toString());
+		assertThat(c1.toString()).isEqualTo("Average Profit");
 		AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();
-		assertEquals("Buy And Hold", c2.toString());
+		assertThat(c2.toString()).isEqualTo("Buy And Hold");
 		AbstractAnalysisCriterion c3 = new RewardRiskRatioCriterion();
-		assertEquals("Reward Risk Ratio", c3.toString());
+		assertThat(c3.toString()).isEqualTo("Reward Risk Ratio");
 	}
 
 }

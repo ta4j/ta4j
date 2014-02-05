@@ -23,7 +23,7 @@ public class AccumulationDistributionTest {
 		
 		TimeSeries series = new MockTimeSeries(ticks);
 		AccumulationDistribution ac = new AccumulationDistribution(series);
-//		Assert.assertEquals(0d, ac.getValue(0));
+//		Assert.assertThat(ac.getValue(0)).isEqualTo(0d);
 //		assertEquals(-100d / 3, ac.getValue(1));
 //		assertEquals(-100d -(100d / 3) , ac.getValue(2));
 //		assertEquals((-250d/35) + (-100d -(100d / 3)), ac.getValue(3));

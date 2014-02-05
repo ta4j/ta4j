@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.LinearTransactionCostsCriterion;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -10,9 +9,9 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import java.util.ArrayList;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 
@@ -26,14 +25,14 @@ public class LinearTransactionCostsCriterionTest {
 		
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		
-		assertEquals(40d, transactionCost.calculate(series, trades));
+		assertThat(transactionCost.calculate(series, trades)).isEqualTo(40d);
 		
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
 
 		
-		assertEquals(80d, transactionCost.calculate(series, trades));
+		assertThat(transactionCost.calculate(series, trades)).isEqualTo(80d);
 		trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
-		assertEquals(120d, transactionCost.calculate(series, trades));
+		assertThat(transactionCost.calculate(series, trades)).isEqualTo(120d);
 	}
 
 	@Test
@@ -41,7 +40,7 @@ public class LinearTransactionCostsCriterionTest {
 		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion transactionCost = new LinearTransactionCostsCriterion(0, 40);
-		assertEquals(40d, transactionCost.calculate(series, trade));
+		assertThat(transactionCost.calculate(series, trade)).isEqualTo(40d);
 	}
 	@Test
 	public void testSummarize() {
@@ -62,6 +61,6 @@ public class LinearTransactionCostsCriterionTest {
 		decisions.add(new Decision(null, new RegularSlicer(series, new Period().withYears(2000)),0, null, trades, null));
 		
 		AnalysisCriterion transactionCosts = new LinearTransactionCostsCriterion(0, 40);
-		assertEquals(200d, transactionCosts.summarize(series, decisions));	
+		assertThat(transactionCosts.summarize(series, decisions)).isEqualTo(200d);	
 	}
 }

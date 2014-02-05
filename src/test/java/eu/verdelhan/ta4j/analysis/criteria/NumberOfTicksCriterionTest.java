@@ -1,12 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.NumberOfTicksCriterion;
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -16,7 +9,10 @@ import eu.verdelhan.ta4j.analysis.evaluator.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
 import org.junit.Test;
 
@@ -28,7 +24,7 @@ public class NumberOfTicksCriterionTest {
 		List<Trade> trades = new ArrayList<Trade>();
 
 		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
-		assertEquals(0d, buyAndHold.calculate(series, trades));
+		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(0d);
 	}
 
 	@Test
@@ -39,7 +35,7 @@ public class NumberOfTicksCriterionTest {
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
 		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
-		assertEquals(6d, buyAndHold.calculate(series, trades));
+		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(6d);
 	}
 
 	@Test
@@ -58,6 +54,6 @@ public class NumberOfTicksCriterionTest {
 		decisions.add(dummy2);
 
 		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
-		assertEquals(6d, buyAndHold.summarize(series, decisions));
+		assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(6d);
 	}
 }

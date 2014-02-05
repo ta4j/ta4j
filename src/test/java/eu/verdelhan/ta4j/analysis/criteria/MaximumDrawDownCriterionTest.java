@@ -1,12 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.MaximumDrawDownCriterion;
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.ta4j.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -16,7 +9,10 @@ import eu.verdelhan.ta4j.analysis.evaluator.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
 import org.junit.Test;
 
@@ -28,7 +24,7 @@ public class MaximumDrawDownCriterionTest {
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 
-		assertEquals(0d, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
 	}
 
 	@Test
@@ -39,7 +35,7 @@ public class MaximumDrawDownCriterionTest {
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
-		assertEquals(0d, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
 	}
 
 	@Test
@@ -51,7 +47,7 @@ public class MaximumDrawDownCriterionTest {
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
 		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
 
-		assertEquals(.875d, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(.875d);
 
 	}
 
@@ -61,7 +57,7 @@ public class MaximumDrawDownCriterionTest {
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 
-		assertEquals(0d, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
 	}
 
 	@Test
@@ -73,7 +69,7 @@ public class MaximumDrawDownCriterionTest {
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
 		trades.add(new Trade(new Operation(5, OperationType.SELL), new Operation(6, OperationType.BUY)));
 
-		assertEquals(.91, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(.91);
 	}
 
 	@Test
@@ -89,7 +85,7 @@ public class MaximumDrawDownCriterionTest {
 		// trades.add(new Trade(new Operation(4, OperationType.BUY), new
 		// Operation(5, OperationType.SELL)));
 
-		assertEquals(.9d, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
 	}
 
 	@Test
@@ -115,7 +111,7 @@ public class MaximumDrawDownCriterionTest {
 
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 
-		assertEquals(.875d, mdd.summarize(series, decisions));
+		assertThat(mdd.summarize(series, decisions)).isEqualTo(.875d);
 
 	}
 	@Test
@@ -129,7 +125,7 @@ public class MaximumDrawDownCriterionTest {
 		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
 		trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(7, OperationType.SELL)));
 		trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
-		assertEquals(.9d, mdd.calculate(series, trades));
+		assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
 		
 	}
 }

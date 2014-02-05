@@ -10,11 +10,12 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.runner.HistoryRunner;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
@@ -65,7 +66,7 @@ public class DecisionTest {
 		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertEquals(1d, decision.evaluateCriterion());
+		assertThat(decision.evaluateCriterion()).isEqualTo(1d);
 	}
 
 	@Test
@@ -96,7 +97,7 @@ public class DecisionTest {
 		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertEquals(1d, decision.evaluateCriterion(new AverageProfitCriterion()));
+		assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(1d);
 	}
 
 	@Test
@@ -116,7 +117,7 @@ public class DecisionTest {
 		Decision appliedDecision = decision.applyFor(1);
 
 		assertEquals(nextDecision, appliedDecision);
-		assertEquals(1d, appliedDecision.evaluateCriterion());
+		assertThat(appliedDecision.evaluateCriterion()).isEqualTo(1d);
 		assertEquals(slicer.getSlice(1).getBegin(), appliedDecision.getActualSlice().getBegin());
 		assertEquals(slicer.getSlice(1).getEnd(), appliedDecision.getActualSlice().getEnd());
 	}

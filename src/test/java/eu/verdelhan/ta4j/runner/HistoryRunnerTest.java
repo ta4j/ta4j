@@ -1,22 +1,20 @@
 package eu.verdelhan.ta4j.runner;
 
-import eu.verdelhan.ta4j.runner.HistoryRunner;
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,7 +47,7 @@ public class HistoryRunnerTest {
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
 		List<Trade> trades = historyRunner.run(0);
-		assertEquals(2, trades.size());
+		assertThat(trades).hasSize(2);
 
 		assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
@@ -67,7 +65,7 @@ public class HistoryRunnerTest {
 		Strategy strategy = new MockStrategy(enter, exit);
 		HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
 		List<Trade> trades = historyRunner.run(0);
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 
 		assertEquals(new Operation(1, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(3, OperationType.SELL), trades.get(0).getExit());
@@ -82,7 +80,7 @@ public class HistoryRunnerTest {
 		Strategy strategy = new MockStrategy(enter, exit);
 		HistoryRunner historyRunner = new HistoryRunner(OperationType.SELL, slicer, strategy);
 		List<Trade> trades = historyRunner.run(0);
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 
 		assertEquals(new Operation(1, OperationType.SELL), trades.get(0).getEntry());
 		assertEquals(new Operation(3, OperationType.BUY), trades.get(0).getExit());
@@ -100,18 +98,18 @@ public class HistoryRunnerTest {
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
 		HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
 		List<Trade> trades = historyRunner.run(0);
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 		assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 		
 		trades = historyRunner.run(1);
 
-		assertEquals(0, trades.size());
+		assertThat(trades).isEmpty();
 		
 
 		trades = historyRunner.run(2);
 
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 		assertEquals(new Operation(6, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(7, OperationType.SELL), trades.get(0).getExit());
 		
@@ -134,34 +132,34 @@ public class HistoryRunnerTest {
 		HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
 		List<Trade> trades = historyRunner.run(0);
 		
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 		assertEquals(new Operation(0, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(2, OperationType.SELL), trades.get(0).getExit());
 		
 		trades = historyRunner.run(1);
 		
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 		assertEquals(new Operation(3, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 		
 		trades = historyRunner.run(2);
 		
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 		assertEquals(new Operation(5, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(6, OperationType.SELL), trades.get(0).getExit());
 		
 		
 		trades = historyRunner.run(3);
 		
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 		assertEquals(new Operation(7, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(9, OperationType.SELL), trades.get(0).getExit());
 		
 		trades = historyRunner.run(4);
-		assertEquals(0, trades.size());
+		assertThat(trades).isEmpty();
 		
 		trades = historyRunner.run(5);
-		assertEquals(0, trades.size());
+		assertThat(trades).isEmpty();
 		
 	}
 }

@@ -1,12 +1,12 @@
 package eu.verdelhan.ta4j.indicator.volume;
 
-import eu.verdelhan.ta4j.indicator.volume.OnBalanceVolume;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static junit.framework.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 public class OnBalanceVolumeTest {
@@ -22,11 +22,11 @@ public class OnBalanceVolumeTest {
 		ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 10, 0));
 		OnBalanceVolume onBalance = new OnBalanceVolume(new MockTimeSeries(ticks));
 		
-		assertEquals(0d, onBalance.getValue(0));
+		assertThat(onBalance.getValue(0)).isEqualTo(0d);
 		assertEquals(-2d, onBalance.getValue(1));
-		assertEquals(1d, onBalance.getValue(2));
-		assertEquals(9d, onBalance.getValue(3));
-		assertEquals(9d, onBalance.getValue(4));
+		assertThat(onBalance.getValue(2)).isEqualTo(1d);
+		assertThat(onBalance.getValue(3)).isEqualTo(9d);
+		assertThat(onBalance.getValue(4)).isEqualTo(9d);
 		assertEquals(-1d, onBalance.getValue(5));
 
 	}

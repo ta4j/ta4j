@@ -1,12 +1,11 @@
 package eu.verdelhan.ta4j.indicator.helper;
 
-import eu.verdelhan.ta4j.indicator.helper.TrueRange;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 public class TrueRangeTest {
@@ -21,11 +20,11 @@ public class TrueRangeTest {
 		ticks.add(new MockTick(0, 0, 0, 2));
 		TrueRange tr = new TrueRange(new MockTimeSeries(ticks));
 		
-		assertEquals(7d, (double) tr.getValue(0));
-		assertEquals(6d, (double) tr.getValue(1));
-		assertEquals(9d, (double) tr.getValue(2));
-		assertEquals(3d, (double) tr.getValue(3));
-		assertEquals(15d, (double) tr.getValue(4));
+		assertThat((double) tr.getValue(0)).isEqualTo(7d);
+		assertThat((double) tr.getValue(1)).isEqualTo(6d);
+		assertThat((double) tr.getValue(2)).isEqualTo(9d);
+		assertThat((double) tr.getValue(3)).isEqualTo(3d);
+		assertThat((double) tr.getValue(4)).isEqualTo(15d);
 		
 	}
 

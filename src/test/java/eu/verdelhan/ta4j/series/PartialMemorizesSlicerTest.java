@@ -1,8 +1,8 @@
 package eu.verdelhan.ta4j.series;
 
-import eu.verdelhan.ta4j.series.PartialMemorizedSlicer;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
@@ -30,11 +30,11 @@ public class PartialMemorizesSlicerTest {
 
 		slicer = new PartialMemorizedSlicer(series, period, 1);
 
-		assertEquals(0, slicer.getSlice(0).getBegin());
-		assertEquals(1, slicer.getSlice(1).getBegin());
-		assertEquals(2, slicer.getSlice(2).getBegin());
-		assertEquals(3, slicer.getSlice(3).getBegin());
-		assertEquals(4, slicer.getSlice(4).getBegin());
+		assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(1).getBegin()).isEqualTo(1);
+		assertThat(slicer.getSlice(2).getBegin()).isEqualTo(2);
+		assertThat(slicer.getSlice(3).getBegin()).isEqualTo(3);
+		assertThat(slicer.getSlice(4).getBegin()).isEqualTo(4);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
@@ -52,11 +52,11 @@ public class PartialMemorizesSlicerTest {
 
 		slicer = new PartialMemorizedSlicer(series, period, date.withYear(1980), 1);
 
-		assertEquals(0, slicer.getSlice(0).getBegin());
-		assertEquals(1, slicer.getSlice(1).getBegin());
-		assertEquals(2, slicer.getSlice(2).getBegin());
-		assertEquals(3, slicer.getSlice(3).getBegin());
-		assertEquals(4, slicer.getSlice(4).getBegin());
+		assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(1).getBegin()).isEqualTo(1);
+		assertThat(slicer.getSlice(2).getBegin()).isEqualTo(2);
+		assertThat(slicer.getSlice(3).getBegin()).isEqualTo(3);
+		assertThat(slicer.getSlice(4).getBegin()).isEqualTo(4);
 	}
 
 	@Test
@@ -67,20 +67,20 @@ public class PartialMemorizesSlicerTest {
 
 		slicer = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(0, slicer.getSlice(0).getBegin());
-		assertEquals(0, slicer.getSlice(0).getEnd());
+		assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(0).getEnd()).isEqualTo(0);
 
-		assertEquals(0, slicer.getSlice(1).getBegin());
-		assertEquals(1, slicer.getSlice(1).getEnd());
+		assertThat(slicer.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(1).getEnd()).isEqualTo(1);
 
-		assertEquals(0, slicer.getSlice(2).getBegin());
-		assertEquals(2, slicer.getSlice(2).getEnd());
+		assertThat(slicer.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(2).getEnd()).isEqualTo(2);
 
-		assertEquals(1, slicer.getSlice(3).getBegin());
-		assertEquals(3, slicer.getSlice(3).getEnd());
+		assertThat(slicer.getSlice(3).getBegin()).isEqualTo(1);
+		assertThat(slicer.getSlice(3).getEnd()).isEqualTo(3);
 
-		assertEquals(2, slicer.getSlice(4).getBegin());
-		assertEquals(4, slicer.getSlice(4).getEnd());
+		assertThat(slicer.getSlice(4).getBegin()).isEqualTo(2);
+		assertThat(slicer.getSlice(4).getEnd()).isEqualTo(4);
 	}
 
 	@Test
@@ -91,20 +91,20 @@ public class PartialMemorizesSlicerTest {
 
 		slicer = new PartialMemorizedSlicer(series, period, series.getSize());
 
-		assertEquals(0, slicer.getSlice(0).getBegin());
-		assertEquals(0, slicer.getSlice(0).getEnd());
+		assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(0).getEnd()).isEqualTo(0);
 
-		assertEquals(0, slicer.getSlice(1).getBegin());
-		assertEquals(1, slicer.getSlice(1).getEnd());
+		assertThat(slicer.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(1).getEnd()).isEqualTo(1);
 
-		assertEquals(0, slicer.getSlice(2).getBegin());
-		assertEquals(2, slicer.getSlice(2).getEnd());
+		assertThat(slicer.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(2).getEnd()).isEqualTo(2);
 
-		assertEquals(0, slicer.getSlice(3).getBegin());
-		assertEquals(3, slicer.getSlice(3).getEnd());
+		assertThat(slicer.getSlice(3).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(3).getEnd()).isEqualTo(3);
 
-		assertEquals(0, slicer.getSlice(4).getBegin());
-		assertEquals(4, slicer.getSlice(4).getEnd());
+		assertThat(slicer.getSlice(4).getBegin()).isEqualTo(0);
+		assertThat(slicer.getSlice(4).getEnd()).isEqualTo(4);
 	}
 
 	@Test
@@ -125,19 +125,19 @@ public class PartialMemorizesSlicerTest {
 
 		newSlicer = slicer.applyForSeries(series);
 
-		assertEquals(4, newSlicer.getNumberOfSlices());
+		assertThat(newSlicer.getNumberOfSlices()).isEqualTo(4);
 
-		assertEquals(0, newSlicer.getSlice(0).getBegin());
-		assertEquals(2, newSlicer.getSlice(0).getEnd());
+		assertThat(newSlicer.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(newSlicer.getSlice(0).getEnd()).isEqualTo(2);
 
-		assertEquals(0, newSlicer.getSlice(1).getBegin());
-		assertEquals(5, newSlicer.getSlice(1).getEnd());
+		assertThat(newSlicer.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(newSlicer.getSlice(1).getEnd()).isEqualTo(5);
 
-		assertEquals(0, newSlicer.getSlice(2).getBegin());
-		assertEquals(9, newSlicer.getSlice(2).getEnd());
+		assertThat(newSlicer.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(newSlicer.getSlice(2).getEnd()).isEqualTo(9);
 
-		assertEquals(3, newSlicer.getSlice(3).getBegin());
-		assertEquals(10, newSlicer.getSlice(3).getEnd());
+		assertThat(newSlicer.getSlice(3).getBegin()).isEqualTo(3);
+		assertThat(newSlicer.getSlice(3).getEnd()).isEqualTo(10);
 	}
 
 	@Test
@@ -149,22 +149,22 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(5, split.getNumberOfSlices());
+		assertThat(split.getNumberOfSlices()).isEqualTo(5);
 
-		assertEquals(0, split.getSlice(0).getBegin());
-		assertEquals(0, split.getSlice(0).getEnd());
+		assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(0).getEnd()).isEqualTo(0);
 
-		assertEquals(0, split.getSlice(1).getBegin());
-		assertEquals(1, split.getSlice(1).getEnd());
+		assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(1).getEnd()).isEqualTo(1);
 
-		assertEquals(0, split.getSlice(2).getBegin());
-		assertEquals(2, split.getSlice(2).getEnd());
+		assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(2).getEnd()).isEqualTo(2);
 
-		assertEquals(1, split.getSlice(3).getBegin());
-		assertEquals(3, split.getSlice(3).getEnd());
+		assertThat(split.getSlice(3).getBegin()).isEqualTo(1);
+		assertThat(split.getSlice(3).getEnd()).isEqualTo(3);
 
-		assertEquals(2, split.getSlice(4).getBegin());
-		assertEquals(4, split.getSlice(4).getEnd());
+		assertThat(split.getSlice(4).getBegin()).isEqualTo(2);
+		assertThat(split.getSlice(4).getEnd()).isEqualTo(4);
 	}
 
 	@Test
@@ -178,16 +178,16 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, date.withYear(2000).withMonthOfYear(7), 2);
 
-		assertEquals(3, split.getNumberOfSlices());
+		assertThat(split.getNumberOfSlices()).isEqualTo(3);
 
-		assertEquals(3, split.getSlice(0).getBegin());
-		assertEquals(4, split.getSlice(0).getEnd());
+		assertThat(split.getSlice(0).getBegin()).isEqualTo(3);
+		assertThat(split.getSlice(0).getEnd()).isEqualTo(4);
 
-		assertEquals(3, split.getSlice(1).getBegin());
-		assertEquals(9, split.getSlice(1).getEnd());
+		assertThat(split.getSlice(1).getBegin()).isEqualTo(3);
+		assertThat(split.getSlice(1).getEnd()).isEqualTo(9);
 
-		assertEquals(5, split.getSlice(2).getBegin());
-		assertEquals(10, split.getSlice(2).getEnd());
+		assertThat(split.getSlice(2).getBegin()).isEqualTo(5);
+		assertThat(split.getSlice(2).getEnd()).isEqualTo(10);
 	}
 
 	@Test
@@ -200,19 +200,19 @@ public class PartialMemorizesSlicerTest {
 		Period period = new Period().withYears(1);
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(4, split.getNumberOfSlices());
+		assertThat(split.getNumberOfSlices()).isEqualTo(4);
 
-		assertEquals(0, split.getSlice(0).getBegin());
-		assertEquals(2, split.getSlice(0).getEnd());
+		assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(0).getEnd()).isEqualTo(2);
 
-		assertEquals(0, split.getSlice(1).getBegin());
-		assertEquals(5, split.getSlice(1).getEnd());
+		assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(1).getEnd()).isEqualTo(5);
 
-		assertEquals(0, split.getSlice(2).getBegin());
-		assertEquals(9, split.getSlice(2).getEnd());
+		assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(2).getEnd()).isEqualTo(9);
 
-		assertEquals(3, split.getSlice(3).getBegin());
-		assertEquals(11, split.getSlice(3).getEnd());
+		assertThat(split.getSlice(3).getBegin()).isEqualTo(3);
+		assertThat(split.getSlice(3).getEnd()).isEqualTo(11);
 
 	}
 
@@ -227,16 +227,16 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 2);
 
-		assertEquals(3, split.getNumberOfSlices());
+		assertThat(split.getNumberOfSlices()).isEqualTo(3);
 
-		assertEquals(0, split.getSlice(0).getBegin());
-		assertEquals(4, split.getSlice(0).getEnd());
+		assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(0).getEnd()).isEqualTo(4);
 
-		assertEquals(0, split.getSlice(1).getBegin());
-		assertEquals(9, split.getSlice(1).getEnd());
+		assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(1).getEnd()).isEqualTo(9);
 
-		assertEquals(5, split.getSlice(2).getBegin());
-		assertEquals(10, split.getSlice(2).getEnd());
+		assertThat(split.getSlice(2).getBegin()).isEqualTo(5);
+		assertThat(split.getSlice(2).getEnd()).isEqualTo(10);
 	}
 
 	@Test
@@ -249,19 +249,19 @@ public class PartialMemorizesSlicerTest {
 						.withDate(2003, 3, 3));
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, date.withDate(2000, 1, 1), 3);
 
-		assertEquals(4, split.getNumberOfSlices());
+		assertThat(split.getNumberOfSlices()).isEqualTo(4);
 
-		assertEquals(0, split.getSlice(0).getBegin());
-		assertEquals(2, split.getSlice(0).getEnd());
+		assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(0).getEnd()).isEqualTo(2);
 
-		assertEquals(0, split.getSlice(1).getBegin());
-		assertEquals(5, split.getSlice(1).getEnd());
+		assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(1).getEnd()).isEqualTo(5);
 
-		assertEquals(0, split.getSlice(2).getBegin());
-		assertEquals(9, split.getSlice(2).getEnd());
+		assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(2).getEnd()).isEqualTo(9);
 
-		assertEquals(3, split.getSlice(3).getBegin());
-		assertEquals(10, split.getSlice(3).getEnd());
+		assertThat(split.getSlice(3).getBegin()).isEqualTo(3);
+		assertThat(split.getSlice(3).getEnd()).isEqualTo(10);
 	}
 
 	@Test
@@ -277,22 +277,22 @@ public class PartialMemorizesSlicerTest {
 
 		TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
 
-		assertEquals(5, split.getNumberOfSlices());
+		assertThat(split.getNumberOfSlices()).isEqualTo(5);
 
-		assertEquals(0, split.getSlice(0).getBegin());
-		assertEquals(5, split.getSlice(0).getEnd());
+		assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(0).getEnd()).isEqualTo(5);
 
-		assertEquals(0, split.getSlice(1).getBegin());
-		assertEquals(6, split.getSlice(1).getEnd());
+		assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(1).getEnd()).isEqualTo(6);
 
-		assertEquals(0, split.getSlice(2).getBegin());
-		assertEquals(7, split.getSlice(2).getEnd());
+		assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
+		assertThat(split.getSlice(2).getEnd()).isEqualTo(7);
 
-		assertEquals(6, split.getSlice(3).getBegin());
-		assertEquals(8, split.getSlice(3).getEnd());
+		assertThat(split.getSlice(3).getBegin()).isEqualTo(6);
+		assertThat(split.getSlice(3).getEnd()).isEqualTo(8);
 
-		assertEquals(7, split.getSlice(4).getBegin());
-		assertEquals(12, split.getSlice(4).getEnd());
+		assertThat(split.getSlice(4).getBegin()).isEqualTo(7);
+		assertThat(split.getSlice(4).getEnd()).isEqualTo(12);
 
 	}
 	

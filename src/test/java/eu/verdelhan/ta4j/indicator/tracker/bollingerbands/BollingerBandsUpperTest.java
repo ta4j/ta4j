@@ -1,14 +1,11 @@
 package eu.verdelhan.ta4j.indicator.tracker.bollingerbands;
 
-import eu.verdelhan.ta4j.indicator.tracker.bollingerbands.BollingerBandsMiddle;
-import eu.verdelhan.ta4j.indicator.tracker.bollingerbands.BollingerBandsUpper;
-import static org.junit.Assert.assertEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.helper.StandardDeviation;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.indicator.tracker.SMA;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,16 +34,16 @@ public class BollingerBandsUpperTest {
 		StandardDeviation standardDeviation = new StandardDeviation(closePrice, timeFrame);
 		BollingerBandsUpper bbuSMA = new BollingerBandsUpper(bbmSMA, standardDeviation);
 
-		assertEquals(1.0, bbuSMA.getValue(0), 0.01);
-		assertEquals(2.91, bbuSMA.getValue(1), 0.01);
-		assertEquals(4.82, bbuSMA.getValue(2), 0.01);
-		assertEquals(5.82, bbuSMA.getValue(3), 0.01);
-		assertEquals(4.96, bbuSMA.getValue(4), 0.01);
-		assertEquals(5.29, bbuSMA.getValue(5), 0.01);
-		assertEquals(6.82, bbuSMA.getValue(6), 0.01);
-		assertEquals(5.96, bbuSMA.getValue(7), 0.01);
-		assertEquals(6.82, bbuSMA.getValue(8), 0.01);
-		assertEquals(4.96, bbuSMA.getValue(9), 0.01);
+		assertThat(bbuSMA.getValue(0)).isEqualTo(1.0);
+		assertThat(bbuSMA.getValue(1)).isEqualTo(2.91);
+		assertThat(bbuSMA.getValue(2)).isEqualTo(4.82);
+		assertThat(bbuSMA.getValue(3)).isEqualTo(5.82);
+		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96);
+		assertThat(bbuSMA.getValue(5)).isEqualTo(5.29);
+		assertThat(bbuSMA.getValue(6)).isEqualTo(6.82);
+		assertThat(bbuSMA.getValue(7)).isEqualTo(5.96);
+		assertThat(bbuSMA.getValue(8)).isEqualTo(6.82);
+		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96);
 
 	}
 
@@ -57,8 +54,8 @@ public class BollingerBandsUpperTest {
 		StandardDeviation standardDeviation = new StandardDeviation(closePrice, timeFrame);
 		BollingerBandsUpper bbuSMA = new BollingerBandsUpper(bbmSMA, standardDeviation);
 
-		assertEquals(4.96, bbuSMA.getValue(9), 0.01);
-		assertEquals(4.96, bbuSMA.getValue(4), 0.01);
+		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96);
+		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

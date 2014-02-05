@@ -1,12 +1,11 @@
 package eu.verdelhan.ta4j.indicator.tracker.bollingerbands;
 
-import eu.verdelhan.ta4j.indicator.tracker.bollingerbands.BollingerBandsLower;
-import eu.verdelhan.ta4j.indicator.tracker.bollingerbands.BollingerBandsMiddle;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.helper.StandardDeviation;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.indicator.tracker.SMA;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,13 +35,13 @@ public class BollingerBandsLowerTest {
 		StandardDeviation standardDeviation = new StandardDeviation(closePrice, timeFrame);
 		BollingerBandsLower bblSMA = new BollingerBandsLower(bbmSMA, standardDeviation);
 
-		assertEquals(1d, (double) bblSMA.getValue(0));
-		assertEquals(0.08, bblSMA.getValue(1), 0.01);
+		assertThat((double) bblSMA.getValue(0)).isEqualTo(1d);
+		assertThat(bblSMA.getValue(1)).isEqualTo(0.08);
 		assertEquals(-0.82, bblSMA.getValue(2), 0.01);
-		assertEquals(0.17, bblSMA.getValue(3), 0.01);
-		assertEquals(1.70, bblSMA.getValue(4), 0.01);
-		assertEquals(2.03, bblSMA.getValue(5), 0.01);
-		assertEquals(1.17, bblSMA.getValue(6), 0.01);
+		assertThat(bblSMA.getValue(3)).isEqualTo(0.17);
+		assertThat(bblSMA.getValue(4)).isEqualTo(1.70);
+		assertThat(bblSMA.getValue(5)).isEqualTo(2.03);
+		assertThat(bblSMA.getValue(6)).isEqualTo(1.17);
 	}
 
 	@Test
@@ -52,8 +51,8 @@ public class BollingerBandsLowerTest {
 		StandardDeviation standardDeviation = new StandardDeviation(closePrice, timeFrame);
 		BollingerBandsLower bblSMA = new BollingerBandsLower(bbmSMA, standardDeviation);
 
-		assertEquals(1.17, bblSMA.getValue(6), 0.01);
-		assertEquals(0.08, bblSMA.getValue(1), 0.01);
+		assertThat(bblSMA.getValue(6)).isEqualTo(1.17);
+		assertThat(bblSMA.getValue(1)).isEqualTo(0.08);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

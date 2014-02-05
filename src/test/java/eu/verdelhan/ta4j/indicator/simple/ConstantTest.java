@@ -1,7 +1,6 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
-import eu.verdelhan.ta4j.indicator.simple.Constant;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -16,9 +15,9 @@ public class ConstantTest {
 
 	@Test
 	public void testConstantIndicator() {
-		assertEquals(30.33, (double) constantIndicator.getValue(10));
-		assertEquals(30.33, (double) constantIndicator.getValue(1));
-		assertEquals(30.33, (double) constantIndicator.getValue(0));
-		assertEquals(30.33, (double) constantIndicator.getValue(30));
+		assertThat((double) constantIndicator.getValue(10)).isEqualTo(30.33);
+		assertThat((double) constantIndicator.getValue(1)).isEqualTo(30.33);
+		assertThat((double) constantIndicator.getValue(0)).isEqualTo(30.33);
+		assertThat((double) constantIndicator.getValue(30)).isEqualTo(30.33);
 	}
 }

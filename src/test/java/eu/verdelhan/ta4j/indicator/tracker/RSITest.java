@@ -1,10 +1,9 @@
 package eu.verdelhan.ta4j.indicator.tracker;
 
-import eu.verdelhan.ta4j.indicator.tracker.RSI;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -23,35 +22,35 @@ public class RSITest {
 	public void testRSIUsingTimeFrame14UsingClosePrice() {
 		RSI rsi = new RSI(new ClosePrice(data), 14);
 
-		assertEquals(62.75, rsi.getValue(15), 0.01);
-		assertEquals(66.67, rsi.getValue(16), 0.01);
-		assertEquals(75.23, rsi.getValue(17), 0.01);
-		assertEquals(71.93, rsi.getValue(18), 0.01);
-		assertEquals(73.33, rsi.getValue(19), 0.01);
-		assertEquals(77.78, rsi.getValue(20), 0.01);
-		assertEquals(74.67, rsi.getValue(21), 0.01);
-		assertEquals(77.85, rsi.getValue(22), 0.01);
-		assertEquals(81.56, rsi.getValue(23), 0.01);
-		assertEquals(85.25, rsi.getValue(24), 0.01);
+		assertThat(rsi.getValue(15)).isEqualTo(62.75);
+		assertThat(rsi.getValue(16)).isEqualTo(66.67);
+		assertThat(rsi.getValue(17)).isEqualTo(75.23);
+		assertThat(rsi.getValue(18)).isEqualTo(71.93);
+		assertThat(rsi.getValue(19)).isEqualTo(73.33);
+		assertThat(rsi.getValue(20)).isEqualTo(77.78);
+		assertThat(rsi.getValue(21)).isEqualTo(74.67);
+		assertThat(rsi.getValue(22)).isEqualTo(77.85);
+		assertThat(rsi.getValue(23)).isEqualTo(81.56);
+		assertThat(rsi.getValue(24)).isEqualTo(85.25);
 	}
 
 	@Test
 	public void testRSIFirstValueShouldBeZero() {
 		RSI rsi = new RSI(new ClosePrice(data), 14);
 
-		assertEquals(0d, rsi.getValue(0), 0.01);
+		assertThat(rsi.getValue(0)).isEqualTo(0d);
 	}
 
 	@Test
 	public void testRSIShouldWorkJumpingIndexes() {
 		RSI rsi = new RSI(new ClosePrice(data), 14);
-		assertEquals(73.33, rsi.getValue(19), 0.01);
-		assertEquals(62.75, rsi.getValue(15), 0.01);
+		assertThat(rsi.getValue(19)).isEqualTo(73.33);
+		assertThat(rsi.getValue(15)).isEqualTo(62.75);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		RSI rsi = new RSI(new ClosePrice(data), 14);
-		assertEquals(3d, (double) rsi.getValue(300));
+		assertThat((double) rsi.getValue(300)).isEqualTo(3d);
 	}
 }

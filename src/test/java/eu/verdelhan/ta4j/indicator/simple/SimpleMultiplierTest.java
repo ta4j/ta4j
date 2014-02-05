@@ -1,8 +1,6 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
-import eu.verdelhan.ta4j.indicator.simple.SimpleMultiplier;
-import eu.verdelhan.ta4j.indicator.simple.Constant;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -18,9 +16,9 @@ public class SimpleMultiplierTest {
 
 	@Test
 	public void testConstantIndicator() {
-		assertEquals(25d, (double) simpleMultiplier.getValue(10));
-		assertEquals(25d, (double) simpleMultiplier.getValue(1));
-		assertEquals(25d, (double) simpleMultiplier.getValue(0));
-		assertEquals(25d, (double) simpleMultiplier.getValue(30));
+		assertThat((double) simpleMultiplier.getValue(10)).isEqualTo(25d);
+		assertThat((double) simpleMultiplier.getValue(1)).isEqualTo(25d);
+		assertThat((double) simpleMultiplier.getValue(0)).isEqualTo(25d);
+		assertThat((double) simpleMultiplier.getValue(30)).isEqualTo(25d);
 	}
 }

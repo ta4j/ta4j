@@ -1,12 +1,11 @@
 package eu.verdelhan.ta4j.indicator.helper;
 
-import eu.verdelhan.ta4j.indicator.helper.DirectionalMovementDown;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -23,7 +22,7 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertEquals(0d, (double) down.getValue(1));
+		assertThat((double) down.getValue(1)).isEqualTo(0d);
 	}
 	
 	@Test
@@ -36,7 +35,7 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertEquals(0d, (double) down.getValue(1));
+		assertThat((double) down.getValue(1)).isEqualTo(0d);
 	}
 	@Test
 	public void testZeroDirectionalMovement3()
@@ -48,7 +47,7 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertEquals(0d, (double) down.getValue(1));
+		assertThat((double) down.getValue(1)).isEqualTo(0d);
 	}
 	@Test
 	public void testPositiveDirectionalMovement()
@@ -60,6 +59,6 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertEquals(16d, (double) down.getValue(1));
+		assertThat((double) down.getValue(1)).isEqualTo(16d);
 	}
 }

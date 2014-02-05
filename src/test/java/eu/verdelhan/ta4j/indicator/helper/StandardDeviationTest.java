@@ -1,9 +1,9 @@
 package eu.verdelhan.ta4j.indicator.helper;
 
-import eu.verdelhan.ta4j.indicator.helper.StandardDeviation;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,12 +20,12 @@ public class StandardDeviationTest {
 	public void testStandardDeviationUsingTimeFrame4UsingClosePrice() throws Exception {
 		StandardDeviation sdv = new StandardDeviation(new ClosePrice(data), 4);
 
-		assertEquals(0d, sdv.getValue(0), 0.1);
+		assertThat(sdv.getValue(0)).isEqualTo(0d);
 		assertEquals(Math.sqrt(0.5), sdv.getValue(1), 0.1);
 		assertEquals(Math.sqrt(2.0), sdv.getValue(2), 0.1);
 		assertEquals(Math.sqrt(5.0), sdv.getValue(3), 0.1);
 		assertEquals(Math.sqrt(2.0), sdv.getValue(4), 0.1);
-		assertEquals(1, sdv.getValue(5), 0.1);
+		assertThat(sdv.getValue(5)).isEqualTo(1);
 		assertEquals(Math.sqrt(2.0), sdv.getValue(6), 0.1);
 		assertEquals(Math.sqrt(2.0), sdv.getValue(7), 0.1);
 		assertEquals(Math.sqrt(2.0), sdv.getValue(8), 0.1);
@@ -38,21 +38,21 @@ public class StandardDeviationTest {
 	public void testFirstValueShouldBeZero() throws Exception {
 		StandardDeviation sdv = new StandardDeviation(new ClosePrice(data), 4);
 
-		assertEquals(0, sdv.getValue(0), 0.1);
+		assertThat(sdv.getValue(0)).isEqualTo(0);
 	}
 
 	@Test
 	public void testStandardDeviationValueIndicatorValueWhenTimeFraseIs1ShouldBeZero() {
 		StandardDeviation sdv = new StandardDeviation(new ClosePrice(data), 1);
-		assertEquals(0d, sdv.getValue(3), 0.1);
-		assertEquals(0d, sdv.getValue(8), 0.1);
+		assertThat(sdv.getValue(3)).isEqualTo(0d);
+		assertThat(sdv.getValue(8)).isEqualTo(0d);
 	}
 
 	@Test
 	public void testStandardDeviationUsingTimeFrame2UsingClosePrice() throws Exception {
 		StandardDeviation sdv = new StandardDeviation(new ClosePrice(data), 2);
 
-		assertEquals(0d, sdv.getValue(0), 0.1);
+		assertThat(sdv.getValue(0)).isEqualTo(0d);
 		assertEquals(Math.sqrt(0.5), sdv.getValue(1), 0.1);
 		assertEquals(Math.sqrt(0.5), sdv.getValue(2), 0.1);
 		assertEquals(Math.sqrt(0.5), sdv.getValue(3), 0.1);

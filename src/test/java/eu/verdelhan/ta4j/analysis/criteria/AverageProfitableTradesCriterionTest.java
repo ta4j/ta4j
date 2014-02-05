@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -14,6 +13,7 @@ import eu.verdelhan.ta4j.series.RegularSlicer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
@@ -40,10 +40,10 @@ public class AverageProfitableTradesCriterionTest {
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
 			
 		AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
-		assertEquals(0d, average.calculate(series, trade));
+		assertThat(average.calculate(series, trade)).isEqualTo(0d);
 		
 		trade = new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.BUY));
-		assertEquals(1d, average.calculate(series, trade));
+		assertThat(average.calculate(series, trade)).isEqualTo(1d);
 	}
 	
 	@Test

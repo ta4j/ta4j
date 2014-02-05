@@ -1,12 +1,12 @@
 package eu.verdelhan.ta4j.indicator.oscillator;
 
-import eu.verdelhan.ta4j.indicator.oscillator.StochasticOscillatorK;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.series.DefaultTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,14 +44,14 @@ public class StochasticOscillatorKTest {
 
 		assertEquals(313d / 3.50, sof.getValue(0), 0.01);
 		assertEquals(1000d / 10.81, sof.getValue(12), 0.01);
-		assertEquals(57.81, sof.getValue(13), 0.01);
+		assertThat(sof.getValue(13)).isEqualTo(57.81);
 	}
 
 	@Test
 	public void testStochasticOscilatorKShouldWorkJumpingIndexes() {
 
 		StochasticOscillatorK sof = new StochasticOscillatorK(data, 14);
-		assertEquals(57.81, sof.getValue(13), 0.01);
+		assertThat(sof.getValue(13)).isEqualTo(57.81);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

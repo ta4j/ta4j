@@ -1,22 +1,20 @@
 package eu.verdelhan.ta4j.runner;
 
-import eu.verdelhan.ta4j.runner.ShortSellRunner;
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Runner;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,7 +46,7 @@ public class ShortSellRunnerTest {
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 		Runner runner = new ShortSellRunner(slicer, strategy);
 		List<Trade> trades = runner.run(0);
-		assertEquals(3, trades.size());
+		assertThat(trades).hasSize(3);
 
 		assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
@@ -70,7 +68,7 @@ public class ShortSellRunnerTest {
 		Strategy strategy = new MockStrategy(enter, exit);
 		Runner runner = new ShortSellRunner(slicer, strategy);
 		List<Trade> trades = runner.run(0);
-		assertEquals(1, trades.size());
+		assertThat(trades).hasSize(1);
 
 		assertEquals(new Operation(1, OperationType.BUY), trades.get(0).getEntry());
 		assertEquals(new Operation(3, OperationType.SELL), trades.get(0).getExit());
@@ -85,7 +83,7 @@ public class ShortSellRunnerTest {
 		Strategy strategy = new MockStrategy(enter, exit);
 		Runner runner = new ShortSellRunner(slicer, strategy);
 		List<Trade> trades = runner.run(0);
-		assertEquals(0, trades.size());
+		assertThat(trades).isEmpty();
 	}
 
 }

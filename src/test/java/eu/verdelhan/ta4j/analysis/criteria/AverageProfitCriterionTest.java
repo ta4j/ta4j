@@ -1,12 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -16,8 +9,12 @@ import eu.verdelhan.ta4j.analysis.evaluator.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
-
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,7 +35,7 @@ public class AverageProfitCriterionTest {
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertEquals(1.03, averageProfit.calculate(series, trades), 0.01);
+		assertThat(averageProfit.calculate(series, trades)).isEqualTo(1.03);
 	}
 
 	@Test
@@ -58,7 +55,7 @@ public class AverageProfitCriterionTest {
 		decisions.add(dummy2);
 
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertEquals(1.03, averageProfit.summarize(series, decisions), 0.01);
+		assertThat(averageProfit.summarize(series, decisions)).isEqualTo(1.03);
 	}
 
 	@Test
@@ -85,7 +82,7 @@ public class AverageProfitCriterionTest {
 		series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
 		trades.clear();
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertEquals(1d, averageProfit.calculate(series, trades));
+		assertThat(averageProfit.calculate(series, trades)).isEqualTo(1d);
 	}
 
 	@Test

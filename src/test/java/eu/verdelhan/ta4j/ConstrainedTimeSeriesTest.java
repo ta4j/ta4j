@@ -1,12 +1,10 @@
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.ConstrainedTimeSeries;
-import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.LinkedList;
 import java.util.List;
+import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import static org.junit.Assert.assertEquals;
@@ -48,9 +46,9 @@ public class ConstrainedTimeSeriesTest {
 
 	@Test
 	public void getEndSizeBegin() {
-		assertEquals(series.getBegin(), constrained.getBegin());
-		assertEquals(series.getEnd(), constrained.getEnd());
-		assertEquals(series.getSize(), constrained.getSize());
+		assertThat(constrained.getBegin()).isEqualTo(series.getBegin());
+		assertThat(constrained.getEnd()).isEqualTo(series.getEnd());
+		assertThat(constrained.getSize()).isEqualTo(series.getSize());
 	}
 
 	@Test

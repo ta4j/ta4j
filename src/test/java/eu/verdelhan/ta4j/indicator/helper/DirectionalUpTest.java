@@ -1,12 +1,12 @@
 package eu.verdelhan.ta4j.indicator.helper;
 
-import eu.verdelhan.ta4j.indicator.helper.DirectionalUp;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static junit.framework.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -25,7 +25,7 @@ public class DirectionalUpTest {
 		
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalUp dup = new DirectionalUp(series, 3);
-		assertEquals(1d, dup.getValue(0));
+		assertThat(dup.getValue(0)).isEqualTo(1d);
 		assertEquals((2d / 3 + 2d/3) / (2d/3 + 12d/3) , dup.getValue(1));
 		assertEquals(((2d / 3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3), dup.getValue(2));
 		assertEquals((((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 + 1d/3 * 0) / ((((2d/3 + 12d/3) * 2d/3 + 15d/3) * 2d/3) + 11d/3), dup.getValue(3));

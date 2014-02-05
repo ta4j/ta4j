@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -35,7 +35,7 @@ public class TradeTest {
 	@Test
 	public void whenNewShouldCreateBuyOperationWhenEntering() {
 		trade.operate(0);
-		assertEquals(new Operation(0, OperationType.BUY), trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(new Operation(0, OperationType.BUY));
 	}
 
 	@Test
@@ -50,7 +50,7 @@ public class TradeTest {
 		trade.operate(0);
 		trade.operate(1);
 
-		assertEquals(new Operation(1, OperationType.SELL), trade.getExit());
+		assertThat(trade.getExit()).isEqualTo(new Operation(1, OperationType.SELL));
 	}
 
 	@Test
@@ -88,7 +88,7 @@ public class TradeTest {
 	public void whenNewShouldCreateSellOperationWhenEnteringUncovered() {
 		uncoveredTrade.operate(0);
 
-		assertEquals(new Operation(0, OperationType.SELL), uncoveredTrade.getEntry());
+		assertThat(uncoveredTrade.getEntry()).isEqualTo(new Operation(0, OperationType.SELL));
 	}
 
 	@Test
@@ -96,15 +96,14 @@ public class TradeTest {
 		uncoveredTrade.operate(0);
 		uncoveredTrade.operate(1);
 
-		assertEquals(new Operation(1, OperationType.BUY), uncoveredTrade.getExit());
+		assertThat(uncoveredTrade.getExit()).isEqualTo(new Operation(1, OperationType.BUY));
 	}
 
 	@Test
 	public void testOverrideToString() {
-		assertEquals(trEquals1.toString(), trEquals2.toString());
+		assertThat(trEquals2.toString()).isEqualTo(trEquals1.toString());
 
-		assertFalse(trEquals1.toString().equals(trNotEquals1.toString()));
-		assertFalse(trEquals1.toString().equals(trNotEquals2.toString()));
-
+		assertThat(trNotEquals1.toString()).isNotEqualTo(trEquals1.toString());
+		assertThat(trNotEquals2.toString()).isNotEqualTo(trEquals1.toString());
 	}
 }

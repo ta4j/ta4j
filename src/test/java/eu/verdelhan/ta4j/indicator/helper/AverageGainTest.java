@@ -1,9 +1,9 @@
 package eu.verdelhan.ta4j.indicator.helper;
 
-import eu.verdelhan.ta4j.indicator.helper.AverageGain;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,7 +41,7 @@ public class AverageGainTest {
 	@Test
 	public void testAverageGainMustReturnZeroWhenTheDataDoesntGain() {
 		AverageGain averageGain = new AverageGain(new ClosePrice(data), 3);
-		assertEquals(0, averageGain.getValue(9), 0.01);
+		assertThat(averageGain.getValue(9)).isEqualTo(0);
 	}
 
 	@Test
@@ -53,7 +53,7 @@ public class AverageGainTest {
 	@Test
 	public void testAverageGainWhenIndexIsZeroMustBeZero() {
 		AverageGain averageGain = new AverageGain(new ClosePrice(data), 10);
-		assertEquals(0, averageGain.getValue(0), 0.01);
+		assertThat(averageGain.getValue(0)).isEqualTo(0);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)
