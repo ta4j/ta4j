@@ -4,7 +4,6 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +42,7 @@ public class EMATest {
 		for (int i = 0; i < 9; i++) {
 			sma.getValue(i);
 			ema.getValue(i);
-			assertEquals(sma.getValue(i), ema.getValue(i));
+			assertThat(ema.getValue(i)).isEqualTo(sma.getValue(i));
 		}
 	}
 

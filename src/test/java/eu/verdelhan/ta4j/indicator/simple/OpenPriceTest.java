@@ -1,9 +1,8 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
-import eu.verdelhan.ta4j.indicator.simple.OpenPrice;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -21,7 +20,7 @@ public class OpenPriceTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickOpenPrice() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals(openPriceIndicator.getValue(i), timeSeries.getTick(i).getOpenPrice());
+			assertThat(timeSeries.getTick(i).getOpenPrice()).isEqualTo(openPriceIndicator.getValue(i));
 		}
 	}
 

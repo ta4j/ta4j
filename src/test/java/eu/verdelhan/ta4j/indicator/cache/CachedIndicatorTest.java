@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,7 +30,7 @@ public class CachedIndicatorTest {
 		SMA sma = new SMA(new ClosePrice(data), 3);
 		Double firstTime = sma.getValue(4);
 		Double seconTime = sma.getValue(4);
-		assertEquals(firstTime, seconTime);
+		assertThat(seconTime).isEqualTo(firstTime);
 	}
 
 	@Test
@@ -39,7 +39,7 @@ public class CachedIndicatorTest {
 		Arrays.fill(d, 10);
 		TimeSeries dataMax = new MockTimeSeries(d);
 		SMA quoteSMA = new SMA(new ClosePrice(dataMax), 100);
-		assertEquals((double) 10d, (double) quoteSMA.getValue(105));
+		assertThat((double) quoteSMA.getValue(105)).isEqualTo((double) 10d);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

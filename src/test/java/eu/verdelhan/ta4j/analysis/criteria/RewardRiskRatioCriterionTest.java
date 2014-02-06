@@ -13,7 +13,6 @@ import java.util.LinkedList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,9 +37,8 @@ public class RewardRiskRatioCriterionTest {
 		double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
 		double peak = (105d / 100) * (100d / 95);
 		double low = (105d / 100) * (90d / 95) * (80d / 95);
-		
-		assertEquals(totalProfit / ((peak - low) / peak),
-				rrc.calculate(series, trades), 0.001);
+
+		assertThat(rrc.calculate(series, trades)).isEqualTo(totalProfit / ((peak - low) / peak));
 	}
 
 	@Test
@@ -68,8 +66,7 @@ public class RewardRiskRatioCriterionTest {
 		double peak = (105d / 100) * (100d / 95);
 		double low = (105d / 100) * (90d / 95) * (80d / 95);
 		
-		assertEquals(totalProfit / ((peak - low) / peak),
-				rrc.summarize(series, decisions), 0.001);
+		assertThat(rrc.summarize(series, decisions)).isEqualTo(totalProfit / ((peak - low) / peak));
 	}
 
 	@Test
@@ -100,6 +97,6 @@ public class RewardRiskRatioCriterionTest {
 
 			
 		RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
-		assertEquals((95d/100) / ((1d - 0.95d)), ratioCriterion.calculate(series, trade));
+		assertThat(ratioCriterion.calculate(series, trade)).isEqualTo((95d/100) / ((1d - 0.95d)));
 	}
 }

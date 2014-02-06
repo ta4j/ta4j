@@ -1,12 +1,10 @@
 package eu.verdelhan.ta4j.indicator.tracker.bollingerbands;
 
-import eu.verdelhan.ta4j.indicator.tracker.bollingerbands.BollingerBandsMiddle;
-import static org.junit.Assert.assertEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.indicator.tracker.SMA;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -24,7 +22,7 @@ public class BollingerBandsMiddleTest {
 		BollingerBandsMiddle bbmSMA = new BollingerBandsMiddle(sma);
 
 		for (int i = 0; i < data.getSize(); i++) {
-			assertEquals(sma.getValue(i), bbmSMA.getValue(i));
+			assertThat(bbmSMA.getValue(i)).isEqualTo(sma.getValue(i));
 		}
 	}
 
@@ -33,8 +31,8 @@ public class BollingerBandsMiddleTest {
 		SMA sma = new SMA(new ClosePrice(data), 3);
 		BollingerBandsMiddle bbmSMA = new BollingerBandsMiddle(sma);
 
-		assertEquals(sma.getValue(6), bbmSMA.getValue(6));
-		assertEquals(sma.getValue(0), bbmSMA.getValue(0));
+		assertThat(bbmSMA.getValue(6)).isEqualTo(sma.getValue(6));
+		assertThat(bbmSMA.getValue(0)).isEqualTo(sma.getValue(0));
 
 	}
 

@@ -14,7 +14,6 @@ import java.util.LinkedList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class VersusBuyAndHoldCriterionTest {
@@ -66,7 +65,7 @@ public class VersusBuyAndHoldCriterionTest {
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
 		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-		assertEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade));
+		assertThat(buyAndHold.calculate(series, trade)).isEqualTo((100d / 70) / (100d / 95));
 	}
 
 	@Test
@@ -87,7 +86,7 @@ public class VersusBuyAndHoldCriterionTest {
 
 		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new AverageProfitCriterion());
 		
-		assertEquals(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6), buyAndHold.calculate(series, trades) ,0.0001);
+		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6));
 	}
 	@Test
 	public void testCalculateWithNumberOfTicks()

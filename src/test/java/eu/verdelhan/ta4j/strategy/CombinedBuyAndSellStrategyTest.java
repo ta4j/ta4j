@@ -7,7 +7,6 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class CombinedBuyAndSellStrategyTest {
@@ -84,8 +83,8 @@ public class CombinedBuyAndSellStrategyTest {
 		combined = new CombinedBuyAndSellStrategy(crossed, crossed);
 
 		for (int index = 0; index < 6; index++) {
-			assertEquals(crossed.shouldEnter(index), combined.shouldEnter(index));
-			assertEquals(crossed.shouldExit(index), combined.shouldExit(index));
+			assertThat(combined.shouldEnter(index)).isEqualTo(crossed.shouldEnter(index));
+			assertThat(combined.shouldExit(index)).isEqualTo(crossed.shouldExit(index));
 		}
 	}
 }

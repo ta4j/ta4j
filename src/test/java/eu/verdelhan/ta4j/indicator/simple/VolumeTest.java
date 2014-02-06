@@ -1,9 +1,8 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
-import eu.verdelhan.ta4j.indicator.simple.Volume;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -21,7 +20,7 @@ public class VolumeTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickVolume() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals(volumeIndicator.getValue(i), timeSeries.getTick(i).getVolume());
+			assertThat(timeSeries.getTick(i).getVolume()).isEqualTo(volumeIndicator.getValue(i));
 		}
 	}
 

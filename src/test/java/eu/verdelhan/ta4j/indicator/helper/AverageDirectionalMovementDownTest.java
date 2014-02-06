@@ -1,12 +1,11 @@
 package eu.verdelhan.ta4j.indicator.helper;
 
-import eu.verdelhan.ta4j.indicator.helper.AverageDirectionalMovementDown;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -30,10 +29,10 @@ public class AverageDirectionalMovementDownTest {
 		
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		AverageDirectionalMovementDown admdown = new AverageDirectionalMovementDown(series, 3);
-		assertEquals((double) 1d, (double) admdown.getValue(0));
-		assertEquals((double) 1d * 2d/3 +2d / 3, (double) admdown.getValue(1));
-		assertEquals((double) (1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0, (double) admdown.getValue(2));
-		assertEquals((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3, (double) admdown.getValue(3));
-		assertEquals((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3, (double) admdown.getValue(4));
+		assertThat((double) admdown.getValue(0)).isEqualTo((double) 1d);
+		assertThat((double) admdown.getValue(1)).isEqualTo((double) 1d * 2d/3 +2d / 3);
+		assertThat((double) admdown.getValue(2)).isEqualTo((double) (1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0);
+		assertThat((double) admdown.getValue(3)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3);
+		assertThat((double) admdown.getValue(4)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3);
 	}
 }

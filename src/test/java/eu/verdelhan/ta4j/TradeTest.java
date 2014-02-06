@@ -1,8 +1,6 @@
 package eu.verdelhan.ta4j;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -78,9 +76,8 @@ public class TradeTest {
 		assertThat(trade.isClosed()).isTrue();
 	}
 
-	@Test(expected = NullPointerException.class)
-	public void shouldThrowNullPointerExceptionWhenOperationTyprIsNull() {
-		@SuppressWarnings("unused")
+	@Test(expected = IllegalArgumentException.class)
+	public void shouldThrowIllegalArgumentExceptionWhenOperationTypeIsNull() {
 		Trade t = new Trade(null);
 	}
 

@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
-import eu.verdelhan.ta4j.indicator.simple.AverageHighLow;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -9,7 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +42,7 @@ public class AverageHighLowTest {
 		BigDecimal result;
 		for (int i = 0; i < 10; i++) {
 			result = timeSeries.getTick(i).getMaxPrice().add(timeSeries.getTick(i).getMinPrice()).divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP);
-			assertEquals(average.getValue(i), result);
+			assertThat(result).isEqualTo(average.getValue(i));
 		}
 	}
 

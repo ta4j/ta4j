@@ -6,7 +6,6 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,7 +29,7 @@ public class ResistanceStrategyTest {
 		Strategy resistance = new ResistanceStrategy(indicator, neverSell, 96);
 
 		trade.operate(0);
-		assertTrue(resistance.shouldOperate(trade, 1));
+		assertThat(resistance.shouldOperate(trade, 1)).isTrue();
 
 		trade = new Trade();
 		trade.operate(2);
@@ -38,12 +37,12 @@ public class ResistanceStrategyTest {
 		assertThat(resistance.shouldEnter(2)).isFalse();
 		assertThat(resistance.shouldOperate(trade, 2)).isFalse();
 		assertThat(resistance.shouldOperate(trade, 3)).isFalse();
-		assertTrue(resistance.shouldOperate(trade, 4));
+		assertThat(resistance.shouldOperate(trade, 4)).isTrue();
 
 		trade = new Trade();
 		trade.operate(5);
 
 		assertThat(resistance.shouldOperate(trade, 5)).isFalse();
-		assertTrue(resistance.shouldOperate(trade, 6));
+		assertThat(resistance.shouldOperate(trade, 6)).isTrue();
 	}
 }

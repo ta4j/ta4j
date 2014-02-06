@@ -7,7 +7,6 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,13 +31,13 @@ public class StopLossStrategyTest {
 		Trade trade = new Trade();
 		assertThat(stopper.shouldOperate(trade, 0)).isTrue();
 		trade.operate(0);
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 		assertThat(stopper.shouldOperate(trade, 1)).isFalse();
 		assertThat(stopper.shouldOperate(trade, 2)).isFalse();
 
 		assertThat(stopper.shouldOperate(trade, 4)).isTrue();
 		trade.operate(4);
-		assertEquals(sell, trade.getExit());
+		assertThat(trade.getExit()).isEqualTo(sell);
 	}
 
 	@Test
@@ -58,12 +57,12 @@ public class StopLossStrategyTest {
 		assertThat(stopper.shouldOperate(trade, 0)).isTrue();
 		trade.operate(0);
 
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 
 		assertThat(stopper.shouldOperate(trade, 1)).isTrue();
 		trade.operate(1);
 
-		assertEquals(sell, trade.getExit());
+		assertThat(trade.getExit()).isEqualTo(sell);
 	}
 
 }

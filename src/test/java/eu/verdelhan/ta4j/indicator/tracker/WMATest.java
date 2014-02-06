@@ -5,7 +5,6 @@ import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class WMATest {

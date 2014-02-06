@@ -15,7 +15,6 @@ import java.util.LinkedList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 public class AverageProfitableTradesCriterionTest {
 

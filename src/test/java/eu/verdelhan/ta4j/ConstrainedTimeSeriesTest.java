@@ -7,8 +7,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,6 +62,6 @@ public class ConstrainedTimeSeriesTest {
 	
 	@Test
 	public void getPeriodTest() {
-		assertEquals(new Period(series.getTick(series.getBegin() + 1).getEndTime().getMillis() - series.getTick(series.getBegin()).getEndTime().getMillis()), constrained.getPeriod());
+		assertThat(constrained.getPeriod()).isEqualTo(new Period(series.getTick(series.getBegin() + 1).getEndTime().getMillis() - series.getTick(series.getBegin()).getEndTime().getMillis()));
 	}
 }

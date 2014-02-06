@@ -1,13 +1,12 @@
 package eu.verdelhan.ta4j.runner;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Runner;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ShortSellRunner implements Runner {
     private Runner runner;

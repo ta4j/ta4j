@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class CashFlowTest {
@@ -34,8 +33,8 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(1));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.valueOf(2));
 	}
 
 	@Test
@@ -49,13 +48,13 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.valueOf(.5), cashFlow.getValue(1));
-		assertEquals(BigDecimal.valueOf(.5), cashFlow.getValue(2));
-		assertEquals(BigDecimal.valueOf(.5), cashFlow.getValue(3));
-		assertEquals(BigDecimal.valueOf(.6), cashFlow.getValue(4));
-		assertEquals(BigDecimal.valueOf(.6), cashFlow.getValue(5));
-		assertEquals(BigDecimal.valueOf(.09), cashFlow.getValue(6));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.valueOf(.5));
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.valueOf(.5));
+		assertThat(cashFlow.getValue(3)).isEqualTo(BigDecimal.valueOf(.5));
+		assertThat(cashFlow.getValue(4)).isEqualTo(BigDecimal.valueOf(.6));
+		assertThat(cashFlow.getValue(5)).isEqualTo(BigDecimal.valueOf(.6));
+		assertThat(cashFlow.getValue(6)).isEqualTo(BigDecimal.valueOf(.09));
 	}
 
 
@@ -68,12 +67,12 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(1));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(2));
-		assertEquals(BigDecimal.valueOf(.5), cashFlow.getValue(3));
-		assertEquals(BigDecimal.valueOf(.5), cashFlow.getValue(4));
-		assertEquals(BigDecimal.valueOf(.5), cashFlow.getValue(5));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(3)).isEqualTo(BigDecimal.valueOf(.5));
+		assertThat(cashFlow.getValue(4)).isEqualTo(BigDecimal.valueOf(.5));
+		assertThat(cashFlow.getValue(5)).isEqualTo(BigDecimal.valueOf(.5));
 	}
 
 	@Test
@@ -87,12 +86,12 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(1));
-		assertEquals(BigDecimal.valueOf(4), cashFlow.getValue(2));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(3));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(4));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(5));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.valueOf(2));
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.valueOf(4));
+		assertThat(cashFlow.getValue(3)).isEqualTo(BigDecimal.valueOf(2));
+		assertThat(cashFlow.getValue(4)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(5)).isEqualTo(BigDecimal.valueOf(2));
 	}
 
 	@Test
@@ -104,9 +103,9 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(1));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(2));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.valueOf(2));
 	}
 
 	@Test
@@ -119,9 +118,9 @@ public class CashFlowTest {
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
 		assertThat(cashFlow.getSize()).isEqualTo(3);
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(1));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(2));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.valueOf(2));
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.valueOf(2));
 	}
 
 	@Test
@@ -134,13 +133,13 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(1));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(2));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(3));
-		assertEquals(BigDecimal.valueOf(2), cashFlow.getValue(4));
-		assertEquals(BigDecimal.valueOf(4), cashFlow.getValue(5));
-		assertEquals(BigDecimal.valueOf(4), cashFlow.getValue(5));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.valueOf(2));
+		assertThat(cashFlow.getValue(3)).isEqualTo(BigDecimal.valueOf(2));
+		assertThat(cashFlow.getValue(4)).isEqualTo(BigDecimal.valueOf(2));
+		assertThat(cashFlow.getValue(5)).isEqualTo(BigDecimal.valueOf(4));
+		assertThat(cashFlow.getValue(5)).isEqualTo(BigDecimal.valueOf(4));
 	}
 
 	@Test
@@ -156,19 +155,19 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(0));
-		assertEquals(BigDecimal.valueOf(2d / 3), cashFlow.getValue(1));
-		assertEquals(BigDecimal.valueOf(5d / 3), cashFlow.getValue(2));
-		assertEquals(BigDecimal.valueOf(5d / 3), cashFlow.getValue(3));
-		assertEquals(BigDecimal.valueOf(5d / 3), cashFlow.getValue(4));
-		assertEquals(BigDecimal.valueOf(5d / 3), cashFlow.getValue(5));
-		assertEquals(BigDecimal.valueOf(5d / 3), cashFlow.getValue(6));
-		assertEquals(BigDecimal.valueOf(5d / 3 * 7d / 4), cashFlow.getValue(7));
-		assertEquals(BigDecimal.valueOf(5d / 3 * 6d / 4), cashFlow.getValue(8));
-		assertEquals(BigDecimal.valueOf(5d / 3 * 6d / 4), cashFlow.getValue(9));
-		assertEquals(BigDecimal.valueOf(5d / 3 * 6d / 4 * 8d / 7), cashFlow.getValue(10));
-		assertEquals(BigDecimal.valueOf(5d / 3 * 6d / 4 * 5d / 7), cashFlow.getValue(11));
-		assertEquals(BigDecimal.valueOf(5d / 3 * 6d / 4 * 5d / 7), cashFlow.getValue(12));
+		assertThat(cashFlow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(1)).isEqualTo(BigDecimal.valueOf(2d / 3));
+		assertThat(cashFlow.getValue(2)).isEqualTo(BigDecimal.valueOf(5d / 3));
+		assertThat(cashFlow.getValue(3)).isEqualTo(BigDecimal.valueOf(5d / 3));
+		assertThat(cashFlow.getValue(4)).isEqualTo(BigDecimal.valueOf(5d / 3));
+		assertThat(cashFlow.getValue(5)).isEqualTo(BigDecimal.valueOf(5d / 3));
+		assertThat(cashFlow.getValue(6)).isEqualTo(BigDecimal.valueOf(5d / 3));
+		assertThat(cashFlow.getValue(7)).isEqualTo(BigDecimal.valueOf(5d / 3 * 7d / 4));
+		assertThat(cashFlow.getValue(8)).isEqualTo(BigDecimal.valueOf(5d / 3 * 6d / 4));
+		assertThat(cashFlow.getValue(9)).isEqualTo(BigDecimal.valueOf(5d / 3 * 6d / 4));
+		assertThat(cashFlow.getValue(10)).isEqualTo(BigDecimal.valueOf(5d / 3 * 6d / 4 * 8d / 7));
+		assertThat(cashFlow.getValue(11)).isEqualTo(BigDecimal.valueOf(5d / 3 * 6d / 4 * 5d / 7));
+		assertThat(cashFlow.getValue(12)).isEqualTo(BigDecimal.valueOf(5d / 3 * 6d / 4 * 5d / 7));
 	}
 
 	@Test
@@ -178,9 +177,9 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(4));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(7));
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(9));
+		assertThat(cashFlow.getValue(4)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(7)).isEqualTo(BigDecimal.ONE);
+		assertThat(cashFlow.getValue(9)).isEqualTo(BigDecimal.ONE);
 	}
 
 	@Test(expected = RuntimeException.class)
@@ -201,15 +200,15 @@ public class CashFlowTest {
 		trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
 		trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(8, OperationType.SELL)));
 		CashFlow flow = new CashFlow(constrained, trades);
-		assertEquals(BigDecimal.ONE, flow.getValue(0));
-		assertEquals(BigDecimal.ONE, flow.getValue(1));
-		assertEquals(BigDecimal.ONE, flow.getValue(2));
-		assertEquals(BigDecimal.ONE, flow.getValue(3));
-		assertEquals(BigDecimal.ONE, flow.getValue(4));
-		assertEquals(BigDecimal.valueOf(6d / 8), flow.getValue(5));
-		assertEquals(BigDecimal.valueOf(6d / 8), flow.getValue(6));
-		assertEquals(BigDecimal.valueOf(6d / 8 * 15d / 10), flow.getValue(7));
-		assertEquals(BigDecimal.valueOf(6d / 8 * 6d / 10), flow.getValue(8));
+		assertThat(flow.getValue(0)).isEqualTo(BigDecimal.ONE);
+		assertThat(flow.getValue(1)).isEqualTo(BigDecimal.ONE);
+		assertThat(flow.getValue(2)).isEqualTo(BigDecimal.ONE);
+		assertThat(flow.getValue(3)).isEqualTo(BigDecimal.ONE);
+		assertThat(flow.getValue(4)).isEqualTo(BigDecimal.ONE);
+		assertThat(flow.getValue(5)).isEqualTo(BigDecimal.valueOf(6d / 8));
+		assertThat(flow.getValue(6)).isEqualTo(BigDecimal.valueOf(6d / 8));
+		assertThat(flow.getValue(7)).isEqualTo(BigDecimal.valueOf(6d / 8 * 15d / 10));
+		assertThat(flow.getValue(8)).isEqualTo(BigDecimal.valueOf(6d / 8 * 6d / 10));
 	}
 
 	@Test
@@ -219,7 +218,7 @@ public class CashFlowTest {
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(size - 1, OperationType.SELL)));
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
-		assertEquals(BigDecimal.ONE, cashFlow.getValue(size - 1));
+		assertThat(cashFlow.getValue(size - 1)).isEqualTo(BigDecimal.ONE);
 	}
 
 }

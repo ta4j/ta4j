@@ -5,7 +5,6 @@ import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -27,7 +26,7 @@ public class JustBuyOnceStrategyTest {
 
 		assertThat(strategy.shouldOperate(trade, 0)).isTrue();
 		trade.operate(0);
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 		assertThat(strategy.shouldOperate(trade, 1)).isFalse();
 		assertThat(strategy.shouldOperate(trade, 6)).isFalse();
 
@@ -39,11 +38,11 @@ public class JustBuyOnceStrategyTest {
 
 		assertThat(strategy.shouldOperate(trade, 0)).isTrue();
 		trade.operate(0);
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 		Trade trade2 = new Trade();
 		assertThat(strategy.shouldOperate(trade2, 0)).isFalse();
 		trade2.operate(0);
-		assertEquals(buy, trade2.getEntry());
+		assertThat(trade2.getEntry()).isEqualTo(buy);
 	}
 
 }

@@ -4,7 +4,6 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,7 +40,7 @@ public class SMATest {
 	public void testSMAWhenTimeFrameIs1ResultShouldBeIndicatorValue() {
 		SMA quoteSMA = new SMA(new ClosePrice(data), 1);
 		for (int i = 0; i < data.getSize(); i++) {
-			assertEquals(data.getTick(i).getClosePrice(), (double) quoteSMA.getValue(i));
+			assertThat((double) quoteSMA.getValue(i)).isEqualTo(data.getTick(i).getClosePrice());
 		}
 	}
 

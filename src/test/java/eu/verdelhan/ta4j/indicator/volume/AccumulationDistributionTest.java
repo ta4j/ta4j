@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.indicator.volume;
 
-import eu.verdelhan.ta4j.indicator.volume.AccumulationDistribution;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -25,9 +24,9 @@ public class AccumulationDistributionTest {
 		AccumulationDistribution ac = new AccumulationDistribution(series);
 //		Assert.assertThat(ac.getValue(0)).isEqualTo(0d);
 //		assertThat(ac.getValue(1)).isEqualTo(-100d / 3);
-//		assertEquals(-100d -(100d / 3) , ac.getValue(2));
-//		assertEquals((-250d/35) + (-100d -(100d / 3)), ac.getValue(3));
-//		assertEquals(600d + ((-250d/35) + (-100d -(100d / 3))), ac.getValue(4));
+//		assertThat(ac.getValue(2)).isEqualTo(-100d -(100d / 3) );
+//		assertThat(ac.getValue(3)).isEqualTo((-250d/35) + (-100d -(100d / 3)));
+//		assertThat(ac.getValue(4)).isEqualTo(600d + ((-250d/35) + (-100d -(100d / 3))));
 		
 	}
 }

@@ -4,7 +4,6 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,7 +47,7 @@ public class AverageLossTest {
 	@Test
 	public void testAverageLossWhenTimeFrameIsGreaterThanIndex() {
 		AverageLoss averageLoss = new AverageLoss(new ClosePrice(data), 1000);
-		assertEquals(5d / data.getSize(), averageLoss.getValue(12), 0.01);
+		assertThat(averageLoss.getValue(12)).isEqualTo(5d / data.getSize());
 	}
 
 	@Test
@@ -60,6 +59,6 @@ public class AverageLossTest {
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		AverageLoss averageLoss = new AverageLoss(new ClosePrice(data), 5);
-		assertEquals((double) 3d, (double) averageLoss.getValue(300));
+		assertThat((double) averageLoss.getValue(300)).isEqualTo((double) 3d);
 	}
 }

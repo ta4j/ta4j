@@ -6,7 +6,6 @@ import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.indicator.tracker.SMA;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 

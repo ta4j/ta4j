@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.indicator.tracker;
 
-import eu.verdelhan.ta4j.indicator.tracker.AccelerationDeceleration;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -8,7 +7,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,32 +33,32 @@ public class AccelerationDecelerationTest {
 	public void testCalculateWithSma2AndSma3() throws Exception {
 		AccelerationDeceleration acceleration = new AccelerationDeceleration(series, 2, 3);
 
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(0));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(1));
-		assertEquals(BigDecimal.valueOf(0.1666666d - 0.08333333d), acceleration.getValue(2));
-		assertEquals(BigDecimal.valueOf(1d - 0.5833333), acceleration.getValue(3));
-		assertEquals(BigDecimal.valueOf(-3d + 1d), acceleration.getValue(4));
+		assertThat(acceleration.getValue(0)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(1)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(2)).isEqualTo(BigDecimal.valueOf(0.1666666d - 0.08333333d));
+		assertThat(acceleration.getValue(3)).isEqualTo(BigDecimal.valueOf(1d - 0.5833333));
+		assertThat(acceleration.getValue(4)).isEqualTo(BigDecimal.valueOf(-3d + 1d));
 	}
 
 	@Test
 	public void testWithSma1AndSma2() throws Exception {
 		AccelerationDeceleration acceleration = new AccelerationDeceleration(series, 1, 2);
 
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(0));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(1));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(2));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(3));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(4));
+		assertThat(acceleration.getValue(0)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(1)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(2)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(3)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(4)).isEqualTo(BigDecimal.ZERO);
 	}
 
 	@Test
 	public void testWithSmaDefault() throws Exception {
 		AccelerationDeceleration acceleration = new AccelerationDeceleration(series);
 
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(0));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(1));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(2));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(3));
-		assertEquals(BigDecimal.ZERO, acceleration.getValue(4));
+		assertThat(acceleration.getValue(0)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(1)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(2)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(3)).isEqualTo(BigDecimal.ZERO);
+		assertThat(acceleration.getValue(4)).isEqualTo(BigDecimal.ZERO);
 	}
 }

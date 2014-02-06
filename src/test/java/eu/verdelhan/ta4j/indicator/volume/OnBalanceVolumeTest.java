@@ -5,7 +5,6 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static junit.framework.Assert.assertEquals;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 

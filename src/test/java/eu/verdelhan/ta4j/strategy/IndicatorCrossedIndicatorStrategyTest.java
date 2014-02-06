@@ -7,8 +7,6 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 
 public class IndicatorCrossedIndicatorStrategyTest {
@@ -26,14 +24,14 @@ public class IndicatorCrossedIndicatorStrategyTest {
 		assertThat(s.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
 		Operation enter = new Operation(2, OperationType.BUY);
-		assertEquals(enter, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(enter);
 
 		assertThat(s.shouldOperate(trade, 3)).isFalse();
 
 		assertThat(s.shouldOperate(trade, 4)).isTrue();
 		trade.operate(4);
 		Operation exit = new Operation(4, OperationType.SELL);
-		assertEquals(exit, trade.getExit());
+		assertThat(trade.getExit()).isEqualTo(exit);
 
 		assertThat(s.shouldOperate(trade, 5)).isFalse();
 	}
@@ -61,7 +59,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 		Operation enter = new Operation(2, OperationType.BUY);
 		assertThat(s.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
-		assertEquals(enter, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(enter);
 
 		for (int i = 3; i < 6; i++) {
 			assertThat(s.shouldOperate(trade, i)).isFalse();
@@ -79,9 +77,9 @@ public class IndicatorCrossedIndicatorStrategyTest {
 		trade.operate(1);
 		Operation enter = trade.getEntry();
 
-		assertNotNull(enter);
+		assertThat(enter).isNotNull();
 
-		assertEquals(enter.getType(), OperationType.BUY);
+		assertThat(OperationType.BUY).isEqualTo(enter.getType());
 
 		for (int i = 2; i < 6; i++) {
 			assertThat(s.shouldOperate(trade, i)).isFalse();
@@ -99,7 +97,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
 		assertThat(s.shouldOperate(trade, 1)).isTrue();
 		trade.operate(1);
-		assertEquals(enter, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(enter);
 
 		for (int i = 2; i < 6; i++) {
 			assertThat(s.shouldOperate(trade, i)).isFalse();
@@ -108,7 +106,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 		Operation exit = new Operation(6, OperationType.SELL);
 		assertThat(s.shouldOperate(trade, 6)).isTrue();
 		trade.operate(6);
-		assertEquals(exit, trade.getExit());
+		assertThat(trade.getExit()).isEqualTo(exit);
 	}
 
 	@Test

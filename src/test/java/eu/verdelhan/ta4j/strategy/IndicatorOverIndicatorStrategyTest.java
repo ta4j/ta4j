@@ -8,7 +8,6 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,23 +46,23 @@ public class IndicatorOverIndicatorStrategyTest {
 		Strategy s = new IndicatorOverIndicatorStrategy(first, second);
 		assertThat(s.shouldOperate(trade, 0)).isFalse();
 		assertThat(s.shouldOperate(trade, 1)).isFalse();
-		assertEquals(null, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(null);
 		Operation buy = new Operation(2, OperationType.BUY);
 		assertThat(s.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 		trade = new Trade();
 		buy = new Operation(3, OperationType.BUY);
 		assertThat(s.shouldOperate(trade, 3)).isTrue();
 		trade.operate(3);
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 
 		assertThat(s.shouldOperate(trade, 3)).isFalse();
 
 		Operation sell = new Operation(4, OperationType.SELL);
 		assertThat(s.shouldOperate(trade, 4)).isTrue();
 		trade.operate(4);
-		assertEquals(sell, trade.getExit());
+		assertThat(trade.getExit()).isEqualTo(sell);
 
 	}
 }

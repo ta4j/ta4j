@@ -4,7 +4,6 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.simple.ClosePrice;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -21,16 +20,16 @@ public class StandardDeviationTest {
 		StandardDeviation sdv = new StandardDeviation(new ClosePrice(data), 4);
 
 		assertThat(sdv.getValue(0)).isEqualTo(0d);
-		assertEquals(Math.sqrt(0.5), sdv.getValue(1), 0.1);
-		assertEquals(Math.sqrt(2.0), sdv.getValue(2), 0.1);
-		assertEquals(Math.sqrt(5.0), sdv.getValue(3), 0.1);
-		assertEquals(Math.sqrt(2.0), sdv.getValue(4), 0.1);
+		assertThat(sdv.getValue(1)).isEqualTo(Math.sqrt(0.5));
+		assertThat(sdv.getValue(2)).isEqualTo(Math.sqrt(2.0));
+		assertThat(sdv.getValue(3)).isEqualTo(Math.sqrt(5.0));
+		assertThat(sdv.getValue(4)).isEqualTo(Math.sqrt(2.0));
 		assertThat(sdv.getValue(5)).isEqualTo(1);
-		assertEquals(Math.sqrt(2.0), sdv.getValue(6), 0.1);
-		assertEquals(Math.sqrt(2.0), sdv.getValue(7), 0.1);
-		assertEquals(Math.sqrt(2.0), sdv.getValue(8), 0.1);
-		assertEquals(Math.sqrt(14.0), sdv.getValue(9), 0.1);
-		assertEquals(Math.sqrt(42.0), sdv.getValue(10), 0.1);
+		assertThat(sdv.getValue(6)).isEqualTo(Math.sqrt(2.0));
+		assertThat(sdv.getValue(7)).isEqualTo(Math.sqrt(2.0));
+		assertThat(sdv.getValue(8)).isEqualTo(Math.sqrt(2.0));
+		assertThat(sdv.getValue(9)).isEqualTo(Math.sqrt(14.0));
+		assertThat(sdv.getValue(10)).isEqualTo(Math.sqrt(42.0));
 
 	}
 
@@ -53,11 +52,11 @@ public class StandardDeviationTest {
 		StandardDeviation sdv = new StandardDeviation(new ClosePrice(data), 2);
 
 		assertThat(sdv.getValue(0)).isEqualTo(0d);
-		assertEquals(Math.sqrt(0.5), sdv.getValue(1), 0.1);
-		assertEquals(Math.sqrt(0.5), sdv.getValue(2), 0.1);
-		assertEquals(Math.sqrt(0.5), sdv.getValue(3), 0.1);
-		assertEquals(Math.sqrt(4.5), sdv.getValue(9), 0.1);
-		assertEquals(Math.sqrt(40.5), sdv.getValue(10), 0.1);
+		assertThat(sdv.getValue(1)).isEqualTo(Math.sqrt(0.5));
+		assertThat(sdv.getValue(2)).isEqualTo(Math.sqrt(0.5));
+		assertThat(sdv.getValue(3)).isEqualTo(Math.sqrt(0.5));
+		assertThat(sdv.getValue(9)).isEqualTo(Math.sqrt(4.5));
+		assertThat(sdv.getValue(10)).isEqualTo(Math.sqrt(40.5));
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

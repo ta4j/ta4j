@@ -1,7 +1,5 @@
 package eu.verdelhan.ta4j.indicator.oscillator;
 
-import eu.verdelhan.ta4j.indicator.oscillator.StochasticOscillatorD;
-import eu.verdelhan.ta4j.indicator.oscillator.StochasticOscillatorK;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.tracker.SMA;
@@ -9,7 +7,7 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.series.DefaultTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,9 +43,9 @@ public class StochasticOscillatorDTest {
 		SMA sma = new SMA(sof, 3);
 		StochasticOscillatorD sos = new StochasticOscillatorD(sma);
 
-		assertEquals(sma.getValue(0), sos.getValue(0), 0.01);
-		assertEquals(sma.getValue(1), sos.getValue(1), 0.01);
-		assertEquals(sma.getValue(2), sos.getValue(2), 0.01);
+		assertThat(sos.getValue(0)).isEqualTo(sma.getValue(0));
+		assertThat(sos.getValue(1)).isEqualTo(sma.getValue(1));
+		assertThat(sos.getValue(2)).isEqualTo(sma.getValue(2));
 	}
 
 	@Test
@@ -57,9 +55,9 @@ public class StochasticOscillatorDTest {
 		StochasticOscillatorD sos = new StochasticOscillatorD(sof);
 		SMA sma = new SMA(sof, 3);
 
-		assertEquals(sma.getValue(0), sos.getValue(0), 0.01);
-		assertEquals(sma.getValue(1), sos.getValue(1), 0.01);
-		assertEquals(sma.getValue(2), sos.getValue(2), 0.01);
+		assertThat(sos.getValue(0)).isEqualTo(sma.getValue(0));
+		assertThat(sos.getValue(1)).isEqualTo(sma.getValue(1));
+		assertThat(sos.getValue(2)).isEqualTo(sma.getValue(2));
 	}
 
 	@Test
@@ -69,7 +67,7 @@ public class StochasticOscillatorDTest {
 		StochasticOscillatorD sos = new StochasticOscillatorD(sof);
 		SMA sma = new SMA(sof, 3);
 
-		assertEquals(sma.getValue(13), sos.getValue(13), 0.01);
+		assertThat(sos.getValue(13)).isEqualTo(sma.getValue(13));
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

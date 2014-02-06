@@ -5,7 +5,6 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,7 +29,7 @@ public class RegularSlicerTest {
 
 		TimeSeriesSlicer newSlicer = slicer.applyForSeries(series);
 		
-		assertEquals(slicer, newSlicer);
+		assertThat(newSlicer).isEqualTo(slicer);
 		
 		
 

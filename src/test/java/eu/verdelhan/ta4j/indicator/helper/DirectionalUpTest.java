@@ -5,7 +5,6 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static junit.framework.Assert.assertEquals;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
@@ -26,9 +25,9 @@ public class DirectionalUpTest {
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalUp dup = new DirectionalUp(series, 3);
 		assertThat(dup.getValue(0)).isEqualTo(1d);
-		assertEquals((2d / 3 + 2d/3) / (2d/3 + 12d/3) , dup.getValue(1));
-		assertEquals(((2d / 3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3), dup.getValue(2));
-		assertEquals((((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 + 1d/3 * 0) / ((((2d/3 + 12d/3) * 2d/3 + 15d/3) * 2d/3) + 11d/3), dup.getValue(3));
-		assertEquals((((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 * 2d/3  + 2 * 1d / 3) / ((((((2d/3 + 12d/3) * 2d/3 + 15d/3) * 2d/3) + 11d/3) * 2d/3) + 13d/3), dup.getValue(4));
+		assertThat(dup.getValue(1)).isEqualTo((2d / 3 + 2d/3) / (2d/3 + 12d/3) );
+		assertThat(dup.getValue(2)).isEqualTo(((2d / 3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3));
+		assertThat(dup.getValue(3)).isEqualTo((((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 + 1d/3 * 0) / ((((2d/3 + 12d/3) * 2d/3 + 15d/3) * 2d/3) + 11d/3));
+		assertThat(dup.getValue(4)).isEqualTo((((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 * 2d/3  + 2 * 1d / 3) / ((((((2d/3 + 12d/3) * 2d/3 + 15d/3) * 2d/3) + 11d/3) * 2d/3) + 13d/3));
 	}
 }

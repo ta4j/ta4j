@@ -1,11 +1,10 @@
 package eu.verdelhan.ta4j.strategy;
 
-import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.junit.Assert.assertEquals;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-
+import eu.verdelhan.ta4j.mocks.MockStrategy;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -60,38 +59,38 @@ public class AbstractStrategyTest {
 	public void testAnd() {
 		Strategy strategy = fakeStrategy.and(fakeStrategy2);  
 		
-		assertEquals(false, strategy.shouldEnter(0));
-		assertEquals(false, strategy.shouldEnter(1));
-		assertEquals(false, strategy.shouldEnter(2));
-		assertEquals(false, strategy.shouldEnter(3));
-		assertEquals(true, strategy.shouldEnter(4));
-		assertEquals(false, strategy.shouldEnter(5));
+		assertThat(strategy.shouldEnter(0)).isEqualTo(false);
+		assertThat(strategy.shouldEnter(1)).isEqualTo(false);
+		assertThat(strategy.shouldEnter(2)).isEqualTo(false);
+		assertThat(strategy.shouldEnter(3)).isEqualTo(false);
+		assertThat(strategy.shouldEnter(4)).isEqualTo(true);
+		assertThat(strategy.shouldEnter(5)).isEqualTo(false);
 		
-		assertEquals(false, strategy.shouldExit(0));
-		assertEquals(false, strategy.shouldExit(1));
-		assertEquals(false, strategy.shouldExit(2));
-		assertEquals(false, strategy.shouldExit(3));
-		assertEquals(false, strategy.shouldExit(4));
-		assertEquals(true, strategy.shouldExit(5));
+		assertThat(strategy.shouldExit(0)).isEqualTo(false);
+		assertThat(strategy.shouldExit(1)).isEqualTo(false);
+		assertThat(strategy.shouldExit(2)).isEqualTo(false);
+		assertThat(strategy.shouldExit(3)).isEqualTo(false);
+		assertThat(strategy.shouldExit(4)).isEqualTo(false);
+		assertThat(strategy.shouldExit(5)).isEqualTo(true);
 	}
 
 	@Test
 	public void testOr() {
 		Strategy strategy = fakeStrategy.or(fakeStrategy2);
 		
-		assertEquals(true, strategy.shouldEnter(0));
-		assertEquals(true, strategy.shouldEnter(1));
-		assertEquals(true, strategy.shouldEnter(2));
-		assertEquals(false, strategy.shouldEnter(3));
-		assertEquals(true, strategy.shouldEnter(4));
-		assertEquals(false, strategy.shouldEnter(5));
+		assertThat(strategy.shouldEnter(0)).isEqualTo(true);
+		assertThat(strategy.shouldEnter(1)).isEqualTo(true);
+		assertThat(strategy.shouldEnter(2)).isEqualTo(true);
+		assertThat(strategy.shouldEnter(3)).isEqualTo(false);
+		assertThat(strategy.shouldEnter(4)).isEqualTo(true);
+		assertThat(strategy.shouldEnter(5)).isEqualTo(false);
 		
-		assertEquals(false, strategy.shouldExit(0));
-		assertEquals(true, strategy.shouldExit(1));
-		assertEquals(true, strategy.shouldExit(2));
-		assertEquals(true, strategy.shouldExit(3));
-		assertEquals(true, strategy.shouldExit(4));
-		assertEquals(true, strategy.shouldExit(5));
+		assertThat(strategy.shouldExit(0)).isEqualTo(false);
+		assertThat(strategy.shouldExit(1)).isEqualTo(true);
+		assertThat(strategy.shouldExit(2)).isEqualTo(true);
+		assertThat(strategy.shouldExit(3)).isEqualTo(true);
+		assertThat(strategy.shouldExit(4)).isEqualTo(true);
+		assertThat(strategy.shouldExit(5)).isEqualTo(true);
 	}
 
 }

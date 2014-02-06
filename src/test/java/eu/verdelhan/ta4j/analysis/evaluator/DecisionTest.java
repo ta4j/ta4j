@@ -18,7 +18,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -81,7 +80,7 @@ public class DecisionTest {
 		Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertEquals(Math.pow(3d, 1d / 4), decision.evaluateCriterion(new AverageProfitCriterion()), 0.0001);
+		assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(Math.pow(3d, 1d / 4));
 	}
 	
 	@Test
@@ -116,9 +115,9 @@ public class DecisionTest {
 
 		Decision appliedDecision = decision.applyFor(1);
 
-		assertEquals(nextDecision, appliedDecision);
+		assertThat(appliedDecision).isEqualTo(nextDecision);
 		assertThat(appliedDecision.evaluateCriterion()).isEqualTo(1d);
-		assertEquals(slicer.getSlice(1).getBegin(), appliedDecision.getActualSlice().getBegin());
-		assertEquals(slicer.getSlice(1).getEnd(), appliedDecision.getActualSlice().getEnd());
+		assertThat(appliedDecision.getActualSlice().getBegin()).isEqualTo(slicer.getSlice(1).getBegin());
+		assertThat(appliedDecision.getActualSlice().getEnd()).isEqualTo(slicer.getSlice(1).getEnd());
 	}
 }

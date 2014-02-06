@@ -1,10 +1,9 @@
 package eu.verdelhan.ta4j.series;
 
-import org.joda.time.DateTime;
-import org.joda.time.Period;
-
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
+import org.joda.time.DateTime;
+import org.joda.time.Period;
 
 public class RegularSlicer extends PartialMemorizedSlicer {
 

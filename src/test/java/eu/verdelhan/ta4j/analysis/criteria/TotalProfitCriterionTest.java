@@ -8,7 +8,6 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class TotalProfitCriterionTest {
@@ -43,7 +42,7 @@ public class TotalProfitCriterionTest {
 		trades.add(new Trade(new Operation(2, OperationType.SELL), new Operation(5, OperationType.BUY)));
 
 		AnalysisCriterion profit = new TotalProfitCriterion();
-		assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, trades));
+		assertThat(profit.calculate(series, trades)).isEqualTo((1 / 0.95) * (1 / 0.7));
 	}
 
 	@Test

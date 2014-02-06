@@ -14,7 +14,6 @@ import java.util.LinkedList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,7 +63,7 @@ public class AverageProfitCriterionTest {
 		trades.clear();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, trades), 0.001);
+		assertThat(averageProfit.calculate(series, trades)).isEqualTo(Math.pow(110d/100, 1d/3));
 	}
 
 	@Test
@@ -74,7 +73,7 @@ public class AverageProfitCriterionTest {
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, trades), 0.01);
+		assertThat(averageProfit.calculate(series, trades)).isEqualTo(Math.pow(95d/100 * 70d/100, 1d / 6));
 	}
 
 	@Test
@@ -91,7 +90,7 @@ public class AverageProfitCriterionTest {
 		series = new MockTimeSeries(new double[] {100, 105});
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion average = new AverageProfitCriterion();
-		assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade));
+		assertThat(average.calculate(series, trade)).isEqualTo(Math.pow(105d / 100, 1d/2));
 		
 	}
 }

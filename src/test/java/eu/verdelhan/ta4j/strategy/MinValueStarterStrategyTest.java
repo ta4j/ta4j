@@ -7,7 +7,6 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,7 +43,7 @@ public class MinValueStarterStrategyTest {
 		Operation buy = new Operation(2, OperationType.BUY);
 		assertThat(starter.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 
 		trade = new Trade();
 		buy = new Operation(3, OperationType.BUY);
@@ -53,7 +52,7 @@ public class MinValueStarterStrategyTest {
 		trade.operate(3);
 
 		assertThat(starter.shouldOperate(trade, 3)).isFalse();
-		assertEquals(buy, trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(buy);
 	}
 
 	@Test

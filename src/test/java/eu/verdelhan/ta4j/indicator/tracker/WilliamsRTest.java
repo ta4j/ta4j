@@ -10,7 +10,6 @@ import eu.verdelhan.ta4j.series.DefaultTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -79,10 +78,10 @@ public class WilliamsRTest {
 		WilliamsR wr = new WilliamsR(new ClosePrice(data), 100, new MaxPrice(data),
 				new MinPrice(data));
 
-		assertEquals(-100d * (0.12 / 0.21), wr.getValue(0), 0.01);
-		assertEquals(-100d * (0.07 / 0.21), wr.getValue(1), 0.01);
-		assertEquals(-100d * (0.13 / 0.36), wr.getValue(2), 0.01);
-		assertEquals(-100d * (0.18 / 0.36), wr.getValue(3), 0.01);
+		assertThat(wr.getValue(0)).isEqualTo(-100d * (0.12 / 0.21));
+		assertThat(wr.getValue(1)).isEqualTo(-100d * (0.07 / 0.21));
+		assertThat(wr.getValue(2)).isEqualTo(-100d * (0.13 / 0.36));
+		assertThat(wr.getValue(3)).isEqualTo(-100d * (0.18 / 0.36));
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

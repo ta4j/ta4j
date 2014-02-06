@@ -11,10 +11,8 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
-
 import org.joda.time.DateTime;
 import org.joda.time.Period;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,15 +46,15 @@ public class ShortSellRunnerTest {
 		List<Trade> trades = runner.run(0);
 		assertThat(trades).hasSize(3);
 
-		assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
-		assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
+		assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(2, OperationType.BUY));
+		assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
 
-		assertEquals(new Operation(4, OperationType.SELL), trades.get(1).getEntry());
+		assertThat(trades.get(1).getEntry()).isEqualTo(new Operation(4, OperationType.SELL));
 		System.out.println(trades.get(1));
-		assertEquals(new Operation(6, OperationType.BUY), trades.get(1).getExit());
+		assertThat(trades.get(1).getExit()).isEqualTo(new Operation(6, OperationType.BUY));
 
-		assertEquals(new Operation(6, OperationType.BUY), trades.get(2).getEntry());
-		assertEquals(new Operation(7, OperationType.SELL), trades.get(2).getExit());
+		assertThat(trades.get(2).getEntry()).isEqualTo(new Operation(6, OperationType.BUY));
+		assertThat(trades.get(2).getExit()).isEqualTo(new Operation(7, OperationType.SELL));
 	}
 
 	@Test
@@ -70,8 +68,8 @@ public class ShortSellRunnerTest {
 		List<Trade> trades = runner.run(0);
 		assertThat(trades).hasSize(1);
 
-		assertEquals(new Operation(1, OperationType.BUY), trades.get(0).getEntry());
-		assertEquals(new Operation(3, OperationType.SELL), trades.get(0).getExit());
+		assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(1, OperationType.BUY));
+		assertThat(trades.get(0).getExit()).isEqualTo(new Operation(3, OperationType.SELL));
 	}
 
 	@Test

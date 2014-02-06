@@ -1,20 +1,16 @@
 package eu.verdelhan.ta4j.analysis.evaluator;
 
-import eu.verdelhan.ta4j.analysis.evaluator.HigherValueEvaluator;
-import eu.verdelhan.ta4j.analysis.evaluator.Decision;
-import static org.junit.Assert.assertEquals;
-
-import java.util.HashSet;
-
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.runner.HistoryRunnerFactory;
+import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import eu.verdelhan.ta4j.runner.HistoryRunnerFactory;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import eu.verdelhan.ta4j.strategy.AlwaysOperateStrategy;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
+import java.util.HashSet;
+import static org.assertj.core.api.Assertions.*;
 
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -52,7 +48,7 @@ public class BestStrategyEvaluatorTest {
 		HigherValueEvaluator evaluator = new HigherValueEvaluator(new HistoryRunnerFactory(), strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
 		Decision decision = evaluator.evaluate(0);
 
-		assertEquals(alwaysStrategy, decision.getStrategy());
+		assertThat(decision.getStrategy()).isEqualTo(alwaysStrategy);
 	}
 
 	@Test
@@ -64,6 +60,6 @@ public class BestStrategyEvaluatorTest {
 		HigherValueEvaluator evaluator = new HigherValueEvaluator(new HistoryRunnerFactory(), strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
 		Decision decision = evaluator.evaluate(0);
 
-		assertEquals(buyAndHoldStrategy, decision.getStrategy());
+		assertThat(decision.getStrategy()).isEqualTo(buyAndHoldStrategy);
 	}
 }

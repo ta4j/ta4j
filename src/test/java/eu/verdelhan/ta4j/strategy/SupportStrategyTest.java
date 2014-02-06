@@ -7,7 +7,6 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,16 +32,16 @@ public class SupportStrategyTest {
 		assertThat(support.shouldOperate(trade, 0)).isFalse();
 		assertThat(support.shouldOperate(trade, 1)).isTrue();
 		trade.operate(1);
-		assertEquals(new Operation(1, OperationType.BUY), trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(new Operation(1, OperationType.BUY));
 		trade = new Trade();
 		assertThat(support.shouldOperate(trade, 2)).isTrue();
 		trade.operate(2);
-		assertEquals(new Operation(2, OperationType.BUY), trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(new Operation(2, OperationType.BUY));
 		trade = new Trade();
 		assertThat(support.shouldOperate(trade, 3)).isFalse();
 		assertThat(support.shouldOperate(trade, 4)).isTrue();
 		trade.operate(4);
-		assertEquals(new Operation(4, OperationType.BUY), trade.getEntry());
+		assertThat(trade.getEntry()).isEqualTo(new Operation(4, OperationType.BUY));
 		assertThat(support.shouldOperate(trade, 5)).isFalse();
 	}
 }

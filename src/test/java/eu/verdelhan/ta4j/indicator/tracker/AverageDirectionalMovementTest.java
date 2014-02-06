@@ -5,7 +5,6 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static junit.framework.Assert.assertEquals;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
@@ -26,11 +25,11 @@ public class AverageDirectionalMovementTest {
 		double dup = (2d / 3 + 2d/3) / (2d/3 + 12d/3);
 		double ddown = (2d/3) /(2d/3 + 12d/3);
 		double firstdm = (dup - ddown) / (dup + ddown) * 100;
-		assertEquals( 2d/3 + firstdm / 3, adm.getValue(1));
+		assertThat(adm.getValue(1)).isEqualTo( 2d/3 + firstdm / 3);
 		dup = ((2d / 3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3);
 		ddown = (4d/9) /((2d/3 + 12d/3) * 2d/3 + 15d/3);
 		double secondDm = (dup - ddown) / (dup + ddown) * 100;
-		assertEquals( (2d/3 + firstdm / 3) * 2d/3 + secondDm / 3, adm.getValue(2));
+		assertThat(adm.getValue(2)).isEqualTo( (2d/3 + firstdm / 3) * 2d/3 + secondDm / 3);
 
 	}
 }

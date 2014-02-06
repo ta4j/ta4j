@@ -1,9 +1,8 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
-import eu.verdelhan.ta4j.indicator.simple.MaxPrice;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -22,7 +21,7 @@ public class MaxPriceTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickMaxPrice() {
 		for (int i = 0; i < 10; i++) {
-			assertEquals(maxPriceIndicator.getValue(i), timeSeries.getTick(i).getMaxPrice());
+			assertThat(timeSeries.getTick(i).getMaxPrice()).isEqualTo(maxPriceIndicator.getValue(i));
 		}
 	}
 
