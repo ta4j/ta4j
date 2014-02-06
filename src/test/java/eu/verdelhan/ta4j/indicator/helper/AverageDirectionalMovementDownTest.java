@@ -29,10 +29,10 @@ public class AverageDirectionalMovementDownTest {
 		
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		AverageDirectionalMovementDown admdown = new AverageDirectionalMovementDown(series, 3);
-		assertThat((double) admdown.getValue(0)).isEqualTo((double) 1d);
-		assertThat((double) admdown.getValue(1)).isEqualTo((double) 1d * 2d/3 +2d / 3);
-		assertThat((double) admdown.getValue(2)).isEqualTo((double) (1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0);
-		assertThat((double) admdown.getValue(3)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3);
-		assertThat((double) admdown.getValue(4)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3);
+		assertThat(admdown.getValue(0)).isEqualTo((double) 1d);
+		assertThat(admdown.getValue(1)).isEqualTo((double) 1d * 2d/3 +2d / 3);
+		assertThat(admdown.getValue(2)).isEqualTo((double) (1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0);
+		assertThat(admdown.getValue(3)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3);
+		assertThat(admdown.getValue(4)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3);
 	}
 }

@@ -24,10 +24,10 @@ public class DirectionalDownTest {
 		
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalDown ddown = new DirectionalDown(series, 3);
-		assertThat((double) ddown.getValue(0)).isEqualTo((double) 1d);
-		assertThat((double) ddown.getValue(1)).isEqualTo((double) (1d * 2d/3 +2d / 3) / (2d/3 + 11d/3));
-		assertThat((double) ddown.getValue(2)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) / (((2d/3 + 11d/3) * 2d/3) + 15d/3));
-		assertThat((double) ddown.getValue(3)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) / (((((2d/3 + 11d/3) * 2d/3) + 15d/3) * 2d/3) + 14d/3));
-		assertThat((double) ddown.getValue(4)).isEqualTo((double) ((((1d * 2d/3 + 2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3) / (((((((2d/3 + 11d/3) * 2d/3) + 15d/3) * 2d/3) + 14d/3) * 2d/3) + 13d/3));
+		assertThat(ddown.getValue(0)).isEqualTo((double) 1d);
+		assertThat(ddown.getValue(1)).isEqualTo((double) (1d * 2d/3 +2d / 3) / (2d/3 + 11d/3));
+		assertThat(ddown.getValue(2)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) / (((2d/3 + 11d/3) * 2d/3) + 15d/3));
+		assertThat(ddown.getValue(3)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) / (((((2d/3 + 11d/3) * 2d/3) + 15d/3) * 2d/3) + 14d/3));
+		assertThat(ddown.getValue(4)).isEqualTo((double) ((((1d * 2d/3 + 2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3) / (((((((2d/3 + 11d/3) * 2d/3) + 15d/3) * 2d/3) + 14d/3) * 2d/3) + 13d/3));
 	}
 }

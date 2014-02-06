@@ -55,14 +55,14 @@ public class EMATest {
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		EMA ema = new EMA(new ClosePrice(data), 10);
-		assertThat((double) ema.getValue(14)).isEqualTo(3d);
+		assertThat(ema.getValue(14)).isEqualTo(3d);
 	}
 	
 	@Test
 	public void testSmallTimeFrame()
 	{
 		EMA ema = new EMA(new ClosePrice(data), 1);
-		assertThat((double) ema.getValue(0)).isEqualTo(64.75d);
+		assertThat(ema.getValue(0)).isEqualTo(64.75d);
 	}
 	
 }

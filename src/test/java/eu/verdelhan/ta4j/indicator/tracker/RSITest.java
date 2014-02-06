@@ -51,6 +51,6 @@ public class RSITest {
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		RSI rsi = new RSI(new ClosePrice(data), 14);
-		assertThat((double) rsi.getValue(300)).isEqualTo(3d);
+		assertThat(rsi.getValue(300)).isEqualTo(3d);
 	}
 }

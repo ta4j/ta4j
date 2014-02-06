@@ -58,6 +58,6 @@ public class AverageGainTest {
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		AverageGain averageGain = new AverageGain(new ClosePrice(data), 5);
-		assertThat((double) averageGain.getValue(300)).isEqualTo((double) 3d);
+		assertThat(averageGain.getValue(300)).isEqualTo((double) 3d);
 	}
 }

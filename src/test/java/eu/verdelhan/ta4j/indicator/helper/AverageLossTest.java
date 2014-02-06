@@ -59,6 +59,6 @@ public class AverageLossTest {
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
 		AverageLoss averageLoss = new AverageLoss(new ClosePrice(data), 5);
-		assertThat((double) averageLoss.getValue(300)).isEqualTo((double) 3d);
+		assertThat(averageLoss.getValue(300)).isEqualTo((double) 3d);
 	}
 }

@@ -34,7 +34,7 @@ public class BollingerBandsLowerTest {
 		StandardDeviation standardDeviation = new StandardDeviation(closePrice, timeFrame);
 		BollingerBandsLower bblSMA = new BollingerBandsLower(bbmSMA, standardDeviation);
 
-		assertThat((double) bblSMA.getValue(0)).isEqualTo(1d);
+		assertThat(bblSMA.getValue(0)).isEqualTo(1d);
 		assertThat(bblSMA.getValue(1)).isEqualTo(0.08);
 		assertThat(bblSMA.getValue(2)).isEqualTo(-0.82);
 		assertThat(bblSMA.getValue(3)).isEqualTo(0.17);

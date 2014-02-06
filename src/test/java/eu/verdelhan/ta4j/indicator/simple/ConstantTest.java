@@ -15,9 +15,9 @@ public class ConstantTest {
 
 	@Test
 	public void testConstantIndicator() {
-		assertThat((double) constantIndicator.getValue(10)).isEqualTo(30.33);
-		assertThat((double) constantIndicator.getValue(1)).isEqualTo(30.33);
-		assertThat((double) constantIndicator.getValue(0)).isEqualTo(30.33);
-		assertThat((double) constantIndicator.getValue(30)).isEqualTo(30.33);
+		assertThat(constantIndicator.getValue(10)).isEqualTo(30.33);
+		assertThat(constantIndicator.getValue(1)).isEqualTo(30.33);
+		assertThat(constantIndicator.getValue(0)).isEqualTo(30.33);
+		assertThat(constantIndicator.getValue(30)).isEqualTo(30.33);
 	}
 }

@@ -24,10 +24,10 @@ public class AverageDirectionalMovementUpTest {
 		
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		AverageDirectionalMovementUp admup = new AverageDirectionalMovementUp(series, 3);
-		assertThat((double) admup.getValue(0)).isEqualTo((double) 1d);
-		assertThat((double) admup.getValue(1)).isEqualTo((double) 2d / 3 + 2d/3 );
-		assertThat((double) admup.getValue(2)).isEqualTo((double) (2d / 3 + 2d/3) * 2d/3 + 1);
-		assertThat((double) admup.getValue(3)).isEqualTo((double) ((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 + 1d/3 * 0);
-		assertThat((double) admup.getValue(4)).isEqualTo((double) ((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 * 2d/3  + 2 * 1d / 3);
+		assertThat(admup.getValue(0)).isEqualTo((double) 1d);
+		assertThat(admup.getValue(1)).isEqualTo((double) 2d / 3 + 2d/3 );
+		assertThat(admup.getValue(2)).isEqualTo((double) (2d / 3 + 2d/3) * 2d/3 + 1);
+		assertThat(admup.getValue(3)).isEqualTo((double) ((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 + 1d/3 * 0);
+		assertThat(admup.getValue(4)).isEqualTo((double) ((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 * 2d/3  + 2 * 1d / 3);
 	}
 }

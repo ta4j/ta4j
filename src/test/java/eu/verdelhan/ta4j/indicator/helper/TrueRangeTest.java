@@ -20,11 +20,11 @@ public class TrueRangeTest {
 		ticks.add(new MockTick(0, 0, 0, 2));
 		TrueRange tr = new TrueRange(new MockTimeSeries(ticks));
 		
-		assertThat((double) tr.getValue(0)).isEqualTo(7d);
-		assertThat((double) tr.getValue(1)).isEqualTo(6d);
-		assertThat((double) tr.getValue(2)).isEqualTo(9d);
-		assertThat((double) tr.getValue(3)).isEqualTo(3d);
-		assertThat((double) tr.getValue(4)).isEqualTo(15d);
+		assertThat(tr.getValue(0)).isEqualTo(7d);
+		assertThat(tr.getValue(1)).isEqualTo(6d);
+		assertThat(tr.getValue(2)).isEqualTo(9d);
+		assertThat(tr.getValue(3)).isEqualTo(3d);
+		assertThat(tr.getValue(4)).isEqualTo(15d);
 		
 	}
 

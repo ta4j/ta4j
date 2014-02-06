@@ -22,7 +22,7 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertThat((double) down.getValue(1)).isEqualTo(0d);
+		assertThat(down.getValue(1)).isEqualTo(0d);
 	}
 	
 	@Test
@@ -35,7 +35,7 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertThat((double) down.getValue(1)).isEqualTo(0d);
+		assertThat(down.getValue(1)).isEqualTo(0d);
 	}
 	@Test
 	public void testZeroDirectionalMovement3()
@@ -47,7 +47,7 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertThat((double) down.getValue(1)).isEqualTo(0d);
+		assertThat(down.getValue(1)).isEqualTo(0d);
 	}
 	@Test
 	public void testPositiveDirectionalMovement()
@@ -59,6 +59,6 @@ public class DirectionalMovementDownTest {
 		ticks.add(todayTick);
 		MockTimeSeries series = new MockTimeSeries(ticks);
 		DirectionalMovementDown down = new DirectionalMovementDown(series);
-		assertThat((double) down.getValue(1)).isEqualTo(16d);
+		assertThat(down.getValue(1)).isEqualTo(16d);
 	}
 }

@@ -20,11 +20,11 @@ public class AverageTrueRangeTest {
 		ticks.add(new MockTick(0, 0, 0, 2));
 		AverageTrueRange atr = new AverageTrueRange(new MockTimeSeries(ticks), 3);
 		
-		assertThat((double) atr.getValue(0)).isEqualTo((double) 1d);
-		assertThat((double) atr.getValue(1)).isEqualTo((double) 2d/3 + 6d/3);
-		assertThat((double) atr.getValue(2)).isEqualTo((double) (2d/3 + 6d/3) * 2d/3 + 9d/3);
-		assertThat((double) atr.getValue(3)).isEqualTo((double) ((2d/3 + 6d/3) * 2d/3 + 9d/3) * 2d/3 + 3d/3);
-		assertThat((double) atr.getValue(4)).isEqualTo((double) (((2d/3 + 6d/3) * 2d/3 + 9d/3) * 2d/3 + 3d/3) * 2d/3 + 15d/3);
+		assertThat(atr.getValue(0)).isEqualTo((double) 1d);
+		assertThat(atr.getValue(1)).isEqualTo((double) 2d/3 + 6d/3);
+		assertThat(atr.getValue(2)).isEqualTo((double) (2d/3 + 6d/3) * 2d/3 + 9d/3);
+		assertThat(atr.getValue(3)).isEqualTo((double) ((2d/3 + 6d/3) * 2d/3 + 9d/3) * 2d/3 + 3d/3);
+		assertThat(atr.getValue(4)).isEqualTo((double) (((2d/3 + 6d/3) * 2d/3 + 9d/3) * 2d/3 + 3d/3) * 2d/3 + 15d/3);
 		
 	}
 }

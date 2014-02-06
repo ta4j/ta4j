@@ -39,7 +39,7 @@ public class CachedIndicatorTest {
 		Arrays.fill(d, 10);
 		TimeSeries dataMax = new MockTimeSeries(d);
 		SMA quoteSMA = new SMA(new ClosePrice(dataMax), 100);
-		assertThat((double) quoteSMA.getValue(105)).isEqualTo((double) 10d);
+		assertThat(quoteSMA.getValue(105)).isEqualTo((double) 10d);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)
