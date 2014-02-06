@@ -21,7 +21,7 @@ public class TradeCountTest {
 	@Test
 	public void testIndicatorShouldRetrieveTickTrade() {
 		for (int i = 0; i < 10; i++) {
-			assertThat(timeSeries.getTick(i).getTrades()).isEqualTo((double) tradeIndicator.getValue(i));
+			assertThat(timeSeries.getTick(i).getTrades()).isEqualTo(tradeIndicator.getValue(i));
 		}
 	}
 

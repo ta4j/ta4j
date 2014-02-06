@@ -21,11 +21,11 @@ public class ParabolicSarTest {
 		ticks.add(new MockTick(0, 13, 15, 9));
 		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
-		assertThat(sar.getValue(0)).isEqualTo(10);
-		assertThat(sar.getValue(1)).isEqualTo(8);
-		assertThat(sar.getValue(2)).isEqualTo(11);
-		assertThat(sar.getValue(3)).isEqualTo(4);
-		assertThat(sar.getValue(4)).isEqualTo(4);
+		assertThat(sar.getValue(0)).isEqualByComparingTo("10");
+		assertThat(sar.getValue(1)).isEqualByComparingTo("8");
+		assertThat(sar.getValue(2)).isEqualByComparingTo("11");
+		assertThat(sar.getValue(3)).isEqualByComparingTo("4");
+		assertThat(sar.getValue(4)).isEqualByComparingTo("4");
 		
 	}
 	
@@ -41,12 +41,12 @@ public class ParabolicSarTest {
 		
 		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
-		assertThat(sar.getValue(0)).isEqualTo(10);
-		assertThat(sar.getValue(1)).isEqualTo(10);
-		assertThat(sar.getValue(2)).isEqualTo(0.04 * (18d - 10) + 10d);
-		assertThat(sar.getValue(3)).isEqualTo(18);
-		assertThat(sar.getValue(3)).isEqualTo(18);
-		assertThat(sar.getValue(4)).isEqualTo(18);
+		assertThat(sar.getValue(0)).isEqualByComparingTo("10");
+		assertThat(sar.getValue(1)).isEqualByComparingTo("10");
+		assertThat(sar.getValue(2)).isEqualByComparingTo(0.04 * (18d - 10) + 10d + "");
+		assertThat(sar.getValue(3)).isEqualByComparingTo("18");
+		assertThat(sar.getValue(3)).isEqualByComparingTo("18");
+		assertThat(sar.getValue(4)).isEqualByComparingTo("18");
 	}
 	@Test
 	public void UpTrendTest()
@@ -60,11 +60,11 @@ public class ParabolicSarTest {
 		
 		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
-		assertThat(sar.getValue(0)).isEqualTo(10);
-		assertThat(sar.getValue(1)).isEqualTo(17);
-		assertThat(sar.getValue(2)).isEqualTo(11.38);
-		assertThat(sar.getValue(3)).isEqualTo(11.38);
-		assertThat(sar.getValue(4)).isEqualTo(18);
+		assertThat(sar.getValue(0)).isEqualByComparingTo("10");
+		assertThat(sar.getValue(1)).isEqualByComparingTo("17");
+		assertThat(sar.getValue(2)).isEqualByComparingTo("11.38");
+		assertThat(sar.getValue(3)).isEqualByComparingTo("11.38");
+		assertThat(sar.getValue(4)).isEqualByComparingTo("18");
 	}
 	
 	@Test
@@ -80,13 +80,13 @@ public class ParabolicSarTest {
 		
 		ParabolicSar sar = new ParabolicSar(new MockTimeSeries(ticks), 1);
 		
-		assertThat(sar.getValue(0)).isEqualTo(20);
-		assertThat(sar.getValue(1)).isEqualTo(19);
-		assertThat(sar.getValue(2)).isEqualTo(0.04d * (14d - 19d) + 19d);
+		assertThat(sar.getValue(0)).isEqualByComparingTo("20");
+		assertThat(sar.getValue(1)).isEqualByComparingTo("19");
+		assertThat(sar.getValue(2)).isEqualByComparingTo(0.04d * (14d - 19d) + 19d + "");
 		double value = 0.06d * (11.38d - 18.8d) + 18.8d;
-		assertThat(sar.getValue(3)).isEqualTo(value);
-		assertThat(sar.getValue(4)).isEqualTo(0.08d * (11d - value) + value);
-		assertThat(sar.getValue(5)).isEqualTo(11);
+		assertThat(sar.getValue(3)).isEqualByComparingTo(value + "");
+		assertThat(sar.getValue(4)).isEqualByComparingTo(0.08d * (11d - value) + value + "");
+		assertThat(sar.getValue(5)).isEqualByComparingTo("11");
 		
 	}
 }
