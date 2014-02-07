@@ -1,10 +1,10 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
@@ -28,9 +28,9 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
         BigDecimal entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
 
         if (trade.getEntry().getType() == OperationType.BUY) {
-            return exitClosePrice.divide(entryClosePrice, RoundingMode.HALF_UP).doubleValue();
+            return exitClosePrice.divide(entryClosePrice, TAUtils.MATH_CONTEXT).doubleValue();
         } else {
-			return entryClosePrice.divide(exitClosePrice, RoundingMode.HALF_UP).doubleValue();
+			return entryClosePrice.divide(exitClosePrice, TAUtils.MATH_CONTEXT).doubleValue();
 		}
     }
 }

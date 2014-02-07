@@ -1,10 +1,10 @@
 package eu.verdelhan.ta4j.flow;
 
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -48,11 +48,11 @@ public class CashFlow {
             for (int i = Math.max(begin, 1); i <= end; i++) {
                 BigDecimal ratio;
                 if (trade.getEntry().getType().equals(OperationType.BUY)) {
-                    ratio = timeSeries.getTick(i).getClosePrice().divide(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice(), RoundingMode.HALF_UP);
+                    ratio = timeSeries.getTick(i).getClosePrice().divide(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice(), TAUtils.MATH_CONTEXT);
                 } else {
-                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice().divide(timeSeries.getTick(i).getClosePrice(), RoundingMode.HALF_UP);
+                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice().divide(timeSeries.getTick(i).getClosePrice(), TAUtils.MATH_CONTEXT);
                 }
-                values.add(values.get(trade.getEntry().getIndex()).multiply(ratio));
+                values.add(values.get(trade.getEntry().getIndex()).multiply(ratio, TAUtils.MATH_CONTEXT));
             }
         }
         if ((timeSeries.getEnd() - values.size()) >= 0) {

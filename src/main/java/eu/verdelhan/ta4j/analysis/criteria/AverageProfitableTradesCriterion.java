@@ -1,6 +1,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.math.BigDecimal;
@@ -16,9 +17,9 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
 		BigDecimal result;
         if (trade.getEntry().getType() == OperationType.BUY) {
-            result = series.getTick(exitIndex).getClosePrice().divide(series.getTick(entryIndex).getClosePrice(), RoundingMode.HALF_UP);
+            result = series.getTick(exitIndex).getClosePrice().divide(series.getTick(entryIndex).getClosePrice(), TAUtils.MATH_CONTEXT);
         } else {
-            result = series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), RoundingMode.HALF_UP);
+            result = series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), TAUtils.MATH_CONTEXT);
         }
 
 		return (result.compareTo(BigDecimal.ONE) == 1) ? 1d : 0d;
@@ -32,11 +33,11 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 			int exitIndex = trade.getExit().getIndex();
 			
             if (trade.getEntry().getType() == OperationType.BUY) {
-				BigDecimal result = series.getTick(exitIndex).getClosePrice().divide(series.getTick(entryIndex).getClosePrice(), RoundingMode.HALF_UP);
+				BigDecimal result = series.getTick(exitIndex).getClosePrice().divide(series.getTick(entryIndex).getClosePrice(), TAUtils.MATH_CONTEXT);
                 if (result.compareTo(BigDecimal.ONE) == 1) {
                     numberOfProfitable++;
                 }
-            } else if (series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), RoundingMode.HALF_UP).compareTo(BigDecimal.ONE) == 1) {
+            } else if (series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), TAUtils.MATH_CONTEXT).compareTo(BigDecimal.ONE) == 1) {
                 numberOfProfitable++;
             }
         }

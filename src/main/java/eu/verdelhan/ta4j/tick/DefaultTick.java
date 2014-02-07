@@ -1,5 +1,6 @@
 package eu.verdelhan.ta4j.tick;
 
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.Tick;
 import java.math.BigDecimal;
 import org.joda.time.DateTime;
@@ -91,9 +92,9 @@ public class DefaultTick implements Tick {
 			amount = amount.add(tradeAmount);
 		}
 		if (volume == null) {
-			volume = tradeAmount.multiply(tradePrice);
+			volume = tradeAmount.multiply(tradePrice, TAUtils.MATH_CONTEXT);
 		} else {
-			volume = volume.add(tradeAmount.multiply(tradePrice));
+			volume = volume.add(tradeAmount.multiply(tradePrice, TAUtils.MATH_CONTEXT));
 		}
 		trades++;
 	}

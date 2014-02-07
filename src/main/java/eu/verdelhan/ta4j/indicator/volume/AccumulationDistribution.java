@@ -1,10 +1,10 @@
 package eu.verdelhan.ta4j.indicator.volume;
 
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.cache.CachedIndicator;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 public class AccumulationDistribution extends CachedIndicator<BigDecimal> {
 
@@ -23,10 +23,10 @@ public class AccumulationDistribution extends CachedIndicator<BigDecimal> {
 
         // Calculating the money flow multiplier
 		BigDecimal moneyFlowMultiplier = tick.getClosePrice().subtract(tick.getMinPrice()).subtract(tick.getMaxPrice().subtract(tick.getClosePrice()))
-				.divide(tick.getMaxPrice().subtract(tick.getMinPrice()), RoundingMode.HALF_UP);
+				.divide(tick.getMaxPrice().subtract(tick.getMinPrice()), TAUtils.MATH_CONTEXT);
 
 		// Calculating the money flow volume
-		BigDecimal moneyFlowVolume = moneyFlowMultiplier.multiply(tick.getVolume());
+		BigDecimal moneyFlowVolume = moneyFlowMultiplier.multiply(tick.getVolume(), TAUtils.MATH_CONTEXT);
 
         return moneyFlowVolume.add(getValue(index - 1));
     }

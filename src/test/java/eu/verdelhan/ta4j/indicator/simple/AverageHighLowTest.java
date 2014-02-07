@@ -1,11 +1,11 @@
 package eu.verdelhan.ta4j.indicator.simple;
 
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
@@ -41,7 +41,7 @@ public class AverageHighLowTest {
 	public void testIndicatorShouldRetrieveTickClosePrice() {
 		BigDecimal result;
 		for (int i = 0; i < 10; i++) {
-			result = timeSeries.getTick(i).getMaxPrice().add(timeSeries.getTick(i).getMinPrice()).divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP);
+			result = timeSeries.getTick(i).getMaxPrice().add(timeSeries.getTick(i).getMinPrice()).divide(BigDecimal.valueOf(2), TAUtils.MATH_CONTEXT);
 			assertThat(result).isEqualTo(average.getValue(i));
 		}
 	}

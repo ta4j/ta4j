@@ -1,5 +1,6 @@
 package eu.verdelhan.ta4j.indicator.tracker;
 
+import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicator.cache.CachedIndicator;
 import eu.verdelhan.ta4j.indicator.helper.HighestValue;
@@ -68,7 +69,7 @@ public class ParabolicSar extends CachedIndicator<BigDecimal> {
 				acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02d;
 				extremePoint = lowestValue;
 			}
-			sar = extremePoint.subtract(getValue(index - 1)).multiply(BigDecimal.valueOf(acceleration)).add(getValue(index - 1));
+			sar = extremePoint.subtract(getValue(index - 1)).multiply(BigDecimal.valueOf(acceleration), TAUtils.MATH_CONTEXT).add(getValue(index - 1));
 
 			BigDecimal n2MaxPrice = series.getTick(index - 2).getMaxPrice();
 			BigDecimal n1MaxPrice = series.getTick(index - 1).getMaxPrice();
@@ -91,7 +92,7 @@ public class ParabolicSar extends CachedIndicator<BigDecimal> {
 				acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02;
 				extremePoint = highestValue;
 			}
-			sar = extremePoint.subtract(getValue(index - 1)).multiply(BigDecimal.valueOf(acceleration)).add(getValue(index - 1));
+			sar = extremePoint.subtract(getValue(index - 1)).multiply(BigDecimal.valueOf(acceleration)).add(getValue(index - 1), TAUtils.MATH_CONTEXT);
 
 			BigDecimal n2MinPrice = series.getTick(index - 2).getMinPrice();
 			BigDecimal n1MinPrice = series.getTick(index - 1).getMinPrice();
