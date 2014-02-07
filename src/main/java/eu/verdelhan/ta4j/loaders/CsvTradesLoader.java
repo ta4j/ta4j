@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.joda.time.DateTime;
+import org.joda.time.Instant;
 
 /**
  * CSV trades loader
@@ -47,6 +48,12 @@ public class CsvTradesLoader implements TimeSeriesLoader {
 			// Getting the first and last trades timestamps
 			DateTime beginTime = new DateTime(Long.parseLong(lines.get(0)[0]) * 1000);
 			DateTime endTime = new DateTime(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
+			if (beginTime.isAfter(endTime)) {
+				Instant beginInstant = beginTime.toInstant();
+				Instant endInstant = endTime.toInstant();
+				beginTime = new DateTime(endInstant);
+				endTime = new DateTime(beginInstant);
+			}
 			// Building the empty ticks
 			ticks = buildEmptyTicks(beginTime, endTime, 600);
 			// Filling the ticks with trades
