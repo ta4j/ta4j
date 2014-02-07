@@ -21,7 +21,7 @@ public class VariationPriceTest {
 
 	@Test
 	public void testIndicatorShouldRetrieveTickVariation() {
-		assertThat(variationIndicator.getValue(0)).isEqualTo(1);
+		assertThat(variationIndicator.getValue(0)).isEqualByComparingTo("1");
 		for (int i = 1; i < 10; i++) {
 			BigDecimal previousTickClosePrice = timeSeries.getTick(i - 1).getClosePrice();
 			BigDecimal currentTickClosePrice = timeSeries.getTick(i).getClosePrice();
