@@ -3,7 +3,9 @@ package eu.verdelhan.ta4j.indicator.tracker;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicator.cache.CachedIndicator;
 
-//TODO: pequena explicacao
+/**
+ * Exponential moving average indicator.
+ */
 public class EMA extends CachedIndicator<Double> {
 
 	private final Indicator<? extends Number> indicator;
@@ -20,11 +22,12 @@ public class EMA extends CachedIndicator<Double> {
 	}
 
 	protected Double calculate(int index) {
-		if (index + 1 < timeFrame)
+		if (index + 1 < timeFrame) {
 			return new SMA(indicator, timeFrame).getValue(index);
-
-		if(index == 0)
+		}
+		if(index == 0) {
 			return indicator.getValue(0).doubleValue();
+		}
 		double emaPrev = getValue(index - 1).doubleValue();
 		return ((indicator.getValue(index).doubleValue() - emaPrev) * multiplier()) + emaPrev;
 	}
