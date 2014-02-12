@@ -4,9 +4,8 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * A estratégia SupportStrategy compra quando o valor do {@link indicator} é
- * menor ou igual ao {@link support} e vende de acordo com a {@link strategy}.
- * 
+ * Enter: when the {@link indicator} value is less than or equal to the {@link support} threshold
+ * Exit: according to the provided {@link strategy}
  */
 public class SupportStrategy extends AbstractStrategy {
 

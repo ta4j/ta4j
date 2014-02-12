@@ -3,6 +3,10 @@ package eu.verdelhan.ta4j.strategy;
 import eu.verdelhan.ta4j.Indicator;
 import java.math.BigDecimal;
 
+/**
+ * Enter: when the value of the first {@link indicator} is strictly less than the value of the second one
+ * Exit: when the value of the first {@link indicator} is strictly greater than the value of the second one
+ */
 public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
 
     private Indicator<BigDecimal> first;

@@ -1,5 +1,10 @@
 package eu.verdelhan.ta4j.strategy;
 
+/**
+ * Strategy which always enters and exits.
+ * Enter: always
+ * Exit: always
+ */
 public class AlwaysOperateStrategy extends AbstractStrategy {
 
     @Override

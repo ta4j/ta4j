@@ -3,7 +3,9 @@ package eu.verdelhan.ta4j.strategy;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * OR combination of two strategies
+ * OR combination of two strategies.
+ * Enter: according to the provided {@link strategy strategies}
+ * Exit: according to the provided {@link strategy strategies}
  */
 public class OrStrategy extends AbstractStrategy {
 

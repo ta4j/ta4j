@@ -2,6 +2,11 @@ package eu.verdelhan.ta4j.strategy;
 
 import eu.verdelhan.ta4j.Strategy;
 
+/**
+ * Combination of a BUY strategy and a SELL strategy.
+ * Enter: according to the provided BUY {@link strategy}
+ * Exit: according to the provided SELL {@link strategy}
+ */
 public class CombinedBuyAndSellStrategy extends AbstractStrategy {
 
     private Strategy buyStrategy;

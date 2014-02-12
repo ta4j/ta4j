@@ -1,5 +1,10 @@
 package eu.verdelhan.ta4j.strategy;
 
+/**
+ * Strategy which buys just once and never moves later.
+ * Enter: the first time it's called
+ * Exit: never
+ */
 public class JustBuyOnceStrategy extends AbstractStrategy {
 
     private boolean operated = false;

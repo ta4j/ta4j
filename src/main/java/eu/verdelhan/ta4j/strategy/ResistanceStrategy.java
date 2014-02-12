@@ -4,10 +4,8 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * A estratégia ResistanceStrategy vende quando o valor do {@link indicator} é
- * maior ou igual ao {@link resistance} e compra de acordo com a
- * {@link strategy}.
- * 
+ * Enter: according to the provided {@link strategy}
+ * Exit: when the {@link indicator} value is greater than or equal to the {@link resistance} threshold
  */
 public class ResistanceStrategy extends AbstractStrategy {
 
