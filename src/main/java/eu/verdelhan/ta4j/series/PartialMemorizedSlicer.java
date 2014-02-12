@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.series;
 
-import eu.verdelhan.ta4j.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import java.util.ArrayList;

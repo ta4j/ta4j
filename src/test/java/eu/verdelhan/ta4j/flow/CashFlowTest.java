@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j.flow;
 
-import eu.verdelhan.ta4j.ConstrainedTimeSeries;
+import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Tick;

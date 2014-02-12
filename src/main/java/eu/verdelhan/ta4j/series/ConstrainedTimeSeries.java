@@ -1,5 +1,7 @@
-package eu.verdelhan.ta4j;
+package eu.verdelhan.ta4j.series;
 
+import eu.verdelhan.ta4j.Tick;
+import eu.verdelhan.ta4j.TimeSeries;
 import org.joda.time.Period;
 
 public class ConstrainedTimeSeries implements TimeSeries {
