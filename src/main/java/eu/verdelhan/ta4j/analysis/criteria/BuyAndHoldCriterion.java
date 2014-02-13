@@ -4,7 +4,7 @@ import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluator.Decision;
+import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import java.util.ArrayList;
 import java.util.List;
 

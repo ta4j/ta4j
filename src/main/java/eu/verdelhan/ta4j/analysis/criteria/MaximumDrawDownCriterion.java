@@ -2,7 +2,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.flow.CashFlow;
+import eu.verdelhan.ta4j.analysis.CashFlow;
 import java.util.ArrayList;
 import java.util.List;
 

@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.analysis.evaluator.Decision;
+import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 
 /**
  * A strategy evaluator.

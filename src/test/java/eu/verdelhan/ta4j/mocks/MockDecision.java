@@ -2,8 +2,8 @@ package eu.verdelhan.ta4j.mocks;
 
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluator.Decision;
-import eu.verdelhan.ta4j.runner.HistoryRunner;
+import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.runners.HistoryRunner;
 import java.util.LinkedList;
 import java.util.List;
 

@@ -1,7 +1,7 @@
 package eu.verdelhan.ta4j.mocks;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.strategy.AbstractStrategy;
+import eu.verdelhan.ta4j.strategies.AbstractStrategy;
 
 public class MockStrategy extends AbstractStrategy {
 

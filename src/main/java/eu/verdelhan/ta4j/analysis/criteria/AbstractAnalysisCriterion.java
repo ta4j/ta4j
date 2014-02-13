@@ -3,7 +3,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluator.Decision;
+import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import java.util.LinkedList;
 import java.util.List;
 
