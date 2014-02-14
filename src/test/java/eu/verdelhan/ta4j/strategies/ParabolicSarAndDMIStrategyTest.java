@@ -4,7 +4,7 @@ import eu.verdelhan.ta4j.strategies.ParabolicSarAndDMIStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorCrossedIndicatorStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.simple.ClosePrice;
+import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
@@ -18,7 +18,7 @@ public class ParabolicSarAndDMIStrategyTest {
 		TimeSeries series1 = new MockTimeSeries(new double[] {10, 9, 6, 10, 5 });
 		TimeSeries series2 = new MockTimeSeries(new double[] {8, 7, 7, 8, 6 });
 		
-		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePrice(series1), new ClosePrice(series2));
+		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePriceIndicator(series1), new ClosePriceIndicator(series2));
 		ParabolicSarAndDMIStrategy parabolicStrategy = new ParabolicSarAndDMIStrategy(indicatorCrossedIndicator, null);
 		assertThat(parabolicStrategy.shouldEnter(0)).isFalse();
 		assertThat(parabolicStrategy.shouldEnter(1)).isFalse();
@@ -36,8 +36,8 @@ public class ParabolicSarAndDMIStrategyTest {
 		TimeSeries series3 = new MockTimeSeries(new double[] {1, 1, 1, 1, 1} );
 		TimeSeries series4 = new MockTimeSeries(new double[] {2, 2, 2, 2, 0} );
 		
-		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePrice(series1), new ClosePrice(series2));
-		IndicatorOverIndicatorStrategy indicatorOverIndicator = new IndicatorOverIndicatorStrategy(new ClosePrice(series3), new ClosePrice(series4));
+		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePriceIndicator(series1), new ClosePriceIndicator(series2));
+		IndicatorOverIndicatorStrategy indicatorOverIndicator = new IndicatorOverIndicatorStrategy(new ClosePriceIndicator(series3), new ClosePriceIndicator(series4));
 		
 		ParabolicSarAndDMIStrategy parabolicStrategy = new ParabolicSarAndDMIStrategy(indicatorCrossedIndicator, indicatorOverIndicator);
 		
