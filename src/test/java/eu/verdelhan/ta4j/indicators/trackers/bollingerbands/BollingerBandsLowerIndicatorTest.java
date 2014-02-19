@@ -1,7 +1,6 @@
 package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
 
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsLowerIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsMiddleIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.StandardDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -37,12 +36,12 @@ public class BollingerBandsLowerIndicatorTest {
 		BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
 		assertThat(bblSMA.getValue(0)).isEqualTo(1d);
-		assertThat(bblSMA.getValue(1)).isEqualTo(0.08);
-		assertThat(bblSMA.getValue(2)).isEqualTo(-0.82);
-		assertThat(bblSMA.getValue(3)).isEqualTo(0.17);
-		assertThat(bblSMA.getValue(4)).isEqualTo(1.70);
-		assertThat(bblSMA.getValue(5)).isEqualTo(2.03);
-		assertThat(bblSMA.getValue(6)).isEqualTo(1.17);
+		assertThat(bblSMA.getValue(1)).isEqualTo(0.08, TATestsUtils.SHORT_OFFSET);
+		assertThat(bblSMA.getValue(2)).isEqualTo(-0.82, TATestsUtils.SHORT_OFFSET);
+		assertThat(bblSMA.getValue(3)).isEqualTo(0.17, TATestsUtils.SHORT_OFFSET);
+		assertThat(bblSMA.getValue(4)).isEqualTo(1.70, TATestsUtils.SHORT_OFFSET);
+		assertThat(bblSMA.getValue(5)).isEqualTo(2.03, TATestsUtils.SHORT_OFFSET);
+		assertThat(bblSMA.getValue(6)).isEqualTo(1.17, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test
@@ -52,8 +51,8 @@ public class BollingerBandsLowerIndicatorTest {
 		StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
 		BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
-		assertThat(bblSMA.getValue(6)).isEqualTo(1.17);
-		assertThat(bblSMA.getValue(1)).isEqualTo(0.08);
+		assertThat(bblSMA.getValue(6)).isEqualTo(1.17, TATestsUtils.SHORT_OFFSET);
+		assertThat(bblSMA.getValue(1)).isEqualTo(0.08, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

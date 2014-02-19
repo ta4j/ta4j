@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.trackers.RSIIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -23,30 +23,30 @@ public class RSIIndicatorTest {
 	public void testRSIUsingTimeFrame14UsingClosePrice() {
 		RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
-		assertThat(rsi.getValue(15)).isEqualTo(62.75);
-		assertThat(rsi.getValue(16)).isEqualTo(66.67);
-		assertThat(rsi.getValue(17)).isEqualTo(75.23);
-		assertThat(rsi.getValue(18)).isEqualTo(71.93);
-		assertThat(rsi.getValue(19)).isEqualTo(73.33);
-		assertThat(rsi.getValue(20)).isEqualTo(77.78);
-		assertThat(rsi.getValue(21)).isEqualTo(74.67);
-		assertThat(rsi.getValue(22)).isEqualTo(77.85);
-		assertThat(rsi.getValue(23)).isEqualTo(81.56);
-		assertThat(rsi.getValue(24)).isEqualTo(85.25);
+		assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(16)).isEqualTo(66.67, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(17)).isEqualTo(75.23, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(18)).isEqualTo(71.93, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(19)).isEqualTo(73.33, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(20)).isEqualTo(77.78, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(21)).isEqualTo(74.67, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(22)).isEqualTo(77.85, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(23)).isEqualTo(81.56, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(24)).isEqualTo(85.25, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test
 	public void testRSIFirstValueShouldBeZero() {
 		RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
-		assertThat(rsi.getValue(0)).isEqualTo(0d);
+		assertThat(rsi.getValue(0)).isZero();
 	}
 
 	@Test
 	public void testRSIShouldWorkJumpingIndexes() {
 		RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
-		assertThat(rsi.getValue(19)).isEqualTo(73.33);
-		assertThat(rsi.getValue(15)).isEqualTo(62.75);
+		assertThat(rsi.getValue(19)).isEqualTo(73.33, TATestsUtils.SHORT_OFFSET);
+		assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

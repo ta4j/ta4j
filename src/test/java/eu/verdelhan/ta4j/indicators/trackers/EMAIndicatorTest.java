@@ -1,7 +1,6 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -24,9 +23,9 @@ public class EMAIndicatorTest {
 	public void testEMAUsingTimeFrame10UsingClosePrice() {
 		EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
 
-		assertThat(ema.getValue(9)).isEqualTo(63.65);
-		assertThat(ema.getValue(10)).isEqualTo(63.23);
-		assertThat(ema.getValue(11)).isEqualTo(62.91);
+		assertThat(ema.getValue(9)).isEqualTo(63.65, TATestsUtils.SHORT_OFFSET);
+		assertThat(ema.getValue(10)).isEqualTo(63.23, TATestsUtils.SHORT_OFFSET);
+		assertThat(ema.getValue(11)).isEqualTo(62.91, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test
@@ -51,7 +50,7 @@ public class EMAIndicatorTest {
 	@Test
 	public void testEMAShouldWorkJumpingIndexes() {
 		EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-		assertThat(ema.getValue(10)).isEqualTo(63.23);
+		assertThat(ema.getValue(10)).isEqualTo(63.23, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

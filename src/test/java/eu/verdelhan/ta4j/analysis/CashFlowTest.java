@@ -2,6 +2,7 @@ package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -164,9 +165,9 @@ public class CashFlowTest {
 		assertThat(cashFlow.getValue(7)).isEqualTo(5d / 3 * 7d / 4);
 		assertThat(cashFlow.getValue(8)).isEqualTo(5d / 3 * 6d / 4);
 		assertThat(cashFlow.getValue(9)).isEqualTo(5d / 3 * 6d / 4);
-		assertThat(cashFlow.getValue(10)).isEqualTo(5d / 3 * 6d / 4 * 8d / 7);
-		assertThat(cashFlow.getValue(11)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7);
-		assertThat(cashFlow.getValue(12)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7);
+		assertThat(cashFlow.getValue(10)).isEqualTo(5d / 3 * 6d / 4 * 8d / 7, TATestsUtils.LONG_OFFSET);
+		assertThat(cashFlow.getValue(11)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7, TATestsUtils.LONG_OFFSET);
+		assertThat(cashFlow.getValue(12)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7, TATestsUtils.LONG_OFFSET);
 	}
 
 	@Test

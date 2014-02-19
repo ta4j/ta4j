@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.trackers.WilliamsRIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -44,13 +44,13 @@ public class WilliamsRIndicatorTest {
 		WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
 				new MinPriceIndicator(data));
 
-		assertThat(wr.getValue(4)).isEqualTo(-47.22);
-		assertThat(wr.getValue(5)).isEqualTo(-54.55);
-		assertThat(wr.getValue(6)).isEqualTo(-78.57);
-		assertThat(wr.getValue(7)).isEqualTo(-47.62);
-		assertThat(wr.getValue(8)).isEqualTo(-25.00);
-		assertThat(wr.getValue(9)).isEqualTo(-5.26);
-		assertThat(wr.getValue(10)).isEqualTo(-13.95);
+		assertThat(wr.getValue(4)).isEqualTo(-47.22, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(5)).isEqualTo(-54.55, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(6)).isEqualTo(-78.57, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(7)).isEqualTo(-47.62, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(8)).isEqualTo(-25.00, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(9)).isEqualTo(-5.26, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(10)).isEqualTo(-13.95, TATestsUtils.SHORT_OFFSET);
 
 	}
 
@@ -58,8 +58,8 @@ public class WilliamsRIndicatorTest {
 	public void testWilliamsRShouldWorkJumpingIndexes() {
 		WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
 				new MinPriceIndicator(data));
-		assertThat(wr.getValue(10)).isEqualTo(-13.95);
-		assertThat(wr.getValue(4)).isEqualTo(-47.22);
+		assertThat(wr.getValue(10)).isEqualTo(-13.95, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(4)).isEqualTo(-47.22, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test
@@ -67,10 +67,10 @@ public class WilliamsRIndicatorTest {
 		WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
 				new MinPriceIndicator(data));
 
-		assertThat(wr.getValue(9)).isEqualTo(-4.08);
-		assertThat(wr.getValue(10)).isEqualTo(-11.77);
-		assertThat(wr.getValue(11)).isEqualTo(-8.93);
-		assertThat(wr.getValue(12)).isEqualTo(-10.53);
+		assertThat(wr.getValue(9)).isEqualTo(-4.08, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(10)).isEqualTo(-11.77, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(11)).isEqualTo(-8.93, TATestsUtils.SHORT_OFFSET);
+		assertThat(wr.getValue(12)).isEqualTo(-10.53, TATestsUtils.SHORT_OFFSET);
 
 	}
 
@@ -79,10 +79,10 @@ public class WilliamsRIndicatorTest {
 		WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
 				new MinPriceIndicator(data));
 
-		assertThat(wr.getValue(0)).isEqualTo(-100d * (0.12 / 0.21));
-		assertThat(wr.getValue(1)).isEqualTo(-100d * (0.07 / 0.21));
-		assertThat(wr.getValue(2)).isEqualTo(-100d * (0.13 / 0.36));
-		assertThat(wr.getValue(3)).isEqualTo(-100d * (0.18 / 0.36));
+		assertThat(wr.getValue(0)).isEqualTo(-100d * (0.12 / 0.21), TATestsUtils.LONG_OFFSET);
+		assertThat(wr.getValue(1)).isEqualTo(-100d * (0.07 / 0.21), TATestsUtils.LONG_OFFSET);
+		assertThat(wr.getValue(2)).isEqualTo(-100d * (0.13 / 0.36), TATestsUtils.LONG_OFFSET);
+		assertThat(wr.getValue(3)).isEqualTo(-100d * (0.18 / 0.36), TATestsUtils.LONG_OFFSET);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

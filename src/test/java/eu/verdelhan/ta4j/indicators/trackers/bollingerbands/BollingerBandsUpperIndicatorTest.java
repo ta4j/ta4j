@@ -1,7 +1,6 @@
 package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
 
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsMiddleIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsUpperIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.StandardDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -37,15 +36,15 @@ public class BollingerBandsUpperIndicatorTest {
 		BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
 		assertThat(bbuSMA.getValue(0)).isEqualTo(1.0);
-		assertThat(bbuSMA.getValue(1)).isEqualTo(2.91);
-		assertThat(bbuSMA.getValue(2)).isEqualTo(4.82);
-		assertThat(bbuSMA.getValue(3)).isEqualTo(5.82);
-		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96);
-		assertThat(bbuSMA.getValue(5)).isEqualTo(5.29);
-		assertThat(bbuSMA.getValue(6)).isEqualTo(6.82);
-		assertThat(bbuSMA.getValue(7)).isEqualTo(5.96);
-		assertThat(bbuSMA.getValue(8)).isEqualTo(6.82);
-		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96);
+		assertThat(bbuSMA.getValue(1)).isEqualTo(2.91, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(2)).isEqualTo(4.82, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(3)).isEqualTo(5.82, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(5)).isEqualTo(5.29, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(6)).isEqualTo(6.82, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(7)).isEqualTo(5.96, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(8)).isEqualTo(6.82, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96, TATestsUtils.SHORT_OFFSET);
 
 	}
 
@@ -56,8 +55,8 @@ public class BollingerBandsUpperIndicatorTest {
 		StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
 		BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
-		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96);
-		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96);
+		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96, TATestsUtils.SHORT_OFFSET);
+		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

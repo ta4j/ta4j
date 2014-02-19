@@ -1,11 +1,11 @@
 package eu.verdelhan.ta4j.analysis.evaluators;
 
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Runner;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
@@ -50,7 +50,7 @@ public class DecisionTest {
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
  
 		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21);
+		assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21, TATestsUtils.LONG_OFFSET);
 	}
 
 	@Test

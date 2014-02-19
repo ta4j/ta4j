@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorKIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -42,16 +42,16 @@ public class StochasticOscillatorKIndicatorTest {
 
 		StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
 
-		assertThat(sof.getValue(0)).isEqualTo(313d / 3.50);
-		assertThat(sof.getValue(12)).isEqualTo(1000d / 10.81);
-		assertThat(sof.getValue(13)).isEqualTo(57.81);
+		assertThat(sof.getValue(0)).isEqualTo(313d / 3.50, TATestsUtils.LONG_OFFSET);
+		assertThat(sof.getValue(12)).isEqualTo(1000d / 10.81, TATestsUtils.LONG_OFFSET);
+		assertThat(sof.getValue(13)).isEqualTo(57.81, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test
 	public void testStochasticOscilatorKShouldWorkJumpingIndexes() {
 
 		StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
-		assertThat(sof.getValue(13)).isEqualTo(57.81);
+		assertThat(sof.getValue(13)).isEqualTo(57.81, TATestsUtils.SHORT_OFFSET);
 	}
 
 	@Test(expected = IndexOutOfBoundsException.class)

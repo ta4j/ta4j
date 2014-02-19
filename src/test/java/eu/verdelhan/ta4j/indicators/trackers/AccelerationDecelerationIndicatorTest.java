@@ -1,5 +1,6 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -34,8 +35,8 @@ public class AccelerationDecelerationIndicatorTest {
 
 		assertThat(acceleration.getValue(0)).isZero();
 		assertThat(acceleration.getValue(1)).isZero();
-		assertThat(acceleration.getValue(2)).isEqualTo(0.1666666d - 0.08333333d);
-		assertThat(acceleration.getValue(3)).isEqualTo(1d - 0.5833333);
+		assertThat(acceleration.getValue(2)).isEqualTo(0.1666666666d - 0.0833333333d, TATestsUtils.LONG_OFFSET);
+		assertThat(acceleration.getValue(3)).isEqualTo(1d - 0.5833333333, TATestsUtils.LONG_OFFSET);
 		assertThat(acceleration.getValue(4)).isEqualTo(-3d + 1d);
 	}
 

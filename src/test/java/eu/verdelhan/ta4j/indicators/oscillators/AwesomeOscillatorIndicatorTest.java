@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.indicators.oscillators.AwesomeOscillatorIndicator;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
@@ -35,7 +35,7 @@ public class AwesomeOscillatorIndicatorTest {
 
 		assertThat(awesome.getValue(0)).isEqualTo(0d);
 		assertThat(awesome.getValue(1)).isEqualTo(0d);
-		assertThat(awesome.getValue(2)).isEqualTo(0.1666666d);
+		assertThat(awesome.getValue(2)).isEqualTo(0.1666666666d, TATestsUtils.LONG_OFFSET);
 		assertThat(awesome.getValue(3)).isEqualTo(1d);
 		assertThat(awesome.getValue(4)).isEqualTo(-3d);
 	}
