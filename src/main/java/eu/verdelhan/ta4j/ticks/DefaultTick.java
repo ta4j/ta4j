@@ -1,8 +1,7 @@
 package eu.verdelhan.ta4j.ticks;
 
-import eu.verdelhan.ta4j.TAUtils;
+
 import eu.verdelhan.ta4j.Tick;
-import java.math.BigDecimal;
 import org.joda.time.DateTime;
 
 /**
@@ -16,19 +15,19 @@ public class DefaultTick implements Tick {
 
 	private DateTime endTime;
 
-	private BigDecimal openPrice;
+	private double openPrice = -1;
 
-	private BigDecimal closePrice;
+	private double closePrice = -1;
 
-	private BigDecimal maxPrice;
+	private double maxPrice = -1;
 
-	private BigDecimal minPrice;
+	private double minPrice = -1;
 
-	private BigDecimal amount;
+	private double amount = 0d;
 
-	private BigDecimal volume;
+	private double volume = 0d;
 
-	private int trades;
+	private int trades = 0;
 
 	public DefaultTick(DateTime beginTime, DateTime endTime) {
 		this.beginTime = beginTime;
@@ -36,12 +35,12 @@ public class DefaultTick implements Tick {
 	}
 
 	@Override
-	public BigDecimal getClosePrice() {
+	public double getClosePrice() {
 		return closePrice;
 	}
 
 	@Override
-	public BigDecimal getOpenPrice() {
+	public double getOpenPrice() {
 		return openPrice;
 	}
 
@@ -51,17 +50,17 @@ public class DefaultTick implements Tick {
 	}
 
 	@Override
-	public BigDecimal getMaxPrice() {
+	public double getMaxPrice() {
 		return maxPrice;
 	}
 
 	@Override
-	public BigDecimal getAmount() {
+	public double getAmount() {
 		return amount;
 	}
 
 	@Override
-	public BigDecimal getVolume() {
+	public double getVolume() {
 		return volume;
 	}
 
@@ -70,36 +69,28 @@ public class DefaultTick implements Tick {
 	 * @param tradeAmount the tradable amount
 	 * @param tradePrice the price
 	 */
-	public void addTrade(BigDecimal tradeAmount, BigDecimal tradePrice) {
-		if (openPrice == null) {
+	public void addTrade(double tradeAmount, double tradePrice) {
+		if (openPrice < 0) {
 			openPrice = tradePrice;
 		}
 		closePrice = tradePrice;
 
-		if (maxPrice == null) {
+		if (maxPrice < 0) {
 			maxPrice = tradePrice;
 		} else {
-			maxPrice = (maxPrice.compareTo(tradePrice) < 0) ? tradePrice : maxPrice;
+			maxPrice = (maxPrice < tradePrice) ? tradePrice : maxPrice;
 		}
-		if (minPrice == null) {
+		if (minPrice < 0) {
 			minPrice = tradePrice;
 		} else {
-			minPrice = (minPrice.compareTo(tradePrice) > 0) ? tradePrice : minPrice;
+			minPrice = (minPrice > tradePrice) ? tradePrice : minPrice;
 		}
-		if (amount == null) {
-			amount = tradeAmount;
-		} else {
-			amount = amount.add(tradeAmount);
-		}
-		if (volume == null) {
-			volume = tradeAmount.multiply(tradePrice, TAUtils.MATH_CONTEXT);
-		} else {
-			volume = volume.add(tradeAmount.multiply(tradePrice, TAUtils.MATH_CONTEXT));
-		}
+		amount += tradeAmount;
+		volume += tradeAmount * tradePrice;
 		trades++;
 	}
 
-	public BigDecimal getMinPrice() {
+	public double getMinPrice() {
 		return minPrice;
 	}
 

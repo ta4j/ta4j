@@ -15,7 +15,7 @@ public class MaximumDrawDownCriterion extends AbstractAnalysisCriterion {
         CashFlow cashFlow = new CashFlow(series, trades);
 
         for (int i = series.getBegin(); i <= series.getEnd(); i++) {
-            double value = cashFlow.getValue(i).doubleValue();
+            double value = cashFlow.getValue(i);
             if (value > maxPeak) {
                 maxPeak = value;
             }

@@ -1,8 +1,5 @@
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.ParabolicSarAndDMIStrategy;
-import eu.verdelhan.ta4j.strategies.IndicatorCrossedIndicatorStrategy;
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;

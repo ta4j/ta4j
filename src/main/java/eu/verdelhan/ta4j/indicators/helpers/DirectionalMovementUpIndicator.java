@@ -15,10 +15,10 @@ public class DirectionalMovementUpIndicator implements Indicator<Double>
 	public Double getValue(int index) {
 		if(index == 0)
 			return 0d;
-		double yh = series.getTick(index - 1).getMaxPrice().doubleValue();
-		double th = series.getTick(index).getMaxPrice().doubleValue();
-		double yl = series.getTick(index - 1).getMinPrice().doubleValue();
-		double tl = series.getTick(index).getMinPrice().doubleValue();
+		double yh = series.getTick(index - 1).getMaxPrice();
+		double th = series.getTick(index).getMaxPrice();
+		double yl = series.getTick(index - 1).getMinPrice();
+		double tl = series.getTick(index).getMinPrice();
 		
 		if((yh >= th && yl <= tl) || th - yh == yl - tl)
 			return 0d;

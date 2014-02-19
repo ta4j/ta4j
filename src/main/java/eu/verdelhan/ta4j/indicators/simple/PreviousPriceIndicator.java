@@ -2,9 +2,9 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
-import java.math.BigDecimal;
 
-public class PreviousPriceIndicator implements Indicator<BigDecimal> {
+
+public class PreviousPriceIndicator implements Indicator<Double> {
 
 	private TimeSeries data;
 
@@ -13,7 +13,7 @@ public class PreviousPriceIndicator implements Indicator<BigDecimal> {
 	}
 
 	@Override
-	public BigDecimal getValue(int index) {
+	public Double getValue(int index) {
 		return data.getTick(Math.max(0, index - 1)).getClosePrice();
 	}
 

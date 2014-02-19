@@ -1,42 +1,26 @@
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
-import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
 public class IndicatorOverIndicatorStrategyTest {
 
-	private Indicator<BigDecimal> first;
+	private Indicator<Double> first;
 
-	private Indicator<BigDecimal> second;
+	private Indicator<Double> second;
 
 	@Before
 	public void setUp() throws Exception {
 
-		first = new MockIndicator<BigDecimal>(new BigDecimal[] {
-			BigDecimal.valueOf(4),
-			BigDecimal.valueOf(7),
-			BigDecimal.valueOf(9),
-			BigDecimal.valueOf(6),
-			BigDecimal.valueOf(3),
-			BigDecimal.valueOf(2)
-		});
-		second = new MockIndicator<BigDecimal>(new BigDecimal[] {
-			BigDecimal.valueOf(3),
-			BigDecimal.valueOf(6),
-			BigDecimal.valueOf(10),
-			BigDecimal.valueOf(8),
-			BigDecimal.valueOf(2),
-			BigDecimal.valueOf(1)
-		});
+		first = new MockIndicator<Double>(new Double[] {4d, 7d, 9d, 6d, 3d, 2d});
+		second = new MockIndicator<Double>(new Double[] {3d, 6d, 10d, 8d, 2d, 1d});
 
 	}
 

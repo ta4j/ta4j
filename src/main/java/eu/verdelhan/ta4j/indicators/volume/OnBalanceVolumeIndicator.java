@@ -15,13 +15,13 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<Double>{
 	protected Double calculate(int index) {
 		if(index == 0)
 			return 0d;
-		double yesterdayClose = series.getTick(index - 1).getClosePrice().doubleValue();
-		double todayClose = series.getTick(index).getClosePrice().doubleValue();
+		double yesterdayClose = series.getTick(index - 1).getClosePrice();
+		double todayClose = series.getTick(index).getClosePrice();
 		
 		if(yesterdayClose > todayClose)
-			return getValue(index - 1) - series.getTick(index).getVolume().doubleValue();
+			return getValue(index - 1) - series.getTick(index).getVolume();
 		if(yesterdayClose < todayClose)
-			return getValue(index - 1) + series.getTick(index).getVolume().doubleValue();
+			return getValue(index - 1) + series.getTick(index).getVolume();
 		return getValue(index - 1);
 	}
 

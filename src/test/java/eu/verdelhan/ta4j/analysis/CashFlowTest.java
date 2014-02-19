@@ -1,7 +1,5 @@
 package eu.verdelhan.ta4j.analysis;
 
-import eu.verdelhan.ta4j.analysis.CashFlow;
-import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Tick;
@@ -9,6 +7,7 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,8 +32,8 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo("2");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(2d);
 	}
 
 	@Test
@@ -48,13 +47,13 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo(".5");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo(".5");
-		assertThat(cashFlow.getValue(3)).isEqualByComparingTo(".5");
-		assertThat(cashFlow.getValue(4)).isEqualByComparingTo(".6");
-		assertThat(cashFlow.getValue(5)).isEqualByComparingTo(".6");
-		assertThat(cashFlow.getValue(6)).isEqualByComparingTo(".09");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(.5d);
+		assertThat(cashFlow.getValue(2)).isEqualTo(.5d);
+		assertThat(cashFlow.getValue(3)).isEqualTo(.5d);
+		assertThat(cashFlow.getValue(4)).isEqualTo(.6d);
+		assertThat(cashFlow.getValue(5)).isEqualTo(.6d);
+		assertThat(cashFlow.getValue(6)).isEqualTo(.09d);
 	}
 
 
@@ -67,12 +66,12 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(3)).isEqualByComparingTo(".5");
-		assertThat(cashFlow.getValue(4)).isEqualByComparingTo(".5");
-		assertThat(cashFlow.getValue(5)).isEqualByComparingTo(".5");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(2)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(3)).isEqualTo(.5d);
+		assertThat(cashFlow.getValue(4)).isEqualTo(.5d);
+		assertThat(cashFlow.getValue(5)).isEqualTo(.5d);
 	}
 
 	@Test
@@ -86,12 +85,12 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo("2");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo("4");
-		assertThat(cashFlow.getValue(3)).isEqualByComparingTo("2");
-		assertThat(cashFlow.getValue(4)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(5)).isEqualByComparingTo("2");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(2d);
+		assertThat(cashFlow.getValue(2)).isEqualTo(4d);
+		assertThat(cashFlow.getValue(3)).isEqualTo(2d);
+		assertThat(cashFlow.getValue(4)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(5)).isEqualTo(2d);
 	}
 
 	@Test
@@ -103,9 +102,9 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo("2");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(2)).isEqualTo(2d);
 	}
 
 	@Test
@@ -118,9 +117,9 @@ public class CashFlowTest {
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
 		assertThat(cashFlow.getSize()).isEqualTo(3);
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo("2");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo("2");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(2d);
+		assertThat(cashFlow.getValue(2)).isEqualTo(2d);
 	}
 
 	@Test
@@ -133,13 +132,13 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo("2");
-		assertThat(cashFlow.getValue(3)).isEqualByComparingTo("2");
-		assertThat(cashFlow.getValue(4)).isEqualByComparingTo("2");
-		assertThat(cashFlow.getValue(5)).isEqualByComparingTo("4");
-		assertThat(cashFlow.getValue(5)).isEqualByComparingTo("4");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(2)).isEqualTo(2d);
+		assertThat(cashFlow.getValue(3)).isEqualTo(2d);
+		assertThat(cashFlow.getValue(4)).isEqualTo(2d);
+		assertThat(cashFlow.getValue(5)).isEqualTo(4d);
+		assertThat(cashFlow.getValue(5)).isEqualTo(4d);
 	}
 
 	@Test
@@ -155,19 +154,19 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(1)).isEqualByComparingTo(2d / 3 + "");
-		assertThat(cashFlow.getValue(2)).isEqualByComparingTo(5d / 3 + "");
-		assertThat(cashFlow.getValue(3)).isEqualByComparingTo(5d / 3 + "");
-		assertThat(cashFlow.getValue(4)).isEqualByComparingTo(5d / 3 + "");
-		assertThat(cashFlow.getValue(5)).isEqualByComparingTo(5d / 3 + "");
-		assertThat(cashFlow.getValue(6)).isEqualByComparingTo(5d / 3 + "");
-		assertThat(cashFlow.getValue(7)).isEqualByComparingTo(5d / 3 * 7d / 4 + "");
-		assertThat(cashFlow.getValue(8)).isEqualByComparingTo(5d / 3 * 6d / 4 + "");
-		assertThat(cashFlow.getValue(9)).isEqualByComparingTo(5d / 3 * 6d / 4 + "");
-		assertThat(cashFlow.getValue(10)).isEqualByComparingTo(5d / 3 * 6d / 4 * 8d / 7 + "");
-		assertThat(cashFlow.getValue(11)).isEqualByComparingTo(5d / 3 * 6d / 4 * 5d / 7 + "");
-		assertThat(cashFlow.getValue(12)).isEqualByComparingTo(5d / 3 * 6d / 4 * 5d / 7 + "");
+		assertThat(cashFlow.getValue(0)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(1)).isEqualTo(2d / 3);
+		assertThat(cashFlow.getValue(2)).isEqualTo(5d / 3);
+		assertThat(cashFlow.getValue(3)).isEqualTo(5d / 3);
+		assertThat(cashFlow.getValue(4)).isEqualTo(5d / 3);
+		assertThat(cashFlow.getValue(5)).isEqualTo(5d / 3);
+		assertThat(cashFlow.getValue(6)).isEqualTo(5d / 3);
+		assertThat(cashFlow.getValue(7)).isEqualTo(5d / 3 * 7d / 4);
+		assertThat(cashFlow.getValue(8)).isEqualTo(5d / 3 * 6d / 4);
+		assertThat(cashFlow.getValue(9)).isEqualTo(5d / 3 * 6d / 4);
+		assertThat(cashFlow.getValue(10)).isEqualTo(5d / 3 * 6d / 4 * 8d / 7);
+		assertThat(cashFlow.getValue(11)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7);
+		assertThat(cashFlow.getValue(12)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7);
 	}
 
 	@Test
@@ -177,9 +176,9 @@ public class CashFlowTest {
 
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-		assertThat(cashFlow.getValue(4)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(7)).isEqualByComparingTo("1");
-		assertThat(cashFlow.getValue(9)).isEqualByComparingTo("1");
+		assertThat(cashFlow.getValue(4)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(7)).isEqualTo(1d);
+		assertThat(cashFlow.getValue(9)).isEqualTo(1d);
 	}
 
 	@Test(expected = RuntimeException.class)
@@ -200,15 +199,15 @@ public class CashFlowTest {
 		trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
 		trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(8, OperationType.SELL)));
 		CashFlow flow = new CashFlow(constrained, trades);
-		assertThat(flow.getValue(0)).isEqualByComparingTo("1");
-		assertThat(flow.getValue(1)).isEqualByComparingTo("1");
-		assertThat(flow.getValue(2)).isEqualByComparingTo("1");
-		assertThat(flow.getValue(3)).isEqualByComparingTo("1");
-		assertThat(flow.getValue(4)).isEqualByComparingTo("1");
-		assertThat(flow.getValue(5)).isEqualByComparingTo(6d / 8 + "");
-		assertThat(flow.getValue(6)).isEqualByComparingTo(6d / 8 + "");
-		assertThat(flow.getValue(7)).isEqualByComparingTo(6d / 8 * 15d / 10 + "");
-		assertThat(flow.getValue(8)).isEqualByComparingTo(6d / 8 * 6d / 10 + "");
+		assertThat(flow.getValue(0)).isEqualTo(1d);
+		assertThat(flow.getValue(1)).isEqualTo(1d);
+		assertThat(flow.getValue(2)).isEqualTo(1d);
+		assertThat(flow.getValue(3)).isEqualTo(1d);
+		assertThat(flow.getValue(4)).isEqualTo(1d);
+		assertThat(flow.getValue(5)).isEqualTo(6d / 8);
+		assertThat(flow.getValue(6)).isEqualTo(6d / 8);
+		assertThat(flow.getValue(7)).isEqualTo(6d / 8 * 15d / 10);
+		assertThat(flow.getValue(8)).isEqualTo(6d / 8 * 6d / 10);
 	}
 
 	@Test
@@ -218,7 +217,7 @@ public class CashFlowTest {
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(size - 1, OperationType.SELL)));
 		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
-		assertThat(cashFlow.getValue(size - 1)).isEqualByComparingTo("1");
+		assertThat(cashFlow.getValue(size - 1)).isEqualTo(1d);
 	}
 
 }

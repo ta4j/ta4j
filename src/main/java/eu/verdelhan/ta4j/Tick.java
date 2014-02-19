@@ -1,6 +1,6 @@
 package eu.verdelhan.ta4j;
 
-import java.math.BigDecimal;
+
 import org.joda.time.DateTime;
 
 /**
@@ -16,17 +16,17 @@ public interface Tick {
 
     String getSimpleDateName();
 
-    BigDecimal getClosePrice();
+    double getClosePrice();
 
-    BigDecimal getOpenPrice();
+    double getOpenPrice();
 
     int getTrades();
 
-    BigDecimal getMaxPrice();
+    double getMaxPrice();
 
-    BigDecimal getAmount();
+    double getAmount();
 
-    BigDecimal getVolume();
+    double getVolume();
 
-    BigDecimal getMinPrice();
+    double getMinPrice();
 }

@@ -4,7 +4,7 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import java.math.BigDecimal;
+
 
 /**
  * Aroon down indicator.
@@ -15,12 +15,12 @@ public class AroonDownIndicator implements Indicator<Double> {
 
 	private final ClosePriceIndicator closePriceIndicator;
 
-	private final LowestValueIndicator<BigDecimal> lowestClosePriceIndicator;
+	private final LowestValueIndicator lowestClosePriceIndicator;
 
 	public AroonDownIndicator(TimeSeries timeSeries, int timeFrame) {
 		this.timeFrame = timeFrame;
 		closePriceIndicator = new ClosePriceIndicator(timeSeries);
-		lowestClosePriceIndicator = new LowestValueIndicator<BigDecimal>(closePriceIndicator, timeFrame);
+		lowestClosePriceIndicator = new LowestValueIndicator(closePriceIndicator, timeFrame);
 	}
 
 	@Override
@@ -31,8 +31,7 @@ public class AroonDownIndicator implements Indicator<Double> {
 		int endIndex = index - realTimeFrame;
 		int nbTicks = 0;
 		for (int i = index; i > endIndex; i--) {
-			if (closePriceIndicator.getValue(i)
-					.compareTo(lowestClosePriceIndicator.getValue(index)) == 0) {
+			if (closePriceIndicator.getValue(i).compareTo(lowestClosePriceIndicator.getValue(index)) == 0) {
 				break;
 			}
 			nbTicks++;

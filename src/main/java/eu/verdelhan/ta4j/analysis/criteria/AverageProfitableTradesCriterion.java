@@ -1,11 +1,10 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.TAUtils;
+
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+
 import java.util.List;
 
 public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
@@ -15,14 +14,14 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 		int entryIndex = trade.getEntry().getIndex();
 		int exitIndex = trade.getExit().getIndex();
 
-		BigDecimal result;
+		double result;
         if (trade.getEntry().getType() == OperationType.BUY) {
-            result = series.getTick(exitIndex).getClosePrice().divide(series.getTick(entryIndex).getClosePrice(), TAUtils.MATH_CONTEXT);
+            result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
         } else {
-            result = series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), TAUtils.MATH_CONTEXT);
+            result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
         }
 
-		return (result.compareTo(BigDecimal.ONE) == 1) ? 1d : 0d;
+		return (result > 1d) ? 1d : 0d;
     }
 
     @Override
@@ -33,11 +32,11 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 			int exitIndex = trade.getExit().getIndex();
 			
             if (trade.getEntry().getType() == OperationType.BUY) {
-				BigDecimal result = series.getTick(exitIndex).getClosePrice().divide(series.getTick(entryIndex).getClosePrice(), TAUtils.MATH_CONTEXT);
-                if (result.compareTo(BigDecimal.ONE) == 1) {
+				double result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
+                if (result > 1d) {
                     numberOfProfitable++;
                 }
-            } else if (series.getTick(entryIndex).getClosePrice().divide(series.getTick(exitIndex).getClosePrice(), TAUtils.MATH_CONTEXT).compareTo(BigDecimal.ONE) == 1) {
+            } else if ((series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice()) > 1d) {
                 numberOfProfitable++;
             }
         }

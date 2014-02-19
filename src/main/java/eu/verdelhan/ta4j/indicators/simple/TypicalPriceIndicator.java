@@ -1,11 +1,10 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.TimeSeries;
-import java.math.BigDecimal;
 
-public class TypicalPriceIndicator implements Indicator<BigDecimal> {
+
+public class TypicalPriceIndicator implements Indicator<Double> {
 
 	private TimeSeries data;
 
@@ -14,11 +13,11 @@ public class TypicalPriceIndicator implements Indicator<BigDecimal> {
 	}
 
 	@Override
-	public BigDecimal getValue(int index) {
-		BigDecimal maxPrice = data.getTick(index).getMaxPrice();
-		BigDecimal minPrice = data.getTick(index).getMinPrice();
-		BigDecimal closePrice = data.getTick(index).getClosePrice();
-		return maxPrice.add(minPrice).add(closePrice).divide(BigDecimal.valueOf(3), TAUtils.MATH_CONTEXT);
+	public Double getValue(int index) {
+		double maxPrice = data.getTick(index).getMaxPrice();
+		double minPrice = data.getTick(index).getMinPrice();
+		double closePrice = data.getTick(index).getClosePrice();
+		return (maxPrice + minPrice + closePrice) / 3d;
 	}
 
 	@Override

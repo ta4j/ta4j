@@ -1,10 +1,8 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.trackers.WMAIndicator;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
@@ -13,7 +11,7 @@ public class WMAIndicatorTest {
 	public void testWMACalculate()
 	{
 		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
-		Indicator<BigDecimal> close = new ClosePriceIndicator(series);
+		Indicator<Double> close = new ClosePriceIndicator(series);
 		Indicator<Double> wmaIndicator = new WMAIndicator(close, 3);
 		
 		assertThat(wmaIndicator.getValue(0)).isEqualTo(1d);
@@ -28,7 +26,7 @@ public class WMAIndicatorTest {
 	public void testWMACalculateJumpingIndex()
 	{
 		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
-		Indicator<BigDecimal> close = new ClosePriceIndicator(series);
+		Indicator<Double> close = new ClosePriceIndicator(series);
 		Indicator<Double> wmaIndicator = new WMAIndicator(close, 3);
 		
 		assertThat(wmaIndicator.getValue(5)).isEqualTo(32d/6);
@@ -38,7 +36,7 @@ public class WMAIndicatorTest {
 	public void testWMACalculateWithTimeFrameGreaterThanSeriesSize()
 	{
 		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
-		Indicator<BigDecimal> close = new ClosePriceIndicator(series);
+		Indicator<Double> close = new ClosePriceIndicator(series);
 		Indicator<Double> wmaIndicator = new WMAIndicator(close, 55);
 		
 		assertThat(wmaIndicator.getValue(0)).isEqualTo(1d);

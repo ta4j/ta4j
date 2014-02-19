@@ -5,7 +5,7 @@ Technical Analysis For Java
 Previously forked from peas/tail (http://tail.sourceforge.net/)
 
 ***Warning!***
-Ta4j gives priority to accuracy over performance, it uses `BigDecimal`s under the hood. So if you are developing a low-latency trading program then **ta4j is not for you**. This may change in the future.
+Ta4j uses `double`s under the hood. Small approximations can occur (in indicators notably). This may change in the future.
 
 
 

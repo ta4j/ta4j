@@ -7,7 +7,7 @@ import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
-import java.math.BigDecimal;
+
 
 public class WilliamsRIndicator implements Indicator<Double> {
 
@@ -34,8 +34,8 @@ public class WilliamsRIndicator implements Indicator<Double> {
 
 	@Override
 	public Double getValue(int index) {
-		HighestValueIndicator<BigDecimal> highestHigh = new HighestValueIndicator<BigDecimal>(maxPriceIndicator, timeFrame);
-		LowestValueIndicator<BigDecimal> lowestMin = new LowestValueIndicator<BigDecimal>(minPriceIndicator, timeFrame);
+		HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
+		LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 
 		double highestHighPrice = highestHigh.getValue(index).doubleValue();
 		double lowestLowPrice = lowestMin.getValue(index).doubleValue();

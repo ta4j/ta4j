@@ -1,11 +1,9 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.trackers.AccelerationDecelerationIndicator;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
@@ -36,9 +34,9 @@ public class AccelerationDecelerationIndicatorTest {
 
 		assertThat(acceleration.getValue(0)).isZero();
 		assertThat(acceleration.getValue(1)).isZero();
-		assertThat(acceleration.getValue(2)).isEqualTo(BigDecimal.valueOf(0.1666666d - 0.08333333d));
-		assertThat(acceleration.getValue(3)).isEqualTo(BigDecimal.valueOf(1d - 0.5833333));
-		assertThat(acceleration.getValue(4)).isEqualTo(BigDecimal.valueOf(-3d + 1d));
+		assertThat(acceleration.getValue(2)).isEqualTo(0.1666666d - 0.08333333d);
+		assertThat(acceleration.getValue(3)).isEqualTo(1d - 0.5833333);
+		assertThat(acceleration.getValue(4)).isEqualTo(-3d + 1d);
 	}
 
 	@Test

@@ -2,9 +2,9 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
-import java.math.BigDecimal;
 
-public class AverageHighLowIndicator implements Indicator<BigDecimal> {
+
+public class AverageHighLowIndicator implements Indicator<Double> {
 
 	private TimeSeries data;
 
@@ -13,8 +13,8 @@ public class AverageHighLowIndicator implements Indicator<BigDecimal> {
 	}
 
 	@Override
-	public BigDecimal getValue(int index) {
-		return data.getTick(index).getMaxPrice().add(data.getTick(index).getMinPrice()).divide(BigDecimal.valueOf(2));
+	public Double getValue(int index) {
+		return (data.getTick(index).getMaxPrice() + data.getTick(index).getMinPrice()) / 2d;
 	}
 
 	@Override

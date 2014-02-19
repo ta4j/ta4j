@@ -1,7 +1,6 @@
 package eu.verdelhan.ta4j.mocks;
 
 import eu.verdelhan.ta4j.Tick;
-import java.math.BigDecimal;
 import org.joda.time.DateTime;
 
 /**
@@ -13,44 +12,44 @@ public class MockTick implements Tick {
 
 	private DateTime endTime = new DateTime();
 
-	private BigDecimal openPrice = BigDecimal.ZERO;
+	private double openPrice = 0d;
 
-	private BigDecimal closePrice = BigDecimal.ZERO;
+	private double closePrice = 0d;
 
-	private BigDecimal maxPrice = BigDecimal.ZERO;
+	private double maxPrice = 0d;
 
-	private BigDecimal minPrice = BigDecimal.ZERO;
+	private double minPrice = 0d;
 
-	private BigDecimal amount = BigDecimal.ZERO;
+	private double amount = 0d;
 
-	private BigDecimal volume = BigDecimal.ZERO;
+	private double volume = 0d;
 
-	private int trades;
+	private int trades = 0;
 
 	public MockTick(double closePrice) {
-		this.closePrice = new BigDecimal(closePrice);
+		this.closePrice = closePrice;
 	}
 
 	public MockTick(DateTime endTime, double closePrice) {
-		this.closePrice = new BigDecimal(closePrice);
+		this.closePrice = closePrice;
 		this.endTime = endTime;
 	}
 
 	public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
-		this.openPrice = new BigDecimal(openPrice);
-		this.closePrice = new BigDecimal(closePrice);
-		this.maxPrice = new BigDecimal(maxPrice);
-		this.minPrice = new BigDecimal(minPrice);
+		this.openPrice = openPrice;
+		this.closePrice = closePrice;
+		this.maxPrice = maxPrice;
+		this.minPrice = minPrice;
 	}
 
 	public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
 		this.endTime = endTime;
-		this.openPrice = new BigDecimal(openPrice);
-		this.closePrice = new BigDecimal(closePrice);
-		this.maxPrice = new BigDecimal(maxPrice);
-		this.minPrice = new BigDecimal(minPrice);
-		this.amount = new BigDecimal(amount);
-		this.volume = new BigDecimal(volume);
+		this.openPrice = openPrice;
+		this.closePrice = closePrice;
+		this.maxPrice = maxPrice;
+		this.minPrice = minPrice;
+		this.amount = amount;
+		this.volume = volume;
 		this.trades = trades;
 	}
 
@@ -70,11 +69,11 @@ public class MockTick implements Tick {
 		return "";
 	}
 
-	public BigDecimal getClosePrice() {
+	public double getClosePrice() {
 		return closePrice;
 	}
 
-	public BigDecimal getOpenPrice() {
+	public double getOpenPrice() {
 		return openPrice;
 	}
 
@@ -82,19 +81,19 @@ public class MockTick implements Tick {
 		return trades;
 	}
 
-	public BigDecimal getMaxPrice() {
+	public double getMaxPrice() {
 		return maxPrice;
 	}
 
-	public BigDecimal getAmount() {
+	public double getAmount() {
 		return amount;
 	}
 
-	public BigDecimal getVolume() {
+	public double getVolume() {
 		return volume;
 	}
 
-	public BigDecimal getMinPrice() {
+	public double getMinPrice() {
 		return minPrice;
 	}
 

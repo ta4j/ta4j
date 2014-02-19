@@ -1,9 +1,7 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.indicators.simple.PriceVariationIndicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,11 +20,11 @@ public class PriceVariationIndicatorTest {
 
 	@Test
 	public void testIndicatorShouldRetrieveTickVariation() {
-		assertThat(variationIndicator.getValue(0)).isEqualByComparingTo("1");
+		assertThat(variationIndicator.getValue(0)).isEqualTo(1);
 		for (int i = 1; i < 10; i++) {
-			BigDecimal previousTickClosePrice = timeSeries.getTick(i - 1).getClosePrice();
-			BigDecimal currentTickClosePrice = timeSeries.getTick(i).getClosePrice();
-			assertThat(currentTickClosePrice.divide(previousTickClosePrice)).isEqualTo(variationIndicator.getValue(i));
+			double previousTickClosePrice = timeSeries.getTick(i - 1).getClosePrice();
+			double currentTickClosePrice = timeSeries.getTick(i).getClosePrice();
+			assertThat(currentTickClosePrice / previousTickClosePrice).isEqualTo(variationIndicator.getValue(i));
 		}
 	}
 

@@ -1,12 +1,12 @@
 package eu.verdelhan.ta4j.indicators.volume;
 
-import eu.verdelhan.ta4j.TAUtils;
+
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import java.math.BigDecimal;
 
-public class AccumulationDistributionIndicator extends CachedIndicator<BigDecimal> {
+
+public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
 
     private TimeSeries series;
 
@@ -15,20 +15,20 @@ public class AccumulationDistributionIndicator extends CachedIndicator<BigDecima
     }
 
     @Override
-    protected BigDecimal calculate(int index) {
+    protected Double calculate(int index) {
         if (index == 0) {
-            return BigDecimal.ZERO;
+            return 0d;
         }
         Tick tick = series.getTick(index);
 
         // Calculating the money flow multiplier
-		BigDecimal moneyFlowMultiplier = tick.getClosePrice().subtract(tick.getMinPrice()).subtract(tick.getMaxPrice().subtract(tick.getClosePrice()))
-				.divide(tick.getMaxPrice().subtract(tick.getMinPrice()), TAUtils.MATH_CONTEXT);
+		double moneyFlowMultiplier = ((tick.getClosePrice() - tick.getMinPrice()) - (tick.getMaxPrice() - tick.getClosePrice()))
+				 / (tick.getMaxPrice() - tick.getMinPrice());
 
 		// Calculating the money flow volume
-		BigDecimal moneyFlowVolume = moneyFlowMultiplier.multiply(tick.getVolume(), TAUtils.MATH_CONTEXT);
+		double moneyFlowVolume = moneyFlowMultiplier * tick.getVolume();
 
-        return moneyFlowVolume.add(getValue(index - 1));
+        return moneyFlowVolume + getValue(index - 1);
     }
 
     @Override

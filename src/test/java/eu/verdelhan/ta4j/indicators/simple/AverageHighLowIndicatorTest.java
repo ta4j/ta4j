@@ -1,12 +1,9 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
-import eu.verdelhan.ta4j.TAUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
@@ -40,9 +37,9 @@ public class AverageHighLowIndicatorTest {
 
 	@Test
 	public void testIndicatorShouldRetrieveTickClosePrice() {
-		BigDecimal result;
+		double result;
 		for (int i = 0; i < 10; i++) {
-			result = timeSeries.getTick(i).getMaxPrice().add(timeSeries.getTick(i).getMinPrice()).divide(BigDecimal.valueOf(2), TAUtils.MATH_CONTEXT);
+			result = (timeSeries.getTick(i).getMaxPrice() + timeSeries.getTick(i).getMinPrice()) / 2d;
 			assertThat(result).isEqualTo(average.getValue(i));
 		}
 	}
