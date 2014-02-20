@@ -3,6 +3,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
@@ -34,7 +35,7 @@ public class AverageProfitCriterionTest {
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertThat(averageProfit.calculate(series, trades)).isEqualTo(1.03);
+		assertThat(averageProfit.calculate(series, trades)).isEqualTo(1.0243074482, TATestsUtils.LONG_OFFSET);
 	}
 
 	@Test
@@ -45,16 +46,14 @@ public class AverageProfitCriterionTest {
 
 		List<Trade> tradesToDummy1 = new LinkedList<Trade>();
 		tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-		Decision dummy1 = new MockDecision(tradesToDummy1, slicer);
-		decisions.add(dummy1);
+		decisions.add(new MockDecision(tradesToDummy1, slicer));
 
 		List<Trade> tradesToDummy2 = new LinkedList<Trade>();
 		tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
-		Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
-		decisions.add(dummy2);
+		decisions.add(new MockDecision(tradesToDummy2, slicer));
 
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
-		assertThat(averageProfit.summarize(series, decisions)).isEqualTo(1.03);
+		assertThat(averageProfit.summarize(series, decisions)).isEqualTo(1.0243074482, TATestsUtils.LONG_OFFSET);
 	}
 
 	@Test

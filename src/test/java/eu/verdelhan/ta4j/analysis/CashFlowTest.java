@@ -208,7 +208,7 @@ public class CashFlowTest {
 		assertThat(flow.getValue(5)).isEqualTo(6d / 8);
 		assertThat(flow.getValue(6)).isEqualTo(6d / 8);
 		assertThat(flow.getValue(7)).isEqualTo(6d / 8 * 15d / 10);
-		assertThat(flow.getValue(8)).isEqualTo(6d / 8 * 6d / 10);
+		assertThat(flow.getValue(8)).isEqualTo(6d / 8 * 6d / 10, TATestsUtils.LONG_OFFSET);
 	}
 
 	@Test

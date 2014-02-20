@@ -21,6 +21,12 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
         return calculateProfit(series, trade);
     }
 
+	/**
+	 * Calculates the profit of a trade (Buy and sell).
+	 * @param series a time series
+	 * @param trade a trade
+	 * @return the profit of the trade
+	 */
     private double calculateProfit(TimeSeries series, Trade trade) {
         double exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
         double entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
