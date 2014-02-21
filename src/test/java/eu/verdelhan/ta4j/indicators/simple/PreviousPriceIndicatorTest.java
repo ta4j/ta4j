@@ -28,6 +28,6 @@ public class PreviousPriceIndicatorTest {
 
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		previousPriceIndicator.getValue(10);
+		previousPriceIndicator.getValue(11);
 	}
 }

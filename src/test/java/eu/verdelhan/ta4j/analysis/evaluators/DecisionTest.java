@@ -109,10 +109,10 @@ public class DecisionTest {
 		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };
 		Operation[] sell = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null, null, null,null };
 		Strategy fakeStrategy = new MockStrategy(buy, sell);
-		Runner runner = new HistoryRunner(slicer,fakeStrategy);
+		Runner runner = new HistoryRunner(slicer, fakeStrategy);
 		List<Trade> trades = runner.run(0);
-		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, trades, new HistoryRunner(slicer,fakeStrategy));
-		Decision nextDecision = new Decision(fakeStrategy, slicer,1, criterion, runner.run(1), new HistoryRunner(slicer,fakeStrategy));
+		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, trades, runner);
+		Decision nextDecision = new Decision(fakeStrategy, slicer,1, criterion, runner.run(1), runner);
 
 		Decision appliedDecision = decision.applyFor(1);
 

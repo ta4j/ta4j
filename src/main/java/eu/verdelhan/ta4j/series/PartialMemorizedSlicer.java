@@ -123,6 +123,44 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		return getNumberOfSlices() > 0 ? sum / getNumberOfSlices() : 0;
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 23;
+		int result = 1;
+		result = prime * result + ((period == null) ? 0 : period.hashCode());
+		result = prime * result + ((periodBegin == null) ? 0 : periodBegin.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (!(obj instanceof PartialMemorizedSlicer)) {
+			return false;
+		}
+		final PartialMemorizedSlicer other = (PartialMemorizedSlicer) obj;
+		if (period == null) {
+			if (other.period != null) {
+				return false;
+			}
+		} else if (!period.equals(other.period)) {
+			return false;
+		}
+		if (periodBegin == null) {
+			if (other.periodBegin != null) {
+				return false;
+			}
+		} else if (!periodBegin.equals(other.periodBegin)) {
+			return false;
+		}
+		return true;
+	}
+
 	private void split() {
 		LOG.debug(String.format("Spliting %s  ", series));
 

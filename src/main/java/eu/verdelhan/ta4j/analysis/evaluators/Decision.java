@@ -72,4 +72,70 @@ public class Decision {
 	public String getFileName() {
 		return this.getClass().getSimpleName() + getActualSlice().getTick(getActualSlice().getBegin()).getEndTime().toString("hhmmddMMyyyy");
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 47;
+		int result = 1;
+		result = prime * result + ((criterion == null) ? 0 : criterion.hashCode());
+		result = prime * result + ((runner == null) ? 0 : runner.hashCode());
+		result = prime * result + ((slicer == null) ? 0 : slicer.hashCode());
+		result = prime * result + slicerPosition;
+		result = prime * result + ((strategy == null) ? 0 : strategy.hashCode());
+		result = prime * result + ((trades == null) ? 0 : trades.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		final Decision other = (Decision) obj;
+		if (criterion == null) {
+			if (other.criterion != null) {
+				return false;
+			}
+		} else if (!criterion.equals(other.criterion)) {
+			return false;
+		}
+		if (runner == null) {
+			if (other.runner != null) {
+				return false;
+			}
+		} else if (!runner.equals(other.runner)) {
+			return false;
+		}
+		if (slicer == null) {
+			if (other.slicer != null) {
+				return false;
+			}
+		} else if (!slicer.equals(other.slicer)) {
+			return false;
+		}
+		if (slicerPosition != other.slicerPosition) {
+			return false;
+		}
+		if (strategy == null) {
+			if (other.strategy != null) {
+				return false;
+			}
+		} else if (!strategy.equals(other.strategy)) {
+			return false;
+		}
+		if (trades == null) {
+			if (other.trades != null) {
+				return false;
+			}
+		} else if (!trades.equals(other.trades)) {
+			return false;
+		}
+		return true;
+	}
 }
