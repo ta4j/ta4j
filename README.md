@@ -25,6 +25,18 @@ TODO
 
 *See also:  [Algorithmic trading strategies](http://en.wikipedia.org/wiki/Algorithmic_trading#Strategies)*
 
+## To do list
+
+ * license headers
+ * package infos
+ * javadoc
+ * quick start
+ * github page
+ * code coverage (by tests)
+ * travis ci
+ * release
+ * fixing todos in doc
+
 ## About
 
 #### Support
