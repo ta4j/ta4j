@@ -13,7 +13,7 @@ public class LowestValueIndicatorTest {
 
 	@Before
 	public void setUp() throws Exception {
-		data = new MockTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1 });
+		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1);
 	}
 
 	@Test

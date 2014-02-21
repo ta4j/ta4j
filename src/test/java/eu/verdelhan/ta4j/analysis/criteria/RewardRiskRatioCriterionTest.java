@@ -32,7 +32,7 @@ public class RewardRiskRatioCriterionTest {
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(4, OperationType.SELL)));
 		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(7, OperationType.SELL)));
 
-		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 95, 100, 90, 95, 80, 120 });
+		MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
 
 		double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
 		double peak = (105d / 100) * (100d / 95);
@@ -43,7 +43,7 @@ public class RewardRiskRatioCriterionTest {
 
 	@Test
 	public void testSummarize() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 105, 95, 100, 90, 95, 80, 120 });
+		MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
 		List<Decision> decisions = new LinkedList<Decision>();
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 
@@ -71,7 +71,7 @@ public class RewardRiskRatioCriterionTest {
 
 	@Test
 	public void testRewardRiskRatioCriterionOnlyWithGain() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -82,7 +82,7 @@ public class RewardRiskRatioCriterionTest {
 
 	@Test
 	public void testRewardRiskRatioCriterionWithNoTrades() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
 		List<Trade> trades = new ArrayList<Trade>();
 
 		assertThat(Double.isInfinite(rrc.calculate(series, trades))).isTrue();
@@ -93,7 +93,7 @@ public class RewardRiskRatioCriterionTest {
 	public void testWithOneTrade() {
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
-		MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 95, 100, 90, 95, 80, 120 });
+		MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
 
 			
 		RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();

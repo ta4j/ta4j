@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
 
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsMiddleIndicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
@@ -14,7 +13,7 @@ public class BollingerBandsMiddleIndicatorTest {
 
 	@Before
 	public void setUp() throws Exception {
-		data = new MockTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2 });
+		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
 	}
 
 	@Test

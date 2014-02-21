@@ -12,8 +12,8 @@ public class ParabolicSarAndDMIStrategyTest {
 	@Test
 	public void shouldEnterTest()
 	{
-		TimeSeries series1 = new MockTimeSeries(new double[] {10, 9, 6, 10, 5 });
-		TimeSeries series2 = new MockTimeSeries(new double[] {8, 7, 7, 8, 6 });
+		TimeSeries series1 = new MockTimeSeries(10, 9, 6, 10, 5);
+		TimeSeries series2 = new MockTimeSeries(8, 7, 7, 8, 6);
 		
 		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePriceIndicator(series1), new ClosePriceIndicator(series2));
 		ParabolicSarAndDMIStrategy parabolicStrategy = new ParabolicSarAndDMIStrategy(indicatorCrossedIndicator, null);
@@ -27,11 +27,11 @@ public class ParabolicSarAndDMIStrategyTest {
 	@Test
 	public void shouldExitTest()
 	{
-		TimeSeries series1 = new MockTimeSeries(new double[] {6, 11, 6, 5, 9 });
-		TimeSeries series2 = new MockTimeSeries(new double[] {10, 9, 7, 6, 6 });
+		TimeSeries series1 = new MockTimeSeries(6, 11, 6, 5, 9);
+		TimeSeries series2 = new MockTimeSeries(10, 9, 7, 6, 6);
 		
-		TimeSeries series3 = new MockTimeSeries(new double[] {1, 1, 1, 1, 1} );
-		TimeSeries series4 = new MockTimeSeries(new double[] {2, 2, 2, 2, 0} );
+		TimeSeries series3 = new MockTimeSeries(1, 1, 1, 1, 1);
+		TimeSeries series4 = new MockTimeSeries(2, 2, 2, 2, 0);
 		
 		IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePriceIndicator(series1), new ClosePriceIndicator(series2));
 		IndicatorOverIndicatorStrategy indicatorOverIndicator = new IndicatorOverIndicatorStrategy(new ClosePriceIndicator(series3), new ClosePriceIndicator(series4));

@@ -10,7 +10,7 @@ public class WMAIndicatorTest {
 	@Test
 	public void testWMACalculate()
 	{
-		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
+		MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
 		Indicator<Double> close = new ClosePriceIndicator(series);
 		Indicator<Double> wmaIndicator = new WMAIndicator(close, 3);
 		
@@ -25,7 +25,7 @@ public class WMAIndicatorTest {
 	@Test
 	public void testWMACalculateJumpingIndex()
 	{
-		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
+		MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
 		Indicator<Double> close = new ClosePriceIndicator(series);
 		Indicator<Double> wmaIndicator = new WMAIndicator(close, 3);
 		
@@ -35,7 +35,7 @@ public class WMAIndicatorTest {
 	@Test
 	public void testWMACalculateWithTimeFrameGreaterThanSeriesSize()
 	{
-		MockTimeSeries series = new MockTimeSeries(new double[] {1d, 2d, 3d, 4d, 5d, 6d});
+		MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
 		Indicator<Double> close = new ClosePriceIndicator(series);
 		Indicator<Double> wmaIndicator = new WMAIndicator(close, 55);
 		

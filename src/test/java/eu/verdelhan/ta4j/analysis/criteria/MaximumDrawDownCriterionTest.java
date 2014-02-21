@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
@@ -8,6 +7,7 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -20,7 +20,7 @@ public class MaximumDrawDownCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTrades() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 5, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 
@@ -29,7 +29,7 @@ public class MaximumDrawDownCriterionTest {
 
 	@Test
 	public void testCalculateWithOnlyGains() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 8, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -40,7 +40,7 @@ public class MaximumDrawDownCriterionTest {
 
 	@Test
 	public void testCalculateShouldWork() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 5, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -62,7 +62,7 @@ public class MaximumDrawDownCriterionTest {
 
 	@Test
 	public void testWithTradesThatSellBeforeBuying() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 2, 1, 3, 5, 6, 3, 20 });
+		MockTimeSeries series = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -74,7 +74,7 @@ public class MaximumDrawDownCriterionTest {
 
 	@Test
 	public void testWithSimpleTrades() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 10, 5, 6, 1 });
+		MockTimeSeries series = new MockTimeSeries(1, 10, 5, 6, 1);
 		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -90,7 +90,7 @@ public class MaximumDrawDownCriterionTest {
 
 	@Test
 	public void testSummarize() {
-		MockTimeSeries series = new MockTimeSeries(new double[] { 1, 2, 3, 6, 5, 20, 3 });
+		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
 		List<Decision> decisions = new LinkedList<Decision>();
 		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 

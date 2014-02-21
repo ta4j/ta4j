@@ -22,7 +22,7 @@ public class CachedIndicatorTest {
 
 	@Before
 	public void setUp() throws Exception {
-		data = new MockTimeSeries(new double[] { 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2 });
+		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
 	}
 
 	@Test

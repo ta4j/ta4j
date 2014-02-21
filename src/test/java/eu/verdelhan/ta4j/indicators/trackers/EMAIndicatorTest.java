@@ -15,8 +15,8 @@ public class EMAIndicatorTest {
 	@Before
 	public void setUp() {
 
-		data = new MockTimeSeries(new double[] { 64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95,
-				63.37, 61.33, 61.51 });
+		data = new MockTimeSeries(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95,
+				63.37, 61.33, 61.51);
 	}
 
 	@Test

@@ -21,7 +21,7 @@ public class AverageProfitableTradesCriterionTest {
 	@Test
 	public void testCalculate()
 	{
-		TimeSeries series = new MockTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
+		TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.BUY)));
@@ -35,7 +35,7 @@ public class AverageProfitableTradesCriterionTest {
 	@Test
 	public void testCalculateWithOneTrade()
 	{
-		TimeSeries series = new MockTimeSeries(new double[]{100d, 95d, 102d, 105d, 97d, 113d});
+		TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
 			
 		AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();

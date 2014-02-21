@@ -67,7 +67,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testCalculateOnlyWithLossTrades() {
-		series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
 		trades.clear();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -77,7 +77,7 @@ public class AverageProfitCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTicksShouldReturn1() {
-		series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 });
+		series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
 		trades.clear();
 		AnalysisCriterion averageProfit = new AverageProfitCriterion();
 		assertThat(averageProfit.calculate(series, trades)).isEqualTo(1d);
@@ -86,7 +86,7 @@ public class AverageProfitCriterionTest {
 	@Test
 	public void testCalculateWithOneTrade()
 	{
-		series = new MockTimeSeries(new double[] {100, 105});
+		series = new MockTimeSeries(100, 105);
 		Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 		AnalysisCriterion average = new AverageProfitCriterion();
 		assertThat(average.calculate(series, trade)).isEqualTo(Math.pow(105d / 100, 1d/2));
