@@ -23,8 +23,8 @@ public class NumberOfTicksCriterionTest {
 		MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
 		List<Trade> trades = new ArrayList<Trade>();
 
-		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
-		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(0d);
+		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+		assertThat(numberOfTicks.calculate(series, trades)).isZero();
 	}
 
 	@Test
@@ -34,8 +34,16 @@ public class NumberOfTicksCriterionTest {
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
-		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
-		assertThat(buyAndHold.calculate(series, trades)).isEqualTo(6d);
+		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+		assertThat(numberOfTicks.calculate(series, trades)).isEqualTo(6);
+	}
+
+	@Test
+	public void testCalculateWithOneTrade() {
+		MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+		Trade t = new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL));
+		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+		assertThat(numberOfTicks.calculate(series, t)).isEqualTo(4);
 	}
 
 	@Test
@@ -53,7 +61,7 @@ public class NumberOfTicksCriterionTest {
 		Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
 		decisions.add(dummy2);
 
-		AnalysisCriterion buyAndHold = new NumberOfTicksCriterion();
-		assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(6d);
+		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+		assertThat(numberOfTicks.summarize(series, decisions)).isEqualTo(6);
 	}
 }
