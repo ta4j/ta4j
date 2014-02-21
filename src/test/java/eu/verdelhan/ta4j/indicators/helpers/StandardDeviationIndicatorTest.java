@@ -58,10 +58,4 @@ public class StandardDeviationIndicatorTest {
 		assertThat(sdv.getValue(9)).isEqualTo(Math.sqrt(4.5));
 		assertThat(sdv.getValue(10)).isEqualTo(Math.sqrt(40.5));
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		StandardDeviationIndicator quoteSDV = new StandardDeviationIndicator(new ClosePriceIndicator(data), 3);
-		quoteSDV.getValue(13);
-	}
 }

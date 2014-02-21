@@ -182,16 +182,6 @@ public class CashFlowTest {
 		assertThat(cashFlow.getValue(9)).isEqualTo(1d);
 	}
 
-	@Test(expected = RuntimeException.class)
-	public void testCashFlowWithIllegalArgument() {
-		TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
-		List<Trade> trades = new ArrayList<Trade>();
-
-		CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
-
-		cashFlow.getValue(10);
-	}
-
 	@Test
 	public void testCashFlowWithConstrainedSeries() {
 		MockTimeSeries series = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);

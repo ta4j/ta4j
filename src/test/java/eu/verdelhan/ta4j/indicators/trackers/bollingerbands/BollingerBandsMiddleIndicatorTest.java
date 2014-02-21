@@ -35,11 +35,4 @@ public class BollingerBandsMiddleIndicatorTest {
 		assertThat(bbmSMA.getValue(0)).isEqualTo(sma.getValue(0));
 
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-		BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-		bbmSMA.getValue(3000);
-	}
 }

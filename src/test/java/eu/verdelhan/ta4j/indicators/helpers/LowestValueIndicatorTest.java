@@ -50,10 +50,4 @@ public class LowestValueIndicatorTest {
 		LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
 		assertThat(lowestValue.getValue(12)).isEqualTo(1d);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-		assertThat(lowestValue.getValue(300)).isEqualTo(3d);
-	}
 }

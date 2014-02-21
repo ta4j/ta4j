@@ -53,11 +53,4 @@ public class StochasticOscillatorKIndicatorTest {
 		StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
 		assertThat(sof.getValue(13)).isEqualTo(57.81, TATestsUtils.SHORT_OFFSET);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-
-		StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
-		sof.getValue(1300);
-	}
 }

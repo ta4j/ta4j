@@ -58,14 +58,4 @@ public class BollingerBandsUpperIndicatorTest {
 		assertThat(bbuSMA.getValue(9)).isEqualTo(4.96, TATestsUtils.SHORT_OFFSET);
 		assertThat(bbuSMA.getValue(4)).isEqualTo(4.96, TATestsUtils.SHORT_OFFSET);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-
-		BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-		StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
-		BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
-
-		bbuSMA.getValue(data.getSize());
-	}
 }

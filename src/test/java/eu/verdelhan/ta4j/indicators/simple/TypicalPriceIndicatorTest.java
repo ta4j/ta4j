@@ -27,9 +27,4 @@ public class TypicalPriceIndicatorTest {
 			assertThat(typicalPriceIndicator.getValue(i)).isEqualTo(typicalPrice);
 		}
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		typicalPriceIndicator.getValue(10);
-	}
 }

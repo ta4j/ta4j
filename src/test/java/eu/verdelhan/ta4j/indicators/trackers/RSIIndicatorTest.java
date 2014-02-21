@@ -48,10 +48,4 @@ public class RSIIndicatorTest {
 		assertThat(rsi.getValue(19)).isEqualTo(73.33, TATestsUtils.SHORT_OFFSET);
 		assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
-		assertThat(rsi.getValue(300)).isEqualTo(3d);
-	}
 }

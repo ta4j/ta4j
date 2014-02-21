@@ -84,11 +84,4 @@ public class WilliamsRIndicatorTest {
 		assertThat(wr.getValue(2)).isEqualTo(-100d * (0.13 / 0.36), TATestsUtils.LONG_OFFSET);
 		assertThat(wr.getValue(3)).isEqualTo(-100d * (0.18 / 0.36), TATestsUtils.LONG_OFFSET);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
-				new MinPriceIndicator(data));
-		wr.getValue(13);
-	}
 }

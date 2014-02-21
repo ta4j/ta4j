@@ -49,10 +49,4 @@ public class SMAIndicatorTest {
 		SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 3);
 		assertThat(quoteSMA.getValue(12)).isEqualTo(3d);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 3);
-		assertThat(quoteSMA.getValue(13)).isEqualTo(3d);
-	}
 }

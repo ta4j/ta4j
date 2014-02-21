@@ -42,12 +42,6 @@ public class CachedIndicatorTest {
 		assertThat(quoteSMA.getValue(105)).isEqualTo((double) 10d);
 	}
 
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 3);
-		quoteSMA.getValue(13);
-	}
-
 	@Test
 	public void testReallyBigCachedEMAExtendsCachedIndicator() {
 		int maxIndex = 1000000;

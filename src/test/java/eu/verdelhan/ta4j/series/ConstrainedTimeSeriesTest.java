@@ -2,7 +2,6 @@ package eu.verdelhan.ta4j.series;
 
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.LinkedList;
@@ -35,7 +34,6 @@ public class ConstrainedTimeSeriesTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void constructurTesteShouldThrowsException() {
-		@SuppressWarnings("unused")
 		ConstrainedTimeSeries constrainedException = new ConstrainedTimeSeries(series, series.getEnd(), series.getBegin());
 	}
 

@@ -52,12 +52,6 @@ public class EMAIndicatorTest {
 		EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
 		assertThat(ema.getValue(10)).isEqualTo(63.23, TATestsUtils.SHORT_OFFSET);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-		assertThat(ema.getValue(14)).isEqualTo(3d);
-	}
 	
 	@Test
 	public void testSmallTimeFrame()

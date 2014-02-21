@@ -43,9 +43,4 @@ public class AverageHighLowIndicatorTest {
 			assertThat(result).isEqualTo(average.getValue(i));
 		}
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		average.getValue(10);
-	}
 }

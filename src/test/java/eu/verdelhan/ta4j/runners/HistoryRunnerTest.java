@@ -1,6 +1,5 @@
 package eu.verdelhan.ta4j.runners;
 
-import eu.verdelhan.ta4j.runners.HistoryRunner;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -88,7 +87,6 @@ public class HistoryRunnerTest {
 
 	@Test(expected = NullPointerException.class)
 	public void testNullTypeShouldThrowException() {
-		@SuppressWarnings("unused")
 		HistoryRunner runner = new HistoryRunner(null, null);
 	}
 

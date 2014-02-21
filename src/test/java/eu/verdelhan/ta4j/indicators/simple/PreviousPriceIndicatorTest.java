@@ -25,9 +25,4 @@ public class PreviousPriceIndicatorTest {
 			assertThat(timeSeries.getTick(i-1).getClosePrice()).isEqualTo(previousPriceIndicator.getValue(i));
 		}
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		previousPriceIndicator.getValue(11);
-	}
 }

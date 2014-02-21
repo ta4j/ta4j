@@ -50,10 +50,4 @@ public class HighestValueIndicatorTest {
 		assertThat(highestValue.getValue(6)).isEqualTo(5d);
 		assertThat(highestValue.getValue(12)).isEqualTo(4d);
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-		assertThat(highestValue.getValue(300)).isEqualTo(3d);
-	}
 }

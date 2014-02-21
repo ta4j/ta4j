@@ -1,7 +1,5 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorDIndicator;
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorKIndicator;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
@@ -70,14 +68,5 @@ public class StochasticOscillatorDIndicatorTest {
 		SMAIndicator sma = new SMAIndicator(sof, 3);
 
 		assertThat(sos.getValue(13)).isEqualTo(sma.getValue(13));
-	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-
-		StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
-		StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sof);
-
-		sos.getValue(14);
 	}
 }

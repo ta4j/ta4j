@@ -27,9 +27,4 @@ public class PriceVariationIndicatorTest {
 			assertThat(currentTickClosePrice / previousTickClosePrice).isEqualTo(variationIndicator.getValue(i));
 		}
 	}
-
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void testIndexGreatterThanTheIndicatorLenghtShouldThrowException() {
-		variationIndicator.getValue(10);
-	}
 }
