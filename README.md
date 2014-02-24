@@ -1,4 +1,4 @@
-# ta4j
+# ta4j [![Build Status](https://travis-ci.org/mdeverdelhan/ta4j.png?branch=master)](https://travis-ci.org/mdeverdelhan/ta4j)
 
 Technical Analysis For Java
 
@@ -27,13 +27,10 @@ TODO
 
 ## To do list
 
- * license headers
- * package infos
  * javadoc
  * quick start
  * github page
- * code coverage (by tests)
- * travis ci
+ * code coverage
  * release
  * fixing todos in doc
 
