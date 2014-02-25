@@ -28,6 +28,11 @@ import eu.verdelhan.ta4j.analysis.CashFlow;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Maximum drawdown criterion.
+ * <p>
+ * @see http://en.wikipedia.org/wiki/Drawdown_%28economics%29
+ */
 public class MaximumDrawDownCriterion extends AbstractAnalysisCriterion {
 
     @Override
@@ -57,6 +62,5 @@ public class MaximumDrawDownCriterion extends AbstractAnalysisCriterion {
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(trade);
         return calculate(series, trades);
-
     }
 }

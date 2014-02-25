@@ -29,6 +29,11 @@ import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Buy and hold criterion.
+ * <p>
+ * @see http://en.wikipedia.org/wiki/Buy_and_hold
+ */
 public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
@@ -38,7 +43,6 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double summarize(TimeSeries series, List<Decision> decisions) {
-
         return calculate(series, new ArrayList<Trade>());
     }
 

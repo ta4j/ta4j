@@ -26,6 +26,9 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
 
+/**
+ * Number of trades criterion.
+ */
 public class NumberOfTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override

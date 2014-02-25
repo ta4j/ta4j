@@ -27,6 +27,11 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
 
+/**
+ * Total profit criterion.
+ * <p>
+ * The total profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
+ */
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override

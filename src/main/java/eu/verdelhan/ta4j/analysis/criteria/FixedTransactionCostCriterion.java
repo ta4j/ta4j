@@ -22,13 +22,15 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
+import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
 
 /**
  * A fixed transaction cost.
- * E.g.: 0.5 for $0.5 per operation (buy or sell)
+ * E.g.: 0.5 for $0.5 per {@link Operation operation} (buy or sell).
+ * @todo Add a criterion for linear (a * x + b) transaction cost
  */
 public class FixedTransactionCostCriterion extends AbstractAnalysisCriterion {
 

@@ -27,7 +27,9 @@ import eu.verdelhan.ta4j.Trade;
 import java.util.List;
 
 /**
- * Number of ticks in trades.
+ * Number of ticks criterion.
+ * <p>
+ * Returns the number of ticks during the provided trade(s).
  */
 public class NumberOfTicksCriterion extends AbstractAnalysisCriterion {
 

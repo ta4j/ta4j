@@ -28,6 +28,11 @@ import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Reward risk ratio criterion.
+ * <p>
+ * (i.e. the {@link TotalProfitCriterion total profit} over the {@link MaximumDrawDownCriterion maximum drawdown}.
+ */
 public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
     private AnalysisCriterion totalProfit = new TotalProfitCriterion();
