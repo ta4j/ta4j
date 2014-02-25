@@ -24,6 +24,10 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
 
+/**
+ * Simple multiplier indicator.
+ * <p>
+ */
 public class SimpleMultiplierIndicator implements Indicator<Double> {
 
 	private Indicator<? extends Number> indicator;

@@ -24,12 +24,22 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 
+/**
+ * Cross indicator.
+ * <p>
+ * Boolean indicator which monitors two-indicators crossings.
+ */
 public class CrossIndicator implements Indicator<Boolean> {
 
 	private final Indicator<? extends Number> low;
 
 	private final Indicator<? extends Number> up;
 
+	/**
+	 * Constructor.
+	 * @param up the upper indicator
+	 * @param low the lower indicator
+	 */
 	public CrossIndicator(Indicator<? extends Number> up, Indicator<? extends Number> low) {
 		this.up = up;
 		this.low = low;
@@ -39,28 +49,32 @@ public class CrossIndicator implements Indicator<Boolean> {
 	public Boolean getValue(int index) {
 
 		int i = index;
-		if (i == 0 || up.getValue(i).doubleValue() >= (low.getValue(i).doubleValue()))
+		if (i == 0 || up.getValue(i).doubleValue() >= (low.getValue(i).doubleValue())) {
 			return false;
+		}
+
 		i = i - 1;
-		if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue())
+		if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue()) {
 			return true;
+		} else {
 
-		else {
-
-			while (i > 0 && up.getValue(i).doubleValue() == low.getValue(i).doubleValue())
+			while (i > 0 && up.getValue(i).doubleValue() == low.getValue(i).doubleValue()) {
 				i = i - 1;
-			if (i == 0)
-				return false;
-			if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue())
-				return true;
-			return false;
+			}
+			return (i != 0) && (up.getValue(i).doubleValue() > low.getValue(i).doubleValue());
 		}
 	}
 
+	/**
+	 * @return the initial lower indicator
+	 */
 	public Indicator<? extends Number> getLow() {
 		return low;
 	}
 
+	/**
+	 * @return the initial upper indicator
+	 */
 	public Indicator<? extends Number> getUp() {
 		return up;
 	}

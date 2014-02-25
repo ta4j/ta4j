@@ -27,13 +27,16 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.oscillators.AwesomeOscillatorIndicator;
 import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
 
+/**
+ * Acceleration-deceleration indicator.
+ * <p>
+ */
 public class AccelerationDecelerationIndicator extends CachedIndicator<Double> {
 	
 	private AwesomeOscillatorIndicator awesome;
 	
 	private SMAIndicator sma5;
 
-	
 	public AccelerationDecelerationIndicator(TimeSeries series, int timeFrameSma1, int timeFrameSma2) {
 		this.awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), timeFrameSma1, timeFrameSma2);
 		this.sma5 = new SMAIndicator(awesome, timeFrameSma1);

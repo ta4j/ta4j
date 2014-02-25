@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.indicators.trackers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
+/**
+ * Simple moving average (SMA) indicator.
+ * <p>
+ */
 public class SMAIndicator extends CachedIndicator<Double> {
 
 	private final Indicator<? extends Number> indicator;

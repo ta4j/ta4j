@@ -27,7 +27,10 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
-
+/**
+ * Accumulation-distribution indicator.
+ * <p>
+ */
 public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
 
     private TimeSeries series;
@@ -57,5 +60,4 @@ public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
     public String toString() {
         return getClass().getSimpleName();
     }
-
 }

@@ -26,6 +26,10 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageGainIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
 
+/**
+ * Relative strength index indicator.
+ * <p>
+ */
 public class RSIIndicator implements Indicator<Double> {
 
 	private final Indicator<? extends Number> indicator;

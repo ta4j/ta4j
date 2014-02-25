@@ -27,6 +27,7 @@ import eu.verdelhan.ta4j.Indicator;
 /**
  * Rate of change (ROCIndicator) indicator.
  * Aka. Momentum
+ * <p>
  * The ROCIndicator calculation compares the current value with the value "n" periods ago.
  */
 public class ROCIndicator implements Indicator<Double> {

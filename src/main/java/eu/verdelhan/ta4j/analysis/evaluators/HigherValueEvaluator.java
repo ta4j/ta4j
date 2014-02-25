@@ -33,6 +33,10 @@ import java.util.Set;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+/**
+ * Higher value evaluator.
+ * <p>
+ */
 public class HigherValueEvaluator implements StrategyEvaluator {
 
     private static final Logger LOG = Logger.getLogger(HigherValueEvaluator.class);
@@ -45,6 +49,13 @@ public class HigherValueEvaluator implements StrategyEvaluator {
 
     private HashMap<Strategy, Runner> hashRunner;
 
+	/**
+	 * Constructor.
+	 * @param runnerFactory the runner factory
+	 * @param strategies a set of strategies to be evaluated
+	 * @param slicer a time series slicer
+	 * @param criterion an analysis criterion
+	 */
     public HigherValueEvaluator(RunnerFactory runnerFactory, Set<Strategy> strategies, TimeSeriesSlicer slicer, AnalysisCriterion criterion) {
         this.strategies = strategies;
         this.slicer = slicer;

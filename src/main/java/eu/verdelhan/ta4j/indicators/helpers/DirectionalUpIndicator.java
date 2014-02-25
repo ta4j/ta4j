@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.indicators.helpers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 
+/**
+ * Directional up indicator.
+ * <p>
+ */
 public class DirectionalUpIndicator implements Indicator<Double>{
 
 	private final Indicator<Double> admup;
@@ -39,8 +43,7 @@ public class DirectionalUpIndicator implements Indicator<Double>{
 
 	@Override
 	public Double getValue(int index) {
-		
-		return  admup.getValue(index) / atr.getValue(index);
+		return admup.getValue(index) / atr.getValue(index);
 	}
 
 	@Override

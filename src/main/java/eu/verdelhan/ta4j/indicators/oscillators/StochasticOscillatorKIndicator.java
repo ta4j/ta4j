@@ -32,7 +32,8 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 
 
 /**
- * 
+ * Stochastic oscillator K.
+ * <p>
  * Receives timeSeries and timeFrame and calculates the StochasticOscillatorKIndicator
  * over ClosePriceIndicator, or receives an indicator, MaxPriceIndicator and
  * MinPriceIndicator and returns StochasticOsiclatorK over this indicator.

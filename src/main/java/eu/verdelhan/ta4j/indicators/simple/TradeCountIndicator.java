@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.indicators.simple;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 
+/**
+ * Trade count indicator.
+ * <p>
+ */
 public class TradeCountIndicator implements Indicator<Integer> {
 
 	private TimeSeries data;

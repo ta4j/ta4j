@@ -25,7 +25,10 @@ package eu.verdelhan.ta4j.indicators.simple;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 
-
+/**
+ * Average high-low indicator.
+ * <p>
+ */
 public class AverageHighLowIndicator implements Indicator<Double> {
 
 	private TimeSeries data;

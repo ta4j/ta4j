@@ -28,6 +28,7 @@ import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
 
 /**
  * Percentage price oscillator (PPOIndicator) indicator.
+ * <p>
  */
 public class PPOIndicator implements Indicator<Double> {
 

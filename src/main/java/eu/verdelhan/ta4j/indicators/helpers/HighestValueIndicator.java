@@ -24,6 +24,10 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 
+/**
+ * Highest value indicator.
+ * <p>
+ */
 public class HighestValueIndicator implements Indicator<Double> {
 
 	private final Indicator<? extends Number> indicator;
@@ -40,8 +44,9 @@ public class HighestValueIndicator implements Indicator<Double> {
 		int start = Math.max(0, index - timeFrame + 1);
 		double highest = indicator.getValue(start).doubleValue();
 		for (int i = start + 1; i <= index; i++) {
-			if (highest < indicator.getValue(i).doubleValue())
+			if (highest < indicator.getValue(i).doubleValue()) {
 				highest = indicator.getValue(i).doubleValue();
+			}
 		}
 		return highest;
 	}

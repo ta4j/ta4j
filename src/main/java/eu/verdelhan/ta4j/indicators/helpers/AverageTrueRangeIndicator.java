@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.indicators.helpers;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
+/**
+ * Average true range indicator.
+ * <p>
+ */
 public class AverageTrueRangeIndicator extends CachedIndicator<Double> {
 
 	private final int timeFrame;
@@ -36,8 +40,9 @@ public class AverageTrueRangeIndicator extends CachedIndicator<Double> {
 	
 	@Override
 	protected Double calculate(int index) {
-		if(index == 0)
+		if (index == 0) {
 			return 1d;
+		}
 		return ((getValue(index - 1) * (timeFrame-1)) / timeFrame) + tr.getValue(index) / timeFrame;
 	}
 
@@ -45,5 +50,4 @@ public class AverageTrueRangeIndicator extends CachedIndicator<Double> {
 	public String toString() {
 		return getClass().getSimpleName() + " timeFrame: " + this.timeFrame;
 	}
-
 }

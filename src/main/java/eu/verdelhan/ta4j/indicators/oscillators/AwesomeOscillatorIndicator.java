@@ -26,6 +26,10 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
+/**
+ * Awesome (?) oscillator.
+ * <p>
+ */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Double> {
 
 	private SMAIndicator sma5;

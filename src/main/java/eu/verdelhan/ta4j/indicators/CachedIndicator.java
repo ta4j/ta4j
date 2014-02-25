@@ -28,7 +28,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Cache the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
+ * Cached {@link Indicator indicators}.
+ * <p>
+ * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
  */
 public abstract class CachedIndicator<T> implements Indicator<T> {
 
@@ -58,6 +60,10 @@ public abstract class CachedIndicator<T> implements Indicator<T> {
         return getClass().getSimpleName();
     }
 
+	/**
+	 * Increases the size of cached results buffer.
+	 * @param index
+	 */
     private void increaseLength(int index) {
         if (results.size() <= index) {
             results.addAll(Collections.<T> nCopies((index - results.size()) + 1, null));

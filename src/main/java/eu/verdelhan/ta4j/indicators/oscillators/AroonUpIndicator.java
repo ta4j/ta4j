@@ -30,6 +30,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 
 /**
  * Aroon up indicator.
+ * <p>
  */
 public class AroonUpIndicator implements Indicator<Double> {
 

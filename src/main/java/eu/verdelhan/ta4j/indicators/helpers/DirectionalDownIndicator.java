@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.indicators.helpers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 
+/**
+ * Directional down indicator.
+ * <p>
+ */
 public class DirectionalDownIndicator implements Indicator<Double>{
 
 	private final Indicator<Double> admdown;
@@ -39,7 +43,6 @@ public class DirectionalDownIndicator implements Indicator<Double>{
 
 	@Override
 	public Double getValue(int index) {
-		
 		return  admdown.getValue(index) / atr.getValue(index);
 	}
 

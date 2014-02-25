@@ -24,7 +24,11 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
 
-public class ConstantIndicator<T extends Number> implements Indicator<T> {
+/**
+ * Constant indicator.
+ * <p>
+ */
+public class ConstantIndicator<T> implements Indicator<T> {
 
 	private T value;
 

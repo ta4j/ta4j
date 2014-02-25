@@ -27,12 +27,16 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.DirectionalDownIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.DirectionalUpIndicator;
 
+/**
+ * Directional movement indicator.
+ * <p>
+ */
 public class DirectionalMovementIndicator implements Indicator<Double>{
 
-	
 	private final int timeFrame;
 	private final DirectionalUpIndicator dup;
 	private final DirectionalDownIndicator ddown;
+
 	public DirectionalMovementIndicator(TimeSeries series, int timeFrame) {
 		this.timeFrame = timeFrame;
 		dup = new DirectionalUpIndicator(series, timeFrame);

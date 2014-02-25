@@ -25,7 +25,10 @@ package eu.verdelhan.ta4j.indicators.simple;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 
-
+/**
+ * Minimum price indicator.
+ * <p>
+ */
 public class MinPriceIndicator implements Indicator<Double> {
 
 	private TimeSeries data;

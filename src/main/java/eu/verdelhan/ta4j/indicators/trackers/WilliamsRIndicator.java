@@ -30,7 +30,10 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 
-
+/**
+ * William's R indicator.
+ * <p>
+ */
 public class WilliamsRIndicator implements Indicator<Double> {
 
 	private final Indicator<? extends Number> indicator;
@@ -62,7 +65,8 @@ public class WilliamsRIndicator implements Indicator<Double> {
 		double highestHighPrice = highestHigh.getValue(index).doubleValue();
 		double lowestLowPrice = lowestMin.getValue(index).doubleValue();
 
-		return ((highestHighPrice - indicator.getValue(index).doubleValue()) / (highestHighPrice - lowestLowPrice))
+		return ((highestHighPrice - indicator.getValue(index).doubleValue())
+				/ (highestHighPrice - lowestLowPrice))
 				* -100d;
 	}
 

@@ -26,9 +26,9 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * 
- * Receive StochasticOscillatorKIndicator and returns his SMAIndicator(3)
- * 
+ * Stochastic oscillator D.
+ * <p>
+ * Receive {@link StochasticOscillatorKIndicator} and returns its {@link SMAIndicator SMAIndicator(3)}.
  */
 public class StochasticOscillatorDIndicator implements Indicator<Double> {
 

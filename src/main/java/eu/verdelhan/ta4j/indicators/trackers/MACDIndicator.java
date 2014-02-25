@@ -26,6 +26,7 @@ import eu.verdelhan.ta4j.Indicator;
 
 /**
  * Moving average convergence divergence (MACDIndicator) indicator.
+ * <p>
  */
 public class MACDIndicator implements Indicator<Double> {
 

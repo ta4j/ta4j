@@ -27,6 +27,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Exponential moving average indicator.
+ * <p>
  */
 public class EMAIndicator extends CachedIndicator<Double> {
 

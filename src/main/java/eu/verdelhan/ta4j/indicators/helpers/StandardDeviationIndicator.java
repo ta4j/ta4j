@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.indicators.helpers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
+/**
+ * Standard deviation indicator.
+ * <p>
+ */
 public class StandardDeviationIndicator implements Indicator<Double> {
 
 	private Indicator<? extends Number> indicator;

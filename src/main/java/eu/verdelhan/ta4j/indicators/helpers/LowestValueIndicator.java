@@ -24,6 +24,10 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 
+/**
+ * Lowest value indicator.
+ * <p>
+ */
 public class LowestValueIndicator implements Indicator<Double> {
 
 	private final Indicator<? extends Number> indicator;

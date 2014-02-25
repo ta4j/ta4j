@@ -30,7 +30,10 @@ import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 
-
+/**
+ * Parabolic SAR indicator.
+ * <p>
+ */
 public class ParabolicSarIndicator extends CachedIndicator<Double> {
 
 	private double acceleration;

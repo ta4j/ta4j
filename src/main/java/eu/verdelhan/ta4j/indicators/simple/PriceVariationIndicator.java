@@ -25,7 +25,10 @@ package eu.verdelhan.ta4j.indicators.simple;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 
-
+/**
+ * Price variation indicator.
+ * <p>
+ */
 public class PriceVariationIndicator implements Indicator<Double> {
 
 	private TimeSeries data;
