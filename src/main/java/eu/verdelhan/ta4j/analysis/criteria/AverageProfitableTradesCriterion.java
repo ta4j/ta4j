@@ -41,8 +41,10 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
 		double result;
         if (trade.getEntry().getType() == OperationType.BUY) {
+			// buy-then-sell trade
             result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
         } else {
+			// sell-then-buy trade
             result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
         }
 
@@ -55,16 +57,19 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         for (Trade trade : trades) {
 			int entryIndex = trade.getEntry().getIndex();
 			int exitIndex = trade.getExit().getIndex();
-			
+
+			double result;
             if (trade.getEntry().getType() == OperationType.BUY) {
-				double result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
-                if (result > 1d) {
-                    numberOfProfitable++;
-                }
-            } else if ((series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice()) > 1d) {
-                numberOfProfitable++;
+				// buy-then-sell trade
+				result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
+            } else {
+				// sell-then-buy trade
+                result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
             }
+			if (result > 1d) {
+				numberOfProfitable++;
+			}
         }
-        return (double) numberOfProfitable / trades.size();
+        return ((double) numberOfProfitable) / trades.size();
     }
 }
