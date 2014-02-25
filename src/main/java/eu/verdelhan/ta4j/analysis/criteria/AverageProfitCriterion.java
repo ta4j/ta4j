@@ -28,6 +28,11 @@ import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Average profit criterion.
+ * <p>
+ * The {@link TotalProfitCriterion total profit} over the {@link NumberOfTicksCriterion number of ticks}.
+ */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
     private AnalysisCriterion totalProfit = new TotalProfitCriterion();

@@ -23,9 +23,10 @@
 package eu.verdelhan.ta4j;
 
 /**
- * Type of operations.
- * 
- * @todo add ASK and BID as aliases
+ * The type of an {@link Operation operation}.
+ * <p>
+ * A BUY operation correspond to a <i>BID</i> order.<p>
+ * A SELL operation correspond to an <i>ASK</i> order.
  */
 public enum OperationType {
     BUY {

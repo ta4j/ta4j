@@ -23,8 +23,13 @@
 package eu.verdelhan.ta4j;
 
 /**
- * A decision (buy/sell) taken from a {@link Strategy}.
- * 
+ * An operation of a {@link Trade trade}.
+ * <p>
+ * The operation is defined by:
+ * <ul>
+ * <li>the index (in the {@link TimeSeries time series}) it is executed
+ * <li>a {@link OperationType type} (BUY or SELL)
+ * </ul>
  */
 public class Operation {
 

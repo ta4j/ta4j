@@ -24,23 +24,42 @@ package eu.verdelhan.ta4j;
 
 
 /**
- * Parameter: an {@link Indicator} or another {@link Strategy}
- * Returns an {@link Operation} when giving an index
+ * A trading strategy.
+ * <p>
+ * Parameter: an {@link Indicator indicator} or another {@link Strategy strategy}
+ * <p>
+ * Returns an {@link Operation operation} when giving an index.
  */
 public interface Strategy {
 
 	/**
 	 * @param trade a trade
-	 * @param index
+	 * @param index the index
 	 * @return true to recommend an operation, false otherwise (no recommendation)
 	 */
 	boolean shouldOperate(Trade trade, int index);
 
+	/**
+	 * @param index the index
+	 * @return true to recommend to enter (BUY {@link Operation operation}), false otherwise
+	 */
 	boolean shouldEnter(int index);
 
+	/**
+	 * @param index the index
+	 * @return true to recommend to exit (SELL {@link Operation operation}), false otherwise
+	 */
 	boolean shouldExit(int index);
-	
+
+	/**
+	 * @param strategy another trading strategy
+	 * @return a strategy which is the AND combination of the current strategy with the provided one
+	 */
 	Strategy and(Strategy strategy);
-	
+
+	/**
+	 * @param strategy another trading strategy
+	 * @return a strategy which is the OR combination of the current strategy with the provided one
+	 */
 	Strategy or(Strategy strategy);
 }

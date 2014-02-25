@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import java.util.List;
 
 /**
- * An analysis criterion.
+ * An analysis criterion. Can be used to build a {@link Decision decision}.
  */
 public interface AnalysisCriterion {
 

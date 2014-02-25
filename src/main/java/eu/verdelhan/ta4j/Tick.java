@@ -30,25 +30,58 @@ import org.joda.time.DateTime;
  */
 public interface Tick {
 
+	/**
+	 * @return the begin timestamp of the tick period
+	 */
     DateTime getBeginTime();
 
+	/**
+	 * @return the end timestamp of the tick period
+	 */
     DateTime getEndTime();
 
+	/**
+	 * @return a human-friendly string of the end timestamp
+	 */
     String getDateName();
 
+	/**
+	 * @return a even more human-friendly string of the end timestamp
+	 */
     String getSimpleDateName();
 
+	/**
+	 * @return the close price of the period
+	 */
     double getClosePrice();
 
+	/**
+	 * @return the open price of the period
+	 */
     double getOpenPrice();
 
+	/**
+	 * @return the number of trades in the period
+	 */
     int getTrades();
 
+	/**
+	 * @return the max price of the period
+	 */
     double getMaxPrice();
 
+	/**
+	 * @return the whole traded amount of the period
+	 */
     double getAmount();
 
+	/**
+	 * @return the whole traded volume in the period
+	 */
     double getVolume();
 
+	/**
+	 * @return the min price of the period
+	 */
     double getMinPrice();
 }

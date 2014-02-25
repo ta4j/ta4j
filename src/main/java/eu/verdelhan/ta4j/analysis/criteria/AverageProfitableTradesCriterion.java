@@ -23,12 +23,15 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.OperationType;
-
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-
 import java.util.List;
 
+/**
+ * Average profitable trades criterion.
+ * <p>
+ * The number of profitable trades.
+ */
 public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override

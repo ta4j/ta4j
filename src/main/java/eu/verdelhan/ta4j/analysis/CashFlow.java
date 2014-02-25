@@ -29,14 +29,26 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * The cash flow.
+ * <p>
+ * This class allows to follow the money cash flow involved by a list of trades over a time series.
+ */
 public class CashFlow {
 
+	/** The time series */
     private final TimeSeries timeSeries;
 
+	/** The list of trades */
     private final List<Trade> trades;
 
     private List<Double> values;
 
+	/**
+	 * Constructor.
+	 * @param timeSeries the time series
+	 * @param trades the list of trades
+	 */
     public CashFlow(TimeSeries timeSeries, List<Trade> trades) {
         this.timeSeries = timeSeries;
         this.trades = trades;
@@ -45,10 +57,17 @@ public class CashFlow {
         calculate();
     }
 
+	/**
+	 * @param index the index
+	 * @return the cash flow value at the index-th position
+	 */
     public double getValue(int index) {
         return values.get(index);
     }
 
+	/**
+	 * @return the size of the time series
+	 */
     public int getSize() {
         return timeSeries.getSize();
     }

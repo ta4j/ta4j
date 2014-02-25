@@ -23,11 +23,11 @@
 package eu.verdelhan.ta4j;
 
 /**
- * Indicator é toda a classe que recebe um {@link TimeSeries} ou
+ * Indicator over a {@link TimeSeries time series}.
+ * <p>
+ * For each index of the time series, returns a value of type <b>T</b>.
  * 
- * @link {@link Indicator} como parâmetro e retorna um valor interpretado T.
- * 
- * @param <T> the type of returned value
+ * @param <T> the type of returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> {
 
