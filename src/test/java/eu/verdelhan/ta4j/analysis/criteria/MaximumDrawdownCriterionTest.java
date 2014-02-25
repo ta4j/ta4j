@@ -38,12 +38,12 @@ import static org.assertj.core.api.Assertions.*;
 import org.joda.time.Period;
 import org.junit.Test;
 
-public class MaximumDrawDownCriterionTest {
+public class MaximumDrawdownCriterionTest {
 
 	@Test
 	public void testCalculateWithNoTrades() {
 		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 
 		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
@@ -52,7 +52,7 @@ public class MaximumDrawDownCriterionTest {
 	@Test
 	public void testCalculateWithOnlyGains() {
 		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
@@ -63,7 +63,7 @@ public class MaximumDrawDownCriterionTest {
 	@Test
 	public void testCalculateShouldWork() {
 		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
@@ -76,7 +76,7 @@ public class MaximumDrawDownCriterionTest {
 	@Test
 	public void testCalculateWithNullSeriesSizeShouldReturn1() {
 		MockTimeSeries series = new MockTimeSeries(new double[] {});
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 
 		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
@@ -85,7 +85,7 @@ public class MaximumDrawDownCriterionTest {
 	@Test
 	public void testWithTradesThatSellBeforeBuying() {
 		MockTimeSeries series = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
@@ -97,7 +97,7 @@ public class MaximumDrawDownCriterionTest {
 	@Test
 	public void testWithSimpleTrades() {
 		MockTimeSeries series = new MockTimeSeries(1, 10, 5, 6, 1);
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
 		trades.add(new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -131,7 +131,7 @@ public class MaximumDrawDownCriterionTest {
 		Decision dummy3 = new MockDecision(tradesToDummy3, slicer);
 		decisions.add(dummy3);
 
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 
 		assertThat(mdd.summarize(series, decisions)).isEqualTo(.875d);
 
@@ -141,7 +141,7 @@ public class MaximumDrawDownCriterionTest {
 	{
 		MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
 		ConstrainedTimeSeries series = new ConstrainedTimeSeries(sampleSeries, 4, 8);
-		MaximumDrawDownCriterion mdd = new MaximumDrawDownCriterion();
+		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 		List<Trade> trades = new ArrayList<Trade>();
 		trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
 		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));

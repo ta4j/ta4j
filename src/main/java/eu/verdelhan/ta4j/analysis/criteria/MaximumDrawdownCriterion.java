@@ -33,12 +33,12 @@ import java.util.List;
  * <p>
  * @see http://en.wikipedia.org/wiki/Drawdown_%28economics%29
  */
-public class MaximumDrawDownCriterion extends AbstractAnalysisCriterion {
+public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
-        double maximumDrawDown = 0d;
-        double maxPeak = 0;
+        double maximumDrawdown = 0d;
+        double maxPeak = 0d;
         CashFlow cashFlow = new CashFlow(series, trades);
 
         for (int i = series.getBegin(); i <= series.getEnd(); i++) {
@@ -47,14 +47,14 @@ public class MaximumDrawDownCriterion extends AbstractAnalysisCriterion {
                 maxPeak = value;
             }
 
-            double drawDown = (maxPeak - value) / maxPeak;
-            if (drawDown > maximumDrawDown) {
-                maximumDrawDown = drawDown;
-                // absolute maximumDrawDown.
-                // should it be maximumDrawDown = drawDown/maxPeak ?
+            double drawdown = (maxPeak - value) / maxPeak;
+            if (drawdown > maximumDrawdown) {
+                maximumDrawdown = drawdown;
+                // absolute maximumDrawdown.
+                // should it be maximumDrawdown = drawDown/maxPeak ?
             }
         }
-        return maximumDrawDown;
+        return maximumDrawdown;
     }
 
     @Override

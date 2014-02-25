@@ -31,17 +31,17 @@ import java.util.List;
 /**
  * Reward risk ratio criterion.
  * <p>
- * (i.e. the {@link TotalProfitCriterion total profit} over the {@link MaximumDrawDownCriterion maximum drawdown}.
+ * (i.e. the {@link TotalProfitCriterion total profit} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
     private AnalysisCriterion totalProfit = new TotalProfitCriterion();
 
-    private MaximumDrawDownCriterion maxDrawnDown = new MaximumDrawDownCriterion();
+    private AnalysisCriterion maxDrawdown = new MaximumDrawdownCriterion();
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
-        return totalProfit.calculate(series, trades) / maxDrawnDown.calculate(series, trades);
+        return totalProfit.calculate(series, trades) / maxDrawdown.calculate(series, trades);
     }
 
     @Override
