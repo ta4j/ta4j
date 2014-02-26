@@ -26,31 +26,39 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import org.joda.time.Period;
 
+/**
+ * A constrained {@link TimeSeries time series}.
+ * <p>
+ * A constrained time series is a sub-set of a series.
+ * It has begin and and indexes which correspond to the bounds of the sub-set into the full series.
+ */
 public class ConstrainedTimeSeries implements TimeSeries {
 
+	/** Original time series */
 	private TimeSeries series;
-
-	private int begin;
-
-	private int end;
+	/** Begin index of the time series */
+	private int beginIndex;
+	/** End index of the time series */
+	private int endIndex;
 
 	/**
+	 * Constructor.
 	 * @param series the original time series
-	 * @param begin the begin index of the time series
-	 * @param end the end index of the time series
+	 * @param beginIndex the begin index of the time series
+	 * @param endIndex the end index of the time series
 	 */
-	public ConstrainedTimeSeries(TimeSeries series, int begin, int end) {
-		if (end < begin - 1) {
+	public ConstrainedTimeSeries(TimeSeries series, int beginIndex, int endIndex) {
+		if (endIndex < beginIndex - 1) {
 			throw new IllegalArgumentException("end cannot be < than begin - 1");
 		}
 		this.series = series;
-		this.begin = begin;
-		this.end = end;
+		this.beginIndex = beginIndex;
+		this.endIndex = endIndex;
 	}
 
 	@Override
 	public int getSize() {
-		return (end - begin) + 1;
+		return (endIndex - beginIndex) + 1;
 	}
 
 	@Override
@@ -60,12 +68,12 @@ public class ConstrainedTimeSeries implements TimeSeries {
 
 	@Override
 	public int getBegin() {
-		return begin;
+		return beginIndex;
 	}
 
 	@Override
 	public int getEnd() {
-		return end;
+		return endIndex;
 	}
 
 	@Override
@@ -75,8 +83,8 @@ public class ConstrainedTimeSeries implements TimeSeries {
 
 	@Override
 	public String getPeriodName() {
-		return series.getTick(begin).getEndTime().toString("hh:mm dd/MM/yyyy - ")
-				+ series.getTick(end).getEndTime().toString("hh:mm dd/MM/yyyy");
+		return series.getTick(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+				+ series.getTick(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
 	}
 
 	@Override

@@ -29,13 +29,17 @@ import org.joda.time.Period;
 
 /**
  * Default implementation of {@link TimeSeries}.
+ * <p>
+ * This kind of time series has a name and a list of {@link Tick ticks}.
  */
 public class DefaultTimeSeries implements TimeSeries {
+	/** List of ticks */
     private final List<? extends Tick> ticks;
-
+	/** Name of the series */
     private final String name;
 
 	/**
+	 * Constructor.
 	 * @param name the name of the series
 	 * @param ticks the list of ticks of the series
 	 */
@@ -45,6 +49,7 @@ public class DefaultTimeSeries implements TimeSeries {
     }
 
 	/**
+	 * Constructor of an unnamed series.
 	 * @param ticks the list of ticks of the series
 	 */
     public DefaultTimeSeries(List<? extends Tick> ticks) {

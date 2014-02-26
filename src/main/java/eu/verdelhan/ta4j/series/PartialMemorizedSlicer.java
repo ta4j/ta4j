@@ -26,30 +26,29 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.joda.time.Period;
 
 /**
- *
+ * A {@link TimeSeriesSlicer time series slicer}
  *
  */
 public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 
-	protected TimeSeries series;
+	/** The time series */
+	private TimeSeries series;
 
-	protected Period period;
+	private Period period;
+	/** The list of slices (sub-series) */
+	private List<TimeSeries> splittedSeries;
 
-	protected List<TimeSeries> splittedSeries;
+	private DateTime periodBegin;
 
-	protected DateTime periodBegin;
-
-	protected int periodsPerSlice;
-
-	private static Logger LOG = Logger.getLogger(PartialMemorizedSlicer.class);
+	private int periodsPerSlice;
 
 	/**
+	 * Constructor.
 	 * @param series the time series
 	 * @param period
 	 * @param periodBegin
@@ -183,8 +182,10 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		return true;
 	}
 
+	/**
+	 * Splits the series into slices.
+	 */
 	private void split() {
-		LOG.debug(String.format("Spliting %s  ", series));
 
 		DateTime begin = periodBegin;
 		DateTime end = begin.plus(period);
@@ -201,7 +202,7 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 			} else if (end.plus(period).isAfter(series.getTick(index).getEndTime())) {
 				createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), index - 1);
 
-				LOG.debug(String.format("Interval %s before  %s ", interval, series.getTick(index).getEndTime()));
+				//LOG.debug(String.format("Interval %s before  %s ", interval, series.getTick(index).getEndTime()));
 
 				int sliceBeginIndex = index;
 				begins.add(sliceBeginIndex);
@@ -218,9 +219,13 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 		createSlice(begins.get(Math.max(begins.size() - periodsPerSlice, 0)), series.getEnd());
 	}
 
-	private void createSlice(int begin, int end) {
-		LOG.debug(String.format("New series from %d to %d ", begin, end));
-		ConstrainedTimeSeries slice = new ConstrainedTimeSeries(series, begin, end);
+	/**
+	 * Creates a slice (sub-series).
+	 * @param beginIndex the begin index of the sub-series
+	 * @param endIndex the end index of the sub-series
+	 */
+	private void createSlice(int beginIndex, int endIndex) {
+		ConstrainedTimeSeries slice = new ConstrainedTimeSeries(series, beginIndex, endIndex);
 		splittedSeries.add(slice);
 	}
 

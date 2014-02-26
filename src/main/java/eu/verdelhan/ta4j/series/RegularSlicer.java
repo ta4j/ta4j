@@ -39,6 +39,6 @@ public class RegularSlicer extends PartialMemorizedSlicer {
 
     @Override
     public TimeSeriesSlicer applyForSeries(TimeSeries series) {
-        return new RegularSlicer(series, period);
+        return new RegularSlicer(series, getPeriod());
     }
 }

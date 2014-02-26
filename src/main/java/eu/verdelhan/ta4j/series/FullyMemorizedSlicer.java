@@ -43,6 +43,6 @@ public class FullyMemorizedSlicer extends PartialMemorizedSlicer {
 
     @Override
     public TimeSeriesSlicer applyForSeries(TimeSeries series) {
-        return new FullyMemorizedSlicer(series, period);
+        return new FullyMemorizedSlicer(series, getPeriod());
     }
 }
