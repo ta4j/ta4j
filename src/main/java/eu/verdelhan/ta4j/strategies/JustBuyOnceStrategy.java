@@ -23,8 +23,9 @@
 package eu.verdelhan.ta4j.strategies;
 
 /**
- * Strategy which buys just once and never moves later.
- * Enter: the first time it's called
+ * {@link Strategy} which enters just once and never moves later.
+ * <p>
+ * Enter: the first time it's called<br>
  * Exit: never
  */
 public class JustBuyOnceStrategy extends AbstractStrategy {

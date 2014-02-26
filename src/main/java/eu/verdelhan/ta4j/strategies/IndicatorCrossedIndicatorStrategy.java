@@ -26,7 +26,8 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
 
 /**
- * 
+ * Indicator crossed indicator strategy.
+ * <p>
  * Strategy that buy when upper is above lower and cross and sell when lower is
  * above upper and cross
  * 

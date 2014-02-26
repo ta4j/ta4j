@@ -23,8 +23,9 @@
 package eu.verdelhan.ta4j.strategies;
 
 /**
- * Strategy which always enters and exits.
- * Enter: always
+ * A {@link Strategy strategy} which always enters and exits.
+ * <p>
+ * Enter: always<br>
  * Exit: always
  */
 public class AlwaysOperateStrategy extends AbstractStrategy {

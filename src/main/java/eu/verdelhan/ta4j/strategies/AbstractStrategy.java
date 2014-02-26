@@ -25,6 +25,10 @@ package eu.verdelhan.ta4j.strategies;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 
+/**
+ * An abstract trading {@link Strategy strategy}.
+ * <p>
+ */
 public abstract class AbstractStrategy implements Strategy {
 
     @Override

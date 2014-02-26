@@ -25,16 +25,19 @@ package eu.verdelhan.ta4j.strategies;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * AND combination of two strategies.
- * Enter: according to the provided {@link strategy strategies}
+ * An AND combination of two {@link Strategy strategies}.
+ * <p>
+ * Enter: according to the provided {@link strategy strategies}<br>
  * Exit: according to the provided {@link strategy strategies}
  */
 public class AndStrategy extends AbstractStrategy {
-
+	/** First strategy */
     private Strategy strategy;
+	/** Second strategy */
     private Strategy strategy2;
 
 	/**
+	 * Constructor.
 	 * @param strategy the first strategy
 	 * @param strategy2 the second strategy
 	 */

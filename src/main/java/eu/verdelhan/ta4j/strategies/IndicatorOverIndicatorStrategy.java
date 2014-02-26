@@ -25,16 +25,20 @@ package eu.verdelhan.ta4j.strategies;
 import eu.verdelhan.ta4j.Indicator;
 
 /**
- * Enter: when the value of the first {@link indicator} is strictly less than the value of the second one
- * Exit: when the value of the first {@link indicator} is strictly greater than the value of the second one
+ * Indicator over indicator strategy.
+ * <p>
+ * Enter: when the value of the first {@link Indicator indicator} is strictly less than the value of the second one<br>
+ * Exit: when the value of the first {@link Indicator indicator} is strictly greater than the value of the second one
  */
 public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
-
+	
+	/** The first indicator */
     private Indicator<Double> first;
-
+	/** The second indicator */
     private Indicator<Double> second;
 
 	/**
+	 * Constructor.
 	 * @param first the first indicator
 	 * @param second the second indicator
 	 */

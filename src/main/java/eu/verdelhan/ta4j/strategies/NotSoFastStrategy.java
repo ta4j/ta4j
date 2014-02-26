@@ -24,24 +24,35 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Strategy;
 
+/**
+ * {@link Strategy} which waits for a number of {@link Tick ticks} between enter and exit.
+ * <p>
+ * Enter: according to the provided {@link Strategy strategy}<br>
+ * Exit: after a number of ticks, and then, according to the provided {@link Strategy strategy}
+ */
 public class NotSoFastStrategy extends AbstractStrategy {
 
+	/** Strategy */
     private Strategy strategy;
-
+	/** The number of ticks before exit */
     private int numberOfTicks;
+	/** The tick index of the enter */
+    private int enterTickIndex;
 
-    private int tickIndex;
-
+	/**
+	 * Constructor.
+	 * @param strategy a strategy
+	 * @param numberOfTicks a number of ticks to wait
+	 */
     public NotSoFastStrategy(Strategy strategy, int numberOfTicks) {
         this.strategy = strategy;
         this.numberOfTicks = numberOfTicks;
-        tickIndex = 0;
     }
 
     @Override
     public boolean shouldEnter(int index) {
         if (strategy.shouldEnter(index)) {
-            tickIndex = index;
+            enterTickIndex = index;
             return true;
         }
         return false;
@@ -49,7 +60,7 @@ public class NotSoFastStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        return (strategy.shouldExit(index) && ((index - tickIndex) > numberOfTicks));
+        return (strategy.shouldExit(index) && ((index - enterTickIndex) > numberOfTicks));
     }
 
     @Override
