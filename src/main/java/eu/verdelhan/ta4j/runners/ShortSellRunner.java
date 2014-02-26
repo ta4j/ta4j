@@ -30,6 +30,10 @@ import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A short sell runner.
+ * <p>
+ */
 public class ShortSellRunner implements Runner {
     private Runner runner;
 

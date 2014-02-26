@@ -30,8 +30,9 @@ import java.util.List;
 public interface Runner {
 
 	/**
-	 * @param slicePosition
+	 * Executes the runner.
+	 * @param sliceIndex the series slice index
 	 * @return the list of trades corresponding to slicePosition
 	 */
-	List<Trade> run(int slicePosition);
+	List<Trade> run(int sliceIndex);
 }

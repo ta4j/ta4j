@@ -29,21 +29,28 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
+/**
+ * History runner factory.
+ * <p>
+ */
 public class HistoryRunner implements Runner {
 
+	/** Operation type */
     private OperationType operationType;
-
+	/** Time series slicer */
     private TimeSeriesSlicer slicer;
-
+	/** Run/executed strategy */
     private Strategy strategy;
-
+	/** Cached trade results */
     private ArrayList<List<Trade>> listTradesResults;
 
-    private static final Logger LOG = Logger.getLogger(HistoryRunner.class);
-
+	/**
+	 * Constructor.
+	 * @param type the initial {@link OperationType operation type} of new {@link Trade trades}
+	 * @param slicer a {@link TimeSeriesSlicer time series slicer}
+	 * @param strategy a {@link Strategy strategy} to be run
+	 */
     public HistoryRunner(OperationType type, TimeSeriesSlicer slicer, Strategy strategy) {
         if ((type == null) || (slicer == null) || (strategy == null)) {
             throw new NullPointerException();
@@ -51,30 +58,39 @@ public class HistoryRunner implements Runner {
         this.slicer = slicer;
         this.strategy = strategy;
         operationType = type;
-        LOG.setLevel(Level.WARN);
         listTradesResults = new ArrayList<List<Trade>>();
     }
 
+	/**
+	 * Constructor.
+	 * @param slicer a {@link TimeSeriesSlicer time series slicer}
+	 * @param strategy a {@link Strategy strategy} to be run
+	 */
     public HistoryRunner(TimeSeriesSlicer slicer, Strategy strategy) {
         this(OperationType.BUY, slicer, strategy);
     }
 
     @Override
-    public List<Trade> run(int slicePosition) {
-        if (listTradesResults.size() < slicePosition) {
-            listTradesResults.add(run(slicePosition - 1));
-        } else if (listTradesResults.size() > slicePosition) {
-            return listTradesResults.get(slicePosition);
+    public List<Trade> run(int sliceIndex) {
+        if (listTradesResults.size() < sliceIndex) {
+			// The slice index is over the cached trades results
+			// --> Running strategy on the previous slice
+            listTradesResults.add(run(sliceIndex - 1));
+        } else if (listTradesResults.size() > sliceIndex) {
+			// The slice index is in the cached results.
+			// --> Returning them
+            return listTradesResults.get(sliceIndex);
         }
 
-        int begin = 0;
-        int end = 0;
+        int beginIndex = 0;
+        int endIndex = 0;
+
         if (listTradesResults.isEmpty()) {
-            begin = slicer.getSlice(slicePosition).getBegin();
-            end = slicer.getSlice(slicePosition).getEnd();
+            beginIndex = slicer.getSlice(sliceIndex).getBegin();
+            endIndex = slicer.getSlice(sliceIndex).getEnd();
         } else {
 
-            end = slicer.getSlice(slicePosition).getEnd();
+            endIndex = slicer.getSlice(sliceIndex).getEnd();
 
             int i = listTradesResults.size() - 1;
             List<Trade> lastTrades = listTradesResults.get(i);
@@ -83,53 +99,62 @@ public class HistoryRunner implements Runner {
                 lastTrades = listTradesResults.get(i);
             }
 
-            if (i <= 0) {
-                begin = slicer.getSlice(slicePosition).getBegin();
+            if (i > 0) {
+				Trade lastTrade = lastTrades.get(lastTrades.size() - 1);
+				beginIndex = lastTrade.getExit().getIndex() + 1;
 
-            } else {
-                Trade lastTrade = lastTrades.get(lastTrades.size() - 1);
-                begin = lastTrade.getExit().getIndex() + 1;
-
-                if (begin > end) {
-                    return new ArrayList<Trade>();
-                }
-            }
+				if (beginIndex > endIndex) {
+					return new ArrayList<Trade>();
+				}
+			} else {
+				beginIndex = slicer.getSlice(sliceIndex).getBegin();
+			}
         }
-
-        LOG.info("running strategy " + strategy);
-        List<Trade> trades = new ArrayList<Trade>();
-        Trade lastTrade = new Trade(operationType);
-        for (int i = Math.max(begin, 0); i <= end; i++) {
-            if (strategy.shouldOperate(lastTrade, i)) {
-                lastTrade.operate(i);
-                if (lastTrade.isClosed()) {
-                    trades.add(lastTrade);
-                    LOG.debug("new trade: " + lastTrade);
-                    lastTrade = new Trade(operationType);
-                }
-            }
-        }
-        if (lastTrade.isOpened()) {
-            int j = 1;
-            while (slicer.getNumberOfSlices() > (slicePosition + j)) {
-                int start = Math.max(slicer.getSlice(slicePosition + j).getBegin(), end);
-                int last = slicer.getSlice(slicePosition + j).getEnd();
-
-                for (int i = start; i <= last; i++) {
-                    if (strategy.shouldOperate(lastTrade, i)) {
-                        lastTrade.operate(i);
-                        break;
-                    }
-                }
-                if (lastTrade.isClosed()) {
-                    trades.add(lastTrade);
-                    LOG.debug("new trade: " + lastTrade);
-                    break;
-                }
-                j++;
-            }
-        }
+		List<Trade> trades = runStrategy(beginIndex, endIndex, sliceIndex);
         listTradesResults.add(trades);
         return trades;
     }
+
+	/**
+	 * Runs the strategy.
+	 * @param beginIndex the begin index of the series
+	 * @param endIndex the end index of the series
+	 * @param sliceIndex the slice index
+	 * @return a list of trades
+	 */
+	private List<Trade> runStrategy(int beginIndex, int endIndex, int sliceIndex) {
+
+		List<Trade> trades = new ArrayList<Trade>();
+		Trade lastTrade = new Trade(operationType);
+		for (int i = Math.max(beginIndex, 0); i <= endIndex; i++) {
+			if (strategy.shouldOperate(lastTrade, i)) {
+				lastTrade.operate(i);
+				if (lastTrade.isClosed()) {
+					trades.add(lastTrade);
+					lastTrade = new Trade(operationType);
+				}
+			}
+		}
+
+		if (lastTrade.isOpened()) {
+			int j = 1;
+			while (slicer.getNumberOfSlices() > (sliceIndex + j)) {
+				int start = Math.max(slicer.getSlice(sliceIndex + j).getBegin(), endIndex);
+				int last = slicer.getSlice(sliceIndex + j).getEnd();
+
+				for (int i = start; i <= last; i++) {
+					if (strategy.shouldOperate(lastTrade, i)) {
+						lastTrade.operate(i);
+						break;
+					}
+				}
+				if (lastTrade.isClosed()) {
+					trades.add(lastTrade);
+					break;
+				}
+				j++;
+			}
+		}
+		return trades;
+	}
 }
