@@ -28,9 +28,8 @@ import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
 /**
  * Indicator crossed indicator strategy.
  * <p>
- * Strategy that buy when upper is above lower and cross and sell when lower is
- * above upper and cross
- * 
+ * Enter: when the upper {@link Indicator indicator} is above the lower one then cross it<br>
+ * Exit: when the lower {@link Indicator indicator} is above the upper one then cross it
  */
 public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
 
@@ -43,6 +42,7 @@ public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
     private Indicator<? extends Number> lower;
 
 	/**
+	 * Constructor.
 	 * @param upper the upper indicator
 	 * @param lower the lower indicator
 	 */

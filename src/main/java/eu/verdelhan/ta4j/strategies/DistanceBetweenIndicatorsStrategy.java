@@ -25,28 +25,27 @@ package eu.verdelhan.ta4j.strategies;
 import eu.verdelhan.ta4j.Indicator;
 
 /**
- * 
- * Estratégia que recebe dois indicadores com uma diferença comum entre eles e
- * toma a decisão de compra do indicador que está representando a ação inferior
- * caso a distance entre elas esteja abaixo de difference, e a decisão de venda
- * caso a distance entre elas esteja acima de difference.
- * 
+ * Distance between {@link Indicator indicators} strategy.
+ * <p>
+ * Enter: when the distance between the two indicators is above the difference<br>
+ * Exit: when the distance between the two indicators is below the difference
  */
 public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
-    Indicator<? extends Number> upper;
+    private Indicator<? extends Number> upper;
 
-    Indicator<? extends Number> lower;
+    private Indicator<? extends Number> lower;
 
-    double distance;
+    private double distance;
 
-    double difference;
+    private double difference;
 
 	/**
-	 * @param upper
-	 * @param lower
-	 * @param distance
-	 * @param difference
+	 * Constructor.
+	 * @param upper the upper indicator
+	 * @param lower the lower indicator
+	 * @param distance the distance
+	 * @param difference the difference
 	 */
     public DistanceBetweenIndicatorsStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower,
             double distance, double difference) {

@@ -31,9 +31,10 @@ import eu.verdelhan.ta4j.Indicator;
  */
 public class CrossIndicator implements Indicator<Boolean> {
 
-	private final Indicator<? extends Number> low;
-
+	/** Upper indicator */
 	private final Indicator<? extends Number> up;
+	/** Lower indicator */
+	private final Indicator<? extends Number> low;
 
 	/**
 	 * Constructor.

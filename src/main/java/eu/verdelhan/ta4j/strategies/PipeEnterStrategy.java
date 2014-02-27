@@ -26,13 +26,10 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
 
 /**
- * PipeEnterStrategy baseia a compra em um {@link Indicator} lower, no momento
- * em que o {@link Indicator} value o ultrapassa em sentido ascendente, e baseia
- * a venda em um {@link Indicator} upper, no momento em que o {@link Indicator}
- * value o ultrapassa em sentido descendente. Estratégia muito comum para
- * indicadores que criam "tubos" de suporte e resistência, como por exemplo o
- * Bollinger Bands.
- * 
+ * Pipe enter strategy.
+ * <p>
+ * Enter: when the lower {@link Indicator indicator} is below the reference {@link Indicator indicator} then cross it<br>
+ * Exit: when the upper {@link Indicator indicator} is above the reference {@link Indicator indicator} then cross it
  */
 public class PipeEnterStrategy extends AbstractStrategy {
 
@@ -40,8 +37,13 @@ public class PipeEnterStrategy extends AbstractStrategy {
 
     private final Indicator<Boolean> crossDown;
 
-    public PipeEnterStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower,
-            Indicator<? extends Number> value) {
+	/**
+	 * Constructor.
+	 * @param upper the upper indicator
+	 * @param lower the lower indicator
+	 * @param value the reference indicator
+	 */
+    public PipeEnterStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower, Indicator<? extends Number> value) {
         crossUp = new CrossIndicator(value, upper);
         crossDown = new CrossIndicator(lower, value);
     }
@@ -58,7 +60,6 @@ public class PipeEnterStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), crossUp,
-                crossDown);
+        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), crossUp, crossDown);
     }
 }

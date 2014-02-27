@@ -27,8 +27,8 @@ import eu.verdelhan.ta4j.Strategy;
 /**
  * An OR combination of two {@link Strategy strategies}.
  * <p>
- * Enter: according to the provided {@link strategy strategies}<br>
- * Exit: according to the provided {@link strategy strategies}
+ * Enter: according to the provided {@link Strategy strategies}<br>
+ * Exit: according to the provided {@link Strategy strategies}
  */
 public class OrStrategy extends AbstractStrategy {
 	/** First strategy */

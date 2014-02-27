@@ -26,12 +26,10 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * MinValueStopperStrategy baseia a compra em uma {@link Strategy} enviada como
- * parâmetro, registrando o valor do {@link Indicator} enviado como parâmetro no
- * mesmo índice de compra, e baseia a venda nessa mesma {@link Strategy} desde
- * que o valor registrado do {@link Indicator} na compra não tenha um decréscimo
- * maior que loss %
- * 
+ * Stop loss strategy.
+ * <p>
+ * Enter: according to the provided {@link Strategy strategy}<br>
+ * Exit: if the loss threshold (in %) has been reached with the provided {@link Indicator indicator}, or according to the provided {@link Strategy strategy}
  */
 public class StopLossStrategy extends AbstractStrategy {
 
@@ -43,6 +41,12 @@ public class StopLossStrategy extends AbstractStrategy {
 
     private double value;
 
+	/**
+	 * Constructor.
+	 * @param indicator the indicator
+	 * @param strategy the strategy
+	 * @param loss the loss threshold (in %)
+	 */
     public StopLossStrategy(Indicator<? extends Number> indicator, Strategy strategy, int loss) {
         this.strategy = strategy;
         this.loss = loss;

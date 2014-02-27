@@ -22,15 +22,29 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
+import eu.verdelhan.ta4j.indicators.trackers.DirectionalMovementIndicator;
+import eu.verdelhan.ta4j.indicators.trackers.ParabolicSarIndicator;
+
+/**
+ * {@link ParabolicSarIndicator Parabolic SAR} and {@link DirectionalMovementIndicator DMI} strategy.
+ * <p>
+ * Enter: according to the provided {@link ParabolicSarIndicator Parabolic SAR} {@link Strategy strategy}<br>
+ * Exit: according to the {@link AndStrategy AND combination} of the provided {@link ParabolicSarIndicator Parabolic SAR} and {@link DirectionalMovementIndicator DMI} {@link Strategy strategies}
+ */
 public class ParabolicSarAndDMIStrategy extends AbstractStrategy {
 
     private IndicatorCrossedIndicatorStrategy parabolicStrategy;
+	
     private IndicatorOverIndicatorStrategy dmiStrategy;
 
-    public ParabolicSarAndDMIStrategy(IndicatorCrossedIndicatorStrategy indicatorCrossedIndicatorStrategy,
-            IndicatorOverIndicatorStrategy indicatorOverIndicatorStrategy) {
-        parabolicStrategy = indicatorCrossedIndicatorStrategy;
-        dmiStrategy = indicatorOverIndicatorStrategy;
+	/**
+	 * Constructor.
+	 * @param parabolicStrategy the parabolic SAR strategy
+	 * @param dmiStrategy the DMI strategy
+	 */
+    public ParabolicSarAndDMIStrategy(IndicatorCrossedIndicatorStrategy parabolicStrategy, IndicatorOverIndicatorStrategy dmiStrategy) {
+        this.parabolicStrategy = parabolicStrategy;
+        this.dmiStrategy = dmiStrategy;
     }
 
     @Override

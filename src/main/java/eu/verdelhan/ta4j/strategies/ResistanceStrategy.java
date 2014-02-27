@@ -26,8 +26,10 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * Enter: according to the provided {@link strategy}
- * Exit: when the {@link indicator} value is greater than or equal to the {@link resistance} threshold
+ * Resistance strategy.
+ * <p>
+ * Enter: according to the provided {@link Strategy strategy}<br>
+ * Exit: when the {@link Indicator indicator} value is greater than or equal to the resistance threshold
  */
 public class ResistanceStrategy extends AbstractStrategy {
 
@@ -37,6 +39,12 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     private double resistance;
 
+	/**
+	 * Constructor.
+	 * @param indicator the indicator
+	 * @param strategy the strategie
+	 * @param resistance the resistance threshold
+	 */
     public ResistanceStrategy(Indicator<? extends Number> indicator, Strategy strategy, double resistance) {
         this.strategy = strategy;
         this.resistance = resistance;
@@ -58,7 +66,6 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String.format("%s resistance: %i strategy: %s", this.getClass().getSimpleName(), resistance,
-                strategy);
+        return String.format("%s resistance: %i strategy: %s", this.getClass().getSimpleName(), resistance, strategy);
     }
 }

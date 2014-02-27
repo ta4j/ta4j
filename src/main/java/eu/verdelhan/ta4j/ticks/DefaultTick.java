@@ -27,9 +27,8 @@ import eu.verdelhan.ta4j.Tick;
 import org.joda.time.DateTime;
 
 /**
- * Contém todos os possíveis atributos registrados de uma detrminada ação em um
- * único período de tempo.
- * 
+ * A default tick period.
+ * <p>
  */
 public class DefaultTick implements Tick {
 
@@ -112,14 +111,17 @@ public class DefaultTick implements Tick {
 		trades++;
 	}
 
+	@Override
 	public double getMinPrice() {
 		return minPrice;
 	}
 
+	@Override
 	public DateTime getBeginTime() {
 		return beginTime;
 	}
 
+	@Override
 	public DateTime getEndTime() {
 		return endTime;
 	}

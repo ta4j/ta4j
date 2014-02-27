@@ -26,8 +26,10 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * Enter: when the {@link indicator} value is less than or equal to the {@link support} threshold
- * Exit: according to the provided {@link strategy}
+ * Support strategy.
+ * <p>
+ * Enter: when the {@link Indicator indicator} value is less than or equal to the support threshold<br>
+ * Exit: according to the provided {@link Strategy strategy}
  */
 public class SupportStrategy extends AbstractStrategy {
 
@@ -37,6 +39,12 @@ public class SupportStrategy extends AbstractStrategy {
 
     private double support;
 
+	/**
+	 * Constructor.
+	 * @param indicator the indicator
+	 * @param strategy the strategy
+	 * @param support the support threshold
+	 */
     public SupportStrategy(Indicator<? extends Number> indicator, Strategy strategy, double support) {
         this.strategy = strategy;
         this.support = support;
@@ -58,7 +66,6 @@ public class SupportStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String
-                .format("%s suport: %i strategy: %s", this.getClass().getSimpleName(), support, strategy);
+        return String.format("%s suport: %i strategy: %s", this.getClass().getSimpleName(), support, strategy);
     }
 }

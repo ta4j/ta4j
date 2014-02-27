@@ -26,22 +26,30 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * MinValueStarterStrategy baseia a compra em uma {@link Strategy} enviada como
- * parâmetro desde que o valor atual esteja acima do {@link start}, e baseia a
- * venda nessa mesma {@link Strategy}
+ * Minimum value starter strategy.
+ * <p>
+ * Enter: when an {@link Indicator indicator}'s value exceed a threshold<br>
+ * Exit: according to the provided {@link Strategy strategy}
  */
 public class MinValueStarterStrategy extends AbstractStrategy {
 
+	/** Strategy */
     private Strategy strategy;
-
+	/** Indicator */
     private Indicator<? extends Number> indicator;
-
+	/** Starting threshold */
     private double start;
 
+	/**
+	 * Constructor.
+	 * @param indicator the indicator
+	 * @param strategy the strategy
+	 * @param start the starting threshold
+	 */
     public MinValueStarterStrategy(Indicator<? extends Number> indicator, Strategy strategy, double start) {
+        this.indicator = indicator;
         this.strategy = strategy;
         this.start = start;
-        this.indicator = indicator;
     }
 
     @Override

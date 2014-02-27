@@ -33,19 +33,31 @@ import eu.verdelhan.ta4j.Strategy;
  * maior que loss %
  * 
  */
+/**
+ * Stop gain strategy.
+ * <p>
+ * Enter: according to the provided {@link Strategy strategy}<br>
+ * Exit: if the gain threshold (in %) has been reached with the provided {@link Indicator indicator}, or according to the provided {@link Strategy strategy}
+ */
 public class StopGainStrategy extends AbstractStrategy {
 
     private Strategy strategy;
 
-    private double loss;
+    private double gain;
 
     private Indicator<? extends Number> indicator;
 
     private double value;
 
-    public StopGainStrategy(Indicator<? extends Number> indicator, Strategy strategy, int loss) {
+	/**
+	 * Constructor.
+	 * @param indicator the indicator
+	 * @param strategy the strategy
+	 * @param gain the gain threshold (in %)
+	 */
+    public StopGainStrategy(Indicator<? extends Number> indicator, Strategy strategy, int gain) {
         this.strategy = strategy;
-        this.loss = loss;
+        this.gain = gain;
         this.indicator = indicator;
     }
 
@@ -60,7 +72,7 @@ public class StopGainStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        if ((value + (value * (loss / 100))) < indicator.getValue(index).doubleValue()) {
+        if ((value + (value * (gain / 100))) < indicator.getValue(index).doubleValue()) {
             return true;
         }
         return strategy.shouldExit(index);
@@ -68,6 +80,6 @@ public class StopGainStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String.format("%s stoper: %s over %s", this.getClass().getSimpleName(), "" + loss, strategy);
+        return String.format("%s stoper: %s over %s", this.getClass().getSimpleName(), "" + gain, strategy);
     }
 }
