@@ -31,8 +31,9 @@ import org.joda.time.Interval;
 import org.joda.time.Period;
 
 /**
- * A {@link TimeSeriesSlicer time series slicer}
- *
+ * A {@link TimeSeriesSlicer time series slicer}.
+ * <p>
+ * Divides a time series.
  */
 public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 

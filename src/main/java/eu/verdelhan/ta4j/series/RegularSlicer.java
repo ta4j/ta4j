@@ -27,6 +27,11 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 
+/**
+ * A regular {@link TimeSeriesSlicer time series slicer}.
+ * <p>
+ * Divides a time series with a specific period.
+ */
 public class RegularSlicer extends PartialMemorizedSlicer {
 
     public RegularSlicer(TimeSeries series, Period period, DateTime begin) {
