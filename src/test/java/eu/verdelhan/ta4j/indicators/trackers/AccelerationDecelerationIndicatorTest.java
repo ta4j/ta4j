@@ -38,7 +38,7 @@ public class AccelerationDecelerationIndicatorTest {
 	private TimeSeries series;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 
 		List<Tick> ticks = new ArrayList<Tick>();
 

@@ -39,7 +39,7 @@ public class StopLossStrategyTest {
 	private MockIndicator<Double> indicator;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		indicator = new MockIndicator<Double>(new Double[] { 100d, 100d, 96d, 95d, 94d });
 	}
 

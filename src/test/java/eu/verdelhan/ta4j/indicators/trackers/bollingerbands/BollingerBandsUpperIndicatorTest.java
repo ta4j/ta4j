@@ -43,7 +43,7 @@ public class BollingerBandsUpperIndicatorTest {
 	private SMAIndicator sma;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
 		timeFrame = 3;
 		closePrice = new ClosePriceIndicator(data);

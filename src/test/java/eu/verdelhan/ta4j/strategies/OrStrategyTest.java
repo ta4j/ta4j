@@ -43,7 +43,7 @@ public class OrStrategyTest {
 	private Strategy orStrategy;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		enter = new Operation[] { 
 				new Operation(0, OperationType.BUY), 
 				null,

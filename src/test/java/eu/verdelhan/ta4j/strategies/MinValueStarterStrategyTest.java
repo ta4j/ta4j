@@ -48,7 +48,7 @@ public class MinValueStarterStrategyTest {
 	private Strategy starter;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		indicator = new MockIndicator<Double>(new Double[] { 90d, 92d, 96d, 95d, 92d });
 		startValue = 93;
 		enter = new Operation[] { new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY),

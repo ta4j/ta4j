@@ -8,6 +8,11 @@
 	<name>ta4j</name>
 	<url>http://github.com/mdeverdelhan/ta4j</url>
 
+	<properties>
+		<!-- Encoding -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
 	<dependencies>
 
 		<dependency>

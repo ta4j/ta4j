@@ -46,7 +46,7 @@ public class AverageProfitCriterionTest {
 	private List<Trade> trades;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		trades = new ArrayList<Trade>();
 	}
 

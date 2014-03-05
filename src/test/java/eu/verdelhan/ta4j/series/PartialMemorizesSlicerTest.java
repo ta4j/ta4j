@@ -39,7 +39,7 @@ public class PartialMemorizesSlicerTest {
 	private TimeSeriesSlicer slicer; 
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		this.date = new DateTime(0);
 	}
 

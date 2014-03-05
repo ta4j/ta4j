@@ -40,7 +40,7 @@ public class AbstractStrategyTest {
 	private MockStrategy fakeStrategy2;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		enter = new Operation[] { 
 				new Operation(0, OperationType.BUY), 
 				null,

@@ -34,7 +34,7 @@ public class LowestValueIndicatorTest {
 	private TimeSeries data;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1);
 	}
 

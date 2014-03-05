@@ -43,7 +43,7 @@ public class CachedIndicatorTest {
 	private TimeSeries data;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
 	}
 

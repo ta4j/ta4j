@@ -40,7 +40,7 @@ public class WilliamsRIndicatorTest {
 	private TimeSeries data;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 
 		List<Tick> ticks = new ArrayList<Tick>();
 		ticks.add(new MockTick(44.98, 45.05, 45.17, 44.96));

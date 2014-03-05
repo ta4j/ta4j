@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.SupportStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -38,7 +37,7 @@ public class SupportStrategyTest {
 	private MockIndicator<Double> indicator;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		indicator = new MockIndicator<Double>(new Double[] { 96d, 90d, 94d, 97d, 95d, 110d });
 	}
 

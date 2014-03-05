@@ -37,7 +37,7 @@ public class RegularSlicerTest {
 	private DateTime date;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		this.date = new DateTime(0);
 	}
 	

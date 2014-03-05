@@ -38,7 +38,7 @@ public class JustBuyOnceStrategyTest {
 	private Trade trade;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		this.strategy = new JustBuyOnceStrategy();
 		this.trade = new Trade();
 	}
