@@ -3,10 +3,54 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>eu.verdelhan</groupId>
 	<artifactId>ta4j</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.3-SNAPSHOT</version>
+	<packaging>jar</packaging>
 
 	<name>ta4j</name>
+	<description>ta4j is a Java library providing a simple API for technical analysis.</description>
 	<url>http://github.com/mdeverdelhan/ta4j</url>
+	<inceptionYear>2014</inceptionYear>
+
+	<developers>
+		<developer>
+			<name>Marc de Verdelhan</name>
+		</developer>
+	</developers>
+
+	<licenses>
+		<license>
+			<name>MIT License</name>
+			<comments>All source code is under the MIT license.</comments>
+		</license>
+	</licenses>
+
+	<issueManagement>
+		<system>GitHub</system>
+		<url>http://github.com/mdeverdelhan/ta4j/issues</url>
+	</issueManagement>
+
+	<distributionManagement>
+			<snapshotRepository>
+				<id>sonatype-nexus-snapshots</id>
+				<name>Sonatype Nexus snapshot repository</name>
+				<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+			</snapshotRepository>
+			<repository>
+				<id>sonatype-nexus-staging</id>
+				<name>Sonatype Nexus release repository</name>
+				<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+			</repository>
+	</distributionManagement>
+
+	<ciManagement>
+		<url>http://travis-ci.org/mdeverdelhan/ta4j</url>
+	</ciManagement>
+
+	<scm>
+		<connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
+		<developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
+		<url>http://github.com/mdeverdelhan/ta4j</url>
+	</scm>
 
 	<properties>
 		<!-- Encoding -->
@@ -27,6 +71,7 @@
 			<version>2.3</version>
 		</dependency>
 
+		<!-- Test dependencies -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -40,12 +85,11 @@
 			<scope>test</scope>
 		</dependency>
 
-
-
 	</dependencies>
 
 	<build>
 		<plugins>
+			
 			<!-- Build source and target -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -72,6 +116,7 @@
 					</excludes>
 				</configuration>
 			</plugin>
+
 		</plugins>
 
 	</build>
