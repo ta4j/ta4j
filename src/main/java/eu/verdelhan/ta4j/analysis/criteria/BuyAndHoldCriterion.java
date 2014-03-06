@@ -32,7 +32,7 @@ import java.util.List;
 /**
  * Buy and hold criterion.
  * <p>
- * @see http://en.wikipedia.org/wiki/Buy_and_hold
+ * @see <a href="http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
  */
 public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 

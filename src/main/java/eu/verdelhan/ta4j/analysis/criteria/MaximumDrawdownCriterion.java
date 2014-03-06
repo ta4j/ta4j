@@ -31,7 +31,7 @@ import java.util.List;
 /**
  * Maximum drawdown criterion.
  * <p>
- * @see http://en.wikipedia.org/wiki/Drawdown_%28economics%29
+ * @see <a href="http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
  */
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
