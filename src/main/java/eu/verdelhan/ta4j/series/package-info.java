@@ -23,5 +23,9 @@
 
 /**
  * Time series.
+ * <p>
+ * This package contains implementations of {@link TimeSeries} and {@link TimeSeriesSlicer}.
+ * <p>
+ * A {@link TimeSeriesSlicer slicer} splits a {@link TimeSeries series} into sub-series (slices).
  */
 package eu.verdelhan.ta4j.series;

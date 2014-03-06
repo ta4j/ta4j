@@ -23,5 +23,7 @@
 
 /**
  * Trading strategies.
+ * <p>
+ * A trading strategy is designed to achieve a profitable return by going long or short over a {@link TimeSeries time series}.
  */
 package eu.verdelhan.ta4j.strategies;

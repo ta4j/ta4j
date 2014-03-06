@@ -23,5 +23,7 @@
 
 /**
  * Runners.
+ * <p>
+ * The runner objects are used to run {@link Strategy trading strategies} over a {@link TimeSeries time series}.
  */
 package eu.verdelhan.ta4j.runners;

@@ -23,5 +23,8 @@
 
 /**
  * Analysis criteria.
+ * <p>
+ * Analysis criteria can be used to compare two trading {@link Strategy strategies}.<br>
+ * The most common criterion is the {@link TotalProfitCriterion total profit criterion}. It measures how much is profitable a strategy.
  */
 package eu.verdelhan.ta4j.analysis.criteria;

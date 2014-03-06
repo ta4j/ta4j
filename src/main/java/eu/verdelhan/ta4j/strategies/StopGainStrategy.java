@@ -26,14 +26,6 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
 
 /**
- * MinValueStopperStrategy baseia a compra em uma {@link Strategy} enviada como
- * parâmetro, registrando o valor do {@link Indicator} enviado como parâmetro no
- * mesmo índice de compra, e baseia a venda nessa mesma {@link Strategy} desde
- * que o valor registrado do {@link Indicator} na compra não tenha um decréscimo
- * maior que loss %
- * 
- */
-/**
  * Stop gain strategy.
  * <p>
  * Enter: according to the provided {@link Strategy strategy}<br>

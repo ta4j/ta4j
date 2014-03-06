@@ -23,5 +23,9 @@
 
 /**
  * Technical indicators.
+ * <p>
+ * Market indicators are mathematical transformations.
+ * They are used to help assess whether an asset is trending, and if it is, the probability of its direction and of continuation.
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators
  */
 package eu.verdelhan.ta4j.indicators;
