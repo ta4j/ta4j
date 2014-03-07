@@ -6,9 +6,11 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
 
 ## Features
 
- * More than 40 technical indicators
- * ... todo
- * And it's MIT licensed.
+ * More than 40 technical indicators (Aroon, ATR, moving averages, parabolic SAR, RSI, etc.)
+ * A powerful engine for building custom trading strategies
+ * Utilities to run and compare strategies
+ * Simple integration
+ * One more thing: it's MIT licensed
 
 ***Warning!***
 
@@ -110,10 +112,6 @@ System.out.println("Total profit for reference strategy: " + criterion.calculate
 ## About
 
 Ta4j is initially a fork of the [Tail library](http://tail.sourceforge.net/).
-
-#### Support
-
-Ask all questions to [my Twitter account](http://www.twitter.com/marcdeverdelhan).
 
 #### Donations
 
