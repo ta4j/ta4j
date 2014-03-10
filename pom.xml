@@ -55,6 +55,7 @@
 	<properties>
 		<!-- Encoding -->
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
 	<dependencies>
@@ -87,6 +88,42 @@
 
 	</dependencies>
 
+	<profiles>
+
+		<!-- Only when performing a release (i.e. not for snapshots) -->
+		<profile>
+			<id>sonatype-oss-release</id>
+			<activation>
+				<property>
+					<name>performRelease</name>
+					<value>true</value>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+
+					<!-- Artifact signing -->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.1</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+
+				</plugins>
+			</build>
+		</profile>
+
+	</profiles>
+
 	<build>
 		<plugins>
 			
@@ -114,6 +151,16 @@
 						<exclude>src/test/resources/**</exclude>
 						<exclude>src/main/resources/**</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+
+			<!-- Releases -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.4.1</version>
+				<configuration>
+					<arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
 				</configuration>
 			</plugin>
 
