@@ -93,12 +93,6 @@
 		<!-- Only when performing a release (i.e. not for snapshots) -->
 		<profile>
 			<id>sonatype-oss-release</id>
-			<activation>
-				<property>
-					<name>performRelease</name>
-					<value>true</value>
-				</property>
-			</activation>
 			<build>
 				<plugins>
 
@@ -160,7 +154,10 @@
 				<artifactId>maven-release-plugin</artifactId>
 				<version>2.4.1</version>
 				<configuration>
-					<arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
+					<!-- Avoid issue: http://jira.codehaus.org/browse/MGPG-9 -->
+	                <mavenExecutorId>forked-path</mavenExecutorId>
+	                <useReleaseProfile>false</useReleaseProfile>
+					<arguments>${arguments} -Psonatype-oss-release</arguments>
 				</configuration>
 			</plugin>
 
