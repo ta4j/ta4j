@@ -95,6 +95,34 @@
 			<id>sonatype-oss-release</id>
 			<build>
 				<plugins>
+				
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>2.1.2</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>2.7</version>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
 
 					<!-- Artifact signing -->
 					<plugin>
@@ -155,8 +183,8 @@
 				<version>2.4.1</version>
 				<configuration>
 					<!-- Avoid issue: http://jira.codehaus.org/browse/MGPG-9 -->
-	                <mavenExecutorId>forked-path</mavenExecutorId>
-	                <useReleaseProfile>false</useReleaseProfile>
+					<mavenExecutorId>forked-path</mavenExecutorId>
+					<useReleaseProfile>false</useReleaseProfile>
 					<arguments>${arguments} -Psonatype-oss-release</arguments>
 				</configuration>
 			</plugin>
