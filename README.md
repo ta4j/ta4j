@@ -16,7 +16,19 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
 
 Ta4j uses `double`s under the hood. Small approximations can occur (in indicators notably). This may change in the future.
 
-## Quickstart
+## Maven configuration
+
+Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%22ta4j%22). You just have to add the following dependency in your `pom.xml` file.
+
+```xml
+<dependency>
+    <groupId>eu.verdelhan</groupId>
+    <artifactId>ta4j</artifactId>
+    <version>0.3</version>
+</dependency>
+```
+
+## Quick overview
 
 At the beginning we just need a time series.
 
@@ -105,7 +117,6 @@ System.out.println("Total profit for reference strategy: " + criterion.calculate
 
  * github page
  * code coverage
- * release (http://datumedge.blogspot.de/2012/05/publishing-from-github-to-maven-central.html)
  * fixing todos in doc
 
 
