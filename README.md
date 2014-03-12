@@ -113,17 +113,19 @@ System.out.println("Total profit for reference strategy: " + criterion.calculate
 ```
 
 
-## To do list
+## Getting Help
 
- * github page
- * code coverage
- * fixing todos in doc
+This README and the [wiki](https://github.com/mdeverdelhan/ta4j/wiki) are the best places to start learning about ta4j.
+
+You can ask anything on [my Twitter account](http://twitter.com/MarcdeVerdelhan).
+
+For more detailed questions, use the [issues tracker](http://github.com/mdeverdelhan/ta4j/issues).
 
 
-## About
+## Contributing to ta4j
 
-Ta4j is initially a fork of the [Tail library](http://tail.sourceforge.net/).
+Here are some ways for you to contribute to ta4j:
 
-#### Donations
-
-Bitcoin address: 13BMqpqbzJ62LjMWcPGWrTrdocvGqifdJ3 
+  * [Create tickets for bugs and new features](http://github.com/mdeverdelhan/ta4j/issues) and comment on the ones that you are interested in.
+  * [Fork this repository](http://help.github.com/forking/) and submit pull requests.
+  * Consider donating for new feature development. Bitcoin address: 13BMqpqbzJ62LjMWcPGWrTrdocvGqifdJ3 
