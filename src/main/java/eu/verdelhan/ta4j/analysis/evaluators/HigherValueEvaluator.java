@@ -30,16 +30,12 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.runners.RunnerFactory;
 import java.util.HashMap;
 import java.util.Set;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
 /**
  * Higher value evaluator.
  * <p>
  */
 public class HigherValueEvaluator implements StrategyEvaluator {
-
-    private static final Logger LOG = Logger.getLogger(HigherValueEvaluator.class);
 
     private Set<Strategy> strategies;
 
@@ -60,7 +56,6 @@ public class HigherValueEvaluator implements StrategyEvaluator {
         this.strategies = strategies;
         this.slicer = slicer;
         this.criterion = criterion;
-        LOG.setLevel(Level.WARN);
         hashRunner = new HashMap<Strategy, Runner>();
 
         for (Strategy strategy : strategies) {
@@ -81,7 +76,7 @@ public class HigherValueEvaluator implements StrategyEvaluator {
 
             Decision decision = new Decision(strategy, slicer, slicePosition, criterion, runner.run(slicePosition), runner);
             double value = decision.evaluateCriterion();
-            LOG.info(String.format("For %s, criterion %s, gave %.3f", strategy, criterion.getClass().getSimpleName(), value));
+//          System.out.println(String.format("For %s, criterion %s, gave %.3f", strategy, criterion.getClass().getSimpleName(), value));
             if (value > bestDecision.evaluateCriterion()) {
                 // @todo Don't know how to manage a link between 2 criteria
                 bestDecision = decision;
