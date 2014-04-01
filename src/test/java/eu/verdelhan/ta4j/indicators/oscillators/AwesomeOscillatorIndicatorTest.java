@@ -35,53 +35,53 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class AwesomeOscillatorIndicatorTest {
-	private TimeSeries series;
+    private TimeSeries series;
 
-	@Before
-	public void setUp() {
+    @Before
+    public void setUp() {
 
-		List<Tick> ticks = new ArrayList<Tick>();
+        List<Tick> ticks = new ArrayList<Tick>();
 
-		ticks.add(new MockTick(0, 0, 16, 8));//12
-		ticks.add(new MockTick(0, 0, 12, 6));//9
-		ticks.add(new MockTick(0, 0, 18, 14));//16
-		ticks.add(new MockTick(0, 0, 10, 6));//8
-		ticks.add(new MockTick(0, 0, 8, 4));//6
+        ticks.add(new MockTick(0, 0, 16, 8));
+        ticks.add(new MockTick(0, 0, 12, 6));
+        ticks.add(new MockTick(0, 0, 18, 14));
+        ticks.add(new MockTick(0, 0, 10, 6));
+        ticks.add(new MockTick(0, 0, 8, 4));
 
-		this.series = new MockTimeSeries(ticks);
-	}
+        this.series = new MockTimeSeries(ticks);
+    }
 
-	@Test
-	public void testCalculateWithSma2AndSma3() throws Exception {
-		AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 2, 3);
+    @Test
+    public void testCalculateWithSma2AndSma3() throws Exception {
+        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 2, 3);
 
-		assertThat(awesome.getValue(0)).isEqualTo(0d);
-		assertThat(awesome.getValue(1)).isEqualTo(0d);
-		assertThat(awesome.getValue(2)).isEqualTo(0.1666666666d, TATestsUtils.LONG_OFFSET);
-		assertThat(awesome.getValue(3)).isEqualTo(1d);
-		assertThat(awesome.getValue(4)).isEqualTo(-3d);
-	}
+        assertThat(awesome.getValue(0)).isEqualTo(0d);
+        assertThat(awesome.getValue(1)).isEqualTo(0d);
+        assertThat(awesome.getValue(2)).isEqualTo(0.1666666666d, TATestsUtils.LONG_OFFSET);
+        assertThat(awesome.getValue(3)).isEqualTo(1d);
+        assertThat(awesome.getValue(4)).isEqualTo(-3d);
+    }
 
-	@Test
-	public void testWithSma1AndSma2() throws Exception {
-		AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 1, 2);
+    @Test
+    public void testWithSma1AndSma2() throws Exception {
+        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 1, 2);
 
-		assertThat(awesome.getValue(0)).isEqualTo(0d);
-		assertThat(awesome.getValue(1)).isEqualTo(-1.5d);
-		assertThat(awesome.getValue(2)).isEqualTo(3.5d);
-		assertThat(awesome.getValue(3)).isEqualTo(-4d);
-		assertThat(awesome.getValue(4)).isEqualTo(-1d);
-	}
+        assertThat(awesome.getValue(0)).isEqualTo(0d);
+        assertThat(awesome.getValue(1)).isEqualTo(-1.5d);
+        assertThat(awesome.getValue(2)).isEqualTo(3.5d);
+        assertThat(awesome.getValue(3)).isEqualTo(-4d);
+        assertThat(awesome.getValue(4)).isEqualTo(-1d);
+    }
 
-	@Test
-	public void testWithSmaDefault() throws Exception {
-		AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series));
+    @Test
+    public void testWithSmaDefault() throws Exception {
+        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series));
 
-		assertThat(awesome.getValue(0)).isEqualTo(0d);
-		assertThat(awesome.getValue(1)).isEqualTo(0d);
-		assertThat(awesome.getValue(2)).isEqualTo(0d);
-		assertThat(awesome.getValue(3)).isEqualTo(0d);
-		assertThat(awesome.getValue(4)).isEqualTo(0d);
-	}
+        assertThat(awesome.getValue(0)).isEqualTo(0d);
+        assertThat(awesome.getValue(1)).isEqualTo(0d);
+        assertThat(awesome.getValue(2)).isEqualTo(0d);
+        assertThat(awesome.getValue(3)).isEqualTo(0d);
+        assertThat(awesome.getValue(4)).isEqualTo(0d);
+    }
 
 }
