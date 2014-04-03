@@ -46,77 +46,77 @@ import org.junit.Test;
 
 public class DecisionTest {
 
-	private TimeSeries series;
+    private TimeSeries series;
 
-	private AnalysisCriterion criterion;
+    private AnalysisCriterion criterion;
 
-	@Before
-	public void setUp() {
-		criterion = new TotalProfitCriterion();
-	}
+    @Before
+    public void setUp() {
+        criterion = new TotalProfitCriterion();
+    }
 
-	@Test
-	public void testEvaluateCriterion() {
+    @Test
+    public void testEvaluateCriterion() {
 
-		series = new MockTimeSeries(3d, 5d, 7d, 9d);
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+        series = new MockTimeSeries(3d, 5d, 7d, 9d);
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 
-		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
-				new Operation(2, OperationType.BUY), null };
+        Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
+                new Operation(2, OperationType.BUY), null };
 
-		Operation[] sell = new Operation[] { null, new Operation(1, OperationType.SELL), null,
-				new Operation(3, OperationType.SELL) };
+        Operation[] sell = new Operation[] { null, new Operation(1, OperationType.SELL), null,
+                new Operation(3, OperationType.SELL) };
 
-		Strategy fakeStrategy = new MockStrategy(buy, sell);
-		
-		Runner runner = new HistoryRunner(slicer,fakeStrategy);
+        Strategy fakeStrategy = new MockStrategy(buy, sell);
+        
+        Runner runner = new HistoryRunner(slicer,fakeStrategy);
  
-		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21, TATestsUtils.LONG_OFFSET);
-	}
+        Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
+        assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21, TATestsUtils.LONG_OFFSET);
+    }
 
-	@Test
-	public void testEvaluateCriterionNotSelling() {
-		series = new MockTimeSeries(3d, 1d, 7d, 9d);
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
-		
-		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
-				new Operation(2, OperationType.BUY), null };
+    @Test
+    public void testEvaluateCriterionNotSelling() {
+        series = new MockTimeSeries(3d, 1d, 7d, 9d);
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+        
+        Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
+                new Operation(2, OperationType.BUY), null };
 
-		Operation[] sell = new Operation[] { null, null, null, null };
+        Operation[] sell = new Operation[] { null, null, null, null };
 
-		Strategy fakeStrategy = new MockStrategy(buy, sell);
-		Runner runner = new HistoryRunner(slicer,fakeStrategy);
-		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertThat(decision.evaluateCriterion()).isEqualTo(1d);
-	}
+        Strategy fakeStrategy = new MockStrategy(buy, sell);
+        Runner runner = new HistoryRunner(slicer,fakeStrategy);
+        Decision decision = new Decision(fakeStrategy, slicer,0, criterion, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
+        assertThat(decision.evaluateCriterion()).isEqualTo(1d);
+    }
 
-	@Test
-	public void testEvaluateCriterionWithAnotherCriteria() {
-		series = new MockTimeSeries(3d, 1d, 7d, 9d);
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
-		
-		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null };
+    @Test
+    public void testEvaluateCriterionWithAnotherCriteria() {
+        series = new MockTimeSeries(3d, 1d, 7d, 9d);
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+        
+        Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null };
 
-		Operation[] sell = new Operation[] { null, null, null, new Operation(3, OperationType.SELL) };
+        Operation[] sell = new Operation[] { null, null, null, new Operation(3, OperationType.SELL) };
 
-		Strategy fakeStrategy = new MockStrategy(buy, sell);
-		Runner runner = new HistoryRunner(slicer,fakeStrategy);
-		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(Math.pow(3d, 1d / 4));
-	}
-	
-	@Test
-	public void testAverageProfitWithZeroNumberOfTicks() {
-		series = new MockTimeSeries(3d, 1d, 7d, 9d);
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
-		
-		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
-				new Operation(2, OperationType.BUY), null };
+        Strategy fakeStrategy = new MockStrategy(buy, sell);
+        Runner runner = new HistoryRunner(slicer,fakeStrategy);
+        Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
+        assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(Math.pow(3d, 1d / 4));
+    }
+    
+    @Test
+    public void testAverageProfitWithZeroNumberOfTicks() {
+        series = new MockTimeSeries(3d, 1d, 7d, 9d);
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+        
+        Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null,
+                new Operation(2, OperationType.BUY), null };
 
-		Operation[] sell = new Operation[] { null, null, null, null };
+        Operation[] sell = new Operation[] { null, null, null, null };
 
-		Strategy fakeStrategy = new MockStrategy(buy, sell);
+        Strategy fakeStrategy = new MockStrategy(buy, sell);
 		Runner runner = new HistoryRunner(slicer,fakeStrategy);
 		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
 		assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(1d);

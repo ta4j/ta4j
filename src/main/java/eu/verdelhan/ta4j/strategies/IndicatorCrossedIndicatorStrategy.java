@@ -41,11 +41,11 @@ public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
 
     private Indicator<? extends Number> lower;
 
-	/**
-	 * Constructor.
-	 * @param upper the upper indicator
-	 * @param lower the lower indicator
-	 */
+    /**
+     * Constructor.
+     * @param upper the upper indicator
+     * @param lower the lower indicator
+     */
     public IndicatorCrossedIndicatorStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower) {
         this.upper = upper;
         this.lower = lower;

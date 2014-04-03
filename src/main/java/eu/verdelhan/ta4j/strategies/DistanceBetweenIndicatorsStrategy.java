@@ -40,13 +40,13 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
     private double difference;
 
-	/**
-	 * Constructor.
-	 * @param upper the upper indicator
-	 * @param lower the lower indicator
-	 * @param distance the distance
-	 * @param difference the difference
-	 */
+    /**
+     * Constructor.
+     * @param upper the upper indicator
+     * @param lower the lower indicator
+     * @param distance the distance
+     * @param difference the difference
+     */
     public DistanceBetweenIndicatorsStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower,
             double distance, double difference) {
         this.upper = upper;

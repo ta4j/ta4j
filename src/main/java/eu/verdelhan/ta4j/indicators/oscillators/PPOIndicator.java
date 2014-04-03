@@ -44,8 +44,8 @@ public class PPOIndicator implements Indicator<Double> {
         longTermEma = new EMAIndicator(indicator, longTimeFrame);
     }
 
-	@Override
-	public Double getValue(int index) {
-		return (shortTermEma.getValue(index) - longTermEma.getValue(index)) / longTermEma.getValue(index) * 100;
-	}
+    @Override
+    public Double getValue(int index) {
+        return (shortTermEma.getValue(index) - longTermEma.getValue(index)) / longTermEma.getValue(index) * 100;
+    }
 }

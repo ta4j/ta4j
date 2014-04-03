@@ -32,20 +32,20 @@ import eu.verdelhan.ta4j.Indicator;
  */
 public class ROCIndicator implements Indicator<Double> {
 
-	private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends Number> indicator;
 
-	private final int timeFrame;
+    private final int timeFrame;
 
-	public ROCIndicator(Indicator<? extends Number> indicator, int timeFrame) {
-		this.indicator = indicator;
-		this.timeFrame = timeFrame;
-	}
+    public ROCIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+        this.indicator = indicator;
+        this.timeFrame = timeFrame;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		int nIndex = Math.max(index - timeFrame, 0);
-		double nPeriodsAgoValue = indicator.getValue(nIndex).doubleValue();
-		double currentValue = indicator.getValue(index).doubleValue();
-		return (currentValue - nPeriodsAgoValue) / nPeriodsAgoValue * 100d;
-	}
+    @Override
+    public Double getValue(int index) {
+        int nIndex = Math.max(index - timeFrame, 0);
+        double nPeriodsAgoValue = indicator.getValue(nIndex).doubleValue();
+        double currentValue = indicator.getValue(index).doubleValue();
+        return (currentValue - nPeriodsAgoValue) / nPeriodsAgoValue * 100d;
+    }
 }

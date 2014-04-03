@@ -42,8 +42,8 @@ public enum OperationType {
         }
     };
 
-	/**
-	 * @return the complementary operation type
-	 */
+    /**
+     * @return the complementary operation type
+     */
     public abstract OperationType complementType();
 }

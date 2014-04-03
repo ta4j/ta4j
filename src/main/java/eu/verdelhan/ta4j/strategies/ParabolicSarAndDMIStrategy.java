@@ -34,14 +34,14 @@ import eu.verdelhan.ta4j.indicators.trackers.ParabolicSarIndicator;
 public class ParabolicSarAndDMIStrategy extends AbstractStrategy {
 
     private IndicatorCrossedIndicatorStrategy parabolicStrategy;
-	
+    
     private IndicatorOverIndicatorStrategy dmiStrategy;
 
-	/**
-	 * Constructor.
-	 * @param parabolicStrategy the parabolic SAR strategy
-	 * @param dmiStrategy the DMI strategy
-	 */
+    /**
+     * Constructor.
+     * @param parabolicStrategy the parabolic SAR strategy
+     * @param dmiStrategy the DMI strategy
+     */
     public ParabolicSarAndDMIStrategy(IndicatorCrossedIndicatorStrategy parabolicStrategy, IndicatorOverIndicatorStrategy dmiStrategy) {
         this.parabolicStrategy = parabolicStrategy;
         this.dmiStrategy = dmiStrategy;

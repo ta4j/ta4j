@@ -31,16 +31,16 @@ import eu.verdelhan.ta4j.Strategy;
  * Exit: according to the provided {@link Strategy strategies}
  */
 public class AndStrategy extends AbstractStrategy {
-	/** First strategy */
+    /** First strategy */
     private Strategy strategy;
-	/** Second strategy */
+    /** Second strategy */
     private Strategy strategy2;
 
-	/**
-	 * Constructor.
-	 * @param strategy the first strategy
-	 * @param strategy2 the second strategy
-	 */
+    /**
+     * Constructor.
+     * @param strategy the first strategy
+     * @param strategy2 the second strategy
+     */
     public AndStrategy(Strategy strategy, Strategy strategy2) {
         this.strategy = strategy;
         this.strategy2 = strategy2;

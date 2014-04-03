@@ -40,114 +40,114 @@ import org.junit.Test;
 
 public class MaximumDrawdownCriterionTest {
 
-	@Test
-	public void testCalculateWithNoTrades() {
-		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
+    @Test
+    public void testCalculateWithNoTrades() {
+        MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
 
-		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
-	}
+        assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
+    }
 
-	@Test
-	public void testCalculateWithOnlyGains() {
-		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
-		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
+    @Test
+    public void testCalculateWithOnlyGains() {
+        MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
+        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
-		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
-	}
+        assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
+    }
 
-	@Test
-	public void testCalculateShouldWork() {
-		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
-		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
-		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
+    @Test
+    public void testCalculateShouldWork() {
+        MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
+        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
+        trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
 
-		assertThat(mdd.calculate(series, trades)).isEqualTo(.875d);
+        assertThat(mdd.calculate(series, trades)).isEqualTo(.875d);
 
-	}
+    }
 
-	@Test
-	public void testCalculateWithNullSeriesSizeShouldReturn1() {
-		MockTimeSeries series = new MockTimeSeries(new double[] {});
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
+    @Test
+    public void testCalculateWithNullSeriesSizeShouldReturn1() {
+        MockTimeSeries series = new MockTimeSeries(new double[] {});
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
 
-		assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
-	}
+        assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
+    }
 
-	@Test
-	public void testWithTradesThatSellBeforeBuying() {
-		MockTimeSeries series = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
-		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
-		trades.add(new Trade(new Operation(5, OperationType.SELL), new Operation(6, OperationType.BUY)));
+    @Test
+    public void testWithTradesThatSellBeforeBuying() {
+        MockTimeSeries series = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
+        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
+        trades.add(new Trade(new Operation(5, OperationType.SELL), new Operation(6, OperationType.BUY)));
 
-		assertThat(mdd.calculate(series, trades)).isEqualTo(.91);
-	}
+        assertThat(mdd.calculate(series, trades)).isEqualTo(.91);
+    }
 
-	@Test
-	public void testWithSimpleTrades() {
-		MockTimeSeries series = new MockTimeSeries(1, 10, 5, 6, 1);
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
-		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-		trades.add(new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.SELL)));
-		trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
-		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
-		// TODO: should raise IndexOutOfBoundsException
-		// trades.add(new Trade(new Operation(4, OperationType.BUY), new
-		// Operation(5, OperationType.SELL)));
+    @Test
+    public void testWithSimpleTrades() {
+        MockTimeSeries series = new MockTimeSeries(1, 10, 5, 6, 1);
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
+        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.SELL)));
+        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
+        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
+        // TODO: should raise IndexOutOfBoundsException
+        // trades.add(new Trade(new Operation(4, OperationType.BUY), new
+        // Operation(5, OperationType.SELL)));
 
-		assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
-	}
+        assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
+    }
 
-	@Test
-	public void testSummarize() {
-		MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
-		List<Decision> decisions = new LinkedList<Decision>();
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+    @Test
+    public void testSummarize() {
+        MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
+        List<Decision> decisions = new LinkedList<Decision>();
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
 
-		List<Trade> tradesToDummy1 = new LinkedList<Trade>();
-		tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-		Decision dummy1 = new MockDecision(tradesToDummy1, slicer);
-		decisions.add(dummy1);
+        List<Trade> tradesToDummy1 = new LinkedList<Trade>();
+        tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        Decision dummy1 = new MockDecision(tradesToDummy1, slicer);
+        decisions.add(dummy1);
 
-		List<Trade> tradesToDummy2 = new LinkedList<Trade>();
-		tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
-		Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
-		decisions.add(dummy2);
+        List<Trade> tradesToDummy2 = new LinkedList<Trade>();
+        tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
+        Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
+        decisions.add(dummy2);
 
-		List<Trade> tradesToDummy3 = new LinkedList<Trade>();
-		tradesToDummy3.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
-		Decision dummy3 = new MockDecision(tradesToDummy3, slicer);
-		decisions.add(dummy3);
+        List<Trade> tradesToDummy3 = new LinkedList<Trade>();
+        tradesToDummy3.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
+        Decision dummy3 = new MockDecision(tradesToDummy3, slicer);
+        decisions.add(dummy3);
 
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 
-		assertThat(mdd.summarize(series, decisions)).isEqualTo(.875d);
+        assertThat(mdd.summarize(series, decisions)).isEqualTo(.875d);
 
-	}
-	@Test
-	public void testWithConstrainedTimeSeries()
-	{
-		MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
-		ConstrainedTimeSeries series = new ConstrainedTimeSeries(sampleSeries, 4, 8);
-		MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-		List<Trade> trades = new ArrayList<Trade>();
-		trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
-		trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
-		trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(7, OperationType.SELL)));
-		trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
-		assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
-		
-	}
+    }
+    @Test
+    public void testWithConstrainedTimeSeries()
+    {
+        MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
+        ConstrainedTimeSeries series = new ConstrainedTimeSeries(sampleSeries, 4, 8);
+        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
+        List<Trade> trades = new ArrayList<Trade>();
+        trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
+        trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(7, OperationType.SELL)));
+        trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
+        assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
+        
+    }
 }

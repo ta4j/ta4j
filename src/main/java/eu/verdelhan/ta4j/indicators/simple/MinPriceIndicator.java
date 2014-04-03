@@ -31,19 +31,19 @@ import eu.verdelhan.ta4j.TimeSeries;
  */
 public class MinPriceIndicator implements Indicator<Double> {
 
-	private TimeSeries data;
+    private TimeSeries data;
 
-	public MinPriceIndicator(TimeSeries data) {
-		this.data = data;
-	}
+    public MinPriceIndicator(TimeSeries data) {
+        this.data = data;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		return data.getTick(index).getMinPrice();
-	}
+    @Override
+    public Double getValue(int index) {
+        return data.getTick(index).getMinPrice();
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName();
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }

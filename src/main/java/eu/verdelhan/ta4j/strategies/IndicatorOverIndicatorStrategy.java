@@ -31,17 +31,17 @@ import eu.verdelhan.ta4j.Indicator;
  * Exit: when the value of the first {@link Indicator indicator} is strictly greater than the value of the second one
  */
 public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
-	
-	/** The first indicator */
+    
+    /** The first indicator */
     private Indicator<Double> first;
-	/** The second indicator */
+    /** The second indicator */
     private Indicator<Double> second;
 
-	/**
-	 * Constructor.
-	 * @param first the first indicator
-	 * @param second the second indicator
-	 */
+    /**
+     * Constructor.
+     * @param first the first indicator
+     * @param second the second indicator
+     */
     public IndicatorOverIndicatorStrategy(Indicator<Double> first, Indicator<Double> second) {
         this.first = first;
         this.second = second;

@@ -32,16 +32,16 @@ import eu.verdelhan.ta4j.Strategy;
  */
 public class CombinedBuyAndSellStrategy extends AbstractStrategy {
 
-	/** Buy strategy */
+    /** Buy strategy */
     private Strategy buyStrategy;
-	/** Sell strategy */
+    /** Sell strategy */
     private Strategy sellStrategy;
 
-	/**
-	 * Constructor.
-	 * @param buyStrategy the buy strategy
-	 * @param sellStrategy the sell strategy
-	 */
+    /**
+     * Constructor.
+     * @param buyStrategy the buy strategy
+     * @param sellStrategy the sell strategy
+     */
     public CombinedBuyAndSellStrategy(Strategy buyStrategy, Strategy sellStrategy) {
         this.buyStrategy = buyStrategy;
         this.sellStrategy = sellStrategy;

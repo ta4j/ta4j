@@ -1,190 +1,190 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>eu.verdelhan</groupId>
-	<artifactId>ta4j</artifactId>
-	<version>0.4-SNAPSHOT</version>
-	<packaging>jar</packaging>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>eu.verdelhan</groupId>
+    <artifactId>ta4j</artifactId>
+    <version>0.4-SNAPSHOT</version>
+    <packaging>jar</packaging>
 
-	<name>ta4j</name>
-	<description>ta4j is a Java library providing a simple API for technical analysis.</description>
-	<url>http://github.com/mdeverdelhan/ta4j</url>
-	<inceptionYear>2014</inceptionYear>
+    <name>ta4j</name>
+    <description>ta4j is a Java library providing a simple API for technical analysis.</description>
+    <url>http://github.com/mdeverdelhan/ta4j</url>
+    <inceptionYear>2014</inceptionYear>
 
-	<developers>
-		<developer>
-			<name>Marc de Verdelhan</name>
-		</developer>
-	</developers>
+    <developers>
+        <developer>
+            <name>Marc de Verdelhan</name>
+        </developer>
+    </developers>
 
-	<licenses>
-		<license>
-			<name>MIT License</name>
-			<comments>All source code is under the MIT license.</comments>
-		</license>
-	</licenses>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <comments>All source code is under the MIT license.</comments>
+        </license>
+    </licenses>
 
-	<issueManagement>
-		<system>GitHub</system>
-		<url>http://github.com/mdeverdelhan/ta4j/issues</url>
-	</issueManagement>
+    <issueManagement>
+        <system>GitHub</system>
+        <url>http://github.com/mdeverdelhan/ta4j/issues</url>
+    </issueManagement>
 
-	<distributionManagement>
-			<snapshotRepository>
-				<id>sonatype-nexus-snapshots</id>
-				<name>Sonatype Nexus snapshot repository</name>
-				<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-			</snapshotRepository>
-			<repository>
-				<id>sonatype-nexus-staging</id>
-				<name>Sonatype Nexus release repository</name>
-				<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-			</repository>
-	</distributionManagement>
+    <distributionManagement>
+            <snapshotRepository>
+                <id>sonatype-nexus-snapshots</id>
+                <name>Sonatype Nexus snapshot repository</name>
+                <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            </snapshotRepository>
+            <repository>
+                <id>sonatype-nexus-staging</id>
+                <name>Sonatype Nexus release repository</name>
+                <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            </repository>
+    </distributionManagement>
 
-	<ciManagement>
-		<url>http://travis-ci.org/mdeverdelhan/ta4j</url>
-	</ciManagement>
+    <ciManagement>
+        <url>http://travis-ci.org/mdeverdelhan/ta4j</url>
+    </ciManagement>
 
-	<scm>
-		<connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
-		<developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
-		<url>http://github.com/mdeverdelhan/ta4j</url>
-	  <tag>HEAD</tag>
+    <scm>
+        <connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
+        <developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
+        <url>http://github.com/mdeverdelhan/ta4j</url>
+      <tag>HEAD</tag>
   </scm>
 
-	<properties>
-		<!-- Encoding -->
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-	</properties>
+    <properties>
+        <!-- Encoding -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
 
-	<dependencies>
+    <dependencies>
 
-		<dependency>
-			<groupId>joda-time</groupId>
-			<artifactId>joda-time</artifactId>
-			<version>2.3</version>
-		</dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.3</version>
+        </dependency>
 
-		<!-- Test dependencies -->
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.11</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.assertj</groupId>
-			<artifactId>assertj-core</artifactId>
-			<version>1.5.0</version>
-			<scope>test</scope>
-		</dependency>
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>1.5.0</version>
+            <scope>test</scope>
+        </dependency>
 
-	</dependencies>
+    </dependencies>
 
-	<profiles>
+    <profiles>
 
-		<!-- Only when performing a release (i.e. not for snapshots) -->
-		<profile>
-			<id>sonatype-oss-release</id>
-			<build>
-				<plugins>
-				
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-source-plugin</artifactId>
-						<version>2.1.2</version>
-						<executions>
-							<execution>
-								<id>attach-sources</id>
-								<goals>
-									<goal>jar-no-fork</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-					
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.7</version>
-						<executions>
-							<execution>
-								<id>attach-javadocs</id>
-								<goals>
-									<goal>jar</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
+        <!-- Only when performing a release (i.e. not for snapshots) -->
+        <profile>
+            <id>sonatype-oss-release</id>
+            <build>
+                <plugins>
+                
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.1.2</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.7</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
 
-					<!-- Artifact signing -->
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.1</version>
-						<executions>
-							<execution>
-								<id>sign-artifacts</id>
-								<phase>verify</phase>
-								<goals>
-									<goal>sign</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
+                    <!-- Artifact signing -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.1</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
 
-				</plugins>
-			</build>
-		</profile>
+                </plugins>
+            </build>
+        </profile>
 
-	</profiles>
+    </profiles>
 
-	<build>
-		<plugins>
-			
-			<!-- Build source and target -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.3</version>
-				<configuration>
-					<source>1.6</source>
-					<target>1.6</target>
-				</configuration>
-			</plugin>
+    <build>
+        <plugins>
+            
+            <!-- Build source and target -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
 
-			<!-- License headers -->
-			<plugin>
-				<groupId>com.mycila</groupId>
-				<artifactId>license-maven-plugin</artifactId>
-				<version>2.3</version>
-				<configuration>
-					<header>LICENSE</header>
-					<excludes>
-						<exclude>LICENSE</exclude>
-						<exclude>pom.xml</exclude>
-						<exclude>src/test/resources/**</exclude>
-						<exclude>src/main/resources/**</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
+            <!-- License headers -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <header>LICENSE</header>
+                    <excludes>
+                        <exclude>LICENSE</exclude>
+                        <exclude>pom.xml</exclude>
+                        <exclude>src/test/resources/**</exclude>
+                        <exclude>src/main/resources/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
 
-			<!-- Releases -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-release-plugin</artifactId>
-				<version>2.4.1</version>
-				<configuration>
-					<!-- Avoid issue: http://jira.codehaus.org/browse/MGPG-9 -->
-					<mavenExecutorId>forked-path</mavenExecutorId>
-					<useReleaseProfile>false</useReleaseProfile>
-					<arguments>${arguments} -Psonatype-oss-release</arguments>
-				</configuration>
-			</plugin>
+            <!-- Releases -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <!-- Avoid issue: http://jira.codehaus.org/browse/MGPG-9 -->
+                    <mavenExecutorId>forked-path</mavenExecutorId>
+                    <useReleaseProfile>false</useReleaseProfile>
+                    <arguments>${arguments} -Psonatype-oss-release</arguments>
+                </configuration>
+            </plugin>
 
-		</plugins>
+        </plugins>
 
-	</build>
+    </build>
 
 </project>

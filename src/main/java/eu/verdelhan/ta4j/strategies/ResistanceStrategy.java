@@ -39,12 +39,12 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     private double resistance;
 
-	/**
-	 * Constructor.
-	 * @param indicator the indicator
-	 * @param strategy the strategie
-	 * @param resistance the resistance threshold
-	 */
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param strategy the strategie
+     * @param resistance the resistance threshold
+     */
     public ResistanceStrategy(Indicator<? extends Number> indicator, Strategy strategy, double resistance) {
         this.strategy = strategy;
         this.resistance = resistance;

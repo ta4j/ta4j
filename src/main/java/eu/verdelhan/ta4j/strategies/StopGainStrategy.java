@@ -41,12 +41,12 @@ public class StopGainStrategy extends AbstractStrategy {
 
     private double value;
 
-	/**
-	 * Constructor.
-	 * @param indicator the indicator
-	 * @param strategy the strategy
-	 * @param gain the gain threshold (in %)
-	 */
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param strategy the strategy
+     * @param gain the gain threshold (in %)
+     */
     public StopGainStrategy(Indicator<? extends Number> indicator, Strategy strategy, int gain) {
         this.strategy = strategy;
         this.gain = gain;

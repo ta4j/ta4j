@@ -30,19 +30,19 @@ import eu.verdelhan.ta4j.Indicator;
  */
 public class ConstantIndicator<T> implements Indicator<T> {
 
-	private T value;
+    private T value;
 
-	public ConstantIndicator(T t) {
-		this.value = t;
-	}
+    public ConstantIndicator(T t) {
+        this.value = t;
+    }
 
-	@Override
-	public T getValue(int index) {
-		return value;
-	}
+    @Override
+    public T getValue(int index) {
+        return value;
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " Value: " + value;
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " Value: " + value;
+    }
 }

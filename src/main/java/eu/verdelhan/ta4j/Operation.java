@@ -33,31 +33,31 @@ package eu.verdelhan.ta4j;
  */
 public class Operation {
 
-	/** Type of the operation */
+    /** Type of the operation */
     private OperationType type;
 
-	/** The index the operation was executed */
+    /** The index the operation was executed */
     private int index;
 
-	/**
-	 * @param index the index the operation was executed
-	 * @param type the type of the operation
-	 */
+    /**
+     * @param index the index the operation was executed
+     * @param type the type of the operation
+     */
     public Operation(int index, OperationType type) {
         this.type = type;
         this.index = index;
     }
 
-	/**
-	 * @return the type of the operation (BUY or SELL)
-	 */
+    /**
+     * @return the type of the operation (BUY or SELL)
+     */
     public OperationType getType() {
         return type;
     }
 
-	/**
-	 * @return  the type of the operation
-	 */
+    /**
+     * @return  the type of the operation
+     */
     public int getIndex() {
         return index;
     }

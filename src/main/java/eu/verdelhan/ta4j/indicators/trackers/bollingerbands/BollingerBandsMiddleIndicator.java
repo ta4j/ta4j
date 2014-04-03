@@ -33,23 +33,23 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  */
 public class BollingerBandsMiddleIndicator implements Indicator<Double> {
 
-	private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends Number> indicator;
 
-	public BollingerBandsMiddleIndicator(SMAIndicator smaIndicator) {
-		this.indicator = smaIndicator;
-	}
+    public BollingerBandsMiddleIndicator(SMAIndicator smaIndicator) {
+        this.indicator = smaIndicator;
+    }
 
-	public BollingerBandsMiddleIndicator(Indicator<? extends Number> indicator) {
-		this.indicator = indicator;
-	}
+    public BollingerBandsMiddleIndicator(Indicator<? extends Number> indicator) {
+        this.indicator = indicator;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		return indicator.getValue(index).doubleValue();
-	}
+    @Override
+    public Double getValue(int index) {
+        return indicator.getValue(index).doubleValue();
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " deviation: " + indicator;
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " deviation: " + indicator;
+    }
 }

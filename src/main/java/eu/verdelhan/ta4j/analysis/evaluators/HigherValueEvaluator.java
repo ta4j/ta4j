@@ -45,13 +45,13 @@ public class HigherValueEvaluator implements StrategyEvaluator {
 
     private HashMap<Strategy, Runner> hashRunner;
 
-	/**
-	 * Constructor.
-	 * @param runnerFactory the runner factory
-	 * @param strategies a set of strategies to be evaluated
-	 * @param slicer a time series slicer
-	 * @param criterion an analysis criterion
-	 */
+    /**
+     * Constructor.
+     * @param runnerFactory the runner factory
+     * @param strategies a set of strategies to be evaluated
+     * @param slicer a time series slicer
+     * @param criterion an analysis criterion
+     */
     public HigherValueEvaluator(RunnerFactory runnerFactory, Set<Strategy> strategies, TimeSeriesSlicer slicer, AnalysisCriterion criterion) {
         this.strategies = strategies;
         this.slicer = slicer;
@@ -67,7 +67,7 @@ public class HigherValueEvaluator implements StrategyEvaluator {
     public Decision evaluate(int slicePosition) {
         Strategy bestStrategy = strategies.iterator().next();
 
-		// Getting the runner of the strategy
+        // Getting the runner of the strategy
         Runner runner = hashRunner.get(bestStrategy);
         Decision bestDecision = new Decision(bestStrategy, slicer, slicePosition, criterion, runner.run(slicePosition), runner);
 

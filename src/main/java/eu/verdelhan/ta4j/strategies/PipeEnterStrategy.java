@@ -37,12 +37,12 @@ public class PipeEnterStrategy extends AbstractStrategy {
 
     private final Indicator<Boolean> crossDown;
 
-	/**
-	 * Constructor.
-	 * @param upper the upper indicator
-	 * @param lower the lower indicator
-	 * @param value the reference indicator
-	 */
+    /**
+     * Constructor.
+     * @param upper the upper indicator
+     * @param lower the lower indicator
+     * @param value the reference indicator
+     */
     public PipeEnterStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower, Indicator<? extends Number> value) {
         crossUp = new CrossIndicator(value, upper);
         crossDown = new CrossIndicator(lower, value);

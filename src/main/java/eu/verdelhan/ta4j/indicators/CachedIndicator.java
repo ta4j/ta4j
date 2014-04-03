@@ -60,10 +60,10 @@ public abstract class CachedIndicator<T> implements Indicator<T> {
         return getClass().getSimpleName();
     }
 
-	/**
-	 * Increases the size of cached results buffer.
-	 * @param index
-	 */
+    /**
+     * Increases the size of cached results buffer.
+     * @param index
+     */
     private void increaseLength(int index) {
         if (results.size() <= index) {
             results.addAll(Collections.<T> nCopies((index - results.size()) + 1, null));

@@ -47,11 +47,11 @@ public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
         Tick tick = series.getTick(index);
 
         // Calculating the money flow multiplier
-		double moneyFlowMultiplier = ((tick.getClosePrice() - tick.getMinPrice()) - (tick.getMaxPrice() - tick.getClosePrice()))
-				 / (tick.getMaxPrice() - tick.getMinPrice());
+        double moneyFlowMultiplier = ((tick.getClosePrice() - tick.getMinPrice()) - (tick.getMaxPrice() - tick.getClosePrice()))
+                 / (tick.getMaxPrice() - tick.getMinPrice());
 
-		// Calculating the money flow volume
-		double moneyFlowVolume = moneyFlowMultiplier * tick.getVolume();
+        // Calculating the money flow volume
+        double moneyFlowVolume = moneyFlowMultiplier * tick.getVolume();
 
         return moneyFlowVolume + getValue(index - 1);
     }

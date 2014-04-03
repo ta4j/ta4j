@@ -39,12 +39,12 @@ public class SupportStrategy extends AbstractStrategy {
 
     private double support;
 
-	/**
-	 * Constructor.
-	 * @param indicator the indicator
-	 * @param strategy the strategy
-	 * @param support the support threshold
-	 */
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param strategy the strategy
+     * @param support the support threshold
+     */
     public SupportStrategy(Indicator<? extends Number> indicator, Strategy strategy, double support) {
         this.strategy = strategy;
         this.support = support;

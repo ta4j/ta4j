@@ -30,25 +30,25 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * <p>
  */
 public class AverageDirectionalMovementDownIndicator extends CachedIndicator<Double>{
-	private final int timeFrame;
+    private final int timeFrame;
 
-	private final DirectionalMovementDownIndicator dmdown;
+    private final DirectionalMovementDownIndicator dmdown;
 
-	public AverageDirectionalMovementDownIndicator(TimeSeries series, int timeFrame) {
-		this.timeFrame = timeFrame;
-		dmdown = new DirectionalMovementDownIndicator(series);
-	}
+    public AverageDirectionalMovementDownIndicator(TimeSeries series, int timeFrame) {
+        this.timeFrame = timeFrame;
+        dmdown = new DirectionalMovementDownIndicator(series);
+    }
 
-	@Override
-	protected Double calculate(int index) {
-		if (index == 0) {
-			return 1d;
-		}
-		return (getValue(index - 1) * (timeFrame - 1) / timeFrame) + (dmdown.getValue(index) / timeFrame);
-	}
+    @Override
+    protected Double calculate(int index) {
+        if (index == 0) {
+            return 1d;
+        }
+        return (getValue(index - 1) * (timeFrame - 1) / timeFrame) + (dmdown.getValue(index) / timeFrame);
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

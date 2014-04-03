@@ -34,62 +34,62 @@ import org.joda.time.Period;
  */
 public class ConstrainedTimeSeries implements TimeSeries {
 
-	/** Original time series */
-	private TimeSeries series;
-	/** Begin index of the time series */
-	private int beginIndex;
-	/** End index of the time series */
-	private int endIndex;
+    /** Original time series */
+    private TimeSeries series;
+    /** Begin index of the time series */
+    private int beginIndex;
+    /** End index of the time series */
+    private int endIndex;
 
-	/**
-	 * Constructor.
-	 * @param series the original time series
-	 * @param beginIndex the begin index of the time series
-	 * @param endIndex the end index of the time series
-	 */
-	public ConstrainedTimeSeries(TimeSeries series, int beginIndex, int endIndex) {
-		if (endIndex < beginIndex - 1) {
-			throw new IllegalArgumentException("end cannot be < than begin - 1");
-		}
-		this.series = series;
-		this.beginIndex = beginIndex;
-		this.endIndex = endIndex;
-	}
+    /**
+     * Constructor.
+     * @param series the original time series
+     * @param beginIndex the begin index of the time series
+     * @param endIndex the end index of the time series
+     */
+    public ConstrainedTimeSeries(TimeSeries series, int beginIndex, int endIndex) {
+        if (endIndex < beginIndex - 1) {
+            throw new IllegalArgumentException("end cannot be < than begin - 1");
+        }
+        this.series = series;
+        this.beginIndex = beginIndex;
+        this.endIndex = endIndex;
+    }
 
-	@Override
-	public int getSize() {
-		return (endIndex - beginIndex) + 1;
-	}
+    @Override
+    public int getSize() {
+        return (endIndex - beginIndex) + 1;
+    }
 
-	@Override
-	public Tick getTick(int i) {
-		return series.getTick(i);
-	}
+    @Override
+    public Tick getTick(int i) {
+        return series.getTick(i);
+    }
 
-	@Override
-	public int getBegin() {
-		return beginIndex;
-	}
+    @Override
+    public int getBegin() {
+        return beginIndex;
+    }
 
-	@Override
-	public int getEnd() {
-		return endIndex;
-	}
+    @Override
+    public int getEnd() {
+        return endIndex;
+    }
 
-	@Override
-	public String getName() {
-		return series.getName();
-	}
+    @Override
+    public String getName() {
+        return series.getName();
+    }
 
-	@Override
-	public String getPeriodName() {
-		return series.getTick(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
-				+ series.getTick(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
-	}
+    @Override
+    public String getPeriodName() {
+        return series.getTick(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+                + series.getTick(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
+    }
 
-	@Override
-	public Period getPeriod() {
-		return new Period(Math.min(series.getTick(series.getBegin() + 1).getEndTime().getMillis() - series.getTick(series.getBegin()).getEndTime().getMillis(), 
-				series.getTick(series.getBegin() + 2).getEndTime().getMillis() - series.getTick(series.getBegin() + 1).getEndTime().getMillis()));
-	}
+    @Override
+    public Period getPeriod() {
+        return new Period(Math.min(series.getTick(series.getBegin() + 1).getEndTime().getMillis() - series.getTick(series.getBegin()).getEndTime().getMillis(), 
+                series.getTick(series.getBegin() + 2).getEndTime().getMillis() - series.getTick(series.getBegin() + 1).getEndTime().getMillis()));
+    }
 }

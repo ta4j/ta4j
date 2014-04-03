@@ -34,17 +34,17 @@ public class Trade {
 
     private OperationType startingType;
 
-	/**
-	 * Constructor.
-	 */
+    /**
+     * Constructor.
+     */
     public Trade() {
         this(OperationType.BUY);
     }
 
-	/**
-	 * Constructor.
-	 * @param startingType the starting {@link OperationType operation type} of the trade
-	 */
+    /**
+     * Constructor.
+     * @param startingType the starting {@link OperationType operation type} of the trade
+     */
     public Trade(OperationType startingType) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
@@ -52,26 +52,26 @@ public class Trade {
         this.startingType = startingType;
     }
 
-	/**
-	 * Constructor.
-	 * @param entry the entry {@link Operation operation}
-	 * @param exit the exit {@link Operation operation}
-	 */
+    /**
+     * Constructor.
+     * @param entry the entry {@link Operation operation}
+     * @param exit the exit {@link Operation operation}
+     */
     public Trade(Operation entry, Operation exit) {
         this.entry = entry;
         this.exit = exit;
     }
 
-	/**
-	 * @return the entry {@link Operation operation} of the trade
-	 */
+    /**
+     * @return the entry {@link Operation operation} of the trade
+     */
     public Operation getEntry() {
         return entry;
     }
 
-	/**
-	 * @return the exit {@link Operation operation} of the trade
-	 */
+    /**
+     * @return the exit {@link Operation operation} of the trade
+     */
     public Operation getExit() {
         return exit;
     }
@@ -90,10 +90,10 @@ public class Trade {
         return (entry.hashCode() * 31) + (exit.hashCode() * 17);
     }
 
-	/**
-	 * Operates the trade at the i-th position
-	 * @param i the index
-	 */
+    /**
+     * Operates the trade at the i-th position
+     * @param i the index
+     */
     public void operate(int i) {
         if (isNew()) {
             entry = new Operation(i, startingType);
@@ -105,23 +105,23 @@ public class Trade {
         }
     }
 
-	/**
-	 * @return true if the trade is closed, false otherwise
-	 */
+    /**
+     * @return true if the trade is closed, false otherwise
+     */
     public boolean isClosed() {
         return (entry != null) && (exit != null);
     }
 
-	/**
-	 * @return true if the trade is opened, false otherwise
-	 */
+    /**
+     * @return true if the trade is opened, false otherwise
+     */
     public boolean isOpened() {
         return (entry != null) && (exit == null);
     }
 
-	/**
-	 * @return true if the trade is new, false otherwise
-	 */
+    /**
+     * @return true if the trade is new, false otherwise
+     */
     public boolean isNew() {
         return (entry == null) && (exit == null);
     }

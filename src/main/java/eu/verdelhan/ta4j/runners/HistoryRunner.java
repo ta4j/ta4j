@@ -36,21 +36,21 @@ import java.util.List;
  */
 public class HistoryRunner implements Runner {
 
-	/** Operation type */
+    /** Operation type */
     private OperationType operationType;
-	/** Time series slicer */
+    /** Time series slicer */
     private TimeSeriesSlicer slicer;
-	/** Run/executed strategy */
+    /** Run/executed strategy */
     private Strategy strategy;
-	/** Cached trade results */
+    /** Cached trade results */
     private ArrayList<List<Trade>> listTradesResults;
 
-	/**
-	 * Constructor.
-	 * @param type the initial {@link OperationType operation type} of new {@link Trade trades}
-	 * @param slicer a {@link TimeSeriesSlicer time series slicer}
-	 * @param strategy a {@link Strategy strategy} to be run
-	 */
+    /**
+     * Constructor.
+     * @param type the initial {@link OperationType operation type} of new {@link Trade trades}
+     * @param slicer a {@link TimeSeriesSlicer time series slicer}
+     * @param strategy a {@link Strategy strategy} to be run
+     */
     public HistoryRunner(OperationType type, TimeSeriesSlicer slicer, Strategy strategy) {
         if ((type == null) || (slicer == null) || (strategy == null)) {
             throw new NullPointerException();
@@ -61,11 +61,11 @@ public class HistoryRunner implements Runner {
         listTradesResults = new ArrayList<List<Trade>>();
     }
 
-	/**
-	 * Constructor.
-	 * @param slicer a {@link TimeSeriesSlicer time series slicer}
-	 * @param strategy a {@link Strategy strategy} to be run
-	 */
+    /**
+     * Constructor.
+     * @param slicer a {@link TimeSeriesSlicer time series slicer}
+     * @param strategy a {@link Strategy strategy} to be run
+     */
     public HistoryRunner(TimeSeriesSlicer slicer, Strategy strategy) {
         this(OperationType.BUY, slicer, strategy);
     }
@@ -73,12 +73,12 @@ public class HistoryRunner implements Runner {
     @Override
     public List<Trade> run(int sliceIndex) {
         if (listTradesResults.size() < sliceIndex) {
-			// The slice index is over the cached trades results
-			// --> Running strategy on the previous slice
+            // The slice index is over the cached trades results
+            // --> Running strategy on the previous slice
             listTradesResults.add(run(sliceIndex - 1));
         } else if (listTradesResults.size() > sliceIndex) {
-			// The slice index is in the cached results.
-			// --> Returning them
+            // The slice index is in the cached results.
+            // --> Returning them
             return listTradesResults.get(sliceIndex);
         }
 
@@ -100,61 +100,61 @@ public class HistoryRunner implements Runner {
             }
 
             if (i > 0) {
-				Trade lastTrade = lastTrades.get(lastTrades.size() - 1);
-				beginIndex = lastTrade.getExit().getIndex() + 1;
+                Trade lastTrade = lastTrades.get(lastTrades.size() - 1);
+                beginIndex = lastTrade.getExit().getIndex() + 1;
 
-				if (beginIndex > endIndex) {
-					return new ArrayList<Trade>();
-				}
-			} else {
-				beginIndex = slicer.getSlice(sliceIndex).getBegin();
-			}
+                if (beginIndex > endIndex) {
+                    return new ArrayList<Trade>();
+                }
+            } else {
+                beginIndex = slicer.getSlice(sliceIndex).getBegin();
+            }
         }
-		List<Trade> trades = runStrategy(beginIndex, endIndex, sliceIndex);
+        List<Trade> trades = runStrategy(beginIndex, endIndex, sliceIndex);
         listTradesResults.add(trades);
         return trades;
     }
 
-	/**
-	 * Runs the strategy.
-	 * @param beginIndex the begin index of the series
-	 * @param endIndex the end index of the series
-	 * @param sliceIndex the slice index
-	 * @return a list of trades
-	 */
-	private List<Trade> runStrategy(int beginIndex, int endIndex, int sliceIndex) {
+    /**
+     * Runs the strategy.
+     * @param beginIndex the begin index of the series
+     * @param endIndex the end index of the series
+     * @param sliceIndex the slice index
+     * @return a list of trades
+     */
+    private List<Trade> runStrategy(int beginIndex, int endIndex, int sliceIndex) {
 
-		List<Trade> trades = new ArrayList<Trade>();
-		Trade lastTrade = new Trade(operationType);
-		for (int i = Math.max(beginIndex, 0); i <= endIndex; i++) {
-			if (strategy.shouldOperate(lastTrade, i)) {
-				lastTrade.operate(i);
-				if (lastTrade.isClosed()) {
-					trades.add(lastTrade);
-					lastTrade = new Trade(operationType);
-				}
-			}
-		}
+        List<Trade> trades = new ArrayList<Trade>();
+        Trade lastTrade = new Trade(operationType);
+        for (int i = Math.max(beginIndex, 0); i <= endIndex; i++) {
+            if (strategy.shouldOperate(lastTrade, i)) {
+                lastTrade.operate(i);
+                if (lastTrade.isClosed()) {
+                    trades.add(lastTrade);
+                    lastTrade = new Trade(operationType);
+                }
+            }
+        }
 
-		if (lastTrade.isOpened()) {
-			int j = 1;
-			while (slicer.getNumberOfSlices() > (sliceIndex + j)) {
-				int start = Math.max(slicer.getSlice(sliceIndex + j).getBegin(), endIndex);
-				int last = slicer.getSlice(sliceIndex + j).getEnd();
+        if (lastTrade.isOpened()) {
+            int j = 1;
+            while (slicer.getNumberOfSlices() > (sliceIndex + j)) {
+                int start = Math.max(slicer.getSlice(sliceIndex + j).getBegin(), endIndex);
+                int last = slicer.getSlice(sliceIndex + j).getEnd();
 
-				for (int i = start; i <= last; i++) {
-					if (strategy.shouldOperate(lastTrade, i)) {
-						lastTrade.operate(i);
-						break;
-					}
-				}
-				if (lastTrade.isClosed()) {
-					trades.add(lastTrade);
-					break;
-				}
-				j++;
-			}
-		}
-		return trades;
-	}
+                for (int i = start; i <= last; i++) {
+                    if (strategy.shouldOperate(lastTrade, i)) {
+                        lastTrade.operate(i);
+                        break;
+                    }
+                }
+                if (lastTrade.isClosed()) {
+                    trades.add(lastTrade);
+                    break;
+                }
+                j++;
+            }
+        }
+        return trades;
+    }
 }

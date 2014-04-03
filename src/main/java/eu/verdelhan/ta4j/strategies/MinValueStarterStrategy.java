@@ -33,19 +33,19 @@ import eu.verdelhan.ta4j.Strategy;
  */
 public class MinValueStarterStrategy extends AbstractStrategy {
 
-	/** Strategy */
+    /** Strategy */
     private Strategy strategy;
-	/** Indicator */
+    /** Indicator */
     private Indicator<? extends Number> indicator;
-	/** Starting threshold */
+    /** Starting threshold */
     private double start;
 
-	/**
-	 * Constructor.
-	 * @param indicator the indicator
-	 * @param strategy the strategy
-	 * @param start the starting threshold
-	 */
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param strategy the strategy
+     * @param start the starting threshold
+     */
     public MinValueStarterStrategy(Indicator<? extends Number> indicator, Strategy strategy, double start) {
         this.indicator = indicator;
         this.strategy = strategy;

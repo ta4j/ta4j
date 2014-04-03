@@ -36,39 +36,39 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-		int entryIndex = trade.getEntry().getIndex();
-		int exitIndex = trade.getExit().getIndex();
+        int entryIndex = trade.getEntry().getIndex();
+        int exitIndex = trade.getExit().getIndex();
 
-		double result;
+        double result;
         if (trade.getEntry().getType() == OperationType.BUY) {
-			// buy-then-sell trade
+            // buy-then-sell trade
             result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
         } else {
-			// sell-then-buy trade
+            // sell-then-buy trade
             result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
         }
 
-		return (result > 1d) ? 1d : 0d;
+        return (result > 1d) ? 1d : 0d;
     }
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
         int numberOfProfitable = 0;
         for (Trade trade : trades) {
-			int entryIndex = trade.getEntry().getIndex();
-			int exitIndex = trade.getExit().getIndex();
+            int entryIndex = trade.getEntry().getIndex();
+            int exitIndex = trade.getExit().getIndex();
 
-			double result;
+            double result;
             if (trade.getEntry().getType() == OperationType.BUY) {
-				// buy-then-sell trade
-				result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
+                // buy-then-sell trade
+                result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
             } else {
-				// sell-then-buy trade
+                // sell-then-buy trade
                 result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
             }
-			if (result > 1d) {
-				numberOfProfitable++;
-			}
+            if (result > 1d) {
+                numberOfProfitable++;
+            }
         }
         return ((double) numberOfProfitable) / trades.size();
     }

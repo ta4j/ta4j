@@ -40,40 +40,40 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * 
  */
 public class StochasticOscillatorKIndicator implements Indicator<Double> {
-	private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends Number> indicator;
 
-	private final int timeFrame;
+    private final int timeFrame;
 
-	private MaxPriceIndicator maxPriceIndicator;
+    private MaxPriceIndicator maxPriceIndicator;
 
-	private MinPriceIndicator minPriceIndicator;
+    private MinPriceIndicator minPriceIndicator;
 
-	public StochasticOscillatorKIndicator(TimeSeries timeSeries, int timeFrame) {
-		this(new ClosePriceIndicator(timeSeries), timeFrame, new MaxPriceIndicator(timeSeries), new MinPriceIndicator(
-				timeSeries));
-	}
+    public StochasticOscillatorKIndicator(TimeSeries timeSeries, int timeFrame) {
+        this(new ClosePriceIndicator(timeSeries), timeFrame, new MaxPriceIndicator(timeSeries), new MinPriceIndicator(
+                timeSeries));
+    }
 
-	public StochasticOscillatorKIndicator(Indicator<? extends Number> indicator, int timeFrame,
-			MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
-		this.indicator = indicator;
-		this.timeFrame = timeFrame;
-		this.maxPriceIndicator = maxPriceIndicator;
-		this.minPriceIndicator = minPriceIndicator;
-	}
+    public StochasticOscillatorKIndicator(Indicator<? extends Number> indicator, int timeFrame,
+            MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
+        this.indicator = indicator;
+        this.timeFrame = timeFrame;
+        this.maxPriceIndicator = maxPriceIndicator;
+        this.minPriceIndicator = minPriceIndicator;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
-		LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
+    @Override
+    public Double getValue(int index) {
+        HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
+        LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 
-		double highestHighPrice = highestHigh.getValue(index);
-		double lowestLowPrice = lowestMin.getValue(index);
+        double highestHighPrice = highestHigh.getValue(index);
+        double lowestLowPrice = lowestMin.getValue(index);
 
-		return (indicator.getValue(index).doubleValue() - lowestLowPrice) / (highestHighPrice - lowestLowPrice) * 100d;
-	}
+        return (indicator.getValue(index).doubleValue() - lowestLowPrice) / (highestHighPrice - lowestLowPrice) * 100d;
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

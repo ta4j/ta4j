@@ -41,12 +41,12 @@ public class StopLossStrategy extends AbstractStrategy {
 
     private double value;
 
-	/**
-	 * Constructor.
-	 * @param indicator the indicator
-	 * @param strategy the strategy
-	 * @param loss the loss threshold (in %)
-	 */
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param strategy the strategy
+     * @param loss the loss threshold (in %)
+     */
     public StopLossStrategy(Indicator<? extends Number> indicator, Strategy strategy, int loss) {
         this.strategy = strategy;
         this.loss = loss;

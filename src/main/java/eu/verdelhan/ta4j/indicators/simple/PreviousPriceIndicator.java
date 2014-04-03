@@ -31,19 +31,19 @@ import eu.verdelhan.ta4j.TimeSeries;
  */
 public class PreviousPriceIndicator implements Indicator<Double> {
 
-	private TimeSeries data;
+    private TimeSeries data;
 
-	public PreviousPriceIndicator(TimeSeries data) {
-		this.data = data;
-	}
+    public PreviousPriceIndicator(TimeSeries data) {
+        this.data = data;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		return data.getTick(Math.max(0, index - 1)).getClosePrice();
-	}
+    @Override
+    public Double getValue(int index) {
+        return data.getTick(Math.max(0, index - 1)).getClosePrice();
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName();
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }

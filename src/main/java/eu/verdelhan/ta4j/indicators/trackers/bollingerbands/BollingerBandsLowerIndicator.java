@@ -33,27 +33,27 @@ import eu.verdelhan.ta4j.indicators.helpers.StandardDeviationIndicator;
  */
 public class BollingerBandsLowerIndicator implements Indicator<Double> {
 
-	private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends Number> indicator;
 
-	private final BollingerBandsMiddleIndicator bbm;
+    private final BollingerBandsMiddleIndicator bbm;
 
-	public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, StandardDeviationIndicator standardDeviation) {
-		this.bbm = bbm;
-		this.indicator = standardDeviation;
-	}
+    public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, StandardDeviationIndicator standardDeviation) {
+        this.bbm = bbm;
+        this.indicator = standardDeviation;
+    }
 
-	public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<? extends Number> indicator) {
-		this.bbm = bbm;
-		this.indicator = indicator;
-	}
+    public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<? extends Number> indicator) {
+        this.bbm = bbm;
+        this.indicator = indicator;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		return bbm.getValue(index).doubleValue() - 2 * indicator.getValue(index).doubleValue();
-	}
+    @Override
+    public Double getValue(int index) {
+        return bbm.getValue(index).doubleValue() - 2 * indicator.getValue(index).doubleValue();
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + "deviation: " + indicator + "series: " + bbm;
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "deviation: " + indicator + "series: " + bbm;
+    }
 }

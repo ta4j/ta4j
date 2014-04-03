@@ -32,18 +32,18 @@ import eu.verdelhan.ta4j.Strategy;
  */
 public class NotSoFastStrategy extends AbstractStrategy {
 
-	/** Strategy */
+    /** Strategy */
     private Strategy strategy;
-	/** The number of ticks before exit */
+    /** The number of ticks before exit */
     private int numberOfTicks;
-	/** The tick index of the enter */
+    /** The tick index of the enter */
     private int enterTickIndex;
 
-	/**
-	 * Constructor.
-	 * @param strategy a strategy
-	 * @param numberOfTicks a number of ticks to wait
-	 */
+    /**
+     * Constructor.
+     * @param strategy a strategy
+     * @param numberOfTicks a number of ticks to wait
+     */
     public NotSoFastStrategy(Strategy strategy, int numberOfTicks) {
         this.strategy = strategy;
         this.numberOfTicks = numberOfTicks;

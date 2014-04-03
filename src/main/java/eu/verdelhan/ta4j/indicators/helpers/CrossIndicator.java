@@ -31,57 +31,57 @@ import eu.verdelhan.ta4j.Indicator;
  */
 public class CrossIndicator implements Indicator<Boolean> {
 
-	/** Upper indicator */
-	private final Indicator<? extends Number> up;
-	/** Lower indicator */
-	private final Indicator<? extends Number> low;
+    /** Upper indicator */
+    private final Indicator<? extends Number> up;
+    /** Lower indicator */
+    private final Indicator<? extends Number> low;
 
-	/**
-	 * Constructor.
-	 * @param up the upper indicator
-	 * @param low the lower indicator
-	 */
-	public CrossIndicator(Indicator<? extends Number> up, Indicator<? extends Number> low) {
-		this.up = up;
-		this.low = low;
-	}
+    /**
+     * Constructor.
+     * @param up the upper indicator
+     * @param low the lower indicator
+     */
+    public CrossIndicator(Indicator<? extends Number> up, Indicator<? extends Number> low) {
+        this.up = up;
+        this.low = low;
+    }
 
-	@Override
-	public Boolean getValue(int index) {
+    @Override
+    public Boolean getValue(int index) {
 
-		int i = index;
-		if (i == 0 || up.getValue(i).doubleValue() >= (low.getValue(i).doubleValue())) {
-			return false;
-		}
+        int i = index;
+        if (i == 0 || up.getValue(i).doubleValue() >= (low.getValue(i).doubleValue())) {
+            return false;
+        }
 
-		i = i - 1;
-		if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue()) {
-			return true;
-		} else {
+        i = i - 1;
+        if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue()) {
+            return true;
+        } else {
 
-			while (i > 0 && up.getValue(i).doubleValue() == low.getValue(i).doubleValue()) {
-				i = i - 1;
-			}
-			return (i != 0) && (up.getValue(i).doubleValue() > low.getValue(i).doubleValue());
-		}
-	}
+            while (i > 0 && up.getValue(i).doubleValue() == low.getValue(i).doubleValue()) {
+                i = i - 1;
+            }
+            return (i != 0) && (up.getValue(i).doubleValue() > low.getValue(i).doubleValue());
+        }
+    }
 
-	/**
-	 * @return the initial lower indicator
-	 */
-	public Indicator<? extends Number> getLow() {
-		return low;
-	}
+    /**
+     * @return the initial lower indicator
+     */
+    public Indicator<? extends Number> getLow() {
+        return low;
+    }
 
-	/**
-	 * @return the initial upper indicator
-	 */
-	public Indicator<? extends Number> getUp() {
-		return up;
-	}
+    /**
+     * @return the initial upper indicator
+     */
+    public Indicator<? extends Number> getUp() {
+        return up;
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " " + low + " " + up;
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " " + low + " " + up;
+    }
 }

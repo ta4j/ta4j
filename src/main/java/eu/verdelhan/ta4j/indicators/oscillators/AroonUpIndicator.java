@@ -34,33 +34,33 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
  */
 public class AroonUpIndicator implements Indicator<Double> {
 
-	private final int timeFrame;
+    private final int timeFrame;
 
-	private final ClosePriceIndicator closePriceIndicator;
+    private final ClosePriceIndicator closePriceIndicator;
 
-	private final HighestValueIndicator highestClosePriceIndicator;
+    private final HighestValueIndicator highestClosePriceIndicator;
 
-	public AroonUpIndicator(TimeSeries timeSeries, int timeFrame) {
-		this.timeFrame = timeFrame;
-		closePriceIndicator = new ClosePriceIndicator(timeSeries);
-		highestClosePriceIndicator = new HighestValueIndicator(closePriceIndicator, timeFrame);
-	}
+    public AroonUpIndicator(TimeSeries timeSeries, int timeFrame) {
+        this.timeFrame = timeFrame;
+        closePriceIndicator = new ClosePriceIndicator(timeSeries);
+        highestClosePriceIndicator = new HighestValueIndicator(closePriceIndicator, timeFrame);
+    }
 
-	@Override
-	public Double getValue(int index) {
-		int realTimeFrame = Math.min(timeFrame, index + 1);
+    @Override
+    public Double getValue(int index) {
+        int realTimeFrame = Math.min(timeFrame, index + 1);
 
-		// Getting the number of ticks since the highest close price
-		int endIndex = index - realTimeFrame;
-		int nbTicks = 0;
-		for (int i = index; i > endIndex; i--) {
-			if (closePriceIndicator.getValue(i)
-					.compareTo(highestClosePriceIndicator.getValue(index)) == 0) {
-				break;
-			}
-			nbTicks++;
-		}
-		
-		return (realTimeFrame - nbTicks) / realTimeFrame * 100d;
-	}
+        // Getting the number of ticks since the highest close price
+        int endIndex = index - realTimeFrame;
+        int nbTicks = 0;
+        for (int i = index; i > endIndex; i--) {
+            if (closePriceIndicator.getValue(i)
+                    .compareTo(highestClosePriceIndicator.getValue(index)) == 0) {
+                break;
+            }
+            nbTicks++;
+        }
+        
+        return (realTimeFrame - nbTicks) / realTimeFrame * 100d;
+    }
 }

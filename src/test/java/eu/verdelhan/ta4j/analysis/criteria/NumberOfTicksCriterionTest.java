@@ -40,50 +40,50 @@ import org.junit.Test;
 
 public class NumberOfTicksCriterionTest {
 
-	@Test
-	public void testCalculateWithNoTrades() {
-		MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-		List<Trade> trades = new ArrayList<Trade>();
+    @Test
+    public void testCalculateWithNoTrades() {
+        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        List<Trade> trades = new ArrayList<Trade>();
 
-		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-		assertThat(numberOfTicks.calculate(series, trades)).isZero();
-	}
+        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+        assertThat(numberOfTicks.calculate(series, trades)).isZero();
+    }
 
-	@Test
-	public void testCalculateWithTwoTrades() {
-		MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-		List<Trade> trades = new ArrayList<Trade>();
-		trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-		trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
+    @Test
+    public void testCalculateWithTwoTrades() {
+        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        List<Trade> trades = new ArrayList<Trade>();
+        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
+        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
-		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-		assertThat(numberOfTicks.calculate(series, trades)).isEqualTo(6);
-	}
+        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+        assertThat(numberOfTicks.calculate(series, trades)).isEqualTo(6);
+    }
 
-	@Test
-	public void testCalculateWithOneTrade() {
-		MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
-		Trade t = new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL));
-		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-		assertThat(numberOfTicks.calculate(series, t)).isEqualTo(4);
-	}
+    @Test
+    public void testCalculateWithOneTrade() {
+        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        Trade t = new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL));
+        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+        assertThat(numberOfTicks.calculate(series, t)).isEqualTo(4);
+    }
 
-	@Test
-	public void testSummarize() {
-		MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-		List<Decision> decisions = new LinkedList<Decision>();
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
-		List<Trade> tradesToDummy1 = new LinkedList<Trade>();
-		tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-		Decision dummy1 = new MockDecision(tradesToDummy1, slicer);
-		decisions.add(dummy1);
+    @Test
+    public void testSummarize() {
+        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        List<Decision> decisions = new LinkedList<Decision>();
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+        List<Trade> tradesToDummy1 = new LinkedList<Trade>();
+        tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
+        Decision dummy1 = new MockDecision(tradesToDummy1, slicer);
+        decisions.add(dummy1);
 
-		List<Trade> tradesToDummy2 = new LinkedList<Trade>();
-		tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
-		Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
-		decisions.add(dummy2);
+        List<Trade> tradesToDummy2 = new LinkedList<Trade>();
+        tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        Decision dummy2 = new MockDecision(tradesToDummy2, slicer);
+        decisions.add(dummy2);
 
-		AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-		assertThat(numberOfTicks.summarize(series, decisions)).isEqualTo(6);
-	}
+        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+        assertThat(numberOfTicks.summarize(series, decisions)).isEqualTo(6);
+    }
 }

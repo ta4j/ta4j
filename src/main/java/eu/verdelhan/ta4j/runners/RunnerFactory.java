@@ -32,11 +32,11 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
  */
 public interface RunnerFactory {
 
-	/**
-	 * Creates a new runner.
-	 * @param strategy a strategy to be run
-	 * @param slicer a series slicer
-	 * @return a runner of strategy over slices of time series
-	 */
-	Runner create(Strategy strategy, TimeSeriesSlicer slicer);
+    /**
+     * Creates a new runner.
+     * @param strategy a strategy to be run
+     * @param slicer a series slicer
+     * @return a runner of strategy over slices of time series
+     */
+    Runner create(Strategy strategy, TimeSeriesSlicer slicer);
 }

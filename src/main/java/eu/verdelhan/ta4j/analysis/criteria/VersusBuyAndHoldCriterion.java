@@ -39,10 +39,10 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     private AnalysisCriterion criterion;
 
-	/**
-	 * Constructor.
-	 * @param criterion an analysis criterion to be compared
-	 */
+    /**
+     * Constructor.
+     * @param criterion an analysis criterion to be compared
+     */
     public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
         this.criterion = criterion;
     }
@@ -65,8 +65,8 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public String toString() {
-		StringBuilder sb = new StringBuilder(super.toString());
-		sb.append(" (").append(criterion).append(')');
+        StringBuilder sb = new StringBuilder(super.toString());
+        sb.append(" (").append(criterion).append(')');
         return sb.toString();
     }
 }

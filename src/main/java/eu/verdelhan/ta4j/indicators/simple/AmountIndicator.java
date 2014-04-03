@@ -31,19 +31,19 @@ import eu.verdelhan.ta4j.TimeSeries;
  */
 public class AmountIndicator implements Indicator<Double> {
 
-	private TimeSeries data;
+    private TimeSeries data;
 
-	public AmountIndicator(TimeSeries data) {
-		this.data = data;
-	}
+    public AmountIndicator(TimeSeries data) {
+        this.data = data;
+    }
 
-	@Override
-	public Double getValue(int index) {
-		return data.getTick(index).getAmount();
-	}
+    @Override
+    public Double getValue(int index) {
+        return data.getTick(index).getAmount();
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getSimpleName();
-	}
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }
