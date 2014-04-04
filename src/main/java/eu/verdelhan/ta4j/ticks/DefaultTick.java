@@ -50,9 +50,30 @@ public class DefaultTick implements Tick {
 
     private int trades = 0;
 
+    /**
+     * @param beginTime the begin time of the tick period
+     * @param endTime the end time of the tick period
+     */
     public DefaultTick(DateTime beginTime, DateTime endTime) {
         this.beginTime = beginTime;
         this.endTime = endTime;
+    }
+
+    /**
+     * @param endTime the end time of the tick period
+     * @param openPrice the open price of the tick period
+     * @param highPrice the highest price of the tick period
+     * @param lowPrice the lowest price of the tick period
+     * @param closePrice the close price of the tick period
+     * @param volume the volume of the tick period
+     */
+    public DefaultTick(DateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
+        this.endTime = endTime;
+        this.openPrice = openPrice;
+        this.maxPrice = highPrice;
+        this.minPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
     }
 
     @Override
