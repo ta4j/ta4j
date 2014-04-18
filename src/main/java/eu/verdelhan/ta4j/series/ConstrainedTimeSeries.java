@@ -44,8 +44,8 @@ public class ConstrainedTimeSeries implements TimeSeries {
     /**
      * Constructor.
      * @param series the original time series
-     * @param beginIndex the begin index of the time series
-     * @param endIndex the end index of the time series
+     * @param beginIndex the begin index (inclusive) of the time series
+     * @param endIndex the end index (inclusive) of the time series
      */
     public ConstrainedTimeSeries(TimeSeries series, int beginIndex, int endIndex) {
         if (endIndex < beginIndex - 1) {
