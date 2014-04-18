@@ -117,30 +117,30 @@ public class DecisionTest {
         Operation[] sell = new Operation[] { null, null, null, null };
 
         Strategy fakeStrategy = new MockStrategy(buy, sell);
-		Runner runner = new HistoryRunner(slicer,fakeStrategy);
-		Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
-		assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(1d);
-	}
+        Runner runner = new HistoryRunner(slicer,fakeStrategy);
+        Decision decision = new Decision(fakeStrategy, slicer,0, null, runner.run(0), new HistoryRunner(slicer,fakeStrategy));
+        assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(1d);
+    }
 
-	@Test
-	public void testApplyFor() {
-		DateTime date = new DateTime();
-		series = new MockTimeSeries(new double[] { 1d, 2d, 3d, 4d, 5d,5d, 5d, 5d, 5d, 5d},new DateTime[]{date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),});
-		TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
+    @Test
+    public void testApplyFor() {
+        DateTime date = new DateTime();
+        series = new MockTimeSeries(new double[] { 1d, 2d, 3d, 4d, 5d,5d, 5d, 5d, 5d, 5d},new DateTime[]{date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),});
+        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
 
-		Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };
-		Operation[] sell = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null, null, null,null };
-		Strategy fakeStrategy = new MockStrategy(buy, sell);
-		Runner runner = new HistoryRunner(slicer, fakeStrategy);
-		List<Trade> trades = runner.run(0);
-		Decision decision = new Decision(fakeStrategy, slicer,0, criterion, trades, runner);
-		Decision nextDecision = new Decision(fakeStrategy, slicer,1, criterion, runner.run(1), runner);
+        Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };
+        Operation[] sell = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null, null, null,null };
+        Strategy fakeStrategy = new MockStrategy(buy, sell);
+        Runner runner = new HistoryRunner(slicer, fakeStrategy);
+        List<Trade> trades = runner.run(0);
+        Decision decision = new Decision(fakeStrategy, slicer,0, criterion, trades, runner);
+        Decision nextDecision = new Decision(fakeStrategy, slicer,1, criterion, runner.run(1), runner);
 
-		Decision appliedDecision = decision.applyFor(1);
+        Decision appliedDecision = decision.applyFor(1);
 
-		assertThat(appliedDecision).isEqualTo(nextDecision);
-		assertThat(appliedDecision.evaluateCriterion()).isEqualTo(1d);
-		assertThat(appliedDecision.getActualSlice().getBegin()).isEqualTo(slicer.getSlice(1).getBegin());
-		assertThat(appliedDecision.getActualSlice().getEnd()).isEqualTo(slicer.getSlice(1).getEnd());
-	}
+        assertThat(appliedDecision).isEqualTo(nextDecision);
+        assertThat(appliedDecision.evaluateCriterion()).isEqualTo(1d);
+        assertThat(appliedDecision.getActualSlice().getBegin()).isEqualTo(slicer.getSlice(1).getBegin());
+        assertThat(appliedDecision.getActualSlice().getEnd()).isEqualTo(slicer.getSlice(1).getEnd());
+    }
 }

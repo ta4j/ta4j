@@ -33,22 +33,22 @@ import java.util.List;
  */
 public class MockIndicator<T> implements Indicator<T> {
 
-	private List<T> values = new ArrayList<T>();
+    private List<T> values = new ArrayList<T>();
 
-	public MockIndicator(T[] values) {
-		this.values.addAll(Arrays.asList(values));
-	}
+    public MockIndicator(T[] values) {
+        this.values.addAll(Arrays.asList(values));
+    }
 
-	public void addValue(T value) {
-		this.values.add(value);
-	}
+    public void addValue(T value) {
+        this.values.add(value);
+    }
 
-	@Override
-	public T getValue(int index) {
-		return values.get(index);
-	}
+    @Override
+    public T getValue(int index) {
+        return values.get(index);
+    }
 
-	public String getName() {
-		return toString();
-	}
+    public String getName() {
+        return toString();
+    }
 }

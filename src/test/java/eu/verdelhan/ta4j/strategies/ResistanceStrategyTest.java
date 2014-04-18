@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.ResistanceStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
@@ -34,38 +33,38 @@ import org.junit.Test;
 
 public class ResistanceStrategyTest {
 
-	private MockIndicator<Double> indicator;
+    private MockIndicator<Double> indicator;
 
-	@Before
-	public void setUp() {
-		indicator = new MockIndicator<Double>(new Double[] { 95d, 96d, 95d, 94d, 97d, 95d, 110d });
-	}
+    @Before
+    public void setUp() {
+        indicator = new MockIndicator<Double>(new Double[] { 95d, 96d, 95d, 94d, 97d, 95d, 110d });
+    }
 
-	@Test
-	public void testResistanceShouldSell() {
-		Operation[] enter = new Operation[] { null, null, null, null, null, null, null };
+    @Test
+    public void testResistanceShouldSell() {
+        Operation[] enter = new Operation[] { null, null, null, null, null, null, null };
 
-		Strategy neverSell = new MockStrategy(enter, enter);
+        Strategy neverSell = new MockStrategy(enter, enter);
 
-		Trade trade = new Trade();
+        Trade trade = new Trade();
 
-		Strategy resistance = new ResistanceStrategy(indicator, neverSell, 96);
+        Strategy resistance = new ResistanceStrategy(indicator, neverSell, 96);
 
-		trade.operate(0);
-		assertThat(resistance.shouldOperate(trade, 1)).isTrue();
+        trade.operate(0);
+        assertThat(resistance.shouldOperate(trade, 1)).isTrue();
 
-		trade = new Trade();
-		trade.operate(2);
+        trade = new Trade();
+        trade.operate(2);
 
-		assertThat(resistance.shouldEnter(2)).isFalse();
-		assertThat(resistance.shouldOperate(trade, 2)).isFalse();
-		assertThat(resistance.shouldOperate(trade, 3)).isFalse();
-		assertThat(resistance.shouldOperate(trade, 4)).isTrue();
+        assertThat(resistance.shouldEnter(2)).isFalse();
+        assertThat(resistance.shouldOperate(trade, 2)).isFalse();
+        assertThat(resistance.shouldOperate(trade, 3)).isFalse();
+        assertThat(resistance.shouldOperate(trade, 4)).isTrue();
 
-		trade = new Trade();
-		trade.operate(5);
+        trade = new Trade();
+        trade.operate(5);
 
-		assertThat(resistance.shouldOperate(trade, 5)).isFalse();
-		assertThat(resistance.shouldOperate(trade, 6)).isTrue();
-	}
+        assertThat(resistance.shouldOperate(trade, 5)).isFalse();
+        assertThat(resistance.shouldOperate(trade, 6)).isTrue();
+    }
 }

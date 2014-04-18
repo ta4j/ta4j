@@ -29,20 +29,20 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class VolumeIndicatorTest {
-	private VolumeIndicator volumeIndicator;
+    private VolumeIndicator volumeIndicator;
 
-	TimeSeries timeSeries;
+    TimeSeries timeSeries;
 
-	@Before
-	public void setUp() {
-		timeSeries = new MockTimeSeries();
-		volumeIndicator = new VolumeIndicator(timeSeries);
-	}
+    @Before
+    public void setUp() {
+        timeSeries = new MockTimeSeries();
+        volumeIndicator = new VolumeIndicator(timeSeries);
+    }
 
-	@Test
-	public void testIndicatorShouldRetrieveTickVolume() {
-		for (int i = 0; i < 10; i++) {
-			assertThat(timeSeries.getTick(i).getVolume()).isEqualTo(volumeIndicator.getValue(i));
-		}
-	}
+    @Test
+    public void testIndicatorShouldRetrieveTickVolume() {
+        for (int i = 0; i < 10; i++) {
+            assertThat(timeSeries.getTick(i).getVolume()).isEqualTo(volumeIndicator.getValue(i));
+        }
+    }
 }

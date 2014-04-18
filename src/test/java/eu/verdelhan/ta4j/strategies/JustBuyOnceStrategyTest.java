@@ -33,39 +33,39 @@ import org.junit.Test;
 
 public class JustBuyOnceStrategyTest {
 
-	private Strategy strategy;
+    private Strategy strategy;
 
-	private Trade trade;
+    private Trade trade;
 
-	@Before
-	public void setUp() {
-		this.strategy = new JustBuyOnceStrategy();
-		this.trade = new Trade();
-	}
+    @Before
+    public void setUp() {
+        this.strategy = new JustBuyOnceStrategy();
+        this.trade = new Trade();
+    }
 
-	@Test
-	public void shouldBuyTradeOnce() {
-		Operation buy = new Operation(0, OperationType.BUY);
+    @Test
+    public void shouldBuyTradeOnce() {
+        Operation buy = new Operation(0, OperationType.BUY);
 
-		assertThat(strategy.shouldOperate(trade, 0)).isTrue();
-		trade.operate(0);
-		assertThat(trade.getEntry()).isEqualTo(buy);
-		assertThat(strategy.shouldOperate(trade, 1)).isFalse();
-		assertThat(strategy.shouldOperate(trade, 6)).isFalse();
+        assertThat(strategy.shouldOperate(trade, 0)).isTrue();
+        trade.operate(0);
+        assertThat(trade.getEntry()).isEqualTo(buy);
+        assertThat(strategy.shouldOperate(trade, 1)).isFalse();
+        assertThat(strategy.shouldOperate(trade, 6)).isFalse();
 
-	}
+    }
 
-	@Test
-	public void sameIndexShouldResultSameAnswer() {
-		Operation buy = new Operation(0, OperationType.BUY);
+    @Test
+    public void sameIndexShouldResultSameAnswer() {
+        Operation buy = new Operation(0, OperationType.BUY);
 
-		assertThat(strategy.shouldOperate(trade, 0)).isTrue();
-		trade.operate(0);
-		assertThat(trade.getEntry()).isEqualTo(buy);
-		Trade trade2 = new Trade();
-		assertThat(strategy.shouldOperate(trade2, 0)).isFalse();
-		trade2.operate(0);
-		assertThat(trade2.getEntry()).isEqualTo(buy);
-	}
+        assertThat(strategy.shouldOperate(trade, 0)).isTrue();
+        trade.operate(0);
+        assertThat(trade.getEntry()).isEqualTo(buy);
+        Trade trade2 = new Trade();
+        assertThat(strategy.shouldOperate(trade2, 0)).isFalse();
+        trade2.operate(0);
+        assertThat(trade2.getEntry()).isEqualTo(buy);
+    }
 
 }

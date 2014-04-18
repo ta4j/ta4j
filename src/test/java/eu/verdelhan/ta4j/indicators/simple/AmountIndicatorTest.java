@@ -30,20 +30,20 @@ import org.junit.Test;
 
 public class AmountIndicatorTest {
 
-	private AmountIndicator amountIndicator;
+    private AmountIndicator amountIndicator;
 
-	TimeSeries timeSeries;
+    TimeSeries timeSeries;
 
-	@Before
-	public void setUp() {
-		timeSeries = new MockTimeSeries();
-		amountIndicator = new AmountIndicator(timeSeries);
-	}
+    @Before
+    public void setUp() {
+        timeSeries = new MockTimeSeries();
+        amountIndicator = new AmountIndicator(timeSeries);
+    }
 
-	@Test
-	public void testIndicatorShouldRetrieveTickAmountPrice() {
-		for (int i = 0; i < 10; i++) {
-			assertThat(timeSeries.getTick(i).getAmount()).isEqualTo(amountIndicator.getValue(i));
-		}
-	}
+    @Test
+    public void testIndicatorShouldRetrieveTickAmountPrice() {
+        for (int i = 0; i < 10; i++) {
+            assertThat(timeSeries.getTick(i).getAmount()).isEqualTo(amountIndicator.getValue(i));
+        }
+    }
 }

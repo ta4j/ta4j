@@ -36,57 +36,57 @@ import org.junit.Test;
 
 public class StopLossStrategyTest {
 
-	private MockIndicator<Double> indicator;
+    private MockIndicator<Double> indicator;
 
-	@Before
-	public void setUp() {
-		indicator = new MockIndicator<Double>(new Double[] { 100d, 100d, 96d, 95d, 94d });
-	}
+    @Before
+    public void setUp() {
+        indicator = new MockIndicator<Double>(new Double[] { 100d, 100d, 96d, 95d, 94d });
+    }
 
-	@Test
-	public void testStopperShouldSell() {
+    @Test
+    public void testStopperShouldSell() {
 
-		Strategy justBuy = new JustBuyOnceStrategy();
-		Strategy stopper = new StopLossStrategy(indicator, justBuy, 5);
+        Strategy justBuy = new JustBuyOnceStrategy();
+        Strategy stopper = new StopLossStrategy(indicator, justBuy, 5);
 
-		Operation buy = new Operation(0, OperationType.BUY);
-		Operation sell = new Operation(4, OperationType.SELL);
+        Operation buy = new Operation(0, OperationType.BUY);
+        Operation sell = new Operation(4, OperationType.SELL);
 
-		Trade trade = new Trade();
-		assertThat(stopper.shouldOperate(trade, 0)).isTrue();
-		trade.operate(0);
-		assertThat(trade.getEntry()).isEqualTo(buy);
-		assertThat(stopper.shouldOperate(trade, 1)).isFalse();
-		assertThat(stopper.shouldOperate(trade, 2)).isFalse();
+        Trade trade = new Trade();
+        assertThat(stopper.shouldOperate(trade, 0)).isTrue();
+        trade.operate(0);
+        assertThat(trade.getEntry()).isEqualTo(buy);
+        assertThat(stopper.shouldOperate(trade, 1)).isFalse();
+        assertThat(stopper.shouldOperate(trade, 2)).isFalse();
 
-		assertThat(stopper.shouldOperate(trade, 4)).isTrue();
-		trade.operate(4);
-		assertThat(trade.getExit()).isEqualTo(sell);
-	}
+        assertThat(stopper.shouldOperate(trade, 4)).isTrue();
+        trade.operate(4);
+        assertThat(trade.getExit()).isEqualTo(sell);
+    }
 
-	@Test
-	public void testStopperShouldSellIfStrategySays() {
+    @Test
+    public void testStopperShouldSellIfStrategySays() {
 
-		Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null };
-		Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null };
+        Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null };
+        Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null };
 
-		Strategy sell1 = new MockStrategy(enter, exit);
+        Strategy sell1 = new MockStrategy(enter, exit);
 
-		Strategy stopper = new StopLossStrategy(indicator, sell1, 500);
+        Strategy stopper = new StopLossStrategy(indicator, sell1, 500);
 
-		Operation buy = new Operation(0, OperationType.BUY);
-		Operation sell = new Operation(1, OperationType.SELL);
+        Operation buy = new Operation(0, OperationType.BUY);
+        Operation sell = new Operation(1, OperationType.SELL);
 
-		Trade trade = new Trade();
-		assertThat(stopper.shouldOperate(trade, 0)).isTrue();
-		trade.operate(0);
+        Trade trade = new Trade();
+        assertThat(stopper.shouldOperate(trade, 0)).isTrue();
+        trade.operate(0);
 
-		assertThat(trade.getEntry()).isEqualTo(buy);
+        assertThat(trade.getEntry()).isEqualTo(buy);
 
-		assertThat(stopper.shouldOperate(trade, 1)).isTrue();
-		trade.operate(1);
+        assertThat(stopper.shouldOperate(trade, 1)).isTrue();
+        trade.operate(1);
 
-		assertThat(trade.getExit()).isEqualTo(sell);
-	}
+        assertThat(trade.getExit()).isEqualTo(sell);
+    }
 
 }

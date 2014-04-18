@@ -29,20 +29,20 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class ClosePriceIndicatorTest {
-	private ClosePriceIndicator closePrice;
+    private ClosePriceIndicator closePrice;
 
-	TimeSeries timeSeries;
+    TimeSeries timeSeries;
 
-	@Before
-	public void setUp() {
-		timeSeries = new MockTimeSeries();
-		closePrice = new ClosePriceIndicator(timeSeries);
-	}
+    @Before
+    public void setUp() {
+        timeSeries = new MockTimeSeries();
+        closePrice = new ClosePriceIndicator(timeSeries);
+    }
 
-	@Test
-	public void testIndicatorShouldRetrieveTickClosePrice() {
-		for (int i = 0; i < 10; i++) {
-			assertThat(timeSeries.getTick(i).getClosePrice()).isEqualTo(closePrice.getValue(i));
-		}
-	}
+    @Test
+    public void testIndicatorShouldRetrieveTickClosePrice() {
+        for (int i = 0; i < 10; i++) {
+            assertThat(timeSeries.getTick(i).getClosePrice()).isEqualTo(closePrice.getValue(i));
+        }
+    }
 }

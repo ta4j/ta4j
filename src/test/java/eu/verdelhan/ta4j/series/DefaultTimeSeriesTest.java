@@ -35,46 +35,46 @@ import org.junit.Test;
 
 public class DefaultTimeSeriesTest {
 
-	private TimeSeries defaultSeries;
+    private TimeSeries defaultSeries;
 
-	private List<Tick> ticks;
+    private List<Tick> ticks;
 
-	private String defaultName;
+    private String defaultName;
 
-	@Before
-	public void setUp() {
-		ticks = new LinkedList<Tick>();
-		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 6), 1d));
-		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 7), 2d));
-		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 9), 3d));
-		ticks.add(new MockTick(new DateTime().withDate(2007, 6, 10), 4d));
+    @Before
+    public void setUp() {
+        ticks = new LinkedList<Tick>();
+        ticks.add(new MockTick(new DateTime().withDate(2007, 6, 6), 1d));
+        ticks.add(new MockTick(new DateTime().withDate(2007, 6, 7), 2d));
+        ticks.add(new MockTick(new DateTime().withDate(2007, 6, 9), 3d));
+        ticks.add(new MockTick(new DateTime().withDate(2007, 6, 10), 4d));
 
-		defaultName = "Series Name";
+        defaultName = "Series Name";
 
-		defaultSeries = new DefaultTimeSeries(defaultName, ticks);
-	}
+        defaultSeries = new DefaultTimeSeries(defaultName, ticks);
+    }
 
-	@Test
-	public void getEndSizeBegin() {
-		assertThat(defaultSeries.getBegin()).isEqualTo(0);
-		assertThat(defaultSeries.getEnd()).isEqualTo(ticks.size() - 1);
-		assertThat(defaultSeries.getSize()).isEqualTo(ticks.size());
-	}
+    @Test
+    public void getEndSizeBegin() {
+        assertThat(defaultSeries.getBegin()).isEqualTo(0);
+        assertThat(defaultSeries.getEnd()).isEqualTo(ticks.size() - 1);
+        assertThat(defaultSeries.getSize()).isEqualTo(ticks.size());
+    }
 
-	@Test
-	public void getPeriodName() {
-		assertThat(defaultSeries.getPeriodName()).endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy"));
-		assertThat(defaultSeries.getPeriodName()).startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy"));
-	}
+    @Test
+    public void getPeriodName() {
+        assertThat(defaultSeries.getPeriodName()).endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy"));
+        assertThat(defaultSeries.getPeriodName()).startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy"));
+    }
 
-	@Test
-	public void getName() {
-		assertThat(defaultSeries.getName().equals(defaultName)).isTrue();
-	}
+    @Test
+    public void getName() {
+        assertThat(defaultSeries.getName().equals(defaultName)).isTrue();
+    }
 
-	@Test
-	public void getPeriodTest() {
-		Period p = new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis());
-		assertThat(defaultSeries.getPeriod()).isEqualTo(p);
-	}
+    @Test
+    public void getPeriodTest() {
+        Period p = new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis());
+        assertThat(defaultSeries.getPeriod()).isEqualTo(p);
+    }
 }

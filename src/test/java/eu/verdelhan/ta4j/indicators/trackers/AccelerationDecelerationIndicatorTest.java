@@ -35,52 +35,52 @@ import org.junit.Test;
 
 public class AccelerationDecelerationIndicatorTest {
 
-	private TimeSeries series;
+    private TimeSeries series;
 
-	@Before
-	public void setUp() {
+    @Before
+    public void setUp() {
 
-		List<Tick> ticks = new ArrayList<Tick>();
+        List<Tick> ticks = new ArrayList<Tick>();
 
-		ticks.add(new MockTick(0, 0, 16, 8));
-		ticks.add(new MockTick(0, 0, 12, 6));
-		ticks.add(new MockTick(0, 0, 18, 14));
-		ticks.add(new MockTick(0, 0, 10, 6));
-		ticks.add(new MockTick(0, 0, 8, 4));
+        ticks.add(new MockTick(0, 0, 16, 8));
+        ticks.add(new MockTick(0, 0, 12, 6));
+        ticks.add(new MockTick(0, 0, 18, 14));
+        ticks.add(new MockTick(0, 0, 10, 6));
+        ticks.add(new MockTick(0, 0, 8, 4));
 
-		series = new MockTimeSeries(ticks);
-	}
+        series = new MockTimeSeries(ticks);
+    }
 
-	@Test
-	public void testCalculateWithSma2AndSma3() throws Exception {
-		AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 2, 3);
+    @Test
+    public void testCalculateWithSma2AndSma3() throws Exception {
+        AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 2, 3);
 
-		assertThat(acceleration.getValue(0)).isZero();
-		assertThat(acceleration.getValue(1)).isZero();
-		assertThat(acceleration.getValue(2)).isEqualTo(0.1666666666d - 0.0833333333d, TATestsUtils.LONG_OFFSET);
-		assertThat(acceleration.getValue(3)).isEqualTo(1d - 0.5833333333, TATestsUtils.LONG_OFFSET);
-		assertThat(acceleration.getValue(4)).isEqualTo(-3d + 1d);
-	}
+        assertThat(acceleration.getValue(0)).isZero();
+        assertThat(acceleration.getValue(1)).isZero();
+        assertThat(acceleration.getValue(2)).isEqualTo(0.1666666666d - 0.0833333333d, TATestsUtils.LONG_OFFSET);
+        assertThat(acceleration.getValue(3)).isEqualTo(1d - 0.5833333333, TATestsUtils.LONG_OFFSET);
+        assertThat(acceleration.getValue(4)).isEqualTo(-3d + 1d);
+    }
 
-	@Test
-	public void testWithSma1AndSma2() throws Exception {
-		AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 1, 2);
+    @Test
+    public void testWithSma1AndSma2() throws Exception {
+        AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 1, 2);
 
-		assertThat(acceleration.getValue(0)).isZero();
-		assertThat(acceleration.getValue(1)).isZero();
-		assertThat(acceleration.getValue(2)).isZero();
-		assertThat(acceleration.getValue(3)).isZero();
-		assertThat(acceleration.getValue(4)).isZero();
-	}
+        assertThat(acceleration.getValue(0)).isZero();
+        assertThat(acceleration.getValue(1)).isZero();
+        assertThat(acceleration.getValue(2)).isZero();
+        assertThat(acceleration.getValue(3)).isZero();
+        assertThat(acceleration.getValue(4)).isZero();
+    }
 
-	@Test
-	public void testWithSmaDefault() throws Exception {
-		AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series);
+    @Test
+    public void testWithSmaDefault() throws Exception {
+        AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series);
 
-		assertThat(acceleration.getValue(0)).isZero();
-		assertThat(acceleration.getValue(1)).isZero();
-		assertThat(acceleration.getValue(2)).isZero();
-		assertThat(acceleration.getValue(3)).isZero();
-		assertThat(acceleration.getValue(4)).isZero();
-	}
+        assertThat(acceleration.getValue(0)).isZero();
+        assertThat(acceleration.getValue(1)).isZero();
+        assertThat(acceleration.getValue(2)).isZero();
+        assertThat(acceleration.getValue(3)).isZero();
+        assertThat(acceleration.getValue(4)).isZero();
+    }
 }

@@ -29,21 +29,21 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class TradeCountIndicatorTest {
-	private TradeCountIndicator tradeIndicator;
+    private TradeCountIndicator tradeIndicator;
 
-	TimeSeries timeSeries;
+    TimeSeries timeSeries;
 
-	@Before
-	public void setUp() {
-		timeSeries = new MockTimeSeries();
-		tradeIndicator = new TradeCountIndicator(timeSeries);
+    @Before
+    public void setUp() {
+        timeSeries = new MockTimeSeries();
+        tradeIndicator = new TradeCountIndicator(timeSeries);
 
-	}
+    }
 
-	@Test
-	public void testIndicatorShouldRetrieveTickTrade() {
-		for (int i = 0; i < 10; i++) {
-			assertThat(timeSeries.getTick(i).getTrades()).isEqualTo(tradeIndicator.getValue(i));
-		}
-	}
+    @Test
+    public void testIndicatorShouldRetrieveTickTrade() {
+        for (int i = 0; i < 10; i++) {
+            assertThat(timeSeries.getTick(i).getTrades()).isEqualTo(tradeIndicator.getValue(i));
+        }
+    }
 }

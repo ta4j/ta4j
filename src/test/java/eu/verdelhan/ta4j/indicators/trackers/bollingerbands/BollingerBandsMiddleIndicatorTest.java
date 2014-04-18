@@ -31,30 +31,30 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class BollingerBandsMiddleIndicatorTest {
-	private TimeSeries data;
+    private TimeSeries data;
 
-	@Before
-	public void setUp() {
-		data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
-	}
+    @Before
+    public void setUp() {
+        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+    }
 
-	@Test
-	public void testBollingerBandsMiddleUsingSMA() throws Exception {
-		SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-		BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
+    @Test
+    public void testBollingerBandsMiddleUsingSMA() throws Exception {
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
-		for (int i = 0; i < data.getSize(); i++) {
-			assertThat(bbmSMA.getValue(i)).isEqualTo(sma.getValue(i));
-		}
-	}
+        for (int i = 0; i < data.getSize(); i++) {
+            assertThat(bbmSMA.getValue(i)).isEqualTo(sma.getValue(i));
+        }
+    }
 
-	@Test
-	public void testBollingerBandsLowerShouldWorkJumpingIndexes() {
-		SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-		BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
+    @Test
+    public void testBollingerBandsLowerShouldWorkJumpingIndexes() {
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
-		assertThat(bbmSMA.getValue(6)).isEqualTo(sma.getValue(6));
-		assertThat(bbmSMA.getValue(0)).isEqualTo(sma.getValue(0));
+        assertThat(bbmSMA.getValue(6)).isEqualTo(sma.getValue(6));
+        assertThat(bbmSMA.getValue(0)).isEqualTo(sma.getValue(0));
 
-	}
+    }
 }

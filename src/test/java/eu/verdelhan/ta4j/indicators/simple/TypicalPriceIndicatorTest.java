@@ -31,22 +31,22 @@ import org.junit.Test;
 
 public class TypicalPriceIndicatorTest {
 
-	private TypicalPriceIndicator typicalPriceIndicator;
+    private TypicalPriceIndicator typicalPriceIndicator;
 
-	TimeSeries timeSeries;
+    TimeSeries timeSeries;
 
-	@Before
-	public void setUp() {
-		timeSeries = new MockTimeSeries();
-		typicalPriceIndicator = new TypicalPriceIndicator(timeSeries);
-	}
+    @Before
+    public void setUp() {
+        timeSeries = new MockTimeSeries();
+        typicalPriceIndicator = new TypicalPriceIndicator(timeSeries);
+    }
 
-	@Test
-	public void testIndicatorShouldRetrieveTickMaxPrice() {
-		for (int i = 0; i < 10; i++) {
-			Tick tick = timeSeries.getTick(i);
-			double typicalPrice = (tick.getMaxPrice() + tick.getMinPrice() + tick.getClosePrice()) / 3d;
-			assertThat(typicalPriceIndicator.getValue(i)).isEqualTo(typicalPrice);
-		}
-	}
+    @Test
+    public void testIndicatorShouldRetrieveTickMaxPrice() {
+        for (int i = 0; i < 10; i++) {
+            Tick tick = timeSeries.getTick(i);
+            double typicalPrice = (tick.getMaxPrice() + tick.getMinPrice() + tick.getClosePrice()) / 3d;
+            assertThat(typicalPriceIndicator.getValue(i)).isEqualTo(typicalPrice);
+        }
+    }
 }

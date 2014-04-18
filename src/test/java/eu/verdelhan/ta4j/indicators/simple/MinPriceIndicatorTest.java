@@ -29,20 +29,20 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class MinPriceIndicatorTest {
-	private MinPriceIndicator minPriceIndicator;
+    private MinPriceIndicator minPriceIndicator;
 
-	TimeSeries timeSeries;
+    TimeSeries timeSeries;
 
-	@Before
-	public void setUp() {
-		timeSeries = new MockTimeSeries();
-		minPriceIndicator = new MinPriceIndicator(timeSeries);
-	}
+    @Before
+    public void setUp() {
+        timeSeries = new MockTimeSeries();
+        minPriceIndicator = new MinPriceIndicator(timeSeries);
+    }
 
-	@Test
-	public void testIndicatorShouldRetrieveTickMinPrice() {
-		for (int i = 0; i < 10; i++) {
-			assertThat(timeSeries.getTick(i).getMinPrice()).isEqualTo(minPriceIndicator.getValue(i));
-		}
-	}
+    @Test
+    public void testIndicatorShouldRetrieveTickMinPrice() {
+        for (int i = 0; i < 10; i++) {
+            assertThat(timeSeries.getTick(i).getMinPrice()).isEqualTo(minPriceIndicator.getValue(i));
+        }
+    }
 }
