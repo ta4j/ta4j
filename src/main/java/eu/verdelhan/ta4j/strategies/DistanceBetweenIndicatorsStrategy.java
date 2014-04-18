@@ -23,12 +23,15 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
  * Distance between {@link Indicator indicators} strategy.
  * <p>
  * Enter: when the distance between the two indicators is above the difference<br>
  * Exit: when the distance between the two indicators is below the difference
+ * <p>
+ *
  */
 public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
@@ -39,6 +42,21 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
     private double distance;
 
     private double difference;
+
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param constant a numerical constant (will be a {@link ConstantIndicator})
+     * @param distance the distance
+     * @param difference the difference
+     */
+    public <T extends Number> DistanceBetweenIndicatorsStrategy(Indicator<? extends Number> indicator, T constant,
+            double distance, double difference) {
+        this.upper = indicator;
+        this.lower = new ConstantIndicator<T>(constant);
+        this.distance = distance;
+        this.difference = difference;
+    }
 
     /**
      * Constructor.
