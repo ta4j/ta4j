@@ -48,7 +48,7 @@ public class CachedIndicatorTest {
     }
 
     @Test
-    public void testIfCacheWorks() {
+    public void ifCacheWorks() {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
         Double firstTime = sma.getValue(4);
         Double seconTime = sma.getValue(4);
@@ -56,7 +56,7 @@ public class CachedIndicatorTest {
     }
 
     @Test
-    public void testIncreaseArrayMethod() {
+    public void increaseArrayMethod() {
         double[] d = new double[200];
         Arrays.fill(d, 10);
         TimeSeries dataMax = new MockTimeSeries(d);
@@ -65,7 +65,7 @@ public class CachedIndicatorTest {
     }
 
     @Test
-    public void testReallyBigCachedEMAExtendsCachedIndicator() {
+    public void reallyBigCachedEMAExtendsCachedIndicator() {
         int maxIndex = 1000000;
         List<Tick> ticks = new ArrayList<Tick>(Collections.nCopies(maxIndex, new MockTick(0)));
         TimeSeries longData = new MockTimeSeries(ticks);
@@ -76,7 +76,7 @@ public class CachedIndicatorTest {
     }
 
     @Test
-    public void testReallyCachedBigRSINotExtendsCachedIndicator() {
+    public void reallyCachedBigRSINotExtendsCachedIndicator() {
         int maxIndex = 1000000;
         List<Tick> ticks = new ArrayList<Tick>(Collections.nCopies(maxIndex, new MockTick(0)));
         TimeSeries longData = new MockTimeSeries(ticks);

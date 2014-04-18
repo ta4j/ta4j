@@ -39,7 +39,7 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void testAverageLossUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void averageLossUsingTimeFrame5UsingClosePrice() throws Exception {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 5);
 
         assertThat(averageLoss.getValue(5)).isEqualTo(1d / 5d);
@@ -54,26 +54,26 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void testAverageLossShouldWorkJumpingIndexes() {
+    public void averageLossShouldWorkJumpingIndexes() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 5);
         assertThat(averageLoss.getValue(10)).isEqualTo(2d / 5d);
         assertThat(averageLoss.getValue(12)).isEqualTo(3d / 5d);
     }
 
     @Test
-    public void testAverageLossMustReturnZeroWhenTheDataDoesntGain() {
+    public void averageLossMustReturnZeroWhenTheDataDoesntGain() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 4);
         assertThat(averageLoss.getValue(3)).isEqualTo(0);
     }
 
     @Test
-    public void testAverageLossWhenTimeFrameIsGreaterThanIndex() {
+    public void averageLossWhenTimeFrameIsGreaterThanIndex() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 1000);
         assertThat(averageLoss.getValue(12)).isEqualTo(5d / data.getSize());
     }
 
     @Test
-    public void testAverageGainWhenIndexIsZeroMustBeZero() {
+    public void averageGainWhenIndexIsZeroMustBeZero() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 10);
         assertThat(averageLoss.getValue(0)).isEqualTo(0);
     }

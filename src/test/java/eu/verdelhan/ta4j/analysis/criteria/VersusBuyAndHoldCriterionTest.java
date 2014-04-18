@@ -41,7 +41,7 @@ import org.junit.Test;
 public class VersusBuyAndHoldCriterionTest {
 
     @Test
-    public void testCalculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -52,7 +52,7 @@ public class VersusBuyAndHoldCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         List<Decision> decisions = new LinkedList<Decision>();
@@ -71,7 +71,7 @@ public class VersusBuyAndHoldCriterionTest {
     }
 
     @Test
-    public void testCalculateOnlyWithLossTrades() {
+    public void calculateOnlyWithLossTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -82,7 +82,7 @@ public class VersusBuyAndHoldCriterionTest {
     }
     
     @Test
-    public void testCalculateWithOnlyOneTrade() {
+    public void calculateWithOnlyOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
@@ -91,7 +91,7 @@ public class VersusBuyAndHoldCriterionTest {
     }
 
     @Test
-    public void testCalculateWithNoTrades() {
+    public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
 
@@ -99,7 +99,7 @@ public class VersusBuyAndHoldCriterionTest {
         assertThat(buyAndHold.calculate(series, trades)).isEqualTo(1 / 0.7);
     }
     @Test
-    public void testCalculateWithAverageProfit()
+    public void calculateWithAverageProfit()
     {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 130);
         List<Trade> trades = new ArrayList<Trade>();
@@ -111,7 +111,7 @@ public class VersusBuyAndHoldCriterionTest {
         assertThat(buyAndHold.calculate(series, trades)).isEqualTo(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6));
     }
     @Test
-    public void testCalculateWithNumberOfTicks()
+    public void calculateWithNumberOfTicks()
     {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 130);
         List<Trade> trades = new ArrayList<Trade>();

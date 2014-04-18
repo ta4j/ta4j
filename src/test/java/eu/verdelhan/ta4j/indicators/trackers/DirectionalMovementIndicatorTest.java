@@ -35,7 +35,7 @@ import org.junit.Test;
 public class DirectionalMovementIndicatorTest {
 
     @Test
-    public void testGetValue()
+    public void getValue()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         

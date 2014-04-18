@@ -34,7 +34,7 @@ import org.junit.Test;
 public class TrueRangeIndicatorTest {
 
     @Test
-    public void testGetValue() {
+    public void getValue() {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 12, 15, 8));
         ticks.add(new MockTick(0, 8, 11, 6));

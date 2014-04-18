@@ -35,7 +35,7 @@ import org.junit.Test;
 public class AverageDirectionalMovementUpIndicatorTest {
     
     @Test
-    public void testAverageDirectionalMovement()
+    public void averageDirectionalMovement()
     {
         
         List<Tick> ticks = new ArrayList<Tick>();

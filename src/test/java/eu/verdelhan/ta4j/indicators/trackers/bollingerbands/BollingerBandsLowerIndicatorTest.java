@@ -51,7 +51,7 @@ public class BollingerBandsLowerIndicatorTest {
     }
 
     @Test
-    public void testBollingerBandsLowerUsingSMAAndStandardDeviation() throws Exception {
+    public void bollingerBandsLowerUsingSMAAndStandardDeviation() throws Exception {
 
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
@@ -67,7 +67,7 @@ public class BollingerBandsLowerIndicatorTest {
     }
 
     @Test
-    public void testBollingerBandsLowerShouldWorkJumpingIndexes() {
+    public void bollingerBandsLowerShouldWorkJumpingIndexes() {
 
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);

@@ -41,7 +41,7 @@ import org.junit.Test;
 public class BuyAndHoldCriterionTest {
 
     @Test
-    public void testCalculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -52,7 +52,7 @@ public class BuyAndHoldCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         List<Decision> decisions = new LinkedList<Decision>();
@@ -72,7 +72,7 @@ public class BuyAndHoldCriterionTest {
     }
 
     @Test
-    public void testCalculateOnlyWithLossTrades() {
+    public void calculateOnlyWithLossTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -83,7 +83,7 @@ public class BuyAndHoldCriterionTest {
     }
 
     @Test
-    public void testCalculateWithNoTrades() {
+    public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
 
@@ -92,7 +92,7 @@ public class BuyAndHoldCriterionTest {
     }
     
     @Test
-    public void testCalculateWithOneTrade()
+    public void calculateWithOneTrade()
     {
         MockTimeSeries series = new MockTimeSeries(100, 105);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));

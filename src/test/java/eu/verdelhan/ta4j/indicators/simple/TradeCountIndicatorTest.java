@@ -41,7 +41,7 @@ public class TradeCountIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickTrade() {
+    public void indicatorShouldRetrieveTickTrade() {
         for (int i = 0; i < 10; i++) {
             assertThat(timeSeries.getTick(i).getTrades()).isEqualTo(tradeIndicator.getValue(i));
         }

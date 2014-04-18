@@ -35,7 +35,7 @@ import org.junit.Test;
 public class DirectionalUpIndicatorTest {
     
     @Test
-    public void testGetValue()
+    public void getValue()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         

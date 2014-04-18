@@ -41,7 +41,7 @@ public class AmountIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickAmountPrice() {
+    public void indicatorShouldRetrieveTickAmountPrice() {
         for (int i = 0; i < 10; i++) {
             assertThat(timeSeries.getTick(i).getAmount()).isEqualTo(amountIndicator.getValue(i));
         }

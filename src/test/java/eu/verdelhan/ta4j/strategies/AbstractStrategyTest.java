@@ -78,7 +78,7 @@ public class AbstractStrategyTest {
     }
 
     @Test
-    public void testAnd() {
+    public void and() {
         Strategy strategy = fakeStrategy.and(fakeStrategy2);  
         
         assertThat(strategy.shouldEnter(0)).isEqualTo(false);
@@ -97,7 +97,7 @@ public class AbstractStrategyTest {
     }
 
     @Test
-    public void testOr() {
+    public void or() {
         Strategy strategy = fakeStrategy.or(fakeStrategy2);
         
         assertThat(strategy.shouldEnter(0)).isEqualTo(true);

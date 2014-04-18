@@ -34,7 +34,7 @@ import org.junit.Test;
 public class AccumulationDistributionIndicatorTest {
 
     @Test
-    public void testAccumulationDistribution()
+    public void accumulationDistribution()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(null, 0d, 10d, 12d, 8d, 0d, 200d,0));//2-2 * 200 / 4

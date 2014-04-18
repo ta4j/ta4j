@@ -42,7 +42,7 @@ public class TypicalPriceIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickMaxPrice() {
+    public void indicatorShouldRetrieveTickMaxPrice() {
         for (int i = 0; i < 10; i++) {
             Tick tick = timeSeries.getTick(i);
             double typicalPrice = (tick.getMaxPrice() + tick.getMinPrice() + tick.getClosePrice()) / 3d;

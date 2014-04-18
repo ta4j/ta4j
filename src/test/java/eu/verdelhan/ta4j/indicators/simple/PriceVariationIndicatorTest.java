@@ -41,7 +41,7 @@ public class PriceVariationIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickVariation() {
+    public void indicatorShouldRetrieveTickVariation() {
         assertThat(variationIndicator.getValue(0)).isEqualTo(1);
         for (int i = 1; i < 10; i++) {
             double previousTickClosePrice = timeSeries.getTick(i - 1).getClosePrice();

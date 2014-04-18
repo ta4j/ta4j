@@ -36,7 +36,7 @@ public class DirectionalMovementDownIndicatorTest {
 
     
     @Test
-    public void testZeroDirectionalMovement()
+    public void zeroDirectionalMovement()
     {
         MockTick yesterdayTick = new MockTick(0, 0, 10, 2);
         MockTick todayTick = new MockTick(0, 0, 6, 6);
@@ -49,7 +49,7 @@ public class DirectionalMovementDownIndicatorTest {
     }
     
     @Test
-    public void testZeroDirectionalMovement2()
+    public void zeroDirectionalMovement2()
     {
         MockTick yesterdayTick = new MockTick(0, 0, 6, 12);
         MockTick todayTick = new MockTick(0, 0, 12, 6);
@@ -61,7 +61,7 @@ public class DirectionalMovementDownIndicatorTest {
         assertThat(down.getValue(1)).isEqualTo(0d);
     }
     @Test
-    public void testZeroDirectionalMovement3()
+    public void zeroDirectionalMovement3()
     {
         MockTick yesterdayTick = new MockTick(0, 0, 6, 6);
         MockTick todayTick = new MockTick(0, 0, 12, 4);
@@ -73,7 +73,7 @@ public class DirectionalMovementDownIndicatorTest {
         assertThat(down.getValue(1)).isEqualTo(0d);
     }
     @Test
-    public void testPositiveDirectionalMovement()
+    public void positiveDirectionalMovement()
     {
         MockTick yesterdayTick = new MockTick(0, 0, 6, 20);
         MockTick todayTick = new MockTick(0, 0, 12, 4);

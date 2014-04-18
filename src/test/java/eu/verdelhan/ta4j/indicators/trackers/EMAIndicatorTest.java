@@ -42,7 +42,7 @@ public class EMAIndicatorTest {
     }
 
     @Test
-    public void testEMAUsingTimeFrame10UsingClosePrice() {
+    public void EMAUsingTimeFrame10UsingClosePrice() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
 
         assertThat(ema.getValue(9)).isEqualTo(63.65, TATestsUtils.SHORT_OFFSET);
@@ -51,14 +51,14 @@ public class EMAIndicatorTest {
     }
 
     @Test
-    public void testEMAFirstValueShouldBeEqualsToFirstDataValue() {
+    public void EMAFirstValueShouldBeEqualsToFirstDataValue() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
 
         assertThat(ema.getValue(0)).isEqualTo(64.75);
     }
 
     @Test
-    public void testValuesLessThanTimeFrameMustBeEqualsToSMAValues() {
+    public void valuesLessThanTimeFrameMustBeEqualsToSMAValues() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
 
@@ -70,13 +70,13 @@ public class EMAIndicatorTest {
     }
 
     @Test
-    public void testEMAShouldWorkJumpingIndexes() {
+    public void EMAShouldWorkJumpingIndexes() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
         assertThat(ema.getValue(10)).isEqualTo(63.23, TATestsUtils.SHORT_OFFSET);
     }
     
     @Test
-    public void testSmallTimeFrame()
+    public void smallTimeFrame()
     {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 1);
         assertThat(ema.getValue(0)).isEqualTo(64.75d);

@@ -35,7 +35,7 @@ import org.junit.Test;
 public class AverageDirectionalMovementDownIndicatorTest {
     
     @Test
-    public void testAverageDirectionalMovement()
+    public void averageDirectionalMovement()
     {
         MockTick tick1 = new MockTick(0, 0, 13, 7);
         MockTick tick2 = new MockTick(0, 0, 11, 5);

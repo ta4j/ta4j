@@ -41,7 +41,7 @@ public class ResistanceStrategyTest {
     }
 
     @Test
-    public void testResistanceShouldSell() {
+    public void resistanceShouldSell() {
         Operation[] enter = new Operation[] { null, null, null, null, null, null, null };
 
         Strategy neverSell = new MockStrategy(enter, enter);

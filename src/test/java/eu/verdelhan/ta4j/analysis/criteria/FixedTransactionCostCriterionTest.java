@@ -40,7 +40,7 @@ import org.junit.Test;
 public class FixedTransactionCostCriterionTest {
     
     @Test
-    public void testCalculate() {
+    public void calculate() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
         AnalysisCriterion transactionCost = new FixedTransactionCostCriterion(1.3d);
@@ -60,7 +60,7 @@ public class FixedTransactionCostCriterionTest {
     }
 
     @Test
-    public void testCalculateWithOneTrade() {
+    public void calculateWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade trade = new Trade();
         AnalysisCriterion transactionCost = new FixedTransactionCostCriterion(0.75d);
@@ -78,7 +78,7 @@ public class FixedTransactionCostCriterionTest {
     }
     
     @Test
-    public void testSummarize() {
+    public void summarize() {
         DateTime date = new DateTime();
         
         MockTimeSeries series = new MockTimeSeries(new double[] { 100, 95, 100, 80, 85, 70 }, new DateTime[]{date, date, date, date, date, date});

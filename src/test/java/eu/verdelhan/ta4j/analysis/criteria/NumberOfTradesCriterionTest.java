@@ -41,7 +41,7 @@ import org.junit.Test;
 public class NumberOfTradesCriterionTest {
 
     @Test
-    public void testCalculateWithNoTrades() {
+    public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
 
@@ -50,7 +50,7 @@ public class NumberOfTradesCriterionTest {
     }
 
     @Test
-    public void testCalculateWithTwoTrades() {
+    public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -61,7 +61,7 @@ public class NumberOfTradesCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         //TODO Dummy Decision must turn MockDecision
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Decision> decisions = new LinkedList<Decision>();
@@ -81,7 +81,7 @@ public class NumberOfTradesCriterionTest {
         assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(2d);
     }
     @Test
-    public void testCalculateWithOneTrade()
+    public void calculateWithOneTrade()
     {
         Trade trade = new Trade();
         NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();

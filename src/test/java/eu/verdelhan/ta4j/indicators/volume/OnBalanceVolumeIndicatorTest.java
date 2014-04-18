@@ -33,7 +33,7 @@ import org.junit.Test;
 
 public class OnBalanceVolumeIndicatorTest {
     @Test
-    public void testGetValue()
+    public void getValue()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(null, 0, 10, 0, 0, 0, 4, 0));

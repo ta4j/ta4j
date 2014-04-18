@@ -51,7 +51,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainTrades() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         trades.clear();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -61,7 +61,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         List<Decision> decisions = new LinkedList<Decision>();
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
@@ -79,7 +79,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateWithASimpleTrade() {
+    public void calculateWithASimpleTrade() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         trades.clear();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -88,7 +88,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateOnlyWithLossTrades() {
+    public void calculateOnlyWithLossTrades() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         trades.clear();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -98,7 +98,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateWithNoTicksShouldReturn1() {
+    public void calculateWithNoTicksShouldReturn1() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         trades.clear();
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
@@ -106,7 +106,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateWithOneTrade()
+    public void calculateWithOneTrade()
     {
         series = new MockTimeSeries(100, 105);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));

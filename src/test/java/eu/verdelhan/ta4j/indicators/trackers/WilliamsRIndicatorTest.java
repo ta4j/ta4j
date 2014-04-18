@@ -62,7 +62,7 @@ public class WilliamsRIndicatorTest {
     }
 
     @Test
-    public void testWilliamsRUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void williamsRUsingTimeFrame5UsingClosePrice() throws Exception {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
@@ -77,7 +77,7 @@ public class WilliamsRIndicatorTest {
     }
 
     @Test
-    public void testWilliamsRShouldWorkJumpingIndexes() {
+    public void williamsRShouldWorkJumpingIndexes() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
         assertThat(wr.getValue(10)).isEqualTo(-13.95, TATestsUtils.SHORT_OFFSET);
@@ -85,7 +85,7 @@ public class WilliamsRIndicatorTest {
     }
 
     @Test
-    public void testWilliamsRUsingTimeFrame10UsingClosePrice() {
+    public void williamsRUsingTimeFrame10UsingClosePrice() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
@@ -97,7 +97,7 @@ public class WilliamsRIndicatorTest {
     }
 
     @Test
-    public void testValueLessThenTimeFrame() {
+    public void valueLessThenTimeFrame() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 

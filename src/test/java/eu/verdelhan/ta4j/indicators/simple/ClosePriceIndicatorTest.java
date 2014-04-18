@@ -40,7 +40,7 @@ public class ClosePriceIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickClosePrice() {
+    public void indicatorShouldRetrieveTickClosePrice() {
         for (int i = 0; i < 10; i++) {
             assertThat(timeSeries.getTick(i).getClosePrice()).isEqualTo(closePrice.getValue(i));
         }

@@ -59,7 +59,7 @@ public class StochasticOscillatorDIndicatorTest {
     }
 
     @Test
-    public void testStochasticOscilatorDParam14UsingSMA3AndGenericConstructer() {
+    public void stochasticOscilatorDParam14UsingSMA3AndGenericConstructer() {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
         SMAIndicator sma = new SMAIndicator(sof, 3);
@@ -71,7 +71,7 @@ public class StochasticOscillatorDIndicatorTest {
     }
 
     @Test
-    public void testStochasticOscilatorDParam14UsingSMA3() {
+    public void stochasticOscilatorDParam14UsingSMA3() {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
         StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sof);
@@ -83,7 +83,7 @@ public class StochasticOscillatorDIndicatorTest {
     }
 
     @Test
-    public void testStochasticOscilatorDShouldWorkJumpingIndexes() {
+    public void stochasticOscilatorDShouldWorkJumpingIndexes() {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
         StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sof);

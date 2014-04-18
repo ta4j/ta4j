@@ -41,7 +41,7 @@ import org.junit.Test;
 public class MaximumDrawdownCriterionTest {
 
     @Test
-    public void testCalculateWithNoTrades() {
+    public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
@@ -50,7 +50,7 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void testCalculateWithOnlyGains() {
+    public void calculateWithOnlyGains() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
@@ -61,7 +61,7 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void testCalculateShouldWork() {
+    public void calculateShouldWork() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
@@ -74,7 +74,7 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void testCalculateWithNullSeriesSizeShouldReturn1() {
+    public void calculateWithNullSeriesSizeShouldReturn1() {
         MockTimeSeries series = new MockTimeSeries(new double[] {});
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
@@ -83,7 +83,7 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void testWithTradesThatSellBeforeBuying() {
+    public void withTradesThatSellBeforeBuying() {
         MockTimeSeries series = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
@@ -95,7 +95,7 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void testWithSimpleTrades() {
+    public void withSimpleTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 10, 5, 6, 1);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
@@ -111,7 +111,7 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         List<Decision> decisions = new LinkedList<Decision>();
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
@@ -137,7 +137,7 @@ public class MaximumDrawdownCriterionTest {
 
     }
     @Test
-    public void testWithConstrainedTimeSeries()
+    public void withConstrainedTimeSeries()
     {
         MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
         ConstrainedTimeSeries series = new ConstrainedTimeSeries(sampleSeries, 4, 8);

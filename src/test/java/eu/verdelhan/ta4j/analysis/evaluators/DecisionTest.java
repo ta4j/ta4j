@@ -56,7 +56,7 @@ public class DecisionTest {
     }
 
     @Test
-    public void testEvaluateCriterion() {
+    public void evaluateCriterion() {
 
         series = new MockTimeSeries(3d, 5d, 7d, 9d);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
@@ -76,7 +76,7 @@ public class DecisionTest {
     }
 
     @Test
-    public void testEvaluateCriterionNotSelling() {
+    public void evaluateCriterionNotSelling() {
         series = new MockTimeSeries(3d, 1d, 7d, 9d);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         
@@ -92,7 +92,7 @@ public class DecisionTest {
     }
 
     @Test
-    public void testEvaluateCriterionWithAnotherCriteria() {
+    public void evaluateCriterionWithAnotherCriteria() {
         series = new MockTimeSeries(3d, 1d, 7d, 9d);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         
@@ -107,7 +107,7 @@ public class DecisionTest {
     }
     
     @Test
-    public void testAverageProfitWithZeroNumberOfTicks() {
+    public void averageProfitWithZeroNumberOfTicks() {
         series = new MockTimeSeries(3d, 1d, 7d, 9d);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         
@@ -123,7 +123,7 @@ public class DecisionTest {
     }
 
     @Test
-    public void testApplyFor() {
+    public void applyFor() {
         DateTime date = new DateTime();
         series = new MockTimeSeries(new double[] { 1d, 2d, 3d, 4d, 5d,5d, 5d, 5d, 5d, 5d},new DateTime[]{date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2000),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),date.withYear(2001),});
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));

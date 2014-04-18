@@ -52,7 +52,7 @@ public class NotSoFastStrategyTest {
     }
 
     @Test
-    public void testWith3Ticks() {
+    public void with3Ticks() {
         strategy = new NotSoFastStrategy(fakeStrategy, 3);
 
         assertThat(strategy.shouldEnter(0)).isTrue();
@@ -65,7 +65,7 @@ public class NotSoFastStrategyTest {
     }
 
     @Test
-    public void testWith0Ticks() {
+    public void with0Ticks() {
         strategy = new NotSoFastStrategy(fakeStrategy, 0);
 
         assertThat(strategy.shouldEnter(0)).isTrue();

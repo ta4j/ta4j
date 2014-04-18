@@ -39,7 +39,7 @@ public class LowestValueIndicatorTest {
     }
 
     @Test
-    public void testLowestValueIndicatorUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() throws Exception {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
 
         assertThat(lowestValue.getValue(4)).isEqualTo(1d);
@@ -55,20 +55,20 @@ public class LowestValueIndicatorTest {
     }
 
     @Test
-    public void testLowestValueShouldWorkJumpingIndexes() {
+    public void lowestValueShouldWorkJumpingIndexes() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
         assertThat(lowestValue.getValue(10)).isEqualTo(2d);
         assertThat(lowestValue.getValue(6)).isEqualTo(3d);
     }
 
     @Test
-    public void testLowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
+    public void lowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
         assertThat(lowestValue.getValue(0)).isEqualTo(1d);
     }
 
     @Test
-    public void testLowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
+    public void lowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
         assertThat(lowestValue.getValue(12)).isEqualTo(1d);
     }

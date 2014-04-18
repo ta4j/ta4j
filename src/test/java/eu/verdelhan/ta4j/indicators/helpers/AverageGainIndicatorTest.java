@@ -39,7 +39,7 @@ public class AverageGainIndicatorTest {
     }
 
     @Test
-    public void testAverageGainUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void averageGainUsingTimeFrame5UsingClosePrice() throws Exception {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 5);
 
         assertThat(averageGain.getValue(5)).isEqualTo(4d / 5d);
@@ -53,26 +53,26 @@ public class AverageGainIndicatorTest {
     }
 
     @Test
-    public void testAverageGainShouldWorkJumpingIndexes() {
+    public void averageGainShouldWorkJumpingIndexes() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 5);
         assertThat(averageGain.getValue(10)).isEqualTo(2d / 5d);
         assertThat(averageGain.getValue(12)).isEqualTo(1d / 5d);
     }
 
     @Test
-    public void testAverageGainMustReturnZeroWhenTheDataDoesntGain() {
+    public void averageGainMustReturnZeroWhenTheDataDoesntGain() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 3);
         assertThat(averageGain.getValue(9)).isEqualTo(0);
     }
 
     @Test
-    public void testAverageGainWhenTimeFrameIsGreaterThanIndicatorDataShouldBeCalculatedWithDataSize() {
+    public void averageGainWhenTimeFrameIsGreaterThanIndicatorDataShouldBeCalculatedWithDataSize() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 1000);
         assertThat(averageGain.getValue(12)).isEqualTo(6d / data.getSize());
     }
 
     @Test
-    public void testAverageGainWhenIndexIsZeroMustBeZero() {
+    public void averageGainWhenIndexIsZeroMustBeZero() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 10);
         assertThat(averageGain.getValue(0)).isEqualTo(0);
     }

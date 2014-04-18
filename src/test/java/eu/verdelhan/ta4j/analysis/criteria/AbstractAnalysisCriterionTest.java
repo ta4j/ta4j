@@ -29,7 +29,7 @@ import org.junit.Test;
 public class AbstractAnalysisCriterionTest {
 
     @Test
-    public void testToString() {
+    public void toStringMethod() {
         AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
         assertThat(c1.toString()).isEqualTo("Average Profit");
         AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();

@@ -48,7 +48,7 @@ public class RewardRiskRatioCriterionTest {
     }
 
     @Test
-    public void testRewardRiskRatioCriterion() {
+    public void rewardRiskRatioCriterion() {
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(4, OperationType.SELL)));
@@ -64,7 +64,7 @@ public class RewardRiskRatioCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
         List<Decision> decisions = new LinkedList<Decision>();
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
@@ -92,7 +92,7 @@ public class RewardRiskRatioCriterionTest {
     }
 
     @Test
-    public void testRewardRiskRatioCriterionOnlyWithGain() {
+    public void rewardRiskRatioCriterionOnlyWithGain() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -103,7 +103,7 @@ public class RewardRiskRatioCriterionTest {
     }
 
     @Test
-    public void testRewardRiskRatioCriterionWithNoTrades() {
+    public void rewardRiskRatioCriterionWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         List<Trade> trades = new ArrayList<Trade>();
 
@@ -112,7 +112,7 @@ public class RewardRiskRatioCriterionTest {
     }
     
     @Test
-    public void testWithOneTrade() {
+    public void withOneTrade() {
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
         MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);

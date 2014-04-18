@@ -35,7 +35,7 @@ import org.junit.Test;
 public class TotalProfitCriterionTest {
 
     @Test
-    public void testCalculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -46,7 +46,7 @@ public class TotalProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateOnlyWithLossTrades() {
+    public void calculateOnlyWithLossTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -57,7 +57,7 @@ public class TotalProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateProfitWithTradesThatStartSelling() {
+    public void calculateProfitWithTradesThatStartSelling() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.SELL), new Operation(1, OperationType.BUY)));
@@ -68,7 +68,7 @@ public class TotalProfitCriterionTest {
     }
 
     @Test
-    public void testCalculateWithNoTradesShouldReturn1() {
+    public void calculateWithNoTradesShouldReturn1() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
 

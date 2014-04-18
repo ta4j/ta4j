@@ -44,7 +44,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testApllyForRegularSlicer() {
+    public void apllyForRegularSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
@@ -59,14 +59,14 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testPeriodsPerSliceGreaterThan1() {
+    public void periodsPerSliceGreaterThan1() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         slicer = new PartialMemorizedSlicer(series, new Period().withYears(1), 0);
     }
 
     @Test
-    public void testStartDateBeforeTimeSeriesDate() {
+    public void startDateBeforeTimeSeriesDate() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
@@ -81,7 +81,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testApllyForPartialMemorizedSlicer() {
+    public void apllyForPartialMemorizedSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
@@ -105,7 +105,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testApllyForFullMemorizedSlicer() {
+    public void apllyForFullMemorizedSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
@@ -129,7 +129,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testApllyForSeries() {
+    public void apllyForSeries() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
@@ -162,7 +162,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testSplitByYearOneDatePerYear() {
+    public void splitByYearOneDatePerYear() {
 
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
@@ -189,7 +189,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testSplitByYearForcingJuly() {
+    public void splitByYearForcingJuly() {
         Period period = new Period().withYears(1);
 
         series = new MockTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 2, 1), date.withDate(2000, 3, 1),
@@ -212,7 +212,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testSplitByYearWithHolesBetweenSlices() {
+    public void splitByYearWithHolesBetweenSlices() {
 
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
                 .withYear(2001), date.withYear(2001), date.withYear(2001), date.withYear(2002), date.withYear(2002),
@@ -238,7 +238,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testSplitByYearBeginningInJuly() {
+    public void splitByYearBeginningInJuly() {
         Period period = new Period().withYears(1);
 
         series = new MockTimeSeries(date.withDate(2000, 7, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
@@ -261,7 +261,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testSplitByYearBeginingInJulyOverridingPeriodBeginTo1of1of2000() {
+    public void splitByYearBeginingInJulyOverridingPeriodBeginTo1of1of2000() {
         Period period = new Period().withYears(1);
 
         series = new MockTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
@@ -286,7 +286,7 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void testSplitByHour() {
+    public void splitByHour() {
         Period period = new Period().withHours(1);
 
         DateTime openTime = new DateTime(0).withTime(10, 0, 0, 0);
@@ -318,7 +318,7 @@ public class PartialMemorizesSlicerTest {
     }
     
     @Test
-    public void testAverageTicksPerSlice()
+    public void averageTicksPerSlice()
     {
         Period period = new Period().withYears(1);
         series = new MockTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),

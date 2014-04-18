@@ -119,7 +119,7 @@ public class TradeTest {
     }
 
     @Test
-    public void testOverrideToString() {
+    public void overrideToString() {
         assertThat(trEquals2.toString()).isEqualTo(trEquals1.toString());
 
         assertThat(trNotEquals1.toString()).isNotEqualTo(trEquals1.toString());

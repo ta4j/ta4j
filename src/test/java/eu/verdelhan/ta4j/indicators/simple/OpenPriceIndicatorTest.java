@@ -40,7 +40,7 @@ public class OpenPriceIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickOpenPrice() {
+    public void indicatorShouldRetrieveTickOpenPrice() {
         for (int i = 0; i < 10; i++) {
             assertThat(timeSeries.getTick(i).getOpenPrice()).isEqualTo(openPriceIndicator.getValue(i));
         }

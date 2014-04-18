@@ -41,7 +41,7 @@ public class PipeEnterStrategyTest {
     }
 
     @Test
-    public void testFirstSellLastBuy() {
+    public void firstSellLastBuy() {
         Trade trade = new Trade();
         MockIndicator<Double> value = new MockIndicator<Double>(new Double[] { 25d, 27d, 28d, 27d, 30d, 33d, 35d, 37d, 35d, 29d, 11d, 10d, 15d,
                 30d, 31d });
@@ -59,7 +59,7 @@ public class PipeEnterStrategyTest {
     }
 
     @Test
-    public void testFirstBuyLastSell() {
+    public void firstBuyLastSell() {
         Trade trade = new Trade();
         MockIndicator<Double> value = new MockIndicator<Double>(new Double[] { 8d, 15d, 16d, 33d, 40d, 45d, 47d, 40d, 32d, 25d, 15d, 16d, 11d,
                 10d, 12d });

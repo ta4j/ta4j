@@ -39,7 +39,7 @@ public class BollingerBandsMiddleIndicatorTest {
     }
 
     @Test
-    public void testBollingerBandsMiddleUsingSMA() throws Exception {
+    public void bollingerBandsMiddleUsingSMA() throws Exception {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
@@ -49,7 +49,7 @@ public class BollingerBandsMiddleIndicatorTest {
     }
 
     @Test
-    public void testBollingerBandsLowerShouldWorkJumpingIndexes() {
+    public void bollingerBandsLowerShouldWorkJumpingIndexes() {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 

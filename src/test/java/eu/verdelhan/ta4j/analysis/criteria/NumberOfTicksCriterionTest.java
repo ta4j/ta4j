@@ -41,7 +41,7 @@ import org.junit.Test;
 public class NumberOfTicksCriterionTest {
 
     @Test
-    public void testCalculateWithNoTrades() {
+    public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
 
@@ -50,7 +50,7 @@ public class NumberOfTicksCriterionTest {
     }
 
     @Test
-    public void testCalculateWithTwoTrades() {
+    public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
@@ -61,7 +61,7 @@ public class NumberOfTicksCriterionTest {
     }
 
     @Test
-    public void testCalculateWithOneTrade() {
+    public void calculateWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade t = new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL));
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
@@ -69,7 +69,7 @@ public class NumberOfTicksCriterionTest {
     }
 
     @Test
-    public void testSummarize() {
+    public void summarize() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Decision> decisions = new LinkedList<Decision>();
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));

@@ -44,7 +44,7 @@ public class StopLossStrategyTest {
     }
 
     @Test
-    public void testStopperShouldSell() {
+    public void stopperShouldSell() {
 
         Strategy justBuy = new JustBuyOnceStrategy();
         Strategy stopper = new StopLossStrategy(indicator, justBuy, 5);
@@ -65,7 +65,7 @@ public class StopLossStrategyTest {
     }
 
     @Test
-    public void testStopperShouldSellIfStrategySays() {
+    public void stopperShouldSellIfStrategySays() {
 
         Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null };
         Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null };

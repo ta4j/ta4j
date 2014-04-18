@@ -40,7 +40,7 @@ public class OperationTest {
     }
 
     @Test
-    public void testOverrideToString() {
+    public void overrideToString() {
         assertThat(opEquals2.toString()).isEqualTo(opEquals1.toString());
 
         assertThat(opNotEquals1.toString()).isNotEqualTo(opEquals1.toString());

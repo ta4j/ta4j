@@ -47,7 +47,7 @@ public class IndicatorOverIndicatorStrategyTest {
     }
 
     @Test
-    public void testOverIndicators() {
+    public void overIndicators() {
         Trade trade = new Trade();
 
         Strategy s = new IndicatorOverIndicatorStrategy(first, second);

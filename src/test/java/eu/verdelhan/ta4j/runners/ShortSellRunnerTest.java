@@ -63,7 +63,7 @@ public class ShortSellRunnerTest {
     }
 
     @Test
-    public void testRunMethod() {
+    public void runMethod() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         Runner runner = new ShortSellRunner(slicer, strategy);
         List<Trade> trades = runner.run(0);
@@ -81,7 +81,7 @@ public class ShortSellRunnerTest {
     }
 
     @Test
-    public void testRunWithOpenEntryBuyLeft() {
+    public void runWithOpenEntryBuyLeft() {
         Operation[] enter = new Operation[] { null, new Operation(1, OperationType.BUY), null, null, null, null, null, null, null };
         Operation[] exit = { null, null, null, new Operation(3, OperationType.SELL), null, null, null, null, null };
 
@@ -96,7 +96,7 @@ public class ShortSellRunnerTest {
     }
 
     @Test
-    public void testRunWithNoTrades() {
+    public void runWithNoTrades() {
         Operation[] enter = new Operation[] { null, null, null, null, null, null, null, null, null };
         Operation[] exit = { null, null, null, null, null, null, null, null, null };
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));

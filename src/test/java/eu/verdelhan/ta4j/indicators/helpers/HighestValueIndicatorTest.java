@@ -39,7 +39,7 @@ public class HighestValueIndicatorTest {
     }
 
     @Test
-    public void testHighestValueUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void highestValueUsingTimeFrame5UsingClosePrice() throws Exception {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
         assertThat(highestValue.getValue(4)).isEqualTo(4d);
@@ -55,19 +55,19 @@ public class HighestValueIndicatorTest {
     }
 
     @Test
-    public void testFirstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
+    public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
         assertThat(highestValue.getValue(0)).isEqualTo(1);
     }
 
     @Test
-    public void testHighestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
+    public void highestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
         assertThat(highestValue.getValue(12)).isEqualTo(6d);
     }
 
     @Test
-    public void testHighestValueShouldWorkJumpingIndexes() {
+    public void highestValueShouldWorkJumpingIndexes() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
         assertThat(highestValue.getValue(6)).isEqualTo(5d);
         assertThat(highestValue.getValue(12)).isEqualTo(4d);

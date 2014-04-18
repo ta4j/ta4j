@@ -37,7 +37,7 @@ public class ConstantIndicatorTest {
     }
 
     @Test
-    public void testConstantIndicator() {
+    public void constantIndicator() {
         assertThat(constantIndicator.getValue(10)).isEqualTo(30.33);
         assertThat(constantIndicator.getValue(1)).isEqualTo(30.33);
         assertThat(constantIndicator.getValue(0)).isEqualTo(30.33);

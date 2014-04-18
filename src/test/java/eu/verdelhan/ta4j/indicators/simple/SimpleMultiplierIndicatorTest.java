@@ -39,7 +39,7 @@ public class SimpleMultiplierIndicatorTest {
     }
 
     @Test
-    public void testConstantIndicator() {
+    public void constantIndicator() {
         assertThat(simpleMultiplier.getValue(10)).isEqualTo(25d);
         assertThat(simpleMultiplier.getValue(1)).isEqualTo(25d);
         assertThat(simpleMultiplier.getValue(0)).isEqualTo(25d);

@@ -58,7 +58,7 @@ public class AverageHighLowIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickClosePrice() {
+    public void indicatorShouldRetrieveTickClosePrice() {
         double result;
         for (int i = 0; i < 10; i++) {
             result = (timeSeries.getTick(i).getMaxPrice() + timeSeries.getTick(i).getMinPrice()) / 2d;

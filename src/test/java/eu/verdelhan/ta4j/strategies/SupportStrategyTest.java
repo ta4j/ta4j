@@ -42,7 +42,7 @@ public class SupportStrategyTest {
     }
 
     @Test
-    public void testSupportShouldBuy() {
+    public void supportShouldBuy() {
         Operation[] enter = new Operation[] { null, null, null, null, null, null };
 
         Strategy neverBuy = new MockStrategy(enter, enter);

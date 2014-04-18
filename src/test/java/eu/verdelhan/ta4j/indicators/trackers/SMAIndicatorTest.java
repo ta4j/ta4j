@@ -39,7 +39,7 @@ public class SMAIndicatorTest {
     }
 
     @Test
-    public void testSMAUsingTimeFrame3UsingClosePrice() throws Exception {
+    public void SMAUsingTimeFrame3UsingClosePrice() throws Exception {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
 
         assertThat(sma.getValue(0)).isEqualTo(1.0);
@@ -59,7 +59,7 @@ public class SMAIndicatorTest {
     }
 
     @Test
-    public void testSMAWhenTimeFrameIs1ResultShouldBeIndicatorValue() {
+    public void SMAWhenTimeFrameIs1ResultShouldBeIndicatorValue() {
         SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getSize(); i++) {
             assertThat(quoteSMA.getValue(i)).isEqualTo(data.getTick(i).getClosePrice());
@@ -67,7 +67,7 @@ public class SMAIndicatorTest {
     }
 
     @Test
-    public void testSMAShouldWorkJumpingIndexes() {
+    public void SMAShouldWorkJumpingIndexes() {
         SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 3);
         assertThat(quoteSMA.getValue(12)).isEqualTo(3d);
     }

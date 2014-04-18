@@ -60,7 +60,7 @@ public class MinValueStarterStrategyTest {
     }
 
     @Test
-    public void testStrategyShouldBuy() {
+    public void strategyShouldBuy() {
         Trade trade = new Trade();
 
         Operation buy = new Operation(2, OperationType.BUY);
@@ -79,7 +79,7 @@ public class MinValueStarterStrategyTest {
     }
 
     @Test
-    public void testStrategyShouldNotBuyEvenIfFakeIsSayingTo() {
+    public void strategyShouldNotBuyEvenIfFakeIsSayingTo() {
         Trade trade = new Trade();
         assertThat(starter.shouldOperate(trade, 0)).isFalse();
         assertThat(starter.shouldOperate(trade, 1)).isFalse();

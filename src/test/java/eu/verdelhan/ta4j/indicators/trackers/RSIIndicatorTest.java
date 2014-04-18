@@ -42,7 +42,7 @@ public class RSIIndicatorTest {
     }
 
     @Test
-    public void testRSIUsingTimeFrame14UsingClosePrice() {
+    public void RSIUsingTimeFrame14UsingClosePrice() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
         assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);
@@ -58,14 +58,14 @@ public class RSIIndicatorTest {
     }
 
     @Test
-    public void testRSIFirstValueShouldBeZero() {
+    public void RSIFirstValueShouldBeZero() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
         assertThat(rsi.getValue(0)).isZero();
     }
 
     @Test
-    public void testRSIShouldWorkJumpingIndexes() {
+    public void RSIShouldWorkJumpingIndexes() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
         assertThat(rsi.getValue(19)).isEqualTo(73.33, TATestsUtils.SHORT_OFFSET);
         assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);

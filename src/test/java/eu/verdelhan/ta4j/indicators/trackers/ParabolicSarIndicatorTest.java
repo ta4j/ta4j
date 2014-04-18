@@ -52,7 +52,7 @@ public class ParabolicSarIndicatorTest {
     }
     
     @Test
-    public void TrendSwitchTest2()
+    public void trendSwitchTest2()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 10, 13, 11));
@@ -71,7 +71,7 @@ public class ParabolicSarIndicatorTest {
         assertThat(sar.getValue(4)).isEqualTo(18d);
     }
     @Test
-    public void UpTrendTest()
+    public void upTrendTest()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 10, 13, 11));
@@ -90,7 +90,7 @@ public class ParabolicSarIndicatorTest {
     }
     
     @Test
-    public void DownTrendTest()
+    public void downTrendTest()
     {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 20, 18, 9));

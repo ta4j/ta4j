@@ -35,7 +35,7 @@ import org.junit.Test;
 public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
-    public void testCrossedIndicatorShouldBuyIndex2SellIndex4() {
+    public void crossedIndicatorShouldBuyIndex2SellIndex4() {
         Indicator<Double> first = new MockIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
         Indicator<Double> second = new MockIndicator<Double>(new Double[] { 3d, 6d, 10d, 8d, 2d, 1d });
 
@@ -60,7 +60,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
     }
 
     @Test
-    public void testCrossedIndicatorShouldNotEnterWhenIndicatorsAreEquals() {
+    public void crossedIndicatorShouldNotEnterWhenIndicatorsAreEquals() {
         Indicator<Double> first = new MockIndicator<Double>(new Double[] { 2d, 3d, 4d, 5d, 6d, 7d });
         Trade trade = new Trade();
 
@@ -72,7 +72,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
     }
 
     @Test
-    public void testCrossedIndicatorShouldNotExitWhenIndicatorsBecameEquals() {
+    public void crossedIndicatorShouldNotExitWhenIndicatorsBecameEquals() {
         Indicator<Double> first = new MockIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
         Indicator<Double> second = new MockIndicator<Double>(new Double[] { 3d, 6d, 10d, 6d, 3d, 2d });
         Trade trade = new Trade();
@@ -90,7 +90,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
     }
 
     @Test
-    public void testEqualIndicatorsShouldNotExitWhenIndicatorsBecameEquals() {
+    public void equalIndicatorsShouldNotExitWhenIndicatorsBecameEquals() {
         Indicator<Double> firstEqual = new MockIndicator<Double>(new Double[] { 2d, 1d, 4d, 5d, 6d, 7d });
         Indicator<Double> secondEqual = new MockIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d });
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
@@ -110,7 +110,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
     }
 
     @Test
-    public void testShouldNotSellWhileIndicatorAreEquals() {
+    public void shouldNotSellWhileIndicatorAreEquals() {
         Indicator<Double> firstEqual = new MockIndicator<Double>(new Double[] { 2d, 1d, 4d, 5d, 6d, 7d, 10d });
         Indicator<Double> secondEqual = new MockIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d, 9d });
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
@@ -133,7 +133,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
     }
 
     @Test
-    public void testCrossShouldNotReturnNullOperations() {
+    public void crossShouldNotReturnNullOperations() {
         Indicator<Double> firstEqual = new MockIndicator<Double>(new Double[] { 2d, 3d, 4d, 5d, 6d, 7d, 10d });
         Indicator<Double> secondEqual = new MockIndicator<Double>(new Double[] { 1d, 3d, 4d, 5d, 6d, 7d, 9d });
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);

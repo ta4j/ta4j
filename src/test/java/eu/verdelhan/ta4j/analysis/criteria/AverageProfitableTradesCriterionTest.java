@@ -41,7 +41,7 @@ import org.junit.Test;
 public class AverageProfitableTradesCriterionTest {
 
     @Test
-    public void testCalculate()
+    public void calculate()
     {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
         List<Trade> trades = new ArrayList<Trade>();
@@ -55,7 +55,7 @@ public class AverageProfitableTradesCriterionTest {
     }
 
     @Test
-    public void testCalculateWithOneTrade()
+    public void calculateWithOneTrade()
     {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
@@ -68,7 +68,7 @@ public class AverageProfitableTradesCriterionTest {
     }
     
     @Test
-    public void testSummarize() {
+    public void summarize() {
         
         TimeSeries series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));

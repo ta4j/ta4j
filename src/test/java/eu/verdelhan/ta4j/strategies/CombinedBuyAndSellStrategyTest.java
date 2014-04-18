@@ -22,8 +22,6 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.CombinedBuyAndSellStrategy;
-import eu.verdelhan.ta4j.strategies.IndicatorCrossedIndicatorStrategy;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -46,7 +44,7 @@ public class CombinedBuyAndSellStrategyTest {
     private CombinedBuyAndSellStrategy combined;
 
     @Test
-    public void testeShoudEnter() {
+    public void shouldEnter() {
 
         enter = new Operation[] { new Operation(0, OperationType.BUY), null, new Operation(2, OperationType.BUY), null,
                 new Operation(4, OperationType.BUY) };
@@ -72,7 +70,7 @@ public class CombinedBuyAndSellStrategyTest {
     }
 
     @Test
-    public void testeShoudExit() {
+    public void ShouldExit() {
 
         exit = new Operation[] { new Operation(0, OperationType.SELL), null, new Operation(2, OperationType.SELL),
                 null, new Operation(4, OperationType.SELL) };
@@ -98,7 +96,7 @@ public class CombinedBuyAndSellStrategyTest {
     }
 
     @Test
-    public void testWhenBuyStrategyAndSellStrategyAreEquals() {
+    public void whenBuyStrategyAndSellStrategyAreEquals() {
         Indicator<Double> first = new MockIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
         Indicator<Double> second = new MockIndicator<Double>(new Double[] { 3d, 6d, 10d, 8d, 2d, 1d });
 

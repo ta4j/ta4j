@@ -63,7 +63,7 @@ public class HistoryRunnerTest {
     }
 
     @Test
-    public void testRunMethod() {
+    public void runMethod() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
         List<Trade> trades = historyRunner.run(0);
@@ -77,7 +77,7 @@ public class HistoryRunnerTest {
     }
 
     @Test
-    public void testRunWithOpenEntryBuyLeft() {
+    public void runWithOpenEntryBuyLeft() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
         Operation[] enter = new Operation[] { null, new Operation(1, OperationType.BUY), null, null, null, null, null, null, null };
         Operation[] exit = { null, null, null, new Operation(3, OperationType.SELL), null, null, null, null, null };
@@ -92,7 +92,7 @@ public class HistoryRunnerTest {
     }
 
     @Test
-    public void testRunWithOpenEntrySellLeft() {
+    public void runWithOpenEntrySellLeft() {
         Operation[] enter = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null, null, null, null, null };
         Operation[] exit = { null, null, null, new Operation(3, OperationType.BUY), null, null, null, null, null };
 
@@ -108,12 +108,12 @@ public class HistoryRunnerTest {
 
 
     @Test(expected = NullPointerException.class)
-    public void testNullTypeShouldThrowException() {
+    public void nullTypeShouldThrowException() {
         HistoryRunner runner = new HistoryRunner(null, null);
     }
 
     @Test
-    public void testRunSplitted() {
+    public void runSplitted() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
         HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
         List<Trade> trades = historyRunner.run(0);
@@ -135,7 +135,7 @@ public class HistoryRunnerTest {
     }
     
     @Test
-    public void testSplitted(){
+    public void splitted(){
         DateTime date = new DateTime();
         TimeSeries series = new MockTimeSeries(new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
                     new DateTime[]{date.withYear(2000), date.withYear(2000), date.withYear(2001), date.withYear(2001), date.withYear(2002),

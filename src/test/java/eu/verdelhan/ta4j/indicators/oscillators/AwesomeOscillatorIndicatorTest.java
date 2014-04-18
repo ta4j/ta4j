@@ -52,7 +52,7 @@ public class AwesomeOscillatorIndicatorTest {
     }
 
     @Test
-    public void testCalculateWithSma2AndSma3() throws Exception {
+    public void calculateWithSma2AndSma3() throws Exception {
         AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 2, 3);
 
         assertThat(awesome.getValue(0)).isEqualTo(0d);
@@ -63,7 +63,7 @@ public class AwesomeOscillatorIndicatorTest {
     }
 
     @Test
-    public void testWithSma1AndSma2() throws Exception {
+    public void withSma1AndSma2() throws Exception {
         AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 1, 2);
 
         assertThat(awesome.getValue(0)).isEqualTo(0d);
@@ -74,7 +74,7 @@ public class AwesomeOscillatorIndicatorTest {
     }
 
     @Test
-    public void testWithSmaDefault() throws Exception {
+    public void withSmaDefault() throws Exception {
         AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series));
 
         assertThat(awesome.getValue(0)).isEqualTo(0d);

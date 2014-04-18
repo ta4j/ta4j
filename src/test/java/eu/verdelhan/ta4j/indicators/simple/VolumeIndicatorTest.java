@@ -40,7 +40,7 @@ public class VolumeIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickVolume() {
+    public void indicatorShouldRetrieveTickVolume() {
         for (int i = 0; i < 10; i++) {
             assertThat(timeSeries.getTick(i).getVolume()).isEqualTo(volumeIndicator.getValue(i));
         }

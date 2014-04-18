@@ -29,8 +29,9 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 public class WMAIndicatorTest {
+
     @Test
-    public void testWMACalculate()
+    public void WMACalculate()
     {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Double> close = new ClosePriceIndicator(series);
@@ -45,7 +46,7 @@ public class WMAIndicatorTest {
     }
     
     @Test
-    public void testWMACalculateJumpingIndex()
+    public void WMACalculateJumpingIndex()
     {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Double> close = new ClosePriceIndicator(series);
@@ -55,7 +56,7 @@ public class WMAIndicatorTest {
     }
     
     @Test
-    public void testWMACalculateWithTimeFrameGreaterThanSeriesSize()
+    public void WMACalculateWithTimeFrameGreaterThanSeriesSize()
     {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Double> close = new ClosePriceIndicator(series);

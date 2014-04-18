@@ -41,7 +41,7 @@ public class PreviousPriceIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickPreviousPrice() {
+    public void indicatorShouldRetrieveTickPreviousPrice() {
         assertThat(timeSeries.getTick(0).getClosePrice()).isEqualTo(previousPriceIndicator.getValue(0));
         for (int i = 1; i < 10; i++) {
             assertThat(timeSeries.getTick(i-1).getClosePrice()).isEqualTo(previousPriceIndicator.getValue(i));

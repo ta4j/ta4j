@@ -60,7 +60,7 @@ public class StochasticOscillatorKIndicatorTest {
     }
 
     @Test
-    public void testStochasticOscilatorKParam14() {
+    public void stochasticOscilatorKParam14() {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
 
@@ -70,7 +70,7 @@ public class StochasticOscillatorKIndicatorTest {
     }
 
     @Test
-    public void testStochasticOscilatorKShouldWorkJumpingIndexes() {
+    public void stochasticOscilatorKShouldWorkJumpingIndexes() {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
         assertThat(sof.getValue(13)).isEqualTo(57.81, TATestsUtils.SHORT_OFFSET);

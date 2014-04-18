@@ -38,7 +38,7 @@ public class StandardDeviationIndicatorTest {
     }
 
     @Test
-    public void testStandardDeviationUsingTimeFrame4UsingClosePrice() throws Exception {
+    public void standardDeviationUsingTimeFrame4UsingClosePrice() throws Exception {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
 
         assertThat(sdv.getValue(0)).isEqualTo(0d);
@@ -56,21 +56,21 @@ public class StandardDeviationIndicatorTest {
     }
 
     @Test
-    public void testFirstValueShouldBeZero() throws Exception {
+    public void firstValueShouldBeZero() throws Exception {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
 
         assertThat(sdv.getValue(0)).isEqualTo(0);
     }
 
     @Test
-    public void testStandardDeviationValueIndicatorValueWhenTimeFraseIs1ShouldBeZero() {
+    public void standardDeviationValueIndicatorValueWhenTimeFraseIs1ShouldBeZero() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertThat(sdv.getValue(3)).isEqualTo(0d);
         assertThat(sdv.getValue(8)).isEqualTo(0d);
     }
 
     @Test
-    public void testStandardDeviationUsingTimeFrame2UsingClosePrice() throws Exception {
+    public void standardDeviationUsingTimeFrame2UsingClosePrice() throws Exception {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 2);
 
         assertThat(sdv.getValue(0)).isEqualTo(0d);

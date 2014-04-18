@@ -41,7 +41,7 @@ public class MaxPriceIndicatorTest {
     }
 
     @Test
-    public void testIndicatorShouldRetrieveTickMaxPrice() {
+    public void indicatorShouldRetrieveTickMaxPrice() {
         for (int i = 0; i < 10; i++) {
             assertThat(timeSeries.getTick(i).getMaxPrice()).isEqualTo(maxPriceIndicator.getValue(i));
         }
