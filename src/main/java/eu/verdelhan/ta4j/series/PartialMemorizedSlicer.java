@@ -51,9 +51,9 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
     /**
      * Constructor.
      * @param series the time series
-     * @param period
-     * @param periodBegin
-     * @param periodsPerSlice
+     * @param period the period duration
+     * @param periodBegin the begin time of the first slice
+     * @param periodsPerSlice the number of periods per slice
      */
     public PartialMemorizedSlicer(TimeSeries series, Period period, DateTime periodBegin, int periodsPerSlice) {
         if (period == null) {
@@ -66,13 +66,14 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
         int index = series.getBegin();
 
         DateTime initialSeriesDate = series.getTick(index).getEndTime();
-        if (periodBegin.isBefore(initialSeriesDate) && !periodBegin.equals(initialSeriesDate))
+        if (periodBegin.isBefore(initialSeriesDate) && !periodBegin.equals(initialSeriesDate)) {
             periodBegin = series.getTick(series.getBegin()).getEndTime();
+        }
 
         Interval interval = new Interval(periodBegin, periodBegin.plus(period));
-
-        while (series.getTick(index).getEndTime().isBefore(interval.getStart()))
+        while (series.getTick(index).getEndTime().isBefore(interval.getStart())) {
             index++;
+        }
 
         this.series = new ConstrainedTimeSeries(series, index, series.getEnd());
         this.period = period;
@@ -84,8 +85,8 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
 
     /**
      * @param series the time series
-     * @param period
-     * @param periodsPerSlice
+     * @param period the period duration
+     * @param periodsPerSlice the number of periods per slice
      */
     public PartialMemorizedSlicer(TimeSeries series, Period period, int periodsPerSlice) {
         this(series, period, series.getTick(series.getBegin()).getEndTime(), periodsPerSlice);

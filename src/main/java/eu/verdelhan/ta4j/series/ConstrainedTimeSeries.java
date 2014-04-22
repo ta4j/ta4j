@@ -30,7 +30,7 @@ import org.joda.time.Period;
  * A constrained {@link TimeSeries time series}.
  * <p>
  * A constrained time series is a sub-set of a series.
- * It has begin and and indexes which correspond to the bounds of the sub-set into the full series.
+ * It has begin and end indexes which correspond to the bounds of the sub-set into the full series.
  */
 public class ConstrainedTimeSeries implements TimeSeries {
 
