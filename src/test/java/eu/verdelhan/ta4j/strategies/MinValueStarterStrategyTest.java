@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.MinValueStarterStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -49,7 +48,7 @@ public class MinValueStarterStrategyTest {
 
     @Before
     public void setUp() {
-        indicator = new MockIndicator<Double>(new Double[] { 90d, 92d, 96d, 95d, 92d });
+        indicator = new MockIndicator<Double>(90d, 92d, 96d, 95d, 92d);
         startValue = 93;
         enter = new Operation[] { new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY),
                 new Operation(2, OperationType.BUY), new Operation(3, OperationType.BUY),

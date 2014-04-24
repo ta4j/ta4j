@@ -38,7 +38,7 @@ public class SupportStrategyTest {
 
     @Before
     public void setUp() {
-        indicator = new MockIndicator<Double>(new Double[] { 96d, 90d, 94d, 97d, 95d, 110d });
+        indicator = new MockIndicator<Double>(96d, 90d, 94d, 97d, 95d, 110d);
     }
 
     @Test

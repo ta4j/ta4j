@@ -22,8 +22,6 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.StopLossStrategy;
-import eu.verdelhan.ta4j.strategies.JustBuyOnceStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
@@ -40,7 +38,7 @@ public class StopLossStrategyTest {
 
     @Before
     public void setUp() {
-        indicator = new MockIndicator<Double>(new Double[] { 100d, 100d, 96d, 95d, 94d });
+        indicator = new MockIndicator<Double>(100d, 100d, 96d, 95d, 94d);
     }
 
     @Test

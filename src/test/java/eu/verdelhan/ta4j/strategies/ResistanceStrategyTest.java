@@ -37,7 +37,7 @@ public class ResistanceStrategyTest {
 
     @Before
     public void setUp() {
-        indicator = new MockIndicator<Double>(new Double[] { 95d, 96d, 95d, 94d, 97d, 95d, 110d });
+        indicator = new MockIndicator<Double>(95d, 96d, 95d, 94d, 97d, 95d, 110d);
     }
 
     @Test

@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.PipeEnterStrategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockIndicator;
 import static org.assertj.core.api.Assertions.*;
@@ -36,15 +35,15 @@ public class PipeEnterStrategyTest {
 
     @Before
     public void setUp() {
-        upper = new MockIndicator<Double>(new Double[] { 30d, 32d, 33d, 32d, 35d, 33d, 32d, 33d, 31d, 30d, 31d, 32d, 32d, 34d, 35d });
-        lower = new MockIndicator<Double>(new Double[] { 10d, 12d, 13d, 12d, 15d, 13d, 12d, 13d, 11d, 10d, 11d, 12d, 12d, 14d, 15d });
+        upper = new MockIndicator<Double>(30d, 32d, 33d, 32d, 35d, 33d, 32d, 33d, 31d, 30d, 31d, 32d, 32d, 34d, 35d);
+        lower = new MockIndicator<Double>(10d, 12d, 13d, 12d, 15d, 13d, 12d, 13d, 11d, 10d, 11d, 12d, 12d, 14d, 15d);
     }
 
     @Test
     public void firstSellLastBuy() {
         Trade trade = new Trade();
-        MockIndicator<Double> value = new MockIndicator<Double>(new Double[] { 25d, 27d, 28d, 27d, 30d, 33d, 35d, 37d, 35d, 29d, 11d, 10d, 15d,
-                30d, 31d });
+        MockIndicator<Double> value = new MockIndicator<Double>(25d, 27d, 28d, 27d, 30d, 33d, 35d, 37d, 35d, 29d, 11d, 10d, 15d,
+                30d, 31d);
 
         PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 
@@ -61,8 +60,8 @@ public class PipeEnterStrategyTest {
     @Test
     public void firstBuyLastSell() {
         Trade trade = new Trade();
-        MockIndicator<Double> value = new MockIndicator<Double>(new Double[] { 8d, 15d, 16d, 33d, 40d, 45d, 47d, 40d, 32d, 25d, 15d, 16d, 11d,
-                10d, 12d });
+        MockIndicator<Double> value = new MockIndicator<Double>(8d, 15d, 16d, 33d, 40d, 45d, 47d, 40d, 32d, 25d, 15d, 16d, 11d,
+                10d, 12d);
 
         PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 

@@ -37,8 +37,8 @@ public class DistanceBetweenIndicatorsStrategyTest {
 
     @Before
     public void setUp() {
-        upper = new MockIndicator<Double>(new Double[] { 30d, 32d, 33d, 32d, 35d, 33d, 32d });
-        lower = new MockIndicator<Double>(new Double[] { 10d, 10d, 10d, 12d, 14d, 15d, 15d });
+        upper = new MockIndicator<Double>(30d, 32d, 33d, 32d, 35d, 33d, 32d);
+        lower = new MockIndicator<Double>(10d, 10d, 10d, 12d, 14d, 15d, 15d);
         distanceEnter = new DistanceBetweenIndicatorsStrategy(upper, lower, 20, 0.1);
     }
 
@@ -72,7 +72,7 @@ public class DistanceBetweenIndicatorsStrategyTest {
 
     @Test
     public void distanceBetweenIndicatorAndConstant() {
-        MockIndicator<Double> indicator = new MockIndicator<Double>(new Double[] { 4d, 10d, 10d, 12d, 14d, 15d, 18d });
+        MockIndicator<Double> indicator = new MockIndicator<Double>(4d, 10d, 10d, 12d, 14d, 15d, 18d);
         distanceEnter = new DistanceBetweenIndicatorsStrategy(indicator, 9d, 4, 0.3);
 
         Trade trade = new Trade();

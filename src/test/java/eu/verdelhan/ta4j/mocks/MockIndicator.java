@@ -35,7 +35,7 @@ public class MockIndicator<T> implements Indicator<T> {
 
     private List<T> values = new ArrayList<T>();
 
-    public MockIndicator(T[] values) {
+    public MockIndicator(T... values) {
         this.values.addAll(Arrays.asList(values));
     }
 

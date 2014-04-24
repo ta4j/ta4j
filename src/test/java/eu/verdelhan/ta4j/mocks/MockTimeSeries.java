@@ -72,31 +72,38 @@ public class MockTimeSeries implements TimeSeries {
         }
     }
 
+    @Override
     public Tick getTick(int i) {
         return ticks.get(i);
     }
 
+    @Override
     public int getSize() {
         return ticks.size();
     }
 
+    @Override
     public int getBegin() {
         return 0;
     }
 
+    @Override
     public int getEnd() {
         return ticks.size() - 1;
     }
 
+    @Override
     public String getName() {
         return "SampleTimeSeries";
     }
 
+    @Override
     public String getPeriodName() {
         return ticks.get(0).getEndTime().toString("hh:mm dd/MM/yyyy - ")
                 + ticks.get(this.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy");
     }
 
+    @Override
     public Period getPeriod() {
         return new Period(Math.min(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis(),
                 ticks.get(2).getEndTime().getMillis()- ticks.get(1).getEndTime().getMillis()));

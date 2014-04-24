@@ -97,8 +97,8 @@ public class CombinedBuyAndSellStrategyTest {
 
     @Test
     public void whenBuyStrategyAndSellStrategyAreEquals() {
-        Indicator<Double> first = new MockIndicator<Double>(new Double[] { 4d, 7d, 9d, 6d, 3d, 2d });
-        Indicator<Double> second = new MockIndicator<Double>(new Double[] { 3d, 6d, 10d, 8d, 2d, 1d });
+        Indicator<Double> first = new MockIndicator<Double>(4d, 7d, 9d, 6d, 3d, 2d);
+        Indicator<Double> second = new MockIndicator<Double>(3d, 6d, 10d, 8d, 2d, 1d);
 
         Strategy crossed = new IndicatorCrossedIndicatorStrategy(first, second);
 
