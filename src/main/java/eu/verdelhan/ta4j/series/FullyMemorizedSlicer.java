@@ -28,15 +28,27 @@ import org.joda.time.DateTime;
 import org.joda.time.Period;
 
 /**
- *
- * 
+ * A fully (i.e. each tick period/tick is in every slice) memorized {@link TimeSeriesSlicer time series slicer}.
+ * <p>
+ * Divides a time series with a specific period.
  */
-public class FullyMemorizedSlicer extends PartialMemorizedSlicer {
+public class FullyMemorizedSlicer extends MemorizedSlicer {
 
+    /**
+     * Constructor.
+     * @param series the time series
+     * @param period the period duration
+     * @param begin the begin time of the first slice
+     */
     public FullyMemorizedSlicer(TimeSeries series, Period period, DateTime begin) {
         super(series, period, begin, series.getSize());
     }
 
+    /**
+     * Constructor.
+     * @param series the time series
+     * @param period the period duration
+     */
     public FullyMemorizedSlicer(TimeSeries series, Period period) {
         this(series, period, series.getTick(0).getEndTime());
     }

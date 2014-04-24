@@ -30,7 +30,7 @@ import org.joda.time.Period;
 import org.junit.Before;
 import org.junit.Test;
 
-public class PartialMemorizesSlicerTest {
+public class MemorizedSlicerTest {
 
     private MockTimeSeries series;
 
@@ -44,12 +44,12 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void apllyForRegularSlicer() {
+    public void applyForRegularSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        slicer = new PartialMemorizedSlicer(series, period, 1);
+        slicer = new MemorizedSlicer(series, period, 1);
 
         assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(slicer.getSlice(1).getBegin()).isEqualTo(1);
@@ -62,7 +62,7 @@ public class PartialMemorizesSlicerTest {
     public void periodsPerSliceGreaterThan1() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
-        slicer = new PartialMemorizedSlicer(series, new Period().withYears(1), 0);
+        slicer = new MemorizedSlicer(series, new Period().withYears(1), 0);
     }
 
     @Test
@@ -71,7 +71,7 @@ public class PartialMemorizesSlicerTest {
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        slicer = new PartialMemorizedSlicer(series, period, date.withYear(1980), 1);
+        slicer = new MemorizedSlicer(series, period, date.withYear(1980), 1);
 
         assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(slicer.getSlice(1).getBegin()).isEqualTo(1);
@@ -81,12 +81,12 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void apllyForPartialMemorizedSlicer() {
+    public void applyForMemorizedSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        slicer = new PartialMemorizedSlicer(series, period, 3);
+        slicer = new MemorizedSlicer(series, period, 3);
 
         assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(slicer.getSlice(0).getEnd()).isEqualTo(0);
@@ -105,12 +105,12 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void apllyForFullMemorizedSlicer() {
+    public void applyForFullyMemorizedSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        slicer = new PartialMemorizedSlicer(series, period, series.getSize());
+        slicer = new MemorizedSlicer(series, period, series.getSize());
 
         assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(slicer.getSlice(0).getEnd()).isEqualTo(0);
@@ -129,12 +129,12 @@ public class PartialMemorizesSlicerTest {
     }
 
     @Test
-    public void apllyForSeries() {
+    public void applyForSeries() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        TimeSeriesSlicer slicer = new PartialMemorizedSlicer(series, period, 3);
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, period, 3);
 
         TimeSeriesSlicer newSlicer = slicer.applyForSeries(series);
 
@@ -168,7 +168,7 @@ public class PartialMemorizesSlicerTest {
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(5);
 
@@ -197,7 +197,7 @@ public class PartialMemorizesSlicerTest {
                         1, 1), date.withDate(2002, 2, 1), date.withDate(2002, 3, 1), date.withDate(2002, 5, 1), date
                         .withDate(2003, 3, 1));
 
-        TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, date.withYear(2000).withMonthOfYear(7), 2);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, date.withYear(2000).withMonthOfYear(7), 2);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(3);
 
@@ -219,7 +219,7 @@ public class PartialMemorizesSlicerTest {
                 date.withYear(2002), date.withYear(2002), date.withYear(2005), date.withYear(2005));
 
         Period period = new Period().withYears(1);
-        TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(4);
 
@@ -246,7 +246,7 @@ public class PartialMemorizesSlicerTest {
                         1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
                         .withDate(2003, 3, 3));
 
-        TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 2);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 2);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(3);
 
@@ -268,7 +268,7 @@ public class PartialMemorizesSlicerTest {
                 date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
                         1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
                         .withDate(2003, 3, 3));
-        TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, date.withDate(2000, 1, 1), 3);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, date.withDate(2000, 1, 1), 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(4);
 
@@ -296,7 +296,7 @@ public class PartialMemorizesSlicerTest {
                 .plusHours(2), openTime.plusHours(7), openTime.plusHours(10).plusMinutes(5), openTime.plusHours(10)
                 .plusMinutes(10), openTime.plusHours(10).plusMinutes(20), openTime.plusHours(10).plusMinutes(30));
 
-        TimeSeriesSlicer split = new PartialMemorizedSlicer(series, period, 3);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(5);
 
@@ -325,7 +325,7 @@ public class PartialMemorizesSlicerTest {
                 date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
                         1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
                         .withDate(2003, 3, 3));
-        PartialMemorizedSlicer slicer = new PartialMemorizedSlicer(series, period, 3);
+        MemorizedSlicer slicer = new MemorizedSlicer(series, period, 3);
         assertThat(slicer.getAverageTicksPerSlice()).isEqualTo(27d/4);
     }
 

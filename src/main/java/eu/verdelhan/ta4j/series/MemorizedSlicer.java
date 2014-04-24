@@ -33,9 +33,9 @@ import org.joda.time.Period;
 /**
  * A {@link TimeSeriesSlicer time series slicer}.
  * <p>
- * Divides a time series.
+ * Divides a time series into slices.
  */
-public class PartialMemorizedSlicer implements TimeSeriesSlicer {
+public class MemorizedSlicer implements TimeSeriesSlicer {
 
     /** The time series */
     private TimeSeries series;
@@ -55,7 +55,7 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
      * @param periodBegin the begin time of the first slice
      * @param periodsPerSlice the number of periods per slice
      */
-    public PartialMemorizedSlicer(TimeSeries series, Period period, DateTime periodBegin, int periodsPerSlice) {
+    public MemorizedSlicer(TimeSeries series, Period period, DateTime periodBegin, int periodsPerSlice) {
         if (period == null) {
             throw new NullPointerException("Period cannot be null");
         }
@@ -84,11 +84,12 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
     }
 
     /**
+     * Constructor.
      * @param series the time series
      * @param period the period duration
      * @param periodsPerSlice the number of periods per slice
      */
-    public PartialMemorizedSlicer(TimeSeries series, Period period, int periodsPerSlice) {
+    public MemorizedSlicer(TimeSeries series, Period period, int periodsPerSlice) {
         this(series, period, series.getTick(series.getBegin()).getEndTime(), periodsPerSlice);
     }
 
@@ -98,7 +99,7 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
     }
 
     public TimeSeriesSlicer applyForSeries(TimeSeries series, DateTime periodBegin) {
-        return new PartialMemorizedSlicer(series, this.period, periodBegin, this.periodsPerSlice);
+        return new MemorizedSlicer(series, this.period, periodBegin, this.periodsPerSlice);
     }
 
     @Override
@@ -163,10 +164,10 @@ public class PartialMemorizedSlicer implements TimeSeriesSlicer {
         if (obj == null) {
             return false;
         }
-        if (!(obj instanceof PartialMemorizedSlicer)) {
+        if (!(obj instanceof MemorizedSlicer)) {
             return false;
         }
-        final PartialMemorizedSlicer other = (PartialMemorizedSlicer) obj;
+        final MemorizedSlicer other = (MemorizedSlicer) obj;
         if (period == null) {
             if (other.period != null) {
                 return false;

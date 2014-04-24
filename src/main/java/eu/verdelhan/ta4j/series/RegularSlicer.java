@@ -32,7 +32,7 @@ import org.joda.time.Period;
  * <p>
  * Divides a time series with a specific period.
  */
-public class RegularSlicer extends PartialMemorizedSlicer {
+public class RegularSlicer extends MemorizedSlicer {
 
     public RegularSlicer(TimeSeries series, Period period, DateTime begin) {
         super(series, period, begin, 1);

@@ -42,7 +42,7 @@ public class FullyMemorizedSlicerTest {
     }
     
     @Test
-    public void apllyForSeries(){
+    public void applyForSeries(){
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
