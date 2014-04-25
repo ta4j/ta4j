@@ -41,16 +41,6 @@ public interface Tick {
     DateTime getEndTime();
 
     /**
-     * @return a human-friendly string of the end timestamp
-     */
-    String getDateName();
-
-    /**
-     * @return a even more human-friendly string of the end timestamp
-     */
-    String getSimpleDateName();
-
-    /**
      * @return the close price of the period
      */
     double getClosePrice();

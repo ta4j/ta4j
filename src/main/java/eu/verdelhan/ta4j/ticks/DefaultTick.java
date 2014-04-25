@@ -147,22 +147,30 @@ public class DefaultTick implements Tick {
         return endTime;
     }
 
-    public boolean inPeriod(DateTime timestamp) {
-        return timestamp == null ? false : (!timestamp.isBefore(beginTime) && timestamp.isBefore(endTime));
-    }
-
     @Override
     public String toString() {
         return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", endTime
                 .toGregorianCalendar(), closePrice);
     }
 
-    @Override
+    /**
+     * @param timestamp a timestamp
+     * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
+     */
+    public boolean inPeriod(DateTime timestamp) {
+        return timestamp == null ? false : (!timestamp.isBefore(beginTime) && timestamp.isBefore(endTime));
+    }
+
+    /**
+     * @return a human-friendly string of the end timestamp
+     */
     public String getDateName() {
         return endTime.toString("hh:mm dd/MM/yyyy");
     }
 
-    @Override
+    /**
+     * @return a even more human-friendly string of the end timestamp
+     */
     public String getSimpleDateName() {
         return endTime.toString("dd/MM/yyyy");
     }
