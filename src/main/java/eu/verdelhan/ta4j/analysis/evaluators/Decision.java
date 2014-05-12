@@ -23,11 +23,11 @@
 package eu.verdelhan.ta4j.analysis.evaluators;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Runner;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.analysis.Runner;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import java.util.List;
 

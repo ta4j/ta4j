@@ -20,10 +20,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.runners;
+package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.Runner;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
@@ -31,10 +30,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * History runner factory.
+ * History runner.
  * <p>
+ * The runner object is used to run {@link Strategy trading strategies} over a {@link TimeSeries time series}.
  */
-public class HistoryRunner implements Runner {
+public class Runner {
 
     /** Operation type */
     private OperationType operationType;
@@ -51,7 +51,7 @@ public class HistoryRunner implements Runner {
      * @param slicer a {@link TimeSeriesSlicer time series slicer}
      * @param strategy a {@link Strategy strategy} to be run
      */
-    public HistoryRunner(OperationType type, TimeSeriesSlicer slicer, Strategy strategy) {
+    public Runner(OperationType type, TimeSeriesSlicer slicer, Strategy strategy) {
         if ((type == null) || (slicer == null) || (strategy == null)) {
             throw new NullPointerException();
         }
@@ -66,11 +66,15 @@ public class HistoryRunner implements Runner {
      * @param slicer a {@link TimeSeriesSlicer time series slicer}
      * @param strategy a {@link Strategy strategy} to be run
      */
-    public HistoryRunner(TimeSeriesSlicer slicer, Strategy strategy) {
+    public Runner(TimeSeriesSlicer slicer, Strategy strategy) {
         this(OperationType.BUY, slicer, strategy);
     }
 
-    @Override
+    /**
+     * Executes the runner.
+     * @param sliceIndex the series slice index
+     * @return the list of trades corresponding to sliceIndex
+     */
     public List<Trade> run(int sliceIndex) {
         if (listTradesResults.size() < sliceIndex) {
             // The slice index is over the cached trades results

@@ -22,20 +22,16 @@
  */
 package eu.verdelhan.ta4j.analysis.evaluators;
 
-import eu.verdelhan.ta4j.analysis.evaluators.HigherValueEvaluator;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.runners.HistoryRunnerFactory;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
 import java.util.HashSet;
 import static org.assertj.core.api.Assertions.*;
-
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.junit.Before;
@@ -69,7 +65,7 @@ public class BestStrategyEvaluatorTest {
         DateTime date = new DateTime();
         MockTimeSeries series = new MockTimeSeries(new double[] { 6.0, 9.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
         
-        HigherValueEvaluator evaluator = new HigherValueEvaluator(new HistoryRunnerFactory(), strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
+        HigherValueEvaluator evaluator = new HigherValueEvaluator(strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
         Decision decision = evaluator.evaluate(0);
 
         assertThat(decision.getStrategy()).isEqualTo(alwaysStrategy);
@@ -81,7 +77,7 @@ public class BestStrategyEvaluatorTest {
         MockTimeSeries series = new MockTimeSeries(new double[] { 6.0, 3.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
         
 
-        HigherValueEvaluator evaluator = new HigherValueEvaluator(new HistoryRunnerFactory(), strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
+        HigherValueEvaluator evaluator = new HigherValueEvaluator(strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
         Decision decision = evaluator.evaluate(0);
 
         assertThat(decision.getStrategy()).isEqualTo(buyAndHoldStrategy);

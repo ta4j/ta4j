@@ -23,11 +23,10 @@
 package eu.verdelhan.ta4j.analysis.evaluators;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Runner;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.StrategyEvaluator;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
-import eu.verdelhan.ta4j.runners.RunnerFactory;
+import eu.verdelhan.ta4j.analysis.Runner;
 import java.util.HashMap;
 import java.util.Set;
 
@@ -47,19 +46,18 @@ public class HigherValueEvaluator implements StrategyEvaluator {
 
     /**
      * Constructor.
-     * @param runnerFactory the runner factory
      * @param strategies a set of strategies to be evaluated
      * @param slicer a time series slicer
      * @param criterion an analysis criterion
      */
-    public HigherValueEvaluator(RunnerFactory runnerFactory, Set<Strategy> strategies, TimeSeriesSlicer slicer, AnalysisCriterion criterion) {
+    public HigherValueEvaluator(Set<Strategy> strategies, TimeSeriesSlicer slicer, AnalysisCriterion criterion) {
         this.strategies = strategies;
         this.slicer = slicer;
         this.criterion = criterion;
         hashRunner = new HashMap<Strategy, Runner>();
 
         for (Strategy strategy : strategies) {
-            hashRunner.put(strategy, runnerFactory.create(strategy, slicer));
+            hashRunner.put(strategy, new Runner(slicer, strategy));
         }
     }
 

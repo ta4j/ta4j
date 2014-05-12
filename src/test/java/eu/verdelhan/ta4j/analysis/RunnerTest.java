@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.runners;
+package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
@@ -38,7 +38,7 @@ import org.joda.time.Period;
 import org.junit.Before;
 import org.junit.Test;
 
-public class HistoryRunnerTest {
+public class RunnerTest {
 
     private Operation[] enter;
 
@@ -65,8 +65,8 @@ public class HistoryRunnerTest {
     @Test
     public void runMethod() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
-        HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
-        List<Trade> trades = historyRunner.run(0);
+        Runner runner = new Runner(slicer, strategy);
+        List<Trade> trades = runner.run(0);
         assertThat(trades).hasSize(2);
 
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(2, OperationType.BUY));
@@ -83,8 +83,8 @@ public class HistoryRunnerTest {
         Operation[] exit = { null, null, null, new Operation(3, OperationType.SELL), null, null, null, null, null };
 
         Strategy strategy = new MockStrategy(enter, exit);
-        HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
-        List<Trade> trades = historyRunner.run(0);
+        Runner runner = new Runner(slicer, strategy);
+        List<Trade> trades = runner.run(0);
         assertThat(trades).hasSize(1);
 
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(1, OperationType.BUY));
@@ -98,8 +98,8 @@ public class HistoryRunnerTest {
 
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
         Strategy strategy = new MockStrategy(enter, exit);
-        HistoryRunner historyRunner = new HistoryRunner(OperationType.SELL, slicer, strategy);
-        List<Trade> trades = historyRunner.run(0);
+        Runner runner = new Runner(OperationType.SELL, slicer, strategy);
+        List<Trade> trades = runner.run(0);
         assertThat(trades).hasSize(1);
 
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(1, OperationType.SELL));
@@ -109,24 +109,24 @@ public class HistoryRunnerTest {
 
     @Test(expected = NullPointerException.class)
     public void nullTypeShouldThrowException() {
-        HistoryRunner runner = new HistoryRunner(null, null);
+        Runner runner = new Runner(null, null);
     }
 
     @Test
     public void runSplitted() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
-        HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
-        List<Trade> trades = historyRunner.run(0);
+        Runner runner = new Runner(slicer, strategy);
+        List<Trade> trades = runner.run(0);
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(2, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
         
-        trades = historyRunner.run(1);
+        trades = runner.run(1);
 
         assertThat(trades).isEmpty();
         
 
-        trades = historyRunner.run(2);
+        trades = runner.run(2);
 
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(6, OperationType.BUY));
@@ -148,36 +148,36 @@ public class HistoryRunnerTest {
         Strategy strategy = new MockStrategy(enter, exit);
         
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
-        HistoryRunner historyRunner = new HistoryRunner(slicer, strategy);
-        List<Trade> trades = historyRunner.run(0);
+        Runner runner = new Runner(slicer, strategy);
+        List<Trade> trades = runner.run(0);
         
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(0, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(2, OperationType.SELL));
         
-        trades = historyRunner.run(1);
+        trades = runner.run(1);
         
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(3, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
         
-        trades = historyRunner.run(2);
+        trades = runner.run(2);
         
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(5, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(6, OperationType.SELL));
         
         
-        trades = historyRunner.run(3);
+        trades = runner.run(3);
         
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(7, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(9, OperationType.SELL));
         
-        trades = historyRunner.run(4);
+        trades = runner.run(4);
         assertThat(trades).isEmpty();
         
-        trades = historyRunner.run(5);
+        trades = runner.run(5);
         assertThat(trades).isEmpty();
         
     }
