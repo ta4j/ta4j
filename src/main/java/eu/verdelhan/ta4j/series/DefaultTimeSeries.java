@@ -89,7 +89,8 @@ public class DefaultTimeSeries implements TimeSeries {
 
     @Override
     public Period getPeriod() {
-        return new Period(Math.min(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis(),
-                ticks.get(2).getEndTime().getMillis() - ticks.get(1).getEndTime().getMillis()));
+        final long firstTickPeriod = ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis();
+        final long secondTickPeriod = ticks.get(2).getEndTime().getMillis() - ticks.get(1).getEndTime().getMillis();
+        return new Period(Math.min(firstTickPeriod, secondTickPeriod));
     }
 }
