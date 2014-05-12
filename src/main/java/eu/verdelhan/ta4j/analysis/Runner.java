@@ -53,7 +53,7 @@ public class Runner {
      */
     public Runner(OperationType type, TimeSeriesSlicer slicer, Strategy strategy) {
         if ((type == null) || (slicer == null) || (strategy == null)) {
-            throw new NullPointerException();
+            throw new IllegalArgumentException("Arguments cannot be null");
         }
         this.slicer = slicer;
         this.strategy = strategy;

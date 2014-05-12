@@ -48,7 +48,7 @@ public class Decision {
 
     private int slicerPosition;
 
-    public Decision(Strategy bestStrategy, TimeSeriesSlicer slicer,int slicerPosition,AnalysisCriterion criterion, List<Trade> trades, Runner runner) {
+    public Decision(Strategy bestStrategy, TimeSeriesSlicer slicer, int slicerPosition, AnalysisCriterion criterion, List<Trade> trades, Runner runner) {
         this.strategy = bestStrategy;
         this.slicer = new RegularSlicer(slicer.getSeries(), slicer.getPeriod(), slicer.getSlice(0).getTick(slicer.getSlice(0).getBegin()).getEndTime());
         this.criterion = criterion;
