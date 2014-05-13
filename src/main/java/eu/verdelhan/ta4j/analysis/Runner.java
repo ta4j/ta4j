@@ -24,10 +24,14 @@ package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.series.FullyMemorizedSlicer;
 import java.util.ArrayList;
 import java.util.List;
+import org.joda.time.DateTime;
+import org.joda.time.Period;
 
 /**
  * History runner.
@@ -44,6 +48,25 @@ public class Runner {
     private Strategy strategy;
     /** Cached trade results */
     private ArrayList<List<Trade>> listTradesResults;
+
+    /**
+     * Constructor.
+     * @param type the initial {@link OperationType operation type} of new {@link Trade trades}
+     * @param series a {@link TimeSeries time series}
+     * @param strategy a {@link Strategy strategy} to be run
+     */
+    public Runner(OperationType type, TimeSeries series, Strategy strategy) {
+        this(type, getOneSliceSlicer(series), strategy);
+    }
+
+    /**
+     * Constructor.
+     * @param series a {@link TimeSeries time series}
+     * @param strategy a {@link Strategy strategy} to be run
+     */
+    public Runner(TimeSeries series, Strategy strategy) {
+        this(OperationType.BUY, series, strategy);
+    }
 
     /**
      * Constructor.
@@ -68,6 +91,14 @@ public class Runner {
      */
     public Runner(TimeSeriesSlicer slicer, Strategy strategy) {
         this(OperationType.BUY, slicer, strategy);
+    }
+    
+    /**
+     * Executes the runner over the whole series.
+     * @return the list of trades corresponding to the whole series
+     */
+    public List<Trade> run() {
+        return run(0);
     }
 
     /**
@@ -160,5 +191,25 @@ public class Runner {
             }
         }
         return trades;
+    }
+    
+    /**
+     * @param series a {@link TimeSeries time series}
+     * @return a {@link TimeSeriesSlicer time series slicer} of only one slice containing the whole series
+     */
+    private static FullyMemorizedSlicer getOneSliceSlicer(TimeSeries series) {
+        if (series != null) {
+            DateTime seriesBeginTime = series.getTick(series.getBegin()).getBeginTime();
+            if (seriesBeginTime == null) {
+                // The begin time was not defined.
+                // We use the end time of the first tick minus a tick period
+                seriesBeginTime = series.getTick(series.getBegin()).getEndTime();
+                seriesBeginTime.minus(series.getPeriod());
+            }
+            DateTime seriesEndTime = series.getTick(series.getEnd()).getEndTime();
+            Period period = new Period(seriesBeginTime, seriesEndTime);
+            return new FullyMemorizedSlicer(series, period);
+        }
+        return null;
     }
 }

@@ -33,6 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.series.RegularSlicer;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
+import org.assertj.core.api.Fail;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.junit.Before;
@@ -63,7 +64,19 @@ public class RunnerTest {
     }
 
     @Test
-    public void runMethod() {
+    public void runOnWholeSeries() {
+        TimeSeries series = new MockTimeSeries(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        Runner runner = new Runner(series, strategy);
+
+        List<Trade> allTrades = runner.run();
+        List<Trade> sliceTrades = runner.run(0);
+
+        assertThat(allTrades).hasSize(2);
+        assertThat(allTrades).containsExactlyElementsOf(sliceTrades);
+    }
+
+    @Test
+    public void runOnSlice() {
         TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
         Runner runner = new Runner(slicer, strategy);
         List<Trade> trades = runner.run(0);
@@ -107,9 +120,50 @@ public class RunnerTest {
     }
 
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void nullTypeShouldThrowException() {
-        Runner runner = new Runner(null, null);
+        Runner runner;
+        TimeSeriesSlicer slicer = new RegularSlicer(series, Period.days(1));
+        OperationType type = OperationType.BUY;
+        
+        try {
+            runner = new Runner(series, null);
+            Fail.failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+        } catch (IllegalArgumentException iae) {
+            assertThat(iae).hasMessage("Arguments cannot be null");
+        }
+        try {
+            runner = new Runner(slicer, null);
+            Fail.failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+        } catch (IllegalArgumentException iae) {
+            assertThat(iae).hasMessage("Arguments cannot be null");
+        }
+        try {
+            runner = new Runner(null, series, strategy);
+            Fail.failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+        } catch (IllegalArgumentException iae) {
+            assertThat(iae).hasMessage("Arguments cannot be null");
+        }
+        try {
+            runner = new Runner(null, slicer, strategy);
+            Fail.failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+        } catch (IllegalArgumentException iae) {
+            assertThat(iae).hasMessage("Arguments cannot be null");
+        }
+        try {
+            slicer = null;
+            runner = new Runner(type, slicer, strategy);
+            Fail.failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+        } catch (IllegalArgumentException iae) {
+            assertThat(iae).hasMessage("Arguments cannot be null");
+        }
+        try {
+            series = null;
+            runner = new Runner(type, series, strategy);
+            Fail.failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
+        } catch (IllegalArgumentException iae) {
+            assertThat(iae).hasMessage("Arguments cannot be null");
+        }
     }
 
     @Test

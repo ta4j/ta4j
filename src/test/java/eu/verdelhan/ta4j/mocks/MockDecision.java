@@ -25,7 +25,6 @@ package eu.verdelhan.ta4j.mocks;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
-import eu.verdelhan.ta4j.analysis.Runner;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -34,7 +33,7 @@ public class MockDecision extends Decision {
     private double value;
 
     public MockDecision(double value) {
-        super(null, null, 0, null, null, new Runner(null, null));
+        super(null, null, 0, null, null, null);
         this.value = value;
     }
 
