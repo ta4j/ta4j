@@ -1,11 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>eu.verdelhan</groupId>
-    <artifactId>ta4j</artifactId>
+    <artifactId>ta4j-parent</artifactId>
     <version>0.4-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
-    <name>ta4j</name>
+    <name>Ta4j Parent</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
     <url>http://github.com/mdeverdelhan/ta4j</url>
     <inceptionYear>2014</inceptionYear>
@@ -28,19 +28,6 @@
         <url>http://github.com/mdeverdelhan/ta4j/issues</url>
     </issueManagement>
 
-    <distributionManagement>
-            <snapshotRepository>
-                <id>sonatype-nexus-snapshots</id>
-                <name>Sonatype Nexus snapshot repository</name>
-                <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-            </snapshotRepository>
-            <repository>
-                <id>sonatype-nexus-staging</id>
-                <name>Sonatype Nexus release repository</name>
-                <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-            </repository>
-    </distributionManagement>
-
     <ciManagement>
         <url>http://travis-ci.org/mdeverdelhan/ta4j</url>
     </ciManagement>
@@ -49,96 +36,18 @@
         <connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
         <url>http://github.com/mdeverdelhan/ta4j</url>
-      <tag>HEAD</tag>
-  </scm>
+    </scm>
+
+    <modules>
+        <module>ta4j</module>
+        <module>ta4j-examples</module>
+    </modules>
 
     <properties>
         <!-- Encoding -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
-
-    <dependencies>
-
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>2.3</version>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.11</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>1.5.0</version>
-            <scope>test</scope>
-        </dependency>
-
-    </dependencies>
-
-    <profiles>
-
-        <!-- Only when performing a release (i.e. not for snapshots) -->
-        <profile>
-            <id>sonatype-oss-release</id>
-            <build>
-                <plugins>
-                
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>2.1.2</version>
-                        <executions>
-                            <execution>
-                                <id>attach-sources</id>
-                                <goals>
-                                    <goal>jar-no-fork</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>2.7</version>
-                        <executions>
-                            <execution>
-                                <id>attach-javadocs</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- Artifact signing -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.1</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                </plugins>
-            </build>
-        </profile>
-
-    </profiles>
 
     <build>
         <plugins>
@@ -170,21 +79,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Releases -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>2.4.1</version>
-                <configuration>
-                    <!-- Avoid issue: http://jira.codehaus.org/browse/MGPG-9 -->
-                    <mavenExecutorId>forked-path</mavenExecutorId>
-                    <useReleaseProfile>false</useReleaseProfile>
-                    <arguments>${arguments} -Psonatype-oss-release</arguments>
-                </configuration>
-            </plugin>
-
         </plugins>
-
     </build>
 
 </project>

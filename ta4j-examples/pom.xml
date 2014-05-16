@@ -1,0 +1,36 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>eu.verdelhan</groupId>
+        <artifactId>ta4j-parent</artifactId>
+        <version>0.4-SNAPSHOT</version>
+    </parent>
+    <artifactId>ta4j-examples</artifactId>
+
+    <name>Ta4j Examples</name>
+    <description>Provides examples that demonstrate how to use ta4j</description>
+
+    <dependencies>
+        
+        <dependency>
+            <groupId>eu.verdelhan</groupId>
+            <artifactId>ta4j</artifactId>
+            <version>0.4-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.sf.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.0.17</version>
+        </dependency>
+        
+    </dependencies>
+
+</project>
