@@ -58,7 +58,7 @@ System.out.println("5-ticks-SMA value at the 42nd index: " + shortSma.getValue(4
 SMAIndicator longSma = new SMAIndicator(closePrice, 30);
 ```
 
-Ta4j includes [more than 40 technical indicators](http://github.com/mdeverdelhan/ta4j/tree/master/src/main/java/eu/verdelhan/ta4j/indicators).
+Ta4j includes [more than 40 technical indicators](http://github.com/mdeverdelhan/ta4j/tree/master/ta4j/src/main/java/eu/verdelhan/ta4j/indicators).
 
 #### Building a trading strategy
 
