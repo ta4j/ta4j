@@ -29,6 +29,15 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%2
 </dependency>
 ```
 
+For ***snapshots***, add the following repository to your `pom.xml` file.
+```xml
+<repository>
+    <id>sonatype snapshots</id>
+    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+</repository>
+```
+The current snapshot version is `0.4-SNAPSHOT`.
+
 ## Quick overview
 
 At the beginning we just need a time series.
