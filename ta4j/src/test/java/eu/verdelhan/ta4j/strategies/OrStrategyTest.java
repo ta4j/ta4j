@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j.strategies;
 
 
-import eu.verdelhan.ta4j.strategies.OrStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;

@@ -70,7 +70,7 @@ public class CombinedBuyAndSellStrategyTest {
     }
 
     @Test
-    public void ShouldExit() {
+    public void shouldExit() {
 
         exit = new Operation[] { new Operation(0, OperationType.SELL), null, new Operation(2, OperationType.SELL),
                 null, new Operation(4, OperationType.SELL) };
