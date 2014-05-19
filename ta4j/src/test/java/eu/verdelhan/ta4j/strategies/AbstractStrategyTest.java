@@ -81,38 +81,46 @@ public class AbstractStrategyTest {
     public void and() {
         Strategy strategy = fakeStrategy.and(fakeStrategy2);  
         
-        assertThat(strategy.shouldEnter(0)).isEqualTo(false);
-        assertThat(strategy.shouldEnter(1)).isEqualTo(false);
-        assertThat(strategy.shouldEnter(2)).isEqualTo(false);
-        assertThat(strategy.shouldEnter(3)).isEqualTo(false);
-        assertThat(strategy.shouldEnter(4)).isEqualTo(true);
-        assertThat(strategy.shouldEnter(5)).isEqualTo(false);
+        assertThat(strategy.shouldEnter(0)).isFalse();
+        assertThat(strategy.shouldEnter(1)).isFalse();
+        assertThat(strategy.shouldEnter(2)).isFalse();
+        assertThat(strategy.shouldEnter(3)).isFalse();
+        assertThat(strategy.shouldEnter(4)).isTrue();
+        assertThat(strategy.shouldEnter(5)).isFalse();
         
-        assertThat(strategy.shouldExit(0)).isEqualTo(false);
-        assertThat(strategy.shouldExit(1)).isEqualTo(false);
-        assertThat(strategy.shouldExit(2)).isEqualTo(false);
-        assertThat(strategy.shouldExit(3)).isEqualTo(false);
-        assertThat(strategy.shouldExit(4)).isEqualTo(false);
-        assertThat(strategy.shouldExit(5)).isEqualTo(true);
+        assertThat(strategy.shouldExit(0)).isFalse();
+        assertThat(strategy.shouldExit(1)).isFalse();
+        assertThat(strategy.shouldExit(2)).isFalse();
+        assertThat(strategy.shouldExit(3)).isFalse();
+        assertThat(strategy.shouldExit(4)).isFalse();
+        assertThat(strategy.shouldExit(5)).isTrue();
     }
 
     @Test
     public void or() {
         Strategy strategy = fakeStrategy.or(fakeStrategy2);
         
-        assertThat(strategy.shouldEnter(0)).isEqualTo(true);
-        assertThat(strategy.shouldEnter(1)).isEqualTo(true);
-        assertThat(strategy.shouldEnter(2)).isEqualTo(true);
-        assertThat(strategy.shouldEnter(3)).isEqualTo(false);
-        assertThat(strategy.shouldEnter(4)).isEqualTo(true);
-        assertThat(strategy.shouldEnter(5)).isEqualTo(false);
+        assertThat(strategy.shouldEnter(0)).isTrue();
+        assertThat(strategy.shouldEnter(1)).isTrue();
+        assertThat(strategy.shouldEnter(2)).isTrue();
+        assertThat(strategy.shouldEnter(3)).isFalse();
+        assertThat(strategy.shouldEnter(4)).isTrue();
+        assertThat(strategy.shouldEnter(5)).isFalse();
         
-        assertThat(strategy.shouldExit(0)).isEqualTo(false);
-        assertThat(strategy.shouldExit(1)).isEqualTo(true);
-        assertThat(strategy.shouldExit(2)).isEqualTo(true);
-        assertThat(strategy.shouldExit(3)).isEqualTo(true);
-        assertThat(strategy.shouldExit(4)).isEqualTo(true);
-        assertThat(strategy.shouldExit(5)).isEqualTo(true);
+        assertThat(strategy.shouldExit(0)).isFalse();
+        assertThat(strategy.shouldExit(1)).isTrue();
+        assertThat(strategy.shouldExit(2)).isTrue();
+        assertThat(strategy.shouldExit(3)).isTrue();
+        assertThat(strategy.shouldExit(4)).isTrue();
+        assertThat(strategy.shouldExit(5)).isTrue();
     }
 
+    @Test
+    public void opposite() {
+        Strategy opposite = fakeStrategy.opposite();
+
+        for (int i = 0; i < enter.length; i++) {
+            assertThat(opposite.shouldEnter(i)).isNotEqualTo(fakeStrategy.shouldEnter(i));
+        }
+    }
 }

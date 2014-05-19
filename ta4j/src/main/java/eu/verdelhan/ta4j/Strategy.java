@@ -62,4 +62,9 @@ public interface Strategy {
      * @return a strategy which is the OR combination of the current strategy with the provided one
      */
     Strategy or(Strategy strategy);
+
+    /**
+     * @return a strategy which operates in the opposite way of the current strategy
+     */
+    Strategy opposite();
 }

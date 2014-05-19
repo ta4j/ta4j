@@ -50,4 +50,9 @@ public abstract class AbstractStrategy implements Strategy {
     public Strategy or(Strategy strategy) {
         return new OrStrategy(this, strategy);
     }
+
+    @Override
+    public Strategy opposite() {
+        return new OppositeStrategy(this);
+    }
 }
