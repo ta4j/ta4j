@@ -26,23 +26,24 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * Standard deviation indicator.
+ * Mean deviation indicator.
  * <p>
+ * @see http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation
  */
-public class StandardDeviationIndicator implements Indicator<Double> {
+public class MeanDeviationIndicator implements Indicator<Double> {
 
     private Indicator<? extends Number> indicator;
 
     private int timeFrame;
 
     private SMAIndicator sma;
-
+    
     /**
      * Constructor.
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public StandardDeviationIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public MeanDeviationIndicator(Indicator<? extends Number> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         sma = new SMAIndicator(indicator, timeFrame);
@@ -50,12 +51,17 @@ public class StandardDeviationIndicator implements Indicator<Double> {
 
     @Override
     public Double getValue(int index) {
-        double standardDeviation = 0.0;
-        double average = sma.getValue(index);
-        for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
-            standardDeviation += Math.pow(indicator.getValue(i).doubleValue() - average, 2.0);
+        double absoluteDeviations = 0.0;
+
+        final double average = sma.getValue(index);
+        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int nbValues = index - startIndex + 1;
+
+        for (int i = startIndex; i <= index; i++) {
+            // For each period...
+            absoluteDeviations += Math.abs(indicator.getValue(i).doubleValue() - average);
         }
-        return Math.sqrt(standardDeviation);
+        return absoluteDeviations / nbValues;
     }
 
     @Override

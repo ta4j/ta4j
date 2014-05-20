@@ -63,7 +63,7 @@ public class StandardDeviationIndicatorTest {
     }
 
     @Test
-    public void standardDeviationValueIndicatorValueWhenTimeFraseIs1ShouldBeZero() {
+    public void standardDeviationShouldBeZeroWhenTimeFrameIs1() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertThat(sdv.getValue(3)).isEqualTo(0d);
         assertThat(sdv.getValue(8)).isEqualTo(0d);

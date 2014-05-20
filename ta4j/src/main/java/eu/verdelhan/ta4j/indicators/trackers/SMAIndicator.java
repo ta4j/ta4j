@@ -40,6 +40,7 @@ public class SMAIndicator extends CachedIndicator<Double> {
         this.timeFrame = timeFrame;
     }
 
+    @Override
     protected Double calculate(int index) {
         double sum = 0.0;
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
