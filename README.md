@@ -18,27 +18,6 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
 
 Ta4j uses `double`s under the hood. Small approximations can occur (in indicators notably). This may change in the future.
 
-## Maven configuration
-
-Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%22ta4j%22). You just have to add the following dependency in your `pom.xml` file.
-
-```xml
-<dependency>
-    <groupId>eu.verdelhan</groupId>
-    <artifactId>ta4j</artifactId>
-    <version>0.3</version>
-</dependency>
-```
-
-For ***snapshots***, add the following repository to your `pom.xml` file.
-```xml
-<repository>
-    <id>sonatype snapshots</id>
-    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-</repository>
-```
-The current snapshot version is `0.4-SNAPSHOT`.
-
 ## Quick overview
 
 At the beginning we just need a time series.
@@ -74,12 +53,12 @@ Ta4j includes [more than 40 technical indicators](http://github.com/mdeverdelhan
 
 ```java
 // Initial strategy:
-//  - Buy when 5-ticks SMA crosses over 30-ticks SMA
-//  - Sell when 5-ticks SMA crosses under 30-ticks SMA
+// - Buy when 5-ticks SMA crosses over 30-ticks SMA
+// - Sell when 5-ticks SMA crosses under 30-ticks SMA
 Strategy ourStrategy = new IndicatorCrossedIndicatorStrategy(shortSma, longSma);
 
 // Cutomizing our strategy...
-// We want to buy if the price go below a defined price (e.g $800.00)
+// We want to buy if the price goes below a defined price (e.g $800.00)
 ourStrategy = new SupportStrategy(closePrice, ourStrategy, 800d);
 // And we want to sell if the price looses more than 3%
 ourStrategy = new StopLossStrategy(closePrice, ourStrategy, 3);
@@ -92,15 +71,9 @@ See also:  [Algorithmic trading strategies](http://en.wikipedia.org/wiki/Algorit
 #### Running our juicy strategy
 
 ```java
-// Slicing/splitting the series (sub-series will last 1 day each)
-RegularSlicer slicer = new RegularSlicer(series, Period.days(1));
-System.out.println("Number of slices: " + slicer.getNumberOfSlices());
-// Getting the index of the last slice (sub-series)
-int lastSliceIndex = slicer.getNumberOfSlices() - 1;
-
-// Running our strategy over the last slice of the series
-Runner ourRunner = new HistoryRunner(slicer, ourStrategy);
-List<Trade> trades = ourRunner.run(lastSliceIndex);
+// Running our strategy...
+Runner ourRunner = new Runner(series, ourStrategy);
+List<Trade> trades = ourRunner.run();
 System.out.println("Number of trades for our strategy: " + trades.size());
 ```
 
@@ -108,20 +81,41 @@ System.out.println("Number of trades for our strategy: " + trades.size());
 
 ```java
 // Getting the cash flow of the resulting trades
-CashFlow cashFlow = new CashFlow(slicer.getSlice(lastSliceIndex), trades);
+CashFlow cashFlow = new CashFlow(series, trades);
 
 // Running a reference strategy (for comparison) in which we buy just once
-Runner referenceRunner = new HistoryRunner(slicer, new JustBuyOnceStrategy());
-List<Trade> referenceTrades = referenceRunner.run(lastSliceIndex);
+Runner referenceRunner = new Runner(series, new JustBuyOnceStrategy());
+List<Trade> referenceTrades = referenceRunner.run();
 System.out.println("Number of trades for reference strategy: " + referenceTrades.size());
 
 // Comparing our strategy to the just-buy-once strategy according to a criterion
 TotalProfitCriterion criterion = new TotalProfitCriterion();
 
-// Our strategy is better than a just-buy-once for the last slice
-System.out.println("Total profit for our strategy: " + criterion.calculate(slicer.getSlice(lastSliceIndex), trades));
-System.out.println("Total profit for reference strategy: " + criterion.calculate(slicer.getSlice(lastSliceIndex), referenceTrades));
+// Our strategy is better than a just-buy-once one
+System.out.println("Total profit for our strategy: " + criterion.calculate(series, trades));
+System.out.println("Total profit for reference strategy: " + criterion.calculate(series, referenceTrades));
 ```
+
+## Maven configuration
+
+Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%22ta4j%22). You just have to add the following dependency in your `pom.xml` file.
+
+```xml
+<dependency>
+    <groupId>eu.verdelhan</groupId>
+    <artifactId>ta4j</artifactId>
+    <version>0.3</version>
+</dependency>
+```
+
+For ***snapshots***, add the following repository to your `pom.xml` file.
+```xml
+<repository>
+    <id>sonatype snapshots</id>
+    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+</repository>
+```
+The current snapshot version is `0.4-SNAPSHOT`.
 
 
 ## Getting Help
