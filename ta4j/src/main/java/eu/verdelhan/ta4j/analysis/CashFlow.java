@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.analysis;
 
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -34,7 +35,7 @@ import java.util.List;
  * <p>
  * This class allows to follow the money cash flow involved by a list of trades over a time series.
  */
-public class CashFlow {
+public class CashFlow implements Indicator<Double> {
 
     /** The time series */
     private final TimeSeries timeSeries;
@@ -61,7 +62,8 @@ public class CashFlow {
      * @param index the index
      * @return the cash flow value at the index-th position
      */
-    public double getValue(int index) {
+    @Override
+    public Double getValue(int index) {
         return values.get(index);
     }
 

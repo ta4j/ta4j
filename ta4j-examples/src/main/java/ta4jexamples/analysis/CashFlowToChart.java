@@ -20,31 +20,38 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.indicators;
+package ta4jexamples.analysis;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.analysis.CashFlow;
+import eu.verdelhan.ta4j.analysis.Runner;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsLowerIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsMiddleIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.bollingerbands.BollingerBandsUpperIndicator;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.text.SimpleDateFormat;
+import java.util.List;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.data.time.Day;
+import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
+import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
-import ta4jexamples.loaders.CsvTicksLoader;
+import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.strategies.MovingMomentumStrategy;
 
 /**
- * This class builds a graphical chart showing values from indicators.
+ * This class builds a graphical chart showing the cash flow of a strategy.
  */
-public class IndicatorsToChart {
+public class CashFlowToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j time series and an indicator.
@@ -57,9 +64,25 @@ public class IndicatorsToChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < tickSeries.getSize(); i++) {
             Tick tick = tickSeries.getTick(i);
-            chartTimeSeries.add(new Day(tick.getEndTime().toDate()), indicator.getValue(i));
+            chartTimeSeries.add(new Minute(tick.getEndTime().toDate()), indicator.getValue(i));
         }
         return chartTimeSeries;
+    }
+
+    /**
+     * Adds the cash flow axis to the plot.
+     * @param plot the plot
+     * @param dataset the cash flow dataset
+     */
+    private static void addCashFlowAxis(XYPlot plot, TimeSeriesCollection dataset) {
+        final NumberAxis cashAxis = new NumberAxis("Cash Flow Ratio");
+        cashAxis.setAutoRangeIncludesZero(false);
+        plot.setRangeAxis(1, cashAxis);
+        plot.setDataset(1, dataset);
+        plot.mapDatasetToRangeAxis(1, 1);
+        final StandardXYItemRenderer cashFlowRenderer = new StandardXYItemRenderer();
+        cashFlowRenderer.setSeriesPaint(0, Color.blue);
+        plot.setRenderer(1, cashFlowRenderer);
     }
 
     /**
@@ -71,9 +94,9 @@ public class IndicatorsToChart {
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
-        panel.setPreferredSize(new java.awt.Dimension(500, 270));
+        panel.setPreferredSize(new Dimension(1024, 400));
         // Application frame
-        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Indicators to chart");
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Cash flow to chart");
         frame.setContentPane(panel);
         frame.pack();
         RefineryUtilities.centerFrameOnScreen(frame);
@@ -82,49 +105,48 @@ public class IndicatorsToChart {
 
     public static void main(String[] args) {
 
-        /**
-         * Getting time series
-         */
-        TimeSeries series = CsvTicksLoader.loadAppleIncSeries();
+        // Getting the time series
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Building the trading strategy
+        Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
+        // Running the strategy
+        Runner runner = new Runner(series, strategy);
+        List<Trade> trades = runner.run();
+        // Getting the cash flow of the resulting trades
+        CashFlow cashFlow = new CashFlow(series, trades);
 
         /**
-         * Creating indicators
+         * Building chart datasets
          */
-        // Close price
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        // Bollinger bands
-        BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(closePrice);
-        BollingerBandsLowerIndicator lowBBand = new BollingerBandsLowerIndicator(middleBBand, closePrice);
-        BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, closePrice);
-
-        /**
-         * Building chart dataset
-         */
-        TimeSeriesCollection dataset = new TimeSeriesCollection();
-        dataset.addSeries(buildChartTimeSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
-        dataset.addSeries(buildChartTimeSeries(series, lowBBand, "Low Bollinger Band"));
-        dataset.addSeries(buildChartTimeSeries(series, upBBand, "High Bollinger Band"));
+        TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
+        datasetAxis1.addSeries(buildChartTimeSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
+        TimeSeriesCollection datasetAxis2 = new TimeSeriesCollection();
+        datasetAxis2.addSeries(buildChartTimeSeries(series, cashFlow, "Cash Flow"));
 
         /**
          * Creating the chart
          */
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                "Apple Inc. 2013 Close Prices", // title
+                "Bitstamp BTC", // title
                 "Date", // x-axis label
-                "Price Per Unit", // y-axis label
-                dataset, // data
+                "Price", // y-axis label
+                datasetAxis1, // data
                 true, // create legend?
                 true, // generate tooltips?
                 false // generate URLs?
                 );
         XYPlot plot = (XYPlot) chart.getPlot();
         DateAxis axis = (DateAxis) plot.getDomainAxis();
-        axis.setDateFormatOverride(new SimpleDateFormat("yyyy-MM-dd"));
+        axis.setDateFormatOverride(new SimpleDateFormat("MM-dd HH:mm"));
+
+        /**
+         * Adding the cash flow axis (on the right)
+         */
+        addCashFlowAxis(plot, datasetAxis2);
 
         /**
          * Displaying the chart
          */
         displayChart(chart);
     }
-
 }
