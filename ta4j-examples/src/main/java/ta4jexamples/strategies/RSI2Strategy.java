@@ -27,12 +27,9 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Runner;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorDIndicator;
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorKIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.MACDIndicator;
-import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
+import eu.verdelhan.ta4j.indicators.trackers.RSIIndicator;
+import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.strategies.CombinedBuyAndSellStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import eu.verdelhan.ta4j.strategies.ResistanceStrategy;
@@ -41,15 +38,15 @@ import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
- * Moving momentum strategy.
+ * 2-Period RSI Strategy
  * <p>
- * @see http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2
  */
-public class MovingMomentumStrategy {
+public class RSI2Strategy {
 
     /**
      * @param series a time series
-     * @return a moving momentum strategy
+     * @return a 2-period RSI strategy
      */
     public static Strategy buildStrategy(TimeSeries series) {
         if (series == null) {
@@ -57,27 +54,28 @@ public class MovingMomentumStrategy {
         }
 
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
-        EMAIndicator longEma = new EMAIndicator(closePrice, 26);
+        SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
+        SMAIndicator longSma = new SMAIndicator(closePrice, 200);
 
-        // The bias is bullish when the shorter-moving average moves above the longer moving average.
-        // The bias is bearish when the shorter-moving average moves below the longer moving average.
-        IndicatorOverIndicatorStrategy shortEmaAboveLongEma = new IndicatorOverIndicatorStrategy(longEma, shortEma);
+        // Exit point.
+        // Exiting long positions on a move above the 5-period SMA and short positions on a move below the 5-day SMA.
+        IndicatorOverIndicatorStrategy priceBelowSma = new IndicatorOverIndicatorStrategy(closePrice, shortSma);
 
-        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
-        StochasticOscillatorDIndicator stochasticOscillD = new StochasticOscillatorDIndicator(stochasticOscillK);
+        // Identifying the major trend using a long-term moving average.
+        // The long-term trend is up when a security is above its 200-period SMA and down when a security is below its 200-period SMA.
+        IndicatorOverIndicatorStrategy shortSmaAboveLongSma = new IndicatorOverIndicatorStrategy(longSma, shortSma);
 
-        SupportStrategy support20 = new SupportStrategy(stochasticOscillK, new AlwaysOperateStrategy().opposite(), 20);
-        ResistanceStrategy resist80 = new ResistanceStrategy(stochasticOscillK, new AlwaysOperateStrategy().opposite(), 80);
+        // Identifying buying or selling opportunities within the bigger trend.
+        // We use a 2-period RSI indicator.
+        RSIIndicator rsi = new RSIIndicator(closePrice, 2);
+        SupportStrategy support5 = new SupportStrategy(rsi, priceBelowSma, 5);
+        ResistanceStrategy resist95 = new ResistanceStrategy(rsi, priceBelowSma, 95);
+        Strategy buyAndSellSignalsStrategy = new CombinedBuyAndSellStrategy(support5, resist95);
 
-        MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
-        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
+        // To Do
+        // Entering on close.
 
-        IndicatorOverIndicatorStrategy macdAboveSignalLine = new IndicatorOverIndicatorStrategy(emaMacd, macd);
-
-        return shortEmaAboveLongEma
-                .and(new CombinedBuyAndSellStrategy(support20, resist80))
-                .and(macdAboveSignalLine);
+        return shortSmaAboveLongSma.and(buyAndSellSignalsStrategy);
     }
 
     public static void main(String[] args) {
@@ -96,4 +94,5 @@ public class MovingMomentumStrategy {
         // Analysis
         System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, trades));
     }
+
 }
