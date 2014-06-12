@@ -22,16 +22,19 @@
  */
 package ta4jexamples;
 
+import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.CashFlow;
 import eu.verdelhan.ta4j.analysis.Runner;
+import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
+import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.ta4j.analysis.criteria.VersusBuyAndHoldCriterion;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.strategies.IndicatorCrossedIndicatorStrategy;
-import eu.verdelhan.ta4j.strategies.JustBuyOnceStrategy;
 import eu.verdelhan.ta4j.strategies.StopGainStrategy;
 import eu.verdelhan.ta4j.strategies.StopLossStrategy;
 import eu.verdelhan.ta4j.strategies.SupportStrategy;
@@ -95,16 +98,18 @@ public class Quickstart {
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, trades);
 
-        // Running a reference strategy (for comparison) in which we buy just once
-        Runner referenceRunner = new Runner(series, new JustBuyOnceStrategy());
-        List<Trade> referenceTrades = referenceRunner.run();
-        System.out.println("Number of trades for reference strategy: " + referenceTrades.size());
+        // Getting the profitable trades ratio
+        AnalysisCriterion profitTradesRatio = new AverageProfitableTradesCriterion();
+        System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, trades));
+        // Getting the reward-risk ratio
+        AnalysisCriterion rewardRiskRatio = new RewardRiskRatioCriterion();
+        System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, trades));
 
-        // Comparing our strategy to the just-buy-once strategy according to a criterion
-        TotalProfitCriterion criterion = new TotalProfitCriterion();
+        // Total profit of our strategy
+        // vs total profit of a buy-and-hold strategy
+        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, trades));
 
-        // Our strategy is better than a just-buy-once one
-        System.out.println("Total profit for our strategy: " + criterion.calculate(series, trades));
-        System.out.println("Total profit for reference strategy: " + criterion.calculate(series, referenceTrades));
+        // Your turn!
     }
 }
