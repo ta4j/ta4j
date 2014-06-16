@@ -35,7 +35,7 @@ import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.series.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;

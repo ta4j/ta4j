@@ -27,86 +27,65 @@ import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import org.joda.time.DateTime;
-import org.joda.time.Period;
 
 /**
  * A time series with sample data.
  */
-public class MockTimeSeries implements TimeSeries {
-
-    private List<Tick> ticks;
+public class MockTimeSeries extends TimeSeries {
 
     public MockTimeSeries(double... data) {
-        ticks = new ArrayList<Tick>();
-        for (int i = 0; i < data.length; i++) {
-            ticks.add(new MockTick(new DateTime().withMillisOfSecond(i), data[i]));
-        }
+        super(doublesToTicks(data));
     }
 
     public MockTimeSeries(List<Tick> ticks) {
-        this.ticks = ticks;
+        super(ticks);
     }
 
     public MockTimeSeries(double[] data, DateTime[] times) {
-        if (data.length != times.length) {
-            throw new IllegalArgumentException();
-        }
-        ticks = new ArrayList<Tick>();
-        for (int i = 0; i < data.length; i++) {
-            ticks.add(new MockTick(times[i], data[i]));
-        }
+        super(doublesAndTimesToTicks(data, times));
     }
 
     public MockTimeSeries(DateTime... dates) {
-        ticks = new ArrayList<Tick>();
+        super(timesToTicks(dates));
+    }
+
+    public MockTimeSeries() {
+        super(arbitraryTicks());
+    }
+
+    private static List<Tick> doublesToTicks(double... data) {
+        ArrayList<Tick> ticks = new ArrayList<Tick>();
+        for (int i = 0; i < data.length; i++) {
+            ticks.add(new MockTick(new DateTime().withMillisOfSecond(i), data[i]));
+        }
+        return ticks;
+    }
+
+    private static List<Tick> doublesAndTimesToTicks(double[] data, DateTime[] times) {
+        if (data.length != times.length) {
+            throw new IllegalArgumentException();
+        }
+        ArrayList<Tick> ticks = new ArrayList<Tick>();
+        for (int i = 0; i < data.length; i++) {
+            ticks.add(new MockTick(times[i], data[i]));
+        }
+        return ticks;
+    }
+
+    private static List<Tick> timesToTicks(DateTime... dates) {
+        ArrayList<Tick> ticks = new ArrayList<Tick>();
         int i = 1;
         for (DateTime date : dates) {
             ticks.add(new MockTick(date, i++));
         }
+        return ticks;
     }
 
-    public MockTimeSeries() {
-        ticks = new ArrayList<Tick>();
+    private static List<Tick> arbitraryTicks() {
+        ArrayList<Tick> ticks = new ArrayList<Tick>();
         for (double i = 0d; i < 10; i++) {
             ticks.add(new MockTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
         }
-    }
-
-    @Override
-    public Tick getTick(int i) {
-        return ticks.get(i);
-    }
-
-    @Override
-    public int getSize() {
-        return ticks.size();
-    }
-
-    @Override
-    public int getBegin() {
-        return 0;
-    }
-
-    @Override
-    public int getEnd() {
-        return ticks.size() - 1;
-    }
-
-    @Override
-    public String getName() {
-        return "SampleTimeSeries";
-    }
-
-    @Override
-    public String getPeriodName() {
-        return ticks.get(0).getEndTime().toString("hh:mm dd/MM/yyyy - ")
-                + ticks.get(this.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy");
-    }
-
-    @Override
-    public Period getPeriod() {
-        final long firstTickPeriod = ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis();
-        final long secondTickPeriod = ticks.get(2).getEndTime().getMillis() - ticks.get(1).getEndTime().getMillis();
-        return new Period(Math.min(firstTickPeriod, secondTickPeriod));
+        return ticks;
     }
 }

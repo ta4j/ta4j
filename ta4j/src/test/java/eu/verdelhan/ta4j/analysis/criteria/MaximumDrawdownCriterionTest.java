@@ -24,13 +24,13 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
-import eu.verdelhan.ta4j.series.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -140,14 +140,14 @@ public class MaximumDrawdownCriterionTest {
     public void withConstrainedTimeSeries()
     {
         MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
-        ConstrainedTimeSeries series = new ConstrainedTimeSeries(sampleSeries, 4, 8);
+        TimeSeries subSeries = sampleSeries.subseries(4, 8);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
         trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
         trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(7, OperationType.SELL)));
         trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
-        assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
+        assertThat(mdd.calculate(subSeries, trades)).isEqualTo(.9d);
         
     }
 }

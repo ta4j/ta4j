@@ -30,7 +30,6 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.series.ConstrainedTimeSeries;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -207,7 +206,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowWithConstrainedSeries() {
         MockTimeSeries series = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
-        ConstrainedTimeSeries constrained = new ConstrainedTimeSeries(series, 4, 8);
+        TimeSeries constrained = series.subseries(4, 8);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
         trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(8, OperationType.SELL)));

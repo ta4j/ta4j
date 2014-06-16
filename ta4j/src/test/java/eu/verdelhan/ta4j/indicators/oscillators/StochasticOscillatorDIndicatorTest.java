@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTick;
-import eu.verdelhan.ta4j.series.DefaultTimeSeries;
+import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
@@ -55,7 +55,7 @@ public class StochasticOscillatorDIndicatorTest {
         ticks.add(new MockTick(45.58, 119.13, 119.13, 116.88));
         ticks.add(new MockTick(45.58, 115.38, 119.44, 114.56));
 
-        data = new DefaultTimeSeries(ticks);
+        data = new TimeSeries(ticks);
     }
 
     @Test

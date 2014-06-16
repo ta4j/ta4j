@@ -28,7 +28,7 @@ import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.series.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;

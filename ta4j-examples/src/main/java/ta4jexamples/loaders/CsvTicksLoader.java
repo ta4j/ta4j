@@ -24,7 +24,7 @@ package ta4jexamples.loaders;
 
 import au.com.bytecode.opencsv.CSVReader;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.series.DefaultTimeSeries;
+import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.ticks.DefaultTick;
 import java.io.IOException;
 import java.io.InputStream;
@@ -75,7 +75,7 @@ public class CsvTicksLoader {
             Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
 
-        return new DefaultTimeSeries("apple_ticks", ticks);
+        return new TimeSeries("apple_ticks", ticks);
     }
 
     public static void main(String args[]) {

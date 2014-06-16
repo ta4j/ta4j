@@ -29,7 +29,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTick;
-import eu.verdelhan.ta4j.series.DefaultTimeSeries;
+import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
@@ -57,7 +57,7 @@ public class WilliamsRIndicatorTest {
         ticks.add(new MockTick(45.43, 45.55, 45.60, 45.35));
         ticks.add(new MockTick(45.58, 45.55, 45.61, 45.39));
 
-        data = new DefaultTimeSeries(ticks);
+        data = new TimeSeries(ticks);
 
     }
 

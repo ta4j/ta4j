@@ -28,7 +28,7 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.series.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
 import java.util.HashSet;
 import static org.assertj.core.api.Assertions.*;

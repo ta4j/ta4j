@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.series;
+package eu.verdelhan.ta4j.slicers;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
@@ -75,7 +75,7 @@ public class MemorizedSlicer implements TimeSeriesSlicer {
             index++;
         }
 
-        this.series = new ConstrainedTimeSeries(series, index, series.getEnd());
+        this.series = series.subseries(index, series.getEnd());
         this.period = period;
         this.splittedSeries = new ArrayList<TimeSeries>();
         this.periodBegin = periodBegin;
@@ -228,8 +228,7 @@ public class MemorizedSlicer implements TimeSeriesSlicer {
      * @param endIndex the end index of the sub-series
      */
     private void createSlice(int beginIndex, int endIndex) {
-        ConstrainedTimeSeries slice = new ConstrainedTimeSeries(series, beginIndex, endIndex);
-        splittedSeries.add(slice);
+        splittedSeries.add(series.subseries(beginIndex, endIndex));
     }
 
     /**

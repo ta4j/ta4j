@@ -28,7 +28,7 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Runner;
-import eu.verdelhan.ta4j.series.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import java.util.List;
 
 /**

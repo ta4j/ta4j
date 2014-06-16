@@ -27,7 +27,7 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.series.FullyMemorizedSlicer;
+import eu.verdelhan.ta4j.slicers.FullyMemorizedSlicer;
 import java.util.ArrayList;
 import java.util.List;
 import org.joda.time.DateTime;

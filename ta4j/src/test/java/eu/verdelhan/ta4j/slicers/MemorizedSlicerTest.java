@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.series;
+package eu.verdelhan.ta4j.slicers;
 
 import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -30,35 +30,119 @@ import org.joda.time.Period;
 import org.junit.Before;
 import org.junit.Test;
 
-public class RegularSlicerTest {
+public class MemorizedSlicerTest {
 
     private MockTimeSeries series;
 
     private DateTime date;
+    
+    private TimeSeriesSlicer slicer; 
 
     @Before
     public void setUp() {
         this.date = new DateTime(0);
     }
-    
+
     @Test
-    public void applyForSeries(){
+    public void applyForRegularSlicer() {
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        TimeSeriesSlicer slicer = new RegularSlicer(series, period);
+        slicer = new MemorizedSlicer(series, period, 1);
+
+        assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(1).getBegin()).isEqualTo(1);
+        assertThat(slicer.getSlice(2).getBegin()).isEqualTo(2);
+        assertThat(slicer.getSlice(3).getBegin()).isEqualTo(3);
+        assertThat(slicer.getSlice(4).getBegin()).isEqualTo(4);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void periodsPerSliceGreaterThan1() {
+        series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+                .withYear(2003), date.withYear(2004));
+        slicer = new MemorizedSlicer(series, new Period().withYears(1), 0);
+    }
+
+    @Test
+    public void startDateBeforeTimeSeriesDate() {
+        series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+                .withYear(2003), date.withYear(2004));
+        Period period = new Period().withYears(1);
+
+        slicer = new MemorizedSlicer(series, period, date.withYear(1980), 1);
+
+        assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(1).getBegin()).isEqualTo(1);
+        assertThat(slicer.getSlice(2).getBegin()).isEqualTo(2);
+        assertThat(slicer.getSlice(3).getBegin()).isEqualTo(3);
+        assertThat(slicer.getSlice(4).getBegin()).isEqualTo(4);
+    }
+
+    @Test
+    public void applyForMemorizedSlicer() {
+        series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+                .withYear(2003), date.withYear(2004));
+        Period period = new Period().withYears(1);
+
+        slicer = new MemorizedSlicer(series, period, 3);
+
+        assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(0).getEnd()).isEqualTo(0);
+
+        assertThat(slicer.getSlice(1).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(1).getEnd()).isEqualTo(1);
+
+        assertThat(slicer.getSlice(2).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(2).getEnd()).isEqualTo(2);
+
+        assertThat(slicer.getSlice(3).getBegin()).isEqualTo(1);
+        assertThat(slicer.getSlice(3).getEnd()).isEqualTo(3);
+
+        assertThat(slicer.getSlice(4).getBegin()).isEqualTo(2);
+        assertThat(slicer.getSlice(4).getEnd()).isEqualTo(4);
+    }
+
+    @Test
+    public void applyForFullyMemorizedSlicer() {
+        series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+                .withYear(2003), date.withYear(2004));
+        Period period = new Period().withYears(1);
+
+        slicer = new MemorizedSlicer(series, period, series.getSize());
+
+        assertThat(slicer.getSlice(0).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(0).getEnd()).isEqualTo(0);
+
+        assertThat(slicer.getSlice(1).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(1).getEnd()).isEqualTo(1);
+
+        assertThat(slicer.getSlice(2).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(2).getEnd()).isEqualTo(2);
+
+        assertThat(slicer.getSlice(3).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(3).getEnd()).isEqualTo(3);
+
+        assertThat(slicer.getSlice(4).getBegin()).isEqualTo(0);
+        assertThat(slicer.getSlice(4).getEnd()).isEqualTo(4);
+    }
+
+    @Test
+    public void applyForSeries() {
+        series = new MockTimeSeries(date.withYear(2000), date.withYear(2001), date.withYear(2002), date
+                .withYear(2003), date.withYear(2004));
+        Period period = new Period().withYears(1);
+
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, period, 3);
 
         TimeSeriesSlicer newSlicer = slicer.applyForSeries(series);
-        
+
         assertThat(newSlicer).isEqualTo(slicer);
-        
-        
 
         series = new MockTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
                 .withYear(2001), date.withYear(2001), date.withYear(2001), date.withYear(2002), date.withYear(2002),
                 date.withYear(2002), date.withYear(2002), date.withYear(2003));
-
 
         newSlicer = slicer.applyForSeries(series);
 
@@ -67,13 +151,13 @@ public class RegularSlicerTest {
         assertThat(newSlicer.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(newSlicer.getSlice(0).getEnd()).isEqualTo(2);
 
-        assertThat(newSlicer.getSlice(1).getBegin()).isEqualTo(3);
+        assertThat(newSlicer.getSlice(1).getBegin()).isEqualTo(0);
         assertThat(newSlicer.getSlice(1).getEnd()).isEqualTo(5);
 
-        assertThat(newSlicer.getSlice(2).getBegin()).isEqualTo(6);
+        assertThat(newSlicer.getSlice(2).getBegin()).isEqualTo(0);
         assertThat(newSlicer.getSlice(2).getEnd()).isEqualTo(9);
 
-        assertThat(newSlicer.getSlice(3).getBegin()).isEqualTo(10);
+        assertThat(newSlicer.getSlice(3).getBegin()).isEqualTo(3);
         assertThat(newSlicer.getSlice(3).getEnd()).isEqualTo(10);
     }
 
@@ -84,46 +168,24 @@ public class RegularSlicerTest {
                 .withYear(2003), date.withYear(2004));
         Period period = new Period().withYears(1);
 
-        TimeSeriesSlicer split = new RegularSlicer(series, period);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(5);
 
         assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(0).getEnd()).isEqualTo(0);
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(1);
+
+        assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(1).getEnd()).isEqualTo(1);
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(2);
+
+        assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(2).getEnd()).isEqualTo(2);
-        assertThat(split.getSlice(3).getBegin()).isEqualTo(3);
+
+        assertThat(split.getSlice(3).getBegin()).isEqualTo(1);
         assertThat(split.getSlice(3).getEnd()).isEqualTo(3);
-        assertThat(split.getSlice(4).getBegin()).isEqualTo(4);
+
+        assertThat(split.getSlice(4).getBegin()).isEqualTo(2);
         assertThat(split.getSlice(4).getEnd()).isEqualTo(4);
-    }
-
-    @Test
-    public void splitByYear() {
-
-        series = new MockTimeSeries(date.withYear(2000), date.withYear(2000), date.withYear(2000), date
-                .withYear(2001), date.withYear(2001), date.withYear(2001), date.withYear(2002), date.withYear(2002),
-                date.withYear(2002), date.withYear(2002), date.withYear(2003));
-
-        Period period = new Period().withYears(1);
-
-        TimeSeriesSlicer split = new RegularSlicer(series, period);
-
-        assertThat(split.getNumberOfSlices()).isEqualTo(4);
-
-        assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
-        assertThat(split.getSlice(0).getEnd()).isEqualTo(2);
-
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(3);
-        assertThat(split.getSlice(1).getEnd()).isEqualTo(5);
-
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(6);
-        assertThat(split.getSlice(2).getEnd()).isEqualTo(9);
-
-        assertThat(split.getSlice(3).getBegin()).isEqualTo(10);
-        assertThat(split.getSlice(3).getEnd()).isEqualTo(10);
     }
 
     @Test
@@ -135,17 +197,17 @@ public class RegularSlicerTest {
                         1, 1), date.withDate(2002, 2, 1), date.withDate(2002, 3, 1), date.withDate(2002, 5, 1), date
                         .withDate(2003, 3, 1));
 
-        TimeSeriesSlicer split = new RegularSlicer(series, period, date.withYear(2000).withMonthOfYear(7));
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, date.withYear(2000).withMonthOfYear(7), 2);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(3);
 
         assertThat(split.getSlice(0).getBegin()).isEqualTo(3);
         assertThat(split.getSlice(0).getEnd()).isEqualTo(4);
 
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(5);
+        assertThat(split.getSlice(1).getBegin()).isEqualTo(3);
         assertThat(split.getSlice(1).getEnd()).isEqualTo(9);
 
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(10);
+        assertThat(split.getSlice(2).getBegin()).isEqualTo(5);
         assertThat(split.getSlice(2).getEnd()).isEqualTo(10);
     }
 
@@ -157,24 +219,23 @@ public class RegularSlicerTest {
                 date.withYear(2002), date.withYear(2002), date.withYear(2005), date.withYear(2005));
 
         Period period = new Period().withYears(1);
-        TimeSeriesSlicer split = new RegularSlicer(series, period);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(4);
 
         assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(0).getEnd()).isEqualTo(2);
 
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(3);
+        assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(1).getEnd()).isEqualTo(5);
 
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(6);
+        assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(2).getEnd()).isEqualTo(9);
 
-        assertThat(split.getSlice(3).getBegin()).isEqualTo(10);
+        assertThat(split.getSlice(3).getBegin()).isEqualTo(3);
         assertThat(split.getSlice(3).getEnd()).isEqualTo(11);
 
     }
-
 
     @Test
     public void splitByYearBeginningInJuly() {
@@ -184,17 +245,18 @@ public class RegularSlicerTest {
                 date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
                         1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
                         .withDate(2003, 3, 3));
-        TimeSeriesSlicer split = new RegularSlicer(series, period);
+
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 2);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(3);
 
         assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(0).getEnd()).isEqualTo(4);
 
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(5);
+        assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(1).getEnd()).isEqualTo(9);
 
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(10);
+        assertThat(split.getSlice(2).getBegin()).isEqualTo(5);
         assertThat(split.getSlice(2).getEnd()).isEqualTo(10);
     }
 
@@ -202,22 +264,25 @@ public class RegularSlicerTest {
     public void splitByYearBeginingInJulyOverridingPeriodBeginTo1of1of2000() {
         Period period = new Period().withYears(1);
 
-        series = new MockTimeSeries(date.withDate(2000, 7, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
+        series = new MockTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
                 date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
                         1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
                         .withDate(2003, 3, 3));
-        TimeSeriesSlicer split = new RegularSlicer(series, period, date.withDate(2000, 1, 1));
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, date.withDate(2000, 1, 1), 3);
 
-        assertThat(split.getNumberOfSlices()).isEqualTo(3);
+        assertThat(split.getNumberOfSlices()).isEqualTo(4);
 
         assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
-        assertThat(split.getSlice(0).getEnd()).isEqualTo(4);
+        assertThat(split.getSlice(0).getEnd()).isEqualTo(2);
 
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(5);
-        assertThat(split.getSlice(1).getEnd()).isEqualTo(9);
+        assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
+        assertThat(split.getSlice(1).getEnd()).isEqualTo(5);
 
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(10);
-        assertThat(split.getSlice(2).getEnd()).isEqualTo(10);
+        assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
+        assertThat(split.getSlice(2).getEnd()).isEqualTo(9);
+
+        assertThat(split.getSlice(3).getBegin()).isEqualTo(3);
+        assertThat(split.getSlice(3).getEnd()).isEqualTo(10);
     }
 
     @Test
@@ -231,25 +296,37 @@ public class RegularSlicerTest {
                 .plusHours(2), openTime.plusHours(7), openTime.plusHours(10).plusMinutes(5), openTime.plusHours(10)
                 .plusMinutes(10), openTime.plusHours(10).plusMinutes(20), openTime.plusHours(10).plusMinutes(30));
 
-        TimeSeriesSlicer split = new RegularSlicer(series, period);
+        TimeSeriesSlicer split = new MemorizedSlicer(series, period, 3);
 
         assertThat(split.getNumberOfSlices()).isEqualTo(5);
 
         assertThat(split.getSlice(0).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(0).getEnd()).isEqualTo(5);
 
-        assertThat(split.getSlice(1).getBegin()).isEqualTo(6);
+        assertThat(split.getSlice(1).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(1).getEnd()).isEqualTo(6);
 
-        assertThat(split.getSlice(2).getBegin()).isEqualTo(7);
+        assertThat(split.getSlice(2).getBegin()).isEqualTo(0);
         assertThat(split.getSlice(2).getEnd()).isEqualTo(7);
 
-        assertThat(split.getSlice(3).getBegin()).isEqualTo(8);
+        assertThat(split.getSlice(3).getBegin()).isEqualTo(6);
         assertThat(split.getSlice(3).getEnd()).isEqualTo(8);
 
-        assertThat(split.getSlice(4).getBegin()).isEqualTo(9);
+        assertThat(split.getSlice(4).getBegin()).isEqualTo(7);
         assertThat(split.getSlice(4).getEnd()).isEqualTo(12);
 
+    }
+    
+    @Test
+    public void averageTicksPerSlice()
+    {
+        Period period = new Period().withYears(1);
+        series = new MockTimeSeries(date.withDate(2000, 1, 1), date.withDate(2000, 8, 1), date.withDate(2000, 9, 15),
+                date.withDate(2001, 1, 1), date.withDate(2001, 1, 3), date.withDate(2001, 12, 31), date.withDate(2002,
+                        1, 1), date.withDate(2002, 1, 2), date.withDate(2002, 1, 3), date.withDate(2002, 5, 5), date
+                        .withDate(2003, 3, 3));
+        MemorizedSlicer slicer = new MemorizedSlicer(series, period, 3);
+        assertThat(slicer.getAverageTicksPerSlice()).isEqualTo(27d/4);
     }
 
 }

@@ -22,46 +22,120 @@
  */
 package eu.verdelhan.ta4j;
 
+import java.util.List;
 import org.joda.time.Period;
 
 /**
- * Set of ticks separated by a predefined period (e.g. 15 minutes)
+ * Set of ticks separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
+ * <p>
  */
-public interface TimeSeries {
+public class TimeSeries {
+    /** List of ticks */
+    private final List<? extends Tick> ticks;
+    /** Begin index of the time series */
+    private int beginIndex;
+    /** End index of the time series */
+    private int endIndex;
+    /** Name of the series */
+    private final String name;
+
+    /**
+     * Constructor.
+     * @param name the name of the series
+     * @param ticks the list of ticks of the series
+     * @param beginIndex the begin index (inclusive) of the time series
+     * @param endIndex the end index (inclusive) of the time series
+     */
+    public TimeSeries(String name, List<? extends Tick> ticks, int beginIndex, int endIndex) {
+        if (endIndex < beginIndex - 1) {
+            throw new IllegalArgumentException("end cannot be < than begin - 1");
+        }
+        this.name = name;
+        this.ticks = ticks;
+        this.beginIndex = beginIndex;
+        this.endIndex = endIndex;
+    }
+    
+    /**
+     * Constructor.
+     * @param name the name of the series
+     * @param ticks the list of ticks of the series
+     */
+    public TimeSeries(String name, List<? extends Tick> ticks) {
+        this(name, ticks, 0, ticks.size() - 1);
+    }
+
+    /**
+     * Constructor of an unnamed series.
+     * @param ticks the list of ticks of the series
+     */
+    public TimeSeries(List<? extends Tick> ticks) {
+        this("unnamed", ticks);
+    }
+
+    /**
+     * @return the name of the series
+     */
+    public String getName() {
+        return name;
+    }
 
     /**
      * @param i an index
      * @return the tick at the i position
      */
-    Tick getTick(int i);
+    public Tick getTick(int i) {
+        return ticks.get(i);
+    }
 
     /**
      * @return the number of ticks in the series
      */
-    int getSize();
+    public int getSize() {
+        return (endIndex - beginIndex) + 1;
+    }
 
     /**
      * @return the begin index of the series
      */
-    int getBegin();
+    public int getBegin() {
+        return beginIndex;
+    }
 
     /**
      * @return the end index of the series
      */
-    int getEnd();
+    public int getEnd() {
+        return endIndex;
+    }
 
     /**
-     * @return the name of the series
+     * Returns a new time series which is a view of a subset of the current series.
+     * <p>
+     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
+     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
+     * @param beginIndex the begin index (inclusive) of the time series
+     * @param endIndex the end index (inclusive) of the time series
+     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
      */
-    String getName();
+    public TimeSeries subseries(int beginIndex, int endIndex) {
+        return new TimeSeries(name, ticks, beginIndex, endIndex);
+    }
 
     /**
      * @return the period name of the series (e.g. "from 12:00 21/01/2014 to 12:15 21/01/2014")
      */
-    String getPeriodName();
+    public String getPeriodName() {
+        return ticks.get(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+                + ticks.get(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
+    }
 
     /**
      * @return the period of the series
      */
-    Period getPeriod();
+    public Period getPeriod() {
+        final long firstTickPeriod = ticks.get(beginIndex + 1).getEndTime().getMillis() - ticks.get(beginIndex).getEndTime().getMillis();
+        final long secondTickPeriod = ticks.get(beginIndex + 2).getEndTime().getMillis() - ticks.get(beginIndex + 1).getEndTime().getMillis();
+        return new Period(Math.min(firstTickPeriod, secondTickPeriod));
+    }
 }

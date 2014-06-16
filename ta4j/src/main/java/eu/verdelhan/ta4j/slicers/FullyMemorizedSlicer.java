@@ -20,12 +20,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package eu.verdelhan.ta4j.slicers;
+
+import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesSlicer;
+import org.joda.time.DateTime;
+import org.joda.time.Period;
 
 /**
- * Time series.
+ * A fully (i.e. each tick period/tick is in every slice) memorized {@link TimeSeriesSlicer time series slicer}.
  * <p>
- * This package contains implementations of {@link TimeSeries} and {@link TimeSeriesSlicer}.
- * <p>
- * A {@link TimeSeriesSlicer slicer} splits a {@link TimeSeries series} into sub-series (slices).
+ * Divides a time series with a specific period.
  */
-package eu.verdelhan.ta4j.series;
+public class FullyMemorizedSlicer extends MemorizedSlicer {
+
+    /**
+     * Constructor.
+     * @param series the time series
+     * @param period the period duration
+     * @param begin the begin time of the first slice
+     */
+    public FullyMemorizedSlicer(TimeSeries series, Period period, DateTime begin) {
+        super(series, period, begin, series.getSize());
+    }
+
+    /**
+     * Constructor.
+     * @param series the time series
+     * @param period the period duration
+     */
+    public FullyMemorizedSlicer(TimeSeries series, Period period) {
+        this(series, period, series.getTick(0).getEndTime());
+    }
+
+    @Override
+    public TimeSeriesSlicer applyForSeries(TimeSeries series) {
+        return new FullyMemorizedSlicer(series, getPeriod());
+    }
+}

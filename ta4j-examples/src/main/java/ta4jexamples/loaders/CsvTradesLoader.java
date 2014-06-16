@@ -24,7 +24,7 @@ package ta4jexamples.loaders;
 
 import au.com.bytecode.opencsv.CSVReader;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.series.DefaultTimeSeries;
+import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.ticks.DefaultTick;
 import java.io.IOException;
 import java.io.InputStream;
@@ -95,7 +95,7 @@ public class CsvTradesLoader {
             removeEmptyTicks(ticks);
         }
 
-        return new DefaultTimeSeries("bitstamp_trades", ticks);
+        return new TimeSeries("bitstamp_trades", ticks);
     }
 
     /**
