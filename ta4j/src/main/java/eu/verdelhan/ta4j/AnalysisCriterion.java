@@ -26,7 +26,14 @@ import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import java.util.List;
 
 /**
- * An analysis criterion. Can be used to build a {@link Decision decision}.
+ * An analysis criterion.
+ * <p>
+ * Can be used to:
+ * <ul>
+ * <li>Analyze the performance of a {@link Strategy strategy}
+ * <li>Compare 2 {@link Strategy strategies}
+ * <li>Build a {@link Decision decision}.
+ * </ul>
  */
 public interface AnalysisCriterion {
 
@@ -44,5 +51,10 @@ public interface AnalysisCriterion {
      */
     double calculate(TimeSeries series, List<Trade> trades);
 
+    /**
+     * @param series a time series
+     * @param trades a list of trades
+     * @return the criterion value for the trades coming from the decisions
+     */
     double summarize(TimeSeries series, List<Decision> decisions);
 }

@@ -33,6 +33,9 @@ import java.util.List;
 
 /**
  * A decision.
+ * <p>
+ * A decision is the result of an evaluation of several {@link Strategy strategies}.
+ * It contains a reference to the best strategies over a {@link TimeSeries series}, according to an {@link AnalysisCriterion analysis criterion}.
  */
 public class Decision {
 
