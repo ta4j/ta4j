@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.slicers.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.MemorizedSlicer;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.assertj.core.api.Fail;
@@ -89,7 +89,7 @@ public class RunnerTest {
 
     @Test
     public void runOnSlice() {
-        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(2000));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withYears(2000));
         Runner runner = new Runner(slicer, strategy);
         List<Trade> trades = runner.run(0);
         assertThat(trades).hasSize(2);
@@ -103,7 +103,7 @@ public class RunnerTest {
 
     @Test
     public void runWithOpenEntryBuyLeft() {
-        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withYears(1));
         Operation[] enter = new Operation[] { null, new Operation(1, OperationType.BUY), null, null, null, null, null, null, null };
         Operation[] exit = { null, null, null, new Operation(3, OperationType.SELL), null, null, null, null, null };
 
@@ -121,7 +121,7 @@ public class RunnerTest {
         Operation[] enter = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null, null, null, null, null };
         Operation[] exit = { null, null, null, new Operation(3, OperationType.BUY), null, null, null, null, null };
 
-        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withYears(1));
         Strategy strategy = new MockStrategy(enter, exit);
         Runner runner = new Runner(OperationType.SELL, slicer, strategy);
         List<Trade> trades = runner.run(0);
@@ -135,7 +135,7 @@ public class RunnerTest {
     @Test
     public void nullTypeShouldThrowException() {
         Runner runner;
-        TimeSeriesSlicer slicer = new RegularSlicer(series, Period.days(1));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, Period.days(1));
         OperationType type = OperationType.BUY;
         
         try {
@@ -180,7 +180,7 @@ public class RunnerTest {
 
     @Test
     public void runSplitted() {
-        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withYears(1));
         Runner runner = new Runner(slicer, strategy);
         List<Trade> trades = runner.run(0);
         assertThat(trades).hasSize(1);
@@ -213,7 +213,7 @@ public class RunnerTest {
                 null, null, new Operation(9, OperationType.SELL) };
         Strategy strategy = new MockStrategy(enter, exit);
         
-        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withYears(1));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withYears(1));
         Runner runner = new Runner(slicer, strategy);
         List<Trade> trades = runner.run(0);
         

@@ -93,6 +93,15 @@ public class MemorizedSlicer implements TimeSeriesSlicer {
         this(series, period, series.getTick(series.getBegin()).getEndTime(), periodsPerSlice);
     }
 
+    /**
+     * Constructor.
+     * @param series the time series
+     * @param period the period duration
+     */
+    public MemorizedSlicer(TimeSeries series, Period period) {
+        this(series, period, series.getTick(0).getEndTime(), 1);
+    }
+
     @Override
     public TimeSeriesSlicer applyForSeries(TimeSeries series) {
         return applyForSeries(series, this.periodBegin);

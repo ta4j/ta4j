@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.slicers.RegularSlicer;
+import eu.verdelhan.ta4j.slicers.MemorizedSlicer;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -128,7 +128,7 @@ public class DecisionTest {
                     dtf.parseDateTime("2014-01-07"),
                     dtf.parseDateTime("2014-01-08")
                 });
-        TimeSeriesSlicer slicer = new RegularSlicer(series, new Period().withWeeks(1));
+        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withWeeks(1));
 
         Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };
         Operation[] sell = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null, null, null,null };
