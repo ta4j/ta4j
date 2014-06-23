@@ -25,10 +25,8 @@ package eu.verdelhan.ta4j.analysis.evaluators;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Runner;
-import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import java.util.List;
 
 /**
@@ -45,44 +43,37 @@ public class Decision {
 
     private List<Trade> trades;
 
-    private Runner runner;
+    private TimeSeries series;
 
-    private TimeSeriesSlicer slicer;
+    public Decision(Strategy bestStrategy, TimeSeries series, AnalysisCriterion criterion) {
+        this(bestStrategy, series, criterion, new Runner(series, bestStrategy).run());
+    }
 
-    private int slicerPosition;
-
-    public Decision(Strategy bestStrategy, TimeSeriesSlicer slicer, int slicerPosition, AnalysisCriterion criterion, List<Trade> trades, Runner runner) {
+    public Decision(Strategy bestStrategy, TimeSeries series, AnalysisCriterion criterion, List<Trade> trades) {
         this.strategy = bestStrategy;
-        this.slicer = new RegularSlicer(slicer.getSeries(), slicer.getPeriod(), slicer.getSlice(0).getTick(slicer.getSlice(0).getBegin()).getEndTime());
+        this.series = series;
         this.criterion = criterion;
         this.trades = trades;
-        this.runner = runner;
-        this.slicerPosition = slicerPosition;
     }
 
     public double evaluateCriterion() {
-        return criterion.calculate(getActualSlice(), trades);
+        return criterion.calculate(series, trades);
     }
 
     public double evaluateCriterion(AnalysisCriterion otherCriterion) {
-        return otherCriterion.calculate(getActualSlice(), trades);
+        return otherCriterion.calculate(series, trades);
     }
 
     public Strategy getStrategy() {
         return strategy;
     }
 
-    public Decision applyFor(int slicePosition) {
-        List<Trade> newTrades = runner.run(slicePosition);
-        return new Decision(strategy, slicer, slicerPosition+1, criterion, newTrades, runner);
+    public Decision applyFor(TimeSeries otherSeries) {
+        return new Decision(strategy, otherSeries, criterion);
     }
 
     public List<Trade> getTrades() {
         return trades;
-    }
-
-    public TimeSeries getActualSlice() {
-        return slicer.getSlice(slicerPosition);
     }
 
     @Override
@@ -91,11 +82,11 @@ public class Decision {
     }
     
     public String getName() {
-        return getActualSlice() + ": " + getActualSlice().getPeriodName();
+        return series + ": " + series.getPeriodName();
     }
     
     public String getFileName() {
-        return this.getClass().getSimpleName() + getActualSlice().getTick(getActualSlice().getBegin()).getEndTime().toString("hhmmddMMyyyy");
+        return this.getClass().getSimpleName() + series.getTick(series.getBegin()).getEndTime().toString("hhmmddMMyyyy");
     }
 
     @Override
@@ -103,9 +94,7 @@ public class Decision {
         final int prime = 47;
         int result = 1;
         result = prime * result + ((criterion == null) ? 0 : criterion.hashCode());
-        result = prime * result + ((runner == null) ? 0 : runner.hashCode());
-        result = prime * result + ((slicer == null) ? 0 : slicer.hashCode());
-        result = prime * result + slicerPosition;
+        result = prime * result + ((series == null) ? 0 : series.hashCode());
         result = prime * result + ((strategy == null) ? 0 : strategy.hashCode());
         result = prime * result + ((trades == null) ? 0 : trades.hashCode());
         return result;
@@ -130,21 +119,11 @@ public class Decision {
         } else if (!criterion.equals(other.criterion)) {
             return false;
         }
-        if (runner == null) {
-            if (other.runner != null) {
+        if (series == null) {
+            if (other.series != null) {
                 return false;
             }
-        } else if (!runner.equals(other.runner)) {
-            return false;
-        }
-        if (slicer == null) {
-            if (other.slicer != null) {
-                return false;
-            }
-        } else if (!slicer.equals(other.slicer)) {
-            return false;
-        }
-        if (slicerPosition != other.slicerPosition) {
+        } else if (!series.equals(other.series)) {
             return false;
         }
         if (strategy == null) {

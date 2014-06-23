@@ -22,10 +22,9 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
-import eu.verdelhan.ta4j.TimeSeriesSlicer;
+import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
-import java.util.LinkedList;
 import java.util.List;
 
 public class MockDecision extends Decision {
@@ -33,17 +32,12 @@ public class MockDecision extends Decision {
     private double value;
 
     public MockDecision(double value) {
-        super(null, null, 0, null, null, null);
+        super(null, null, null);
         this.value = value;
     }
 
-    public MockDecision(double value, TimeSeriesSlicer slicer) {
-        super(null, slicer, 0, null, new LinkedList<Trade>(), null);
-        this.value = value;
-    }
-
-    public MockDecision(List<Trade> trades, TimeSeriesSlicer slicer) {
-        super(null, slicer, 0, null, trades, null);
+    public MockDecision(List<Trade> trades, TimeSeries series) {
+        super(null, series, null, trades);
     }
 
     @Override

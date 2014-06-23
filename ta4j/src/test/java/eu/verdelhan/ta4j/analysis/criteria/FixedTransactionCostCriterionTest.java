@@ -28,12 +28,10 @@ import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.evaluators.Decision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import java.util.ArrayList;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
-import org.joda.time.Period;
 import org.junit.Test;
 
 
@@ -86,14 +84,14 @@ public class FixedTransactionCostCriterionTest {
         List<Decision> decisions = new ArrayList<Decision>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
         
-        decisions.add(new Decision(null, new RegularSlicer(series, new Period().withYears(2000)), 0,null, trades, null));
+        decisions.add(new Decision(null, series, null, trades));
         
         trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
         trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
         
-        decisions.add(new Decision(null, new RegularSlicer(series, new Period().withYears(2000)),0, null, trades, null));
-        decisions.add(new Decision(null, new RegularSlicer(series, new Period().withYears(2000)),0, null, trades, null));
+        decisions.add(new Decision(null, series, null, trades));
+        decisions.add(new Decision(null, series, null, trades));
         
         AnalysisCriterion transactionCosts = new FixedTransactionCostCriterion(1.10d);
 

@@ -25,9 +25,7 @@ package eu.verdelhan.ta4j.analysis.evaluators;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.StrategyEvaluator;
-import eu.verdelhan.ta4j.TimeSeriesSlicer;
-import eu.verdelhan.ta4j.analysis.Runner;
-import java.util.HashMap;
+import eu.verdelhan.ta4j.TimeSeries;
 import java.util.Set;
 
 /**
@@ -38,41 +36,32 @@ public class HigherValueEvaluator implements StrategyEvaluator {
 
     private Set<Strategy> strategies;
 
-    private TimeSeriesSlicer slicer;
+    private TimeSeries series;
 
     private AnalysisCriterion criterion;
-
-    private HashMap<Strategy, Runner> hashRunner;
 
     /**
      * Constructor.
      * @param strategies a set of strategies to be evaluated
-     * @param slicer a time series slicer
+     * @param series a time series
      * @param criterion an analysis criterion
      */
-    public HigherValueEvaluator(Set<Strategy> strategies, TimeSeriesSlicer slicer, AnalysisCriterion criterion) {
+    public HigherValueEvaluator(Set<Strategy> strategies, TimeSeries series, AnalysisCriterion criterion) {
         this.strategies = strategies;
-        this.slicer = slicer;
+        this.series = series;
         this.criterion = criterion;
-        hashRunner = new HashMap<Strategy, Runner>();
-
-        for (Strategy strategy : strategies) {
-            hashRunner.put(strategy, new Runner(slicer, strategy));
-        }
     }
 
     @Override
-    public Decision evaluate(int slicePosition) {
+    public Decision evaluate() {
         Strategy bestStrategy = strategies.iterator().next();
 
         // Getting the runner of the strategy
-        Runner runner = hashRunner.get(bestStrategy);
-        Decision bestDecision = new Decision(bestStrategy, slicer, slicePosition, criterion, runner.run(slicePosition), runner);
+        Decision bestDecision = new Decision(bestStrategy, series, criterion);
 
         for (Strategy strategy : strategies) {
-            runner = hashRunner.get(strategy);
 
-            Decision decision = new Decision(strategy, slicer, slicePosition, criterion, runner.run(slicePosition), runner);
+            Decision decision = new Decision(strategy, series, criterion);
             double value = decision.evaluateCriterion();
 //          System.out.println(String.format("For %s, criterion %s, gave %.3f", strategy, criterion.getClass().getSimpleName(), value));
             if (value > bestDecision.evaluateCriterion()) {

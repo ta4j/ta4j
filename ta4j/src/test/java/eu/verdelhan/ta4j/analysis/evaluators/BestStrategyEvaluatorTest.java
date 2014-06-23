@@ -28,12 +28,9 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.slicers.RegularSlicer;
 import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
 import java.util.HashSet;
 import static org.assertj.core.api.Assertions.*;
-import org.joda.time.DateTime;
-import org.joda.time.Period;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,23 +59,20 @@ public class BestStrategyEvaluatorTest {
 
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
-        DateTime date = new DateTime();
-        MockTimeSeries series = new MockTimeSeries(new double[] { 6.0, 9.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
+        MockTimeSeries series = new MockTimeSeries(6.0, 9.0, 6.0, 6.0);
         
-        HigherValueEvaluator evaluator = new HigherValueEvaluator(strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
-        Decision decision = evaluator.evaluate(0);
+        HigherValueEvaluator evaluator = new HigherValueEvaluator(strategies, series, new TotalProfitCriterion());
+        Decision decision = evaluator.evaluate();
 
         assertThat(decision.getStrategy()).isEqualTo(alwaysStrategy);
     }
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
-        DateTime date = new DateTime();
-        MockTimeSeries series = new MockTimeSeries(new double[] { 6.0, 3.0, 6.0, 6.0 }, new DateTime[]{date, date, date, date});
+        MockTimeSeries series = new MockTimeSeries(6.0, 3.0, 6.0, 6.0);
         
-
-        HigherValueEvaluator evaluator = new HigherValueEvaluator(strategies, new RegularSlicer(series, new Period().withYears(2000)), new TotalProfitCriterion());
-        Decision decision = evaluator.evaluate(0);
+        HigherValueEvaluator evaluator = new HigherValueEvaluator(strategies, series, new TotalProfitCriterion());
+        Decision decision = evaluator.evaluate();
 
         assertThat(decision.getStrategy()).isEqualTo(buyAndHoldStrategy);
     }

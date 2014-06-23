@@ -36,6 +36,8 @@ import static org.assertj.core.api.Assertions.*;
 import org.assertj.core.api.Fail;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,10 +53,20 @@ public class RunnerTest {
 
     @Before
     public void setUp() {
-        DateTime date = new DateTime();
-        series = new MockTimeSeries(new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d},
-                    new DateTime[]{date.withYear(2000), date.withYear(2000), date.withYear(2000), date.withYear(2000), date.withYear(2001),
-                                   date.withYear(2001), date.withYear(2002), date.withYear(2002), date.withYear(2002)});
+        final DateTimeFormatter dtf = DateTimeFormat.forPattern("yyyy-MM-dd");
+        series = new MockTimeSeries(
+                new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
+                new DateTime[] {
+                    dtf.parseDateTime("2013-04-01"),
+                    dtf.parseDateTime("2013-07-01"),
+                    dtf.parseDateTime("2013-10-01"),
+                    dtf.parseDateTime("2013-12-01"),
+                    dtf.parseDateTime("2014-06-01"),
+                    dtf.parseDateTime("2015-01-01"),
+                    dtf.parseDateTime("2015-04-01"),
+                    dtf.parseDateTime("2015-07-01"),
+                    dtf.parseDateTime("2015-10-01")
+                });
         
         enter = new Operation[] { null, null, new Operation(2, OperationType.BUY), new Operation(3, OperationType.BUY),
                 null, null, new Operation(6, OperationType.BUY), null, null };
