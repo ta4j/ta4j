@@ -136,6 +136,8 @@ public class TimeSeries {
     public Period getPeriod() {
         final long firstTickPeriod = ticks.get(beginIndex + 1).getEndTime().getMillis() - ticks.get(beginIndex).getEndTime().getMillis();
         final long secondTickPeriod = ticks.get(beginIndex + 2).getEndTime().getMillis() - ticks.get(beginIndex + 1).getEndTime().getMillis();
-        return new Period(Math.min(firstTickPeriod, secondTickPeriod));
+        Period period = new Period(Math.min(firstTickPeriod, secondTickPeriod));
+        assert !Period.ZERO.equals(period) : "Period should not be zero";
+        return period;
     }
 }
