@@ -43,13 +43,15 @@ public class TimeSeriesTest {
 
     @Before
     public void setUp() {
+        DateTime date = new DateTime();
+
         ticks = new LinkedList<Tick>();
-        ticks.add(new MockTick(new DateTime().withDate(2014, 6, 13), 1d));
-        ticks.add(new MockTick(new DateTime().withDate(2014, 6, 14), 2d));
-        ticks.add(new MockTick(new DateTime().withDate(2014, 6, 15), 3d));
-        ticks.add(new MockTick(new DateTime().withDate(2014, 6, 20), 4d));
-        ticks.add(new MockTick(new DateTime().withDate(2014, 6, 25), 5d));
-        ticks.add(new MockTick(new DateTime().withDate(2014, 6, 30), 6d));
+        ticks.add(new MockTick(date.withDate(2014, 6, 13), 1d));
+        ticks.add(new MockTick(date.withDate(2014, 6, 14), 2d));
+        ticks.add(new MockTick(date.withDate(2014, 6, 15), 3d));
+        ticks.add(new MockTick(date.withDate(2014, 6, 20), 4d));
+        ticks.add(new MockTick(date.withDate(2014, 6, 25), 5d));
+        ticks.add(new MockTick(date.withDate(2014, 6, 30), 6d));
 
         defaultName = "Series Name";
 
@@ -92,7 +94,7 @@ public class TimeSeriesTest {
     }
 
     @Test
-    public void getPeriodTest() {
+    public void getPeriod() {
         // Original series
         Period origSeriesPeriod = new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis());
         assertThat(defaultSeries.getPeriod()).isEqualTo(origSeriesPeriod);
