@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.joda.time.Period;
 
@@ -47,6 +48,7 @@ public class TimeSeries {
      * @param endIndex the end index (inclusive) of the time series
      */
     public TimeSeries(String name, List<? extends Tick> ticks, int beginIndex, int endIndex) {
+        // TODO: add null checks and out of bounds checks
         if (endIndex < beginIndex - 1) {
             throw new IllegalArgumentException("end cannot be < than begin - 1");
         }
@@ -120,6 +122,58 @@ public class TimeSeries {
      */
     public TimeSeries subseries(int beginIndex, int endIndex) {
         return new TimeSeries(name, ticks, beginIndex, endIndex);
+    }
+
+    /**
+     * Runs the strategy over the series.
+     * Opens the trades with {@link OperationType.BUY} operations.
+     * @param strategy the trading strategy
+     * @return a list of trades
+     */
+    public List<Trade> run(Strategy strategy) {
+        return run(strategy, OperationType.BUY);
+    }
+
+    /**
+     * Runs the strategy over the series.
+     * @param strategy the trading strategy
+     * @param operationType the {@link OperationType} used to open the trades
+     * @return a list of trades
+     */
+    public List<Trade> run(Strategy strategy, OperationType operationType) {
+
+        List<Trade> trades = new ArrayList<Trade>();
+
+        Trade lastTrade = new Trade(operationType);
+        for (int i = beginIndex; i <= endIndex; i++) {
+            // For each tick in the sub-series...
+            if (strategy.shouldOperate(lastTrade, i)) {
+                lastTrade.operate(i);
+                if (lastTrade.isClosed()) {
+                    // Adding the trade when closed
+                    trades.add(lastTrade);
+                    lastTrade = new Trade(operationType);
+                }
+            }
+        }
+
+        if (lastTrade.isOpened()) {
+            // If the last trade is still opened, we search out of the end index.
+            // May works if the current series is a sub-series (but not the last sub-series).
+            for (int i = endIndex + 1; i < ticks.size(); i++) {
+                // For each tick out of sub-series bound...
+                // --> Trying to close the last trade
+                if (strategy.shouldOperate(lastTrade, i)) {
+                    lastTrade.operate(i);
+                    break;
+                }
+            }
+            if (lastTrade.isClosed()) {
+                // Last trade added only if it has been closed finally
+                trades.add(lastTrade);
+            }
+        }
+        return trades;
     }
 
     /**

@@ -26,7 +26,6 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.Runner;
 import java.util.List;
 
 /**
@@ -46,7 +45,7 @@ public class Decision {
     private TimeSeries series;
 
     public Decision(Strategy bestStrategy, TimeSeries series, AnalysisCriterion criterion) {
-        this(bestStrategy, series, criterion, new Runner(series, bestStrategy).run());
+        this(bestStrategy, series, criterion, series.run(bestStrategy));
     }
 
     public Decision(Strategy bestStrategy, TimeSeries series, AnalysisCriterion criterion, List<Trade> trades) {

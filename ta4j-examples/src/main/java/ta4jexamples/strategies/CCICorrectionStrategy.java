@@ -25,7 +25,6 @@ package ta4jexamples.strategies;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.Runner;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.indicators.oscillators.CCIIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
@@ -77,8 +76,7 @@ public class CCICorrectionStrategy {
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        Runner runner = new Runner(series, strategy);
-        List<Trade> trades = runner.run();
+        List<Trade> trades = series.run(strategy);
         System.out.println("Number of trades for the strategy: " + trades.size());
 
         // Analysis

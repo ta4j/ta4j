@@ -28,7 +28,6 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.CashFlow;
-import eu.verdelhan.ta4j.analysis.Runner;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -110,8 +109,7 @@ public class CashFlowToChart {
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        Runner runner = new Runner(series, strategy);
-        List<Trade> trades = runner.run();
+        List<Trade> trades = series.run(strategy);
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, trades);
 

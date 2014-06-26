@@ -27,7 +27,6 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.CashFlow;
-import eu.verdelhan.ta4j.analysis.Runner;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
@@ -88,8 +87,7 @@ public class Quickstart {
 
 
         // Running our juicy trading strategy...
-        Runner ourRunner = new Runner(series, ourStrategy);
-        List<Trade> trades = ourRunner.run();
+        List<Trade> trades = series.run(ourStrategy);
         System.out.println("Number of trades for our strategy: " + trades.size());
 
 
