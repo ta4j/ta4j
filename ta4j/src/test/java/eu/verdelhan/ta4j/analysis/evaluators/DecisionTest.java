@@ -28,12 +28,11 @@ import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeriesSlicer;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.slicers.MemorizedSlicer;
+import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
@@ -128,15 +127,15 @@ public class DecisionTest {
                     dtf.parseDateTime("2014-01-07"),
                     dtf.parseDateTime("2014-01-08")
                 });
-        TimeSeriesSlicer slicer = new MemorizedSlicer(series, new Period().withWeeks(1));
+        List<TimeSeries> subseries = series.split(Period.weeks(1));
 
         Operation[] buy = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null, null, null, null,null };
         Operation[] sell = new Operation[] { null, null, null, null, new Operation(4, OperationType.SELL), null, null, null, null,null };
         Strategy fakeStrategy = new MockStrategy(buy, sell);
-        Decision decision = new Decision(fakeStrategy, slicer.getSlice(0), criterion);
-        Decision nextDecision = new Decision(fakeStrategy, slicer.getSlice(1), criterion);
+        Decision decision = new Decision(fakeStrategy, subseries.get(0), criterion);
+        Decision nextDecision = new Decision(fakeStrategy, subseries.get(1), criterion);
 
-        Decision appliedDecision = decision.applyFor(slicer.getSlice(1));
+        Decision appliedDecision = decision.applyFor(subseries.get(1));
 
         assertThat(appliedDecision).isEqualTo(nextDecision);
         assertThat(appliedDecision.evaluateCriterion()).isEqualTo(1d);

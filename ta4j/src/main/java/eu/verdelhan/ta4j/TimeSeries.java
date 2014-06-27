@@ -24,6 +24,8 @@ package eu.verdelhan.ta4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.joda.time.DateTime;
+import org.joda.time.Interval;
 import org.joda.time.Period;
 
 /**
@@ -122,6 +124,75 @@ public class TimeSeries {
      */
     public TimeSeries subseries(int beginIndex, int endIndex) {
         return new TimeSeries(name, ticks, beginIndex, endIndex);
+    }
+
+    /**
+     * Splits the time series into sub-series containing nbTicks ticks each.<br>
+     * The last sub-series may have less ticks than nbTicks.
+     * @param series the time series
+     * @param nbTicks the number of ticks of each sub-series
+     * @return a list of sub-series
+     */
+    public List<TimeSeries> split(int nbTicks) {
+        ArrayList<TimeSeries> subseries = new ArrayList<TimeSeries>();
+        for (int i = beginIndex; i <= endIndex; i += nbTicks) {
+            // For each nbTicks ticks
+            int subseriesBegin = i;
+            int subseriesEnd = Math.min(subseriesBegin + nbTicks, endIndex);
+            subseries.add(subseries(subseriesBegin, subseriesEnd));
+        }
+        return subseries;
+    }
+
+    /**
+     * Splits the time series into sub-series lasting duration.<br>
+     * The last sub-series may last less than duration.
+     * @param series the time series
+     * @param duration the duration of each sub-series
+     * @return a list of sub-series
+     */
+    public List<TimeSeries> split(Period duration) {
+        ArrayList<TimeSeries> subseries = new ArrayList<TimeSeries>();
+        if (duration != null && !duration.equals(Period.ZERO)) {
+
+            // Building the interval of the first subseries
+            DateTime beginInterval = ticks.get(beginIndex).getEndTime();
+            DateTime endInterval = beginInterval.plus(duration);
+            Interval subseriesInterval = new Interval(beginInterval, endInterval);
+
+            // Subseries begin and end indexes
+            int subseriesBegin = beginIndex;
+            int subseriesNbTicks = 0;
+
+            for (int i = beginIndex; i <= endIndex; i++) {
+                // For each tick...
+                DateTime tickTime = ticks.get(i).getEndTime();
+                if (subseriesInterval.contains(tickTime)) {
+                    // Tick in the interval
+                    // --> Incrementing the number of ticks in the subseries
+                    subseriesNbTicks++;
+                } else {
+                    // Tick out of the interval
+                    if (!endInterval.isAfter(tickTime)) {
+                        // Tick after the interval
+                        // --> Building and adding the previous subseries
+                        subseries.add(subseries(subseriesBegin, subseriesBegin + subseriesNbTicks - 1));
+                        // --> Clearing counters for new subseries
+                        subseriesBegin = i;
+                        subseriesNbTicks = 1;
+                    }
+
+                    // Building the next interval
+                    beginInterval = endInterval.isBefore(tickTime) ? tickTime : endInterval;
+                    endInterval = beginInterval.plus(duration);
+                    subseriesInterval = new Interval(beginInterval, endInterval);
+                }
+
+            }
+            // Building and adding the last subseries
+            subseries.add(subseries(subseriesBegin, subseriesBegin + subseriesNbTicks - 1));
+        }
+        return subseries;
     }
 
     /**
