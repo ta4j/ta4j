@@ -29,7 +29,7 @@ import org.joda.time.Interval;
 import org.joda.time.Period;
 
 /**
- * Set of ticks separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
+ * Set of {@link Tick ticks} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
  * <p>
  */
 public class TimeSeries {

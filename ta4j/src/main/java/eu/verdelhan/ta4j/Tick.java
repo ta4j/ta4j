@@ -27,51 +27,168 @@ import org.joda.time.DateTime;
 
 /**
  * End tick of a period.
+ * <p>
  */
-public interface Tick {
+public class Tick {
+
+    private DateTime beginTime;
+
+    private DateTime endTime;
+
+    private double openPrice = -1;
+
+    private double closePrice = -1;
+
+    private double maxPrice = -1;
+
+    private double minPrice = -1;
+
+    private double amount = 0d;
+
+    private double volume = 0d;
+
+    private int trades = 0;
 
     /**
-     * @return the begin timestamp of the tick period
+     * @param beginTime the begin time of the tick period
+     * @param endTime the end time of the tick period
      */
-    DateTime getBeginTime();
+    public Tick(DateTime beginTime, DateTime endTime) {
+        this.beginTime = beginTime;
+        this.endTime = endTime;
+    }
 
     /**
-     * @return the end timestamp of the tick period
+     * @param endTime the end time of the tick period
+     * @param openPrice the open price of the tick period
+     * @param highPrice the highest price of the tick period
+     * @param lowPrice the lowest price of the tick period
+     * @param closePrice the close price of the tick period
+     * @param volume the volume of the tick period
      */
-    DateTime getEndTime();
+    public Tick(DateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
+        this.endTime = endTime;
+        this.openPrice = openPrice;
+        this.maxPrice = highPrice;
+        this.minPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+    }
 
     /**
      * @return the close price of the period
      */
-    double getClosePrice();
+    public double getClosePrice() {
+        return closePrice;
+    }
 
     /**
      * @return the open price of the period
      */
-    double getOpenPrice();
+    public double getOpenPrice() {
+        return openPrice;
+    }
 
     /**
      * @return the number of trades in the period
      */
-    int getTrades();
+    public int getTrades() {
+        return trades;
+    }
 
     /**
      * @return the max price of the period
      */
-    double getMaxPrice();
+    public double getMaxPrice() {
+        return maxPrice;
+    }
 
     /**
      * @return the whole traded amount of the period
      */
-    double getAmount();
+    public double getAmount() {
+        return amount;
+    }
 
     /**
      * @return the whole traded volume in the period
      */
-    double getVolume();
+    public double getVolume() {
+        return volume;
+    }
+
+    /**
+     * Adds a trade at the end of tick period.
+     * @param tradeAmount the tradable amount
+     * @param tradePrice the price
+     */
+    public void addTrade(double tradeAmount, double tradePrice) {
+        if (openPrice < 0) {
+            openPrice = tradePrice;
+        }
+        closePrice = tradePrice;
+
+        if (maxPrice < 0) {
+            maxPrice = tradePrice;
+        } else {
+            maxPrice = (maxPrice < tradePrice) ? tradePrice : maxPrice;
+        }
+        if (minPrice < 0) {
+            minPrice = tradePrice;
+        } else {
+            minPrice = (minPrice > tradePrice) ? tradePrice : minPrice;
+        }
+        amount += tradeAmount;
+        volume += tradeAmount * tradePrice;
+        trades++;
+    }
 
     /**
      * @return the min price of the period
      */
-    double getMinPrice();
+    public double getMinPrice() {
+        return minPrice;
+    }
+
+    /**
+     * @return the begin timestamp of the tick period
+     */
+    public DateTime getBeginTime() {
+        return beginTime;
+    }
+
+    /**
+     * @return the end timestamp of the tick period
+     */
+    public DateTime getEndTime() {
+        return endTime;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", endTime
+                .toGregorianCalendar(), closePrice);
+    }
+
+    /**
+     * @param timestamp a timestamp
+     * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
+     */
+    public boolean inPeriod(DateTime timestamp) {
+        return timestamp == null ? false : (!timestamp.isBefore(beginTime) && timestamp.isBefore(endTime));
+    }
+
+    /**
+     * @return a human-friendly string of the end timestamp
+     */
+    public String getDateName() {
+        return endTime.toString("hh:mm dd/MM/yyyy");
+    }
+
+    /**
+     * @return a even more human-friendly string of the end timestamp
+     */
+    public String getSimpleDateName() {
+        return endTime.toString("dd/MM/yyyy");
+    }
 }

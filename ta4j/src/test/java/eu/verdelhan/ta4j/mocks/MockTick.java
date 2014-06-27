@@ -22,13 +22,13 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
-import eu.verdelhan.ta4j.ticks.DefaultTick;
+import eu.verdelhan.ta4j.Tick;
 import org.joda.time.DateTime;
 
 /**
  * A mock tick with sample data.
  */
-public class MockTick extends DefaultTick {
+public class MockTick extends Tick {
 
     private double amount = 0d;
 

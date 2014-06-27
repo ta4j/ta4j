@@ -25,7 +25,7 @@ package ta4jexamples.loaders;
 import au.com.bytecode.opencsv.CSVReader;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.ticks.DefaultTick;
+import eu.verdelhan.ta4j.Tick;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -66,7 +66,7 @@ public class CsvTradesLoader {
             }
         }
 
-        List<DefaultTick> ticks = null;
+        List<Tick> ticks = null;
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
@@ -83,7 +83,7 @@ public class CsvTradesLoader {
             // Filling the ticks with trades
             for (String[] tradeLine : lines) {
                 DateTime tradeTimestamp = new DateTime(Long.parseLong(tradeLine[0]) * 1000);
-                for (DefaultTick tick : ticks) {
+                for (Tick tick : ticks) {
                     if (tick.inPeriod(tradeTimestamp)) {
                         double tradePrice = Double.parseDouble(tradeLine[1]);
                         double tradeAmount = Double.parseDouble(tradeLine[2]);
@@ -105,15 +105,15 @@ public class CsvTradesLoader {
      * @param duration the tick duration (in seconds)
      * @return the list of empty ticks
      */
-    private static List<DefaultTick> buildEmptyTicks(DateTime beginTime, DateTime endTime, int duration) {
+    private static List<Tick> buildEmptyTicks(DateTime beginTime, DateTime endTime, int duration) {
 
-        List<DefaultTick> emptyTicks = new ArrayList<DefaultTick>();
+        List<Tick> emptyTicks = new ArrayList<Tick>();
 
         DateTime tickBeginTime = beginTime;
         DateTime tickEndTime;
         do {
             tickEndTime = tickBeginTime.plusSeconds(duration);
-            emptyTicks.add(new DefaultTick(tickBeginTime, tickEndTime));
+            emptyTicks.add(new Tick(tickBeginTime, tickEndTime));
             tickBeginTime = tickEndTime;
         } while (tickEndTime.isBefore(endTime));
 
@@ -124,7 +124,7 @@ public class CsvTradesLoader {
      * Removes all empty (i.e. with no trade) ticks of the list.
      * @param ticks a list of ticks
      */
-    private static void removeEmptyTicks(List<DefaultTick> ticks) {
+    private static void removeEmptyTicks(List<Tick> ticks) {
         for (int i = ticks.size() - 1; i >= 0; i--) {
             if (ticks.get(i).getTrades() == 0) {
                 ticks.remove(i);

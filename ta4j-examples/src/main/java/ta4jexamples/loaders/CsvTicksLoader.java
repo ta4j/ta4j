@@ -25,7 +25,7 @@ package ta4jexamples.loaders;
 import au.com.bytecode.opencsv.CSVReader;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.ticks.DefaultTick;
+import eu.verdelhan.ta4j.Tick;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -52,7 +52,7 @@ public class CsvTicksLoader {
 
         InputStream stream = CsvTicksLoader.class.getClassLoader().getResourceAsStream("appleinc_ticks_from_20130101_usd.csv");
 
-        List<DefaultTick> ticks = new ArrayList<DefaultTick>();
+        List<Tick> ticks = new ArrayList<Tick>();
 
         CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1);
         try {
@@ -65,7 +65,7 @@ public class CsvTicksLoader {
                 double close = Double.parseDouble(line[4]);
                 double volume = Double.parseDouble(line[5]);
 
-                ticks.add(new DefaultTick(date, open, high, low, close, volume));
+                ticks.add(new Tick(date, open, high, low, close, volume));
             }
         } catch (IOException ioe) {
             Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Unable to load ticks from CSV", ioe);
