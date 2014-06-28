@@ -72,8 +72,7 @@ See also:  [Algorithmic trading strategies](http://en.wikipedia.org/wiki/Algorit
 
 ```java
 // Running our juicy trading strategy...
-Runner ourRunner = new Runner(series, ourStrategy);
-List<Trade> trades = ourRunner.run();
+List<Trade> trades = series.run(ourStrategy);
 System.out.println("Number of trades for our strategy: " + trades.size());
 ```
 
