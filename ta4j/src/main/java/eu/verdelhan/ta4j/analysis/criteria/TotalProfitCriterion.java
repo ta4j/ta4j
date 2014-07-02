@@ -48,6 +48,11 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
         return calculateProfit(series, trade);
     }
 
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 > criterionValue2;
+    }
+
     /**
      * Calculates the profit of a trade (Buy and sell).
      * @param series a time series

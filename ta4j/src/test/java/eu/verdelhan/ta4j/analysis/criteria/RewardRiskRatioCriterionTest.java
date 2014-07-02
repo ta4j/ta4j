@@ -22,10 +22,11 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
+import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -116,5 +117,12 @@ public class RewardRiskRatioCriterionTest {
             
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
         assertThat(ratioCriterion.calculate(series, trade)).isEqualTo((95d/100) / ((1d - 0.95d)));
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new RewardRiskRatioCriterion();
+        assertThat(criterion.betterThan(3.5, 2.2)).isTrue();
+        assertThat(criterion.betterThan(1.5, 2.7)).isFalse();
     }
 }

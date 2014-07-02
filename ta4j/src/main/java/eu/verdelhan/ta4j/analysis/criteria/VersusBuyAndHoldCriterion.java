@@ -64,6 +64,11 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 > criterionValue2;
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(super.toString());
         sb.append(" (").append(criterion).append(')');

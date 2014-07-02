@@ -55,4 +55,9 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
         return calculate(series, trades);
 
     }
+
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 > criterionValue2;
+    }
 }

@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,5 +96,12 @@ public class FixedTransactionCostCriterionTest {
         AnalysisCriterion transactionCosts = new FixedTransactionCostCriterion(1.10d);
 
         assertThat(transactionCosts.summarize(series, decisions)).isEqualTo(11d);
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new FixedTransactionCostCriterion(0.5);
+        assertThat(criterion.betterThan(3.1, 4.2)).isTrue();
+        assertThat(criterion.betterThan(2.1, 1.9)).isFalse();
     }
 }

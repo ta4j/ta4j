@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import java.util.List;
 
 /**
@@ -57,4 +57,18 @@ public interface AnalysisCriterion {
      * @return the criterion value for the trades coming from the decisions
      */
     double summarize(TimeSeries series, List<Decision> decisions);
+
+    /**
+     * @param series the time series
+     * @param strategies a list of strategies
+     * @return the best strategy (among the provided ones) according to the criterion
+     */
+    Decision chooseBest(TimeSeries series, List<Strategy> strategies);
+
+    /**
+     * @param criterionValue1 the first value
+     * @param criterionValue2 the second value
+     * @return true if the first value is better than (according to the criterion) the second one, false otherwise
+     */
+    boolean betterThan(double criterionValue1, double criterionValue2);
 }

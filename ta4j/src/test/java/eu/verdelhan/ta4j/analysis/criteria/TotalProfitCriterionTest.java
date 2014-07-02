@@ -75,4 +75,11 @@ public class TotalProfitCriterionTest {
         AnalysisCriterion profit = new TotalProfitCriterion();
         assertThat(profit.calculate(series, trades)).isEqualTo(1d);
     }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new TotalProfitCriterion();
+        assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
+        assertThat(criterion.betterThan(1.5, 2.0)).isFalse();
+    }
 }

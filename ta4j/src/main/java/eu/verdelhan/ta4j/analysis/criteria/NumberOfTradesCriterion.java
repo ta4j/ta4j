@@ -40,4 +40,9 @@ public class NumberOfTradesCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, Trade trade) {
         return 1d;
     }
+
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 < criterionValue2;
+    }
 }

@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -81,5 +81,12 @@ public class NumberOfTicksCriterionTest {
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
         assertThat(numberOfTicks.summarize(series, decisions)).isEqualTo(6);
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new NumberOfTicksCriterion();
+        assertThat(criterion.betterThan(3, 6)).isTrue();
+        assertThat(criterion.betterThan(6, 2)).isFalse();
     }
 }

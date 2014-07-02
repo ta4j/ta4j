@@ -63,4 +63,9 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
         trades.add(trade);
         return calculate(series, trades);
     }
+
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 < criterionValue2;
+    }
 }

@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -94,9 +94,9 @@ public class VersusBuyAndHoldCriterionTest {
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
         assertThat(buyAndHold.calculate(series, trades)).isEqualTo(1 / 0.7);
     }
+
     @Test
-    public void calculateWithAverageProfit()
-    {
+    public void calculateWithAverageProfit() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 130);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -106,9 +106,9 @@ public class VersusBuyAndHoldCriterionTest {
         
         assertThat(buyAndHold.calculate(series, trades)).isEqualTo(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6));
     }
+
     @Test
-    public void calculateWithNumberOfTicks()
-    {
+    public void calculateWithNumberOfTicks() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 130);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
@@ -117,5 +117,12 @@ public class VersusBuyAndHoldCriterionTest {
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new NumberOfTicksCriterion());
         
         assertThat(buyAndHold.calculate(series, trades)).isEqualTo(6d/6d);
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
+        assertThat(criterion.betterThan(1.5, 2.0)).isFalse();
     }
 }

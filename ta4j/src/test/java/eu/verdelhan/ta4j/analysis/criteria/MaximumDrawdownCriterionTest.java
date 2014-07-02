@@ -22,11 +22,12 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
+import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -132,9 +133,9 @@ public class MaximumDrawdownCriterionTest {
         assertThat(mdd.summarize(series, decisions)).isEqualTo(.875d);
 
     }
+
     @Test
-    public void withConstrainedTimeSeries()
-    {
+    public void withConstrainedTimeSeries() {
         MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
         TimeSeries subSeries = sampleSeries.subseries(4, 8);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
@@ -145,5 +146,12 @@ public class MaximumDrawdownCriterionTest {
         trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
         assertThat(mdd.calculate(subSeries, trades)).isEqualTo(.9d);
         
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new MaximumDrawdownCriterion();
+        assertThat(criterion.betterThan(0.9, 1.5)).isTrue();
+        assertThat(criterion.betterThan(1.2, 0.4)).isFalse();
     }
 }

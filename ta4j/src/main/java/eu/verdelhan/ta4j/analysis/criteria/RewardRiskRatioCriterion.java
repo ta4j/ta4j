@@ -45,6 +45,11 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 > criterionValue2;
+    }
+
+    @Override
     public double calculate(TimeSeries series, Trade trade) {
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(trade);

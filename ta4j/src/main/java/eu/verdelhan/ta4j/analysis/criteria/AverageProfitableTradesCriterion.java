@@ -72,4 +72,9 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         }
         return ((double) numberOfProfitable) / trades.size();
     }
+
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 > criterionValue2;
+    }
 }

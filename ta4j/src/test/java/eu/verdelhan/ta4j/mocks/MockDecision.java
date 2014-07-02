@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.mocks;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import java.util.List;
 
 public class MockDecision extends Decision {

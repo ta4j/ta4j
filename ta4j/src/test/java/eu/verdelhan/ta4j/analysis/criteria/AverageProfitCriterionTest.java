@@ -27,7 +27,7 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -102,12 +102,17 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade()
-    {
+    public void calculateWithOneTrade() {
         series = new MockTimeSeries(100, 105);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
         AnalysisCriterion average = new AverageProfitCriterion();
         assertThat(average.calculate(series, trade)).isEqualTo(Math.pow(105d / 100, 1d/2));
-        
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new AverageProfitCriterion();
+        assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
+        assertThat(criterion.betterThan(1.5, 2.0)).isFalse();
     }
 }

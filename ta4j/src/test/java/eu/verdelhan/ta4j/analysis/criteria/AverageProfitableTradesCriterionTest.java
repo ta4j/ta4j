@@ -27,7 +27,7 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -38,8 +38,7 @@ import org.junit.Test;
 public class AverageProfitableTradesCriterionTest {
 
     @Test
-    public void calculate()
-    {
+    public void calculate() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY)));
@@ -52,8 +51,7 @@ public class AverageProfitableTradesCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade()
-    {
+    public void calculateWithOneTrade() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
             
@@ -83,5 +81,12 @@ public class AverageProfitableTradesCriterionTest {
 
         AnalysisCriterion averateProfitable = new AverageProfitableTradesCriterion();
         assertThat(averateProfitable.summarize(series, decisions)).isEqualTo(2d/3);
-    }    
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new AverageProfitableTradesCriterion();
+        assertThat(criterion.betterThan(12, 8)).isTrue();
+        assertThat(criterion.betterThan(8, 12)).isFalse();
+    }
 }

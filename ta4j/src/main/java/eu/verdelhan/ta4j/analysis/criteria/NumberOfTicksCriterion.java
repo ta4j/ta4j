@@ -46,4 +46,9 @@ public class NumberOfTicksCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, Trade trade) {
         return (1 + trade.getExit().getIndex()) - trade.getEntry().getIndex();
     }
+
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 < criterionValue2;
+    }
 }

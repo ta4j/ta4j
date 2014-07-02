@@ -58,6 +58,11 @@ public class FixedTransactionCostCriterion extends AbstractAnalysisCriterion {
         return totalCosts;
     }
 
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 < criterionValue2;
+    }
+
     /**
      * @param trade a trade
      * @return the total cost of all operations in the trade

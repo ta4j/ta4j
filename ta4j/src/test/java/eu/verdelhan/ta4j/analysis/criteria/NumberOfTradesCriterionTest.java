@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.evaluators.Decision;
+import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -76,12 +76,19 @@ public class NumberOfTradesCriterionTest {
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
         assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(2d);
     }
+
     @Test
-    public void calculateWithOneTrade()
-    {
+    public void calculateWithOneTrade() {
         Trade trade = new Trade();
         NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
 
         assertThat(tradesCriterion.calculate(null, trade)).isEqualTo(1d);
+    }
+
+    @Test
+    public void betterThan() {
+        AnalysisCriterion criterion = new NumberOfTradesCriterion();
+        assertThat(criterion.betterThan(3, 6)).isTrue();
+        assertThat(criterion.betterThan(7, 4)).isFalse();
     }
 }

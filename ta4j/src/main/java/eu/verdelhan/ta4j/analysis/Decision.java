@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.analysis.evaluators;
+package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
@@ -78,14 +78,6 @@ public class Decision {
     @Override
     public String toString() {
         return String.format("[strategy %s, criterion %s, value %.3f]", strategy, criterion.getClass().getSimpleName(), evaluateCriterion());
-    }
-    
-    public String getName() {
-        return series + ": " + series.getPeriodName();
-    }
-    
-    public String getFileName() {
-        return this.getClass().getSimpleName() + series.getTick(series.getBegin()).getEndTime().toString("hhmmddMMyyyy");
     }
 
     @Override
