@@ -138,7 +138,7 @@ public class TimeSeries {
         for (int i = beginIndex; i <= endIndex; i += nbTicks) {
             // For each nbTicks ticks
             int subseriesBegin = i;
-            int subseriesEnd = Math.min(subseriesBegin + nbTicks, endIndex);
+            int subseriesEnd = Math.min(subseriesBegin + nbTicks - 1, endIndex);
             subseries.add(subseries(subseriesBegin, subseriesEnd));
         }
         return subseries;

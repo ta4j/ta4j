@@ -146,6 +146,32 @@ public class TimeSeriesTest {
     }
 
     @Test
+    public void splitEvery3Ticks() {
+        TimeSeries series = new MockTimeSeries(
+                date.withYear(2010),
+                date.withYear(2011),
+                date.withYear(2012),
+                date.withYear(2015),
+                date.withYear(2016),
+                date.withYear(2017),
+                date.withYear(2018),
+                date.withYear(2019));
+
+        List<TimeSeries> subseries = series.split(3);
+
+        assertThat(subseries).hasSize(3);
+
+        assertThat(subseries.get(0).getBegin()).isEqualTo(0);
+        assertThat(subseries.get(0).getEnd()).isEqualTo(2);
+
+        assertThat(subseries.get(1).getBegin()).isEqualTo(3);
+        assertThat(subseries.get(1).getEnd()).isEqualTo(5);
+
+        assertThat(subseries.get(2).getBegin()).isEqualTo(6);
+        assertThat(subseries.get(2).getEnd()).isEqualTo(7);
+    }
+
+    @Test
     public void splitByYearOneDatePerYear() {
 
         TimeSeries series = new MockTimeSeries(
