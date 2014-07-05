@@ -27,10 +27,11 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * Awesome (?) oscillator.
+ * Awesome oscillator. (AO)
  * <p>
+ * @see http://www.forexgurus.co.uk/indicators/awesome-oscillator
  */
-public class AwesomeOscillatorIndicator extends CachedIndicator<Double> {
+public class AwesomeOscillatorIndicator implements Indicator<Double> {
 
     private SMAIndicator sma5;
 
@@ -47,7 +48,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    public Double getValue(int index) {
         return sma5.getValue(index) - sma34.getValue(index);
     }
 
