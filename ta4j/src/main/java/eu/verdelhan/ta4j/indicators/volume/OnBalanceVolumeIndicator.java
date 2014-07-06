@@ -23,13 +23,13 @@
 package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.Indicator;
 
 /**
  * On-balance volume indicator.
  * <p>
  */
-public class OnBalanceVolumeIndicator extends CachedIndicator<Double>{
+public class OnBalanceVolumeIndicator implements Indicator<Double>{
 
     private final TimeSeries series;
 
@@ -38,7 +38,7 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<Double>{
     }
 
     @Override
-    protected Double calculate(int index) {
+    public Double getValue(int index) {
         if (index == 0) {
             return 0d;
         }

@@ -23,13 +23,13 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.Indicator;
 
 /**
  * Average directional movement indicator.
  * <p>
  */
-public class AverageDirectionalMovementIndicator extends CachedIndicator<Double>{
+public class AverageDirectionalMovementIndicator implements Indicator<Double>{
 
     private final int timeFrame;
     private final DirectionalMovementIndicator dm;
@@ -40,7 +40,7 @@ public class AverageDirectionalMovementIndicator extends CachedIndicator<Double>
     }
 
     @Override
-    protected Double calculate(int index) {
+    public Double getValue(int index) {
         if (index == 0) {
             return 1d;
         }

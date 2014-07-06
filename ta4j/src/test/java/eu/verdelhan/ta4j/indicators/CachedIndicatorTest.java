@@ -63,26 +63,4 @@ public class CachedIndicatorTest {
         SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(dataMax), 100);
         assertThat(quoteSMA.getValue(105)).isEqualTo((double) 10d);
     }
-
-    @Test
-    public void reallyBigCachedEMAExtendsCachedIndicator() {
-        int maxIndex = 1000000;
-        List<Tick> ticks = new ArrayList<Tick>(Collections.nCopies(maxIndex, new MockTick(0)));
-        TimeSeries longData = new MockTimeSeries(ticks);
-        EMAIndicator quoteEMA = new EMAIndicator(new ClosePriceIndicator(longData), 10);
-
-        quoteEMA.getValue(maxIndex - 1);
-
-    }
-
-    @Test
-    public void reallyCachedBigRSINotExtendsCachedIndicator() {
-        int maxIndex = 1000000;
-        List<Tick> ticks = new ArrayList<Tick>(Collections.nCopies(maxIndex, new MockTick(0)));
-        TimeSeries longData = new MockTimeSeries(ticks);
-        RSIIndicator RSI = new RSIIndicator(new ClosePriceIndicator(longData), 10);
-
-        RSI.getValue(maxIndex - 1);
-
-    }
 }

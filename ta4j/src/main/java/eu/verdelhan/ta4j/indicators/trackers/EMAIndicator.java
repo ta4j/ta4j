@@ -23,13 +23,12 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Exponential moving average indicator.
  * <p>
  */
-public class EMAIndicator extends CachedIndicator<Double> {
+public class EMAIndicator implements Indicator<Double> {
 
     private final Indicator<? extends Number> indicator;
 
@@ -44,7 +43,8 @@ public class EMAIndicator extends CachedIndicator<Double> {
         return 2 / (double) (timeFrame + 1);
     }
 
-    protected Double calculate(int index) {
+    @Override
+    public Double getValue(int index) {
         if (index + 1 < timeFrame) {
             return new SMAIndicator(indicator, timeFrame).getValue(index);
         }

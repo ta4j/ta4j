@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.oscillators.AwesomeOscillatorIndicator;
 import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
 
@@ -31,7 +31,7 @@ import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
  * Acceleration-deceleration indicator.
  * <p>
  */
-public class AccelerationDecelerationIndicator extends CachedIndicator<Double> {
+public class AccelerationDecelerationIndicator implements Indicator<Double> {
     
     private AwesomeOscillatorIndicator awesome;
     
@@ -47,7 +47,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Double> {
     }
     
     @Override
-    protected Double calculate(int index) {
+    public Double getValue(int index) {
         return awesome.getValue(index) - sma5.getValue(index);
     }
 

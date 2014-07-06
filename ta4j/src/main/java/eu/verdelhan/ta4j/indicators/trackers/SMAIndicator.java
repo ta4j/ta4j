@@ -23,13 +23,12 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Simple moving average (SMA) indicator.
  * <p>
  */
-public class SMAIndicator extends CachedIndicator<Double> {
+public class SMAIndicator implements Indicator<Double> {
 
     private final Indicator<? extends Number> indicator;
 
@@ -41,7 +40,7 @@ public class SMAIndicator extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    public Double getValue(int index) {
         double sum = 0.0;
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
             sum += indicator.getValue(i).doubleValue();

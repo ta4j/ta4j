@@ -25,13 +25,13 @@ package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.Indicator;
 
 /**
  * Accumulation-distribution indicator.
  * <p>
  */
-public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
+public class AccumulationDistributionIndicator implements Indicator<Double> {
 
     private TimeSeries series;
 
@@ -40,7 +40,7 @@ public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    public Double getValue(int index) {
         if (index == 0) {
             return 0d;
         }
