@@ -60,33 +60,30 @@ public class ParabolicSarIndicator extends CachedIndicator<Double> {
     protected Double calculate(int index) {
 
         if (index <= 1) {
+            // Warning: should the min or the max price, according to the trend
+            // But we don't know the trend yet, so we use the close price.
             extremePoint = series.getTick(index).getClosePrice();
             return extremePoint;
         }
-
-        double sar;
 
         double n2ClosePrice = series.getTick(index - 2).getClosePrice();
         double n1ClosePrice = series.getTick(index - 1).getClosePrice();
         double nClosePrice = series.getTick(index).getClosePrice();
 
-        // trend switch
-        if(n2ClosePrice > n1ClosePrice && n1ClosePrice < nClosePrice) {
+        double sar;
+        if (n2ClosePrice > n1ClosePrice && n1ClosePrice < nClosePrice) {
+            // Trend switch: \_/
             sar = extremePoint;
             extremePoint = highestValueIndicator.getValue(index);
             acceleration = 0.02;
-        }
-        // trend switch
-        else if(n2ClosePrice < n1ClosePrice && n1ClosePrice > nClosePrice) {
-            
+        } else if (n2ClosePrice < n1ClosePrice && n1ClosePrice > nClosePrice) {
+            // Trend switch: /¯\
             sar = extremePoint;
             extremePoint = lowestValueIndicator.getValue(index);
             acceleration = 0.02;
-            
-        }
 
-        //DownTrend
-        else if (nClosePrice < n1ClosePrice) {
+        } else if (nClosePrice < n1ClosePrice) {
+             // Downtrend: falling SAR
             double lowestValue = lowestValueIndicator.getValue(index);
             if (extremePoint > lowestValue) {
                 acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02d;
@@ -98,18 +95,17 @@ public class ParabolicSarIndicator extends CachedIndicator<Double> {
             double n1MaxPrice = series.getTick(index - 1).getMaxPrice();
             double nMaxPrice = series.getTick(index).getMaxPrice();
 
-            if (n1MaxPrice > sar)
+            if (n1MaxPrice > sar) {
                 sar = n1MaxPrice;
-            else if (n2MaxPrice > sar)
+            } else if (n2MaxPrice > sar) {
                 sar = n2MaxPrice;
+            }
             if (nMaxPrice > sar) {
                 sar = series.getTick(index).getMinPrice();
             }
 
-        }
-
-        //UpTrend
-        else {
+        } else {
+             // Uptrend: rising SAR
             double highestValue = highestValueIndicator.getValue(index);
             if (extremePoint < highestValue) {
                 acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02;
@@ -121,10 +117,11 @@ public class ParabolicSarIndicator extends CachedIndicator<Double> {
             double n1MinPrice = series.getTick(index - 1).getMinPrice();
             double nMinPrice = series.getTick(index).getMinPrice();
 
-            if (n1MinPrice < sar)
+            if (n1MinPrice < sar) {
                 sar = n1MinPrice;
-            else if (n2MinPrice < sar)
+            } else if (n2MinPrice < sar) {
                 sar = n2MinPrice;
+            }
             if (nMinPrice < sar) {
                 sar = series.getTick(index).getMaxPrice();
             }

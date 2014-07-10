@@ -32,9 +32,54 @@ import org.junit.Test;
 
 public class ParabolicSarIndicatorTest {
 
+//    private TimeSeries series;
+//
+//    @Before
+//    public void setUp() {
+//        List<Tick> ticks = new ArrayList<Tick>();
+//        ticks.add(new MockTick(0, 9.41, 9.6, 9.4));
+//        ticks.add(new MockTick(0, 9.85, 9.9, 9.5));
+//        ticks.add(new MockTick(0, 9.33, 9.8, 9.3));
+//        ticks.add(new MockTick(0, 9.06, 9.2, 9.0));
+//        ticks.add(new MockTick(0, 9.40, 9.4, 9.2));
+//        ticks.add(new MockTick(0, 9.22, 9.5, 9.1));
+//        ticks.add(new MockTick(0, 9.31, 9.3, 8.9));
+//        ticks.add(new MockTick(0, 9.76, 9.9, 9.6));
+//        ticks.add(new MockTick(0, 10.00, 10.2, 9.8));
+//        ticks.add(new MockTick(0, 9.59, 10.1, 9.6));
+//        ticks.add(new MockTick(0, 10.40, 10.5, 9.5));
+//        ticks.add(new MockTick(0, 11.23, 11.3, 10.8));
+//        ticks.add(new MockTick(0, 11.44, 11.6, 11.3));
+//        ticks.add(new MockTick(0, 11.44, 11.6, 11.2));
+//        ticks.add(new MockTick(0, 11.78, 11.8, 11.3));
+//        ticks.add(new MockTick(0, 11.88, 11.9, 11.7));
+//        ticks.add(new MockTick(0, 11.67, 11.9, 11.6));
+//        ticks.add(new MockTick(0, 11.33, 11.6, 11.3));
+//        ticks.add(new MockTick(0, 11.05, 11.4, 11.1));
+//        ticks.add(new MockTick(0, 11.09, 11.2, 10.9));
+//        ticks.add(new MockTick(0, 11.35, 11.4, 11.1));
+//        ticks.add(new MockTick(0, 11.27, 11.3, 11.1));
+//        ticks.add(new MockTick(0, 11.00, 11.3, 11.0));
+//        ticks.add(new MockTick(0, 10.76, 10.9, 10.8));
+//        ticks.add(new MockTick(0, 10.54, 10.8, 10.5));
+//        ticks.add(new MockTick(0, 10.68, 10.7, 10.6));
+//        ticks.add(new MockTick(0, 10.09, 10.8, 10.1));
+//        ticks.add(new MockTick(0, 9.89, 10.0, 9.8));
+//        ticks.add(new MockTick(0, 10.04, 10.1, 9.8));
+//        ticks.add(new MockTick(0, 9.63, 9.8, 9.5));
+//        ticks.add(new MockTick(0, 9.66, 9.8, 9.6));
+//        ticks.add(new MockTick(0, 9.36, 9.5, 9.3));
+//        ticks.add(new MockTick(0, 9.37, 9.4, 9.1));
+//        ticks.add(new MockTick(0, 9.10, 9.5, 9.1));
+//        ticks.add(new MockTick(0, 9.43, 9.4, 9.0));
+//        ticks.add(new MockTick(0, 9.52, 9.6, 9.3));
+//        ticks.add(new MockTick(0, 9.81, 10.0, 9.8));
+//        ticks.add(new MockTick(0, 9.91, 10.0, 9.9));
+//        series = new MockTimeSeries(ticks);
+//    }
+
     @Test
-    public void trendSwitchTest()
-    {
+    public void trendSwitchTest() {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 10, 13, 8));
         ticks.add(new MockTick(0, 8, 11, 6));
@@ -48,12 +93,10 @@ public class ParabolicSarIndicatorTest {
         assertThat(sar.getValue(2)).isEqualTo(11d);
         assertThat(sar.getValue(3)).isEqualTo(4d);
         assertThat(sar.getValue(4)).isEqualTo(4d);
-        
     }
     
     @Test
-    public void trendSwitchTest2()
-    {
+    public void trendSwitchTest2() {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 10, 13, 11));
         ticks.add(new MockTick(0, 10, 15, 13));
@@ -70,9 +113,9 @@ public class ParabolicSarIndicatorTest {
         assertThat(sar.getValue(3)).isEqualTo(18d);
         assertThat(sar.getValue(4)).isEqualTo(18d);
     }
+
     @Test
-    public void upTrendTest()
-    {
+    public void upTrendTest() {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 10, 13, 11));
         ticks.add(new MockTick(0, 17, 15, 11.38));
@@ -90,8 +133,7 @@ public class ParabolicSarIndicatorTest {
     }
     
     @Test
-    public void downTrendTest()
-    {
+    public void downTrendTest() {
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 20, 18, 9));
         ticks.add(new MockTick(0, 19, 17, 12));
@@ -109,6 +151,50 @@ public class ParabolicSarIndicatorTest {
         assertThat(sar.getValue(3)).isEqualTo(value);
         assertThat(sar.getValue(4)).isEqualTo(0.08d * (11d - value) + value);
         assertThat(sar.getValue(5)).isEqualTo(11d);
-        
     }
+
+//    @Test
+//    public void fullTest() {
+//
+//        ParabolicSarIndicator sar = new ParabolicSarIndicator(series, 1);
+//
+//        assertThat(sar.getValue(0)).isEqualTo(9.410);
+//        assertThat(sar.getValue(1)).isEqualTo(9.410);
+//        assertThat(sar.getValue(2)).isEqualTo(9.350);
+//        assertThat(sar.getValue(3)).isEqualTo(9.850);
+//        assertThat(sar.getValue(4)).isEqualTo(9.816);
+//        assertThat(sar.getValue(5)).isEqualTo(9.783);
+//        assertThat(sar.getValue(6)).isEqualTo(9.752);
+//        assertThat(sar.getValue(7)).isEqualTo(9.704);
+//        assertThat(sar.getValue(8)).isEqualTo(8.950);
+//        assertThat(sar.getValue(9)).isEqualTo(9.001);
+//        assertThat(sar.getValue(10)).isEqualTo(9.050);
+//        assertThat(sar.getValue(11)).isEqualTo(9.137);
+//        assertThat(sar.getValue(12)).isEqualTo(9.306);
+//        assertThat(sar.getValue(13)).isEqualTo(9.533);
+//        assertThat(sar.getValue(14)).isEqualTo(9.736);
+//        assertThat(sar.getValue(15)).isEqualTo(9.984);
+//        assertThat(sar.getValue(16)).isEqualTo(10.252);
+//        assertThat(sar.getValue(17)).isEqualTo(10.522);
+//        assertThat(sar.getValue(18)).isEqualTo(10.749);
+//        assertThat(sar.getValue(19)).isEqualTo(10.940);
+//        assertThat(sar.getValue(20)).isEqualTo(11.940);
+//        assertThat(sar.getValue(21)).isEqualTo(11.907);
+//        assertThat(sar.getValue(22)).isEqualTo(11.875);
+//        assertThat(sar.getValue(23)).isEqualTo(11.820);
+//        assertThat(sar.getValue(24)).isEqualTo(11.734);
+//        assertThat(sar.getValue(25)).isEqualTo(11.614);
+//        assertThat(sar.getValue(26)).isEqualTo(11.506);
+//        assertThat(sar.getValue(27)).isEqualTo(11.331);
+//        assertThat(sar.getValue(28)).isEqualTo(11.112);
+//        assertThat(sar.getValue(29)).isEqualTo(10.924);
+//        assertThat(sar.getValue(30)).isEqualTo(10.693);
+//        assertThat(sar.getValue(31)).isEqualTo(10.499);
+//        assertThat(sar.getValue(32)).isEqualTo(10.289);
+//        assertThat(sar.getValue(33)).isEqualTo(10.057);
+//        assertThat(sar.getValue(34)).isEqualTo(9.858);
+//        assertThat(sar.getValue(35)).isEqualTo(9.680);
+//        assertThat(sar.getValue(36)).isEqualTo(9.650);
+//        assertThat(sar.getValue(37)).isEqualTo(8.970);
+//    }
 }
