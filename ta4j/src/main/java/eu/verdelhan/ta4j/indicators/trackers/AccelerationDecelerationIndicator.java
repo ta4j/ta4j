@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.indicators.trackers;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.oscillators.AwesomeOscillatorIndicator;
-import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
+import eu.verdelhan.ta4j.indicators.simple.MedianPriceIndicator;
 
 /**
  * Acceleration-deceleration indicator.
@@ -38,7 +38,7 @@ public class AccelerationDecelerationIndicator implements Indicator<Double> {
     private SMAIndicator sma5;
 
     public AccelerationDecelerationIndicator(TimeSeries series, int timeFrameSma1, int timeFrameSma2) {
-        this.awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), timeFrameSma1, timeFrameSma2);
+        this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), timeFrameSma1, timeFrameSma2);
         this.sma5 = new SMAIndicator(awesome, timeFrameSma1);
     }
     

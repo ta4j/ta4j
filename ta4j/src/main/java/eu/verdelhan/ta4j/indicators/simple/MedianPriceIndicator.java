@@ -29,11 +29,11 @@ import eu.verdelhan.ta4j.TimeSeries;
  * Average high-low indicator.
  * <p>
  */
-public class AverageHighLowIndicator implements Indicator<Double> {
+public class MedianPriceIndicator implements Indicator<Double> {
 
     private TimeSeries data;
 
-    public AverageHighLowIndicator(TimeSeries data) {
+    public MedianPriceIndicator(TimeSeries data) {
         this.data = data;
     }
 

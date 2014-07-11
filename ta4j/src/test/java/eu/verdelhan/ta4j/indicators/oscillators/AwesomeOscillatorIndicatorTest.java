@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.indicators.oscillators;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.simple.AverageHighLowIndicator;
+import eu.verdelhan.ta4j.indicators.simple.MedianPriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
@@ -53,7 +53,7 @@ public class AwesomeOscillatorIndicatorTest {
 
     @Test
     public void calculateWithSma2AndSma3() throws Exception {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 2, 3);
+        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 2, 3);
 
         assertThat(awesome.getValue(0)).isEqualTo(0d);
         assertThat(awesome.getValue(1)).isEqualTo(0d);
@@ -64,7 +64,7 @@ public class AwesomeOscillatorIndicatorTest {
 
     @Test
     public void withSma1AndSma2() throws Exception {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series), 1, 2);
+        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 1, 2);
 
         assertThat(awesome.getValue(0)).isEqualTo(0d);
         assertThat(awesome.getValue(1)).isEqualTo(-1.5d);
@@ -75,7 +75,7 @@ public class AwesomeOscillatorIndicatorTest {
 
     @Test
     public void withSmaDefault() throws Exception {
-        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new AverageHighLowIndicator(series));
+        AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series));
 
         assertThat(awesome.getValue(0)).isEqualTo(0d);
         assertThat(awesome.getValue(1)).isEqualTo(0d);

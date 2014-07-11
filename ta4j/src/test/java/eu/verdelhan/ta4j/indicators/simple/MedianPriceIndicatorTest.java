@@ -32,8 +32,8 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AverageHighLowIndicatorTest {
-    private AverageHighLowIndicator average;
+public class MedianPriceIndicatorTest {
+    private MedianPriceIndicator average;
 
     TimeSeries timeSeries;
 
@@ -54,7 +54,7 @@ public class AverageHighLowIndicatorTest {
         
 
         this.timeSeries = new MockTimeSeries(ticks);
-        average = new AverageHighLowIndicator(timeSeries);
+        average = new MedianPriceIndicator(timeSeries);
     }
 
     @Test
