@@ -134,7 +134,7 @@ public class TimeSeriesTest {
     }
 
     @Test
-    public void subseries() {
+    public void subseriesWithIndexes() {
         TimeSeries subSeries2 = defaultSeries.subseries(2, 5);
         assertThat(subSeries2.getName()).isEqualTo(defaultSeries.getName());
         assertThat(subSeries2.getBegin()).isEqualTo(2);
@@ -143,6 +143,18 @@ public class TimeSeriesTest {
         assertThat(subSeries2.getEnd()).isEqualTo(defaultSeries.getEnd());
         assertThat(subSeries2.getSize()).isEqualTo(4);
         assertThat(subSeries2.getPeriod()).isNotEqualTo(defaultSeries.getPeriod());
+    }
+
+    @Test
+    public void subseriesWithDuration() {
+        TimeSeries subSeries2 = defaultSeries.subseries(1, Period.weeks(2));
+        assertThat(subSeries2.getName()).isEqualTo(defaultSeries.getName());
+        assertThat(subSeries2.getBegin()).isEqualTo(1);
+        assertThat(subSeries2.getBegin()).isNotEqualTo(defaultSeries.getBegin());
+        assertThat(subSeries2.getEnd()).isEqualTo(4);
+        assertThat(subSeries2.getEnd()).isNotEqualTo(defaultSeries.getEnd());
+        assertThat(subSeries2.getSize()).isEqualTo(4);
+        assertThat(subSeries2.getPeriod()).isEqualTo(defaultSeries.getPeriod());
     }
 
     @Test
@@ -172,7 +184,7 @@ public class TimeSeriesTest {
     }
 
     @Test
-    public void splitByYearOneDatePerYear() {
+    public void splitByYearForTwoYearsSubseries() {
 
         TimeSeries series = new MockTimeSeries(
                 date.withYear(2010),
@@ -181,9 +193,34 @@ public class TimeSeriesTest {
                 date.withYear(2015),
                 date.withYear(2016));
 
-        List<TimeSeries> subseries = series.split(Period.years(1));
+        List<TimeSeries> subseries = series.split(Period.years(1), Period.years(2));
 
         assertThat(subseries).hasSize(5);
+
+        assertThat(subseries.get(0).getBegin()).isEqualTo(0);
+        assertThat(subseries.get(0).getEnd()).isEqualTo(1);
+
+        assertThat(subseries.get(1).getBegin()).isEqualTo(1);
+        assertThat(subseries.get(1).getEnd()).isEqualTo(2);
+
+        assertThat(subseries.get(2).getBegin()).isEqualTo(2);
+        assertThat(subseries.get(2).getEnd()).isEqualTo(2);
+
+        assertThat(subseries.get(4).getBegin()).isEqualTo(4);
+        assertThat(subseries.get(4).getEnd()).isEqualTo(4);
+    }
+
+    @Test
+    public void splitByMonthForOneWeekSubseries() {
+
+        TimeSeries series = new MockTimeSeries(
+                date.withMonthOfYear(04),
+                date.withMonthOfYear(05),
+                date.withMonthOfYear(07));
+
+        List<TimeSeries> subseries = series.split(Period.months(1), Period.weeks(1));
+
+        assertThat(subseries).hasSize(3);
 
         assertThat(subseries.get(0).getBegin()).isEqualTo(0);
         assertThat(subseries.get(0).getEnd()).isEqualTo(0);
@@ -191,8 +228,8 @@ public class TimeSeriesTest {
         assertThat(subseries.get(1).getBegin()).isEqualTo(1);
         assertThat(subseries.get(1).getEnd()).isEqualTo(1);
 
-        assertThat(subseries.get(4).getBegin()).isEqualTo(4);
-        assertThat(subseries.get(4).getEnd()).isEqualTo(4);
+        assertThat(subseries.get(2).getBegin()).isEqualTo(2);
+        assertThat(subseries.get(2).getEnd()).isEqualTo(2);
     }
 
     @Test
@@ -309,34 +346,34 @@ public class TimeSeriesTest {
                 null, new Operation(5, OperationType.BUY), null, new Operation(7, OperationType.BUY), null, null };
         Operation[] exit = new Operation[] { null, null, new Operation(2, OperationType.SELL), null, new Operation(4, OperationType.SELL), null, new Operation(6, OperationType.SELL),
                 null, null, new Operation(9, OperationType.SELL) };
-        Strategy strategy = new MockStrategy(enter, exit);
+        Strategy mockStrategy = new MockStrategy(enter, exit);
 
         List<TimeSeries> subseries = series.split(Period.years(1));
 
-        List<Trade> trades = subseries.get(0).run(strategy);;
+        List<Trade> trades = subseries.get(0).run(mockStrategy);;
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(0, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(2, OperationType.SELL));
 
-        trades = subseries.get(1).run(strategy);;
+        trades = subseries.get(1).run(mockStrategy);;
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(3, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
 
-        trades = subseries.get(2).run(strategy);;
+        trades = subseries.get(2).run(mockStrategy);;
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(5, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(6, OperationType.SELL));
 
-        trades = subseries.get(3).run(strategy);
+        trades = subseries.get(3).run(mockStrategy);
         assertThat(trades).hasSize(1);
         assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(7, OperationType.BUY));
         assertThat(trades.get(0).getExit()).isEqualTo(new Operation(9, OperationType.SELL));
 
-        trades = subseries.get(4).run(strategy);
+        trades = subseries.get(4).run(mockStrategy);
         assertThat(trades).isEmpty();
 
-        trades = subseries.get(5).run(strategy);
+        trades = subseries.get(5).run(mockStrategy);
         assertThat(trades).isEmpty();
 
     }

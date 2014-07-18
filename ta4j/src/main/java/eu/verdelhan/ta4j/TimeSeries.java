@@ -127,9 +127,42 @@ public class TimeSeries {
     }
 
     /**
+     * Returns a new time series which is a view of a subset of the current series.
+     * <p>
+     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
+     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
+     * @param beginIndex the begin index (inclusive) of the time series
+     * @param duration the duration of the time series
+     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
+     */
+    public TimeSeries subseries(int beginIndex, Period duration) {
+        
+        // Calculating the sub-series interval
+        DateTime beginInterval = ticks.get(beginIndex).getEndTime();
+        DateTime endInterval = beginInterval.plus(duration);
+        Interval subseriesInterval = new Interval(beginInterval, endInterval);
+
+        // Checking ticks belonging to the sub-series (starting at the provided index)
+        int subseriesNbTicks = 0;
+        for (int i = beginIndex; i <= endIndex; i++) {
+            // For each tick...
+            DateTime tickTime = ticks.get(i).getEndTime();
+            if (!subseriesInterval.contains(tickTime)) {
+                // Tick out of the interval
+                break;
+            }
+            // Tick in the interval
+            // --> Incrementing the number of ticks in the subseries
+            subseriesNbTicks++;
+        }
+        
+        return subseries(beginIndex, beginIndex + subseriesNbTicks - 1);
+    }
+
+    /**
      * Splits the time series into sub-series containing nbTicks ticks each.<br>
+     * The current time series is splitted every nbTicks ticks.<br>
      * The last sub-series may have less ticks than nbTicks.
-     * @param series the time series
      * @param nbTicks the number of ticks of each sub-series
      * @return a list of sub-series
      */
@@ -145,54 +178,35 @@ public class TimeSeries {
     }
 
     /**
+     * Splits the time series into sub-series lasting sliceDuration.<br>
+     * The current time series is splitted every splitDuration.<br>
+     * The last sub-series may last less than sliceDuration.
+     * @param splitDuration the duration between 2 splits
+     * @param sliceDuration the duration of each sub-series
+     * @return a list of sub-series
+     */
+    public List<TimeSeries> split(Period splitDuration, Period sliceDuration) {
+        ArrayList<TimeSeries> subseries = new ArrayList<TimeSeries>();
+        if (splitDuration != null && !splitDuration.equals(Period.ZERO)
+                && sliceDuration != null && !sliceDuration.equals(Period.ZERO)) {
+
+            List<Integer> beginIndexes = getSplitBeginIndexes(splitDuration);
+            for (Integer subseriesBegin : beginIndexes) {
+                subseries.add(subseries(subseriesBegin, sliceDuration));
+            }
+        }
+        return subseries;
+    }
+
+    /**
      * Splits the time series into sub-series lasting duration.<br>
+     * The current time series is splitted every duration.<br>
      * The last sub-series may last less than duration.
-     * @param series the time series
-     * @param duration the duration of each sub-series
+     * @param duration the duration between 2 splits (and of each sub-series)
      * @return a list of sub-series
      */
     public List<TimeSeries> split(Period duration) {
-        ArrayList<TimeSeries> subseries = new ArrayList<TimeSeries>();
-        if (duration != null && !duration.equals(Period.ZERO)) {
-
-            // Building the interval of the first subseries
-            DateTime beginInterval = ticks.get(beginIndex).getEndTime();
-            DateTime endInterval = beginInterval.plus(duration);
-            Interval subseriesInterval = new Interval(beginInterval, endInterval);
-
-            // Subseries begin and end indexes
-            int subseriesBegin = beginIndex;
-            int subseriesNbTicks = 0;
-
-            for (int i = beginIndex; i <= endIndex; i++) {
-                // For each tick...
-                DateTime tickTime = ticks.get(i).getEndTime();
-                if (subseriesInterval.contains(tickTime)) {
-                    // Tick in the interval
-                    // --> Incrementing the number of ticks in the subseries
-                    subseriesNbTicks++;
-                } else {
-                    // Tick out of the interval
-                    if (!endInterval.isAfter(tickTime)) {
-                        // Tick after the interval
-                        // --> Building and adding the previous subseries
-                        subseries.add(subseries(subseriesBegin, subseriesBegin + subseriesNbTicks - 1));
-                        // --> Clearing counters for new subseries
-                        subseriesBegin = i;
-                        subseriesNbTicks = 1;
-                    }
-
-                    // Building the next interval
-                    beginInterval = endInterval.isBefore(tickTime) ? tickTime : endInterval;
-                    endInterval = beginInterval.plus(duration);
-                    subseriesInterval = new Interval(beginInterval, endInterval);
-                }
-
-            }
-            // Building and adding the last subseries
-            subseries.add(subseries(subseriesBegin, subseriesBegin + subseriesNbTicks - 1));
-        }
-        return subseries;
+        return split(duration, duration);
     }
 
     /**
@@ -264,5 +278,41 @@ public class TimeSeries {
         Period period = new Period(Math.min(firstTickPeriod, secondTickPeriod));
         assert !Period.ZERO.equals(period) : "Period should not be zero";
         return period;
+    }
+
+    /**
+     * Builds a list of split indexes from splitDuration.
+     * @param splitDuration the duration between 2 splits
+     * @return a list of begin indexes after split
+     */
+    private List<Integer> getSplitBeginIndexes(Period splitDuration) {
+        ArrayList<Integer> beginIndexes = new ArrayList<Integer>();
+
+        // Adding the first begin index
+        beginIndexes.add(beginIndex);
+
+        // Building the first interval before next split
+        DateTime beginInterval = ticks.get(beginIndex).getEndTime();
+        DateTime endInterval = beginInterval.plus(splitDuration);
+        Interval splitInterval = new Interval(beginInterval, endInterval);
+
+        for (int i = beginIndex; i <= endIndex; i++) {
+            // For each tick...
+            DateTime tickTime = ticks.get(i).getEndTime();
+            if (!splitInterval.contains(tickTime)) {
+                // Tick out of the interval
+                if (!endInterval.isAfter(tickTime)) {
+                    // Tick after the interval
+                    // --> Adding a new begin index
+                    beginIndexes.add(i);
+                }
+
+                // Building the new interval before next split
+                beginInterval = endInterval.isBefore(tickTime) ? tickTime : endInterval;
+                endInterval = beginInterval.plus(splitDuration);
+                splitInterval = new Interval(beginInterval, endInterval);
+            }
+        }
+        return beginIndexes;
     }
 }
