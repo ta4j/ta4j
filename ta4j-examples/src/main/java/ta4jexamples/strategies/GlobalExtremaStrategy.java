@@ -40,7 +40,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 /**
  * Strategies which compares current price to global extrema over a week.
  */
-public class GlobalExtrema {
+public class GlobalExtremaStrategy {
 
     // We assume that there were at least one trade every 5 minutes during the whole week
     private static final int NB_TICKS_PER_WEEK = 12 * 24 * 7;
