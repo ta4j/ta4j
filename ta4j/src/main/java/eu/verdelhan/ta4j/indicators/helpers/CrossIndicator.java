@@ -54,13 +54,13 @@ public class CrossIndicator implements Indicator<Boolean> {
             return false;
         }
 
-        i = i - 1;
+        i--;
         if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue()) {
             return true;
         } else {
 
             while (i > 0 && up.getValue(i).doubleValue() == low.getValue(i).doubleValue()) {
-                i = i - 1;
+                i--;
             }
             return (i != 0) && (up.getValue(i).doubleValue() > low.getValue(i).doubleValue());
         }
