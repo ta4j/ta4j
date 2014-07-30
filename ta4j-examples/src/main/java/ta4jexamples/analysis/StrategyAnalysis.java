@@ -28,6 +28,7 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.BuyAndHoldCriterion;
+import eu.verdelhan.ta4j.analysis.criteria.LinearTransactionCostCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.MaximumDrawdownCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.NumberOfTicksCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.NumberOfTradesCriterion;
@@ -71,6 +72,8 @@ public class StrategyAnalysis {
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, trades));
         // Reward-risk ratio
         System.out.println("Reward-risk ratio: " + new RewardRiskRatioCriterion().calculate(series, trades));
+        // Total transaction cost
+        System.out.println("Total transaction cost (from $1000): " + new LinearTransactionCostCriterion(1000, 0.005).calculate(series, trades));
         // Buy-and-hold
         System.out.println("Buy-and-hold: " + new BuyAndHoldCriterion().calculate(series, trades));
         // Total profit vs buy-and-hold
