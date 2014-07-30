@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -35,13 +36,33 @@ import org.joda.time.DateTime;
 import org.junit.Test;
 
 
-public class FixedTransactionCostCriterionTest {
-    
+public class LinearTransactionCostCriterionTest {
+
     @Test
-    public void calculate() {
+    public void calculateLinearCost() {
+        MockTimeSeries series = new MockTimeSeries(100, 150, 200, 100, 50, 100);
+        List<Trade> trades = new ArrayList<Trade>();
+        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
+
+        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(12.861);
+
+        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.347, TATestsUtils.SHORT_OFFSET);
+
+        Trade t = new Trade();
+        trades.add(t);
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.347, TATestsUtils.SHORT_OFFSET);
+
+        t.operate(5);
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(28.219, TATestsUtils.SHORT_OFFSET);
+    }
+
+    @Test
+    public void calculateFixedCost() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
-        AnalysisCriterion transactionCost = new FixedTransactionCostCriterion(1.3d);
+        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 1.3d);
         
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
         assertThat(transactionCost.calculate(series, trades)).isEqualTo(2.6d);
@@ -58,10 +79,10 @@ public class FixedTransactionCostCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade() {
+    public void calculateFixedCostWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade trade = new Trade();
-        AnalysisCriterion transactionCost = new FixedTransactionCostCriterion(0.75d);
+        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 0.75d);
 
         assertThat(transactionCost.calculate(series, trade)).isZero();
 
@@ -93,14 +114,14 @@ public class FixedTransactionCostCriterionTest {
         decisions.add(new Decision(null, series, null, trades));
         decisions.add(new Decision(null, series, null, trades));
         
-        AnalysisCriterion transactionCosts = new FixedTransactionCostCriterion(1.10d);
+        AnalysisCriterion transactionCosts = new LinearTransactionCostCriterion(1000, 0, 1.10d);
 
         assertThat(transactionCosts.summarize(series, decisions)).isEqualTo(11d);
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new FixedTransactionCostCriterion(0.5);
+        AnalysisCriterion criterion = new LinearTransactionCostCriterion(1000, 0.5);
         assertThat(criterion.betterThan(3.1, 4.2)).isTrue();
         assertThat(criterion.betterThan(2.1, 1.9)).isFalse();
     }

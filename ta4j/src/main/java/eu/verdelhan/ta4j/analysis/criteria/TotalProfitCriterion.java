@@ -60,13 +60,17 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @return the profit of the trade
      */
     private double calculateProfit(TimeSeries series, Trade trade) {
-        double exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
-        double entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
+        double profit = 1d;
+        if (trade.isClosed()) {
+            double exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
+            double entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
 
-        if (trade.getEntry().getType() == OperationType.BUY) {
-            return exitClosePrice / entryClosePrice;
-        } else {
-            return entryClosePrice / exitClosePrice;
+            if (trade.getEntry().getType() == OperationType.BUY) {
+                profit = exitClosePrice / entryClosePrice;
+            } else {
+                profit = entryClosePrice / exitClosePrice;
+            }
         }
+        return profit;
     }
 }

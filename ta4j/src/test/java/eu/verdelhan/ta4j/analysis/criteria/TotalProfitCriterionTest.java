@@ -77,6 +77,16 @@ public class TotalProfitCriterionTest {
     }
 
     @Test
+    public void calculateWithOpenedTradeShouldReturn1() {
+        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        AnalysisCriterion profit = new TotalProfitCriterion();
+        Trade trade = new Trade();
+        assertThat(profit.calculate(series, trade)).isEqualTo(1d);
+        trade.operate(0);
+        assertThat(profit.calculate(series, trade)).isEqualTo(1d);
+    }
+
+    @Test
     public void betterThan() {
         AnalysisCriterion criterion = new TotalProfitCriterion();
         assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
