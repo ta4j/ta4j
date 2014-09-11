@@ -30,43 +30,42 @@ import eu.verdelhan.ta4j.Strategy;
  * <p>
  * Enter: when an {@link Indicator indicator}'s value is less than a threshold<br>
  * Exit: according to the provided {@link Strategy strategy}
- *
- * @author Daniel Kuan
  */
 public class MaxValueStarterStrategy extends AbstractStrategy {
 
-  /** Strategy */
-  private final Strategy                    strategy;
-  /** Indicator */
-  private final Indicator<? extends Number> indicator;
-  /** Starting threshold */
-  private final double                      start;
+    /** Strategy */
+    private final Strategy strategy;
 
-  /**
-   * Constructor.
-   * @param indicator the indicator
-   * @param strategy the strategy
-   * @param start the starting threshold
-   */
-  public MaxValueStarterStrategy(final Indicator<? extends Number> indicator, final Strategy strategy, final double start) {
-    this.indicator = indicator;
-    this.strategy = strategy;
-    this.start = start;
-  }
+    /** Indicator */
+    private final Indicator<? extends Number> indicator;
 
-  @Override
-  public boolean shouldEnter(final int index) {
-    return (indicator.getValue(index).doubleValue() < start);
-  }
+    /** Starting threshold */
+    private final double start;
 
-  @Override
-  public boolean shouldExit(final int index) {
-    return strategy.shouldExit(index);
-  }
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param strategy the strategy
+     * @param start the starting threshold
+     */
+    public MaxValueStarterStrategy(final Indicator<? extends Number> indicator, final Strategy strategy, final double start) {
+        this.indicator = indicator;
+        this.strategy = strategy;
+        this.start = start;
+    }
 
-  @Override
-  public String toString() {
-    return String.format("%s start: %i", this.getClass().getSimpleName(), start);
-  }
+    @Override
+    public boolean shouldEnter(final int index) {
+        return (indicator.getValue(index).doubleValue() < start);
+    }
 
+    @Override
+    public boolean shouldExit(final int index) {
+        return strategy.shouldExit(index);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s start: %i", this.getClass().getSimpleName(), start);
+    }
 }
