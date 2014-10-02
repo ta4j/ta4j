@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * On-balance volume indicator.
  * <p>
  */
-public class OnBalanceVolumeIndicator implements Indicator<Double>{
+public class OnBalanceVolumeIndicator extends CachedIndicator<Double> {
 
     private final TimeSeries series;
 
@@ -38,13 +39,13 @@ public class OnBalanceVolumeIndicator implements Indicator<Double>{
     }
 
     @Override
-    public Double getValue(int index) {
+    protected Double calculate(int index) {
         if (index == 0) {
             return 0d;
         }
         double yesterdayClose = series.getTick(index - 1).getClosePrice();
         double todayClose = series.getTick(index).getClosePrice();
-        
+
         if (yesterdayClose > todayClose) {
             return getValue(index - 1) - series.getTick(index).getVolume();
         } else if (yesterdayClose < todayClose) {

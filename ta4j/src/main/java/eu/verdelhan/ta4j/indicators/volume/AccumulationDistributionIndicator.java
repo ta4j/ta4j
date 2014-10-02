@@ -26,12 +26,13 @@ package eu.verdelhan.ta4j.indicators.volume;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Accumulation-distribution indicator.
  * <p>
  */
-public class AccumulationDistributionIndicator implements Indicator<Double> {
+public class AccumulationDistributionIndicator extends CachedIndicator<Double> {
 
     private TimeSeries series;
 
@@ -40,7 +41,7 @@ public class AccumulationDistributionIndicator implements Indicator<Double> {
     }
 
     @Override
-    public Double getValue(int index) {
+    protected Double calculate(int index) {
         if (index == 0) {
             return 0d;
         }
@@ -48,7 +49,7 @@ public class AccumulationDistributionIndicator implements Indicator<Double> {
 
         // Calculating the money flow multiplier
         double moneyFlowMultiplier = ((tick.getClosePrice() - tick.getMinPrice()) - (tick.getMaxPrice() - tick.getClosePrice()))
-                 / (tick.getMaxPrice() - tick.getMinPrice());
+                / (tick.getMaxPrice() - tick.getMinPrice());
 
         // Calculating the money flow volume
         double moneyFlowVolume = moneyFlowMultiplier * tick.getVolume();
