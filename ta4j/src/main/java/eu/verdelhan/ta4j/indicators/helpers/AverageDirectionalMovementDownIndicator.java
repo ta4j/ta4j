@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Average of {@link DirectionalMovementDownIndicator directional movement down indicator}.
  * <p>
  */
-public class AverageDirectionalMovementDownIndicator implements Indicator<Double>{
+public class AverageDirectionalMovementDownIndicator extends CachedIndicator<Double> {
     private final int timeFrame;
 
     private final DirectionalMovementDownIndicator dmdown;
@@ -40,11 +41,12 @@ public class AverageDirectionalMovementDownIndicator implements Indicator<Double
     }
 
     @Override
-    public Double getValue(int index) {
+    protected Double calculate(int index) {
         if (index == 0) {
             return 1d;
         }
         return (getValue(index - 1) * (timeFrame - 1) / timeFrame) + (dmdown.getValue(index) / timeFrame);
+
     }
 
     @Override
