@@ -41,6 +41,7 @@ public class TADecimal implements Comparable<TADecimal> {
     public static final TADecimal ZERO = valueOf(0);
     public static final TADecimal ONE = valueOf(1);
     public static final TADecimal TWO = valueOf(2);
+    public static final TADecimal THREE = valueOf(3);
     public static final TADecimal TEN = valueOf(10);
     public static final TADecimal HUNDRED = valueOf(100);
 
@@ -125,6 +126,16 @@ public class TADecimal implements Comparable<TADecimal> {
     }
 
     /**
+     * Returns a {@code TADecimal} whose value is the absolute value
+     * of this {@code TADecimal}.
+     *
+     * @return {@code abs(this)}
+     */
+    public TADecimal abs() {
+        return new TADecimal(delegate.abs());
+    }
+
+    /**
      * Checks if the value is zero.
      * @return true if the value is zero, false otherwise
      */
@@ -194,6 +205,30 @@ public class TADecimal implements Comparable<TADecimal> {
     @Override
     public int compareTo(TADecimal other) {
         return delegate.compareTo(other.delegate);
+    }
+
+    /**
+     * Returns the minimum of this {@code TADecimal} and {@code other}.
+     * @param other value with which the minimum is to be computed
+     * @return the {@code TADecimal} whose value is the lesser of this
+     *         {@code TADecimal} and {@code other}.  If they are equal,
+     *         as defined by the {@link #compareTo(TADecimal) compareTo}
+     *         method, {@code this} is returned.
+     */
+    public TADecimal min(TADecimal other) {
+        return (compareTo(other) <= 0 ? this : other);
+    }
+
+    /**
+     * Returns the maximum of this {@code TADecimal} and {@code other}.
+     * @param  other value with which the maximum is to be computed
+     * @return the {@code TADecimal} whose value is the greater of this
+     *         {@code TADecimal} and {@code other}.  If they are equal,
+     *         as defined by the {@link #compareTo(TADecimal) compareTo}
+     *         method, {@code this} is returned.
+     */
+    public TADecimal max(TADecimal other) {
+        return (compareTo(other) >= 0 ? this : other);
     }
 
     /**
