@@ -117,18 +117,41 @@ public class TADecimal implements Comparable<TADecimal> {
         return new TADecimal(delegate.divide(divisor.delegate, MATH_CONTEXT));
     }
 
+    /**
+     * Returns a {@code TADecimal} whose value is {@code (this % divisor)},
+     * with rounding according to the context settings.
+     * @param divisor value by which this {@code TADecimal} is to be divided.
+     * @return {@code this % divisor}, rounded as necessary.
+     * @see BigDecimal#remainder(java.math.BigDecimal, java.math.MathContext)
+     */
     public TADecimal remainder(TADecimal divisor) {
         return new TADecimal(delegate.remainder(divisor.delegate, MATH_CONTEXT));
     }
 
+
+    /**
+     * Returns a {@code TADecimal} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * @param n power to raise this {@code TADecimal} to.
+     * @return <tt>this<sup>n</sup></tt>
+     * @see BigDecimal#pow(int, java.math.MathContext)
+     */
     public TADecimal pow(int n) {
         return new TADecimal(delegate.pow(n, MATH_CONTEXT));
     }
 
     /**
+     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code TADecimal}.
+     * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
+     * @return the positive square root of {@code this}
+     * @see StrictMath#sqrt(double)
+     */
+    public TADecimal sqrt() {
+        return new TADecimal(StrictMath.sqrt(delegate.doubleValue()));
+    }
+
+    /**
      * Returns a {@code TADecimal} whose value is the absolute value
      * of this {@code TADecimal}.
-     *
      * @return {@code abs(this)}
      */
     public TADecimal abs() {
@@ -194,12 +217,30 @@ public class TADecimal implements Comparable<TADecimal> {
     }
 
     /**
+     * Checks if this value is greater than or equal to another.
+     * @param other the other value, not null
+     * @return true is this is greater than or equal to the specified value, false otherwise
+     */
+    public boolean isGreaterThanOrEqual(TADecimal other) {
+        return compareTo(other) > -1;
+    }
+
+    /**
      * Checks if this value is less than another.
      * @param other the other value, not null
      * @return true is this is less than the specified value, false otherwise
      */
     public boolean isLessThan(TADecimal other) {
         return compareTo(other) < 0;
+    }
+
+    /**
+     * Checks if this value is less than or equal to another.
+     * @param other the other value, not null
+     * @return true is this is less than or equal to the specified value, false otherwise
+     */
+    public boolean isLessThanOrEqual(TADecimal other) {
+        return compareTo(other) < 1;
     }
 
     @Override
