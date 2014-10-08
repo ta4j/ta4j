@@ -66,6 +66,6 @@ public class MaxValueStarterStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String.format("%s start: %i", this.getClass().getSimpleName(), start);
+        return String.format("%s start: %d", this.getClass().getSimpleName(), start);
     }
 }
