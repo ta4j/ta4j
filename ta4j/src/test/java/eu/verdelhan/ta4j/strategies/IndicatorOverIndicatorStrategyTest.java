@@ -41,9 +41,9 @@ public class IndicatorOverIndicatorStrategyTest {
     @Before
     public void setUp() {
 
-        first = new MockIndicator<Double>(new Double[] {4d, 7d, 9d, 6d, 3d, 2d});
-        second = new MockIndicator<Double>(new Double[] {3d, 6d, 10d, 8d, 2d, 1d});
 
+        first = new MockIndicator<Double>(new Double[] {3d, 6d, 10d, 8d, 2d, 1d});
+        second = new MockIndicator<Double>(new Double[] {4d, 7d, 9d, 6d, 3d, 2d});
     }
 
     @Test

@@ -61,7 +61,7 @@ public class MovingMomentumStrategy {
 
         // The bias is bullish when the shorter-moving average moves above the longer moving average.
         // The bias is bearish when the shorter-moving average moves below the longer moving average.
-        IndicatorOverIndicatorStrategy shortEmaAboveLongEma = new IndicatorOverIndicatorStrategy(longEma, shortEma);
+        IndicatorOverIndicatorStrategy shortEmaAboveLongEma = new IndicatorOverIndicatorStrategy(shortEma, longEma);
 
         StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
         StochasticOscillatorDIndicator stochasticOscillD = new StochasticOscillatorDIndicator(stochasticOscillK);
@@ -72,7 +72,7 @@ public class MovingMomentumStrategy {
         MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
         EMAIndicator emaMacd = new EMAIndicator(macd, 18);
 
-        IndicatorOverIndicatorStrategy macdAboveSignalLine = new IndicatorOverIndicatorStrategy(emaMacd, macd);
+        IndicatorOverIndicatorStrategy macdAboveSignalLine = new IndicatorOverIndicatorStrategy(macd, emaMacd);
 
         return shortEmaAboveLongEma
                 .and(new CombinedBuyAndSellStrategy(support20, resist80))

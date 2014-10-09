@@ -55,13 +55,13 @@ public class CCICorrectionStrategy {
         ConstantIndicator<Double> minus100 = new ConstantIndicator<Double>(-100d);
 
         // Trend
-        IndicatorOverIndicatorStrategy bullTrend = new IndicatorOverIndicatorStrategy(plus100, longCci);
-        IndicatorOverIndicatorStrategy bearTrend = new IndicatorOverIndicatorStrategy(minus100, longCci);
+        IndicatorOverIndicatorStrategy bullTrend = new IndicatorOverIndicatorStrategy(longCci, plus100);
+        IndicatorOverIndicatorStrategy bearTrend = new IndicatorOverIndicatorStrategy(longCci, minus100);
         Strategy trend = new CombinedBuyAndSellStrategy(bullTrend, bearTrend);
 
         // Signals
-        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(shortCci, minus100);
-        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(shortCci, plus100);
+        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(minus100, shortCci);
+        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(plus100, shortCci);
         Strategy signals = new CombinedBuyAndSellStrategy(buySignal, sellSignal);
 
         return trend.and(signals);

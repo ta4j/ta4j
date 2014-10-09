@@ -51,9 +51,9 @@ public class ParabolicSarAndDMIStrategyTest {
     {
         TimeSeries series1 = new MockTimeSeries(6, 11, 6, 5, 9);
         TimeSeries series2 = new MockTimeSeries(10, 9, 7, 6, 6);
-        
-        TimeSeries series3 = new MockTimeSeries(1, 1, 1, 1, 1);
-        TimeSeries series4 = new MockTimeSeries(2, 2, 2, 2, 0);
+
+        TimeSeries series3 = new MockTimeSeries(2, 2, 2, 2, 0);
+        TimeSeries series4 = new MockTimeSeries(1, 1, 1, 1, 1);
         
         IndicatorCrossedIndicatorStrategy indicatorCrossedIndicator = new IndicatorCrossedIndicatorStrategy(new ClosePriceIndicator(series1), new ClosePriceIndicator(series2));
         IndicatorOverIndicatorStrategy indicatorOverIndicator = new IndicatorOverIndicatorStrategy(new ClosePriceIndicator(series3), new ClosePriceIndicator(series4));
