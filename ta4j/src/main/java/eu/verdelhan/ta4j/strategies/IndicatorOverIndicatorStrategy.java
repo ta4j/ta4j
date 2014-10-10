@@ -27,8 +27,8 @@ import eu.verdelhan.ta4j.Indicator;
 /**
  * Indicator over indicator strategy.
  * <p>
- * Enter: when the value of the first {@link Indicator indicator} is strictly less than the value of the second one<br>
- * Exit: when the value of the first {@link Indicator indicator} is strictly greater than the value of the second one
+ * Enter: when the value of the first {@link Indicator indicator} is strictly greater than the value of the second one<br>
+ * Exit: when the value of the first {@link Indicator indicator} is strictly lesser than the value of the second one
  */
 public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
     
@@ -49,16 +49,16 @@ public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return (first.getValue(index) < second.getValue(index));
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
         return (first.getValue(index) > second.getValue(index));
     }
 
     @Override
+    public boolean shouldExit(int index) {
+        return (first.getValue(index) < second.getValue(index));
+    }
+
+    @Override
     public String toString() {
-        return String.format("%s upper: %s lower: %s", this.getClass().getSimpleName(), first, second);
+        return String.format("%s : %s over %s", this.getClass().getSimpleName(), first, second);
     }
 }
