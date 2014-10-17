@@ -38,14 +38,14 @@ import java.math.RoundingMode;
  */
 public class TADecimal implements Comparable<TADecimal> {
 
+    public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
+
     public static final TADecimal ZERO = valueOf(0);
     public static final TADecimal ONE = valueOf(1);
     public static final TADecimal TWO = valueOf(2);
     public static final TADecimal THREE = valueOf(3);
     public static final TADecimal TEN = valueOf(10);
     public static final TADecimal HUNDRED = valueOf(100);
-
-    private static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     private BigDecimal delegate;
 
@@ -284,6 +284,29 @@ public class TADecimal implements Comparable<TADecimal> {
     @Override
     public String toString() {
         return delegate.toString();
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 53 * hash + (this.delegate != null ? this.delegate.hashCode() : 0);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final TADecimal other = (TADecimal) obj;
+        if (this.delegate != other.delegate
+                && (this.delegate == null || (this.delegate.compareTo(other.delegate) != 0))) {
+            return false;
+        }
+        return true;
     }
 
     public static TADecimal valueOf(String val) {
