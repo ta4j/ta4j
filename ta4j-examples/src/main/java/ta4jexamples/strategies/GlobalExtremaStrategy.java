@@ -64,10 +64,10 @@ public class GlobalExtremaStrategy {
         LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_TICKS_PER_WEEK);
 
         // Going long if the close price goes below the min price
-        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(closePrices, new SimpleMultiplierIndicator(weekMinPrice, 1.004));
+        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(new SimpleMultiplierIndicator(weekMinPrice, 1.004), closePrices);
 
         // Going short if the close price goes above the max price
-        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(new SimpleMultiplierIndicator(weekMaxPrice, 0.996), closePrices);
+        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(closePrices, new SimpleMultiplierIndicator(weekMaxPrice, 0.996));
 
         Strategy signals = new CombinedBuyAndSellStrategy(buySignal, sellSignal);
 

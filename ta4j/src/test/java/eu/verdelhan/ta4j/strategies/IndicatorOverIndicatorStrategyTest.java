@@ -42,9 +42,8 @@ public class IndicatorOverIndicatorStrategyTest {
     @Before
     public void setUp() {
 
-        first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
-        second = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
-
+        first = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
+        second = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
     }
 
     @Test

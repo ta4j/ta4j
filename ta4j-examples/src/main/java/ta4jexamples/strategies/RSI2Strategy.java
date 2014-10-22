@@ -58,11 +58,11 @@ public class RSI2Strategy {
 
         // Exit point.
         // Exiting long positions on a move above the 5-period SMA and short positions on a move below the 5-day SMA.
-        IndicatorOverIndicatorStrategy priceBelowSma = new IndicatorOverIndicatorStrategy(closePrice, shortSma);
+        IndicatorOverIndicatorStrategy priceBelowSma = new IndicatorOverIndicatorStrategy(shortSma, closePrice);
 
         // Identifying the major trend using a long-term moving average.
         // The long-term trend is up when a security is above its 200-period SMA and down when a security is below its 200-period SMA.
-        IndicatorOverIndicatorStrategy shortSmaAboveLongSma = new IndicatorOverIndicatorStrategy(longSma, shortSma);
+        IndicatorOverIndicatorStrategy shortSmaAboveLongSma = new IndicatorOverIndicatorStrategy(shortSma, longSma);
 
         // Identifying buying or selling opportunities within the bigger trend.
         // We use a 2-period RSI indicator.
