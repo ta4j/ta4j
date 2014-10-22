@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.junit.Before;
@@ -50,12 +51,12 @@ public class TickTest {
         tick.addTrade(2.0, 198.0);
 
         assertThat(tick.getTrades()).isEqualTo(3);
-        assertThat(tick.getAmount()).isEqualTo(9.0);
-        assertThat(tick.getOpenPrice()).isEqualTo(200.0);
-        assertThat(tick.getClosePrice()).isEqualTo(198.0);
-        assertThat(tick.getMinPrice()).isEqualTo(198.0);
-        assertThat(tick.getMaxPrice()).isEqualTo(201.0);
-        assertThat(tick.getVolume()).isEqualTo(3 * 200 + 4 * 201 + 2 * 198);
+        assertDecimalEquals(tick.getAmount(), 9);
+        assertDecimalEquals(tick.getOpenPrice(), 200);
+        assertDecimalEquals(tick.getClosePrice(), 198);
+        assertDecimalEquals(tick.getMinPrice(), 198);
+        assertDecimalEquals(tick.getMaxPrice(), 201);
+        assertDecimalEquals(tick.getVolume(), 3 * 200 + 4 * 201 + 2 * 198);
     }
 
     @Test

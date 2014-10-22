@@ -22,11 +22,10 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,16 +49,16 @@ public class TripleEMAIndicatorTest {
     public void tripleEMAUsingTimeFrame5UsingClosePrice() {
         TripleEMAIndicator tripleEma = new TripleEMAIndicator(closePrice, 5);
 
-        assertThat(tripleEma.getValue(0)).isEqualTo(0.73, TATestsUtils.SHORT_OFFSET);
-        assertThat(tripleEma.getValue(1)).isEqualTo(0.721, TATestsUtils.SHORT_OFFSET);
-        assertThat(tripleEma.getValue(2)).isEqualTo(0.818, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(tripleEma.getValue(0), 0.73);
+        assertDecimalEquals(tripleEma.getValue(1), 0.72125);
+        assertDecimalEquals(tripleEma.getValue(2), 0.818);
 
-        assertThat(tripleEma.getValue(6)).isEqualTo(0.803, TATestsUtils.SHORT_OFFSET);
-        assertThat(tripleEma.getValue(7)).isEqualTo(0.733, TATestsUtils.SHORT_OFFSET);
-        assertThat(tripleEma.getValue(8)).isEqualTo(0.672, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(tripleEma.getValue(6), 0.8034);
+        assertDecimalEquals(tripleEma.getValue(7), 0.7329);
+        assertDecimalEquals(tripleEma.getValue(8), 0.6723);
 
-        assertThat(tripleEma.getValue(12)).isEqualTo(0.739, TATestsUtils.SHORT_OFFSET);
-        assertThat(tripleEma.getValue(13)).isEqualTo(0.699, TATestsUtils.SHORT_OFFSET);
-        assertThat(tripleEma.getValue(14)).isEqualTo(0.687, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(tripleEma.getValue(12), 0.7385);
+        assertDecimalEquals(tripleEma.getValue(13), 0.6993);
+        assertDecimalEquals(tripleEma.getValue(14), 0.6876);
     }
 }

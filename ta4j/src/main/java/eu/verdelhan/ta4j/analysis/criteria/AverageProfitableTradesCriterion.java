@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
@@ -39,16 +40,16 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
 
-        double result;
+        TADecimal result;
         if (trade.getEntry().getType() == OperationType.BUY) {
             // buy-then-sell trade
-            result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
+            result = series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice());
         } else {
             // sell-then-buy trade
-            result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
+            result = series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice());
         }
 
-        return (result > 1d) ? 1d : 0d;
+        return (result.isGreaterThan(TADecimal.ONE)) ? 1d : 0d;
     }
 
     @Override
@@ -58,15 +59,15 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             int entryIndex = trade.getEntry().getIndex();
             int exitIndex = trade.getExit().getIndex();
 
-            double result;
+            TADecimal result;
             if (trade.getEntry().getType() == OperationType.BUY) {
                 // buy-then-sell trade
-                result = series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
+                result = series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice());
             } else {
                 // sell-then-buy trade
-                result = series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
+                result = series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice());
             }
-            if (result > 1d) {
+            if (result.isGreaterThan(TADecimal.ONE)) {
                 numberOfProfitable++;
             }
         }

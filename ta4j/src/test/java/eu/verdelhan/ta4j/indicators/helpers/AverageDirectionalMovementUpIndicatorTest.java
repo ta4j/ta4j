@@ -22,13 +22,13 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.indicators.helpers.AverageDirectionalMovementUpIndicator;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -37,7 +37,6 @@ public class AverageDirectionalMovementUpIndicatorTest {
     @Test
     public void averageDirectionalMovement()
     {
-        
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(0, 0, 10, 2));
         ticks.add(new MockTick(0, 0, 12, 2));
@@ -47,10 +46,10 @@ public class AverageDirectionalMovementUpIndicatorTest {
         
         MockTimeSeries series = new MockTimeSeries(ticks);
         AverageDirectionalMovementUpIndicator admup = new AverageDirectionalMovementUpIndicator(series, 3);
-        assertThat(admup.getValue(0)).isEqualTo((double) 1d);
-        assertThat(admup.getValue(1)).isEqualTo((double) 2d / 3 + 2d/3 );
-        assertThat(admup.getValue(2)).isEqualTo((double) (2d / 3 + 2d/3) * 2d/3 + 1);
-        assertThat(admup.getValue(3)).isEqualTo((double) ((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 + 1d/3 * 0);
-        assertThat(admup.getValue(4)).isEqualTo((double) ((2d / 3 + 2d/3) * 2d/3 + 1) * 2d / 3 * 2d/3  + 2 * 1d / 3);
+        assertDecimalEquals(admup.getValue(0), 1);
+        assertDecimalEquals(admup.getValue(1), 4d/3);
+        assertDecimalEquals(admup.getValue(2), 4d/3 * 2d/3 + 1);
+        assertDecimalEquals(admup.getValue(3), (4d/3 * 2d/3 + 1) * 2d/3);
+        assertDecimalEquals(admup.getValue(4), (4d/3 * 2d/3 + 1) * 2d/3 * 2d/3 + 2d/3);
     }
 }

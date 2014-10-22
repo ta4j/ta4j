@@ -26,7 +26,8 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
@@ -97,8 +98,8 @@ public class CombinedBuyAndSellStrategyTest {
 
     @Test
     public void whenBuyStrategyAndSellStrategyAreEquals() {
-        Indicator<Double> first = new MockIndicator<Double>(4d, 7d, 9d, 6d, 3d, 2d);
-        Indicator<Double> second = new MockIndicator<Double>(3d, 6d, 10d, 8d, 2d, 1d);
+        Indicator<TADecimal> first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
+        Indicator<TADecimal> second = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
 
         Strategy crossed = new IndicatorCrossedIndicatorStrategy(first, second);
 

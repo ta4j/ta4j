@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
 
 /**
@@ -37,16 +38,16 @@ public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
 
     private final Indicator<Boolean> crossDown;
 
-    private Indicator<? extends Number> upper;
+    private Indicator<? extends TADecimal> upper;
 
-    private Indicator<? extends Number> lower;
+    private Indicator<? extends TADecimal> lower;
 
     /**
      * Constructor.
      * @param upper the upper indicator
      * @param lower the lower indicator
      */
-    public IndicatorCrossedIndicatorStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower) {
+    public IndicatorCrossedIndicatorStrategy(Indicator<? extends TADecimal> upper, Indicator<? extends TADecimal> lower) {
         this.upper = upper;
         this.lower = lower;
         crossUp = new CrossIndicator(upper, lower);

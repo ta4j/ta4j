@@ -23,13 +23,14 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
  * Minimum price indicator.
  * <p>
  */
-public class MinPriceIndicator implements Indicator<Double> {
+public class MinPriceIndicator implements Indicator<TADecimal> {
 
     private TimeSeries data;
 
@@ -38,7 +39,7 @@ public class MinPriceIndicator implements Indicator<Double> {
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         return data.getTick(index).getMinPrice();
     }
 

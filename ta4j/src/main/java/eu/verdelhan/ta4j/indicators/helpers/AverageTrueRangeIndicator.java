@@ -22,15 +22,15 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Average true range indicator.
  * <p>
  */
-public class AverageTrueRangeIndicator extends CachedIndicator<Double> {
+public class AverageTrueRangeIndicator extends CachedIndicator<TADecimal> {
 
     private final int timeFrame;
     private final TrueRangeIndicator tr;
@@ -41,11 +41,13 @@ public class AverageTrueRangeIndicator extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    protected TADecimal calculate(int index) {
         if (index == 0) {
-            return 1d;
+            return TADecimal.ONE;
         }
-        return ((getValue(index - 1) * (timeFrame-1)) / timeFrame) + tr.getValue(index) / timeFrame;
+        TADecimal nbPeriods = TADecimal.valueOf(timeFrame);
+        TADecimal nbPeriodsMinusOne = TADecimal.valueOf(timeFrame - 1);
+        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(tr.getValue(index).dividedBy(nbPeriods));
     }
 
     @Override

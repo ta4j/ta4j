@@ -22,12 +22,11 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -58,16 +57,17 @@ public class CCIIndicatorTest {
         CCIIndicator cci = new CCIIndicator(series, 20);
 
         // Incomplete time frame
-        assertThat(cci.getValue(0)).isNaN();
-        assertThat(cci.getValue(1)).isEqualTo(-66.66, TATestsUtils.SHORT_OFFSET);
-        assertThat(cci.getValue(2)).isEqualTo(-100.0, TATestsUtils.SHORT_OFFSET);
-        assertThat(cci.getValue(10)).isEqualTo(14.36, TATestsUtils.SHORT_OFFSET);
-        assertThat(cci.getValue(11)).isEqualTo(54.25, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(cci.getValue(0), 0);
+        assertDecimalEquals(cci.getValue(1), -66.6667);
+        assertDecimalEquals(cci.getValue(2), -100d);
+        assertDecimalEquals(cci.getValue(10), 14.365);
+        assertDecimalEquals(cci.getValue(11), 54.2544);
 
         // Complete time frame
-        double[] results20to30 = new double[] { 101.91, 31.19, 6.55, 33.60, 34.96, 13.60, -10.68, -11.47, -29.26, -128.60, -72.72 };
+        double[] results20to30 = new double[] { 101.9185, 31.1946, 6.5578, 33.6078, 34.9686, 13.6027,
+            -10.6789, -11.471, -29.2567, -128.6, -72.7273 };
         for (int i = 0; i < results20to30.length; i++) {
-            assertThat(cci.getValue(i + 19)).isEqualTo(results20to30[i], TATestsUtils.SHORT_OFFSET);
+            assertDecimalEquals(cci.getValue(i + 19), results20to30[i]);
         }
     }
 }

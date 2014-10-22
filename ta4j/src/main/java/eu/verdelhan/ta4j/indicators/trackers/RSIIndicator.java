@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.helpers.AverageGainIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
 
@@ -30,20 +31,21 @@ import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
  * Relative strength index indicator.
  * <p>
  */
-public class RSIIndicator implements Indicator<Double> {
+public class RSIIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
 
-    public RSIIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public RSIIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    public Double getValue(int index) {
-        return 100d - 100d / (1 + relativeStrength(index));
+    public TADecimal getValue(int index) {
+        return TADecimal.HUNDRED
+                .minus(TADecimal.HUNDRED.dividedBy(TADecimal.ONE.plus(relativeStrength(index))));
     }
 
     @Override
@@ -55,11 +57,12 @@ public class RSIIndicator implements Indicator<Double> {
      * @param index
      * @return
      */
-    private Double relativeStrength(int index) {
-        if (index == 0)
-            return 0d;
+    private TADecimal relativeStrength(int index) {
+        if (index == 0) {
+            return TADecimal.ZERO;
+        }
         AverageGainIndicator averageGain = new AverageGainIndicator(indicator, timeFrame);
         AverageLossIndicator averageLoss = new AverageLossIndicator(indicator, timeFrame);
-        return averageGain.getValue(index) / averageLoss.getValue(index);
+        return averageGain.getValue(index).dividedBy(averageLoss.getValue(index));
     }
 }

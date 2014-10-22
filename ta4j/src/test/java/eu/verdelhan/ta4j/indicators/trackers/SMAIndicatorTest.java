@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -42,20 +43,19 @@ public class SMAIndicatorTest {
     public void SMAUsingTimeFrame3UsingClosePrice() throws Exception {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
 
-        assertThat(sma.getValue(0)).isEqualTo(1.0);
-        assertThat(sma.getValue(1)).isEqualTo(1.5);
-        assertThat(sma.getValue(2)).isEqualTo(2.0);
-        assertThat(sma.getValue(3)).isEqualTo(3.0);
-        assertThat(sma.getValue(4)).isEqualTo(10.0 / 3);
-        assertThat(sma.getValue(5)).isEqualTo(11.0 / 3);
-        assertThat(sma.getValue(6)).isEqualTo(4.0);
-        assertThat(sma.getValue(7)).isEqualTo(13.0 / 3);
-        assertThat(sma.getValue(8)).isEqualTo(4.0);
-        assertThat(sma.getValue(9)).isEqualTo(10.0 / 3);
-        assertThat(sma.getValue(10)).isEqualTo(10.0 / 3);
-        assertThat(sma.getValue(11)).isEqualTo(10.0 / 3);
-        assertThat(sma.getValue(12)).isEqualTo(3.0);
-
+        assertDecimalEquals(sma.getValue(0), 1);
+        assertDecimalEquals(sma.getValue(1), 1.5);
+        assertDecimalEquals(sma.getValue(2), 2);
+        assertDecimalEquals(sma.getValue(3), 3);
+        assertDecimalEquals(sma.getValue(4), 10d/3);
+        assertDecimalEquals(sma.getValue(5), 11d/3);
+        assertDecimalEquals(sma.getValue(6), 4);
+        assertDecimalEquals(sma.getValue(7), 13d/3);
+        assertDecimalEquals(sma.getValue(8), 4);
+        assertDecimalEquals(sma.getValue(9), 10d/3);
+        assertDecimalEquals(sma.getValue(10), 10d/3);
+        assertDecimalEquals(sma.getValue(11), 10d/3);
+        assertDecimalEquals(sma.getValue(12), 3.0);
     }
 
     @Test
@@ -69,6 +69,6 @@ public class SMAIndicatorTest {
     @Test
     public void SMAShouldWorkJumpingIndexes() {
         SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        assertThat(quoteSMA.getValue(12)).isEqualTo(3d);
+        assertDecimalEquals(quoteSMA.getValue(12), 3);
     }
 }

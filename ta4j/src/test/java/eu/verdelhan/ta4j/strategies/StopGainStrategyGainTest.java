@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
@@ -34,11 +34,11 @@ import org.junit.Test;
 
 public class StopGainStrategyGainTest {
 
-    private MockIndicator<Double> indicator;
+    private MockDecimalIndicator indicator;
 
     @Before
     public void setUp() {
-        indicator = new MockIndicator<Double>(100d, 98d, 103d, 115d, 107d);
+        indicator = new MockDecimalIndicator(100d, 98d, 103d, 115d, 107d);
     }
 
     @Test

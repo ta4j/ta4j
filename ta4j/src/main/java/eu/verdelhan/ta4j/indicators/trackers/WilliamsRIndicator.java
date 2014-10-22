@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
@@ -34,9 +35,9 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * William's R indicator.
  * <p>
  */
-public class WilliamsRIndicator implements Indicator<Double> {
+public class WilliamsRIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
 
@@ -49,7 +50,7 @@ public class WilliamsRIndicator implements Indicator<Double> {
                 timeSeries));
     }
 
-    public WilliamsRIndicator(Indicator<? extends Number> indicator, int timeFrame,
+    public WilliamsRIndicator(Indicator<? extends TADecimal> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
@@ -58,16 +59,16 @@ public class WilliamsRIndicator implements Indicator<Double> {
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
         LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 
-        double highestHighPrice = highestHigh.getValue(index).doubleValue();
-        double lowestLowPrice = lowestMin.getValue(index).doubleValue();
+        TADecimal highestHighPrice = highestHigh.getValue(index);
+        TADecimal lowestLowPrice = lowestMin.getValue(index);
 
-        return ((highestHighPrice - indicator.getValue(index).doubleValue())
-                / (highestHighPrice - lowestLowPrice))
-                * -100d;
+        return ((highestHighPrice.minus(indicator.getValue(index)))
+                .dividedBy(highestHighPrice.minus(lowestLowPrice)))
+                .multipliedBy(TADecimal.valueOf("-100"));
     }
 
     @Override

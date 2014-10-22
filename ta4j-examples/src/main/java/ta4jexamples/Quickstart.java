@@ -24,6 +24,7 @@ package ta4jexamples;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.CashFlow;
@@ -54,17 +55,17 @@ public class Quickstart {
 
 
         // Getting the close price of the ticks
-        double firstClosePrice = series.getTick(0).getClosePrice();
-        System.out.println("First close price: " + firstClosePrice);
+        TADecimal firstClosePrice = series.getTick(0).getClosePrice();
+        System.out.println("First close price: " + firstClosePrice.toDouble());
         // Or within an indicator:
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         // Here is the same close price:
-        System.out.println(firstClosePrice == closePrice.getValue(0)); // equal to firstClosePrice
+        System.out.println(firstClosePrice.isEqual(closePrice.getValue(0))); // equal to firstClosePrice
 
         // Getting the simple moving average (SMA) of the close price over the last 5 ticks
         SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
         // Here is the 5-ticks-SMA value at the 42nd index
-        System.out.println("5-ticks-SMA value at the 42nd index: " + shortSma.getValue(42));
+        System.out.println("5-ticks-SMA value at the 42nd index: " + shortSma.getValue(42).toDouble());
 
         // Getting a longer SMA (e.g. over the 30 last ticks)
         SMAIndicator longSma = new SMAIndicator(closePrice, 30);

@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TADecimalTestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
@@ -58,7 +59,7 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
-        assertThat(rrc.calculate(series, trades)).isEqualTo(totalProfit / ((peak - low) / peak));
+        assertThat(rrc.calculate(series, trades)).isEqualTo(totalProfit / ((peak - low) / peak), TADecimalTestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -85,7 +86,7 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
         
-        assertThat(rrc.summarize(series, decisions)).isEqualTo(totalProfit / ((peak - low) / peak));
+        assertThat(rrc.summarize(series, decisions)).isEqualTo(totalProfit / ((peak - low) / peak), TADecimalTestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -96,7 +97,6 @@ public class RewardRiskRatioCriterionTest {
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         assertThat(Double.isInfinite(rrc.calculate(series, trades))).isTrue();
-
     }
 
     @Test
@@ -105,7 +105,6 @@ public class RewardRiskRatioCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
 
         assertThat(Double.isInfinite(rrc.calculate(series, trades))).isTrue();
-
     }
     
     @Test
@@ -114,9 +113,8 @@ public class RewardRiskRatioCriterionTest {
 
         MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
 
-            
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
-        assertThat(ratioCriterion.calculate(series, trade)).isEqualTo((95d/100) / ((1d - 0.95d)));
+        assertThat(ratioCriterion.calculate(series, trade)).isEqualTo((95d/100) / ((1d - 0.95d)), TADecimalTestsUtils.TA_OFFSET);
     }
 
     @Test

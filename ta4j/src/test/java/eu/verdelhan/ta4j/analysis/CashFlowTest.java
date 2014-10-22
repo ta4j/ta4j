@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.*;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -54,8 +54,8 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(2d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 2);
     }
 
     @Test
@@ -69,13 +69,13 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(.5d);
-        assertThat(cashFlow.getValue(2)).isEqualTo(.5d);
-        assertThat(cashFlow.getValue(3)).isEqualTo(.5d);
-        assertThat(cashFlow.getValue(4)).isEqualTo(.6d);
-        assertThat(cashFlow.getValue(5)).isEqualTo(.6d);
-        assertThat(cashFlow.getValue(6)).isEqualTo(.09d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), "0.5");
+        assertDecimalEquals(cashFlow.getValue(2), "0.5");
+        assertDecimalEquals(cashFlow.getValue(3), "0.5");
+        assertDecimalEquals(cashFlow.getValue(4), "0.6");
+        assertDecimalEquals(cashFlow.getValue(5), "0.6");
+        assertDecimalEquals(cashFlow.getValue(6), "0.09");
     }
 
 
@@ -88,12 +88,12 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(2)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(3)).isEqualTo(.5d);
-        assertThat(cashFlow.getValue(4)).isEqualTo(.5d);
-        assertThat(cashFlow.getValue(5)).isEqualTo(.5d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 1);
+        assertDecimalEquals(cashFlow.getValue(2), 1);
+        assertDecimalEquals(cashFlow.getValue(3), "0.5");
+        assertDecimalEquals(cashFlow.getValue(4), "0.5");
+        assertDecimalEquals(cashFlow.getValue(5), "0.5");
     }
 
     @Test
@@ -107,12 +107,12 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(2d);
-        assertThat(cashFlow.getValue(2)).isEqualTo(4d);
-        assertThat(cashFlow.getValue(3)).isEqualTo(2d);
-        assertThat(cashFlow.getValue(4)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(5)).isEqualTo(2d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 2);
+        assertDecimalEquals(cashFlow.getValue(2), 4);
+        assertDecimalEquals(cashFlow.getValue(3), 2);
+        assertDecimalEquals(cashFlow.getValue(4), 1);
+        assertDecimalEquals(cashFlow.getValue(5), 2);
     }
 
     @Test
@@ -124,9 +124,9 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(2)).isEqualTo(2d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 1);
+        assertDecimalEquals(cashFlow.getValue(2), 2);
     }
 
     @Test
@@ -139,9 +139,9 @@ public class CashFlowTest {
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
         assertThat(cashFlow.getSize()).isEqualTo(3);
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(2d);
-        assertThat(cashFlow.getValue(2)).isEqualTo(2d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 2);
+        assertDecimalEquals(cashFlow.getValue(2), 2);
     }
 
     @Test
@@ -154,13 +154,12 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(2)).isEqualTo(2d);
-        assertThat(cashFlow.getValue(3)).isEqualTo(2d);
-        assertThat(cashFlow.getValue(4)).isEqualTo(2d);
-        assertThat(cashFlow.getValue(5)).isEqualTo(4d);
-        assertThat(cashFlow.getValue(5)).isEqualTo(4d);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 1);
+        assertDecimalEquals(cashFlow.getValue(2), 2);
+        assertDecimalEquals(cashFlow.getValue(3), 2);
+        assertDecimalEquals(cashFlow.getValue(4), 2);
+        assertDecimalEquals(cashFlow.getValue(5), 4);
     }
 
     @Test
@@ -176,19 +175,19 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(0)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(1)).isEqualTo(2d / 3);
-        assertThat(cashFlow.getValue(2)).isEqualTo(5d / 3);
-        assertThat(cashFlow.getValue(3)).isEqualTo(5d / 3);
-        assertThat(cashFlow.getValue(4)).isEqualTo(5d / 3);
-        assertThat(cashFlow.getValue(5)).isEqualTo(5d / 3);
-        assertThat(cashFlow.getValue(6)).isEqualTo(5d / 3);
-        assertThat(cashFlow.getValue(7)).isEqualTo(5d / 3 * 7d / 4);
-        assertThat(cashFlow.getValue(8)).isEqualTo(5d / 3 * 6d / 4);
-        assertThat(cashFlow.getValue(9)).isEqualTo(5d / 3 * 6d / 4);
-        assertThat(cashFlow.getValue(10)).isEqualTo(5d / 3 * 6d / 4 * 8d / 7, TATestsUtils.LONG_OFFSET);
-        assertThat(cashFlow.getValue(11)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7, TATestsUtils.LONG_OFFSET);
-        assertThat(cashFlow.getValue(12)).isEqualTo(5d / 3 * 6d / 4 * 5d / 7, TATestsUtils.LONG_OFFSET);
+        assertDecimalEquals(cashFlow.getValue(0), 1);
+        assertDecimalEquals(cashFlow.getValue(1), 2d/3);
+        assertDecimalEquals(cashFlow.getValue(2), 5d/3);
+        assertDecimalEquals(cashFlow.getValue(3), 5d/3);
+        assertDecimalEquals(cashFlow.getValue(4), 5d/3);
+        assertDecimalEquals(cashFlow.getValue(5), 5d/3);
+        assertDecimalEquals(cashFlow.getValue(6), 5d/3);
+        assertDecimalEquals(cashFlow.getValue(7), 5d/3 * 7d/4);
+        assertDecimalEquals(cashFlow.getValue(8), 5d/3 * 6d/4);
+        assertDecimalEquals(cashFlow.getValue(9), 5d/3 * 6d/4);
+        assertDecimalEquals(cashFlow.getValue(10), 5d/3 * 6d/4 * 8d/7);
+        assertDecimalEquals(cashFlow.getValue(11), 5d/3 * 6d/4 * 5d/7);
+        assertDecimalEquals(cashFlow.getValue(12), 5d/3 * 6d/4 * 5d/7);
     }
 
     @Test
@@ -198,9 +197,9 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getValue(4)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(7)).isEqualTo(1d);
-        assertThat(cashFlow.getValue(9)).isEqualTo(1d);
+        assertDecimalEquals(cashFlow.getValue(4), 1);
+        assertDecimalEquals(cashFlow.getValue(7), 1);
+        assertDecimalEquals(cashFlow.getValue(9), 1);
     }
 
     @Test
@@ -211,15 +210,15 @@ public class CashFlowTest {
         trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
         trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(8, OperationType.SELL)));
         CashFlow flow = new CashFlow(constrained, trades);
-        assertThat(flow.getValue(0)).isEqualTo(1d);
-        assertThat(flow.getValue(1)).isEqualTo(1d);
-        assertThat(flow.getValue(2)).isEqualTo(1d);
-        assertThat(flow.getValue(3)).isEqualTo(1d);
-        assertThat(flow.getValue(4)).isEqualTo(1d);
-        assertThat(flow.getValue(5)).isEqualTo(6d / 8);
-        assertThat(flow.getValue(6)).isEqualTo(6d / 8);
-        assertThat(flow.getValue(7)).isEqualTo(6d / 8 * 15d / 10);
-        assertThat(flow.getValue(8)).isEqualTo(6d / 8 * 6d / 10, TATestsUtils.LONG_OFFSET);
+        assertDecimalEquals(flow.getValue(0), 1);
+        assertDecimalEquals(flow.getValue(1), 1);
+        assertDecimalEquals(flow.getValue(2), 1);
+        assertDecimalEquals(flow.getValue(3), 1);
+        assertDecimalEquals(flow.getValue(4), 1);
+        assertDecimalEquals(flow.getValue(5), "0.75");
+        assertDecimalEquals(flow.getValue(6), "0.75");
+        assertDecimalEquals(flow.getValue(7), "1.125");
+        assertDecimalEquals(flow.getValue(8), "0.45");
     }
 
     @Test
@@ -229,7 +228,7 @@ public class CashFlowTest {
         List<Trade> trades = new ArrayList<Trade>();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(size - 1, OperationType.SELL)));
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
-        assertThat(cashFlow.getValue(size - 1)).isEqualTo(1d);
+        assertDecimalEquals(cashFlow.getValue(size - 1), 1);
     }
 
 }

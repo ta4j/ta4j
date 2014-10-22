@@ -22,14 +22,12 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
-import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,15 +62,15 @@ public class StochasticOscillatorKIndicatorTest {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
 
-        assertThat(sof.getValue(0)).isEqualTo(313d / 3.50, TATestsUtils.LONG_OFFSET);
-        assertThat(sof.getValue(12)).isEqualTo(1000d / 10.81, TATestsUtils.LONG_OFFSET);
-        assertThat(sof.getValue(13)).isEqualTo(57.81, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(sof.getValue(0), 313/3.5);
+        assertDecimalEquals(sof.getValue(12), 1000/10.81);
+        assertDecimalEquals(sof.getValue(13), 57.8168);
     }
 
     @Test
     public void stochasticOscilatorKShouldWorkJumpingIndexes() {
 
         StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
-        assertThat(sof.getValue(13)).isEqualTo(57.81, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(sof.getValue(13), 57.8168);
     }
 }

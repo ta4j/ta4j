@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
@@ -30,25 +31,25 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://www.forexgurus.co.uk/indicators/awesome-oscillator
  */
-public class AwesomeOscillatorIndicator implements Indicator<Double> {
+public class AwesomeOscillatorIndicator implements Indicator<TADecimal> {
 
     private SMAIndicator sma5;
 
     private SMAIndicator sma34;
 
-    public AwesomeOscillatorIndicator(Indicator<? extends Number> average, int timeFrameSma1, int timeFrameSma2) {
+    public AwesomeOscillatorIndicator(Indicator<? extends TADecimal> average, int timeFrameSma1, int timeFrameSma2) {
         this.sma5 = new SMAIndicator(average, timeFrameSma1);
         this.sma34 = new SMAIndicator(average, timeFrameSma2);
     }
 
-    public AwesomeOscillatorIndicator(Indicator<? extends Number> average) {
+    public AwesomeOscillatorIndicator(Indicator<? extends TADecimal> average) {
         this.sma5 = new SMAIndicator(average, 5);
         this.sma34 = new SMAIndicator(average, 34);
     }
 
     @Override
-    public Double getValue(int index) {
-        return sma5.getValue(index) - sma34.getValue(index);
+    public TADecimal getValue(int index) {
+        return sma5.getValue(index).minus(sma34.getValue(index));
     }
 
     @Override

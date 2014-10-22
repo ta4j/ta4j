@@ -22,10 +22,10 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.*;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,34 +42,33 @@ public class HighestValueIndicatorTest {
     public void highestValueUsingTimeFrame5UsingClosePrice() throws Exception {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
-        assertThat(highestValue.getValue(4)).isEqualTo(4d);
-        assertThat(highestValue.getValue(5)).isEqualTo(4d);
-        assertThat(highestValue.getValue(6)).isEqualTo(5d);
-        assertThat(highestValue.getValue(7)).isEqualTo(6d);
-        assertThat(highestValue.getValue(8)).isEqualTo(6d);
-        assertThat(highestValue.getValue(9)).isEqualTo(6d);
-        assertThat(highestValue.getValue(10)).isEqualTo(6d);
-        assertThat(highestValue.getValue(11)).isEqualTo(6d);
-        assertThat(highestValue.getValue(12)).isEqualTo(4d);
-
+        assertDecimalEquals(highestValue.getValue(4), "4");
+        assertDecimalEquals(highestValue.getValue(5), "4");
+        assertDecimalEquals(highestValue.getValue(6), "5");
+        assertDecimalEquals(highestValue.getValue(7), "6");
+        assertDecimalEquals(highestValue.getValue(8), "6");
+        assertDecimalEquals(highestValue.getValue(9), "6");
+        assertDecimalEquals(highestValue.getValue(10), "6");
+        assertDecimalEquals(highestValue.getValue(11), "6");
+        assertDecimalEquals(highestValue.getValue(12), "4");
     }
 
     @Test
     public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertThat(highestValue.getValue(0)).isEqualTo(1);
+        assertDecimalEquals(highestValue.getValue(0), "1");
     }
 
     @Test
     public void highestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
-        assertThat(highestValue.getValue(12)).isEqualTo(6d);
+        assertDecimalEquals(highestValue.getValue(12), "6");
     }
 
     @Test
     public void highestValueShouldWorkJumpingIndexes() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertThat(highestValue.getValue(6)).isEqualTo(5d);
-        assertThat(highestValue.getValue(12)).isEqualTo(4d);
+        assertDecimalEquals(highestValue.getValue(6), "5");
+        assertDecimalEquals(highestValue.getValue(12), "4");
     }
 }

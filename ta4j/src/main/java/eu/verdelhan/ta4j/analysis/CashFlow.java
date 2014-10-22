@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ import java.util.List;
  * <p>
  * This class allows to follow the money cash flow involved by a list of trades over a time series.
  */
-public class CashFlow implements Indicator<Double> {
+public class CashFlow implements Indicator<TADecimal> {
 
     /** The time series */
     private final TimeSeries timeSeries;
@@ -43,7 +44,7 @@ public class CashFlow implements Indicator<Double> {
     /** The list of trades */
     private final List<Trade> trades;
 
-    private List<Double> values;
+    private List<TADecimal> values;
 
     /**
      * Constructor.
@@ -53,8 +54,8 @@ public class CashFlow implements Indicator<Double> {
     public CashFlow(TimeSeries timeSeries, List<Trade> trades) {
         this.timeSeries = timeSeries;
         this.trades = trades;
-        values = new ArrayList<Double>();
-        values.add(1d);
+        values = new ArrayList<TADecimal>();
+        values.add(TADecimal.valueOf(1));
         calculate();
     }
 
@@ -63,7 +64,7 @@ public class CashFlow implements Indicator<Double> {
      * @return the cash flow value at the index-th position
      */
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         return values.get(index);
     }
 
@@ -87,13 +88,13 @@ public class CashFlow implements Indicator<Double> {
             }
             int end = trade.getExit().getIndex();
             for (int i = Math.max(begin, 1); i <= end; i++) {
-                double ratio;
+                TADecimal ratio;
                 if (trade.getEntry().getType().equals(OperationType.BUY)) {
-                    ratio = timeSeries.getTick(i).getClosePrice() / timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice();
+                    ratio = timeSeries.getTick(i).getClosePrice().dividedBy(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice());
                 } else {
-                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice() / timeSeries.getTick(i).getClosePrice();
+                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice().dividedBy(timeSeries.getTick(i).getClosePrice());
                 }
-                values.add(values.get(trade.getEntry().getIndex()) * ratio);
+                values.add(values.get(trade.getEntry().getIndex()).multipliedBy(ratio));
             }
         }
         if ((timeSeries.getEnd() - values.size()) >= 0) {

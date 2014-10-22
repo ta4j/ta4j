@@ -23,19 +23,20 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
 
 /**
  * Percentage price oscillator (PPO) indicator.
  * <p>
  */
-public class PPOIndicator implements Indicator<Double> {
+public class PPOIndicator implements Indicator<TADecimal> {
 
     private final EMAIndicator shortTermEma;
 
     private final EMAIndicator longTermEma;
 
-    public PPOIndicator(Indicator<? extends Number> indicator, int shortTimeFrame, int longTimeFrame) {
+    public PPOIndicator(Indicator<? extends TADecimal> indicator, int shortTimeFrame, int longTimeFrame) {
         if (shortTimeFrame > longTimeFrame) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
@@ -44,7 +45,11 @@ public class PPOIndicator implements Indicator<Double> {
     }
 
     @Override
-    public Double getValue(int index) {
-        return (shortTermEma.getValue(index) - longTermEma.getValue(index)) / longTermEma.getValue(index) * 100;
+    public TADecimal getValue(int index) {
+        TADecimal shortEmaValue = shortTermEma.getValue(index);
+        TADecimal longEmaValue = longTermEma.getValue(index);
+        return shortEmaValue.minus(longEmaValue)
+                .dividedBy(longEmaValue)
+                .multipliedBy(TADecimal.HUNDRED);
     }
 }

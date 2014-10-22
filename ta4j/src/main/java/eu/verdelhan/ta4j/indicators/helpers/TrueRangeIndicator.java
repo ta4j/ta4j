@@ -23,13 +23,14 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
  * True range indicator.
  * <p>
  */
-public class TrueRangeIndicator implements Indicator<Double>{
+public class TrueRangeIndicator implements Indicator<TADecimal>{
 
     private TimeSeries series;
 
@@ -38,13 +39,12 @@ public class TrueRangeIndicator implements Indicator<Double>{
     }
     
     @Override
-    public Double getValue(int index) {
-        double ts = series.getTick(index).getMaxPrice() - series.getTick(index).getMinPrice();
-        double ys = index == 0 ? 0 : series.getTick(index).getMaxPrice() - series.getTick(index - 1).getClosePrice();
-        double yst = index == 0 ? 0 : series.getTick(index - 1).getClosePrice() - series.getTick(index).getMinPrice();
-        double max = Math.max(Math.abs(ts), Math.abs(ys));
+    public TADecimal getValue(int index) {
+        TADecimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
+        TADecimal ys = index == 0 ? TADecimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
+        TADecimal yst = index == 0 ? TADecimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
         
-        return Math.max(max, Math.abs(yst));
+        return ts.abs().max(ys.abs()).max(yst.abs());
     }
 
     @Override

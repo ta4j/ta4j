@@ -23,29 +23,30 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Highest value indicator.
  * <p>
  */
-public class HighestValueIndicator implements Indicator<Double> {
+public class HighestValueIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
 
-    public HighestValueIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public HighestValueIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         int start = Math.max(0, index - timeFrame + 1);
-        double highest = indicator.getValue(start).doubleValue();
+        TADecimal highest = indicator.getValue(start);
         for (int i = start + 1; i <= index; i++) {
-            if (highest < indicator.getValue(i).doubleValue()) {
-                highest = indicator.getValue(i).doubleValue();
+            if (highest.isLessThan(indicator.getValue(i))) {
+                highest = indicator.getValue(i);
             }
         }
         return highest;

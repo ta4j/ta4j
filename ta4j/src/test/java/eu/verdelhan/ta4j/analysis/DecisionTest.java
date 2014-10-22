@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TATestsUtils;
+import eu.verdelhan.ta4j.TADecimalTestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
@@ -66,7 +66,7 @@ public class DecisionTest {
         Strategy fakeStrategy = new MockStrategy(buy, sell);
  
         Decision decision = new Decision(fakeStrategy, series, criterion);
-        assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21, TATestsUtils.LONG_OFFSET);
+        assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21, TADecimalTestsUtils.TA_OFFSET);
     }
 
     @Test

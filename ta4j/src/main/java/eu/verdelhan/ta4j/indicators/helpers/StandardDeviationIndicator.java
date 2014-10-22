@@ -23,15 +23,16 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
  * Standard deviation indicator.
  * <p>
  */
-public class StandardDeviationIndicator implements Indicator<Double> {
+public class StandardDeviationIndicator implements Indicator<TADecimal> {
 
-    private Indicator<? extends Number> indicator;
+    private Indicator<? extends TADecimal> indicator;
 
     private int timeFrame;
 
@@ -42,20 +43,21 @@ public class StandardDeviationIndicator implements Indicator<Double> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public StandardDeviationIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public StandardDeviationIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         sma = new SMAIndicator(indicator, timeFrame);
     }
 
     @Override
-    public Double getValue(int index) {
-        double standardDeviation = 0.0;
-        double average = sma.getValue(index);
+    public TADecimal getValue(int index) {
+        TADecimal standardDeviation = TADecimal.ZERO;
+        TADecimal average = sma.getValue(index);
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
-            standardDeviation += Math.pow(indicator.getValue(i).doubleValue() - average, 2.0);
+            TADecimal pow = indicator.getValue(i).minus(average).pow(2);
+            standardDeviation = standardDeviation.plus(pow);
         }
-        return Math.sqrt(standardDeviation);
+        return standardDeviation.sqrt();
     }
 
     @Override

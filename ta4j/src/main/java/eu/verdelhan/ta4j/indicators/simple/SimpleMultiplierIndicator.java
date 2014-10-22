@@ -23,25 +23,26 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Simple multiplier indicator.
  * <p>
  */
-public class SimpleMultiplierIndicator implements Indicator<Double> {
+public class SimpleMultiplierIndicator implements Indicator<TADecimal> {
 
-    private Indicator<? extends Number> indicator;
-    private double value;
+    private Indicator<? extends TADecimal> indicator;
+    private TADecimal value;
     
 
-    public SimpleMultiplierIndicator(Indicator<? extends Number> indicator, double value) {
+    public SimpleMultiplierIndicator(Indicator<? extends TADecimal> indicator, double value) {
         this.indicator = indicator;
-        this.value = value;
+        this.value = TADecimal.valueOf(value);
     }
 
     @Override
-    public Double getValue(int index) {
-        return indicator.getValue(index).doubleValue() * value;
+    public TADecimal getValue(int index) {
+        return indicator.getValue(index).multipliedBy(value);
     }
 
     @Override

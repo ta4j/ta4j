@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Cross indicator.
@@ -32,16 +33,16 @@ import eu.verdelhan.ta4j.Indicator;
 public class CrossIndicator implements Indicator<Boolean> {
 
     /** Upper indicator */
-    private final Indicator<? extends Number> up;
+    private final Indicator<? extends TADecimal> up;
     /** Lower indicator */
-    private final Indicator<? extends Number> low;
+    private final Indicator<? extends TADecimal> low;
 
     /**
      * Constructor.
      * @param up the upper indicator
      * @param low the lower indicator
      */
-    public CrossIndicator(Indicator<? extends Number> up, Indicator<? extends Number> low) {
+    public CrossIndicator(Indicator<? extends TADecimal> up, Indicator<? extends TADecimal> low) {
         this.up = up;
         this.low = low;
     }
@@ -50,33 +51,33 @@ public class CrossIndicator implements Indicator<Boolean> {
     public Boolean getValue(int index) {
 
         int i = index;
-        if (i == 0 || up.getValue(i).doubleValue() >= (low.getValue(i).doubleValue())) {
+        if (i == 0 || up.getValue(i).isGreaterThanOrEqual(low.getValue(i))) {
             return false;
         }
 
         i--;
-        if (up.getValue(i).doubleValue() > low.getValue(i).doubleValue()) {
+        if (up.getValue(i).isGreaterThan(low.getValue(i))) {
             return true;
         } else {
 
-            while (i > 0 && up.getValue(i).doubleValue() == low.getValue(i).doubleValue()) {
+            while (i > 0 && up.getValue(i).isEqual(low.getValue(i))) {
                 i--;
             }
-            return (i != 0) && (up.getValue(i).doubleValue() > low.getValue(i).doubleValue());
+            return (i != 0) && (up.getValue(i).isGreaterThan(low.getValue(i)));
         }
     }
 
     /**
      * @return the initial lower indicator
      */
-    public Indicator<? extends Number> getLow() {
+    public Indicator<? extends TADecimal> getLow() {
         return low;
     }
 
     /**
      * @return the initial upper indicator
      */
-    public Indicator<? extends Number> getUp() {
+    public Indicator<? extends TADecimal> getUp() {
         return up;
     }
 

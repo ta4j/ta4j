@@ -26,8 +26,9 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
@@ -35,8 +36,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
     public void crossedIndicatorShouldBuyIndex2SellIndex4() {
-        Indicator<Double> first = new MockIndicator<Double>(4d, 7d, 9d, 6d, 3d, 2d);
-        Indicator<Double> second = new MockIndicator<Double>(3d, 6d, 10d, 8d, 2d, 1d);
+        Indicator<TADecimal> first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
+        Indicator<TADecimal> second = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
 
         Strategy s = new IndicatorCrossedIndicatorStrategy(first, second);
         Trade trade = new Trade();
@@ -60,7 +61,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
     public void crossedIndicatorShouldNotEnterWhenIndicatorsAreEquals() {
-        Indicator<Double> first = new MockIndicator<Double>(2d, 3d, 4d, 5d, 6d, 7d);
+        Indicator<TADecimal> first = new MockDecimalIndicator(2d, 3d, 4d, 5d, 6d, 7d);
         Trade trade = new Trade();
 
         Strategy s = new IndicatorCrossedIndicatorStrategy(first, first);
@@ -72,8 +73,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
     public void crossedIndicatorShouldNotExitWhenIndicatorsBecameEquals() {
-        Indicator<Double> first = new MockIndicator<Double>(4d, 7d, 9d, 6d, 3d, 2d);
-        Indicator<Double> second = new MockIndicator<Double>(3d, 6d, 10d, 6d, 3d, 2d);
+        Indicator<TADecimal> first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
+        Indicator<TADecimal> second = new MockDecimalIndicator(3d, 6d, 10d, 6d, 3d, 2d);
         Trade trade = new Trade();
 
         Strategy s = new IndicatorCrossedIndicatorStrategy(first, second);
@@ -90,8 +91,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
     public void equalIndicatorsShouldNotExitWhenIndicatorsBecameEquals() {
-        Indicator<Double> firstEqual = new MockIndicator<Double>(2d, 1d, 4d, 5d, 6d, 7d);
-        Indicator<Double> secondEqual = new MockIndicator<Double>(1d, 3d, 4d, 5d, 6d, 7d);
+        Indicator<TADecimal> firstEqual = new MockDecimalIndicator(2d, 1d, 4d, 5d, 6d, 7d);
+        Indicator<TADecimal> secondEqual = new MockDecimalIndicator(1d, 3d, 4d, 5d, 6d, 7d);
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
         Trade trade = new Trade();
 
@@ -110,8 +111,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
     public void shouldNotSellWhileIndicatorAreEquals() {
-        Indicator<Double> firstEqual = new MockIndicator<Double>(2d, 1d, 4d, 5d, 6d, 7d, 10d);
-        Indicator<Double> secondEqual = new MockIndicator<Double>(1d, 3d, 4d, 5d, 6d, 7d, 9d);
+        Indicator<TADecimal> firstEqual = new MockDecimalIndicator(2d, 1d, 4d, 5d, 6d, 7d, 10d);
+        Indicator<TADecimal> secondEqual = new MockDecimalIndicator(1d, 3d, 4d, 5d, 6d, 7d, 9d);
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
         Trade trade = new Trade();
 
@@ -133,8 +134,8 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
     @Test
     public void crossShouldNotReturnNullOperations() {
-        Indicator<Double> firstEqual = new MockIndicator<Double>(2d, 3d, 4d, 5d, 6d, 7d, 10d);
-        Indicator<Double> secondEqual = new MockIndicator<Double>(1d, 3d, 4d, 5d, 6d, 7d, 9d);
+        Indicator<TADecimal> firstEqual = new MockDecimalIndicator(2d, 3d, 4d, 5d, 6d, 7d, 10d);
+        Indicator<TADecimal> secondEqual = new MockDecimalIndicator(1d, 3d, 4d, 5d, 6d, 7d, 9d);
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
         Trade trade = new Trade();
 

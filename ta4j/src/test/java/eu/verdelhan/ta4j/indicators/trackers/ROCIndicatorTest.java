@@ -22,10 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,15 +50,15 @@ public class ROCIndicatorTest {
         ROCIndicator roc = new ROCIndicator(closePrice, 12);
 
         // Incomplete time frame
-        assertThat(roc.getValue(0)).isZero();
-        assertThat(roc.getValue(1)).isEqualTo(1.10, TATestsUtils.SHORT_OFFSET);
-        assertThat(roc.getValue(2)).isEqualTo(-0.33, TATestsUtils.SHORT_OFFSET);
-        assertThat(roc.getValue(3)).isEqualTo(0.96, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(roc.getValue(0), 0);
+        assertDecimalEquals(roc.getValue(1), 1.105);
+        assertDecimalEquals(roc.getValue(2), -0.3319);
+        assertDecimalEquals(roc.getValue(3), 0.9648);
 
         // Complete time frame
-        double[] results13to20 = new double[] { -3.85, -4.85, -4.52, -6.34, -7.86, -6.21, -4.31, -3.24 };
+        double[] results13to20 = new double[] { -3.8488, -4.8489, -4.5206, -6.3439, -7.8592, -6.2083, -4.3131, -3.2434 };
         for (int i = 0; i < results13to20.length; i++) {
-            assertThat(roc.getValue(i + 12)).isEqualTo(results13to20[i], TATestsUtils.SHORT_OFFSET);
+            assertDecimalEquals(roc.getValue(i + 12), results13to20[i]);
         }
     }
 }

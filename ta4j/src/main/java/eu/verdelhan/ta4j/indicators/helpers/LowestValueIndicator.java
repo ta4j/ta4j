@@ -23,29 +23,30 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Lowest value indicator.
  * <p>
  */
-public class LowestValueIndicator implements Indicator<Double> {
+public class LowestValueIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
 
-    public LowestValueIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public LowestValueIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         int start = Math.max(0, index - timeFrame + 1);
-        double lowest = indicator.getValue(start).doubleValue();
+        TADecimal lowest = indicator.getValue(start);
         for (int i = start + 1; i <= index; i++) {
-            if (lowest > indicator.getValue(i).doubleValue()) {
-                lowest = indicator.getValue(i).doubleValue();
+            if (lowest.isGreaterThan(indicator.getValue(i))) {
+                lowest = indicator.getValue(i);
             }
         }
         return lowest;

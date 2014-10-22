@@ -38,7 +38,7 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
-        return series.getTick(series.getEnd()).getClosePrice() / series.getTick(series.getBegin()).getClosePrice();
+        return series.getTick(series.getEnd()).getClosePrice().dividedBy(series.getTick(series.getBegin()).getClosePrice()).toDouble();
     }
 
     @Override
@@ -52,9 +52,9 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
         int exitIndex = trade.getExit().getIndex();
 
         if (trade.getEntry().getType() == OperationType.BUY) {
-            return series.getTick(exitIndex).getClosePrice() / series.getTick(entryIndex).getClosePrice();
+            return series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice()).toDouble();
         } else {
-            return series.getTick(entryIndex).getClosePrice() / series.getTick(exitIndex).getClosePrice();
+            return series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice()).toDouble();
         }
     }
 

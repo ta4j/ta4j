@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Indicator over indicator strategy.
@@ -33,28 +34,28 @@ import eu.verdelhan.ta4j.Indicator;
 public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
     
     /** The first indicator */
-    private Indicator<Double> first;
+    private Indicator<TADecimal> first;
     /** The second indicator */
-    private Indicator<Double> second;
+    private Indicator<TADecimal> second;
 
     /**
      * Constructor.
      * @param first the first indicator
      * @param second the second indicator
      */
-    public IndicatorOverIndicatorStrategy(Indicator<Double> first, Indicator<Double> second) {
+    public IndicatorOverIndicatorStrategy(Indicator<TADecimal> first, Indicator<TADecimal> second) {
         this.first = first;
         this.second = second;
     }
 
     @Override
     public boolean shouldEnter(int index) {
-        return (first.getValue(index) < second.getValue(index));
+        return first.getValue(index).isLessThan(second.getValue(index));
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return (first.getValue(index) > second.getValue(index));
+        return first.getValue(index).isGreaterThan(second.getValue(index));
     }
 
     @Override

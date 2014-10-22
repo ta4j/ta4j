@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Resistance strategy.
@@ -35,9 +36,9 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     private final Strategy strategy;
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
-    private double resistance;
+    private TADecimal resistance;
 
     /**
      * Constructor.
@@ -45,9 +46,9 @@ public class ResistanceStrategy extends AbstractStrategy {
      * @param strategy the strategie
      * @param resistance the resistance threshold
      */
-    public ResistanceStrategy(Indicator<? extends Number> indicator, Strategy strategy, double resistance) {
+    public ResistanceStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, double resistance) {
         this.strategy = strategy;
-        this.resistance = resistance;
+        this.resistance = TADecimal.valueOf(resistance);
         this.indicator = indicator;
     }
 
@@ -58,7 +59,7 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        if (indicator.getValue(index).doubleValue() >= resistance) {
+        if (indicator.getValue(index).isGreaterThanOrEqual(resistance)) {
             return true;
         }
         return strategy.shouldExit(index);
@@ -66,6 +67,6 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String.format("%s resistance: %i strategy: %s", this.getClass().getSimpleName(), resistance, strategy);
+        return String.format("%s resistance: %i strategy: %s", this.getClass().getSimpleName(), resistance.toDouble(), strategy);
     }
 }

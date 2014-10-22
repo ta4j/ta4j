@@ -22,15 +22,15 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Average of {@link DirectionalMovementUpIndicator directional movement up indicator}.
  * <p>
  */
-public class AverageDirectionalMovementUpIndicator extends CachedIndicator<Double> {
+public class AverageDirectionalMovementUpIndicator extends CachedIndicator<TADecimal> {
 
     private final int timeFrame;
 
@@ -42,11 +42,13 @@ public class AverageDirectionalMovementUpIndicator extends CachedIndicator<Doubl
     }
 
     @Override
-    protected Double calculate(int index) {
+    protected TADecimal calculate(int index) {
         if (index == 0) {
-            return 1d;
+            return TADecimal.ONE;
         }
-        return (getValue(index - 1) * (timeFrame - 1) / timeFrame) + (dmup.getValue(index) * 1 / timeFrame);
+        TADecimal nbPeriods = TADecimal.valueOf(timeFrame);
+        TADecimal nbPeriodsMinusOne = TADecimal.valueOf(timeFrame - 1);
+        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(dmup.getValue(index).dividedBy(nbPeriods));
     }
 
     @Override

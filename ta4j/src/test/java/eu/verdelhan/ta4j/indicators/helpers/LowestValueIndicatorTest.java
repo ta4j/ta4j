@@ -22,10 +22,10 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.*;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,34 +42,34 @@ public class LowestValueIndicatorTest {
     public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() throws Exception {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
 
-        assertThat(lowestValue.getValue(4)).isEqualTo(1d);
-        assertThat(lowestValue.getValue(5)).isEqualTo(2d);
-        assertThat(lowestValue.getValue(6)).isEqualTo(3d);
-        assertThat(lowestValue.getValue(7)).isEqualTo(3d);
-        assertThat(lowestValue.getValue(8)).isEqualTo(3d);
-        assertThat(lowestValue.getValue(9)).isEqualTo(3d);
-        assertThat(lowestValue.getValue(10)).isEqualTo(2d);
-        assertThat(lowestValue.getValue(11)).isEqualTo(2d);
-        assertThat(lowestValue.getValue(12)).isEqualTo(2d);
+        assertDecimalEquals(lowestValue.getValue(4), "1");
+        assertDecimalEquals(lowestValue.getValue(5), "2");
+        assertDecimalEquals(lowestValue.getValue(6), "3");
+        assertDecimalEquals(lowestValue.getValue(7), "3");
+        assertDecimalEquals(lowestValue.getValue(8), "3");
+        assertDecimalEquals(lowestValue.getValue(9), "3");
+        assertDecimalEquals(lowestValue.getValue(10), "2");
+        assertDecimalEquals(lowestValue.getValue(11), "2");
+        assertDecimalEquals(lowestValue.getValue(12), "2");
 
     }
 
     @Test
     public void lowestValueShouldWorkJumpingIndexes() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertThat(lowestValue.getValue(10)).isEqualTo(2d);
-        assertThat(lowestValue.getValue(6)).isEqualTo(3d);
+        assertDecimalEquals(lowestValue.getValue(10), "2");
+        assertDecimalEquals(lowestValue.getValue(6), "3");
     }
 
     @Test
     public void lowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertThat(lowestValue.getValue(0)).isEqualTo(1d);
+        assertDecimalEquals(lowestValue.getValue(0), "1");
     }
 
     @Test
     public void lowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
-        assertThat(lowestValue.getValue(12)).isEqualTo(1d);
+        assertDecimalEquals(lowestValue.getValue(12), "1");
     }
 }

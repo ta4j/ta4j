@@ -23,13 +23,14 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
  * Directional movement down indicator.
  * <p>
  */
-public class DirectionalMovementDownIndicator implements Indicator<Double>{
+public class DirectionalMovementDownIndicator implements Indicator<TADecimal>{
 
     private TimeSeries series;
 
@@ -38,19 +39,20 @@ public class DirectionalMovementDownIndicator implements Indicator<Double>{
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         if (index == 0) {
-            return 0d;
+            return TADecimal.ZERO;
         }
-        double yh = series.getTick(index - 1).getMaxPrice();
-        double th = series.getTick(index).getMaxPrice();
-        double yl = series.getTick(index - 1).getMinPrice();
-        double tl = series.getTick(index).getMinPrice();
+        TADecimal prevMaxPrice = series.getTick(index - 1).getMaxPrice();
+        TADecimal maxPrice = series.getTick(index).getMaxPrice();
+        TADecimal prevMinPrice = series.getTick(index - 1).getMinPrice();
+        TADecimal minPrice = series.getTick(index).getMinPrice();
         
-        if ((yh >= th && yl <= tl) || th - yh >= yl - tl) {
-            return 0d;
+        if ((prevMaxPrice.isGreaterThanOrEqual(maxPrice) && prevMinPrice.isLessThanOrEqual(minPrice))
+                || maxPrice.minus(prevMaxPrice).isGreaterThanOrEqual(prevMinPrice.minus(minPrice))) {
+            return TADecimal.ZERO;
         }
-        return yl - tl;
+        return prevMinPrice.minus(minPrice);
     }
 
     @Override

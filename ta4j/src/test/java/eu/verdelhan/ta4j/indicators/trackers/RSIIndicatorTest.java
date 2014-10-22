@@ -22,7 +22,8 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import eu.verdelhan.ta4j.TADecimal;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -45,29 +46,29 @@ public class RSIIndicatorTest {
     public void RSIUsingTimeFrame14UsingClosePrice() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
-        assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(16)).isEqualTo(66.67, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(17)).isEqualTo(75.23, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(18)).isEqualTo(71.93, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(19)).isEqualTo(73.33, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(20)).isEqualTo(77.78, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(21)).isEqualTo(74.67, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(22)).isEqualTo(77.85, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(23)).isEqualTo(81.56, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(24)).isEqualTo(85.25, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(rsi.getValue(15), 62.7451);
+        assertDecimalEquals(rsi.getValue(16), 66.6667);
+        assertDecimalEquals(rsi.getValue(17), 75.2294);
+        assertDecimalEquals(rsi.getValue(18), 71.9298);
+        assertDecimalEquals(rsi.getValue(19), 73.3333);
+        assertDecimalEquals(rsi.getValue(20), 77.7778);
+        assertDecimalEquals(rsi.getValue(21), 74.6667);
+        assertDecimalEquals(rsi.getValue(22), 77.8523);
+        assertDecimalEquals(rsi.getValue(23), 81.5642);
+        assertDecimalEquals(rsi.getValue(24), 85.2459);
     }
 
     @Test
     public void RSIFirstValueShouldBeZero() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
-        assertThat(rsi.getValue(0)).isZero();
+        assertThat(rsi.getValue(0).isEqual(TADecimal.ZERO));
     }
 
     @Test
     public void RSIShouldWorkJumpingIndexes() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
-        assertThat(rsi.getValue(19)).isEqualTo(73.33, TATestsUtils.SHORT_OFFSET);
-        assertThat(rsi.getValue(15)).isEqualTo(62.75, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(rsi.getValue(15), 62.7451);
+        assertDecimalEquals(rsi.getValue(19), 73.3333);
     }
 }

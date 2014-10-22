@@ -22,12 +22,12 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 public class ParabolicSarIndicatorTest {
@@ -87,12 +87,12 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 11, 15, 9));
         ticks.add(new MockTick(0, 13, 15, 9));
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
-        
-        assertThat(sar.getValue(0)).isEqualTo(10d);
-        assertThat(sar.getValue(1)).isEqualTo(8d);
-        assertThat(sar.getValue(2)).isEqualTo(11d);
-        assertThat(sar.getValue(3)).isEqualTo(4d);
-        assertThat(sar.getValue(4)).isEqualTo(4d);
+
+        assertDecimalEquals(sar.getValue(0), 10);
+        assertDecimalEquals(sar.getValue(1), 8);
+        assertDecimalEquals(sar.getValue(2), 11);
+        assertDecimalEquals(sar.getValue(3), 4);
+        assertDecimalEquals(sar.getValue(4), 4);
     }
     
     @Test
@@ -105,13 +105,12 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 9, 15, 9));
         
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
-        
-        assertThat(sar.getValue(0)).isEqualTo(10d);
-        assertThat(sar.getValue(1)).isEqualTo(10d);
-        assertThat(sar.getValue(2)).isEqualTo(0.04 * (18d - 10) + 10d);
-        assertThat(sar.getValue(3)).isEqualTo(18d);
-        assertThat(sar.getValue(3)).isEqualTo(18d);
-        assertThat(sar.getValue(4)).isEqualTo(18d);
+
+        assertDecimalEquals(sar.getValue(0), 10);
+        assertDecimalEquals(sar.getValue(1), 10);
+        assertDecimalEquals(sar.getValue(2), 0.04 * (18 - 10) + 10);
+        assertDecimalEquals(sar.getValue(3), 18);
+        assertDecimalEquals(sar.getValue(4), 18);
     }
 
     @Test
@@ -124,12 +123,12 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 20, 18, 9));
         
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
-        
-        assertThat(sar.getValue(0)).isEqualTo(10d);
-        assertThat(sar.getValue(1)).isEqualTo(17d);
-        assertThat(sar.getValue(2)).isEqualTo(11.38d);
-        assertThat(sar.getValue(3)).isEqualTo(11.38d);
-        assertThat(sar.getValue(4)).isEqualTo(18d);
+
+        assertDecimalEquals(sar.getValue(0), 10);
+        assertDecimalEquals(sar.getValue(1), 17);
+        assertDecimalEquals(sar.getValue(2), 11.38);
+        assertDecimalEquals(sar.getValue(3), 11.38);
+        assertDecimalEquals(sar.getValue(4), 18);
     }
     
     @Test
@@ -143,14 +142,14 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 10, 30, 11));
         
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
-        
-        assertThat(sar.getValue(0)).isEqualTo(20d);
-        assertThat(sar.getValue(1)).isEqualTo(19d);
-        assertThat(sar.getValue(2)).isEqualTo(0.04d * (14d - 19d) + 19d);
-        double value = 0.06d * (11.38d - 18.8d) + 18.8d;
-        assertThat(sar.getValue(3)).isEqualTo(value);
-        assertThat(sar.getValue(4)).isEqualTo(0.08d * (11d - value) + value);
-        assertThat(sar.getValue(5)).isEqualTo(11d);
+
+        assertDecimalEquals(sar.getValue(0), 20);
+        assertDecimalEquals(sar.getValue(1), 19);
+        assertDecimalEquals(sar.getValue(2), 0.04 * (14 - 19) + 19);
+        double value = 0.06 * (11.38 - 18.8) + 18.8;
+        assertDecimalEquals(sar.getValue(3), value);
+        assertDecimalEquals(sar.getValue(4), 0.08 * (11 - value) + value);
+        assertDecimalEquals(sar.getValue(5), 11);
     }
 
 //    @Test
@@ -158,43 +157,43 @@ public class ParabolicSarIndicatorTest {
 //
 //        ParabolicSarIndicator sar = new ParabolicSarIndicator(series, 1);
 //
-//        assertThat(sar.getValue(0)).isEqualTo(9.410);
-//        assertThat(sar.getValue(1)).isEqualTo(9.410);
-//        assertThat(sar.getValue(2)).isEqualTo(9.350);
-//        assertThat(sar.getValue(3)).isEqualTo(9.850);
-//        assertThat(sar.getValue(4)).isEqualTo(9.816);
-//        assertThat(sar.getValue(5)).isEqualTo(9.783);
-//        assertThat(sar.getValue(6)).isEqualTo(9.752);
-//        assertThat(sar.getValue(7)).isEqualTo(9.704);
-//        assertThat(sar.getValue(8)).isEqualTo(8.950);
-//        assertThat(sar.getValue(9)).isEqualTo(9.001);
-//        assertThat(sar.getValue(10)).isEqualTo(9.050);
-//        assertThat(sar.getValue(11)).isEqualTo(9.137);
-//        assertThat(sar.getValue(12)).isEqualTo(9.306);
-//        assertThat(sar.getValue(13)).isEqualTo(9.533);
-//        assertThat(sar.getValue(14)).isEqualTo(9.736);
-//        assertThat(sar.getValue(15)).isEqualTo(9.984);
-//        assertThat(sar.getValue(16)).isEqualTo(10.252);
-//        assertThat(sar.getValue(17)).isEqualTo(10.522);
-//        assertThat(sar.getValue(18)).isEqualTo(10.749);
-//        assertThat(sar.getValue(19)).isEqualTo(10.940);
-//        assertThat(sar.getValue(20)).isEqualTo(11.940);
-//        assertThat(sar.getValue(21)).isEqualTo(11.907);
-//        assertThat(sar.getValue(22)).isEqualTo(11.875);
-//        assertThat(sar.getValue(23)).isEqualTo(11.820);
-//        assertThat(sar.getValue(24)).isEqualTo(11.734);
-//        assertThat(sar.getValue(25)).isEqualTo(11.614);
-//        assertThat(sar.getValue(26)).isEqualTo(11.506);
-//        assertThat(sar.getValue(27)).isEqualTo(11.331);
-//        assertThat(sar.getValue(28)).isEqualTo(11.112);
-//        assertThat(sar.getValue(29)).isEqualTo(10.924);
-//        assertThat(sar.getValue(30)).isEqualTo(10.693);
-//        assertThat(sar.getValue(31)).isEqualTo(10.499);
-//        assertThat(sar.getValue(32)).isEqualTo(10.289);
-//        assertThat(sar.getValue(33)).isEqualTo(10.057);
-//        assertThat(sar.getValue(34)).isEqualTo(9.858);
-//        assertThat(sar.getValue(35)).isEqualTo(9.680);
-//        assertThat(sar.getValue(36)).isEqualTo(9.650);
-//        assertThat(sar.getValue(37)).isEqualTo(8.970);
+//        assertDecimalEquals(sar.getValue(0), 9.410);
+//        assertDecimalEquals(sar.getValue(1), 9.410);
+//        assertDecimalEquals(sar.getValue(2), 9.350);
+//        assertDecimalEquals(sar.getValue(3), 9.850);
+//        assertDecimalEquals(sar.getValue(4), 9.816);
+//        assertDecimalEquals(sar.getValue(5), 9.783);
+//        assertDecimalEquals(sar.getValue(6), 9.752);
+//        assertDecimalEquals(sar.getValue(7), 9.704);
+//        assertDecimalEquals(sar.getValue(8), 8.950);
+//        assertDecimalEquals(sar.getValue(9), 9.001);
+//        assertDecimalEquals(sar.getValue(10), 9.050);
+//        assertDecimalEquals(sar.getValue(11), 9.137);
+//        assertDecimalEquals(sar.getValue(12), 9.306);
+//        assertDecimalEquals(sar.getValue(13), 9.533);
+//        assertDecimalEquals(sar.getValue(14), 9.736);
+//        assertDecimalEquals(sar.getValue(15), 9.984);
+//        assertDecimalEquals(sar.getValue(16), 10.252);
+//        assertDecimalEquals(sar.getValue(17), 10.522);
+//        assertDecimalEquals(sar.getValue(18), 10.749);
+//        assertDecimalEquals(sar.getValue(19), 10.940);
+//        assertDecimalEquals(sar.getValue(20), 11.940);
+//        assertDecimalEquals(sar.getValue(21), 11.907);
+//        assertDecimalEquals(sar.getValue(22), 11.875);
+//        assertDecimalEquals(sar.getValue(23), 11.820);
+//        assertDecimalEquals(sar.getValue(24), 11.734);
+//        assertDecimalEquals(sar.getValue(25), 11.614);
+//        assertDecimalEquals(sar.getValue(26), 11.506);
+//        assertDecimalEquals(sar.getValue(27), 11.331);
+//        assertDecimalEquals(sar.getValue(28), 11.112);
+//        assertDecimalEquals(sar.getValue(29), 10.924);
+//        assertDecimalEquals(sar.getValue(30), 10.693);
+//        assertDecimalEquals(sar.getValue(31), 10.499);
+//        assertDecimalEquals(sar.getValue(32), 10.289);
+//        assertDecimalEquals(sar.getValue(33), 10.057);
+//        assertDecimalEquals(sar.getValue(34), 9.858);
+//        assertDecimalEquals(sar.getValue(35), 9.680);
+//        assertDecimalEquals(sar.getValue(36), 9.650);
+//        assertDecimalEquals(sar.getValue(37), 8.970);
 //    }
 }

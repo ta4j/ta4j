@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
@@ -30,9 +31,9 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation
  */
-public class MeanDeviationIndicator implements Indicator<Double> {
+public class MeanDeviationIndicator implements Indicator<TADecimal> {
 
-    private Indicator<? extends Number> indicator;
+    private Indicator<? extends TADecimal> indicator;
 
     private int timeFrame;
 
@@ -43,25 +44,25 @@ public class MeanDeviationIndicator implements Indicator<Double> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public MeanDeviationIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public MeanDeviationIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         sma = new SMAIndicator(indicator, timeFrame);
     }
 
     @Override
-    public Double getValue(int index) {
-        double absoluteDeviations = 0.0;
+    public TADecimal getValue(int index) {
+        TADecimal absoluteDeviations = TADecimal.ZERO;
 
-        final double average = sma.getValue(index);
+        final TADecimal average = sma.getValue(index);
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int nbValues = index - startIndex + 1;
 
         for (int i = startIndex; i <= index; i++) {
             // For each period...
-            absoluteDeviations += Math.abs(indicator.getValue(i).doubleValue() - average);
+            absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations / nbValues;
+        return absoluteDeviations.dividedBy(TADecimal.valueOf(nbValues));
     }
 
     @Override

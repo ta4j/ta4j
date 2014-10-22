@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
@@ -34,7 +34,7 @@ import org.junit.Test;
 
 public class MinValueStarterStrategyTest {
 
-    private MockIndicator<Double> indicator;
+    private MockDecimalIndicator indicator;
 
     private int startValue;
 
@@ -48,7 +48,7 @@ public class MinValueStarterStrategyTest {
 
     @Before
     public void setUp() {
-        indicator = new MockIndicator<Double>(90d, 92d, 96d, 95d, 92d);
+        indicator = new MockDecimalIndicator(90d, 92d, 96d, 95d, 92d);
         startValue = 93;
         enter = new Operation[] { new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY),
                 new Operation(2, OperationType.BUY), new Operation(3, OperationType.BUY),

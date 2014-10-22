@@ -22,6 +22,8 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
+import eu.verdelhan.ta4j.TADecimal;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.assertj.core.api.Assertions.*;
@@ -42,11 +44,11 @@ public class PriceVariationIndicatorTest {
 
     @Test
     public void indicatorShouldRetrieveTickVariation() {
-        assertThat(variationIndicator.getValue(0)).isEqualTo(1);
+        assertDecimalEquals(variationIndicator.getValue(0), 1);
         for (int i = 1; i < 10; i++) {
-            double previousTickClosePrice = timeSeries.getTick(i - 1).getClosePrice();
-            double currentTickClosePrice = timeSeries.getTick(i).getClosePrice();
-            assertThat(currentTickClosePrice / previousTickClosePrice).isEqualTo(variationIndicator.getValue(i));
+            TADecimal previousTickClosePrice = timeSeries.getTick(i - 1).getClosePrice();
+            TADecimal currentTickClosePrice = timeSeries.getTick(i).getClosePrice();
+            assertThat(currentTickClosePrice.dividedBy(previousTickClosePrice)).isEqualTo(variationIndicator.getValue(i));
         }
     }
 }

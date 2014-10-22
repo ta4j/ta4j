@@ -23,13 +23,14 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
  * Typical price indicator.
  * <p>
  */
-public class TypicalPriceIndicator implements Indicator<Double> {
+public class TypicalPriceIndicator implements Indicator<TADecimal> {
 
     private TimeSeries data;
 
@@ -38,11 +39,11 @@ public class TypicalPriceIndicator implements Indicator<Double> {
     }
 
     @Override
-    public Double getValue(int index) {
-        double maxPrice = data.getTick(index).getMaxPrice();
-        double minPrice = data.getTick(index).getMinPrice();
-        double closePrice = data.getTick(index).getClosePrice();
-        return (maxPrice + minPrice + closePrice) / 3d;
+    public TADecimal getValue(int index) {
+        TADecimal maxPrice = data.getTick(index).getMaxPrice();
+        TADecimal minPrice = data.getTick(index).getMinPrice();
+        TADecimal closePrice = data.getTick(index).getClosePrice();
+        return maxPrice.plus(minPrice).plus(closePrice).dividedBy(TADecimal.THREE);
     }
 
     @Override

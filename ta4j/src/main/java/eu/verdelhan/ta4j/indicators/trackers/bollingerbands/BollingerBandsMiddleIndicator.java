@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
@@ -31,21 +32,21 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * High.
  * 
  */
-public class BollingerBandsMiddleIndicator implements Indicator<Double> {
+public class BollingerBandsMiddleIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     public BollingerBandsMiddleIndicator(SMAIndicator smaIndicator) {
         this.indicator = smaIndicator;
     }
 
-    public BollingerBandsMiddleIndicator(Indicator<? extends Number> indicator) {
+    public BollingerBandsMiddleIndicator(Indicator<? extends TADecimal> indicator) {
         this.indicator = indicator;
     }
 
     @Override
-    public Double getValue(int index) {
-        return indicator.getValue(index).doubleValue();
+    public TADecimal getValue(int index) {
+        return indicator.getValue(index);
     }
 
     @Override

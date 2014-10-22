@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
@@ -34,13 +35,18 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * Parabolic SAR indicator.
  * <p>
  */
-public class ParabolicSarIndicator extends CachedIndicator<Double> {
+public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
 
-    private double acceleration;
+    private static final TADecimal DEFAULT_ACCELERATION = TADecimal.valueOf("0.02");
+    private static final TADecimal ACCELERATION_THRESHOLD = TADecimal.valueOf("0.19");
+    private static final TADecimal MAX_ACCELERATION = TADecimal.valueOf("0.2");
+    private static final TADecimal ACCELERATION_INCREMENT = TADecimal.valueOf("0.02");
+
+    private TADecimal acceleration = DEFAULT_ACCELERATION;
 
     private final TimeSeries series;
 
-    private double extremePoint;
+    private TADecimal extremePoint;
 
     private final LowestValueIndicator lowestValueIndicator;
 
@@ -49,7 +55,6 @@ public class ParabolicSarIndicator extends CachedIndicator<Double> {
     private final int timeFrame;
     
     public ParabolicSarIndicator(TimeSeries series, int timeFrame) {
-        this.acceleration = 0.02d;
         this.series = series;
         this.lowestValueIndicator = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
         this.highestValueIndicator = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
@@ -57,7 +62,7 @@ public class ParabolicSarIndicator extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    protected TADecimal calculate(int index) {
 
         if (index <= 1) {
             // Warning: should the min or the max price, according to the trend
@@ -66,68 +71,90 @@ public class ParabolicSarIndicator extends CachedIndicator<Double> {
             return extremePoint;
         }
 
-        double n2ClosePrice = series.getTick(index - 2).getClosePrice();
-        double n1ClosePrice = series.getTick(index - 1).getClosePrice();
-        double nClosePrice = series.getTick(index).getClosePrice();
+        TADecimal n2ClosePrice = series.getTick(index - 2).getClosePrice();
+        TADecimal n1ClosePrice = series.getTick(index - 1).getClosePrice();
+        TADecimal nClosePrice = series.getTick(index).getClosePrice();
 
-        double sar;
-        if (n2ClosePrice > n1ClosePrice && n1ClosePrice < nClosePrice) {
+        TADecimal sar;
+        if (n2ClosePrice.isGreaterThan(n1ClosePrice) && n1ClosePrice.isLessThan(nClosePrice)) {
             // Trend switch: \_/
             sar = extremePoint;
             extremePoint = highestValueIndicator.getValue(index);
-            acceleration = 0.02;
-        } else if (n2ClosePrice < n1ClosePrice && n1ClosePrice > nClosePrice) {
+            acceleration = DEFAULT_ACCELERATION;
+        } else if (n2ClosePrice.isLessThan(n1ClosePrice) && n1ClosePrice.isGreaterThan(nClosePrice)) {
             // Trend switch: /¯\
             sar = extremePoint;
             extremePoint = lowestValueIndicator.getValue(index);
-            acceleration = 0.02;
+            acceleration = DEFAULT_ACCELERATION;
 
-        } else if (nClosePrice < n1ClosePrice) {
+        } else if (nClosePrice.isLessThan(n1ClosePrice)) {
              // Downtrend: falling SAR
-            double lowestValue = lowestValueIndicator.getValue(index);
-            if (extremePoint > lowestValue) {
-                acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02d;
+            TADecimal lowestValue = lowestValueIndicator.getValue(index);
+            if (extremePoint.isGreaterThan(lowestValue)) {
+                incrementAcceleration();
                 extremePoint = lowestValue;
             }
-            sar = (extremePoint - getValue(index - 1)) * acceleration + getValue(index - 1);
+            sar = calculateSar(index);
 
-            double n2MaxPrice = series.getTick(index - 2).getMaxPrice();
-            double n1MaxPrice = series.getTick(index - 1).getMaxPrice();
-            double nMaxPrice = series.getTick(index).getMaxPrice();
+            TADecimal n2MaxPrice = series.getTick(index - 2).getMaxPrice();
+            TADecimal n1MaxPrice = series.getTick(index - 1).getMaxPrice();
+            TADecimal nMaxPrice = series.getTick(index).getMaxPrice();
 
-            if (n1MaxPrice > sar) {
+            if (n1MaxPrice.isGreaterThan(sar)) {
                 sar = n1MaxPrice;
-            } else if (n2MaxPrice > sar) {
+            } else if (n2MaxPrice.isGreaterThan(sar)) {
                 sar = n2MaxPrice;
             }
-            if (nMaxPrice > sar) {
+            if (nMaxPrice.isGreaterThan(sar)) {
                 sar = series.getTick(index).getMinPrice();
             }
 
         } else {
              // Uptrend: rising SAR
-            double highestValue = highestValueIndicator.getValue(index);
-            if (extremePoint < highestValue) {
-                acceleration = acceleration >= 0.19 ? 0.2 : acceleration + 0.02;
+            TADecimal highestValue = highestValueIndicator.getValue(index);
+            if (extremePoint.isLessThan(highestValue)) {
+                incrementAcceleration();
                 extremePoint = highestValue;
             }
-            sar = (extremePoint - getValue(index - 1)) * acceleration + getValue(index - 1);
+            sar = calculateSar(index);
 
-            double n2MinPrice = series.getTick(index - 2).getMinPrice();
-            double n1MinPrice = series.getTick(index - 1).getMinPrice();
-            double nMinPrice = series.getTick(index).getMinPrice();
+            TADecimal n2MinPrice = series.getTick(index - 2).getMinPrice();
+            TADecimal n1MinPrice = series.getTick(index - 1).getMinPrice();
+            TADecimal nMinPrice = series.getTick(index).getMinPrice();
 
-            if (n1MinPrice < sar) {
+            if (n1MinPrice.isLessThan(sar)) {
                 sar = n1MinPrice;
-            } else if (n2MinPrice < sar) {
+            } else if (n2MinPrice.isLessThan(sar)) {
                 sar = n2MinPrice;
             }
-            if (nMinPrice < sar) {
+            if (nMinPrice.isLessThan(sar)) {
                 sar = series.getTick(index).getMaxPrice();
             }
 
         }
         return sar;
+    }
+
+    /**
+     * Increments the acceleration factor.
+     */
+    private void incrementAcceleration() {
+        if (acceleration.isGreaterThanOrEqual(ACCELERATION_THRESHOLD)) {
+            acceleration = MAX_ACCELERATION;
+        } else {
+            acceleration = acceleration.plus(ACCELERATION_INCREMENT);
+        }
+    }
+
+    /**
+     * Calculates the SAR.
+     * @param index the index
+     * @return the SAR
+     */
+    private TADecimal calculateSar(int index) {
+        TADecimal previousSar = getValue(index - 1);
+        return extremePoint.multipliedBy(acceleration)
+                .plus(TADecimal.ONE.minus(acceleration).multipliedBy(previousSar));
     }
 
     @Override

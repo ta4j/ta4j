@@ -22,13 +22,12 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.indicators.helpers.DirectionalDownIndicator;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -47,10 +46,10 @@ public class DirectionalDownIndicatorTest {
         
         MockTimeSeries series = new MockTimeSeries(ticks);
         DirectionalDownIndicator ddown = new DirectionalDownIndicator(series, 3);
-        assertThat(ddown.getValue(0)).isEqualTo((double) 1d);
-        assertThat(ddown.getValue(1)).isEqualTo((double) (1d * 2d/3 +2d / 3) / (2d/3 + 11d/3));
-        assertThat(ddown.getValue(2)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) / (((2d/3 + 11d/3) * 2d/3) + 15d/3));
-        assertThat(ddown.getValue(3)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) / (((((2d/3 + 11d/3) * 2d/3) + 15d/3) * 2d/3) + 14d/3));
-        assertThat(ddown.getValue(4)).isEqualTo((double) ((((1d * 2d/3 + 2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3) / (((((((2d/3 + 11d/3) * 2d/3) + 15d/3) * 2d/3) + 14d/3) * 2d/3) + 13d/3));
+        assertDecimalEquals(ddown.getValue(0), 1);
+        assertDecimalEquals(ddown.getValue(1), (4d/3) / (13d/3));
+        assertDecimalEquals(ddown.getValue(2), (4d/3 * 2d/3) / (13d/3 * 2d/3 + 15d/3));
+        assertDecimalEquals(ddown.getValue(3), ((4d/3 * 2d/3) * 2d/3 + 1d/3) / (((13d/3 * 2d/3 + 15d/3) * 2d/3) + 14d/3));
+        assertDecimalEquals(ddown.getValue(4), (((4d/3 * 2d/3) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3) / (((((13d/3 * 2d/3 + 15d/3) * 2d/3) + 14d/3) * 2d/3) + 13d/3));
     }
 }

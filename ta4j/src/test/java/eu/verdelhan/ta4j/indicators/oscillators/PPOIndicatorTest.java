@@ -22,11 +22,10 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,10 +52,10 @@ public class PPOIndicatorTest {
 
         PPOIndicator ppo = new PPOIndicator(closePriceIndicator, 10, 20);
 
-        assertThat(ppo.getValue(21)).isEqualTo(2.404255337828029, TATestsUtils.LONG_OFFSET);
-        assertThat(ppo.getValue(22)).isEqualTo(2.222362770690233, TATestsUtils.LONG_OFFSET);
-        assertThat(ppo.getValue(23)).isEqualTo(1.880044069085476, TATestsUtils.LONG_OFFSET);
-        assertThat(ppo.getValue(28)).isEqualTo(0.440778394709396, TATestsUtils.LONG_OFFSET);
-        assertThat(ppo.getValue(29)).isEqualTo(0.055860415127460, TATestsUtils.LONG_OFFSET);
+        assertDecimalEquals(ppo.getValue(21), 2.4043);
+        assertDecimalEquals(ppo.getValue(22), 2.2224);
+        assertDecimalEquals(ppo.getValue(23), 1.8800);
+        assertDecimalEquals(ppo.getValue(28), 0.4408);
+        assertDecimalEquals(ppo.getValue(29), 0.0559);
     }
 }

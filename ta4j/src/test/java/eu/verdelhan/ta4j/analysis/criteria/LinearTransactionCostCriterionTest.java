@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.TATestsUtils;
+import eu.verdelhan.ta4j.TADecimalTestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -48,14 +48,14 @@ public class LinearTransactionCostCriterionTest {
         assertThat(transactionCost.calculate(series, trades)).isEqualTo(12.861);
 
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.347, TATestsUtils.SHORT_OFFSET);
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.3473, TADecimalTestsUtils.TA_OFFSET);
 
         Trade t = new Trade();
         trades.add(t);
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.347, TATestsUtils.SHORT_OFFSET);
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.3473, TADecimalTestsUtils.TA_OFFSET);
 
         t.operate(5);
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(28.219, TATestsUtils.SHORT_OFFSET);
+        assertThat(transactionCost.calculate(series, trades)).isEqualTo(28.2204, TADecimalTestsUtils.TA_OFFSET);
     }
 
     @Test

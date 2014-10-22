@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Tick;
 import org.joda.time.DateTime;
 
@@ -30,7 +31,7 @@ import org.joda.time.DateTime;
  */
 public class MockTick extends Tick {
 
-    private double amount = 0d;
+    private TADecimal amount = TADecimal.ZERO;
 
     private int trades = 0;
 
@@ -48,12 +49,12 @@ public class MockTick extends Tick {
 
     public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
         super(endTime, openPrice, maxPrice, minPrice, closePrice, volume);
-        this.amount = amount;
+        this.amount = TADecimal.valueOf(amount);
         this.trades = trades;
     }
 
     @Override
-    public double getAmount() {
+    public TADecimal getAmount() {
         return amount;
     }
 

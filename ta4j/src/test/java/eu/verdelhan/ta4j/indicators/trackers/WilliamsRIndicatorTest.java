@@ -22,17 +22,15 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTick;
-import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -58,7 +56,6 @@ public class WilliamsRIndicatorTest {
         ticks.add(new MockTick(45.58, 45.55, 45.61, 45.39));
 
         data = new TimeSeries(ticks);
-
     }
 
     @Test
@@ -66,13 +63,13 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertThat(wr.getValue(4)).isEqualTo(-47.22, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(5)).isEqualTo(-54.55, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(6)).isEqualTo(-78.57, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(7)).isEqualTo(-47.62, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(8)).isEqualTo(-25.00, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(9)).isEqualTo(-5.26, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(10)).isEqualTo(-13.95, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(wr.getValue(4), -47.2222);
+        assertDecimalEquals(wr.getValue(5), -54.5454);
+        assertDecimalEquals(wr.getValue(6), -78.5714);
+        assertDecimalEquals(wr.getValue(7), -47.6190);
+        assertDecimalEquals(wr.getValue(8), -25d);
+        assertDecimalEquals(wr.getValue(9), -5.2632);
+        assertDecimalEquals(wr.getValue(10), -13.9535);
 
     }
 
@@ -80,8 +77,8 @@ public class WilliamsRIndicatorTest {
     public void williamsRShouldWorkJumpingIndexes() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
-        assertThat(wr.getValue(10)).isEqualTo(-13.95, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(4)).isEqualTo(-47.22, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(wr.getValue(4), -47.2222);
+        assertDecimalEquals(wr.getValue(10), -13.9535);
     }
 
     @Test
@@ -89,10 +86,10 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertThat(wr.getValue(9)).isEqualTo(-4.08, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(10)).isEqualTo(-11.77, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(11)).isEqualTo(-8.93, TATestsUtils.SHORT_OFFSET);
-        assertThat(wr.getValue(12)).isEqualTo(-10.53, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(wr.getValue(9), -4.0816);
+        assertDecimalEquals(wr.getValue(10), -11.7647);
+        assertDecimalEquals(wr.getValue(11), -8.9286);
+        assertDecimalEquals(wr.getValue(12), -10.5263);
 
     }
 
@@ -101,9 +98,9 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertThat(wr.getValue(0)).isEqualTo(-100d * (0.12 / 0.21), TATestsUtils.LONG_OFFSET);
-        assertThat(wr.getValue(1)).isEqualTo(-100d * (0.07 / 0.21), TATestsUtils.LONG_OFFSET);
-        assertThat(wr.getValue(2)).isEqualTo(-100d * (0.13 / 0.36), TATestsUtils.LONG_OFFSET);
-        assertThat(wr.getValue(3)).isEqualTo(-100d * (0.18 / 0.36), TATestsUtils.LONG_OFFSET);
+        assertDecimalEquals(wr.getValue(0), -100d * (0.12 / 0.21));
+        assertDecimalEquals(wr.getValue(1), -100d * (0.07 / 0.21));
+        assertDecimalEquals(wr.getValue(2), -100d * (0.13 / 0.36));
+        assertDecimalEquals(wr.getValue(3), -100d * (0.18 / 0.36));
     }
 }

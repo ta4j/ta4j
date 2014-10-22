@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Stop loss strategy.
@@ -35,11 +36,11 @@ public class StopLossStrategy extends AbstractStrategy {
 
     private Strategy strategy;
 
-    private double loss;
+    private TADecimal loss;
 
-    private Indicator<? extends Number> indicator;
+    private Indicator<? extends TADecimal> indicator;
 
-    private double value;
+    private TADecimal value;
 
     /**
      * Constructor.
@@ -47,16 +48,16 @@ public class StopLossStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param loss the loss threshold (in %)
      */
-    public StopLossStrategy(Indicator<? extends Number> indicator, Strategy strategy, int loss) {
+    public StopLossStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, int loss) {
         this.strategy = strategy;
-        this.loss = loss;
+        this.loss = TADecimal.valueOf(loss);
         this.indicator = indicator;
     }
 
     @Override
     public boolean shouldEnter(int index) {
         if (strategy.shouldEnter(index)) {
-            value = indicator.getValue(index).doubleValue();
+            value = indicator.getValue(index);
             return true;
         }
         return false;
@@ -64,7 +65,8 @@ public class StopLossStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        if ((value - (value * (loss / 100))) > indicator.getValue(index).doubleValue()) {
+        if ((value.minus(value.multipliedBy(loss.dividedBy(TADecimal.HUNDRED))))
+                .isGreaterThan(indicator.getValue(index))) {
             return true;
         }
         return strategy.shouldExit(index);
@@ -72,6 +74,6 @@ public class StopLossStrategy extends AbstractStrategy {
 
     @Override
     public String toString() {
-        return String.format("%s stoper: %s over %s", this.getClass().getSimpleName(), "" + loss, strategy);
+        return String.format("%s stoper: %s over %s", this.getClass().getSimpleName(), "" + loss.toDouble(), strategy);
     }
 }

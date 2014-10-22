@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -59,9 +60,10 @@ public class MedianPriceIndicatorTest {
 
     @Test
     public void indicatorShouldRetrieveTickClosePrice() {
-        double result;
+        TADecimal result;
         for (int i = 0; i < 10; i++) {
-            result = (timeSeries.getTick(i).getMaxPrice() + timeSeries.getTick(i).getMinPrice()) / 2d;
+            result = timeSeries.getTick(i).getMaxPrice().plus(timeSeries.getTick(i).getMinPrice())
+                    .dividedBy(TADecimal.TWO);
             assertThat(result).isEqualTo(average.getValue(i));
         }
     }

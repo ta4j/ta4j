@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
@@ -35,9 +36,9 @@ import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
  */
 public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
-    private Indicator<? extends Number> upper;
+    private Indicator<? extends TADecimal> upper;
 
-    private Indicator<? extends Number> lower;
+    private Indicator<? extends TADecimal> lower;
 
     private double distance;
 
@@ -50,7 +51,7 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
      * @param distance the distance
      * @param difference the difference
      */
-    public <T extends Number> DistanceBetweenIndicatorsStrategy(Indicator<? extends Number> indicator, T constant,
+    public <T extends TADecimal> DistanceBetweenIndicatorsStrategy(Indicator<? extends TADecimal> indicator, T constant,
             double distance, double difference) {
         this.upper = indicator;
         this.lower = new ConstantIndicator<T>(constant);
@@ -65,7 +66,7 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
      * @param distance the distance
      * @param difference the difference
      */
-    public DistanceBetweenIndicatorsStrategy(Indicator<? extends Number> upper, Indicator<? extends Number> lower,
+    public DistanceBetweenIndicatorsStrategy(Indicator<? extends TADecimal> upper, Indicator<? extends TADecimal> lower,
             double distance, double difference) {
         this.upper = upper;
         this.lower = lower;
@@ -75,7 +76,8 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        if ((upper.getValue(index).doubleValue() - lower.getValue(index).doubleValue()) >= ((difference + 1.0) * distance)) {
+        TADecimal threshold = TADecimal.valueOf((difference + 1.0) * distance);
+        if (upper.getValue(index).minus(lower.getValue(index)).isGreaterThanOrEqual(threshold)) {
             return true;
         }
         return false;
@@ -83,7 +85,8 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        if ((upper.getValue(index).doubleValue() - lower.getValue(index).doubleValue()) <= ((1.0 - difference) * distance)) {
+        TADecimal threshold = TADecimal.valueOf((1.0 - difference) * distance);
+        if (upper.getValue(index).minus(lower.getValue(index)).isLessThanOrEqual(threshold)) {
             return true;
         }
         return false;

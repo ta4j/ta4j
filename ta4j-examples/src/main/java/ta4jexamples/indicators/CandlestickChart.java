@@ -22,9 +22,11 @@
  */
 package ta4jexamples.indicators;
 
+import eu.verdelhan.ta4j.Tick;
+import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import java.awt.Color;
 import java.util.Date;
-
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -40,11 +42,7 @@ import org.jfree.data.xy.OHLCDataset;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 import org.joda.time.Period;
-
 import ta4jexamples.loaders.CsvTradesLoader;
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 
 /**
  * This class builds a traditional candlestick chart.
@@ -69,11 +67,11 @@ public class CandlestickChart {
         for (int i = 0; i < nbTicks; i++) {
             Tick tick = series.getTick(i);
             dates[i] = tick.getEndTime().toDate();
-            opens[i] = tick.getOpenPrice();
-            highs[i] = tick.getMaxPrice();
-            lows[i] = tick.getMinPrice();
-            closes[i] = tick.getClosePrice();
-            volumes[i] = tick.getVolume();
+            opens[i] = tick.getOpenPrice().toDouble();
+            highs[i] = tick.getMaxPrice().toDouble();
+            lows[i] = tick.getMinPrice().toDouble();
+            closes[i] = tick.getClosePrice().toDouble();
+            volumes[i] = tick.getVolume().toDouble();
         }
         
         OHLCDataset dataset = new DefaultHighLowDataset("btc", dates, highs, lows, opens, closes, volumes);
@@ -92,7 +90,7 @@ public class CandlestickChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
         for (int i = 0; i < series.getSize(); i++) {
             Tick tick = series.getTick(i);
-            chartTimeSeries.add(new Second(tick.getEndTime().toDate()), indicator.getValue(i));
+            chartTimeSeries.add(new Second(tick.getEndTime().toDate()), indicator.getValue(i).toDouble());
         }
         dataset.addSeries(chartTimeSeries);
         return dataset;

@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Rate of change (ROCIndicator) indicator.
@@ -30,22 +31,24 @@ import eu.verdelhan.ta4j.Indicator;
  * <p>
  * The ROCIndicator calculation compares the current value with the value "n" periods ago.
  */
-public class ROCIndicator implements Indicator<Double> {
+public class ROCIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
 
-    public ROCIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public ROCIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         int nIndex = Math.max(index - timeFrame, 0);
-        double nPeriodsAgoValue = indicator.getValue(nIndex).doubleValue();
-        double currentValue = indicator.getValue(index).doubleValue();
-        return (currentValue - nPeriodsAgoValue) / nPeriodsAgoValue * 100d;
+        TADecimal nPeriodsAgoValue = indicator.getValue(nIndex);
+        TADecimal currentValue = indicator.getValue(index);
+        return currentValue.minus(nPeriodsAgoValue)
+                .dividedBy(nPeriodsAgoValue)
+                .multipliedBy(TADecimal.HUNDRED);
     }
 }

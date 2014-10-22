@@ -23,42 +23,43 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * WMA indicator.
  * <p>
  */
-public class WMAIndicator implements Indicator<Double> {
+public class WMAIndicator implements Indicator<TADecimal> {
 
     private int timeFrame;
 
-    private Indicator<? extends Number> indicator;
+    private Indicator<? extends TADecimal> indicator;
 
-    public WMAIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public WMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         if (index == 0) {
-            return indicator.getValue(0).doubleValue();
+            return indicator.getValue(0);
         }
-        double value = 0;
+        TADecimal value = TADecimal.ZERO;
         if(index - timeFrame < 0) {
             
             for(int i = index + 1; i > 0; i--) {
-                value += i * indicator.getValue(i-1).doubleValue();
+                value = value.plus(TADecimal.valueOf(i).multipliedBy(indicator.getValue(i-1)));
             }
-            return value / (((index + 1) * (index + 2)) / 2);
+            return value.dividedBy(TADecimal.valueOf(((index + 1) * (index + 2)) / 2));
         }
         
         int actualIndex = index;
         for(int i = timeFrame; i > 0; i--) {
-            value += i * indicator.getValue(actualIndex).doubleValue();
+            value = value.plus(TADecimal.valueOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
-        return value / ((timeFrame * (timeFrame + 1)) / 2);
+        return value.dividedBy(TADecimal.valueOf((timeFrame * (timeFrame + 1)) / 2));
     }
 
     @Override

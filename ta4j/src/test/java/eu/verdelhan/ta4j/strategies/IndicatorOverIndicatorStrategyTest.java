@@ -26,23 +26,24 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
 public class IndicatorOverIndicatorStrategyTest {
 
-    private Indicator<Double> first;
+    private Indicator<TADecimal> first;
 
-    private Indicator<Double> second;
+    private Indicator<TADecimal> second;
 
     @Before
     public void setUp() {
 
-        first = new MockIndicator<Double>(new Double[] {4d, 7d, 9d, 6d, 3d, 2d});
-        second = new MockIndicator<Double>(new Double[] {3d, 6d, 10d, 8d, 2d, 1d});
+        first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
+        second = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
 
     }
 

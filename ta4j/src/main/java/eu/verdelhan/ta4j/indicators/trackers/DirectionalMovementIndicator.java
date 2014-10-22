@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.DirectionalDownIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.DirectionalUpIndicator;
@@ -31,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.helpers.DirectionalUpIndicator;
  * Directional movement indicator.
  * <p>
  */
-public class DirectionalMovementIndicator implements Indicator<Double>{
+public class DirectionalMovementIndicator implements Indicator<TADecimal>{
 
     private final int timeFrame;
     private final DirectionalUpIndicator dup;
@@ -44,11 +45,11 @@ public class DirectionalMovementIndicator implements Indicator<Double>{
     }
 
     @Override
-    public Double getValue(int index) {
-        double dupValue = dup.getValue(index);
-        double ddownValue = ddown.getValue(index);
-        
-        return (Math.abs((dupValue - ddownValue)) / (dupValue + ddownValue)) * 100;
+    public TADecimal getValue(int index) {
+        TADecimal dupValue = dup.getValue(index);
+        TADecimal ddownValue = ddown.getValue(index);
+        TADecimal difference = dupValue.minus(ddownValue);
+        return dupValue.minus(ddownValue).abs().dividedBy(dupValue.plus(ddownValue)).multipliedBy(TADecimal.HUNDRED);
     }
 
     @Override

@@ -22,11 +22,10 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,24 +42,23 @@ public class MeanDeviationIndicatorTest {
     public void meanDeviationUsingTimeFrame5UsingClosePrice() throws Exception {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
 
-        assertThat(meanDeviation.getValue(2)).isEqualTo(2.4444444444444d, TATestsUtils.LONG_OFFSET);
-        assertThat(meanDeviation.getValue(3)).isEqualTo(2.5d, TATestsUtils.LONG_OFFSET);
-        assertThat(meanDeviation.getValue(7)).isEqualTo(2.16d, TATestsUtils.LONG_OFFSET);
-        assertThat(meanDeviation.getValue(8)).isEqualTo(2.32d, TATestsUtils.LONG_OFFSET);
-        assertThat(meanDeviation.getValue(9)).isEqualTo(2.72d, TATestsUtils.LONG_OFFSET);
-
+        assertDecimalEquals(meanDeviation.getValue(2), 2.44444444444444);
+        assertDecimalEquals(meanDeviation.getValue(3), 2.5);
+        assertDecimalEquals(meanDeviation.getValue(7), 2.16);
+        assertDecimalEquals(meanDeviation.getValue(8), 2.32);
+        assertDecimalEquals(meanDeviation.getValue(9), 2.72);
     }
 
     @Test
     public void firstValueShouldBeZero() throws Exception {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
-        assertThat(meanDeviation.getValue(0)).isEqualTo(0);
+        assertDecimalEquals(meanDeviation.getValue(0), 0);
     }
 
     @Test
     public void meanDeviationShouldBeZeroWhenTimeFrameIs1() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
-        assertThat(meanDeviation.getValue(2)).isEqualTo(0d);
-        assertThat(meanDeviation.getValue(7)).isEqualTo(0d);
+        assertDecimalEquals(meanDeviation.getValue(2), 0);
+        assertDecimalEquals(meanDeviation.getValue(7), 0);
     }
 }

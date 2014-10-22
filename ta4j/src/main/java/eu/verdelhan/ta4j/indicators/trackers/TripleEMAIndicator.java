@@ -23,27 +23,28 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Triple exponential moving average indicator.
  * <p>
  * a.k.a TRIX
  */
-public class TripleEMAIndicator implements Indicator<Double> {
+public class TripleEMAIndicator implements Indicator<TADecimal> {
 
     private final int timeFrame;
 
     private final EMAIndicator ema;
 
-    public TripleEMAIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public TripleEMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
         EMAIndicator emaEmaEma = new EMAIndicator(emaEma, timeFrame);
-        return (3 * ema.getValue(index) - 3 * emaEma.getValue(index)) + emaEmaEma.getValue(index);
+        return TADecimal.THREE.multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
     }
 }

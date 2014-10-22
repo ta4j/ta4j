@@ -22,27 +22,26 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
-import eu.verdelhan.ta4j.indicators.simple.SimpleMultiplierIndicator;
-import static org.assertj.core.api.Assertions.*;
+import eu.verdelhan.ta4j.TADecimal;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import org.junit.Before;
 import org.junit.Test;
 
 public class SimpleMultiplierIndicatorTest {
-    private ConstantIndicator<Double> constantIndicator;
+    private ConstantIndicator<TADecimal> constantIndicator;
     private SimpleMultiplierIndicator simpleMultiplier;
 
     @Before
     public void setUp() {
-        constantIndicator = new ConstantIndicator<Double>(5d);
+        constantIndicator = new ConstantIndicator<TADecimal>(TADecimal.valueOf(5));
         simpleMultiplier = new SimpleMultiplierIndicator(constantIndicator, 5d);
     }
 
     @Test
     public void constantIndicator() {
-        assertThat(simpleMultiplier.getValue(10)).isEqualTo(25d);
-        assertThat(simpleMultiplier.getValue(1)).isEqualTo(25d);
-        assertThat(simpleMultiplier.getValue(0)).isEqualTo(25d);
-        assertThat(simpleMultiplier.getValue(30)).isEqualTo(25d);
+        assertDecimalEquals(simpleMultiplier.getValue(10), 25);
+        assertDecimalEquals(simpleMultiplier.getValue(1), 25);
+        assertDecimalEquals(simpleMultiplier.getValue(0), 25);
+        assertDecimalEquals(simpleMultiplier.getValue(30), 25);
     }
 }

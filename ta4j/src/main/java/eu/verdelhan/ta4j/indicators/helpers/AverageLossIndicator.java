@@ -23,31 +23,33 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Average loss indicator.
  * <p>
  */
-public class AverageLossIndicator implements Indicator<Double> {
+public class AverageLossIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
 
-    public AverageLossIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public AverageLossIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    public Double getValue(int index) {
-        double result = 0;
+    public TADecimal getValue(int index) {
+        TADecimal result = TADecimal.ZERO;
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
-            if (indicator.getValue(i).doubleValue() < indicator.getValue(i - 1).doubleValue()) {
-                result += indicator.getValue(i - 1).doubleValue() - indicator.getValue(i).doubleValue();
+            if (indicator.getValue(i).isLessThan(indicator.getValue(i - 1))) {
+                result = result.plus(indicator.getValue(i - 1).minus(indicator.getValue(i)));
             }
         }
-        return result / Math.min(timeFrame, index + 1);
+        final int realTimeFrame = Math.min(timeFrame, index + 1);
+        return result.dividedBy(TADecimal.valueOf(realTimeFrame));
     }
 
     @Override

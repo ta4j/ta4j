@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Support strategy.
@@ -35,9 +36,9 @@ public class SupportStrategy extends AbstractStrategy {
 
     private final Strategy strategy;
 
-    private final Indicator<? extends Number> indicator;
+    private final Indicator<? extends TADecimal> indicator;
 
-    private double support;
+    private TADecimal support;
 
     /**
      * Constructor.
@@ -45,15 +46,15 @@ public class SupportStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param support the support threshold
      */
-    public SupportStrategy(Indicator<? extends Number> indicator, Strategy strategy, double support) {
+    public SupportStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, double support) {
         this.strategy = strategy;
-        this.support = support;
+        this.support = TADecimal.valueOf(support);
         this.indicator = indicator;
     }
 
     @Override
     public boolean shouldEnter(int index) {
-        if (indicator.getValue(index).doubleValue() <= support) {
+        if (support.isGreaterThanOrEqual(indicator.getValue(index))) {
             return true;
         }
         return strategy.shouldEnter(index);

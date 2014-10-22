@@ -22,18 +22,13 @@
  */
 package eu.verdelhan.ta4j.indicators;
 
-import eu.verdelhan.ta4j.Tick;
+import eu.verdelhan.ta4j.TADecimal;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.RSIIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,9 +45,9 @@ public class CachedIndicatorTest {
     @Test
     public void ifCacheWorks() {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        Double firstTime = sma.getValue(4);
-        Double seconTime = sma.getValue(4);
-        assertThat(seconTime).isEqualTo(firstTime);
+        TADecimal firstTime = sma.getValue(4);
+        TADecimal secondTime = sma.getValue(4);
+        assertThat(secondTime).isEqualTo(firstTime);
     }
 
     @Test
@@ -61,6 +56,6 @@ public class CachedIndicatorTest {
         Arrays.fill(d, 10);
         TimeSeries dataMax = new MockTimeSeries(d);
         SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(dataMax), 100);
-        assertThat(quoteSMA.getValue(105)).isEqualTo((double) 10d);
+        assertDecimalEquals(quoteSMA.getValue(105), 10);
     }
 }

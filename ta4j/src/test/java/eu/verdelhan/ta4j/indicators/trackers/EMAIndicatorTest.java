@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.TATestsUtils;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -45,16 +45,15 @@ public class EMAIndicatorTest {
     public void EMAUsingTimeFrame10UsingClosePrice() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
 
-        assertThat(ema.getValue(9)).isEqualTo(63.65, TATestsUtils.SHORT_OFFSET);
-        assertThat(ema.getValue(10)).isEqualTo(63.23, TATestsUtils.SHORT_OFFSET);
-        assertThat(ema.getValue(11)).isEqualTo(62.91, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(ema.getValue(9), 63.6536);
+        assertDecimalEquals(ema.getValue(10), 63.2312);
+        assertDecimalEquals(ema.getValue(11), 62.9182);
     }
 
     @Test
     public void EMAFirstValueShouldBeEqualsToFirstDataValue() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-
-        assertThat(ema.getValue(0)).isEqualTo(64.75);
+        assertDecimalEquals(ema.getValue(0), "64.75");
     }
 
     @Test
@@ -72,14 +71,14 @@ public class EMAIndicatorTest {
     @Test
     public void EMAShouldWorkJumpingIndexes() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-        assertThat(ema.getValue(10)).isEqualTo(63.23, TATestsUtils.SHORT_OFFSET);
+        assertDecimalEquals(ema.getValue(10), 63.2312);
     }
     
     @Test
     public void smallTimeFrame()
     {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 1);
-        assertThat(ema.getValue(0)).isEqualTo(64.75d);
+        assertDecimalEquals(ema.getValue(0), "64.75");
     }
     
 }

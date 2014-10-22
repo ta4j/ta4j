@@ -22,19 +22,16 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.indicators.helpers.DirectionalMovementUpIndicator;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
-
 
 public class DirectionalMovementUpIndicatorTest {
 
-    
     @Test
     public void zeroDirectionalMovement()
     {
@@ -45,12 +42,11 @@ public class DirectionalMovementUpIndicatorTest {
         ticks.add(todayTick);
         MockTimeSeries series = new MockTimeSeries(ticks);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
-        assertThat(dup.getValue(1)).isEqualTo(0d);
+        assertDecimalEquals(dup.getValue(1), 0);
     }
     
     @Test
-    public void zeroDirectionalMovement2()
-    {
+    public void zeroDirectionalMovement2() {
         MockTick yesterdayTick = new MockTick(0, 0, 6, 12);
         MockTick todayTick = new MockTick(0, 0, 12, 6);
         List<Tick> ticks = new ArrayList<Tick>();
@@ -58,11 +54,11 @@ public class DirectionalMovementUpIndicatorTest {
         ticks.add(todayTick);
         MockTimeSeries series = new MockTimeSeries(ticks);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
-        assertThat(dup.getValue(1)).isEqualTo(0d);
+        assertDecimalEquals(dup.getValue(1), 0);
     }
+
     @Test
-    public void zeroDirectionalMovement3()
-    {
+    public void zeroDirectionalMovement3() {
         MockTick yesterdayTick = new MockTick(0, 0, 6, 20);
         MockTick todayTick = new MockTick(0, 0, 12, 4);
         List<Tick> ticks = new ArrayList<Tick>();
@@ -70,11 +66,11 @@ public class DirectionalMovementUpIndicatorTest {
         ticks.add(todayTick);
         MockTimeSeries series = new MockTimeSeries(ticks);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
-        assertThat(dup.getValue(1)).isEqualTo(0d);
+        assertDecimalEquals(dup.getValue(1), 0);
     }
+
     @Test
-    public void positiveDirectionalMovement()
-    {
+    public void positiveDirectionalMovement() {
         MockTick yesterdayTick = new MockTick(0, 0, 6, 6);
         MockTick todayTick = new MockTick(0, 0, 12, 4);
         List<Tick> ticks = new ArrayList<Tick>();
@@ -82,6 +78,6 @@ public class DirectionalMovementUpIndicatorTest {
         ticks.add(todayTick);
         MockTimeSeries series = new MockTimeSeries(ticks);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
-        assertThat(dup.getValue(1)).isEqualTo(6d);
+        assertDecimalEquals(dup.getValue(1), 6);
     }
 }

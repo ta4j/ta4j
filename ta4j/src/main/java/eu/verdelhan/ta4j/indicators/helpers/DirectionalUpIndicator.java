@@ -23,16 +23,17 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
  * Directional up indicator.
  * <p>
  */
-public class DirectionalUpIndicator implements Indicator<Double>{
+public class DirectionalUpIndicator implements Indicator<TADecimal>{
 
-    private final Indicator<Double> admup;
-    private final Indicator<Double> atr;
+    private final Indicator<TADecimal> admup;
+    private final Indicator<TADecimal> atr;
     private int timeFrame;
 
     public DirectionalUpIndicator(TimeSeries series, int timeFrame) {
@@ -42,8 +43,8 @@ public class DirectionalUpIndicator implements Indicator<Double>{
     }
 
     @Override
-    public Double getValue(int index) {
-        return admup.getValue(index) / atr.getValue(index);
+    public TADecimal getValue(int index) {
+        return admup.getValue(index).dividedBy(atr.getValue(index));
     }
 
     @Override

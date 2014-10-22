@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.CashFlow;
@@ -37,24 +38,24 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
-        double maximumDrawdown = 0d;
-        double maxPeak = 0d;
+        TADecimal maximumDrawdown = TADecimal.ZERO;
+        TADecimal maxPeak = TADecimal.ZERO;
         CashFlow cashFlow = new CashFlow(series, trades);
 
         for (int i = series.getBegin(); i <= series.getEnd(); i++) {
-            double value = cashFlow.getValue(i);
-            if (value > maxPeak) {
+            TADecimal value = cashFlow.getValue(i);
+            if (value.isGreaterThan(maxPeak)) {
                 maxPeak = value;
             }
 
-            double drawdown = (maxPeak - value) / maxPeak;
-            if (drawdown > maximumDrawdown) {
+            TADecimal drawdown = maxPeak.minus(value).dividedBy(maxPeak);
+            if (drawdown.isGreaterThan(maximumDrawdown)) {
                 maximumDrawdown = drawdown;
                 // absolute maximumDrawdown.
                 // should it be maximumDrawdown = drawDown/maxPeak ?
             }
         }
-        return maximumDrawdown;
+        return maximumDrawdown.toDouble();
     }
 
     @Override

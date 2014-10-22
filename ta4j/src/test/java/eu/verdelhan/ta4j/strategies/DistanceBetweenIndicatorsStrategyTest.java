@@ -22,23 +22,24 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import static org.assertj.core.api.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 
 public class DistanceBetweenIndicatorsStrategyTest {
-    private MockIndicator<Double> upper;
+    private MockDecimalIndicator upper;
 
-    private MockIndicator<Double> lower;
+    private MockDecimalIndicator lower;
 
     private AbstractStrategy distanceEnter;
 
     @Before
     public void setUp() {
-        upper = new MockIndicator<Double>(30d, 32d, 33d, 32d, 35d, 33d, 32d);
-        lower = new MockIndicator<Double>(10d, 10d, 10d, 12d, 14d, 15d, 15d);
+        upper = new MockDecimalIndicator(30d, 32d, 33d, 32d, 35d, 33d, 32d);
+        lower = new MockDecimalIndicator(10d, 10d, 10d, 12d, 14d, 15d, 15d);
         distanceEnter = new DistanceBetweenIndicatorsStrategy(upper, lower, 20, 0.1);
     }
 
@@ -72,8 +73,8 @@ public class DistanceBetweenIndicatorsStrategyTest {
 
     @Test
     public void distanceBetweenIndicatorAndConstant() {
-        MockIndicator<Double> indicator = new MockIndicator<Double>(4d, 10d, 10d, 12d, 14d, 15d, 18d);
-        distanceEnter = new DistanceBetweenIndicatorsStrategy(indicator, 9d, 4, 0.3);
+        MockDecimalIndicator indicator = new MockDecimalIndicator(4d, 10d, 10d, 12d, 14d, 15d, 18d);
+        distanceEnter = new DistanceBetweenIndicatorsStrategy(indicator, TADecimal.valueOf(9), 4, 0.3);
 
         Trade trade = new Trade();
         assertThat(distanceEnter.shouldOperate(trade, 4)).isFalse();

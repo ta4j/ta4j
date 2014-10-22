@@ -20,18 +20,18 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j;
+package eu.verdelhan.ta4j.mocks;
 
-import org.assertj.core.data.Offset;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
- * Utility class for tests.
+ * A sample decimal indicator.
  */
-public class TATestsUtils {
+public class MockDecimalIndicator extends MockIndicator<TADecimal> {
 
-    /** Short offset for double equality checking */
-    public static final Offset<Double> SHORT_OFFSET = Offset.offset(0.01);
-    /** Long offset for double equality checking */
-    public static final Offset<Double> LONG_OFFSET = Offset.offset(0.0000000001);
-
+    public MockDecimalIndicator(double... values) {
+        for (double value : values) {
+            addValue(TADecimal.valueOf(value));
+        }
+    }
 }

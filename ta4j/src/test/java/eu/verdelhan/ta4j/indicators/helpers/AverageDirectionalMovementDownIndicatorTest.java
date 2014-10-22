@@ -22,13 +22,13 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.indicators.helpers.AverageDirectionalMovementDownIndicator;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 
@@ -52,10 +52,10 @@ public class AverageDirectionalMovementDownIndicatorTest {
         
         MockTimeSeries series = new MockTimeSeries(ticks);
         AverageDirectionalMovementDownIndicator admdown = new AverageDirectionalMovementDownIndicator(series, 3);
-        assertThat(admdown.getValue(0)).isEqualTo((double) 1d);
-        assertThat(admdown.getValue(1)).isEqualTo((double) 1d * 2d/3 +2d / 3);
-        assertThat(admdown.getValue(2)).isEqualTo((double) (1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0);
-        assertThat(admdown.getValue(3)).isEqualTo((double) ((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3);
-        assertThat(admdown.getValue(4)).isEqualTo((double) (((1d * 2d/3 +2d / 3) * 2d/3 + 1d/3 * 0) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3);
+        assertDecimalEquals(admdown.getValue(0), 1);
+        assertDecimalEquals(admdown.getValue(1), 4d/3);
+        assertDecimalEquals(admdown.getValue(2), 4d/3 * 2d/3);
+        assertDecimalEquals(admdown.getValue(3), (4d/3 * 2d/3) * 2d/3 + 1d/3);
+        assertDecimalEquals(admdown.getValue(4), ((4d/3 * 2d/3) * 2d/3 + 1d/3) * 2d/3 + 1.8 * 1d/3);
     }
 }

@@ -23,25 +23,27 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Double exponential moving average indicator.
  * <p>
  */
-public class DoubleEMAIndicator implements Indicator<Double> {
+public class DoubleEMAIndicator implements Indicator<TADecimal> {
 
     private final int timeFrame;
 
     private final EMAIndicator ema;
 
-    public DoubleEMAIndicator(Indicator<? extends Number> indicator, int timeFrame) {
+    public DoubleEMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
     }
 
     @Override
-    public Double getValue(int index) {
+    public TADecimal getValue(int index) {
         EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        return (2 * ema.getValue(index)) - emaEma.getValue(index);
+        return ema.getValue(index).multipliedBy(TADecimal.TWO)
+                .minus(emaEma.getValue(index));
     }
 }

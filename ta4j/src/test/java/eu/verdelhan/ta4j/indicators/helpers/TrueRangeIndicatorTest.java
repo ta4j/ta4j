@@ -22,13 +22,12 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.indicators.helpers.TrueRangeIndicator;
+import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.junit.Test;
 
 public class TrueRangeIndicatorTest {
@@ -42,13 +41,12 @@ public class TrueRangeIndicatorTest {
         ticks.add(new MockTick(0, 15, 17, 14));
         ticks.add(new MockTick(0, 0, 0, 2));
         TrueRangeIndicator tr = new TrueRangeIndicator(new MockTimeSeries(ticks));
-        
-        assertThat(tr.getValue(0)).isEqualTo(7d);
-        assertThat(tr.getValue(1)).isEqualTo(6d);
-        assertThat(tr.getValue(2)).isEqualTo(9d);
-        assertThat(tr.getValue(3)).isEqualTo(3d);
-        assertThat(tr.getValue(4)).isEqualTo(15d);
-        
+
+        assertDecimalEquals(tr.getValue(0), 7);
+        assertDecimalEquals(tr.getValue(1), 6);
+        assertDecimalEquals(tr.getValue(2), 9);
+        assertDecimalEquals(tr.getValue(3), 3);
+        assertDecimalEquals(tr.getValue(4), 15);
     }
 
 }

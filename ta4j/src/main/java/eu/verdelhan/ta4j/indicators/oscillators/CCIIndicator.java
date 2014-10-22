@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.MeanDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
@@ -33,9 +34,9 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in
  */
-public class CCIIndicator implements Indicator<Double> {
+public class CCIIndicator implements Indicator<TADecimal> {
 
-    public static final double FACTOR = 0.015d;
+    public static final TADecimal FACTOR = TADecimal.valueOf("0.015");
 
     private TypicalPriceIndicator typicalPriceInd;
 
@@ -58,11 +59,14 @@ public class CCIIndicator implements Indicator<Double> {
     }
 
     @Override
-    public Double getValue(int index) {
-        final double typicalPrice = typicalPriceInd.getValue(index);
-        final double typicalPriceAvg = smaInd.getValue(index);
-        final double meanDeviation = meanDeviationInd.getValue(index);
-        return (typicalPrice - typicalPriceAvg) / (FACTOR * meanDeviation);
+    public TADecimal getValue(int index) {
+        final TADecimal typicalPrice = typicalPriceInd.getValue(index);
+        final TADecimal typicalPriceAvg = smaInd.getValue(index);
+        final TADecimal meanDeviation = meanDeviationInd.getValue(index);
+        if (meanDeviation.isZero()) {
+            return TADecimal.ZERO;
+        }
+        return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(FACTOR));
     }
 
     @Override

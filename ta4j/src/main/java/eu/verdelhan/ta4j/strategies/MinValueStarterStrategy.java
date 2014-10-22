@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.TADecimal;
 
 /**
  * Minimum value starter strategy.
@@ -36,9 +37,9 @@ public class MinValueStarterStrategy extends AbstractStrategy {
     /** Strategy */
     private Strategy strategy;
     /** Indicator */
-    private Indicator<? extends Number> indicator;
+    private Indicator<? extends TADecimal> indicator;
     /** Starting threshold */
-    private double start;
+    private TADecimal start;
 
     /**
      * Constructor.
@@ -46,15 +47,15 @@ public class MinValueStarterStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param start the starting threshold
      */
-    public MinValueStarterStrategy(Indicator<? extends Number> indicator, Strategy strategy, double start) {
+    public MinValueStarterStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, double start) {
         this.indicator = indicator;
         this.strategy = strategy;
-        this.start = start;
+        this.start = TADecimal.valueOf(start);
     }
 
     @Override
     public boolean shouldEnter(int index) {
-        return (indicator.getValue(index).doubleValue() > start);
+        return (indicator.getValue(index).isGreaterThan(start));
     }
 
     @Override

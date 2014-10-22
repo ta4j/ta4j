@@ -22,15 +22,15 @@
  */
 package eu.verdelhan.ta4j.indicators.volume;
 
+import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * On-balance volume indicator.
  * <p>
  */
-public class OnBalanceVolumeIndicator extends CachedIndicator<Double> {
+public class OnBalanceVolumeIndicator extends CachedIndicator<TADecimal> {
 
     private final TimeSeries series;
 
@@ -39,17 +39,17 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<Double> {
     }
 
     @Override
-    protected Double calculate(int index) {
+    protected TADecimal calculate(int index) {
         if (index == 0) {
-            return 0d;
+            return TADecimal.ZERO;
         }
-        double yesterdayClose = series.getTick(index - 1).getClosePrice();
-        double todayClose = series.getTick(index).getClosePrice();
+        TADecimal yesterdayClose = series.getTick(index - 1).getClosePrice();
+        TADecimal todayClose = series.getTick(index).getClosePrice();
 
-        if (yesterdayClose > todayClose) {
-            return getValue(index - 1) - series.getTick(index).getVolume();
-        } else if (yesterdayClose < todayClose) {
-            return getValue(index - 1) + series.getTick(index).getVolume();
+        if (yesterdayClose.isGreaterThan(todayClose)) {
+            return getValue(index - 1).minus(series.getTick(index).getVolume());
+        } else if (yesterdayClose.isLessThan(todayClose)) {
+            return getValue(index - 1).plus(series.getTick(index).getVolume());
         }
         return getValue(index - 1);
     }
