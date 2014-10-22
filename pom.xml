@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>eu.verdelhan</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.5</version>
+    <version>0.6-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
@@ -49,7 +49,7 @@
         <connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
         <url>http://github.com/mdeverdelhan/ta4j</url>
-      <tag>ta4j-0.5</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <modules>
