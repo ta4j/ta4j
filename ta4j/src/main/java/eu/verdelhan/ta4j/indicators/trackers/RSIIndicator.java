@@ -33,13 +33,16 @@ import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
  */
 public class RSIIndicator implements Indicator<TADecimal> {
 
-    private final Indicator<? extends TADecimal> indicator;
+    private AverageGainIndicator averageGainIndicator;
+
+    private AverageLossIndicator averageLossIndicator;
 
     private final int timeFrame;
 
     public RSIIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
-        this.indicator = indicator;
         this.timeFrame = timeFrame;
+        averageGainIndicator = new AverageGainIndicator(indicator, timeFrame);
+        averageLossIndicator = new AverageLossIndicator(indicator, timeFrame);
     }
 
     @Override
@@ -55,14 +58,19 @@ public class RSIIndicator implements Indicator<TADecimal> {
 
     /**
      * @param index
-     * @return
+     * @return the relative strength
      */
     private TADecimal relativeStrength(int index) {
         if (index == 0) {
             return TADecimal.ZERO;
         }
-        AverageGainIndicator averageGain = new AverageGainIndicator(indicator, timeFrame);
-        AverageLossIndicator averageLoss = new AverageLossIndicator(indicator, timeFrame);
-        return averageGain.getValue(index).dividedBy(averageLoss.getValue(index));
+        TADecimal averageGain = averageGainIndicator.getValue(index);
+        TADecimal averageLoss = averageLossIndicator.getValue(index);
+        if (averageLoss.isZero()) {
+            // Should be replaced by a POSITIVE_INFINITY-like
+            return TADecimal.HUNDRED;
+        } else {
+            return averageGain.dividedBy(averageLoss);
+        }
     }
 }
