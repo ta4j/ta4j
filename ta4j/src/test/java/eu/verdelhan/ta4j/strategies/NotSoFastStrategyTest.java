@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.strategies.NotSoFastStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,26 +55,26 @@ public class NotSoFastStrategyTest {
     public void with3Ticks() {
         strategy = new NotSoFastStrategy(fakeStrategy, 3);
 
-        assertThat(strategy.shouldEnter(0)).isTrue();
-        assertThat(strategy.shouldExit(0)).isFalse();
-        assertThat(strategy.shouldExit(1)).isFalse();
-        assertThat(strategy.shouldExit(2)).isFalse();
-        assertThat(strategy.shouldExit(3)).isFalse();
-        assertThat(strategy.shouldExit(4)).isTrue();
-        assertThat(strategy.shouldExit(5)).isTrue();
+        assertTrue(strategy.shouldEnter(0));
+        assertFalse(strategy.shouldExit(0));
+        assertFalse(strategy.shouldExit(1));
+        assertFalse(strategy.shouldExit(2));
+        assertFalse(strategy.shouldExit(3));
+        assertTrue(strategy.shouldExit(4));
+        assertTrue(strategy.shouldExit(5));
     }
 
     @Test
     public void with0Ticks() {
         strategy = new NotSoFastStrategy(fakeStrategy, 0);
 
-        assertThat(strategy.shouldEnter(0)).isTrue();
+        assertTrue(strategy.shouldEnter(0));
 
-        assertThat(strategy.shouldExit(0)).isFalse();
-        assertThat(strategy.shouldExit(1)).isTrue();
-        assertThat(strategy.shouldExit(2)).isFalse();
-        assertThat(strategy.shouldExit(3)).isTrue();
-        assertThat(strategy.shouldExit(4)).isTrue();
-        assertThat(strategy.shouldExit(5)).isTrue();
+        assertFalse(strategy.shouldExit(0));
+        assertTrue(strategy.shouldExit(1));
+        assertFalse(strategy.shouldExit(2));
+        assertTrue(strategy.shouldExit(3));
+        assertTrue(strategy.shouldExit(4));
+        assertTrue(strategy.shouldExit(5));
     }
 }

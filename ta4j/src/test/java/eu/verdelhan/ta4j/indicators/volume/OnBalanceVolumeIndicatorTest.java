@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.volume;
 
-import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;

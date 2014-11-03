@@ -25,11 +25,12 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class TotalProfitCriterionTest {
@@ -42,7 +43,7 @@ public class TotalProfitCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertThat(profit.calculate(series, trades)).isEqualTo(1.10 * 1.05);
+        assertEquals(1.10 * 1.05, profit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -53,7 +54,7 @@ public class TotalProfitCriterionTest {
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertThat(profit.calculate(series, trades)).isEqualTo(0.95 * 0.7);
+        assertEquals(0.95 * 0.7, profit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -64,7 +65,7 @@ public class TotalProfitCriterionTest {
         trades.add(new Trade(new Operation(2, OperationType.SELL), new Operation(5, OperationType.BUY)));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertThat(profit.calculate(series, trades)).isEqualTo((1 / 0.95) * (1 / 0.7));
+        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -73,7 +74,7 @@ public class TotalProfitCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertThat(profit.calculate(series, trades)).isEqualTo(1d);
+        assertEquals(1d, profit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -81,15 +82,15 @@ public class TotalProfitCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         AnalysisCriterion profit = new TotalProfitCriterion();
         Trade trade = new Trade();
-        assertThat(profit.calculate(series, trade)).isEqualTo(1d);
+        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.TA_OFFSET);
         trade.operate(0);
-        assertThat(profit.calculate(series, trade)).isEqualTo(1d);
+        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new TotalProfitCriterion();
-        assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
-        assertThat(criterion.betterThan(1.5, 2.0)).isFalse();
+        assertTrue(criterion.betterThan(2.0, 1.5));
+        assertFalse(criterion.betterThan(1.5, 2.0));
     }
 }

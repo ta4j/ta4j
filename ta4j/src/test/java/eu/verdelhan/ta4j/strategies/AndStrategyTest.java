@@ -27,7 +27,7 @@ import eu.verdelhan.ta4j.strategies.AndStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -83,22 +83,22 @@ public class AndStrategyTest {
     
     @Test
     public void AndStrategyShouldEnterWhenThe2StrategiesEnter() {
-        assertThat(andStrategy.shouldEnter(0)).isEqualTo(false);
-        assertThat(andStrategy.shouldEnter(1)).isEqualTo(false);
-        assertThat(andStrategy.shouldEnter(2)).isEqualTo(false);
-        assertThat(andStrategy.shouldEnter(3)).isEqualTo(false);
-        assertThat(andStrategy.shouldEnter(4)).isEqualTo(true);
-        assertThat(andStrategy.shouldEnter(5)).isEqualTo(false);
+        assertFalse(andStrategy.shouldEnter(0));
+        assertFalse(andStrategy.shouldEnter(1));
+        assertFalse(andStrategy.shouldEnter(2));
+        assertFalse(andStrategy.shouldEnter(3));
+        assertTrue(andStrategy.shouldEnter(4));
+        assertFalse(andStrategy.shouldEnter(5));
     }
     
     @Test
     public void AndStrategyShouldExitWhenThe2StrategiesExit() {
-        assertThat(andStrategy.shouldExit(0)).isEqualTo(false);
-        assertThat(andStrategy.shouldExit(1)).isEqualTo(false);
-        assertThat(andStrategy.shouldExit(2)).isEqualTo(false);
-        assertThat(andStrategy.shouldExit(3)).isEqualTo(false);
-        assertThat(andStrategy.shouldExit(4)).isEqualTo(false);
-        assertThat(andStrategy.shouldExit(5)).isEqualTo(true);
+        assertFalse(andStrategy.shouldExit(0));
+        assertFalse(andStrategy.shouldExit(1));
+        assertFalse(andStrategy.shouldExit(2));
+        assertFalse(andStrategy.shouldExit(3));
+        assertFalse(andStrategy.shouldExit(4));
+        assertTrue(andStrategy.shouldExit(5));
     }    
 }
         

@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j;
 
-import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
-import static org.assertj.core.api.Assertions.*;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import org.joda.time.DateTime;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,7 +50,7 @@ public class TickTest {
         tick.addTrade(4.0, 201.0);
         tick.addTrade(2.0, 198.0);
 
-        assertThat(tick.getTrades()).isEqualTo(3);
+        assertEquals(3, tick.getTrades());
         assertDecimalEquals(tick.getAmount(), 9);
         assertDecimalEquals(tick.getOpenPrice(), 200);
         assertDecimalEquals(tick.getClosePrice(), 198);
@@ -61,13 +61,13 @@ public class TickTest {
 
     @Test
     public void inPeriod() {
-        assertThat(tick.inPeriod(null)).isFalse();
+        assertFalse(tick.inPeriod(null));
 
-        assertThat(tick.inPeriod(beginTime.withDayOfMonth(24))).isFalse();
-        assertThat(tick.inPeriod(beginTime.withDayOfMonth(26))).isFalse();
-        assertThat(tick.inPeriod(beginTime.withMinuteOfHour(30))).isTrue();
+        assertFalse(tick.inPeriod(beginTime.withDayOfMonth(24)));
+        assertFalse(tick.inPeriod(beginTime.withDayOfMonth(26)));
+        assertTrue(tick.inPeriod(beginTime.withMinuteOfHour(30)));
 
-        assertThat(tick.inPeriod(beginTime)).isTrue();
-        assertThat(tick.inPeriod(endTime)).isFalse();
+        assertTrue(tick.inPeriod(beginTime));
+        assertFalse(tick.inPeriod(endTime));
     }
 }

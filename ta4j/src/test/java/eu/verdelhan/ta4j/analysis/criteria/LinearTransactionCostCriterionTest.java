@@ -25,14 +25,14 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.TADecimalTestsUtils;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 
@@ -45,17 +45,17 @@ public class LinearTransactionCostCriterionTest {
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
 
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(12.861);
+        assertEquals(12.861, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
 
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.3473, TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(24.3473, TATestsUtils.TA_OFFSET, transactionCost.calculate(series, trades));
 
         Trade t = new Trade();
         trades.add(t);
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(24.3473, TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(24.3473, TATestsUtils.TA_OFFSET, transactionCost.calculate(series, trades));
 
         t.operate(5);
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(28.2204, TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(28.2204, TATestsUtils.TA_OFFSET, transactionCost.calculate(series, trades));
     }
 
     @Test
@@ -65,17 +65,17 @@ public class LinearTransactionCostCriterionTest {
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 1.3d);
         
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(2.6d);
+        assertEquals(2.6d, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
         
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(5.2d);
+        assertEquals(5.2d, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
 
         Trade t = new Trade();
         trades.add(t);
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(5.2d);
+        assertEquals(5.2d, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
 
         t.operate(0);
-        assertThat(transactionCost.calculate(series, trades)).isEqualTo(6.5d);
+        assertEquals(6.5d, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -84,16 +84,16 @@ public class LinearTransactionCostCriterionTest {
         Trade trade = new Trade();
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 0.75d);
 
-        assertThat(transactionCost.calculate(series, trade)).isZero();
+        assertEquals(0, (int) transactionCost.calculate(series, trade));
 
         trade.operate(1);
-        assertThat(transactionCost.calculate(series, trade)).isEqualTo(0.75d);
+        assertEquals(0.75d, transactionCost.calculate(series, trade), TATestsUtils.TA_OFFSET);
 
         trade.operate(3);
-        assertThat(transactionCost.calculate(series, trade)).isEqualTo(1.5d);
+        assertEquals(1.5d, transactionCost.calculate(series, trade), TATestsUtils.TA_OFFSET);
 
         trade.operate(4);
-        assertThat(transactionCost.calculate(series, trade)).isEqualTo(1.5d);
+        assertEquals(1.5d, transactionCost.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
     
     @Test
@@ -116,13 +116,13 @@ public class LinearTransactionCostCriterionTest {
         
         AnalysisCriterion transactionCosts = new LinearTransactionCostCriterion(1000, 0, 1.10d);
 
-        assertThat(transactionCosts.summarize(series, decisions)).isEqualTo(11d);
+        assertEquals(11d, transactionCosts.summarize(series, decisions), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new LinearTransactionCostCriterion(1000, 0.5);
-        assertThat(criterion.betterThan(3.1, 4.2)).isTrue();
-        assertThat(criterion.betterThan(2.1, 1.9)).isFalse();
+        assertTrue(criterion.betterThan(3.1, 4.2));
+        assertFalse(criterion.betterThan(2.1, 1.9));
     }
 }

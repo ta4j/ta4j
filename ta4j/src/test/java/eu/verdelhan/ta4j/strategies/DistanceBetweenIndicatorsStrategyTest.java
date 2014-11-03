@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.strategies;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,12 +47,12 @@ public class DistanceBetweenIndicatorsStrategyTest {
     public void strategyIsBuyingCorrectly() {
         Trade trade = new Trade();
 
-        assertThat(distanceEnter.shouldOperate(trade, 0)).isFalse();
-        assertThat(distanceEnter.shouldOperate(trade, 1)).isTrue();
+        assertFalse(distanceEnter.shouldOperate(trade, 0));
+        assertTrue(distanceEnter.shouldOperate(trade, 1));
         trade = new Trade();
-        assertThat(distanceEnter.shouldOperate(trade, 2)).isTrue();
-        assertThat(distanceEnter.shouldOperate(trade, 3)).isFalse();
-        assertThat(distanceEnter.shouldOperate(trade, 4)).isFalse();
+        assertTrue(distanceEnter.shouldOperate(trade, 2));
+        assertFalse(distanceEnter.shouldOperate(trade, 3));
+        assertFalse(distanceEnter.shouldOperate(trade, 4));
     }
 
     @Test
@@ -60,15 +60,15 @@ public class DistanceBetweenIndicatorsStrategyTest {
         Trade trade = new Trade();
         trade.operate(2);
 
-        assertThat(distanceEnter.shouldOperate(trade, 0)).isFalse();
-        assertThat(distanceEnter.shouldOperate(trade, 5)).isTrue();
+        assertFalse(distanceEnter.shouldOperate(trade, 0));
+        assertTrue(distanceEnter.shouldOperate(trade, 5));
 
         trade = new Trade();
         trade.operate(2);
 
-        assertThat(distanceEnter.shouldOperate(trade, 6)).isTrue();
-        assertThat(distanceEnter.shouldOperate(trade, 3)).isFalse();
-        assertThat(distanceEnter.shouldOperate(trade, 4)).isFalse();
+        assertTrue(distanceEnter.shouldOperate(trade, 6));
+        assertFalse(distanceEnter.shouldOperate(trade, 3));
+        assertFalse(distanceEnter.shouldOperate(trade, 4));
     }
 
     @Test
@@ -77,11 +77,11 @@ public class DistanceBetweenIndicatorsStrategyTest {
         distanceEnter = new DistanceBetweenIndicatorsStrategy(indicator, TADecimal.valueOf(9), 4, 0.3);
 
         Trade trade = new Trade();
-        assertThat(distanceEnter.shouldOperate(trade, 4)).isFalse();
-        assertThat(distanceEnter.shouldOperate(trade, 5)).isTrue();
+        assertFalse(distanceEnter.shouldOperate(trade, 4));
+        assertTrue(distanceEnter.shouldOperate(trade, 5));
 
         trade.operate(2);
-        assertThat(distanceEnter.shouldOperate(trade, 2)).isTrue();
-        assertThat(distanceEnter.shouldOperate(trade, 3)).isFalse();
+        assertTrue(distanceEnter.shouldOperate(trade, 2));
+        assertFalse(distanceEnter.shouldOperate(trade, 3));
     }
 }

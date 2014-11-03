@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
@@ -32,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class VersusBuyAndHoldCriterionTest {
@@ -45,7 +46,7 @@ public class VersusBuyAndHoldCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(1.10 * 1.05 / 1.05);
+        assertEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -63,7 +64,7 @@ public class VersusBuyAndHoldCriterionTest {
         Decision dummy2 = new MockDecision(tradesToDummy2, series);
         decisions.add(dummy2);
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(1.10 * 1.05 / 1.05);
+        assertEquals(1.10 * 1.05 / 1.05, buyAndHold.summarize(series, decisions), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -74,7 +75,7 @@ public class VersusBuyAndHoldCriterionTest {
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(0.95 * 0.7 / 0.7);
+        assertEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
     
     @Test
@@ -83,7 +84,7 @@ public class VersusBuyAndHoldCriterionTest {
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertThat(buyAndHold.calculate(series, trade)).isEqualTo((100d / 70) / (100d / 95));
+        assertEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -92,7 +93,7 @@ public class VersusBuyAndHoldCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(1 / 0.7);
+        assertEquals(1 / 0.7, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -104,7 +105,7 @@ public class VersusBuyAndHoldCriterionTest {
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new AverageProfitCriterion());
         
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6));
+        assertEquals(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6), buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -116,13 +117,13 @@ public class VersusBuyAndHoldCriterionTest {
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new NumberOfTicksCriterion());
         
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(6d/6d);
+        assertEquals(6d/6d, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
-        assertThat(criterion.betterThan(1.5, 2.0)).isFalse();
+        assertTrue(criterion.betterThan(2.0, 1.5));
+        assertFalse(criterion.betterThan(1.5, 2.0));
     }
 }

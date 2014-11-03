@@ -22,11 +22,11 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,9 +62,7 @@ public class EMAIndicatorTest {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
 
         for (int i = 0; i < 9; i++) {
-            sma.getValue(i);
-            ema.getValue(i);
-            assertThat(ema.getValue(i)).isEqualTo(sma.getValue(i));
+            assertEquals(sma.getValue(i), ema.getValue(i));
         }
     }
 

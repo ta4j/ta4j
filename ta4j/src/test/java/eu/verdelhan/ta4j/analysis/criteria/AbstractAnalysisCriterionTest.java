@@ -31,7 +31,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -57,24 +57,24 @@ public class AbstractAnalysisCriterionTest {
     public void bestShouldBeAlwaysOperateOnProfit() {
         MockTimeSeries series = new MockTimeSeries(6.0, 9.0, 6.0, 6.0);
         Decision decision = new TotalProfitCriterion().chooseBest(series, strategies);
-        assertThat(decision.getStrategy()).isEqualTo(alwaysStrategy);
+        assertEquals(alwaysStrategy, decision.getStrategy());
     }
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
         MockTimeSeries series = new MockTimeSeries(6.0, 3.0, 6.0, 6.0);
         Decision decision = new TotalProfitCriterion().chooseBest(series, strategies);
-        assertThat(decision.getStrategy()).isEqualTo(buyAndHoldStrategy);
+        assertEquals(buyAndHoldStrategy, decision.getStrategy());
     }
 
     @Test
     public void toStringMethod() {
         AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
-        assertThat(c1.toString()).isEqualTo("Average Profit");
+        assertEquals("Average Profit", c1.toString());
         AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();
-        assertThat(c2.toString()).isEqualTo("Buy And Hold");
+        assertEquals("Buy And Hold", c2.toString());
         AbstractAnalysisCriterion c3 = new RewardRiskRatioCriterion();
-        assertThat(c3.toString()).isEqualTo("Reward Risk Ratio");
+        assertEquals("Reward Risk Ratio", c3.toString());
     }
 
 }

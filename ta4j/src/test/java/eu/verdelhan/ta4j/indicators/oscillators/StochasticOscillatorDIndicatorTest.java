@@ -26,10 +26,9 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTick;
-import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,9 +64,9 @@ public class StochasticOscillatorDIndicatorTest {
         SMAIndicator sma = new SMAIndicator(sof, 3);
         StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sma);
 
-        assertThat(sos.getValue(0)).isEqualTo(sma.getValue(0));
-        assertThat(sos.getValue(1)).isEqualTo(sma.getValue(1));
-        assertThat(sos.getValue(2)).isEqualTo(sma.getValue(2));
+        assertEquals(sma.getValue(0), sos.getValue(0));
+        assertEquals(sma.getValue(1), sos.getValue(1));
+        assertEquals(sma.getValue(2), sos.getValue(2));
     }
 
     @Test
@@ -77,9 +76,9 @@ public class StochasticOscillatorDIndicatorTest {
         StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sof);
         SMAIndicator sma = new SMAIndicator(sof, 3);
 
-        assertThat(sos.getValue(0)).isEqualTo(sma.getValue(0));
-        assertThat(sos.getValue(1)).isEqualTo(sma.getValue(1));
-        assertThat(sos.getValue(2)).isEqualTo(sma.getValue(2));
+        assertEquals(sma.getValue(0), sos.getValue(0));
+        assertEquals(sma.getValue(1), sos.getValue(1));
+        assertEquals(sma.getValue(2), sos.getValue(2));
     }
 
     @Test
@@ -89,6 +88,6 @@ public class StochasticOscillatorDIndicatorTest {
         StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sof);
         SMAIndicator sma = new SMAIndicator(sof, 3);
 
-        assertThat(sos.getValue(13)).isEqualTo(sma.getValue(13));
+        assertEquals(sma.getValue(13), sos.getValue(13));
     }
 }

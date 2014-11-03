@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.TADecimal;
-import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -28,7 +28,7 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,25 +63,25 @@ public class MinValueStarterStrategyTest {
         Trade trade = new Trade();
 
         Operation buy = new Operation(2, OperationType.BUY);
-        assertThat(starter.shouldOperate(trade, 2)).isTrue();
+        assertTrue(starter.shouldOperate(trade, 2));
         trade.operate(2);
-        assertThat(trade.getEntry()).isEqualTo(buy);
+        assertEquals(buy, trade.getEntry());
 
         trade = new Trade();
         buy = new Operation(3, OperationType.BUY);
 
-        assertThat(starter.shouldOperate(trade, 3)).isTrue();
+        assertTrue(starter.shouldOperate(trade, 3));
         trade.operate(3);
 
-        assertThat(starter.shouldOperate(trade, 3)).isFalse();
-        assertThat(trade.getEntry()).isEqualTo(buy);
+        assertFalse(starter.shouldOperate(trade, 3));
+        assertEquals(buy, trade.getEntry());
     }
 
     @Test
     public void strategyShouldNotBuyEvenIfFakeIsSayingTo() {
         Trade trade = new Trade();
-        assertThat(starter.shouldOperate(trade, 0)).isFalse();
-        assertThat(starter.shouldOperate(trade, 1)).isFalse();
-        assertThat(starter.shouldOperate(trade, 4)).isFalse();
+        assertFalse(starter.shouldOperate(trade, 0));
+        assertFalse(starter.shouldOperate(trade, 1));
+        assertFalse(starter.shouldOperate(trade, 4));
     }
 }

@@ -22,12 +22,11 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.JustBuyOnceStrategy;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,11 +46,11 @@ public class JustBuyOnceStrategyTest {
     public void shouldBuyTradeOnce() {
         Operation buy = new Operation(0, OperationType.BUY);
 
-        assertThat(strategy.shouldOperate(trade, 0)).isTrue();
+        assertTrue(strategy.shouldOperate(trade, 0));
         trade.operate(0);
-        assertThat(trade.getEntry()).isEqualTo(buy);
-        assertThat(strategy.shouldOperate(trade, 1)).isFalse();
-        assertThat(strategy.shouldOperate(trade, 6)).isFalse();
+        assertEquals(buy, trade.getEntry());
+        assertFalse(strategy.shouldOperate(trade, 1));
+        assertFalse(strategy.shouldOperate(trade, 6));
 
     }
 
@@ -59,13 +58,13 @@ public class JustBuyOnceStrategyTest {
     public void sameIndexShouldResultSameAnswer() {
         Operation buy = new Operation(0, OperationType.BUY);
 
-        assertThat(strategy.shouldOperate(trade, 0)).isTrue();
+        assertTrue(strategy.shouldOperate(trade, 0));
         trade.operate(0);
-        assertThat(trade.getEntry()).isEqualTo(buy);
+        assertEquals(buy, trade.getEntry());
         Trade trade2 = new Trade();
-        assertThat(strategy.shouldOperate(trade2, 0)).isFalse();
+        assertFalse(strategy.shouldOperate(trade2, 0));
         trade2.operate(0);
-        assertThat(trade2.getEntry()).isEqualTo(buy);
+        assertEquals(buy, trade2.getEntry());
     }
 
 }

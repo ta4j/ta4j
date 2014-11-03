@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,7 +48,7 @@ public class TypicalPriceIndicatorTest {
             Tick tick = timeSeries.getTick(i);
             TADecimal typicalPrice = tick.getMaxPrice().plus(tick.getMinPrice()).plus(tick.getClosePrice())
                     .dividedBy(TADecimal.THREE);
-            assertThat(typicalPriceIndicator.getValue(i)).isEqualTo(typicalPrice);
+            assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
         }
     }
 }

@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,9 +42,9 @@ public class PreviousPriceIndicatorTest {
 
     @Test
     public void indicatorShouldRetrieveTickPreviousPrice() {
-        assertThat(timeSeries.getTick(0).getClosePrice()).isEqualTo(previousPriceIndicator.getValue(0));
+        assertEquals(previousPriceIndicator.getValue(0), timeSeries.getTick(0).getClosePrice());
         for (int i = 1; i < 10; i++) {
-            assertThat(timeSeries.getTick(i-1).getClosePrice()).isEqualTo(previousPriceIndicator.getValue(i));
+            assertEquals(previousPriceIndicator.getValue(i), timeSeries.getTick(i-1).getClosePrice());
         }
     }
 }

@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
-import static eu.verdelhan.ta4j.TADecimalTestsUtils.*;
+import static eu.verdelhan.ta4j.TATestsUtils.*;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class CashFlowTest {
@@ -42,7 +42,7 @@ public class CashFlowTest {
     public void cashFlowSize() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 3d, 4d, 5d);
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, new ArrayList<Trade>());
-        assertThat(cashFlow.getSize()).isEqualTo(5);
+        assertEquals(5, cashFlow.getSize());
     }
 
     @Test
@@ -138,7 +138,7 @@ public class CashFlowTest {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
-        assertThat(cashFlow.getSize()).isEqualTo(3);
+        assertEquals(3, cashFlow.getSize());
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 2);
         assertDecimalEquals(cashFlow.getValue(2), 2);

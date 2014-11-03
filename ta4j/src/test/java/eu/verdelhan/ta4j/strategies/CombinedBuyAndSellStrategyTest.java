@@ -29,7 +29,7 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class CombinedBuyAndSellStrategyTest {
@@ -56,17 +56,17 @@ public class CombinedBuyAndSellStrategyTest {
 
         combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
 
-        assertThat(combined.shouldEnter(0)).isTrue();
-        assertThat(combined.shouldEnter(1)).isFalse();
-        assertThat(combined.shouldEnter(2)).isTrue();
-        assertThat(combined.shouldEnter(3)).isFalse();
-        assertThat(combined.shouldEnter(4)).isTrue();
+        assertTrue(combined.shouldEnter(0));
+        assertFalse(combined.shouldEnter(1));
+        assertTrue(combined.shouldEnter(2));
+        assertFalse(combined.shouldEnter(3));
+        assertTrue(combined.shouldEnter(4));
 
-        assertThat(combined.shouldExit(0)).isFalse();
-        assertThat(combined.shouldExit(1)).isFalse();
-        assertThat(combined.shouldExit(2)).isFalse();
-        assertThat(combined.shouldExit(3)).isFalse();
-        assertThat(combined.shouldExit(4)).isFalse();
+        assertFalse(combined.shouldExit(0));
+        assertFalse(combined.shouldExit(1));
+        assertFalse(combined.shouldExit(2));
+        assertFalse(combined.shouldExit(3));
+        assertFalse(combined.shouldExit(4));
 
     }
 
@@ -83,17 +83,17 @@ public class CombinedBuyAndSellStrategyTest {
 
         combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
 
-        assertThat(combined.shouldExit(0)).isTrue();
-        assertThat(combined.shouldExit(1)).isFalse();
-        assertThat(combined.shouldExit(2)).isTrue();
-        assertThat(combined.shouldExit(3)).isFalse();
-        assertThat(combined.shouldExit(4)).isTrue();
+        assertTrue(combined.shouldExit(0));
+        assertFalse(combined.shouldExit(1));
+        assertTrue(combined.shouldExit(2));
+        assertFalse(combined.shouldExit(3));
+        assertTrue(combined.shouldExit(4));
 
-        assertThat(combined.shouldEnter(0)).isFalse();
-        assertThat(combined.shouldEnter(1)).isFalse();
-        assertThat(combined.shouldEnter(2)).isFalse();
-        assertThat(combined.shouldEnter(3)).isFalse();
-        assertThat(combined.shouldEnter(4)).isFalse();
+        assertFalse(combined.shouldEnter(0));
+        assertFalse(combined.shouldEnter(1));
+        assertFalse(combined.shouldEnter(2));
+        assertFalse(combined.shouldEnter(3));
+        assertFalse(combined.shouldEnter(4));
     }
 
     @Test
@@ -106,8 +106,8 @@ public class CombinedBuyAndSellStrategyTest {
         combined = new CombinedBuyAndSellStrategy(crossed, crossed);
 
         for (int index = 0; index < 6; index++) {
-            assertThat(combined.shouldEnter(index)).isEqualTo(crossed.shouldEnter(index));
-            assertThat(combined.shouldExit(index)).isEqualTo(crossed.shouldExit(index));
+            assertEquals(crossed.shouldEnter(index), combined.shouldEnter(index));
+            assertEquals(crossed.shouldExit(index), combined.shouldExit(index));
         }
     }
 }

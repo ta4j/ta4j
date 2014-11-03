@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.TADecimalTestsUtils;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,7 +59,7 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
-        assertThat(rrc.calculate(series, trades)).isEqualTo(totalProfit / ((peak - low) / peak), TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -86,7 +86,7 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
         
-        assertThat(rrc.summarize(series, decisions)).isEqualTo(totalProfit / ((peak - low) / peak), TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(totalProfit / ((peak - low) / peak), TATestsUtils.TA_OFFSET, rrc.summarize(series, decisions));
     }
 
     @Test
@@ -96,7 +96,7 @@ public class RewardRiskRatioCriterionTest {
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
-        assertThat(Double.isInfinite(rrc.calculate(series, trades))).isTrue();
+        assertTrue(Double.isInfinite(rrc.calculate(series, trades)));
     }
 
     @Test
@@ -104,7 +104,7 @@ public class RewardRiskRatioCriterionTest {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         List<Trade> trades = new ArrayList<Trade>();
 
-        assertThat(Double.isInfinite(rrc.calculate(series, trades))).isTrue();
+        assertTrue(Double.isInfinite(rrc.calculate(series, trades)));
     }
     
     @Test
@@ -114,13 +114,13 @@ public class RewardRiskRatioCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
 
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
-        assertThat(ratioCriterion.calculate(series, trade)).isEqualTo((95d/100) / ((1d - 0.95d)), TADecimalTestsUtils.TA_OFFSET);
+        assertEquals((95d/100) / ((1d - 0.95d)), TATestsUtils.TA_OFFSET, ratioCriterion.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new RewardRiskRatioCriterion();
-        assertThat(criterion.betterThan(3.5, 2.2)).isTrue();
-        assertThat(criterion.betterThan(1.5, 2.7)).isFalse();
+        assertTrue(criterion.betterThan(3.5, 2.2));
+        assertFalse(criterion.betterThan(1.5, 2.7));
     }
 }

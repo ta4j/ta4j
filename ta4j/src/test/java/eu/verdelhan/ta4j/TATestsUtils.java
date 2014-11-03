@@ -22,16 +22,15 @@
  */
 package eu.verdelhan.ta4j;
 
-import static org.assertj.core.api.Assertions.*;
-import org.assertj.core.data.Offset;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Utility class for {@code TADecimal} tests.
  */
-public class TADecimalTestsUtils {
+public class TATestsUtils {
 
     /** Offset for double equality checking */
-    public static final Offset<Double> TA_OFFSET = Offset.offset(0.0001);
+    public static final double TA_OFFSET = 0.0001;
 
     /**
      * Verifies that the actual {@code TADecimal} value is equal to the given {@code String} representation.
@@ -40,7 +39,7 @@ public class TADecimalTestsUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
      */
     public static void assertDecimalEquals(TADecimal actual, String expected) {
-        assertThat(actual).isEqualTo(TADecimal.valueOf(expected));
+        assertEquals(TADecimal.valueOf(expected), actual);
     }
 
     /**
@@ -50,7 +49,7 @@ public class TADecimalTestsUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
      */
     public static void assertDecimalEquals(TADecimal actual, int expected) {
-        assertThat(actual).isEqualTo(TADecimal.valueOf(expected));
+        assertEquals(TADecimal.valueOf(expected), actual);
     }
 
     /**
@@ -60,6 +59,6 @@ public class TADecimalTestsUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
      */
     public static void assertDecimalEquals(TADecimal actual, double expected) {
-        assertThat(actual.toDouble()).isEqualTo(expected, TA_OFFSET);
+        assertEquals(expected, actual.toDouble(), TA_OFFSET);
     }
 }

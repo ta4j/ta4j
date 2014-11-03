@@ -28,7 +28,7 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,15 +51,15 @@ public class StopLossStrategyTest {
         Operation sell = new Operation(4, OperationType.SELL);
 
         Trade trade = new Trade();
-        assertThat(stopper.shouldOperate(trade, 0)).isTrue();
+        assertTrue(stopper.shouldOperate(trade, 0));
         trade.operate(0);
-        assertThat(trade.getEntry()).isEqualTo(buy);
-        assertThat(stopper.shouldOperate(trade, 1)).isFalse();
-        assertThat(stopper.shouldOperate(trade, 2)).isFalse();
+        assertEquals(buy, trade.getEntry());
+        assertFalse(stopper.shouldOperate(trade, 1));
+        assertFalse(stopper.shouldOperate(trade, 2));
 
-        assertThat(stopper.shouldOperate(trade, 4)).isTrue();
+        assertTrue(stopper.shouldOperate(trade, 4));
         trade.operate(4);
-        assertThat(trade.getExit()).isEqualTo(sell);
+        assertEquals(sell, trade.getExit());
     }
 
     @Test
@@ -76,15 +76,15 @@ public class StopLossStrategyTest {
         Operation sell = new Operation(1, OperationType.SELL);
 
         Trade trade = new Trade();
-        assertThat(stopper.shouldOperate(trade, 0)).isTrue();
+        assertTrue(stopper.shouldOperate(trade, 0));
         trade.operate(0);
 
-        assertThat(trade.getEntry()).isEqualTo(buy);
+        assertEquals(buy, trade.getEntry());
 
-        assertThat(stopper.shouldOperate(trade, 1)).isTrue();
+        assertTrue(stopper.shouldOperate(trade, 1));
         trade.operate(1);
 
-        assertThat(trade.getExit()).isEqualTo(sell);
+        assertEquals(sell, trade.getExit());
     }
 
 }

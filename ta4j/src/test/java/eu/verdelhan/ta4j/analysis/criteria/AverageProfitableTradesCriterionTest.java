@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
@@ -33,7 +34,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 public class AverageProfitableTradesCriterionTest {
 
@@ -47,7 +48,7 @@ public class AverageProfitableTradesCriterionTest {
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
-        assertThat(average.calculate(series, trades)).isEqualTo(2d/3);
+        assertEquals(2d/3, average.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -56,10 +57,10 @@ public class AverageProfitableTradesCriterionTest {
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.BUY));
             
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
-        assertThat(average.calculate(series, trade)).isEqualTo(0d);
+        assertEquals(0d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
         
         trade = new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.BUY));
-        assertThat(average.calculate(series, trade)).isEqualTo(1d);
+        assertEquals(1d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
     
     @Test
@@ -80,13 +81,13 @@ public class AverageProfitableTradesCriterionTest {
         decisions.add(dummy2);
 
         AnalysisCriterion averateProfitable = new AverageProfitableTradesCriterion();
-        assertThat(averateProfitable.summarize(series, decisions)).isEqualTo(2d/3);
+        assertEquals(2d/3, averateProfitable.summarize(series, decisions), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new AverageProfitableTradesCriterion();
-        assertThat(criterion.betterThan(12, 8)).isTrue();
-        assertThat(criterion.betterThan(8, 12)).isFalse();
+        assertTrue(criterion.betterThan(12, 8));
+        assertFalse(criterion.betterThan(8, 12));
     }
 }

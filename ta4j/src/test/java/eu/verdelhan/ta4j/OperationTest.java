@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,9 +41,9 @@ public class OperationTest {
 
     @Test
     public void overrideToString() {
-        assertThat(opEquals2.toString()).isEqualTo(opEquals1.toString());
+        assertEquals(opEquals1.toString(), opEquals2.toString());
 
-        assertThat(opNotEquals1.toString()).isNotEqualTo(opEquals1.toString());
-        assertThat(opNotEquals2.toString()).isNotEqualTo(opEquals1.toString());
+        assertNotEquals(opEquals1.toString(), opNotEquals1.toString());
+        assertNotEquals(opEquals1.toString(), opNotEquals2.toString());
     }
 }

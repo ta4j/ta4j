@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.TADecimalTestsUtils;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,7 +54,7 @@ public class AverageProfitCriterionTest {
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertThat(averageProfit.calculate(series, trades)).isEqualTo(1.0243, TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.calculate(series, trades));
     }
 
     @Test
@@ -71,7 +71,7 @@ public class AverageProfitCriterionTest {
         decisions.add(new MockDecision(tradesToDummy2, series));
 
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertThat(averageProfit.summarize(series, decisions)).isEqualTo(1.0243, TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.summarize(series, decisions));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class AverageProfitCriterionTest {
         trades.clear();
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertThat(averageProfit.calculate(series, trades)).isEqualTo(Math.pow(110d/100, 1d/3));
+        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -90,7 +90,7 @@ public class AverageProfitCriterionTest {
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertThat(averageProfit.calculate(series, trades)).isEqualTo(Math.pow(95d/100 * 70d/100, 1d / 6));
+        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -98,7 +98,7 @@ public class AverageProfitCriterionTest {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         trades.clear();
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertThat(averageProfit.calculate(series, trades)).isEqualTo(1d);
+        assertEquals(1d, averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -106,13 +106,13 @@ public class AverageProfitCriterionTest {
         series = new MockTimeSeries(100, 105);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
         AnalysisCriterion average = new AverageProfitCriterion();
-        assertThat(average.calculate(series, trade)).isEqualTo(Math.pow(105d / 100, 1d/2));
+        assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new AverageProfitCriterion();
-        assertThat(criterion.betterThan(2.0, 1.5)).isTrue();
-        assertThat(criterion.betterThan(1.5, 2.0)).isFalse();
+        assertTrue(criterion.betterThan(2.0, 1.5));
+        assertFalse(criterion.betterThan(1.5, 2.0));
     }
 }

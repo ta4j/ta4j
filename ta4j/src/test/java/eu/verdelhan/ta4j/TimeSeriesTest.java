@@ -27,11 +27,11 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -97,64 +97,63 @@ public class TimeSeriesTest {
     @Test
     public void getEndSizeBegin() {
         // Original series
-        assertThat(defaultSeries.getBegin()).isEqualTo(0);
-        assertThat(defaultSeries.getEnd()).isEqualTo(ticks.size() - 1);
-        assertThat(defaultSeries.getSize()).isEqualTo(ticks.size());
+        assertEquals(0, defaultSeries.getBegin());
+        assertEquals(ticks.size() - 1, defaultSeries.getEnd());
+        assertEquals(ticks.size(), defaultSeries.getSize());
         // Sub-series
-        assertThat(subSeries.getBegin()).isEqualTo(2);
-        assertThat(subSeries.getEnd()).isEqualTo(4);
-        assertThat(subSeries.getSize()).isEqualTo(3);
+        assertEquals(2, subSeries.getBegin());
+        assertEquals(4, subSeries.getEnd());
+        assertEquals(3, subSeries.getSize());
     }
 
     @Test
     public void getPeriodName() {
         // Original series
-        assertThat(defaultSeries.getPeriodName()).endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy"));
-        assertThat(defaultSeries.getPeriodName()).startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy"));
+        assertTrue(defaultSeries.getPeriodName().endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy")));
+        assertTrue(defaultSeries.getPeriodName().startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy")));
         // Sub-series
-        assertThat(subSeries.getPeriodName()).endsWith(ticks.get(subSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy"));
-        assertThat(subSeries.getPeriodName()).startsWith(ticks.get(subSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy"));
-
+        assertTrue(subSeries.getPeriodName().endsWith(ticks.get(subSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy")));
+        assertTrue(subSeries.getPeriodName().startsWith(ticks.get(subSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy")));
     }
 
     @Test
     public void getName() {
-        assertThat(defaultSeries.getName()).isEqualTo(defaultName);
-        assertThat(subSeries.getName()).isEqualTo(defaultName);
+        assertEquals(defaultName, defaultSeries.getName());
+        assertEquals(defaultName, subSeries.getName());
     }
 
     @Test
     public void getPeriod() {
         // Original series
         Period origSeriesPeriod = new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis());
-        assertThat(defaultSeries.getPeriod()).isEqualTo(origSeriesPeriod);
+        assertEquals(origSeriesPeriod, defaultSeries.getPeriod());
         // Sub-series
         Period subSeriesPeriod = new Period(ticks.get(3).getEndTime().getMillis() - ticks.get(2).getEndTime().getMillis());
-        assertThat(subSeries.getPeriod()).isEqualTo(subSeriesPeriod);
+        assertEquals(subSeriesPeriod, subSeries.getPeriod());
     }
 
     @Test
     public void subseriesWithIndexes() {
         TimeSeries subSeries2 = defaultSeries.subseries(2, 5);
-        assertThat(subSeries2.getName()).isEqualTo(defaultSeries.getName());
-        assertThat(subSeries2.getBegin()).isEqualTo(2);
-        assertThat(subSeries2.getBegin()).isNotEqualTo(defaultSeries.getBegin());
-        assertThat(subSeries2.getEnd()).isEqualTo(5);
-        assertThat(subSeries2.getEnd()).isEqualTo(defaultSeries.getEnd());
-        assertThat(subSeries2.getSize()).isEqualTo(4);
-        assertThat(subSeries2.getPeriod()).isNotEqualTo(defaultSeries.getPeriod());
+        assertEquals(defaultSeries.getName(), subSeries2.getName());
+        assertEquals(2, subSeries2.getBegin());
+        assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
+        assertEquals(5, subSeries2.getEnd());
+        assertEquals(defaultSeries.getEnd(), subSeries2.getEnd());
+        assertEquals(4, subSeries2.getSize());
+        assertNotEquals(defaultSeries.getPeriod(), subSeries2.getPeriod());
     }
 
     @Test
     public void subseriesWithDuration() {
         TimeSeries subSeries2 = defaultSeries.subseries(1, Period.weeks(2));
-        assertThat(subSeries2.getName()).isEqualTo(defaultSeries.getName());
-        assertThat(subSeries2.getBegin()).isEqualTo(1);
-        assertThat(subSeries2.getBegin()).isNotEqualTo(defaultSeries.getBegin());
-        assertThat(subSeries2.getEnd()).isEqualTo(4);
-        assertThat(subSeries2.getEnd()).isNotEqualTo(defaultSeries.getEnd());
-        assertThat(subSeries2.getSize()).isEqualTo(4);
-        assertThat(subSeries2.getPeriod()).isEqualTo(defaultSeries.getPeriod());
+        assertEquals(defaultSeries.getName(), subSeries2.getName());
+        assertEquals(1, subSeries2.getBegin());
+        assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
+        assertEquals(4, subSeries2.getEnd());
+        assertNotEquals(defaultSeries.getEnd(), subSeries2.getEnd());
+        assertEquals(4, subSeries2.getSize());
+        assertEquals(defaultSeries.getPeriod(), subSeries2.getPeriod());
     }
 
     @Test
@@ -171,16 +170,16 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(3);
 
-        assertThat(subseries).hasSize(3);
+        assertEquals(3, subSeries.getSize());
 
-        assertThat(subseries.get(0).getBegin()).isEqualTo(0);
-        assertThat(subseries.get(0).getEnd()).isEqualTo(2);
+        assertEquals(0, subseries.get(0).getBegin());
+        assertEquals(2, subseries.get(0).getEnd());
 
-        assertThat(subseries.get(1).getBegin()).isEqualTo(3);
-        assertThat(subseries.get(1).getEnd()).isEqualTo(5);
+        assertEquals(3, subseries.get(1).getBegin());
+        assertEquals(5, subseries.get(1).getEnd());
 
-        assertThat(subseries.get(2).getBegin()).isEqualTo(6);
-        assertThat(subseries.get(2).getEnd()).isEqualTo(7);
+        assertEquals(6, subseries.get(2).getBegin());
+        assertEquals(7, subseries.get(2).getEnd());
     }
 
     @Test
@@ -195,19 +194,19 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(Period.years(1), Period.years(2));
 
-        assertThat(subseries).hasSize(5);
+        assertEquals(5, subseries.size());
 
-        assertThat(subseries.get(0).getBegin()).isEqualTo(0);
-        assertThat(subseries.get(0).getEnd()).isEqualTo(1);
+        assertEquals(0, subseries.get(0).getBegin());
+        assertEquals(1, subseries.get(0).getEnd());
 
-        assertThat(subseries.get(1).getBegin()).isEqualTo(1);
-        assertThat(subseries.get(1).getEnd()).isEqualTo(2);
+        assertEquals(1, subseries.get(1).getBegin());
+        assertEquals(2, subseries.get(1).getEnd());
 
-        assertThat(subseries.get(2).getBegin()).isEqualTo(2);
-        assertThat(subseries.get(2).getEnd()).isEqualTo(2);
+        assertEquals(2, subseries.get(2).getBegin());
+        assertEquals(2, subseries.get(2).getEnd());
 
-        assertThat(subseries.get(4).getBegin()).isEqualTo(4);
-        assertThat(subseries.get(4).getEnd()).isEqualTo(4);
+        assertEquals(4, subseries.get(4).getBegin());
+        assertEquals(4, subseries.get(4).getEnd());
     }
 
     @Test
@@ -220,16 +219,16 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(Period.months(1), Period.weeks(1));
 
-        assertThat(subseries).hasSize(3);
+        assertEquals(3, subseries.size());
 
-        assertThat(subseries.get(0).getBegin()).isEqualTo(0);
-        assertThat(subseries.get(0).getEnd()).isEqualTo(0);
+        assertEquals(0, subseries.get(0).getBegin());
+        assertEquals(0, subseries.get(0).getEnd());
 
-        assertThat(subseries.get(1).getBegin()).isEqualTo(1);
-        assertThat(subseries.get(1).getEnd()).isEqualTo(1);
+        assertEquals(1, subseries.get(1).getBegin());
+        assertEquals(1, subseries.get(1).getEnd());
 
-        assertThat(subseries.get(2).getBegin()).isEqualTo(2);
-        assertThat(subseries.get(2).getEnd()).isEqualTo(2);
+        assertEquals(2, subseries.get(2).getBegin());
+        assertEquals(2, subseries.get(2).getEnd());
     }
 
     @Test
@@ -251,19 +250,19 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(Period.hours(1));
 
-        assertThat(subseries).hasSize(4);
+        assertEquals(4, subseries.size());
 
-        assertThat(subseries.get(0).getBegin()).isEqualTo(0);
-        assertThat(subseries.get(0).getEnd()).isEqualTo(5);
+        assertEquals(0, subseries.get(0).getBegin());
+        assertEquals(5, subseries.get(0).getEnd());
 
-        assertThat(subseries.get(1).getBegin()).isEqualTo(6);
-        assertThat(subseries.get(1).getEnd()).isEqualTo(6);
+        assertEquals(6, subseries.get(1).getBegin());
+        assertEquals(6, subseries.get(1).getEnd());
 
-        assertThat(subseries.get(2).getBegin()).isEqualTo(7);
-        assertThat(subseries.get(2).getEnd()).isEqualTo(7);
+        assertEquals(7, subseries.get(2).getBegin());
+        assertEquals(7, subseries.get(2).getEnd());
 
-        assertThat(subseries.get(3).getBegin()).isEqualTo(8);
-        assertThat(subseries.get(3).getEnd()).isEqualTo(10);
+        assertEquals(8, subseries.get(3).getBegin());
+        assertEquals(10, subseries.get(3).getEnd());
 
     }
 
@@ -272,20 +271,20 @@ public class TimeSeriesTest {
         TimeSeries series = new MockTimeSeries(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
 
         List<Trade> allTrades = series.run(strategy);
-        assertThat(allTrades).hasSize(2);
+        assertEquals(2, allTrades.size());
     }
 
     @Test
     public void runOnSlice() {
         List<TimeSeries> subseries = seriesForRun.split(Period.years(2000));
         List<Trade> trades = subseries.get(0).run(strategy);
-        assertThat(trades).hasSize(2);
+        assertEquals(2, trades.size());
 
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(2, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
+        assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 
-        assertThat(trades.get(1).getEntry()).isEqualTo(new Operation(6, OperationType.BUY));
-        assertThat(trades.get(1).getExit()).isEqualTo(new Operation(7, OperationType.SELL));
+        assertEquals(new Operation(6, OperationType.BUY), trades.get(1).getEntry());
+        assertEquals(new Operation(7, OperationType.SELL), trades.get(1).getExit());
     }
 
     @Test
@@ -296,10 +295,10 @@ public class TimeSeriesTest {
 
         Strategy strategy = new MockStrategy(enter, exit);
         List<Trade> trades = subseries.get(0).run(strategy);
-        assertThat(trades).hasSize(1);
+        assertEquals(1, trades.size());
 
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(1, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(3, OperationType.SELL));
+        assertEquals(new Operation(1, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(3, OperationType.SELL), trades.get(0).getExit());
     }
 
     @Test
@@ -310,10 +309,10 @@ public class TimeSeriesTest {
         List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
         Strategy strategy = new MockStrategy(enter, exit);
         List<Trade> trades = subseries.get(0).run(strategy, OperationType.SELL);
-        assertThat(trades).hasSize(1);
+        assertEquals(1, trades.size());
 
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(1, OperationType.SELL));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(3, OperationType.BUY));
+        assertEquals(new Operation(1, OperationType.SELL), trades.get(0).getEntry());
+        assertEquals(new Operation(3, OperationType.BUY), trades.get(0).getExit());
     }
 
     @Test
@@ -321,17 +320,17 @@ public class TimeSeriesTest {
         List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
 
         List<Trade> trades = subseries.get(0).run(strategy);
-        assertThat(trades).hasSize(1);
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(2, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
+        assertEquals(1, trades.size());
+        assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(1).run(strategy);;
-        assertThat(trades).isEmpty();
+        trades = subseries.get(1).run(strategy);
+        assertTrue(trades.isEmpty());
 
-        trades = subseries.get(2).run(strategy);;
-        assertThat(trades).hasSize(1);
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(6, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(7, OperationType.SELL));
+        trades = subseries.get(2).run(strategy);
+        assertEquals(1, trades.size());
+        assertEquals(new Operation(6, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(7, OperationType.SELL), trades.get(0).getExit());
 
     }
 
@@ -350,31 +349,30 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(Period.years(1));
 
-        List<Trade> trades = subseries.get(0).run(mockStrategy);;
-        assertThat(trades).hasSize(1);
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(0, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(2, OperationType.SELL));
+        List<Trade> trades = subseries.get(0).run(mockStrategy);
+        assertEquals(1, trades.size());
+        assertEquals(new Operation(0, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(2, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(1).run(mockStrategy);;
-        assertThat(trades).hasSize(1);
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(3, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(4, OperationType.SELL));
+        trades = subseries.get(1).run(mockStrategy);
+        assertEquals(1, trades.size());
+        assertEquals(new Operation(3, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(2).run(mockStrategy);;
-        assertThat(trades).hasSize(1);
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(5, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(6, OperationType.SELL));
+        trades = subseries.get(2).run(mockStrategy);
+        assertEquals(1, trades.size());
+        assertEquals(new Operation(5, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(6, OperationType.SELL), trades.get(0).getExit());
 
         trades = subseries.get(3).run(mockStrategy);
-        assertThat(trades).hasSize(1);
-        assertThat(trades.get(0).getEntry()).isEqualTo(new Operation(7, OperationType.BUY));
-        assertThat(trades.get(0).getExit()).isEqualTo(new Operation(9, OperationType.SELL));
+        assertEquals(1, trades.size());
+        assertEquals(new Operation(7, OperationType.BUY), trades.get(0).getEntry());
+        assertEquals(new Operation(9, OperationType.SELL), trades.get(0).getExit());
 
         trades = subseries.get(4).run(mockStrategy);
-        assertThat(trades).isEmpty();
+        assertTrue(trades.isEmpty());
 
         trades = subseries.get(5).run(mockStrategy);
-        assertThat(trades).isEmpty();
-
+        assertTrue(trades.isEmpty());
     }
 }

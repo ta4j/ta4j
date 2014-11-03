@@ -45,11 +45,11 @@ public class AccumulationDistributionIndicatorTest {
         
         TimeSeries series = new MockTimeSeries(ticks);
         AccumulationDistributionIndicator ac = new AccumulationDistributionIndicator(series);
-//        Assert.assertThat(ac.getValue(0)).isEqualTo(0d);
-//        assertThat(ac.getValue(1)).isEqualTo(-100d / 3);
-//        assertThat(ac.getValue(2)).isEqualTo(-100d -(100d / 3) );
-//        assertThat(ac.getValue(3)).isEqualTo((-250d/35) + (-100d -(100d / 3)));
-//        assertThat(ac.getValue(4)).isEqualTo(600d + ((-250d/35) + (-100d -(100d / 3))));
+//        Assert.assertEquals(0d, ac.getValue(0))
+//        assertEquals(-100d / 3, ac.getValue(1))
+//        assertEquals(-100d -(100d / 3) , ac.getValue(2))
+//        assertEquals((-250d/35) + (-100d -(100d / 3)), ac.getValue(3))
+//        assertEquals(600d + ((-250d/35) + (-100d -(100d / 3))), ac.getValue(4))
         
     }
 }

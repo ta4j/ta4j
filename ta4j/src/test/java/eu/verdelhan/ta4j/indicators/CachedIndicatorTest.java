@@ -23,13 +23,13 @@
 package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.TADecimal;
-import static eu.verdelhan.ta4j.TADecimalTestsUtils.assertDecimalEquals;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.Arrays;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,7 +47,7 @@ public class CachedIndicatorTest {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
         TADecimal firstTime = sma.getValue(4);
         TADecimal secondTime = sma.getValue(4);
-        assertThat(secondTime).isEqualTo(firstTime);
+        assertEquals(firstTime, secondTime);
     }
 
     @Test

@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
@@ -33,7 +34,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class MaximumDrawdownCriterionTest {
@@ -44,7 +45,7 @@ public class MaximumDrawdownCriterionTest {
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
 
-        assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
+        assertEquals(0d, mdd.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -55,7 +56,7 @@ public class MaximumDrawdownCriterionTest {
         trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
-        assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
+        assertEquals(0d, mdd.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -67,7 +68,7 @@ public class MaximumDrawdownCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
         trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
 
-        assertThat(mdd.calculate(series, trades)).isEqualTo(.875d);
+        assertEquals(.875d, mdd.calculate(series, trades), TATestsUtils.TA_OFFSET);
 
     }
 
@@ -77,7 +78,7 @@ public class MaximumDrawdownCriterionTest {
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
         List<Trade> trades = new ArrayList<Trade>();
 
-        assertThat(mdd.calculate(series, trades)).isEqualTo(0d);
+        assertEquals(0d, mdd.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -89,7 +90,7 @@ public class MaximumDrawdownCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
         trades.add(new Trade(new Operation(5, OperationType.SELL), new Operation(6, OperationType.BUY)));
 
-        assertThat(mdd.calculate(series, trades)).isEqualTo(.91);
+        assertEquals(.91, mdd.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -105,7 +106,7 @@ public class MaximumDrawdownCriterionTest {
         // trades.add(new Trade(new Operation(4, OperationType.BUY), new
         // Operation(5, OperationType.SELL)));
 
-        assertThat(mdd.calculate(series, trades)).isEqualTo(.9d);
+        assertEquals(.9d, mdd.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -130,7 +131,7 @@ public class MaximumDrawdownCriterionTest {
 
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 
-        assertThat(mdd.summarize(series, decisions)).isEqualTo(.875d);
+        assertEquals(.875d, mdd.summarize(series, decisions), TATestsUtils.TA_OFFSET);
 
     }
 
@@ -144,14 +145,14 @@ public class MaximumDrawdownCriterionTest {
         trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(6, OperationType.SELL)));
         trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(7, OperationType.SELL)));
         trades.add(new Trade(new Operation(7, OperationType.BUY), new Operation(8, OperationType.SELL)));
-        assertThat(mdd.calculate(subSeries, trades)).isEqualTo(.9d);
+        assertEquals(.9d, mdd.calculate(subSeries, trades), TATestsUtils.TA_OFFSET);
         
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new MaximumDrawdownCriterion();
-        assertThat(criterion.betterThan(0.9, 1.5)).isTrue();
-        assertThat(criterion.betterThan(1.2, 0.4)).isFalse();
+        assertTrue(criterion.betterThan(0.9, 1.5));
+        assertFalse(criterion.betterThan(1.2, 0.4));
     }
 }

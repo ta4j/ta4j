@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
@@ -32,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class NumberOfTicksCriterionTest {
@@ -43,7 +44,7 @@ public class NumberOfTicksCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertThat(numberOfTicks.calculate(series, trades)).isZero();
+        assertEquals(0, (int) numberOfTicks.calculate(series, trades));
     }
 
     @Test
@@ -54,7 +55,7 @@ public class NumberOfTicksCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertThat(numberOfTicks.calculate(series, trades)).isEqualTo(6);
+        assertEquals(6, numberOfTicks.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -62,7 +63,7 @@ public class NumberOfTicksCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade t = new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL));
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertThat(numberOfTicks.calculate(series, t)).isEqualTo(4);
+        assertEquals(4, numberOfTicks.calculate(series, t), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -80,13 +81,13 @@ public class NumberOfTicksCriterionTest {
         decisions.add(dummy2);
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertThat(numberOfTicks.summarize(series, decisions)).isEqualTo(6);
+        assertEquals(6, numberOfTicks.summarize(series, decisions), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new NumberOfTicksCriterion();
-        assertThat(criterion.betterThan(3, 6)).isTrue();
-        assertThat(criterion.betterThan(6, 2)).isFalse();
+        assertTrue(criterion.betterThan(3, 6));
+        assertFalse(criterion.betterThan(6, 2));
     }
 }

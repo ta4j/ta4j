@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,14 +47,14 @@ public class PipeEnterStrategyTest {
 
         PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 
-        assertThat(pipeEnter.shouldOperate(trade, 1)).isFalse();
-        assertThat(pipeEnter.shouldOperate(trade, 8)).isFalse();
-        assertThat(pipeEnter.shouldOperate(trade, 10)).isFalse();
+        assertFalse(pipeEnter.shouldOperate(trade, 1));
+        assertFalse(pipeEnter.shouldOperate(trade, 8));
+        assertFalse(pipeEnter.shouldOperate(trade, 10));
         trade.operate(8);
-        assertThat(pipeEnter.shouldOperate(trade, 9)).isTrue();
+        assertTrue(pipeEnter.shouldOperate(trade, 9));
         trade = new Trade();
-        assertThat(pipeEnter.shouldOperate(trade, 11)).isFalse();
-        assertThat(pipeEnter.shouldOperate(trade, 12)).isTrue();
+        assertFalse(pipeEnter.shouldOperate(trade, 11));
+        assertTrue(pipeEnter.shouldOperate(trade, 12));
     }
 
     @Test
@@ -65,13 +65,13 @@ public class PipeEnterStrategyTest {
 
         PipeEnterStrategy pipeEnter = new PipeEnterStrategy(upper, lower, value);
 
-        assertThat(pipeEnter.shouldOperate(trade, 0)).isFalse();
-        assertThat(pipeEnter.shouldOperate(trade, 1)).isTrue();
+        assertFalse(pipeEnter.shouldOperate(trade, 0));
+        assertTrue(pipeEnter.shouldOperate(trade, 1));
         trade.operate(1);
-        assertThat(pipeEnter.shouldOperate(trade, 8)).isFalse();
-        assertThat(pipeEnter.shouldOperate(trade, 10)).isFalse();
+        assertFalse(pipeEnter.shouldOperate(trade, 8));
+        assertFalse(pipeEnter.shouldOperate(trade, 10));
 
-        assertThat(pipeEnter.shouldOperate(trade, 8)).isFalse();
-        assertThat(pipeEnter.shouldOperate(trade, 9)).isTrue();
+        assertFalse(pipeEnter.shouldOperate(trade, 8));
+        assertTrue(pipeEnter.shouldOperate(trade, 9));
     }
 }

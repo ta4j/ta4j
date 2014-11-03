@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,13 +55,13 @@ public class TradeTest {
     @Test
     public void whenNewShouldCreateBuyOperationWhenEntering() {
         trade.operate(0);
-        assertThat(trade.getEntry()).isEqualTo(new Operation(0, OperationType.BUY));
+        assertEquals(new Operation(0, OperationType.BUY), trade.getEntry());
     }
 
     @Test
     public void whenNewShouldNotExit() {
         Trade trade = new Trade();
-        assertThat(trade.isOpened()).isFalse();
+        assertFalse(trade.isOpened());
     }
 
     @Test
@@ -70,7 +70,7 @@ public class TradeTest {
         trade.operate(0);
         trade.operate(1);
 
-        assertThat(trade.getExit()).isEqualTo(new Operation(1, OperationType.SELL));
+        assertEquals(new Operation(1, OperationType.SELL), trade.getExit());
     }
 
     @Test
@@ -78,9 +78,9 @@ public class TradeTest {
         Trade trade = new Trade();
         trade.operate(0);
         trade.operate(1);
-        assertThat(trade.isClosed()).isTrue();
+        assertTrue(trade.isClosed());
         trade.operate(2);
-        assertThat(trade.isClosed()).isTrue();
+        assertTrue(trade.isClosed());
     }
 
     @Test(expected = IllegalStateException.class)
@@ -95,7 +95,7 @@ public class TradeTest {
         Trade trade = new Trade();
         trade.operate(3);
         trade.operate(3);
-        assertThat(trade.isClosed()).isTrue();
+        assertTrue(trade.isClosed());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -107,7 +107,7 @@ public class TradeTest {
     public void whenNewShouldCreateSellOperationWhenEnteringUncovered() {
         uncoveredTrade.operate(0);
 
-        assertThat(uncoveredTrade.getEntry()).isEqualTo(new Operation(0, OperationType.SELL));
+        assertEquals(new Operation(0, OperationType.SELL), uncoveredTrade.getEntry());
     }
 
     @Test
@@ -115,14 +115,14 @@ public class TradeTest {
         uncoveredTrade.operate(0);
         uncoveredTrade.operate(1);
 
-        assertThat(uncoveredTrade.getExit()).isEqualTo(new Operation(1, OperationType.BUY));
+        assertEquals(new Operation(1, OperationType.BUY), uncoveredTrade.getExit());
     }
 
     @Test
     public void overrideToString() {
-        assertThat(trEquals2.toString()).isEqualTo(trEquals1.toString());
+        assertEquals(trEquals1.toString(), trEquals2.toString());
 
-        assertThat(trNotEquals1.toString()).isNotEqualTo(trEquals1.toString());
-        assertThat(trNotEquals2.toString()).isNotEqualTo(trEquals1.toString());
+        assertNotEquals(trEquals1.toString(), trNotEquals1.toString());
+        assertNotEquals(trEquals1.toString(), trNotEquals2.toString());
     }
 }

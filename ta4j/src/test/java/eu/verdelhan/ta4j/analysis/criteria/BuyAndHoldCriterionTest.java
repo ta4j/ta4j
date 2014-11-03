@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockDecision;
@@ -32,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class BuyAndHoldCriterionTest {
@@ -45,7 +46,7 @@ public class BuyAndHoldCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(1.05);
+        assertEquals(1.05, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -64,7 +65,7 @@ public class BuyAndHoldCriterionTest {
         decisions.add(dummy2);
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertThat(buyAndHold.summarize(series, decisions)).isEqualTo(1.05);
+        assertEquals(1.05, buyAndHold.summarize(series, decisions), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -75,7 +76,7 @@ public class BuyAndHoldCriterionTest {
         trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(0.7);
+        assertEquals(0.7, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -84,7 +85,7 @@ public class BuyAndHoldCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertThat(buyAndHold.calculate(series, trades)).isEqualTo(0.7);
+        assertEquals(0.7, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
     
     @Test
@@ -92,13 +93,13 @@ public class BuyAndHoldCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105);
         Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertThat(buyAndHold.calculate(series, trade)).isEqualTo(105d/100);    
+        assertEquals(105d/100, buyAndHold.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new BuyAndHoldCriterion();
-        assertThat(criterion.betterThan(1.3, 1.1)).isTrue();
-        assertThat(criterion.betterThan(0.6, 0.9)).isFalse();
+        assertTrue(criterion.betterThan(1.3, 1.1));
+        assertFalse(criterion.betterThan(0.6, 0.9));
     }
 }

@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,7 +62,7 @@ public class OppositeStrategyTest {
         OppositeStrategy opposite = new OppositeStrategy(strategy);
 
         for (int i = 0; i < enterOps.length; i++) {
-            assertThat(opposite.shouldEnter(i)).isNotEqualTo(strategy.shouldEnter(i));
+            assertNotEquals(opposite.shouldEnter(i), strategy.shouldEnter(i));
         }
     }
 
@@ -71,7 +71,7 @@ public class OppositeStrategyTest {
         OppositeStrategy opposite = new OppositeStrategy(strategy);
 
         for (int i = 0; i < exitOps.length; i++) {
-            assertThat(opposite.shouldExit(i)).isNotEqualTo(strategy.shouldExit(i));
+            assertNotEquals(opposite.shouldExit(i), strategy.shouldExit(i));
         }
     }
 }

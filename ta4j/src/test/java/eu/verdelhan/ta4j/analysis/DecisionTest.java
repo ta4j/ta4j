@@ -26,18 +26,18 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimalTestsUtils;
+import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
 import org.joda.time.DateTime;
 import org.joda.time.Period;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -66,7 +66,7 @@ public class DecisionTest {
         Strategy fakeStrategy = new MockStrategy(buy, sell);
  
         Decision decision = new Decision(fakeStrategy, series, criterion);
-        assertThat(decision.evaluateCriterion()).isEqualTo(45d / 21, TADecimalTestsUtils.TA_OFFSET);
+        assertEquals(45d / 21, TATestsUtils.TA_OFFSET, decision.evaluateCriterion());
     }
 
     @Test
@@ -80,7 +80,7 @@ public class DecisionTest {
 
         Strategy fakeStrategy = new MockStrategy(buy, sell);
         Decision decision = new Decision(fakeStrategy, series, criterion);
-        assertThat(decision.evaluateCriterion()).isEqualTo(1d);
+        assertEquals(1d, decision.evaluateCriterion(), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -93,7 +93,7 @@ public class DecisionTest {
 
         Strategy fakeStrategy = new MockStrategy(buy, sell);
         Decision decision = new Decision(fakeStrategy, series, null);
-        assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(Math.pow(3d, 1d / 4));
+        assertEquals(Math.pow(3d, 1d / 4), decision.evaluateCriterion(new AverageProfitCriterion()), TATestsUtils.TA_OFFSET);
     }
     
     @Test
@@ -107,7 +107,7 @@ public class DecisionTest {
 
         Strategy fakeStrategy = new MockStrategy(buy, sell);
         Decision decision = new Decision(fakeStrategy, series, null);
-        assertThat(decision.evaluateCriterion(new AverageProfitCriterion())).isEqualTo(1d);
+        assertEquals(1d, decision.evaluateCriterion(new AverageProfitCriterion()), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -137,7 +137,7 @@ public class DecisionTest {
 
         Decision appliedDecision = decision.applyFor(subseries.get(1));
 
-        assertThat(appliedDecision).isEqualTo(nextDecision);
-        assertThat(appliedDecision.evaluateCriterion()).isEqualTo(1d);
+        assertEquals(nextDecision, appliedDecision);
+        assertEquals(1d, appliedDecision.evaluateCriterion(), TATestsUtils.TA_OFFSET);
     }
 }

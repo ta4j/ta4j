@@ -29,7 +29,7 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,7 +64,7 @@ public class MedianPriceIndicatorTest {
         for (int i = 0; i < 10; i++) {
             result = timeSeries.getTick(i).getMaxPrice().plus(timeSeries.getTick(i).getMinPrice())
                     .dividedBy(TADecimal.TWO);
-            assertThat(result).isEqualTo(average.getValue(i));
+            assertEquals(average.getValue(i), result);
         }
     }
 }
