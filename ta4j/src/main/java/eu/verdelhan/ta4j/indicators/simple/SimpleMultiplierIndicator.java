@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Simple multiplier indicator.
  * <p>
  */
-public class SimpleMultiplierIndicator implements Indicator<TADecimal> {
+public class SimpleMultiplierIndicator extends CachedIndicator<TADecimal> {
 
     private Indicator<? extends TADecimal> indicator;
     private TADecimal value;
@@ -41,7 +42,7 @@ public class SimpleMultiplierIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         return indicator.getValue(index).multipliedBy(value);
     }
 

@@ -24,13 +24,14 @@ package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
 
 /**
  * Percentage price oscillator (PPO) indicator.
  * <p>
  */
-public class PPOIndicator implements Indicator<TADecimal> {
+public class PPOIndicator extends CachedIndicator<TADecimal> {
 
     private final EMAIndicator shortTermEma;
 
@@ -45,7 +46,7 @@ public class PPOIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         TADecimal shortEmaValue = shortTermEma.getValue(index);
         TADecimal longEmaValue = longTermEma.getValue(index);
         return shortEmaValue.minus(longEmaValue)

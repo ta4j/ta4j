@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Moving average convergence divergence (MACDIndicator) indicator.
  * <p>
  */
-public class MACDIndicator implements Indicator<TADecimal> {
+public class MACDIndicator extends CachedIndicator<TADecimal> {
 
     private final EMAIndicator shortTermEma;
 
@@ -44,7 +45,7 @@ public class MACDIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
 

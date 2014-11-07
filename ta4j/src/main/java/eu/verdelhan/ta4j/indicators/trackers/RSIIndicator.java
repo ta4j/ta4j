@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageGainIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
 
@@ -31,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
  * Relative strength index indicator.
  * <p>
  */
-public class RSIIndicator implements Indicator<TADecimal> {
+public class RSIIndicator extends CachedIndicator<TADecimal> {
 
     private AverageGainIndicator averageGainIndicator;
 
@@ -46,7 +47,7 @@ public class RSIIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         return TADecimal.HUNDRED
                 .minus(TADecimal.HUNDRED.dividedBy(TADecimal.ONE.plus(relativeStrength(index))));
     }

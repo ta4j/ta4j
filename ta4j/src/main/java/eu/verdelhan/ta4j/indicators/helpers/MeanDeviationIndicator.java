@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
@@ -31,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation
  */
-public class MeanDeviationIndicator implements Indicator<TADecimal> {
+public class MeanDeviationIndicator extends CachedIndicator<TADecimal> {
 
     private Indicator<? extends TADecimal> indicator;
 
@@ -51,7 +52,7 @@ public class MeanDeviationIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         TADecimal absoluteDeviations = TADecimal.ZERO;
 
         final TADecimal average = sma.getValue(index);

@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Average gain indicator.
  * <p>
  */
-public class AverageGainIndicator implements Indicator<TADecimal> {
+public class AverageGainIndicator extends CachedIndicator<TADecimal> {
 
     private final Indicator<? extends TADecimal> indicator;
 
@@ -41,7 +42,7 @@ public class AverageGainIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         TADecimal result = TADecimal.ZERO;
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
             if (indicator.getValue(i - 1).isLessThan(indicator.getValue(i))) {

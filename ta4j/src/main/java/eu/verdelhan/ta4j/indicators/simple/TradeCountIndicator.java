@@ -22,14 +22,14 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Trade count indicator.
  * <p>
  */
-public class TradeCountIndicator implements Indicator<Integer> {
+public class TradeCountIndicator extends CachedIndicator<Integer> {
 
     private TimeSeries data;
 
@@ -38,7 +38,7 @@ public class TradeCountIndicator implements Indicator<Integer> {
     }
 
     @Override
-    public Integer getValue(int index) {
+    protected Integer calculate(int index) {
         return data.getTick(index).getTrades();
     }
 

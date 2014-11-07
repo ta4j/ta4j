@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.indicators.oscillators;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -40,7 +41,7 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * MinPriceIndicator and returns StochasticOsiclatorK over this indicator.
  * 
  */
-public class StochasticOscillatorKIndicator implements Indicator<TADecimal> {
+public class StochasticOscillatorKIndicator extends CachedIndicator<TADecimal> {
     private final Indicator<? extends TADecimal> indicator;
 
     private final int timeFrame;
@@ -63,7 +64,7 @@ public class StochasticOscillatorKIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
         LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 

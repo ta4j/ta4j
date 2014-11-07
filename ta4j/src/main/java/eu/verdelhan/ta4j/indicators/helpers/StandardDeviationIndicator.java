@@ -24,13 +24,14 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
  * Standard deviation indicator.
  * <p>
  */
-public class StandardDeviationIndicator implements Indicator<TADecimal> {
+public class StandardDeviationIndicator extends CachedIndicator<TADecimal> {
 
     private Indicator<? extends TADecimal> indicator;
 
@@ -50,7 +51,7 @@ public class StandardDeviationIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         TADecimal standardDeviation = TADecimal.ZERO;
         TADecimal average = sma.getValue(index);
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {

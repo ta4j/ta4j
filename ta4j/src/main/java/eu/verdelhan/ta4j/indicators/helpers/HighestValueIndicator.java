@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Highest value indicator.
  * <p>
  */
-public class HighestValueIndicator implements Indicator<TADecimal> {
+public class HighestValueIndicator extends CachedIndicator<TADecimal> {
 
     private final Indicator<? extends TADecimal> indicator;
 
@@ -41,7 +42,7 @@ public class HighestValueIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         int start = Math.max(0, index - timeFrame + 1);
         TADecimal highest = indicator.getValue(start);
         for (int i = start + 1; i <= index; i++) {

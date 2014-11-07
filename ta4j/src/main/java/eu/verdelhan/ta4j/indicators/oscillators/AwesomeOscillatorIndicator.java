@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
@@ -31,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://www.forexgurus.co.uk/indicators/awesome-oscillator
  */
-public class AwesomeOscillatorIndicator implements Indicator<TADecimal> {
+public class AwesomeOscillatorIndicator extends CachedIndicator<TADecimal> {
 
     private SMAIndicator sma5;
 
@@ -48,7 +49,7 @@ public class AwesomeOscillatorIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         return sma5.getValue(index).minus(sma34.getValue(index));
     }
 

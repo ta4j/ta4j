@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 
@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.TimeSeries;
  * Price variation indicator.
  * <p>
  */
-public class PriceVariationIndicator implements Indicator<TADecimal> {
+public class PriceVariationIndicator extends CachedIndicator<TADecimal> {
 
     private TimeSeries data;
 
@@ -39,7 +39,7 @@ public class PriceVariationIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         TADecimal previousTickClosePrice = data.getTick(Math.max(0, index - 1)).getClosePrice();
         TADecimal currentTickClosePrice = data.getTick(index).getClosePrice();
         return currentTickClosePrice.dividedBy(previousTickClosePrice);

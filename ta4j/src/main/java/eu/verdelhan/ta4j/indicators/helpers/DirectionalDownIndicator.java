@@ -25,12 +25,13 @@ package eu.verdelhan.ta4j.indicators.helpers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Directional down indicator.
  * <p>
  */
-public class DirectionalDownIndicator implements Indicator<TADecimal>{
+public class DirectionalDownIndicator extends CachedIndicator<TADecimal>{
 
     private final Indicator<TADecimal> admdown;
     private final Indicator<TADecimal> atr;
@@ -43,7 +44,7 @@ public class DirectionalDownIndicator implements Indicator<TADecimal>{
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         return admdown.getValue(index).dividedBy(atr.getValue(index));
     }
 

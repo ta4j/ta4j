@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.MeanDeviationIndicator;
@@ -34,7 +34,7 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in
  */
-public class CCIIndicator implements Indicator<TADecimal> {
+public class CCIIndicator extends CachedIndicator<TADecimal> {
 
     public static final TADecimal FACTOR = TADecimal.valueOf("0.015");
 
@@ -59,7 +59,7 @@ public class CCIIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         final TADecimal typicalPrice = typicalPriceInd.getValue(index);
         final TADecimal typicalPriceAvg = smaInd.getValue(index);
         final TADecimal meanDeviation = meanDeviationInd.getValue(index);

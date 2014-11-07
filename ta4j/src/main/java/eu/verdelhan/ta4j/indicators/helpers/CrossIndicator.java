@@ -24,13 +24,14 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Cross indicator.
  * <p>
  * Boolean indicator which monitors two-indicators crossings.
  */
-public class CrossIndicator implements Indicator<Boolean> {
+public class CrossIndicator extends CachedIndicator<Boolean> {
 
     /** Upper indicator */
     private final Indicator<? extends TADecimal> up;
@@ -48,7 +49,7 @@ public class CrossIndicator implements Indicator<Boolean> {
     }
 
     @Override
-    public Boolean getValue(int index) {
+    protected Boolean calculate(int index) {
 
         int i = index;
         if (i == 0 || up.getValue(i).isGreaterThanOrEqual(low.getValue(i))) {

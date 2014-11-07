@@ -24,12 +24,13 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * WMA indicator.
  * <p>
  */
-public class WMAIndicator implements Indicator<TADecimal> {
+public class WMAIndicator extends CachedIndicator<TADecimal> {
 
     private int timeFrame;
 
@@ -41,7 +42,7 @@ public class WMAIndicator implements Indicator<TADecimal> {
     }
 
     @Override
-    public TADecimal getValue(int index) {
+    protected TADecimal calculate(int index) {
         if (index == 0) {
             return indicator.getValue(0);
         }
