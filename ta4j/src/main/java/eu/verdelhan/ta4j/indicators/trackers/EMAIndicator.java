@@ -36,15 +36,13 @@ public class EMAIndicator extends CachedIndicator<TADecimal> {
 
     private final int timeFrame;
 
+    private final TADecimal multiplier;
+
     public EMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
         this.indicator = indicator;
         this.timeFrame = timeFrame;
+        multiplier = TADecimal.TWO.dividedBy(TADecimal.valueOf(timeFrame + 1));
     }
-
-    private TADecimal multiplier() {
-        return TADecimal.TWO.dividedBy(TADecimal.valueOf(timeFrame + 1));
-    }
-
 
     @Override
     protected TADecimal calculate(int index) {
@@ -55,7 +53,7 @@ public class EMAIndicator extends CachedIndicator<TADecimal> {
             return indicator.getValue(0);
         }
         TADecimal emaPrev = getValue(index - 1);
-        return indicator.getValue(index).minus(emaPrev).multipliedBy(multiplier()).plus(emaPrev);
+        return indicator.getValue(index).minus(emaPrev).multipliedBy(multiplier).plus(emaPrev);
     }
 
     @Override

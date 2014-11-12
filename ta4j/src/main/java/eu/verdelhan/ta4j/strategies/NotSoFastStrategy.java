@@ -60,7 +60,7 @@ public class NotSoFastStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        return (strategy.shouldExit(index) && ((index - enterTickIndex) > numberOfTicks));
+        return ((index - enterTickIndex) > numberOfTicks) && strategy.shouldExit(index);
     }
 
     @Override
