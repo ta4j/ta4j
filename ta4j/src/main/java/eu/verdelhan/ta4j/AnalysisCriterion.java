@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.analysis.Decision;
 import java.util.List;
 
 /**
@@ -31,8 +30,7 @@ import java.util.List;
  * Can be used to:
  * <ul>
  * <li>Analyze the performance of a {@link Strategy strategy}
- * <li>Compare 2 {@link Strategy strategies}
- * <li>Build a {@link Decision decision}.
+ * <li>Compare several {@link Strategy strategies}
  * </ul>
  */
 public interface AnalysisCriterion {
@@ -56,7 +54,7 @@ public interface AnalysisCriterion {
      * @param strategies a list of strategies
      * @return the best strategy (among the provided ones) according to the criterion
      */
-    Decision chooseBest(TimeSeries series, List<Strategy> strategies);
+    Strategy chooseBest(TimeSeries series, List<Strategy> strategies);
 
     /**
      * @param criterionValue1 the first value

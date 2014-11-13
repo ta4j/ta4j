@@ -25,7 +25,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.analysis.Decision;
 import java.util.List;
 
 /**
@@ -34,7 +33,7 @@ import java.util.List;
 public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
 
     @Override
-    public Decision chooseBest(TimeSeries series, List<Strategy> strategies) {
+    public Strategy chooseBest(TimeSeries series, List<Strategy> strategies) {
         Strategy bestStrategy = strategies.get(0);
         double bestCriterionValue = calculate(series, series.run(bestStrategy));
 
@@ -47,7 +46,7 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
                 bestCriterionValue = currentCriterionValue;
             }
         }
-        return new Decision(bestStrategy, series, this);
+        return bestStrategy;
     }
 
     @Override

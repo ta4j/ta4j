@@ -25,7 +25,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.analysis.Decision;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
@@ -56,15 +55,15 @@ public class AbstractAnalysisCriterionTest {
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
         MockTimeSeries series = new MockTimeSeries(6.0, 9.0, 6.0, 6.0);
-        Decision decision = new TotalProfitCriterion().chooseBest(series, strategies);
-        assertEquals(alwaysStrategy, decision.getStrategy());
+        Strategy bestStrategy = new TotalProfitCriterion().chooseBest(series, strategies);
+        assertEquals(alwaysStrategy, bestStrategy);
     }
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
         MockTimeSeries series = new MockTimeSeries(6.0, 3.0, 6.0, 6.0);
-        Decision decision = new TotalProfitCriterion().chooseBest(series, strategies);
-        assertEquals(buyAndHoldStrategy, decision.getStrategy());
+        Strategy bestStrategy = new TotalProfitCriterion().chooseBest(series, strategies);
+        assertEquals(buyAndHoldStrategy, bestStrategy);
     }
 
     @Test
