@@ -27,11 +27,8 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.Decision;
-import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -60,33 +57,6 @@ public class RewardRiskRatioCriterionTest {
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
         assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, trades), TATestsUtils.TA_OFFSET);
-    }
-
-    @Test
-    public void summarize() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
-        List<Decision> decisions = new LinkedList<Decision>();
-
-        List<Trade> tradesToDummy1 = new LinkedList<Trade>();
-        tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        Decision dummy1 = new MockDecision(tradesToDummy1, series);
-        decisions.add(dummy1);
-
-        List<Trade> tradesToDummy2 = new LinkedList<Trade>();
-        tradesToDummy2.add(new Trade(new Operation(2, OperationType.BUY), new Operation(4, OperationType.SELL)));
-        Decision dummy2 = new MockDecision(tradesToDummy2, series);
-        decisions.add(dummy2);
-
-        List<Trade> tradesToDummy3 = new LinkedList<Trade>();
-        tradesToDummy3.add(new Trade(new Operation(5, OperationType.BUY), new Operation(7, OperationType.SELL)));
-        Decision dummy3 = new MockDecision(tradesToDummy3, series);
-        decisions.add(dummy3);
-
-        double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
-        double peak = (105d / 100) * (100d / 95);
-        double low = (105d / 100) * (90d / 95) * (80d / 95);
-        
-        assertEquals(totalProfit / ((peak - low) / peak), TATestsUtils.TA_OFFSET, rrc.summarize(series, decisions));
     }
 
     @Test

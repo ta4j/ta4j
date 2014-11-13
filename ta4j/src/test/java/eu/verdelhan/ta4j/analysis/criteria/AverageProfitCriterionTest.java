@@ -27,11 +27,8 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.Decision;
-import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -55,23 +52,6 @@ public class AverageProfitCriterionTest {
         trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
         assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.calculate(series, trades));
-    }
-
-    @Test
-    public void summarize() {
-        series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
-        List<Decision> decisions = new LinkedList<Decision>();
-
-        List<Trade> tradesToDummy1 = new LinkedList<Trade>();
-        tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        decisions.add(new MockDecision(tradesToDummy1, series));
-
-        List<Trade> tradesToDummy2 = new LinkedList<Trade>();
-        tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
-        decisions.add(new MockDecision(tradesToDummy2, series));
-
-        AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.summarize(series, decisions));
     }
 
     @Test

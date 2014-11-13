@@ -25,24 +25,13 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.Decision;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
  * An abstract analysis criterion.
  */
 public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
-
-    @Override
-    public double summarize(TimeSeries series, List<Decision> decisions) {
-        List<Trade> trades = new LinkedList<Trade>();
-        for (Decision decision : decisions) {
-            trades.addAll(decision.getTrades());
-        }
-        return calculate(series, trades);
-    }
 
     @Override
     public Decision chooseBest(TimeSeries series, List<Strategy> strategies) {

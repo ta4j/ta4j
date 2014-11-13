@@ -52,13 +52,6 @@ public interface AnalysisCriterion {
     double calculate(TimeSeries series, List<Trade> trades);
 
     /**
-     * @param series a time series
-     * @param trades a list of trades
-     * @return the criterion value for the trades coming from the decisions
-     */
-    double summarize(TimeSeries series, List<Decision> decisions);
-
-    /**
      * @param series the time series
      * @param strategies a list of strategies
      * @return the best strategy (among the provided ones) according to the criterion

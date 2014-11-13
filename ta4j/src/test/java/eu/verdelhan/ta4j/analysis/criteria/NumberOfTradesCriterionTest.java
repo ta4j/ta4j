@@ -27,11 +27,8 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.Decision;
-import eu.verdelhan.ta4j.mocks.MockDecision;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Test;
@@ -56,26 +53,6 @@ public class NumberOfTradesCriterionTest {
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
         assertEquals(2d, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);
-    }
-
-    @Test
-    public void summarize() {
-        //TODO Dummy Decision must turn MockDecision
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-        List<Decision> decisions = new LinkedList<Decision>();
-
-        List<Trade> tradesToDummy1 = new LinkedList<Trade>();
-        tradesToDummy1.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        Decision dummy1 = new MockDecision(tradesToDummy1, series);
-        decisions.add(dummy1);
-
-        List<Trade> tradesToDummy2 = new LinkedList<Trade>();
-        tradesToDummy2.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
-        Decision dummy2 = new MockDecision(tradesToDummy2, series);
-        decisions.add(dummy2);
-
-        AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(2d, buyAndHold.summarize(series, decisions), TATestsUtils.TA_OFFSET);
     }
 
     @Test

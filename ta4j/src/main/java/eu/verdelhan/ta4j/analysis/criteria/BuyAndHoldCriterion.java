@@ -25,8 +25,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.analysis.Decision;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -39,11 +37,6 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
         return series.getTick(series.getEnd()).getClosePrice().dividedBy(series.getTick(series.getBegin()).getClosePrice()).toDouble();
-    }
-
-    @Override
-    public double summarize(TimeSeries series, List<Decision> decisions) {
-        return calculate(series, new ArrayList<Trade>());
     }
 
     @Override
