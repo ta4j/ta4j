@@ -56,20 +56,20 @@ public class StopGainStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        if (strategy.shouldEnter(index)) {
+        boolean enter = strategy.shouldEnter(index);
+        if (enter) {
             value = indicator.getValue(index);
-            return true;
         }
-        return false;
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        if ((value.plus(value.multipliedBy(gain.dividedBy(TADecimal.HUNDRED))))
-                .isLessThan(indicator.getValue(index))) {
-            return true;
-        }
-        return strategy.shouldExit(index);
+        boolean exit = ((value.plus(value.multipliedBy(gain.dividedBy(TADecimal.HUNDRED)))).isLessThan(indicator.getValue(index)))
+                || strategy.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

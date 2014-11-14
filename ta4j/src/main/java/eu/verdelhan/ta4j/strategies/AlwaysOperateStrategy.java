@@ -32,11 +32,13 @@ public class AlwaysOperateStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
+        traceEnter(index, true);
         return true;
     }
 
     @Override
     public boolean shouldExit(int index) {
+        traceExit(index, true);
         return true;
     }
 

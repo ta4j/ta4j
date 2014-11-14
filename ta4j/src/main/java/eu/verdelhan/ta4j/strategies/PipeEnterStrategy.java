@@ -51,12 +51,16 @@ public class PipeEnterStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return (crossDown.getValue(index));
+        boolean enter = crossDown.getValue(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return (crossUp.getValue(index));
+        boolean exit = crossUp.getValue(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

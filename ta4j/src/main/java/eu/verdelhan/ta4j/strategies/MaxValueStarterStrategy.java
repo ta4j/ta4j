@@ -56,12 +56,16 @@ public class MaxValueStarterStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(final int index) {
-        return (indicator.getValue(index).doubleValue() < start);
+        boolean enter = indicator.getValue(index).doubleValue() < start;
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(final int index) {
-        return strategy.shouldExit(index);
+        boolean exit =  strategy.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

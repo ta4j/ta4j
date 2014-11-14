@@ -49,12 +49,16 @@ public class CombinedBuyAndSellStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return buyStrategy.shouldEnter(index);
+        boolean enter = buyStrategy.shouldEnter(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return sellStrategy.shouldExit(index);
+        boolean exit = sellStrategy.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

@@ -48,12 +48,16 @@ public class OrStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return strategy.shouldEnter(index) || strategy2.shouldEnter(index);
+        boolean enter = strategy.shouldEnter(index) || strategy2.shouldEnter(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return strategy.shouldExit(index) || strategy2.shouldExit(index);
+        boolean exit = strategy.shouldExit(index) || strategy2.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

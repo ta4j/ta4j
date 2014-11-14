@@ -24,12 +24,17 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An abstract trading {@link Strategy strategy}.
  * <p>
  */
 public abstract class AbstractStrategy implements Strategy {
+
+    /** The logger */
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     @Override
     public boolean shouldOperate(Trade trade, int index) {
@@ -54,5 +59,23 @@ public abstract class AbstractStrategy implements Strategy {
     @Override
     public Strategy opposite() {
         return new OppositeStrategy(this);
+    }
+
+    /**
+     * Traces the shouldEnter() method calls.
+     * @param index the index
+     * @param enter true if the strategy should enter, false otherwise
+     */
+    protected void traceEnter(int index, boolean enter) {
+        log.trace("{} > shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
+    }
+
+    /**
+     * Traces the shouldExit() method calls.
+     * @param index the index
+     * @param exit true if the strategy should exit, false otherwise
+     */
+    protected void traceExit(int index, boolean exit) {
+        log.trace("{} > shouldExit({}): {}", getClass().getSimpleName(), index, exit);
     }
 }

@@ -36,13 +36,16 @@ public class JustBuyOnceStrategy extends AbstractStrategy {
     public boolean shouldEnter(int index) {
         if (!operated) {
             operated = true;
+            traceEnter(index, true);
             return true;
         }
+        traceEnter(index, false);
         return false;
     }
 
     @Override
     public boolean shouldExit(int index) {
+        traceExit(index, false);
         return false;
     }
 

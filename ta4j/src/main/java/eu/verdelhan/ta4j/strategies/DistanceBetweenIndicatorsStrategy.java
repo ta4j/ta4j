@@ -77,19 +77,17 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
     @Override
     public boolean shouldEnter(int index) {
         TADecimal threshold = TADecimal.valueOf((difference + 1.0) * distance);
-        if (upper.getValue(index).minus(lower.getValue(index)).isGreaterThanOrEqual(threshold)) {
-            return true;
-        }
-        return false;
+        boolean enter = upper.getValue(index).minus(lower.getValue(index)).isGreaterThanOrEqual(threshold);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
         TADecimal threshold = TADecimal.valueOf((1.0 - difference) * distance);
-        if (upper.getValue(index).minus(lower.getValue(index)).isLessThanOrEqual(threshold)) {
-            return true;
-        }
-        return false;
+        boolean exit = upper.getValue(index).minus(lower.getValue(index)).isLessThanOrEqual(threshold);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

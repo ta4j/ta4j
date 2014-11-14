@@ -50,12 +50,16 @@ public class IndicatorOverIndicatorStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return first.getValue(index).isGreaterThan(second.getValue(index));
+        boolean enter = first.getValue(index).isGreaterThan(second.getValue(index));
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return first.getValue(index).isLessThan(second.getValue(index));
+        boolean exit = first.getValue(index).isLessThan(second.getValue(index));
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

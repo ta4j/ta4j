@@ -49,12 +49,16 @@ public class ParabolicSarAndDMIStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return parabolicStrategy.shouldEnter(index);
+        boolean enter = parabolicStrategy.shouldEnter(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return dmiStrategy.and(parabolicStrategy).shouldExit(index);
+        boolean exit = dmiStrategy.and(parabolicStrategy).shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

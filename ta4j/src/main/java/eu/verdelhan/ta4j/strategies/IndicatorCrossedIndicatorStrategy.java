@@ -56,12 +56,16 @@ public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return crossUp.getValue(index);
+        boolean enter = crossUp.getValue(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return crossDown.getValue(index);
+        boolean exit = crossDown.getValue(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

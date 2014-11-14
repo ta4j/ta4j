@@ -54,15 +54,17 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        return strategy.shouldEnter(index);
+        boolean enter = strategy.shouldEnter(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        if (indicator.getValue(index).isGreaterThanOrEqual(resistance)) {
-            return true;
-        }
-        return strategy.shouldExit(index);
+        boolean exit = (indicator.getValue(index).isGreaterThanOrEqual(resistance))
+                || strategy.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override

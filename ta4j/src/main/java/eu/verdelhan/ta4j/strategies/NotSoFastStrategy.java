@@ -51,16 +51,19 @@ public class NotSoFastStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldEnter(int index) {
-        if (strategy.shouldEnter(index)) {
+        boolean enter = strategy.shouldEnter(index);
+        if (enter) {
             enterTickIndex = index;
-            return true;
         }
-        return false;
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        return ((index - enterTickIndex) > numberOfTicks) && strategy.shouldExit(index);
+        boolean exit = ((index - enterTickIndex) > numberOfTicks) && strategy.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override
