@@ -27,12 +27,17 @@ import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.joda.time.Period;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Set of {@link Tick ticks} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
  * <p>
  */
 public class TimeSeries {
+
+    /** The logger */
+    private final Logger log = LoggerFactory.getLogger(getClass());
     /** List of ticks */
     private final List<? extends Tick> ticks;
     /** Begin index of the time series */
@@ -227,6 +232,7 @@ public class TimeSeries {
      */
     public List<Trade> run(Strategy strategy, OperationType operationType) {
 
+        log.trace("Running strategy: {} (starting with {})", strategy, operationType);
         List<Trade> trades = new ArrayList<Trade>();
 
         Trade lastTrade = new Trade(operationType);

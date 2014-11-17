@@ -67,7 +67,7 @@ public abstract class AbstractStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceEnter(int index, boolean enter) {
-        log.trace("{} > shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
+        log.trace("{}#shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
     }
 
     /**
@@ -76,6 +76,6 @@ public abstract class AbstractStrategy implements Strategy {
      * @param exit true if the strategy should exit, false otherwise
      */
     protected void traceExit(int index, boolean exit) {
-        log.trace("{} > shouldExit({}): {}", getClass().getSimpleName(), index, exit);
+        log.trace("{}#shouldExit({}): {}", getClass().getSimpleName(), index, exit);
     }
 }
