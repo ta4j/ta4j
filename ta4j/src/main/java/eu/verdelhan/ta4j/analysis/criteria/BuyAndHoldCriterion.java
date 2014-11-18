@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
@@ -44,7 +43,7 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
 
-        if (trade.getEntry().getType() == OperationType.BUY) {
+        if (trade.getEntry().isBuy()) {
             return series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice()).toDouble();
         } else {
             return series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice()).toDouble();

@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -89,7 +88,7 @@ public class CashFlow implements Indicator<TADecimal> {
             int end = trade.getExit().getIndex();
             for (int i = Math.max(begin, 1); i <= end; i++) {
                 TADecimal ratio;
-                if (trade.getEntry().getType().equals(OperationType.BUY)) {
+                if (trade.getEntry().isBuy()) {
                     ratio = timeSeries.getTick(i).getClosePrice().dividedBy(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice());
                 } else {
                     ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice().dividedBy(timeSeries.getTick(i).getClosePrice());

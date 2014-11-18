@@ -40,6 +40,16 @@ public class OperationTest {
     }
 
     @Test
+    public void type() {
+        assertEquals(OperationType.SELL, opNotEquals1.getType());
+        assertFalse(opNotEquals1.isBuy());
+        assertTrue(opNotEquals1.isSell());
+        assertEquals(OperationType.BUY, opNotEquals2.getType());
+        assertTrue(opNotEquals2.isBuy());
+        assertFalse(opNotEquals2.isSell());
+    }
+
+    @Test
     public void overrideToString() {
         assertEquals(opEquals1.toString(), opEquals2.toString());
 

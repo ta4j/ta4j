@@ -102,7 +102,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
         assertNotNull(enter);
 
-        assertEquals(enter.getType(), OperationType.BUY);
+        assertTrue(enter.isBuy());
 
         for (int i = 2; i < 6; i++) {
             assertFalse(s.shouldOperate(trade, i));

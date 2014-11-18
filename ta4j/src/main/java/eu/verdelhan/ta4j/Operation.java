@@ -56,6 +56,20 @@ public class Operation {
     }
 
     /**
+     * @return true if this is a BUY operation, false otherwise
+     */
+    public boolean isBuy() {
+        return type == OperationType.BUY;
+    }
+
+    /**
+     * @return true if this is a SELL operation, false otherwise
+     */
+    public boolean isSell() {
+        return type == OperationType.SELL;
+    }
+
+    /**
      * @return  the type of the operation
      */
     public int getIndex() {
