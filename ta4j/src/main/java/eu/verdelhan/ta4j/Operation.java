@@ -70,7 +70,7 @@ public class Operation {
     }
 
     /**
-     * @return  the type of the operation
+     * @return the index the operation was executed
      */
     public int getIndex() {
         return index;
