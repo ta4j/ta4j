@@ -44,7 +44,7 @@ public class StopGainStrategyGainTest {
     @Test
     public void stopperShouldSell() {
 
-        Strategy justBuy = new JustBuyOnceStrategy();
+        Strategy justBuy = new JustEnterOnceStrategy();
         Strategy stopper = new StopGainStrategy(indicator, justBuy, 4);
 
         Operation buy = new Operation(0, OperationType.BUY);

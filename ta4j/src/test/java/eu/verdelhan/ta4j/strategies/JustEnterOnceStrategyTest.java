@@ -22,47 +22,49 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
+import eu.verdelhan.ta4j.Operation;
+import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.Trade;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Combination of a BUY {@link Strategy strategy} and a SELL {@link Strategy strategy}.
- * <p>
- * Enter: according to the provided BUY {@link Strategy strategy}<br>
- * Exit: according to the provided SELL {@link Strategy strategy}
- */
-public class CombinedBuyAndSellStrategy extends AbstractStrategy {
+public class JustEnterOnceStrategyTest {
 
-    /** Buy strategy */
-    private Strategy buyStrategy;
-    /** Sell strategy */
-    private Strategy sellStrategy;
+    private Strategy strategy;
 
-    /**
-     * Constructor.
-     * @param buyStrategy the buy strategy
-     * @param sellStrategy the sell strategy
-     */
-    public CombinedBuyAndSellStrategy(Strategy buyStrategy, Strategy sellStrategy) {
-        this.buyStrategy = buyStrategy;
-        this.sellStrategy = sellStrategy;
+    private Trade trade;
+
+    @Before
+    public void setUp() {
+        this.strategy = new JustEnterOnceStrategy();
+        this.trade = new Trade();
     }
 
-    @Override
-    public boolean shouldEnter(int index) {
-        boolean enter = buyStrategy.shouldEnter(index);
-        traceEnter(index, enter);
-        return enter;
+    @Test
+    public void shouldBuyTradeOnce() {
+        Operation buy = new Operation(0, OperationType.BUY);
+
+        assertTrue(strategy.shouldOperate(trade, 0));
+        trade.operate(0);
+        assertEquals(buy, trade.getEntry());
+        assertFalse(strategy.shouldOperate(trade, 1));
+        assertFalse(strategy.shouldOperate(trade, 6));
+
     }
 
-    @Override
-    public boolean shouldExit(int index) {
-        boolean exit = sellStrategy.shouldExit(index);
-        traceExit(index, exit);
-        return exit;
+    @Test
+    public void sameIndexShouldResultSameAnswer() {
+        Operation buy = new Operation(0, OperationType.BUY);
+
+        assertTrue(strategy.shouldOperate(trade, 0));
+        trade.operate(0);
+        assertEquals(buy, trade.getEntry());
+        Trade trade2 = new Trade();
+        assertFalse(strategy.shouldOperate(trade2, 0));
+        trade2.operate(0);
+        assertEquals(buy, trade2.getEntry());
     }
 
-    @Override
-    public String toString() {
-        return String.format("Combined strategy using buy strategy %s and sell strategy %s", buyStrategy, sellStrategy);
-    }
 }

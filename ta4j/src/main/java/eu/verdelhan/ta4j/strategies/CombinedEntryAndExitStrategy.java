@@ -22,35 +22,47 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-/**
- * {@link Strategy} which enters just once and never moves later.
- * <p>
- * Enter: the first time it's called<br>
- * Exit: never
- */
-public class JustBuyOnceStrategy extends AbstractStrategy {
+import eu.verdelhan.ta4j.Strategy;
 
-    private boolean operated = false;
+/**
+ * Combination of an entry {@link Strategy strategy} and an exit {@link Strategy strategy}.
+ * <p>
+ * Enter: according to the provided entry {@link Strategy strategy}<br>
+ * Exit: according to the provided exit {@link Strategy strategy}
+ */
+public class CombinedEntryAndExitStrategy extends AbstractStrategy {
+
+    /** Entry strategy */
+    private Strategy entryStrategy;
+    /** Exit strategy */
+    private Strategy exitStrategy;
+
+    /**
+     * Constructor.
+     * @param entryStrategy the entry strategy
+     * @param exitStrategy the exit strategy
+     */
+    public CombinedEntryAndExitStrategy(Strategy entryStrategy, Strategy exitStrategy) {
+        this.entryStrategy = entryStrategy;
+        this.exitStrategy = exitStrategy;
+    }
 
     @Override
     public boolean shouldEnter(int index) {
-        if (!operated) {
-            operated = true;
-            traceEnter(index, true);
-            return true;
-        }
-        traceEnter(index, false);
-        return false;
+        boolean enter = entryStrategy.shouldEnter(index);
+        traceEnter(index, enter);
+        return enter;
     }
 
     @Override
     public boolean shouldExit(int index) {
-        traceExit(index, false);
-        return false;
+        boolean exit = exitStrategy.shouldExit(index);
+        traceExit(index, exit);
+        return exit;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName();
+        return String.format("Combined strategy using entry strategy %s and exit strategy %s", entryStrategy, exitStrategy);
     }
 }

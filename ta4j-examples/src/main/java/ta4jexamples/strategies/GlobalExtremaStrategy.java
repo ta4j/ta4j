@@ -32,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.SimpleMultiplierIndicator;
-import eu.verdelhan.ta4j.strategies.CombinedBuyAndSellStrategy;
+import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -69,7 +69,7 @@ public class GlobalExtremaStrategy {
         // Going short if the close price goes above the max price
         IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(closePrices, new SimpleMultiplierIndicator(weekMaxPrice, 0.996));
 
-        Strategy signals = new CombinedBuyAndSellStrategy(buySignal, sellSignal);
+        Strategy signals = new CombinedEntryAndExitStrategy(buySignal, sellSignal);
 
         return signals;
     }

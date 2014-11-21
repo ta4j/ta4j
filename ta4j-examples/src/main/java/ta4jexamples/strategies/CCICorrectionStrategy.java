@@ -29,7 +29,7 @@ import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.indicators.oscillators.CCIIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
-import eu.verdelhan.ta4j.strategies.CombinedBuyAndSellStrategy;
+import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -58,12 +58,12 @@ public class CCICorrectionStrategy {
         // Trend
         IndicatorOverIndicatorStrategy bullTrend = new IndicatorOverIndicatorStrategy(longCci, plus100);
         IndicatorOverIndicatorStrategy bearTrend = new IndicatorOverIndicatorStrategy(longCci, minus100);
-        Strategy trend = new CombinedBuyAndSellStrategy(bullTrend, bearTrend);
+        Strategy trend = new CombinedEntryAndExitStrategy(bullTrend, bearTrend);
 
         // Signals
         IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(minus100, shortCci);
         IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(plus100, shortCci);
-        Strategy signals = new CombinedBuyAndSellStrategy(buySignal, sellSignal);
+        Strategy signals = new CombinedEntryAndExitStrategy(buySignal, sellSignal);
 
         return trend.and(signals);
     }

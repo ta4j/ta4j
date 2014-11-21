@@ -29,7 +29,7 @@ import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.RSIIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import eu.verdelhan.ta4j.strategies.CombinedBuyAndSellStrategy;
+import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import eu.verdelhan.ta4j.strategies.ResistanceStrategy;
 import eu.verdelhan.ta4j.strategies.SupportStrategy;
@@ -69,7 +69,7 @@ public class RSI2Strategy {
         RSIIndicator rsi = new RSIIndicator(closePrice, 2);
         SupportStrategy support5 = new SupportStrategy(rsi, priceBelowSma, 5);
         ResistanceStrategy resist95 = new ResistanceStrategy(rsi, priceBelowSma, 95);
-        Strategy buyAndSellSignalsStrategy = new CombinedBuyAndSellStrategy(support5, resist95);
+        Strategy buyAndSellSignalsStrategy = new CombinedEntryAndExitStrategy(support5, resist95);
 
         // To Do
         // Entering on close.

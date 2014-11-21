@@ -32,7 +32,7 @@ import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
-public class CombinedBuyAndSellStrategyTest {
+public class CombinedEntryAndExitStrategyTest {
 
     private Operation[] enter;
 
@@ -42,7 +42,7 @@ public class CombinedBuyAndSellStrategyTest {
 
     private MockStrategy sellStrategy;
 
-    private CombinedBuyAndSellStrategy combined;
+    private CombinedEntryAndExitStrategy combined;
 
     @Test
     public void shouldEnter() {
@@ -54,7 +54,7 @@ public class CombinedBuyAndSellStrategyTest {
         buyStrategy = new MockStrategy(enter, null);
         sellStrategy = new MockStrategy(null, exit);
 
-        combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
+        combined = new CombinedEntryAndExitStrategy(buyStrategy, sellStrategy);
 
         assertTrue(combined.shouldEnter(0));
         assertFalse(combined.shouldEnter(1));
@@ -81,7 +81,7 @@ public class CombinedBuyAndSellStrategyTest {
         buyStrategy = new MockStrategy(enter, null);
         sellStrategy = new MockStrategy(null, exit);
 
-        combined = new CombinedBuyAndSellStrategy(buyStrategy, sellStrategy);
+        combined = new CombinedEntryAndExitStrategy(buyStrategy, sellStrategy);
 
         assertTrue(combined.shouldExit(0));
         assertFalse(combined.shouldExit(1));
@@ -103,7 +103,7 @@ public class CombinedBuyAndSellStrategyTest {
 
         Strategy crossed = new IndicatorCrossedIndicatorStrategy(first, second);
 
-        combined = new CombinedBuyAndSellStrategy(crossed, crossed);
+        combined = new CombinedEntryAndExitStrategy(crossed, crossed);
 
         for (int index = 0; index < 6; index++) {
             assertEquals(crossed.shouldEnter(index), combined.shouldEnter(index));
