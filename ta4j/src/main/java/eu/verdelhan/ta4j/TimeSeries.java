@@ -38,14 +38,18 @@ public class TimeSeries {
 
     /** The logger */
     private final Logger log = LoggerFactory.getLogger(getClass());
-    /** List of ticks */
-    private final List<? extends Tick> ticks;
+    /** Name of the series */
+    private final String name;
     /** Begin index of the time series */
     private int beginIndex;
     /** End index of the time series */
     private int endIndex;
-    /** Name of the series */
-    private final String name;
+    /** List of ticks */
+    private final List<? extends Tick> ticks;
+    /** Time period of the series */
+    private Period timePeriod;
+    /** Maximum number of ticks for the time series */
+    private int maximumTickCount = Integer.MAX_VALUE;
 
     /**
      * Constructor.
@@ -63,6 +67,7 @@ public class TimeSeries {
         this.ticks = ticks;
         this.beginIndex = beginIndex;
         this.endIndex = endIndex;
+        computeTimePeriod();
     }
     
     /**
@@ -91,7 +96,7 @@ public class TimeSeries {
 
     /**
      * @param i an index
-     * @return the tick at the i position
+     * @return the tick at the i-th position
      */
     public Tick getTick(int i) {
         return ticks.get(i);
@@ -100,7 +105,7 @@ public class TimeSeries {
     /**
      * @return the number of ticks in the series
      */
-    public int getSize() {
+    public int getTickCount() {
         return (endIndex - beginIndex) + 1;
     }
 
@@ -116,6 +121,35 @@ public class TimeSeries {
      */
     public int getEnd() {
         return endIndex;
+    }
+
+    /**
+     * @return the description of the series period (e.g. "from 12:00 21/01/2014 to 12:15 21/01/2014")
+     */
+    public String getSeriesPeriodDescription() {
+        return ticks.get(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
+                + ticks.get(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
+    }
+
+    /**
+     * @return the time period of the series
+     */
+    public Period getTimePeriod() {
+        return timePeriod;
+    }
+
+    /**
+     * Sets the maximum number of ticks that will be retained in the series.
+     * If a new tick is added to the series such that the number of ticks will exceed the maximum tick count,
+     * then the FIRST tick in the series is automatically removed, ensuring that the maximum tick count is not exceeded.
+     * @param maximumTickCount the maximum tick count
+     */
+    public void setMaximumTickCount(int maximumTickCount) {
+        if (maximumTickCount < 0) {
+            throw new IllegalArgumentException("Maximum tick count must be positive");
+        }
+        this.maximumTickCount = maximumTickCount;
+        removeExceedingTicks();
     }
 
     /**
@@ -268,22 +302,47 @@ public class TimeSeries {
     }
 
     /**
-     * @return the period name of the series (e.g. "from 12:00 21/01/2014 to 12:15 21/01/2014")
+     * Computes the time period of the series.
      */
-    public String getPeriodName() {
-        return ticks.get(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
-                + ticks.get(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
+    private void computeTimePeriod() {
+
+        Period minPeriod = null;
+        for (int i = beginIndex; i < endIndex; i++) {
+            // For each tick interval...
+            // Looking for the minimum period.
+            long currentPeriodMillis = ticks.get(i+1).getEndTime().getMillis() - ticks.get(i).getEndTime().getMillis();
+            if (minPeriod == null) {
+                minPeriod = new Period(currentPeriodMillis);
+            } else {
+                long minPeriodMillis = minPeriod.getMillis();
+                if (minPeriodMillis > currentPeriodMillis) {
+                    minPeriod = new Period(currentPeriodMillis);
+                }
+            }
+        }
+        if (minPeriod == null || Period.ZERO.equals(minPeriod)) {
+            // Minimum period not found (or zero ms found)
+            // --> Use a one-day period
+            minPeriod = Period.days(1);
+        }
+        timePeriod = minPeriod;
     }
 
     /**
-     * @return the period of the series
+     * Removes the N first ticks which exceed the maximum tick count.
      */
-    public Period getPeriod() {
-        final long firstTickPeriod = ticks.get(beginIndex + 1).getEndTime().getMillis() - ticks.get(beginIndex).getEndTime().getMillis();
-        final long secondTickPeriod = ticks.get(beginIndex + 2).getEndTime().getMillis() - ticks.get(beginIndex + 1).getEndTime().getMillis();
-        Period period = new Period(Math.min(firstTickPeriod, secondTickPeriod));
-        assert !Period.ZERO.equals(period) : "Period should not be zero";
-        return period;
+    private void removeExceedingTicks() {
+        int tickCount = ticks.size();
+        if (tickCount > maximumTickCount) {
+            // Removing old ticks
+            int nbTicksToRemove = tickCount - maximumTickCount;
+            for (int i = 0; i < nbTicksToRemove; i++) {
+                ticks.remove(0);
+            }
+            // Updating begin/end indexes
+            beginIndex = Math.max(beginIndex - nbTicksToRemove, 0);
+            endIndex = Math.max(endIndex - nbTicksToRemove, beginIndex);
+        }
     }
 
     /**

@@ -55,7 +55,7 @@ public class CandlestickChart {
      * @return an Open-High-Low-Close dataset
      */
     private static OHLCDataset createOHLCDataset(TimeSeries series) {
-        final int nbTicks = series.getSize();
+        final int nbTicks = series.getTickCount();
         
         Date[] dates = new Date[nbTicks];
         double[] opens = new double[nbTicks];
@@ -88,7 +88,7 @@ public class CandlestickChart {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
-        for (int i = 0; i < series.getSize(); i++) {
+        for (int i = 0; i < series.getTickCount(); i++) {
             Tick tick = series.getTick(i);
             chartTimeSeries.add(new Second(tick.getEndTime().toDate()), indicator.getValue(i).toDouble());
         }

@@ -71,7 +71,7 @@ public class CashFlow implements Indicator<TADecimal> {
      * @return the size of the time series
      */
     public int getSize() {
-        return timeSeries.getSize();
+        return timeSeries.getTickCount();
     }
 
     /**

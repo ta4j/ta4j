@@ -68,7 +68,7 @@ public class AverageGainIndicatorTest {
     @Test
     public void averageGainWhenTimeFrameIsGreaterThanIndicatorDataShouldBeCalculatedWithDataSize() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 1000);
-        assertDecimalEquals(averageGain.getValue(12), 6d / data.getSize());
+        assertDecimalEquals(averageGain.getValue(12), 6d / data.getTickCount());
     }
 
     @Test

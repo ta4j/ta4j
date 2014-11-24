@@ -72,7 +72,7 @@ public class WalkForward {
 
         for (TimeSeries slice : subseries) {
             // For each sub-series...
-            System.out.println("Sub-series: " + slice.getPeriodName());
+            System.out.println("Sub-series: " + slice.getSeriesPeriodDescription());
             for (Map.Entry<Strategy, String> entry : strategies.entrySet()) {
                 Strategy strategy = entry.getKey();
                 String name = entry.getValue();

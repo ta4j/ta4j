@@ -43,7 +43,7 @@ public class BollingerBandsMiddleIndicatorTest {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
-        for (int i = 0; i < data.getSize(); i++) {
+        for (int i = 0; i < data.getTickCount(); i++) {
             assertEquals(sma.getValue(i), bbmSMA.getValue(i));
         }
     }

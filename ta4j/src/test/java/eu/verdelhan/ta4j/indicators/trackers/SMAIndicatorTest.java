@@ -61,7 +61,7 @@ public class SMAIndicatorTest {
     @Test
     public void SMAWhenTimeFrameIs1ResultShouldBeIndicatorValue() {
         SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 1);
-        for (int i = 0; i < data.getSize(); i++) {
+        for (int i = 0; i < data.getTickCount(); i++) {
             assertEquals(data.getTick(i).getClosePrice(), quoteSMA.getValue(i));
         }
     }

@@ -81,8 +81,8 @@ public class CsvTicksLoader {
     public static void main(String args[]) {
         TimeSeries series = CsvTicksLoader.loadAppleIncSeries();
 
-        System.out.println("Series: " + series.getName() + " (" + series.getPeriodName() + ")");
-        System.out.println("Number of ticks: " + series.getSize());
+        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
+        System.out.println("Number of ticks: " + series.getTickCount());
         System.out.println("First tick: \n"
                 + "\tVolume: " + series.getTick(0).getVolume() + "\n"
                 + "\tOpen price: " + series.getTick(0).getOpenPrice()+ "\n"

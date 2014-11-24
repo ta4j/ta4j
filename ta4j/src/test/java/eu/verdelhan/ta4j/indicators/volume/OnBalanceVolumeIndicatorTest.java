@@ -28,19 +28,23 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
+import org.joda.time.DateTime;
 import org.junit.Test;
 
 public class OnBalanceVolumeIndicatorTest {
+
     @Test
     public void getValue()
     {
+        DateTime now = DateTime.now();
         List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(null, 0, 10, 0, 0, 0, 4, 0));
-        ticks.add(new MockTick(null, 0, 5, 0, 0, 0, 2, 0));
-        ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 3, 0));
-        ticks.add(new MockTick(null, 0, 7, 0, 0, 0, 8, 0));
-        ticks.add(new MockTick(null, 0, 7, 0, 0, 0, 6, 0));
-        ticks.add(new MockTick(null, 0, 6, 0, 0, 0, 10, 0));
+        ticks.add(new MockTick(now, 0, 10, 0, 0, 0, 4, 0));
+        ticks.add(new MockTick(now, 0, 5, 0, 0, 0, 2, 0));
+        ticks.add(new MockTick(now, 0, 6, 0, 0, 0, 3, 0));
+        ticks.add(new MockTick(now, 0, 7, 0, 0, 0, 8, 0));
+        ticks.add(new MockTick(now, 0, 7, 0, 0, 0, 6, 0));
+        ticks.add(new MockTick(now, 0, 6, 0, 0, 0, 10, 0));
+
         OnBalanceVolumeIndicator onBalance = new OnBalanceVolumeIndicator(new MockTimeSeries(ticks));
         assertDecimalEquals(onBalance.getValue(0), 0);
         assertDecimalEquals(onBalance.getValue(1), -2);

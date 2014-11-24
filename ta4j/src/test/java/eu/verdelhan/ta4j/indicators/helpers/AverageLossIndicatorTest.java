@@ -69,7 +69,7 @@ public class AverageLossIndicatorTest {
     @Test
     public void averageLossWhenTimeFrameIsGreaterThanIndex() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 1000);
-        assertDecimalEquals(averageLoss.getValue(12), 5d / data.getSize());
+        assertDecimalEquals(averageLoss.getValue(12), 5d / data.getTickCount());
     }
 
     @Test
