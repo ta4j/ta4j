@@ -41,6 +41,8 @@ public class TimeSeriesTest {
 
     private TimeSeries subSeries;
 
+    private TimeSeries emptySeries;
+
     private TimeSeries seriesForRun;
 
     private Strategy strategy;
@@ -67,7 +69,7 @@ public class TimeSeriesTest {
 
         defaultSeries = new TimeSeries(defaultName, ticks);
         subSeries = defaultSeries.subseries(2, 4);
-
+        emptySeries = new TimeSeries(Period.minutes(15));
         final DateTimeFormatter dtf = DateTimeFormat.forPattern("yyyy-MM-dd");
         seriesForRun = new MockTimeSeries(
                 new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
@@ -94,8 +96,13 @@ public class TimeSeriesTest {
         TimeSeries s = new TimeSeries(null, null, 4, 2);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void constructorWithNullTimePeriodShouldThrowException() {
+        TimeSeries s = new TimeSeries((Period) null);
+    }
+
     @Test
-    public void getEndSizeBegin() {
+    public void getEndGetBeginGetTickCount() {
         // Original series
         assertEquals(0, defaultSeries.getBegin());
         assertEquals(ticks.size() - 1, defaultSeries.getEnd());
@@ -104,16 +111,22 @@ public class TimeSeriesTest {
         assertEquals(2, subSeries.getBegin());
         assertEquals(4, subSeries.getEnd());
         assertEquals(3, subSeries.getTickCount());
+        // Empty series
+        assertEquals(-1, emptySeries.getBegin());
+        assertEquals(-1, emptySeries.getEnd());
+        assertEquals(0, emptySeries.getTickCount());
     }
 
     @Test
-    public void getPeriodName() {
+    public void getSeriesPeriodDescription() {
         // Original series
         assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy")));
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy")));
         // Sub-series
         assertTrue(subSeries.getSeriesPeriodDescription().endsWith(ticks.get(subSeries.getEnd()).getEndTime().toString("hh:mm dd/MM/yyyy")));
         assertTrue(subSeries.getSeriesPeriodDescription().startsWith(ticks.get(subSeries.getBegin()).getEndTime().toString("hh:mm dd/MM/yyyy")));
+        // Empty series
+        assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
 
     @Test
@@ -123,13 +136,33 @@ public class TimeSeriesTest {
     }
 
     @Test
-    public void getPeriod() {
+    public void getTimePeriod() {
         // Original series
         Period origSeriesPeriod = new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis());
         assertEquals(origSeriesPeriod, defaultSeries.getTimePeriod());
         // Sub-series
         Period subSeriesPeriod = new Period(ticks.get(3).getEndTime().getMillis() - ticks.get(2).getEndTime().getMillis());
         assertEquals(subSeriesPeriod, subSeries.getTimePeriod());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void negativeMaximumTickCountShouldThrowException() {
+        defaultSeries.setMaximumTickCount(-1);
+    }
+
+    @Test
+    public void maximumTickCount() {
+        // Before
+        assertEquals(0, defaultSeries.getBegin());
+        assertEquals(ticks.size() - 1, defaultSeries.getEnd());
+        assertEquals(ticks.size(), defaultSeries.getTickCount());
+
+        defaultSeries.setMaximumTickCount(3);
+
+        // After
+        assertEquals(0, defaultSeries.getBegin());
+        assertEquals(2, defaultSeries.getEnd());
+        assertEquals(3, defaultSeries.getTickCount());
     }
 
     @Test
