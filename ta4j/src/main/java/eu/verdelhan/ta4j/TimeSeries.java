@@ -41,11 +41,11 @@ public class TimeSeries {
     /** Name of the series */
     private final String name;
     /** Begin index of the time series */
-    private int beginIndex;
+    private int beginIndex = -1;
     /** End index of the time series */
-    private int endIndex;
+    private int endIndex = -1;
     /** List of ticks */
-    private final List<? extends Tick> ticks;
+    private final List<Tick> ticks;
     /** Time period of the series */
     private Period timePeriod;
     /** Maximum number of ticks for the time series */
@@ -58,7 +58,7 @@ public class TimeSeries {
      * @param beginIndex the begin index (inclusive) of the time series
      * @param endIndex the end index (inclusive) of the time series
      */
-    public TimeSeries(String name, List<? extends Tick> ticks, int beginIndex, int endIndex) {
+    public TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex) {
         // TODO: add null checks and out of bounds checks
         if (endIndex < beginIndex - 1) {
             throw new IllegalArgumentException("end cannot be < than begin - 1");
@@ -75,7 +75,7 @@ public class TimeSeries {
      * @param name the name of the series
      * @param ticks the list of ticks of the series
      */
-    public TimeSeries(String name, List<? extends Tick> ticks) {
+    public TimeSeries(String name, List<Tick> ticks) {
         this(name, ticks, 0, ticks.size() - 1);
     }
 
@@ -83,8 +83,30 @@ public class TimeSeries {
      * Constructor of an unnamed series.
      * @param ticks the list of ticks of the series
      */
-    public TimeSeries(List<? extends Tick> ticks) {
+    public TimeSeries(List<Tick> ticks) {
         this("unnamed", ticks);
+    }
+
+    /**
+     * Constructor.
+     * @param name the name of the series
+     * @param timePeriod the time period (between 2 ticks)
+     */
+    public TimeSeries(String name, Period timePeriod) {
+        if (timePeriod == null) {
+            throw new IllegalArgumentException("Time period cannot be null");
+        }
+        this.name = name;
+        this.ticks = new ArrayList<Tick>();
+        this.timePeriod = timePeriod;
+    }
+
+    /**
+     * Constructor of an unnamed series.
+     * @param timePeriod the time period (between 2 ticks)
+     */
+    public TimeSeries(Period timePeriod) {
+        this("unamed", timePeriod);
     }
 
     /**
@@ -106,6 +128,9 @@ public class TimeSeries {
      * @return the number of ticks in the series
      */
     public int getTickCount() {
+        if (endIndex < 0) {
+            return 0;
+        }
         return (endIndex - beginIndex) + 1;
     }
 
@@ -127,8 +152,16 @@ public class TimeSeries {
      * @return the description of the series period (e.g. "from 12:00 21/01/2014 to 12:15 21/01/2014")
      */
     public String getSeriesPeriodDescription() {
-        return ticks.get(beginIndex).getEndTime().toString("hh:mm dd/MM/yyyy - ")
-                + ticks.get(endIndex).getEndTime().toString("hh:mm dd/MM/yyyy");
+        StringBuilder sb = new StringBuilder();
+        if (!ticks.isEmpty()) {
+            final String timeFormat = "hh:mm dd/MM/yyyy";
+            Tick firstTick = ticks.get(beginIndex);
+            Tick lastTick = ticks.get(endIndex);
+            sb.append(firstTick.getEndTime().toString(timeFormat))
+                    .append(" - ")
+                    .append(lastTick.getEndTime().toString(timeFormat));
+        }
+        return sb.toString();
     }
 
     /**
@@ -140,15 +173,51 @@ public class TimeSeries {
 
     /**
      * Sets the maximum number of ticks that will be retained in the series.
+     * <p>
      * If a new tick is added to the series such that the number of ticks will exceed the maximum tick count,
      * then the FIRST tick in the series is automatically removed, ensuring that the maximum tick count is not exceeded.
      * @param maximumTickCount the maximum tick count
      */
     public void setMaximumTickCount(int maximumTickCount) {
-        if (maximumTickCount < 0) {
-            throw new IllegalArgumentException("Maximum tick count must be positive");
+        if (maximumTickCount <= 0) {
+            throw new IllegalArgumentException("Maximum tick count must be strictly positive");
         }
         this.maximumTickCount = maximumTickCount;
+        removeExceedingTicks();
+    }
+
+    /**
+     * Adds a tick at the end of the series.
+     * <p>
+     * Begin index set to 0 if if wasn't initialized.<br>
+     * End index set to 0 if if wasn't initialized, or incremented if it matches the end of the series.<br>
+     * Exceeding ticks are removed.
+     * @param tick the tick to be added
+     * @see TimeSeries#setMaximumTickCount(int)
+     */
+    public void add(Tick tick) {
+        if (tick == null) {
+            throw new IllegalArgumentException("Cannot add null tick");
+        }
+        final int lastTickIndex = ticks.size() - 1;
+        if (!ticks.isEmpty()) {
+            DateTime seriesEndTime = ticks.get(lastTickIndex).getEndTime();
+            if (!tick.getEndTime().isAfter(seriesEndTime)) {
+                throw new IllegalArgumentException("Cannot add a tick with end time <= to series end time");
+            }
+        }
+
+        ticks.add(tick);
+        if (beginIndex == -1) {
+            // Begin index set to 0 only if if wasn't initialized
+            beginIndex = 0;
+        }
+        if (endIndex == lastTickIndex) {
+            // End index:
+            //  - set to 0 if it wasn't initialized
+            //  - OR incremented if it was equal to ticks.size()-1
+            endIndex++;
+        }
         removeExceedingTicks();
     }
 
@@ -250,6 +319,7 @@ public class TimeSeries {
 
     /**
      * Runs the strategy over the series.
+     * <p>
      * Opens the trades with {@link OperationType.BUY} operations.
      * @param strategy the trading strategy
      * @return a list of trades
