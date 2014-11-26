@@ -24,41 +24,54 @@ package eu.verdelhan.ta4j;
 
 
 import org.joda.time.DateTime;
+import org.joda.time.Period;
 
 /**
- * End tick of a period.
+ * End tick of a time period.
  * <p>
  */
 public class Tick {
 
-    private DateTime beginTime;
-
+    /** Time period (e.g. 1 day, 15 min, etc.) of the tick */
+    private Period timePeriod;
+    /** End time of the tick */
     private DateTime endTime;
-
+    /** Begin time of the tick */
+    private DateTime beginTime;
+    /** Open price of the period */
     private TADecimal openPrice = null;
-
+    /** Close price of the period */
     private TADecimal closePrice = null;
-
+    /** Max price of the period */
     private TADecimal maxPrice = null;
-
+    /** Min price of the period */
     private TADecimal minPrice = null;
-
-    private TADecimal amount = TADecimal.valueOf(0);
-
-    private TADecimal volume = TADecimal.valueOf(0);
-
+    /** Traded amount during the period */
+    private TADecimal amount = TADecimal.ZERO;
+    /** Volume of the period */
+    private TADecimal volume = TADecimal.ZERO;
+    /** Trade count */
     private int trades = 0;
 
     /**
-     * @param beginTime the begin time of the tick period
+     * Constructor.
+     * @param timePeriod the time period
      * @param endTime the end time of the tick period
      */
-    public Tick(DateTime beginTime, DateTime endTime) {
-        this.beginTime = beginTime;
+    public Tick(Period timePeriod, DateTime endTime) {
+        if (timePeriod == null) {
+            throw new IllegalArgumentException("Time period cannot be null");
+        }
+        if (endTime == null) {
+            throw new IllegalArgumentException("End time cannot be null");
+        }
+        this.timePeriod = timePeriod;
         this.endTime = endTime;
+        this.beginTime = endTime.minus(timePeriod);
     }
 
     /**
+     * Constructor.
      * @param endTime the end time of the tick period
      * @param openPrice the open price of the tick period
      * @param highPrice the highest price of the tick period
@@ -75,6 +88,7 @@ public class Tick {
     }
 
     /**
+     * Constructor.
      * @param endTime the end time of the tick period
      * @param openPrice the open price of the tick period
      * @param highPrice the highest price of the tick period
@@ -83,7 +97,9 @@ public class Tick {
      * @param volume the volume of the tick period
      */
     public Tick(DateTime endTime, TADecimal openPrice, TADecimal highPrice, TADecimal lowPrice, TADecimal closePrice, TADecimal volume) {
+        this.timePeriod = Period.days(1);
         this.endTime = endTime;
+        this.beginTime = endTime.minus(timePeriod);
         this.openPrice = openPrice;
         this.maxPrice = highPrice;
         this.minPrice = lowPrice;
@@ -182,6 +198,13 @@ public class Tick {
      */
     public TADecimal getMinPrice() {
         return minPrice;
+    }
+
+    /**
+     * @return the time period of the tick
+     */
+    public Period getTimePeriod() {
+        return timePeriod;
     }
 
     /**

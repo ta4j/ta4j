@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import org.joda.time.DateTime;
+import org.joda.time.Period;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +41,7 @@ public class TickTest {
     public void setUp() {
         beginTime = new DateTime(2014, 6, 25, 0, 0);
         endTime = new DateTime(2014, 6, 25, 1, 0);
-        tick = new Tick(beginTime, endTime);
+        tick = new Tick(Period.hours(1), endTime);
     }
 
     @Test
@@ -57,6 +58,16 @@ public class TickTest {
         assertDecimalEquals(tick.getMinPrice(), 198);
         assertDecimalEquals(tick.getMaxPrice(), 201);
         assertDecimalEquals(tick.getVolume(), 3 * 200 + 4 * 201 + 2 * 198);
+    }
+
+    @Test
+    public void getTimePeriod() {
+        assertEquals(beginTime, tick.getEndTime().minus(tick.getTimePeriod()));
+    }
+
+    @Test
+    public void getBeginTime() {
+        assertEquals(beginTime, tick.getBeginTime());
     }
 
     @Test

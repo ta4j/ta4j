@@ -195,7 +195,7 @@ public class TimeSeries {
      * @param tick the tick to be added
      * @see TimeSeries#setMaximumTickCount(int)
      */
-    public void add(Tick tick) {
+    public void addTick(Tick tick) {
         if (tick == null) {
             throw new IllegalArgumentException("Cannot add null tick");
         }

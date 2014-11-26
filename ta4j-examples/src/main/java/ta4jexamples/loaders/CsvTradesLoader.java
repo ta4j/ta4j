@@ -23,9 +23,8 @@
 package ta4jexamples.loaders;
 
 import au.com.bytecode.opencsv.CSVReader;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Tick;
+import eu.verdelhan.ta4j.TimeSeries;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -36,6 +35,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.Instant;
+import org.joda.time.Period;
 
 /**
  * This class build a Ta4j time series from a CSV file containing trades.
@@ -109,12 +109,11 @@ public class CsvTradesLoader {
 
         List<Tick> emptyTicks = new ArrayList<Tick>();
 
-        DateTime tickBeginTime = beginTime;
-        DateTime tickEndTime;
+        Period tickTimePeriod = Period.seconds(duration);
+        DateTime tickEndTime = beginTime;
         do {
-            tickEndTime = tickBeginTime.plusSeconds(duration);
-            emptyTicks.add(new Tick(tickBeginTime, tickEndTime));
-            tickBeginTime = tickEndTime;
+            tickEndTime = tickEndTime.plus(tickTimePeriod);
+            emptyTicks.add(new Tick(tickTimePeriod, tickEndTime));
         } while (tickEndTime.isBefore(endTime));
 
         return emptyTicks;
