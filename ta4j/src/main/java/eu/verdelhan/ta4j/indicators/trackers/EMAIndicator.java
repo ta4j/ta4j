@@ -47,9 +47,11 @@ public class EMAIndicator extends CachedIndicator<TADecimal> {
     @Override
     protected TADecimal calculate(int index) {
         if (index + 1 < timeFrame) {
+            // Starting point of the EMA
             return new SMAIndicator(indicator, timeFrame).getValue(index);
         }
-        if(index == 0) {
+        if (index == 0) {
+            // If the timeframe is bigger than the indicator's value count
             return indicator.getValue(0);
         }
         TADecimal emaPrev = getValue(index - 1);
