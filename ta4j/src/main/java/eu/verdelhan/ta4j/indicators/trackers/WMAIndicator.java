@@ -37,6 +37,7 @@ public class WMAIndicator extends CachedIndicator<TADecimal> {
     private Indicator<? extends TADecimal> indicator;
 
     public WMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }

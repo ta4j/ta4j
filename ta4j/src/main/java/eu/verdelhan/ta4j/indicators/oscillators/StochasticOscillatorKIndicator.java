@@ -57,6 +57,7 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<TADecimal> {
 
     public StochasticOscillatorKIndicator(Indicator<? extends TADecimal> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         this.maxPriceIndicator = maxPriceIndicator;

@@ -36,6 +36,7 @@ public class AverageDirectionalMovementDownIndicator extends CachedIndicator<TAD
     private final DirectionalMovementDownIndicator dmdown;
 
     public AverageDirectionalMovementDownIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
         this.timeFrame = timeFrame;
         dmdown = new DirectionalMovementDownIndicator(series);
     }

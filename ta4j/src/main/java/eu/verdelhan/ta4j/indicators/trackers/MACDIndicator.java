@@ -40,6 +40,7 @@ public class MACDIndicator extends CachedIndicator<TADecimal> {
         if (shortTimeFrame > longTimeFrame) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
+        setTimeSeries(indicator.getTimeSeries());
         shortTermEma = new EMAIndicator(indicator, shortTimeFrame);
         longTermEma = new EMAIndicator(indicator, longTimeFrame);
     }
@@ -48,5 +49,4 @@ public class MACDIndicator extends CachedIndicator<TADecimal> {
     protected TADecimal calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
-
 }

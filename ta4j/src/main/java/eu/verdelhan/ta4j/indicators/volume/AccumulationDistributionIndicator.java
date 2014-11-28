@@ -37,6 +37,7 @@ public class AccumulationDistributionIndicator extends CachedIndicator<TADecimal
     private TimeSeries series;
 
     public AccumulationDistributionIndicator(TimeSeries series) {
+        setTimeSeries(series);
         this.series = series;
     }
 
@@ -55,10 +56,5 @@ public class AccumulationDistributionIndicator extends CachedIndicator<TADecimal
         TADecimal moneyFlowVolume = moneyFlowMultiplier.multipliedBy(tick.getVolume());
 
         return moneyFlowVolume.plus(getValue(index - 1));
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
     }
 }

@@ -28,11 +28,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Cached {@link Indicator indicators}.
+ * Cached {@link Indicator indicator}.
  * <p>
  * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
  */
-public abstract class CachedIndicator<T> implements Indicator<T> {
+public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private List<T> results = new ArrayList<T>();
 
@@ -54,11 +54,6 @@ public abstract class CachedIndicator<T> implements Indicator<T> {
     }
 
     protected abstract T calculate(int index);
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
 
     /**
      * Increases the size of cached results buffer.

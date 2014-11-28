@@ -23,13 +23,14 @@
 package eu.verdelhan.ta4j.mocks;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * A sample indicator.
- * @param <T>
+ * A mock indicator.
+ * @param <T> the type of returned value (Double, Boolean, etc.)
  */
 public class MockIndicator<T> implements Indicator<T> {
 
@@ -46,6 +47,11 @@ public class MockIndicator<T> implements Indicator<T> {
     @Override
     public T getValue(int index) {
         return values.get(index);
+    }
+
+    @Override
+    public TimeSeries getTimeSeries() {
+        return null;
     }
 
     public String getName() {

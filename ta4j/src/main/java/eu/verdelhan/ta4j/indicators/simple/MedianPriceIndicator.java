@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Average high-low indicator.
@@ -32,20 +32,16 @@ import eu.verdelhan.ta4j.TimeSeries;
  */
 public class MedianPriceIndicator extends CachedIndicator<TADecimal> {
 
-    private TimeSeries data;
+    private TimeSeries series;
 
-    public MedianPriceIndicator(TimeSeries data) {
-        this.data = data;
+    public MedianPriceIndicator(TimeSeries series) {
+        setTimeSeries(series);
+        this.series = series;
     }
 
     @Override
     protected TADecimal calculate(int index) {
-        return data.getTick(index).getMaxPrice().plus(data.getTick(index).getMinPrice())
+        return series.getTick(index).getMaxPrice().plus(series.getTick(index).getMinPrice())
                 .dividedBy(TADecimal.TWO);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
     }
 }

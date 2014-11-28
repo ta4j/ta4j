@@ -53,6 +53,7 @@ public class WilliamsRIndicator extends CachedIndicator<TADecimal> {
 
     public WilliamsRIndicator(Indicator<? extends TADecimal> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         this.maxPriceIndicator = maxPriceIndicator;

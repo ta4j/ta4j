@@ -54,7 +54,7 @@ public class CashFlow implements Indicator<TADecimal> {
         this.timeSeries = timeSeries;
         this.trades = trades;
         values = new ArrayList<TADecimal>();
-        values.add(TADecimal.valueOf(1));
+        values.add(TADecimal.ONE);
         calculate();
     }
 
@@ -65,6 +65,11 @@ public class CashFlow implements Indicator<TADecimal> {
     @Override
     public TADecimal getValue(int index) {
         return values.get(index);
+    }
+
+    @Override
+    public TimeSeries getTimeSeries() {
+        return timeSeries;
     }
 
     /**

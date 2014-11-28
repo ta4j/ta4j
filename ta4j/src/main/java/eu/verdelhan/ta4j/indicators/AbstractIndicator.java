@@ -20,31 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.helpers;
+package eu.verdelhan.ta4j.indicators;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * True range indicator.
+ * Abstract {@link Indicator indicator}.
  * <p>
  */
-public class TrueRangeIndicator extends CachedIndicator<TADecimal>{
+public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     private TimeSeries series;
 
-    public TrueRangeIndicator(TimeSeries series) {
-        setTimeSeries(series);
+    protected final void setTimeSeries(TimeSeries series) {
+        if (this.series != null) {
+            throw new IllegalStateException("Cannot reset the time series");
+        }
         this.series = series;
     }
-    
+
     @Override
-    protected TADecimal calculate(int index) {
-        TADecimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
-        TADecimal ys = index == 0 ? TADecimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
-        TADecimal yst = index == 0 ? TADecimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
-        
-        return ts.abs().max(ys.abs()).max(yst.abs());
+    public TimeSeries getTimeSeries() {
+        return series;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
     }
 }

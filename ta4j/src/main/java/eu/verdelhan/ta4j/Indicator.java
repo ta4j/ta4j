@@ -26,7 +26,6 @@ package eu.verdelhan.ta4j;
  * Indicator over a {@link TimeSeries time series}.
  * <p>
  * For each index of the time series, returns a value of type <b>T</b>.
- * 
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> {
@@ -36,4 +35,9 @@ public interface Indicator<T> {
      * @return the value of the indicator
      */
     T getValue(int index);
+
+    /**
+     * @return the related time series
+     */
+    TimeSeries getTimeSeries();
 }

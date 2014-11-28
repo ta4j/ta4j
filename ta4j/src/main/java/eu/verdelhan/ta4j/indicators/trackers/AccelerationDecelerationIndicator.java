@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.oscillators.AwesomeOscillatorIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MedianPriceIndicator;
 
@@ -39,6 +39,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<TADecimal
     private SMAIndicator sma5;
 
     public AccelerationDecelerationIndicator(TimeSeries series, int timeFrameSma1, int timeFrameSma2) {
+        setTimeSeries(series);
         this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), timeFrameSma1, timeFrameSma2);
         this.sma5 = new SMAIndicator(awesome, timeFrameSma1);
     }
@@ -51,10 +52,4 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<TADecimal
     protected TADecimal calculate(int index) {
         return awesome.getValue(index).minus(sma5.getValue(index));
     }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
-
 }

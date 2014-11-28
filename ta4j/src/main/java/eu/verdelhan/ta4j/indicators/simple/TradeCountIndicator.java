@@ -31,19 +31,15 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  */
 public class TradeCountIndicator extends CachedIndicator<Integer> {
 
-    private TimeSeries data;
+    private TimeSeries series;
 
-    public TradeCountIndicator(TimeSeries data) {
-        this.data = data;
+    public TradeCountIndicator(TimeSeries series) {
+        setTimeSeries(series);
+        this.series = series;
     }
 
     @Override
     protected Integer calculate(int index) {
-        return data.getTick(index).getTrades();
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
+        return series.getTick(index).getTrades();
     }
 }

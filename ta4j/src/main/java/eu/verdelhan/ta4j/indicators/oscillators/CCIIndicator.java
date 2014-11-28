@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.MeanDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
@@ -48,11 +48,12 @@ public class CCIIndicator extends CachedIndicator<TADecimal> {
 
     /**
      * Constructor.
-     * @param timeSeries the time series
+     * @param series the time series
      * @param timeFrame the time frame
      */
-    public CCIIndicator(TimeSeries timeSeries, int timeFrame) {
-        typicalPriceInd = new TypicalPriceIndicator(timeSeries);
+    public CCIIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
+        typicalPriceInd = new TypicalPriceIndicator(series);
         smaInd = new SMAIndicator(typicalPriceInd, timeFrame);
         meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, timeFrame);
         this.timeFrame = timeFrame;

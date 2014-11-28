@@ -25,7 +25,6 @@ package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.StandardDeviationIndicator;
 
 /**
  * Buy - Occurs when the price line cross from down to up de Bollinger Band Low.
@@ -39,12 +38,9 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<TADecimal> {
 
     private final BollingerBandsMiddleIndicator bbm;
 
-    public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, StandardDeviationIndicator standardDeviation) {
-        this.bbm = bbm;
-        this.indicator = standardDeviation;
-    }
-
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<? extends TADecimal> indicator) {
+        // TODO: check for same series between indicators
+        setTimeSeries(indicator.getTimeSeries());
         this.bbm = bbm;
         this.indicator = indicator;
     }

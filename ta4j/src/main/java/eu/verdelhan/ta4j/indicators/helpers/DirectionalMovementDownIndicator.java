@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Directional movement down indicator.
@@ -35,6 +35,7 @@ public class DirectionalMovementDownIndicator extends CachedIndicator<TADecimal>
     private TimeSeries series;
 
     public DirectionalMovementDownIndicator(TimeSeries series) {
+        setTimeSeries(series);
         this.series = series;
     }
 
@@ -53,10 +54,5 @@ public class DirectionalMovementDownIndicator extends CachedIndicator<TADecimal>
             return TADecimal.ZERO;
         }
         return prevMinPrice.minus(minPrice);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
     }
 }

@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.DirectionalDownIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.DirectionalUpIndicator;
 
@@ -39,6 +39,7 @@ public class DirectionalMovementIndicator extends CachedIndicator<TADecimal>{
     private final DirectionalDownIndicator ddown;
 
     public DirectionalMovementIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
         this.timeFrame = timeFrame;
         dup = new DirectionalUpIndicator(series, timeFrame);
         ddown = new DirectionalDownIndicator(series, timeFrame);

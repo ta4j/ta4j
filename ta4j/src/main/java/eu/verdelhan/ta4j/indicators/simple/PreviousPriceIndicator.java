@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Previous price indicator.
@@ -32,19 +32,15 @@ import eu.verdelhan.ta4j.TimeSeries;
  */
 public class PreviousPriceIndicator extends CachedIndicator<TADecimal> {
 
-    private TimeSeries data;
+    private TimeSeries series;
 
-    public PreviousPriceIndicator(TimeSeries data) {
-        this.data = data;
+    public PreviousPriceIndicator(TimeSeries series) {
+        setTimeSeries(series);
+        this.series = series;
     }
 
     @Override
     protected TADecimal calculate(int index) {
-        return data.getTick(Math.max(0, index - 1)).getClosePrice();
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
+        return series.getTick(Math.max(0, index - 1)).getClosePrice();
     }
 }

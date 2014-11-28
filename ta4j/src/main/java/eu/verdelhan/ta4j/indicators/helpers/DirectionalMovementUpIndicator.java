@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Directional movement up indicator.
@@ -35,6 +35,7 @@ public class DirectionalMovementUpIndicator extends CachedIndicator<TADecimal>
     private TimeSeries series;
 
     public DirectionalMovementUpIndicator(TimeSeries series) {
+        setTimeSeries(series);
         this.series = series;
     }
 
@@ -57,10 +58,5 @@ public class DirectionalMovementUpIndicator extends CachedIndicator<TADecimal>
         }
         
         return TADecimal.ZERO;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
     }
 }

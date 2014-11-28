@@ -22,13 +22,13 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
  * <p>
  */
-public class ConstantIndicator<T> extends CachedIndicator<T> {
+public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     private T value;
 
@@ -37,7 +37,7 @@ public class ConstantIndicator<T> extends CachedIndicator<T> {
     }
 
     @Override
-    protected T calculate(int index) {
+    public T getValue(int index) {
         return value;
     }
 

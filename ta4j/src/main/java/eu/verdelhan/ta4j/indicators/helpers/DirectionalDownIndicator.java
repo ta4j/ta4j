@@ -38,6 +38,7 @@ public class DirectionalDownIndicator extends CachedIndicator<TADecimal>{
     private final int timeFrame;
 
     public DirectionalDownIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
         this.admdown = new AverageDirectionalMovementDownIndicator(series, timeFrame);
         this.atr = new AverageTrueRangeIndicator(series, timeFrame);
         this.timeFrame = timeFrame;

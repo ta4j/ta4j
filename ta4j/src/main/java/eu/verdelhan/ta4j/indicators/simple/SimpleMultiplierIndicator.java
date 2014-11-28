@@ -37,6 +37,7 @@ public class SimpleMultiplierIndicator extends CachedIndicator<TADecimal> {
     
 
     public SimpleMultiplierIndicator(Indicator<? extends TADecimal> indicator, double value) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.value = TADecimal.valueOf(value);
     }

@@ -37,6 +37,7 @@ public class HighestValueIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
 
     public HighestValueIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }

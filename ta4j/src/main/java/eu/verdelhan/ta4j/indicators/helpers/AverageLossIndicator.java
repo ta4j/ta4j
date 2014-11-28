@@ -37,6 +37,7 @@ public class AverageLossIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
 
     public AverageLossIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }

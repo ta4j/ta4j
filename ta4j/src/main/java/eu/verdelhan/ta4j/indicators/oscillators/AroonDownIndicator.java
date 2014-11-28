@@ -22,9 +22,9 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.TADecimal;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 
@@ -41,9 +41,10 @@ public class AroonDownIndicator extends CachedIndicator<TADecimal> {
 
     private final LowestValueIndicator lowestClosePriceIndicator;
 
-    public AroonDownIndicator(TimeSeries timeSeries, int timeFrame) {
+    public AroonDownIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
         this.timeFrame = timeFrame;
-        closePriceIndicator = new ClosePriceIndicator(timeSeries);
+        closePriceIndicator = new ClosePriceIndicator(series);
         lowestClosePriceIndicator = new LowestValueIndicator(closePriceIndicator, timeFrame);
     }
 

@@ -37,6 +37,7 @@ public class StochasticOscillatorDIndicator extends CachedIndicator<TADecimal> {
     private Indicator<? extends TADecimal> indicator;
 
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
+        setTimeSeries(k.getTimeSeries());
         indicator = new SMAIndicator(k, 3);
     }
 

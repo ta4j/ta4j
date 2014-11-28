@@ -36,6 +36,7 @@ public class AverageTrueRangeIndicator extends CachedIndicator<TADecimal> {
     private final TrueRangeIndicator tr;
 
     public AverageTrueRangeIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
         this.timeFrame = timeFrame;
         this.tr = new TrueRangeIndicator(series);
     }

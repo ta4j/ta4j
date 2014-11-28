@@ -37,6 +37,7 @@ public class AverageGainIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
 
     public AverageGainIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }

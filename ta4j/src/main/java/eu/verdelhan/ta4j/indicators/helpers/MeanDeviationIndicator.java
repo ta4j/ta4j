@@ -46,6 +46,7 @@ public class MeanDeviationIndicator extends CachedIndicator<TADecimal> {
      * @param timeFrame the time frame
      */
     public MeanDeviationIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+        setTimeSeries(indicator.getTimeSeries());
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         sma = new SMAIndicator(indicator, timeFrame);

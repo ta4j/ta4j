@@ -35,6 +35,7 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<TADecimal> {
     private final TimeSeries series;
 
     public OnBalanceVolumeIndicator(TimeSeries series) {
+        setTimeSeries(series);
         this.series = series;
     }
 
@@ -52,10 +53,5 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<TADecimal> {
             return getValue(index - 1).plus(series.getTick(index).getVolume());
         }
         return getValue(index - 1);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
     }
 }

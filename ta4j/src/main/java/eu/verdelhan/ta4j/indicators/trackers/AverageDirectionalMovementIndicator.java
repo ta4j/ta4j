@@ -36,6 +36,7 @@ public class AverageDirectionalMovementIndicator extends CachedIndicator<TADecim
     private final DirectionalMovementIndicator dm;
 
     public AverageDirectionalMovementIndicator(TimeSeries series, int timeFrame) {
+        setTimeSeries(series);
         this.timeFrame = timeFrame;
         this.dm = new DirectionalMovementIndicator(series, timeFrame);
     }
@@ -54,5 +55,4 @@ public class AverageDirectionalMovementIndicator extends CachedIndicator<TADecim
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
-
 }

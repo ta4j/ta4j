@@ -41,6 +41,7 @@ public class RSIIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
 
     public RSIIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+        setTimeSeries(indicator.getTimeSeries());
         this.timeFrame = timeFrame;
         averageGainIndicator = new AverageGainIndicator(indicator, timeFrame);
         averageLossIndicator = new AverageLossIndicator(indicator, timeFrame);
