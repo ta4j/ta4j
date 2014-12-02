@@ -135,6 +135,19 @@ public class TimeSeriesTest {
         assertEquals(defaultName, subSeries.getName());
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void getTickWithRemovedIndexOnMovingSeriesShouldThrowException() {
+        defaultSeries.setMaximumTickCount(2);
+        defaultSeries.getTick(1);
+    }
+
+    @Test
+    public void getTickOnMovingSeries() {
+        Tick tick = defaultSeries.getTick(4);
+        defaultSeries.setMaximumTickCount(2);
+        assertEquals(tick, defaultSeries.getTick(4));
+    }
+
     @Test
     public void getTimePeriod() {
         // Original series
@@ -163,6 +176,37 @@ public class TimeSeriesTest {
         assertEquals(0, defaultSeries.getBegin());
         assertEquals(2, defaultSeries.getEnd());
         assertEquals(3, defaultSeries.getTickCount());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void addNullTickShouldThrowException() {
+        defaultSeries.addTick(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void addTickWithEndTimePriorToSeriesEndTimeShouldThrowException() {
+        defaultSeries.addTick(new MockTick(date.withDate(2000, 1, 1), 99d));
+    }
+    
+    @Test
+    public void addTick() {
+        defaultSeries = new TimeSeries(Period.days(1));
+        Tick firstTick = new MockTick(date.withDate(2014, 6, 13), 1d);
+        Tick secondTick = new MockTick(date.withDate(2014, 6, 14), 2d);
+
+        assertEquals(0, defaultSeries.getTickCount());
+        assertEquals(-1, defaultSeries.getBegin());
+        assertEquals(-1, defaultSeries.getEnd());
+
+        defaultSeries.addTick(firstTick);
+        assertEquals(1, defaultSeries.getTickCount());
+        assertEquals(0, defaultSeries.getBegin());
+        assertEquals(0, defaultSeries.getEnd());
+
+        defaultSeries.addTick(secondTick);
+        assertEquals(2, defaultSeries.getTickCount());
+        assertEquals(0, defaultSeries.getBegin());
+        assertEquals(1, defaultSeries.getEnd());
     }
 
     @Test
