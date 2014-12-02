@@ -53,6 +53,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         return results.get(index);
     }
 
+    /**
+     * @param index the index
+     * @return the value of the indicator
+     */
     protected abstract T calculate(int index);
 
     /**
@@ -64,4 +68,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             results.addAll(Collections.<T> nCopies((index - results.size()) + 1, null));
         }
     }
+
+//    /**
+//     * Removes the N first results which exceed the maximum tick count.
+//     */
+//    private void removeExceedingResults() {
+//        int resultCount = results.size();
+//        TimeSeries series = getTimeSeries();
+//        if (series == null) {
+//            throw new IllegalStateException("Time series must not be null");
+//        }
+//        final int maximumTickCount = series.getMaximumTickCount();
+//        if (resultCount > maximumTickCount) {
+//            // Removing old results
+//            int nbResultsToRemove = resultCount - maximumTickCount;
+//            for (int i = 0; i < nbResultsToRemove; i++) {
+//                results.remove(0);
+//            }
+//        }
+//    }
 }

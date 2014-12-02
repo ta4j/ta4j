@@ -50,6 +50,8 @@ public class TimeSeries {
     private Period timePeriod;
     /** Maximum number of ticks for the time series */
     private int maximumTickCount = Integer.MAX_VALUE;
+    /** Number of removed ticks */
+    private int removedTicksCount = 0;
 
     /**
      * Constructor.
@@ -117,11 +119,25 @@ public class TimeSeries {
     }
 
     /**
+     * Shifts the provided index to the left by removing the removed ticks count.
+     * E.g.: if 3 ticks have been removed, getShiftedIndex(10) returns 7.
+     * @param index the provided index
+     * @return the shifted index
+     */
+    public int getShiftedIndex(int index) {
+        return index - removedTicksCount;
+    }
+
+    /**
      * @param i an index
      * @return the tick at the i-th position
      */
     public Tick getTick(int i) {
-        return ticks.get(i);
+        int shiftedIndex = getShiftedIndex(i);
+        if (shiftedIndex < 0) {
+            throw new IllegalArgumentException("Tick " + i + " already removed from the series");
+        }
+        return ticks.get(shiftedIndex);
     }
 
     /**
@@ -184,6 +200,13 @@ public class TimeSeries {
         }
         this.maximumTickCount = maximumTickCount;
         removeExceedingTicks();
+    }
+
+    /**
+     * @return the maximum tick count
+     */
+    public int getMaximumTickCount() {
+        return maximumTickCount;
     }
 
     /**
@@ -412,6 +435,8 @@ public class TimeSeries {
             // Updating begin/end indexes
             beginIndex = Math.max(beginIndex - nbTicksToRemove, 0);
             endIndex = Math.max(endIndex - nbTicksToRemove, beginIndex);
+            // Updating removed ticks count
+            removedTicksCount += nbTicksToRemove;
         }
     }
 
