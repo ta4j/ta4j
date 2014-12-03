@@ -33,10 +33,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     private TimeSeries series;
 
-    protected final void setTimeSeries(TimeSeries series) {
-        if (this.series != null) {
-            throw new IllegalStateException("Cannot reset the time series");
-        }
+    public AbstractIndicator(TimeSeries series) {
         this.series = series;
     }
 

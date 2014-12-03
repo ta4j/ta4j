@@ -35,7 +35,7 @@ public class MaxPriceIndicator extends CachedIndicator<TADecimal> {
     private TimeSeries series;
 
     public MaxPriceIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

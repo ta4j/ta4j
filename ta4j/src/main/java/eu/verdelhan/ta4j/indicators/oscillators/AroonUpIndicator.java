@@ -42,7 +42,7 @@ public class AroonUpIndicator extends CachedIndicator<TADecimal> {
     private final HighestValueIndicator highestClosePriceIndicator;
 
     public AroonUpIndicator(TimeSeries series, int timeFrame) {
-        setTimeSeries(series);
+        super(series);
         this.timeFrame = timeFrame;
         closePriceIndicator = new ClosePriceIndicator(series);
         highestClosePriceIndicator = new HighestValueIndicator(closePriceIndicator, timeFrame);

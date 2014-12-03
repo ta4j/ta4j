@@ -42,7 +42,7 @@ public class AroonDownIndicator extends CachedIndicator<TADecimal> {
     private final LowestValueIndicator lowestClosePriceIndicator;
 
     public AroonDownIndicator(TimeSeries series, int timeFrame) {
-        setTimeSeries(series);
+        super(series);
         this.timeFrame = timeFrame;
         closePriceIndicator = new ClosePriceIndicator(series);
         lowestClosePriceIndicator = new LowestValueIndicator(closePriceIndicator, timeFrame);

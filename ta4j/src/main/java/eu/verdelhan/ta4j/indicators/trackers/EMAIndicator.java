@@ -39,7 +39,7 @@ public class EMAIndicator extends CachedIndicator<TADecimal> {
     private final TADecimal multiplier;
 
     public EMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
-        setTimeSeries(indicator.getTimeSeries());
+        super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         multiplier = TADecimal.TWO.dividedBy(TADecimal.valueOf(timeFrame + 1));

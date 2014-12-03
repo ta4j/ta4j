@@ -35,7 +35,7 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<TADecimal> {
     private final TimeSeries series;
 
     public OnBalanceVolumeIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

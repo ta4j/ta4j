@@ -37,7 +37,7 @@ public class SMAIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
 
     public SMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
-        setTimeSeries(indicator.getTimeSeries());
+        super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }

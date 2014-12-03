@@ -37,7 +37,7 @@ public class AccumulationDistributionIndicator extends CachedIndicator<TADecimal
     private TimeSeries series;
 
     public AccumulationDistributionIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

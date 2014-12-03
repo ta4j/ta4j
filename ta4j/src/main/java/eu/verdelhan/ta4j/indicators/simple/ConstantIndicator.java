@@ -33,6 +33,7 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
     private T value;
 
     public ConstantIndicator(T t) {
+        super(null);
         this.value = t;
     }
 

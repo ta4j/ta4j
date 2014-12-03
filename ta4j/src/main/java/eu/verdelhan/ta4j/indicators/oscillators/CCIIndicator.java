@@ -52,7 +52,7 @@ public class CCIIndicator extends CachedIndicator<TADecimal> {
      * @param timeFrame the time frame
      */
     public CCIIndicator(TimeSeries series, int timeFrame) {
-        setTimeSeries(series);
+        super(series);
         typicalPriceInd = new TypicalPriceIndicator(series);
         smaInd = new SMAIndicator(typicalPriceInd, timeFrame);
         meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, timeFrame);

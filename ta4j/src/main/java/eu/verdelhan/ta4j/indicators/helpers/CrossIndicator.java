@@ -45,7 +45,7 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
      */
     public CrossIndicator(Indicator<? extends TADecimal> up, Indicator<? extends TADecimal> low) {
         // TODO: check if up series is equal to low series
-        setTimeSeries(up.getTimeSeries());
+        super(up);
         this.up = up;
         this.low = low;
     }

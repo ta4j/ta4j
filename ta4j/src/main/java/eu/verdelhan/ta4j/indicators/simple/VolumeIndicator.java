@@ -35,7 +35,7 @@ public class VolumeIndicator extends CachedIndicator<TADecimal> {
     private TimeSeries series;
 
     public VolumeIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

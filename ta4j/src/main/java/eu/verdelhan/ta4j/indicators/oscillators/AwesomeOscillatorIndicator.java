@@ -39,14 +39,13 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<TADecimal> {
     private SMAIndicator sma34;
 
     public AwesomeOscillatorIndicator(Indicator<? extends TADecimal> indicator, int timeFrameSma1, int timeFrameSma2) {
-        setTimeSeries(indicator.getTimeSeries());
+        super(indicator);
         this.sma5 = new SMAIndicator(indicator, timeFrameSma1);
         this.sma34 = new SMAIndicator(indicator, timeFrameSma2);
     }
 
-    public AwesomeOscillatorIndicator(Indicator<? extends TADecimal> average) {
-        this.sma5 = new SMAIndicator(average, 5);
-        this.sma34 = new SMAIndicator(average, 34);
+    public AwesomeOscillatorIndicator(Indicator<? extends TADecimal> indicator) {
+        this(indicator, 5, 34);
     }
 
     @Override

@@ -39,7 +39,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<TADecimal
     private SMAIndicator sma5;
 
     public AccelerationDecelerationIndicator(TimeSeries series, int timeFrameSma1, int timeFrameSma2) {
-        setTimeSeries(series);
+        super(series);
         this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), timeFrameSma1, timeFrameSma2);
         this.sma5 = new SMAIndicator(awesome, timeFrameSma1);
     }

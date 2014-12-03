@@ -34,7 +34,7 @@ public class TradeCountIndicator extends CachedIndicator<Integer> {
     private TimeSeries series;
 
     public TradeCountIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

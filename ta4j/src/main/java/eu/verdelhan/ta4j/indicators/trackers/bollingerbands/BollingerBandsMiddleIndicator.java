@@ -37,7 +37,7 @@ public class BollingerBandsMiddleIndicator extends CachedIndicator<TADecimal> {
     private final Indicator<? extends TADecimal> indicator;
 
     public BollingerBandsMiddleIndicator(Indicator<? extends TADecimal> indicator) {
-        setTimeSeries(indicator.getTimeSeries());
+        super(indicator);
         this.indicator = indicator;
     }
 

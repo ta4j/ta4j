@@ -37,7 +37,7 @@ public class LowestValueIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
 
     public LowestValueIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
-        setTimeSeries(indicator.getTimeSeries());
+        super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }

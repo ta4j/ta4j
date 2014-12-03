@@ -35,7 +35,7 @@ public class MinPriceIndicator extends CachedIndicator<TADecimal> {
     private TimeSeries series;
 
     public MinPriceIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

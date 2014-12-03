@@ -35,7 +35,7 @@ public class PreviousPriceIndicator extends CachedIndicator<TADecimal> {
     private TimeSeries series;
 
     public PreviousPriceIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

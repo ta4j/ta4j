@@ -39,7 +39,7 @@ public class DirectionalMovementIndicator extends CachedIndicator<TADecimal>{
     private final DirectionalDownIndicator ddown;
 
     public DirectionalMovementIndicator(TimeSeries series, int timeFrame) {
-        setTimeSeries(series);
+        super(series);
         this.timeFrame = timeFrame;
         dup = new DirectionalUpIndicator(series, timeFrame);
         ddown = new DirectionalDownIndicator(series, timeFrame);

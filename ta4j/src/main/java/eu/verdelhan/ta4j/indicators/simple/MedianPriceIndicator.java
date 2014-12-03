@@ -35,7 +35,7 @@ public class MedianPriceIndicator extends CachedIndicator<TADecimal> {
     private TimeSeries series;
 
     public MedianPriceIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

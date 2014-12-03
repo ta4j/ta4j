@@ -35,7 +35,7 @@ public class TrueRangeIndicator extends CachedIndicator<TADecimal>{
     private TimeSeries series;
 
     public TrueRangeIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
     

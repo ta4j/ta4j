@@ -37,7 +37,7 @@ public class AverageDirectionalMovementUpIndicator extends CachedIndicator<TADec
     private final DirectionalMovementUpIndicator dmup;
 
     public AverageDirectionalMovementUpIndicator(TimeSeries series, int timeFrame) {
-        setTimeSeries(series);
+        super(series);
         this.timeFrame = timeFrame;
         dmup = new DirectionalMovementUpIndicator(series);
     }

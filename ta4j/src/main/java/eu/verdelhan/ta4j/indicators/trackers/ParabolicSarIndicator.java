@@ -55,7 +55,7 @@ public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
     private final int timeFrame;
     
     public ParabolicSarIndicator(TimeSeries series, int timeFrame) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
         this.lowestValueIndicator = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
         this.highestValueIndicator = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);

@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,14 @@ import java.util.List;
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private List<T> results = new ArrayList<T>();
+
+    public CachedIndicator(TimeSeries series) {
+        super(series);
+    }
+
+    public CachedIndicator(Indicator indicator) {
+        this(indicator.getTimeSeries());
+    }
 
     @Override
     public T getValue(int index) {

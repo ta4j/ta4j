@@ -35,7 +35,7 @@ public class DirectionalMovementDownIndicator extends CachedIndicator<TADecimal>
     private TimeSeries series;
 
     public DirectionalMovementDownIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

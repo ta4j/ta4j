@@ -35,7 +35,7 @@ public class TypicalPriceIndicator extends CachedIndicator<TADecimal> {
     private TimeSeries series;
 
     public TypicalPriceIndicator(TimeSeries series) {
-        setTimeSeries(series);
+        super(series);
         this.series = series;
     }
 

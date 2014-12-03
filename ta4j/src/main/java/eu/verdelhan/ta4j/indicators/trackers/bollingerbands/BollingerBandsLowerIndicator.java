@@ -40,7 +40,7 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<TADecimal> {
 
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<? extends TADecimal> indicator) {
         // TODO: check for same series between indicators
-        setTimeSeries(indicator.getTimeSeries());
+        super(indicator);
         this.bbm = bbm;
         this.indicator = indicator;
     }
