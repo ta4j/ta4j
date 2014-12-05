@@ -37,28 +37,59 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private List<T> results = new ArrayList<T>();
 
+    /**
+     * Constructor.
+     * @param series the related time series
+     */
     public CachedIndicator(TimeSeries series) {
         super(series);
     }
 
+    /**
+     * Constructor.
+     * @param indicator a related indicator (with a time series)
+     */
     public CachedIndicator(Indicator indicator) {
         this(indicator.getTimeSeries());
     }
 
     @Override
     public T getValue(int index) {
-        increaseLength(index);
-        if (results.get(index) == null) {
-            int i = index;
-            while ((i > 0) && (results.get(i--) == null)) {
+        TimeSeries series = getTimeSeries();
+        if (series == null) {
+            // Series is null; the indicator doesn't need cache.
+            // (e.g. simple computation of the value)
+            // --> Calculating the value
+            return calculate(index);
+        }
+
+        // Series is not null
+
+        final int removedTicksCount = series.getRemovedTicksCount();
+        final int innerIndex = index - removedTicksCount;
+        if (innerIndex < 0) {
+            throw new IllegalArgumentException("Tick " + index + " already removed from the series");
+        } else {
+            // Updating cache length
+            increaseLength(innerIndex);
+            removeExceedingResults(series.getMaximumTickCount());
+        }
+
+        // Calculating the cached results
+        if (results.get(innerIndex) == null) {
+            // Looking for the last non-null result
+            int resultIndex = innerIndex;
+            while ((resultIndex > 0) && (results.get(resultIndex--) == null)) {
                 ;
             }
-            for (; i <= index; i++) {
-                if (results.get(i) == null) {
-                    results.set(i, calculate(i));
+            // Calculating all null values
+            for (; resultIndex <= innerIndex; resultIndex++) {
+                if (results.get(resultIndex) == null) {
+                    results.set(resultIndex, calculate(resultIndex + removedTicksCount));
                 }
             }
         }
+
         return results.get(index);
     }
 
@@ -78,22 +109,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
     }
 
-//    /**
-//     * Removes the N first results which exceed the maximum tick count.
-//     */
-//    private void removeExceedingResults() {
-//        int resultCount = results.size();
-//        TimeSeries series = getTimeSeries();
-//        if (series == null) {
-//            throw new IllegalStateException("Time series must not be null");
-//        }
-//        final int maximumTickCount = series.getMaximumTickCount();
-//        if (resultCount > maximumTickCount) {
-//            // Removing old results
-//            int nbResultsToRemove = resultCount - maximumTickCount;
-//            for (int i = 0; i < nbResultsToRemove; i++) {
-//                results.remove(0);
-//            }
-//        }
-//    }
+    /**
+     * Removes the N first results which exceed the maximum tick count.
+     * (i.e. keeps only the last maxResultCount results)
+     * @param maximumResultCount the number of results to keep
+     */
+    private void removeExceedingResults(int maximumResultCount) {
+        int resultCount = results.size();
+        if (resultCount > maximumResultCount) {
+            // Removing old results
+            int nbResultsToRemove = resultCount - maximumResultCount;
+            for (int i = 0; i < nbResultsToRemove; i++) {
+                results.remove(0);
+            }
+        }
+    }
 }

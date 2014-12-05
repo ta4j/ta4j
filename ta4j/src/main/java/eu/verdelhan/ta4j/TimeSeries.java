@@ -119,25 +119,15 @@ public class TimeSeries {
     }
 
     /**
-     * Shifts the provided index to the left by removing the removed ticks count.
-     * E.g.: if 3 ticks have been removed, getShiftedIndex(10) returns 7.
-     * @param index the provided index
-     * @return the shifted index
-     */
-    public int getShiftedIndex(int index) {
-        return index - removedTicksCount;
-    }
-
-    /**
      * @param i an index
      * @return the tick at the i-th position
      */
     public Tick getTick(int i) {
-        int shiftedIndex = getShiftedIndex(i);
-        if (shiftedIndex < 0) {
+        int innerIndex = i - removedTicksCount;
+        if (innerIndex < 0) {
             throw new IllegalArgumentException("Tick " + i + " already removed from the series");
         }
-        return ticks.get(shiftedIndex);
+        return ticks.get(innerIndex);
     }
 
     /**
@@ -203,10 +193,17 @@ public class TimeSeries {
     }
 
     /**
-     * @return the maximum tick count
+     * @return the maximum number of ticks
      */
     public int getMaximumTickCount() {
         return maximumTickCount;
+    }
+
+    /**
+     * @return the number of removed ticks
+     */
+    public int getRemovedTicksCount() {
+        return removedTicksCount;
     }
 
     /**
