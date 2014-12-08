@@ -90,7 +90,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
         }
 
-        return results.get(index);
+        return results.get(innerIndex);
     }
 
     /**

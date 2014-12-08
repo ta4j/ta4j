@@ -126,6 +126,11 @@ public class TimeSeries {
         int innerIndex = i - removedTicksCount;
         if (innerIndex < 0) {
             throw new IllegalArgumentException("Tick " + i + " already removed from the series");
+        } else if (innerIndex >= ticks.size()) {
+            throw new IndexOutOfBoundsException("Size of series: " + ticks.size()
+                    + " ticks, "
+                    + removedTicksCount + " ticks removed, "
+                    + "index = " + i);
         }
         return ticks.get(innerIndex);
     }

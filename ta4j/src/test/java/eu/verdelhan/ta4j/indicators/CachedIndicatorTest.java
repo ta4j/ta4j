@@ -26,6 +26,7 @@ import eu.verdelhan.ta4j.TADecimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.Arrays;
@@ -35,27 +36,64 @@ import org.junit.Test;
 
 public class CachedIndicatorTest {
 
-    private TimeSeries data;
+    private TimeSeries series;
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        series = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
     public void ifCacheWorks() {
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(series), 3);
         TADecimal firstTime = sma.getValue(4);
         TADecimal secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
     }
 
     @Test
-    public void increaseArrayMethod() {
-        double[] d = new double[200];
-        Arrays.fill(d, 10);
-        TimeSeries dataMax = new MockTimeSeries(d);
-        SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(dataMax), 100);
-        assertDecimalEquals(quoteSMA.getValue(105), 10);
+    public void getValueWithNullTimeSeries() {
+        
+        ConstantIndicator<TADecimal> constant = new ConstantIndicator<TADecimal>(TADecimal.TEN);
+        assertEquals(TADecimal.TEN, constant.getValue(0));
+        assertEquals(TADecimal.TEN, constant.getValue(100));
+        assertNull(constant.getTimeSeries());
+
+        SMAIndicator sma = new SMAIndicator(constant, 10);
+        assertEquals(TADecimal.TEN, sma.getValue(0));
+        assertEquals(TADecimal.TEN, sma.getValue(100));
+        assertNull(sma.getTimeSeries());
+    }
+
+    @Test
+    public void getValueWithCacheLengthIncrease() {
+        double[] data = new double[200];
+        Arrays.fill(data, 10);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(data)), 100);
+        assertDecimalEquals(sma.getValue(105), 10);
+    }
+
+    @Test
+    public void getValueWithOldResultsRemoval() {
+        double[] data = new double[20];
+        Arrays.fill(data, 1);
+        TimeSeries timeSeries = new MockTimeSeries(data);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
+        assertDecimalEquals(sma.getValue(5), 1);
+        assertDecimalEquals(sma.getValue(10), 1);
+        timeSeries.setMaximumTickCount(12);
+        assertDecimalEquals(sma.getValue(19), 1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void getValueOnRemovedResultShouldThrowException() {
+        double[] data = new double[20];
+        Arrays.fill(data, 1);
+        TimeSeries timeSeries = new MockTimeSeries(data);
+        timeSeries.setMaximumTickCount(12);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
+        assertDecimalEquals(sma.getValue(19), 1);
+        assertDecimalEquals(sma.getValue(18), 1);
+        sma.getValue(17); // Here the iae should be thrown
     }
 }
