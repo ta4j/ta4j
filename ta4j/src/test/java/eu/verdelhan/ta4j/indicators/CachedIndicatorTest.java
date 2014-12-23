@@ -85,15 +85,19 @@ public class CachedIndicatorTest {
         assertDecimalEquals(sma.getValue(19), 1);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void getValueOnRemovedResultShouldThrowException() {
+    @Test
+    public void getValueOnResultsCalculatedFromRemovedTicksShouldReturnNull() {
         double[] data = new double[20];
         Arrays.fill(data, 1);
         TimeSeries timeSeries = new MockTimeSeries(data);
         timeSeries.setMaximumTickCount(12);
+        assertEquals(8, timeSeries.getRemovedTicksCount());
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
         assertDecimalEquals(sma.getValue(19), 1);
         assertDecimalEquals(sma.getValue(18), 1);
-        sma.getValue(17); // Here the iae should be thrown
+        assertDecimalEquals(sma.getValue(17), 1); // Shouldn't be null instead?
+        for (int i = 16; i >= 8; i--) {
+            assertNull(sma.getValue(i));
+        }
     }
 }

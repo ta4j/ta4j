@@ -52,25 +52,6 @@ public class TimeSeries {
     private int maximumTickCount = Integer.MAX_VALUE;
     /** Number of removed ticks */
     private int removedTicksCount = 0;
-
-    /**
-     * Constructor.
-     * @param name the name of the series
-     * @param ticks the list of ticks of the series
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param endIndex the end index (inclusive) of the time series
-     */
-    public TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex) {
-        // TODO: add null checks and out of bounds checks
-        if (endIndex < beginIndex - 1) {
-            throw new IllegalArgumentException("end cannot be < than begin - 1");
-        }
-        this.name = name;
-        this.ticks = ticks;
-        this.beginIndex = beginIndex;
-        this.endIndex = endIndex;
-        computeTimePeriod();
-    }
     
     /**
      * Constructor.
@@ -78,7 +59,7 @@ public class TimeSeries {
      * @param ticks the list of ticks of the series
      */
     public TimeSeries(String name, List<Tick> ticks) {
-        this(name, ticks, 0, ticks.size() - 1);
+        this(name, ticks, Integer.MAX_VALUE, 0, 0, ticks.size() - 1);
     }
 
     /**
@@ -112,6 +93,29 @@ public class TimeSeries {
     }
 
     /**
+     * Constructor.
+     * @param name the name of the series
+     * @param ticks the list of ticks of the series
+     * @param maximumTickCount the maximum tick count
+     * @param removedTicksCount the count of removed ticks
+     * @param beginIndex the begin index (inclusive) of the time series
+     * @param endIndex the end index (inclusive) of the time series
+     */
+    private TimeSeries(String name, List<Tick> ticks, int maximumTickCount, int removedTicksCount, int beginIndex, int endIndex) {
+        // TODO: add null checks and out of bounds checks
+        if (endIndex < beginIndex - 1) {
+            throw new IllegalArgumentException("end cannot be < than begin - 1");
+        }
+        this.name = name;
+        this.ticks = ticks;
+        this.maximumTickCount = maximumTickCount;
+        this.removedTicksCount = removedTicksCount;
+        this.beginIndex = beginIndex;
+        this.endIndex = endIndex;
+        computeTimePeriod();
+    }
+
+    /**
      * @return the name of the series
      */
     public String getName() {
@@ -125,6 +129,12 @@ public class TimeSeries {
     public Tick getTick(int i) {
         int innerIndex = i - removedTicksCount;
         if (innerIndex < 0) {
+            if (i < 0) {
+                throw new IndexOutOfBoundsException("Size of series: " + ticks.size()
+                    + " ticks, "
+                    + removedTicksCount + " ticks removed, "
+                    + "index = " + i);
+            }
             throw new IllegalArgumentException("Tick " + i + " already removed from the series");
         } else if (innerIndex >= ticks.size()) {
             throw new IndexOutOfBoundsException("Size of series: " + ticks.size()
@@ -136,13 +146,28 @@ public class TimeSeries {
     }
 
     /**
+     * @return the first tick of the series
+     */
+    public Tick getFirstTick() {
+        return getTick(beginIndex);
+    }
+
+    /**
+     * @return the last tick of the series
+     */
+    public Tick getLastTick() {
+        return getTick(endIndex);
+    }
+
+    /**
      * @return the number of ticks in the series
      */
     public int getTickCount() {
         if (endIndex < 0) {
             return 0;
         }
-        return (endIndex - beginIndex) + 1;
+        return Math.min(endIndex - removedTicksCount + 1,
+                endIndex - beginIndex + 1);
     }
 
     /**
@@ -166,8 +191,8 @@ public class TimeSeries {
         StringBuilder sb = new StringBuilder();
         if (!ticks.isEmpty()) {
             final String timeFormat = "hh:mm dd/MM/yyyy";
-            Tick firstTick = ticks.get(beginIndex);
-            Tick lastTick = ticks.get(endIndex);
+            Tick firstTick = getFirstTick();
+            Tick lastTick = getLastTick();
             sb.append(firstTick.getEndTime().toString(timeFormat))
                     .append(" - ")
                     .append(lastTick.getEndTime().toString(timeFormat));
@@ -256,7 +281,7 @@ public class TimeSeries {
      * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
      */
     public TimeSeries subseries(int beginIndex, int endIndex) {
-        return new TimeSeries(name, ticks, beginIndex, endIndex);
+        return new TimeSeries(name, ticks, maximumTickCount, removedTicksCount, beginIndex, endIndex);
     }
 
     /**
@@ -271,7 +296,7 @@ public class TimeSeries {
     public TimeSeries subseries(int beginIndex, Period duration) {
         
         // Calculating the sub-series interval
-        DateTime beginInterval = ticks.get(beginIndex).getEndTime();
+        DateTime beginInterval = getTick(beginIndex).getEndTime();
         DateTime endInterval = beginInterval.plus(duration);
         Interval subseriesInterval = new Interval(beginInterval, endInterval);
 
@@ -279,7 +304,7 @@ public class TimeSeries {
         int subseriesNbTicks = 0;
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick...
-            DateTime tickTime = ticks.get(i).getEndTime();
+            DateTime tickTime = getTick(i).getEndTime();
             if (!subseriesInterval.contains(tickTime)) {
                 // Tick out of the interval
                 break;
@@ -405,7 +430,7 @@ public class TimeSeries {
         for (int i = beginIndex; i < endIndex; i++) {
             // For each tick interval...
             // Looking for the minimum period.
-            long currentPeriodMillis = ticks.get(i+1).getEndTime().getMillis() - ticks.get(i).getEndTime().getMillis();
+            long currentPeriodMillis = getTick(i+1).getEndTime().getMillis() - getTick(i).getEndTime().getMillis();
             if (minPeriod == null) {
                 minPeriod = new Period(currentPeriodMillis);
             } else {
@@ -434,9 +459,6 @@ public class TimeSeries {
             for (int i = 0; i < nbTicksToRemove; i++) {
                 ticks.remove(0);
             }
-            // Updating begin/end indexes
-            beginIndex = Math.max(beginIndex - nbTicksToRemove, 0);
-            endIndex = Math.max(endIndex - nbTicksToRemove, beginIndex);
             // Updating removed ticks count
             removedTicksCount += nbTicksToRemove;
         }
@@ -454,13 +476,13 @@ public class TimeSeries {
         beginIndexes.add(beginIndex);
 
         // Building the first interval before next split
-        DateTime beginInterval = ticks.get(beginIndex).getEndTime();
+        DateTime beginInterval = getTick(beginIndex).getEndTime();
         DateTime endInterval = beginInterval.plus(splitDuration);
         Interval splitInterval = new Interval(beginInterval, endInterval);
 
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick...
-            DateTime tickTime = ticks.get(i).getEndTime();
+            DateTime tickTime = getTick(i).getEndTime();
             if (!splitInterval.contains(tickTime)) {
                 // Tick out of the interval
                 if (!endInterval.isAfter(tickTime)) {

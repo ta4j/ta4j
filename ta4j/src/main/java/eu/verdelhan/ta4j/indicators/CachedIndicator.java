@@ -79,13 +79,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (results.get(innerIndex) == null) {
             // Looking for the last non-null result
             int resultIndex = innerIndex;
-            while ((resultIndex > 0) && (results.get(resultIndex--) == null)) {
+            while ((resultIndex > removedTicksCount) && (results.get(resultIndex--) == null)) {
                 ;
             }
             // Calculating all null values
             for (; resultIndex <= innerIndex; resultIndex++) {
                 if (results.get(resultIndex) == null) {
-                    results.set(resultIndex, calculate(resultIndex + removedTicksCount));
+                    T result;
+                    try {
+                        result = calculate(resultIndex + removedTicksCount);
+                    } catch (Exception e) {
+                        // TODO: throw/catch custom exceptions
+                        result = null;
+                    }
+                    results.set(resultIndex, result);
                 }
             }
         }

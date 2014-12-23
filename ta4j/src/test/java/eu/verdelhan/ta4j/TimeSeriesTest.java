@@ -92,11 +92,6 @@ public class TimeSeriesTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void constructorWithInvalidIndexesShouldThrowException() {
-        TimeSeries s = new TimeSeries(null, null, 4, 2);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
     public void constructorWithNullTimePeriodShouldThrowException() {
         TimeSeries s = new TimeSeries((Period) null);
     }
@@ -141,6 +136,16 @@ public class TimeSeriesTest {
         defaultSeries.getTick(1);
     }
 
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getTickWithNegativeIndexShouldThrowException() {
+        defaultSeries.getTick(-1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getTickWithIndexGreaterThanTickCountShouldThrowException() {
+        defaultSeries.getTick(10);
+    }
+
     @Test
     public void getTickOnMovingSeries() {
         Tick tick = defaultSeries.getTick(4);
@@ -174,7 +179,7 @@ public class TimeSeriesTest {
 
         // After
         assertEquals(0, defaultSeries.getBegin());
-        assertEquals(2, defaultSeries.getEnd());
+        assertEquals(5, defaultSeries.getEnd());
         assertEquals(3, defaultSeries.getTickCount());
     }
 
@@ -211,6 +216,7 @@ public class TimeSeriesTest {
 
     @Test
     public void subseriesWithIndexes() {
+        defaultSeries.setMaximumTickCount(4);
         TimeSeries subSeries2 = defaultSeries.subseries(2, 5);
         assertEquals(defaultSeries.getName(), subSeries2.getName());
         assertEquals(2, subSeries2.getBegin());
@@ -219,6 +225,11 @@ public class TimeSeriesTest {
         assertEquals(defaultSeries.getEnd(), subSeries2.getEnd());
         assertEquals(4, subSeries2.getTickCount());
         assertNotEquals(defaultSeries.getTimePeriod(), subSeries2.getTimePeriod());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void subseriesWithInvalidIndexesShouldThrowException() {
+        defaultSeries.subseries(4, 2);
     }
 
     @Test
@@ -247,7 +258,7 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(3);
 
-        assertEquals(3, subSeries.getTickCount());
+        assertEquals(3, subseries.size());
 
         assertEquals(0, subseries.get(0).getBegin());
         assertEquals(2, subseries.get(0).getEnd());
