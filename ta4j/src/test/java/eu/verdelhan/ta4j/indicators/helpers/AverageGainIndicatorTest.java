@@ -34,12 +34,12 @@ public class AverageGainIndicatorTest {
     private TimeSeries data;
 
     @Before
-    public void prepare() throws Exception {
+    public void prepare() {
         data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
-    public void averageGainUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void averageGainUsingTimeFrame5UsingClosePrice() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 5);
 
         assertDecimalEquals(averageGain.getValue(5), "0.8");

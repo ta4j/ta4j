@@ -50,7 +50,7 @@ public class BollingerBandsUpperIndicatorTest {
     }
 
     @Test
-    public void bollingerBandsUpperUsingSMAAndStandardDeviation() throws Exception {
+    public void bollingerBandsUpperUsingSMAAndStandardDeviation() {
 
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);

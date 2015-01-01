@@ -51,7 +51,7 @@ public class AccelerationDecelerationIndicatorTest {
     }
 
     @Test
-    public void calculateWithSma2AndSma3() throws Exception {
+    public void calculateWithSma2AndSma3() {
         AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 2, 3);
 
         assertDecimalEquals(acceleration.getValue(0), 0);
@@ -62,7 +62,7 @@ public class AccelerationDecelerationIndicatorTest {
     }
 
     @Test
-    public void withSma1AndSma2() throws Exception {
+    public void withSma1AndSma2() {
         AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 1, 2);
 
         assertDecimalEquals(acceleration.getValue(0), 0);
@@ -73,7 +73,7 @@ public class AccelerationDecelerationIndicatorTest {
     }
 
     @Test
-    public void withSmaDefault() throws Exception {
+    public void withSmaDefault() {
         AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series);
 
         assertDecimalEquals(acceleration.getValue(0), 0);

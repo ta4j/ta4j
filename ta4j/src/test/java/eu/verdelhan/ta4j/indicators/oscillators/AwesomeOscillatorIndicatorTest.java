@@ -51,7 +51,7 @@ public class AwesomeOscillatorIndicatorTest {
     }
 
     @Test
-    public void calculateWithSma2AndSma3() throws Exception {
+    public void calculateWithSma2AndSma3() {
         AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 2, 3);
 
         assertDecimalEquals(awesome.getValue(0), 0);
@@ -62,7 +62,7 @@ public class AwesomeOscillatorIndicatorTest {
     }
 
     @Test
-    public void withSma1AndSma2() throws Exception {
+    public void withSma1AndSma2() {
         AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), 1, 2);
 
         assertDecimalEquals(awesome.getValue(0), 0);
@@ -73,7 +73,7 @@ public class AwesomeOscillatorIndicatorTest {
     }
 
     @Test
-    public void withSmaDefault() throws Exception {
+    public void withSmaDefault() {
         AwesomeOscillatorIndicator awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series));
 
         assertDecimalEquals(awesome.getValue(0), 0);

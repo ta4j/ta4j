@@ -39,7 +39,7 @@ public class MeanDeviationIndicatorTest {
     }
 
     @Test
-    public void meanDeviationUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void meanDeviationUsingTimeFrame5UsingClosePrice() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
 
         assertDecimalEquals(meanDeviation.getValue(2), 2.44444444444444);
@@ -50,7 +50,7 @@ public class MeanDeviationIndicatorTest {
     }
 
     @Test
-    public void firstValueShouldBeZero() throws Exception {
+    public void firstValueShouldBeZero() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
         assertDecimalEquals(meanDeviation.getValue(0), 0);
     }

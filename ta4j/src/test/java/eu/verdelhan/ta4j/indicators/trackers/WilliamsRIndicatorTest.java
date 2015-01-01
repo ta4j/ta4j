@@ -59,7 +59,7 @@ public class WilliamsRIndicatorTest {
     }
 
     @Test
-    public void williamsRUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void williamsRUsingTimeFrame5UsingClosePrice() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 

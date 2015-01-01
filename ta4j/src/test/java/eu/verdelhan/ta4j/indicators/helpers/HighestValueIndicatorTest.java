@@ -39,7 +39,7 @@ public class HighestValueIndicatorTest {
     }
 
     @Test
-    public void highestValueUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void highestValueUsingTimeFrame5UsingClosePrice() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
         assertDecimalEquals(highestValue.getValue(4), "4");

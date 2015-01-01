@@ -39,7 +39,7 @@ public class LowestValueIndicatorTest {
     }
 
     @Test
-    public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
 
         assertDecimalEquals(lowestValue.getValue(4), "1");

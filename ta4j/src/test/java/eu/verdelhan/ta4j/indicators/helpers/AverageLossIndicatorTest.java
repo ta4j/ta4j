@@ -39,7 +39,7 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void averageLossUsingTimeFrame5UsingClosePrice() throws Exception {
+    public void averageLossUsingTimeFrame5UsingClosePrice() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 5);
 
         assertDecimalEquals(averageLoss.getValue(5), "0.2");

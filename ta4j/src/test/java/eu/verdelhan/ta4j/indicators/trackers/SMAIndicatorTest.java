@@ -40,7 +40,7 @@ public class SMAIndicatorTest {
     }
 
     @Test
-    public void SMAUsingTimeFrame3UsingClosePrice() throws Exception {
+    public void SMAUsingTimeFrame3UsingClosePrice() {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
 
         assertDecimalEquals(sma.getValue(0), 1);
