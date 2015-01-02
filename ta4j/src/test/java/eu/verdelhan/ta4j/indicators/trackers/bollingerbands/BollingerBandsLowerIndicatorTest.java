@@ -57,12 +57,12 @@ public class BollingerBandsLowerIndicatorTest {
         BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
         assertDecimalEquals(bblSMA.getValue(0), 1);
-        assertDecimalEquals(bblSMA.getValue(1), 0.0857);
-        assertDecimalEquals(bblSMA.getValue(2), -0.8284);
-        assertDecimalEquals(bblSMA.getValue(3), 0.1716);
-        assertDecimalEquals(bblSMA.getValue(4), 1.7003);
-        assertDecimalEquals(bblSMA.getValue(5), 2.0337);
-        assertDecimalEquals(bblSMA.getValue(6), 1.1716);
+        assertDecimalEquals(bblSMA.getValue(1), 0.5);
+        assertDecimalEquals(bblSMA.getValue(2), 0.367);
+        assertDecimalEquals(bblSMA.getValue(3), 1.367);
+        assertDecimalEquals(bblSMA.getValue(4), 2.3905);
+        assertDecimalEquals(bblSMA.getValue(5), 2.7239);
+        assertDecimalEquals(bblSMA.getValue(6), 2.367);
     }
 
     @Test
@@ -72,7 +72,7 @@ public class BollingerBandsLowerIndicatorTest {
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
-        assertDecimalEquals(bblSMA.getValue(1), 0.0857);
-        assertDecimalEquals(bblSMA.getValue(6), 1.1716);
+        assertDecimalEquals(bblSMA.getValue(1), 0.5);
+        assertDecimalEquals(bblSMA.getValue(6), 2.367);
     }
 }

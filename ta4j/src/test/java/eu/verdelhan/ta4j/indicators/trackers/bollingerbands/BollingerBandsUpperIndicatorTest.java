@@ -57,15 +57,15 @@ public class BollingerBandsUpperIndicatorTest {
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
         assertDecimalEquals(bbuSMA.getValue(0), 1);
-        assertDecimalEquals(bbuSMA.getValue(1), 2.9142);
-        assertDecimalEquals(bbuSMA.getValue(2), 4.8284);
-        assertDecimalEquals(bbuSMA.getValue(3), 5.8284);
-        assertDecimalEquals(bbuSMA.getValue(4), 4.9663);
-        assertDecimalEquals(bbuSMA.getValue(5), 5.2997);
-        assertDecimalEquals(bbuSMA.getValue(6), 6.8284);
-        assertDecimalEquals(bbuSMA.getValue(7), 5.9663);
-        assertDecimalEquals(bbuSMA.getValue(8), 6.8284);
-        assertDecimalEquals(bbuSMA.getValue(9), 4.9663);
+        assertDecimalEquals(bbuSMA.getValue(1), 2.5);
+        assertDecimalEquals(bbuSMA.getValue(2), 3.633);
+        assertDecimalEquals(bbuSMA.getValue(3), 4.633);
+        assertDecimalEquals(bbuSMA.getValue(4), 4.2761);
+        assertDecimalEquals(bbuSMA.getValue(5), 4.6094);
+        assertDecimalEquals(bbuSMA.getValue(6), 5.633);
+        assertDecimalEquals(bbuSMA.getValue(7), 5.2761);
+        assertDecimalEquals(bbuSMA.getValue(8), 5.633);
+        assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class BollingerBandsUpperIndicatorTest {
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
-        assertDecimalEquals(bbuSMA.getValue(4), 4.9663);
-        assertDecimalEquals(bbuSMA.getValue(9), 4.9663);
+        assertDecimalEquals(bbuSMA.getValue(4), 4.2761);
+        assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
     }
 }

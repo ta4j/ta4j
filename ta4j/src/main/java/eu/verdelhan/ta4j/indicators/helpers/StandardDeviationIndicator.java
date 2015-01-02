@@ -30,6 +30,7 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 /**
  * Standard deviation indicator.
  * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility
  */
 public class StandardDeviationIndicator extends CachedIndicator<TADecimal> {
 
@@ -53,12 +54,15 @@ public class StandardDeviationIndicator extends CachedIndicator<TADecimal> {
 
     @Override
     protected TADecimal calculate(int index) {
+        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int numberOfObservations = index - startIndex + 1;
         TADecimal standardDeviation = TADecimal.ZERO;
         TADecimal average = sma.getValue(index);
-        for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
+        for (int i = startIndex; i <= index; i++) {
             TADecimal pow = indicator.getValue(i).minus(average).pow(2);
             standardDeviation = standardDeviation.plus(pow);
         }
+        standardDeviation = standardDeviation.dividedBy(TADecimal.valueOf(numberOfObservations));
         return standardDeviation.sqrt();
     }
 
