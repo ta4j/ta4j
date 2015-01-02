@@ -47,14 +47,4 @@ public class BollingerBandsMiddleIndicatorTest {
             assertEquals(sma.getValue(i), bbmSMA.getValue(i));
         }
     }
-
-    @Test
-    public void bollingerBandsLowerShouldWorkJumpingIndexes() {
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-
-        assertEquals(sma.getValue(6), bbmSMA.getValue(6));
-        assertEquals(sma.getValue(0), bbmSMA.getValue(0));
-
-    }
 }

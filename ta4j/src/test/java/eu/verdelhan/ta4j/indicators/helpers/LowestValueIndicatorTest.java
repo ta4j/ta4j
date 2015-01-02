@@ -55,13 +55,6 @@ public class LowestValueIndicatorTest {
     }
 
     @Test
-    public void lowestValueShouldWorkJumpingIndexes() {
-        LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertDecimalEquals(lowestValue.getValue(10), "2");
-        assertDecimalEquals(lowestValue.getValue(6), "3");
-    }
-
-    @Test
     public void lowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
         assertDecimalEquals(lowestValue.getValue(0), "1");

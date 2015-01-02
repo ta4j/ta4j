@@ -53,13 +53,6 @@ public class AverageGainIndicatorTest {
     }
 
     @Test
-    public void averageGainShouldWorkJumpingIndexes() {
-        AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 5);
-        assertDecimalEquals(averageGain.getValue(10), "0.4");
-        assertDecimalEquals(averageGain.getValue(12), "0.2");
-    }
-
-    @Test
     public void averageGainMustReturnZeroWhenTheDataDoesntGain() {
         AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 3);
         assertDecimalEquals(averageGain.getValue(9), 0);

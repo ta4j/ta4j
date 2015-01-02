@@ -66,11 +66,4 @@ public class StochasticOscillatorKIndicatorTest {
         assertDecimalEquals(sof.getValue(12), 1000/10.81);
         assertDecimalEquals(sof.getValue(13), 57.8168);
     }
-
-    @Test
-    public void stochasticOscilatorKShouldWorkJumpingIndexes() {
-
-        StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
-        assertDecimalEquals(sof.getValue(13), 57.8168);
-    }
 }

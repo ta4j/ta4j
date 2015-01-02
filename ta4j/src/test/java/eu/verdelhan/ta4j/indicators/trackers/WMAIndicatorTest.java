@@ -38,20 +38,11 @@ public class WMAIndicatorTest {
         Indicator<TADecimal> wmaIndicator = new WMAIndicator(close, 3);
 
         assertDecimalEquals(wmaIndicator.getValue(0), 1);
-        assertDecimalEquals(wmaIndicator.getValue(1), 1.666666666666);
-        assertDecimalEquals(wmaIndicator.getValue(2), 2.333333333333);
-        assertDecimalEquals(wmaIndicator.getValue(3), 3.333333333333);
-        assertDecimalEquals(wmaIndicator.getValue(4), 4.333333333333);
-        assertDecimalEquals(wmaIndicator.getValue(5), 5.333333333333);
-    }
-    
-    @Test
-    public void WMACalculateJumpingIndex() {
-        MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<TADecimal> close = new ClosePriceIndicator(series);
-        Indicator<TADecimal> wmaIndicator = new WMAIndicator(close, 3);
-
-        assertDecimalEquals(wmaIndicator.getValue(5), 5.333333333333);
+        assertDecimalEquals(wmaIndicator.getValue(1), 1.6667);
+        assertDecimalEquals(wmaIndicator.getValue(2), 2.3333);
+        assertDecimalEquals(wmaIndicator.getValue(3), 3.3333);
+        assertDecimalEquals(wmaIndicator.getValue(4), 4.3333);
+        assertDecimalEquals(wmaIndicator.getValue(5), 5.3333);
     }
     
     @Test
@@ -61,10 +52,10 @@ public class WMAIndicatorTest {
         Indicator<TADecimal> wmaIndicator = new WMAIndicator(close, 55);
 
         assertDecimalEquals(wmaIndicator.getValue(0), 1);
-        assertDecimalEquals(wmaIndicator.getValue(1), 1.666666666666);
-        assertDecimalEquals(wmaIndicator.getValue(2), 2.333333333333);
+        assertDecimalEquals(wmaIndicator.getValue(1), 1.6667);
+        assertDecimalEquals(wmaIndicator.getValue(2), 2.3333);
         assertDecimalEquals(wmaIndicator.getValue(3), 3);
-        assertDecimalEquals(wmaIndicator.getValue(4), 3.666666666666);
-        assertDecimalEquals(wmaIndicator.getValue(5), 4.333333333333);
+        assertDecimalEquals(wmaIndicator.getValue(4), 3.6666);
+        assertDecimalEquals(wmaIndicator.getValue(5), 4.3333);
     }
 }

@@ -79,15 +79,6 @@ public class StochasticOscillatorDIndicatorTest {
         assertEquals(sma.getValue(0), sos.getValue(0));
         assertEquals(sma.getValue(1), sos.getValue(1));
         assertEquals(sma.getValue(2), sos.getValue(2));
-    }
-
-    @Test
-    public void stochasticOscilatorDShouldWorkJumpingIndexes() {
-
-        StochasticOscillatorKIndicator sof = new StochasticOscillatorKIndicator(data, 14);
-        StochasticOscillatorDIndicator sos = new StochasticOscillatorDIndicator(sof);
-        SMAIndicator sma = new SMAIndicator(sof, 3);
-
         assertEquals(sma.getValue(13), sos.getValue(13));
     }
 }

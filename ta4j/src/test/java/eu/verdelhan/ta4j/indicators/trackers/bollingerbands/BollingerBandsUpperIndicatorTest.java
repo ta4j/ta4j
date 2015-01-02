@@ -67,15 +67,4 @@ public class BollingerBandsUpperIndicatorTest {
         assertDecimalEquals(bbuSMA.getValue(8), 5.633);
         assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
     }
-
-    @Test
-    public void bollingerBandsUpperShouldWorkJumpingIndexes() {
-
-        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-        StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
-        BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
-
-        assertDecimalEquals(bbuSMA.getValue(4), 4.2761);
-        assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
-    }
 }

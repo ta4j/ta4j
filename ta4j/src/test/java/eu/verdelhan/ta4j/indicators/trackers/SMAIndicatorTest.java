@@ -55,7 +55,7 @@ public class SMAIndicatorTest {
         assertDecimalEquals(sma.getValue(9), 10d/3);
         assertDecimalEquals(sma.getValue(10), 10d/3);
         assertDecimalEquals(sma.getValue(11), 10d/3);
-        assertDecimalEquals(sma.getValue(12), 3.0);
+        assertDecimalEquals(sma.getValue(12), 3);
     }
 
     @Test
@@ -64,11 +64,5 @@ public class SMAIndicatorTest {
         for (int i = 0; i < data.getTickCount(); i++) {
             assertEquals(data.getTick(i).getClosePrice(), quoteSMA.getValue(i));
         }
-    }
-
-    @Test
-    public void SMAShouldWorkJumpingIndexes() {
-        SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        assertDecimalEquals(quoteSMA.getValue(12), 3);
     }
 }

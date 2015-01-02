@@ -37,7 +37,10 @@ public class EMAIndicatorTest {
     @Before
     public void setUp() {
 
-        data = new MockTimeSeries(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95,
+        data = new MockTimeSeries(
+                64.75, 63.79, 63.73,
+                63.73, 63.55, 63.19,
+                63.91, 63.85, 62.95,
                 63.37, 61.33, 61.51);
     }
 
@@ -64,12 +67,6 @@ public class EMAIndicatorTest {
         for (int i = 0; i < 9; i++) {
             assertEquals(sma.getValue(i), ema.getValue(i));
         }
-    }
-
-    @Test
-    public void EMAShouldWorkJumpingIndexes() {
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-        assertDecimalEquals(ema.getValue(10), 63.2312);
     }
     
     @Test

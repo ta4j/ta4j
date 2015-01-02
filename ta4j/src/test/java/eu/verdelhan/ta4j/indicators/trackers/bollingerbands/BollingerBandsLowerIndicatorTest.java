@@ -64,15 +64,4 @@ public class BollingerBandsLowerIndicatorTest {
         assertDecimalEquals(bblSMA.getValue(5), 2.7239);
         assertDecimalEquals(bblSMA.getValue(6), 2.367);
     }
-
-    @Test
-    public void bollingerBandsLowerShouldWorkJumpingIndexes() {
-
-        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
-        StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
-        BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
-
-        assertDecimalEquals(bblSMA.getValue(1), 0.5);
-        assertDecimalEquals(bblSMA.getValue(6), 2.367);
-    }
 }

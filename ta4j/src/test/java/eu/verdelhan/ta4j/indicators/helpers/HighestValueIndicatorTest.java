@@ -64,11 +64,4 @@ public class HighestValueIndicatorTest {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
         assertDecimalEquals(highestValue.getValue(12), "6");
     }
-
-    @Test
-    public void highestValueShouldWorkJumpingIndexes() {
-        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertDecimalEquals(highestValue.getValue(6), "5");
-        assertDecimalEquals(highestValue.getValue(12), "4");
-    }
 }

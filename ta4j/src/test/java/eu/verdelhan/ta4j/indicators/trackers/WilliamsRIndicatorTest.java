@@ -60,7 +60,8 @@ public class WilliamsRIndicatorTest {
 
     @Test
     public void williamsRUsingTimeFrame5UsingClosePrice() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
+        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5,
+                new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
         assertDecimalEquals(wr.getValue(4), -47.2222);
@@ -71,14 +72,6 @@ public class WilliamsRIndicatorTest {
         assertDecimalEquals(wr.getValue(9), -5.2632);
         assertDecimalEquals(wr.getValue(10), -13.9535);
 
-    }
-
-    @Test
-    public void williamsRShouldWorkJumpingIndexes() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new MaxPriceIndicator(data),
-                new MinPriceIndicator(data));
-        assertDecimalEquals(wr.getValue(4), -47.2222);
-        assertDecimalEquals(wr.getValue(10), -13.9535);
     }
 
     @Test

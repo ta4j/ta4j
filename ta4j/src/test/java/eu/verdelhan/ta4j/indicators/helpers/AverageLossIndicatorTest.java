@@ -54,13 +54,6 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void averageLossShouldWorkJumpingIndexes() {
-        AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 5);
-        assertDecimalEquals(averageLoss.getValue(10), "0.4");
-        assertDecimalEquals(averageLoss.getValue(12), "0.6");
-    }
-
-    @Test
     public void averageLossMustReturnZeroWhenTheDataDoesntGain() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 4);
         assertDecimalEquals(averageLoss.getValue(3), 0);
