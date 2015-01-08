@@ -163,13 +163,18 @@ public class TimeSeriesTest {
         assertEquals(subSeriesPeriod, subSeries.getTimePeriod());
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void maximumTickCountOnSubserieShouldThrowException() {
+        subSeries.setMaximumTickCount(10);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void negativeMaximumTickCountShouldThrowException() {
         defaultSeries.setMaximumTickCount(-1);
     }
 
     @Test
-    public void maximumTickCount() {
+    public void setMaximumTickCount() {
         // Before
         assertEquals(0, defaultSeries.getBegin());
         assertEquals(ticks.size() - 1, defaultSeries.getEnd());
@@ -216,7 +221,6 @@ public class TimeSeriesTest {
 
     @Test
     public void subseriesWithIndexes() {
-        defaultSeries.setMaximumTickCount(4);
         TimeSeries subSeries2 = defaultSeries.subseries(2, 5);
         assertEquals(defaultSeries.getName(), subSeries2.getName());
         assertEquals(2, subSeries2.getBegin());
@@ -225,6 +229,12 @@ public class TimeSeriesTest {
         assertEquals(defaultSeries.getEnd(), subSeries2.getEnd());
         assertEquals(4, subSeries2.getTickCount());
         assertNotEquals(defaultSeries.getTimePeriod(), subSeries2.getTimePeriod());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void subseriesOnSeriesWithMaximumTickCountShouldThrowException() {
+        defaultSeries.setMaximumTickCount(3);
+        defaultSeries.subseries(0, 1);
     }
 
     @Test(expected = IllegalArgumentException.class)

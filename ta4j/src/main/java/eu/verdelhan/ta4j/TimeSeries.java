@@ -52,14 +52,16 @@ public class TimeSeries {
     private int maximumTickCount = Integer.MAX_VALUE;
     /** Number of removed ticks */
     private int removedTicksCount = 0;
-    
+    /** True if the current series is a sub-series, false otherwise */
+    private boolean subSeries = false;
+
     /**
      * Constructor.
      * @param name the name of the series
      * @param ticks the list of ticks of the series
      */
     public TimeSeries(String name, List<Tick> ticks) {
-        this(name, ticks, Integer.MAX_VALUE, 0, 0, ticks.size() - 1);
+        this(name, ticks, 0, ticks.size() - 1, false);
     }
 
     /**
@@ -96,22 +98,20 @@ public class TimeSeries {
      * Constructor.
      * @param name the name of the series
      * @param ticks the list of ticks of the series
-     * @param maximumTickCount the maximum tick count
-     * @param removedTicksCount the count of removed ticks
      * @param beginIndex the begin index (inclusive) of the time series
      * @param endIndex the end index (inclusive) of the time series
+     * @param subSeries true if the current series is a sub-series, false otherwise
      */
-    private TimeSeries(String name, List<Tick> ticks, int maximumTickCount, int removedTicksCount, int beginIndex, int endIndex) {
+    private TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex, boolean subSeries) {
         // TODO: add null checks and out of bounds checks
         if (endIndex < beginIndex - 1) {
             throw new IllegalArgumentException("end cannot be < than begin - 1");
         }
         this.name = name;
         this.ticks = ticks;
-        this.maximumTickCount = maximumTickCount;
-        this.removedTicksCount = removedTicksCount;
         this.beginIndex = beginIndex;
         this.endIndex = endIndex;
+        this.subSeries = subSeries;
         computeTimePeriod();
     }
 
@@ -166,8 +166,8 @@ public class TimeSeries {
         if (endIndex < 0) {
             return 0;
         }
-        return Math.min(endIndex - removedTicksCount + 1,
-                endIndex - beginIndex + 1);
+        final int startIndex = Math.max(removedTicksCount, beginIndex);
+        return endIndex - startIndex + 1;
     }
 
     /**
@@ -215,6 +215,9 @@ public class TimeSeries {
      * @param maximumTickCount the maximum tick count
      */
     public void setMaximumTickCount(int maximumTickCount) {
+        if (subSeries) {
+            throw new IllegalStateException("Cannot set a maximum tick count on a sub-series");
+        }
         if (maximumTickCount <= 0) {
             throw new IllegalArgumentException("Maximum tick count must be strictly positive");
         }
@@ -281,7 +284,10 @@ public class TimeSeries {
      * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
      */
     public TimeSeries subseries(int beginIndex, int endIndex) {
-        return new TimeSeries(name, ticks, maximumTickCount, removedTicksCount, beginIndex, endIndex);
+        if (maximumTickCount != Integer.MAX_VALUE) {
+            throw new IllegalStateException("Cannot create a sub-series from a time series for which a maximum tick count has been set");
+        }
+        return new TimeSeries(name, ticks, beginIndex, endIndex, true);
     }
 
     /**
