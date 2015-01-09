@@ -31,23 +31,35 @@ import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 
 /**
- * Dummy trading bot.
+ * This class is an example of a dummy trading bot using ta4j.
  * <p>
  */
 public class TradingBotOnMovingTimeSeries {
 
+    /** Close price of the last tick */
     private static TADecimal LAST_TICK_CLOSE_PRICE;
 
-    private static TimeSeries buildMovingTimeSeries() {
+    /**
+     * Builds a moving time series (i.e. keeping only the maxTickCount last ticks)
+     * @param maxTickCount the number of ticks to keep in the time series (at maximum)
+     * @return a moving time series
+     */
+    private static TimeSeries buildMovingTimeSeries(int maxTickCount) {
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
         System.out.println("Initial tick count: " + series.getTickCount());
         // Limitating the number of ticks to 250
-        series.setMaximumTickCount(250);
-        System.out.println("Limited to 250");
+        series.setMaximumTickCount(maxTickCount);
+        System.out.println("Limited to " + maxTickCount);
         LAST_TICK_CLOSE_PRICE = series.getTick(series.getEnd()).getClosePrice();
         return series;
     }
 
+    /**
+     * Generates a random decimal number between min and max.
+     * @param min the minimum bound
+     * @param max the maximum bound
+     * @return a random decimal number between min and max
+     */
     private static TADecimal randDecimal(TADecimal min, TADecimal max) {
         TADecimal randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
@@ -57,7 +69,8 @@ public class TradingBotOnMovingTimeSeries {
     }
 
     /**
-     * 
+     * Generates a random tick.
+     * @return a random tick
      */
     private static Tick generateRandomTick() {
         final TADecimal maxRange = TADecimal.valueOf("0.03"); // 3.0%
@@ -70,23 +83,34 @@ public class TradingBotOnMovingTimeSeries {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        // Getting the time series
-        TimeSeries series = buildMovingTimeSeries();
+        /**
+         * Getting the time series
+         */
+        TimeSeries series = buildMovingTimeSeries(250);
 
-        // Building the trading strategy
+        /**
+         * Building the trading strategy
+         */
         Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
 
+        /**
+         * We run the strategy for the 300 next ticks.
+         */
         for (int i = 0; i < 300; i++) {
             System.out.println("Tick count: " + series.getTickCount());
+
+            // Starting from the end of the series
             int currentIndex = series.getEnd() + i;
             if (strategy.shouldEnter(currentIndex)) {
+                // Our strategy should enter
                 System.out.println("Strategy should enter on " + currentIndex);
             } else if (strategy.shouldExit(currentIndex)) {
+                // Our strategy should exit
                 System.out.println("Strategy should exit on " + currentIndex);
             }
             
             // New tick
-            Thread.sleep(10);
+            Thread.sleep(20);
             Tick newTick = generateRandomTick();
             series.addTick(newTick);
         }
