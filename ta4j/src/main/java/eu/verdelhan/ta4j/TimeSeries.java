@@ -265,12 +265,7 @@ public class TimeSeries {
             // Begin index set to 0 only if if wasn't initialized
             beginIndex = 0;
         }
-        if (endIndex == lastTickIndex) {
-            // End index:
-            //  - set to 0 if it wasn't initialized
-            //  - OR incremented if it was equal to ticks.size()-1
-            endIndex++;
-        }
+        endIndex++;
         removeExceedingTicks();
     }
 
