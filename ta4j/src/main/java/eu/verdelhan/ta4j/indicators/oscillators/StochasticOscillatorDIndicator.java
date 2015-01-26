@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
@@ -32,21 +32,21 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * Receive {@link StochasticOscillatorKIndicator} and returns its {@link SMAIndicator SMAIndicator(3)}.
  */
-public class StochasticOscillatorDIndicator extends CachedIndicator<TADecimal> {
+public class StochasticOscillatorDIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<? extends TADecimal> indicator;
+    private Indicator<? extends Decimal> indicator;
 
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
         this(new SMAIndicator(k, 3));
     }
 
-    public StochasticOscillatorDIndicator(Indicator<? extends TADecimal> indicator) {
+    public StochasticOscillatorDIndicator(Indicator<? extends Decimal> indicator) {
         super(indicator);
         this.indicator = indicator;
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         return indicator.getValue(index);
     }
 

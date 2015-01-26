@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
@@ -39,7 +39,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
 
-        TADecimal result;
+        Decimal result;
         if (trade.getEntry().isBuy()) {
             // buy-then-sell trade
             result = series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice());
@@ -48,7 +48,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             result = series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice());
         }
 
-        return (result.isGreaterThan(TADecimal.ONE)) ? 1d : 0d;
+        return (result.isGreaterThan(Decimal.ONE)) ? 1d : 0d;
     }
 
     @Override
@@ -58,7 +58,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             int entryIndex = trade.getEntry().getIndex();
             int exitIndex = trade.getExit().getIndex();
 
-            TADecimal result;
+            Decimal result;
             if (trade.getEntry().isBuy()) {
                 // buy-then-sell trade
                 result = series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice());
@@ -66,7 +66,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
                 // sell-then-buy trade
                 result = series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice());
             }
-            if (result.isGreaterThan(TADecimal.ONE)) {
+            if (result.isGreaterThan(Decimal.ONE)) {
                 numberOfProfitable++;
             }
         }

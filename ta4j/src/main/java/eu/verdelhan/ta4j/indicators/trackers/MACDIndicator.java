@@ -23,20 +23,20 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Moving average convergence divergence (MACDIndicator) indicator.
  * <p>
  */
-public class MACDIndicator extends CachedIndicator<TADecimal> {
+public class MACDIndicator extends CachedIndicator<Decimal> {
 
     private final EMAIndicator shortTermEma;
 
     private final EMAIndicator longTermEma;
 
-    public MACDIndicator(Indicator<? extends TADecimal> indicator, int shortTimeFrame, int longTimeFrame) {
+    public MACDIndicator(Indicator<? extends Decimal> indicator, int shortTimeFrame, int longTimeFrame) {
         super(indicator);
         if (shortTimeFrame > longTimeFrame) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
@@ -46,7 +46,7 @@ public class MACDIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
 }

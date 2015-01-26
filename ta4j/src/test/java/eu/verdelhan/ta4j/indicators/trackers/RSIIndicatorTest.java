@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -68,6 +68,6 @@ public class RSIIndicatorTest {
     public void RSIFirstValueShouldBeZero() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
-        assertEquals(TADecimal.ZERO, rsi.getValue(0));
+        assertEquals(Decimal.ZERO, rsi.getValue(0));
     }
 }

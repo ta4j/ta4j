@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
@@ -31,22 +31,22 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * <p>
  * a.k.a TRIX
  */
-public class TripleEMAIndicator extends CachedIndicator<TADecimal> {
+public class TripleEMAIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
     private final EMAIndicator ema;
 
-    public TripleEMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public TripleEMAIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
         EMAIndicator emaEmaEma = new EMAIndicator(emaEma, timeFrame);
-        return TADecimal.THREE.multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
+        return Decimal.THREE.multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
     }
 }

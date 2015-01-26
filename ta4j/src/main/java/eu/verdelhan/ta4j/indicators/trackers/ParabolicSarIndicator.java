@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
@@ -35,18 +35,18 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * Parabolic SAR indicator.
  * <p>
  */
-public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
+public class ParabolicSarIndicator extends CachedIndicator<Decimal> {
 
-    private static final TADecimal DEFAULT_ACCELERATION = TADecimal.valueOf("0.02");
-    private static final TADecimal ACCELERATION_THRESHOLD = TADecimal.valueOf("0.19");
-    private static final TADecimal MAX_ACCELERATION = TADecimal.valueOf("0.2");
-    private static final TADecimal ACCELERATION_INCREMENT = TADecimal.valueOf("0.02");
+    private static final Decimal DEFAULT_ACCELERATION = Decimal.valueOf("0.02");
+    private static final Decimal ACCELERATION_THRESHOLD = Decimal.valueOf("0.19");
+    private static final Decimal MAX_ACCELERATION = Decimal.valueOf("0.2");
+    private static final Decimal ACCELERATION_INCREMENT = Decimal.valueOf("0.02");
 
-    private TADecimal acceleration = DEFAULT_ACCELERATION;
+    private Decimal acceleration = DEFAULT_ACCELERATION;
 
     private final TimeSeries series;
 
-    private TADecimal extremePoint;
+    private Decimal extremePoint;
 
     private final LowestValueIndicator lowestValueIndicator;
 
@@ -63,7 +63,7 @@ public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
 
         if (index <= 1) {
             // Warning: should the min or the max price, according to the trend
@@ -72,11 +72,11 @@ public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
             return extremePoint;
         }
 
-        TADecimal n2ClosePrice = series.getTick(index - 2).getClosePrice();
-        TADecimal n1ClosePrice = series.getTick(index - 1).getClosePrice();
-        TADecimal nClosePrice = series.getTick(index).getClosePrice();
+        Decimal n2ClosePrice = series.getTick(index - 2).getClosePrice();
+        Decimal n1ClosePrice = series.getTick(index - 1).getClosePrice();
+        Decimal nClosePrice = series.getTick(index).getClosePrice();
 
-        TADecimal sar;
+        Decimal sar;
         if (n2ClosePrice.isGreaterThan(n1ClosePrice) && n1ClosePrice.isLessThan(nClosePrice)) {
             // Trend switch: \_/
             sar = extremePoint;
@@ -90,16 +90,16 @@ public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
 
         } else if (nClosePrice.isLessThan(n1ClosePrice)) {
              // Downtrend: falling SAR
-            TADecimal lowestValue = lowestValueIndicator.getValue(index);
+            Decimal lowestValue = lowestValueIndicator.getValue(index);
             if (extremePoint.isGreaterThan(lowestValue)) {
                 incrementAcceleration();
                 extremePoint = lowestValue;
             }
             sar = calculateSar(index);
 
-            TADecimal n2MaxPrice = series.getTick(index - 2).getMaxPrice();
-            TADecimal n1MaxPrice = series.getTick(index - 1).getMaxPrice();
-            TADecimal nMaxPrice = series.getTick(index).getMaxPrice();
+            Decimal n2MaxPrice = series.getTick(index - 2).getMaxPrice();
+            Decimal n1MaxPrice = series.getTick(index - 1).getMaxPrice();
+            Decimal nMaxPrice = series.getTick(index).getMaxPrice();
 
             if (n1MaxPrice.isGreaterThan(sar)) {
                 sar = n1MaxPrice;
@@ -112,16 +112,16 @@ public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
 
         } else {
              // Uptrend: rising SAR
-            TADecimal highestValue = highestValueIndicator.getValue(index);
+            Decimal highestValue = highestValueIndicator.getValue(index);
             if (extremePoint.isLessThan(highestValue)) {
                 incrementAcceleration();
                 extremePoint = highestValue;
             }
             sar = calculateSar(index);
 
-            TADecimal n2MinPrice = series.getTick(index - 2).getMinPrice();
-            TADecimal n1MinPrice = series.getTick(index - 1).getMinPrice();
-            TADecimal nMinPrice = series.getTick(index).getMinPrice();
+            Decimal n2MinPrice = series.getTick(index - 2).getMinPrice();
+            Decimal n1MinPrice = series.getTick(index - 1).getMinPrice();
+            Decimal nMinPrice = series.getTick(index).getMinPrice();
 
             if (n1MinPrice.isLessThan(sar)) {
                 sar = n1MinPrice;
@@ -152,10 +152,10 @@ public class ParabolicSarIndicator extends CachedIndicator<TADecimal> {
      * @param index the index
      * @return the SAR
      */
-    private TADecimal calculateSar(int index) {
-        TADecimal previousSar = getValue(index - 1);
+    private Decimal calculateSar(int index) {
+        Decimal previousSar = getValue(index - 1);
         return extremePoint.multipliedBy(acceleration)
-                .plus(TADecimal.ONE.minus(acceleration).multipliedBy(previousSar));
+                .plus(Decimal.ONE.minus(acceleration).multipliedBy(previousSar));
     }
 
     @Override

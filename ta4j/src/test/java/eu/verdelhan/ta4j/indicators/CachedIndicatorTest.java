@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -47,22 +47,22 @@ public class CachedIndicatorTest {
     @Test
     public void ifCacheWorks() {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(series), 3);
-        TADecimal firstTime = sma.getValue(4);
-        TADecimal secondTime = sma.getValue(4);
+        Decimal firstTime = sma.getValue(4);
+        Decimal secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
     }
 
     @Test
     public void getValueWithNullTimeSeries() {
         
-        ConstantIndicator<TADecimal> constant = new ConstantIndicator<TADecimal>(TADecimal.TEN);
-        assertEquals(TADecimal.TEN, constant.getValue(0));
-        assertEquals(TADecimal.TEN, constant.getValue(100));
+        ConstantIndicator<Decimal> constant = new ConstantIndicator<Decimal>(Decimal.TEN);
+        assertEquals(Decimal.TEN, constant.getValue(0));
+        assertEquals(Decimal.TEN, constant.getValue(100));
         assertNull(constant.getTimeSeries());
 
         SMAIndicator sma = new SMAIndicator(constant, 10);
-        assertEquals(TADecimal.TEN, sma.getValue(0));
-        assertEquals(TADecimal.TEN, sma.getValue(100));
+        assertEquals(Decimal.TEN, sma.getValue(0));
+        assertEquals(Decimal.TEN, sma.getValue(100));
         assertNull(sma.getTimeSeries());
     }
 
@@ -94,7 +94,7 @@ public class CachedIndicatorTest {
         timeSeries.setMaximumTickCount(3);
         // Theoretical values for SMA(2) cache: null, null, 3, 3.5, 4.5
         // Constant: 3
-        ConstantIndicator<TADecimal> constant = new ConstantIndicator<TADecimal>(TADecimal.THREE);
+        ConstantIndicator<Decimal> constant = new ConstantIndicator<Decimal>(Decimal.THREE);
 
         IndicatorOverIndicatorStrategy strategy = new IndicatorOverIndicatorStrategy(sma, constant);
         // Theoretical shouldEnter results: false, false, false, true, true

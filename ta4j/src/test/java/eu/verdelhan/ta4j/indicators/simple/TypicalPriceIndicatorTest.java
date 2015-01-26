@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -46,8 +46,8 @@ public class TypicalPriceIndicatorTest {
     public void indicatorShouldRetrieveTickMaxPrice() {
         for (int i = 0; i < 10; i++) {
             Tick tick = timeSeries.getTick(i);
-            TADecimal typicalPrice = tick.getMaxPrice().plus(tick.getMinPrice()).plus(tick.getClosePrice())
-                    .dividedBy(TADecimal.THREE);
+            Decimal typicalPrice = tick.getMaxPrice().plus(tick.getMinPrice()).plus(tick.getClosePrice())
+                    .dividedBy(Decimal.THREE);
             assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
         }
     }

@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import static org.junit.Assert.*;
@@ -35,9 +35,9 @@ import org.junit.Test;
 
 public class IndicatorOverIndicatorStrategyTest {
 
-    private Indicator<TADecimal> first;
+    private Indicator<Decimal> first;
 
-    private Indicator<TADecimal> second;
+    private Indicator<Decimal> second;
 
     @Before
     public void setUp() {

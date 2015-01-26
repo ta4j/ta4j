@@ -23,45 +23,45 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * WMA indicator.
  * <p>
  */
-public class WMAIndicator extends CachedIndicator<TADecimal> {
+public class WMAIndicator extends CachedIndicator<Decimal> {
 
     private int timeFrame;
 
-    private Indicator<? extends TADecimal> indicator;
+    private Indicator<? extends Decimal> indicator;
 
-    public WMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public WMAIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         if (index == 0) {
             return indicator.getValue(0);
         }
-        TADecimal value = TADecimal.ZERO;
+        Decimal value = Decimal.ZERO;
         if(index - timeFrame < 0) {
             
             for(int i = index + 1; i > 0; i--) {
-                value = value.plus(TADecimal.valueOf(i).multipliedBy(indicator.getValue(i-1)));
+                value = value.plus(Decimal.valueOf(i).multipliedBy(indicator.getValue(i-1)));
             }
-            return value.dividedBy(TADecimal.valueOf(((index + 1) * (index + 2)) / 2));
+            return value.dividedBy(Decimal.valueOf(((index + 1) * (index + 2)) / 2));
         }
         
         int actualIndex = index;
         for(int i = timeFrame; i > 0; i--) {
-            value = value.plus(TADecimal.valueOf(i).multipliedBy(indicator.getValue(actualIndex)));
+            value = value.plus(Decimal.valueOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
-        return value.dividedBy(TADecimal.valueOf((timeFrame * (timeFrame + 1)) / 2));
+        return value.dividedBy(Decimal.valueOf((timeFrame * (timeFrame + 1)) / 2));
     }
 
     @Override

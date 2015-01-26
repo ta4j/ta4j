@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -34,8 +34,8 @@ public class WMAIndicatorTest {
     @Test
     public void WMACalculate() {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<TADecimal> close = new ClosePriceIndicator(series);
-        Indicator<TADecimal> wmaIndicator = new WMAIndicator(close, 3);
+        Indicator<Decimal> close = new ClosePriceIndicator(series);
+        Indicator<Decimal> wmaIndicator = new WMAIndicator(close, 3);
 
         assertDecimalEquals(wmaIndicator.getValue(0), 1);
         assertDecimalEquals(wmaIndicator.getValue(1), 1.6667);
@@ -48,8 +48,8 @@ public class WMAIndicatorTest {
     @Test
     public void WMACalculateWithTimeFrameGreaterThanSeriesSize() {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<TADecimal> close = new ClosePriceIndicator(series);
-        Indicator<TADecimal> wmaIndicator = new WMAIndicator(close, 55);
+        Indicator<Decimal> close = new ClosePriceIndicator(series);
+        Indicator<Decimal> wmaIndicator = new WMAIndicator(close, 55);
 
         assertDecimalEquals(wmaIndicator.getValue(0), 1);
         assertDecimalEquals(wmaIndicator.getValue(1), 1.6667);

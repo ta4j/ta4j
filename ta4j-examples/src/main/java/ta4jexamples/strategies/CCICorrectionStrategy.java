@@ -23,7 +23,7 @@
 package ta4jexamples.strategies;
 
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
@@ -52,8 +52,8 @@ public class CCICorrectionStrategy {
 
         CCIIndicator longCci = new CCIIndicator(series, 200);
         CCIIndicator shortCci = new CCIIndicator(series, 5);
-        ConstantIndicator<TADecimal> plus100 = new ConstantIndicator<TADecimal>(TADecimal.HUNDRED);
-        ConstantIndicator<TADecimal> minus100 = new ConstantIndicator<TADecimal>(TADecimal.valueOf(-100));
+        ConstantIndicator<Decimal> plus100 = new ConstantIndicator<Decimal>(Decimal.HUNDRED);
+        ConstantIndicator<Decimal> minus100 = new ConstantIndicator<Decimal>(Decimal.valueOf(-100));
 
         // Trend
         IndicatorOverIndicatorStrategy bullTrend = new IndicatorOverIndicatorStrategy(longCci, plus100);

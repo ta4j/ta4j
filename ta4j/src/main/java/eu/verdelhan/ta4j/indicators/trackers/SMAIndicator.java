@@ -23,34 +23,34 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Simple moving average (SMA) indicator.
  * <p>
  */
-public class SMAIndicator extends CachedIndicator<TADecimal> {
+public class SMAIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends TADecimal> indicator;
+    private final Indicator<? extends Decimal> indicator;
 
     private final int timeFrame;
 
-    public SMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public SMAIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected TADecimal calculate(int index) {
-        TADecimal sum = TADecimal.ZERO;
+    protected Decimal calculate(int index) {
+        Decimal sum = Decimal.ZERO;
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
         final int realTimeFrame = Math.min(timeFrame, index + 1);
-        return sum.dividedBy(TADecimal.valueOf(realTimeFrame));
+        return sum.dividedBy(Decimal.valueOf(realTimeFrame));
     }
 
     @Override

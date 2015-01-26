@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 
 /**
  * Stop loss strategy.
@@ -36,11 +36,11 @@ public class StopLossStrategy extends AbstractStrategy {
 
     private Strategy strategy;
 
-    private TADecimal loss;
+    private Decimal loss;
 
-    private Indicator<? extends TADecimal> indicator;
+    private Indicator<? extends Decimal> indicator;
 
-    private TADecimal value;
+    private Decimal value;
 
     /**
      * Constructor.
@@ -48,9 +48,9 @@ public class StopLossStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param loss the loss threshold (in %)
      */
-    public StopLossStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, int loss) {
+    public StopLossStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, int loss) {
         this.strategy = strategy;
-        this.loss = TADecimal.valueOf(loss);
+        this.loss = Decimal.valueOf(loss);
         this.indicator = indicator;
     }
 
@@ -66,7 +66,7 @@ public class StopLossStrategy extends AbstractStrategy {
 
     @Override
     public boolean shouldExit(int index) {
-        boolean exit = (value.minus(value.multipliedBy(loss.dividedBy(TADecimal.HUNDRED)))).isGreaterThan(indicator.getValue(index))
+        boolean exit = (value.minus(value.multipliedBy(loss.dividedBy(Decimal.HUNDRED)))).isGreaterThan(indicator.getValue(index))
                 || strategy.shouldExit(index);
         traceExit(index, exit);
         return exit;

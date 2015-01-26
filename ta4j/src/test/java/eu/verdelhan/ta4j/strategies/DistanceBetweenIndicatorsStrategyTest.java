@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import static org.junit.Assert.*;
@@ -74,7 +74,7 @@ public class DistanceBetweenIndicatorsStrategyTest {
     @Test
     public void distanceBetweenIndicatorAndConstant() {
         MockDecimalIndicator indicator = new MockDecimalIndicator(4d, 10d, 10d, 12d, 14d, 15d, 18d);
-        distanceEnter = new DistanceBetweenIndicatorsStrategy(indicator, TADecimal.valueOf(9), 4, 0.3);
+        distanceEnter = new DistanceBetweenIndicatorsStrategy(indicator, Decimal.valueOf(9), 4, 0.3);
 
         Trade trade = new Trade();
         assertFalse(distanceEnter.shouldOperate(trade, 4));

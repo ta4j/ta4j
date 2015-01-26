@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * Directional movement up indicator.
  * <p>
  */
-public class DirectionalMovementUpIndicator extends CachedIndicator<TADecimal>
+public class DirectionalMovementUpIndicator extends CachedIndicator<Decimal>
 {
     private TimeSeries series;
 
@@ -40,23 +40,23 @@ public class DirectionalMovementUpIndicator extends CachedIndicator<TADecimal>
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         if (index == 0) {
-            return TADecimal.ZERO;
+            return Decimal.ZERO;
         }
-        TADecimal prevMaxPrice = series.getTick(index - 1).getMaxPrice();
-        TADecimal maxPrice = series.getTick(index).getMaxPrice();
-        TADecimal prevMinPrice = series.getTick(index - 1).getMinPrice();
-        TADecimal minPrice = series.getTick(index).getMinPrice();
+        Decimal prevMaxPrice = series.getTick(index - 1).getMaxPrice();
+        Decimal maxPrice = series.getTick(index).getMaxPrice();
+        Decimal prevMinPrice = series.getTick(index - 1).getMinPrice();
+        Decimal minPrice = series.getTick(index).getMinPrice();
 
         if ((maxPrice.isLessThan(prevMaxPrice) && minPrice.isGreaterThan(prevMinPrice))
                 || prevMinPrice.minus(minPrice).isEqual(maxPrice.minus(prevMaxPrice))) {
-            return TADecimal.ZERO;
+            return Decimal.ZERO;
         }
         if (maxPrice.minus(prevMaxPrice).isGreaterThan(prevMinPrice.minus(minPrice))) {
             return maxPrice.minus(prevMaxPrice);
         }
         
-        return TADecimal.ZERO;
+        return Decimal.ZERO;
     }
 }

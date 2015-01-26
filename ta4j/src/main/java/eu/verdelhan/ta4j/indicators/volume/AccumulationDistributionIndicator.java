@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.volume;
 
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
@@ -32,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * Accumulation-distribution indicator.
  * <p>
  */
-public class AccumulationDistributionIndicator extends CachedIndicator<TADecimal> {
+public class AccumulationDistributionIndicator extends CachedIndicator<Decimal> {
 
     private TimeSeries series;
 
@@ -42,18 +42,18 @@ public class AccumulationDistributionIndicator extends CachedIndicator<TADecimal
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         if (index == 0) {
-            return TADecimal.ZERO;
+            return Decimal.ZERO;
         }
         Tick tick = series.getTick(index);
 
         // Calculating the money flow multiplier
-        TADecimal moneyFlowMultiplier = ((tick.getClosePrice().minus(tick.getMinPrice())).minus(tick.getMaxPrice().minus(tick.getClosePrice())))
+        Decimal moneyFlowMultiplier = ((tick.getClosePrice().minus(tick.getMinPrice())).minus(tick.getMaxPrice().minus(tick.getClosePrice())))
                  .dividedBy(tick.getMaxPrice().minus(tick.getMinPrice()));
 
         // Calculating the money flow volume
-        TADecimal moneyFlowVolume = moneyFlowMultiplier.multipliedBy(tick.getVolume());
+        Decimal moneyFlowVolume = moneyFlowMultiplier.multipliedBy(tick.getVolume());
 
         return moneyFlowVolume.plus(getValue(index - 1));
     }

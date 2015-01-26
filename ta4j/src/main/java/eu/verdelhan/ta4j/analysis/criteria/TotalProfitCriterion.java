@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.List;
@@ -60,10 +60,10 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @return the profit of the trade
      */
     private double calculateProfit(TimeSeries series, Trade trade) {
-        TADecimal profit = TADecimal.ONE;
+        Decimal profit = Decimal.ONE;
         if (trade.isClosed()) {
-            TADecimal exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
-            TADecimal entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
+            Decimal exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
+            Decimal entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
 
             if (trade.getEntry().isBuy()) {
                 profit = exitClosePrice.dividedBy(entryClosePrice);

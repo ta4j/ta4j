@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 
 /**
  * Support strategy.
@@ -36,9 +36,9 @@ public class SupportStrategy extends AbstractStrategy {
 
     private final Strategy strategy;
 
-    private final Indicator<? extends TADecimal> indicator;
+    private final Indicator<? extends Decimal> indicator;
 
-    private TADecimal support;
+    private Decimal support;
 
     /**
      * Constructor.
@@ -46,9 +46,9 @@ public class SupportStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param support the support threshold
      */
-    public SupportStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, double support) {
+    public SupportStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, double support) {
         this.strategy = strategy;
-        this.support = TADecimal.valueOf(support);
+        this.support = Decimal.valueOf(support);
         this.indicator = indicator;
     }
 

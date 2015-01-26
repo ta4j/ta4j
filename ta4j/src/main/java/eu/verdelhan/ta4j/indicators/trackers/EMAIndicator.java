@@ -23,30 +23,30 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Exponential moving average indicator.
  * <p>
  */
-public class EMAIndicator extends CachedIndicator<TADecimal> {
+public class EMAIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends TADecimal> indicator;
+    private final Indicator<? extends Decimal> indicator;
 
     private final int timeFrame;
 
-    private final TADecimal multiplier;
+    private final Decimal multiplier;
 
-    public EMAIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public EMAIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
-        multiplier = TADecimal.TWO.dividedBy(TADecimal.valueOf(timeFrame + 1));
+        multiplier = Decimal.TWO.dividedBy(Decimal.valueOf(timeFrame + 1));
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         if (index + 1 < timeFrame) {
             // Starting point of the EMA
             return new SMAIndicator(indicator, timeFrame).getValue(index);
@@ -55,7 +55,7 @@ public class EMAIndicator extends CachedIndicator<TADecimal> {
             // If the timeframe is bigger than the indicator's value count
             return indicator.getValue(0);
         }
-        TADecimal emaPrev = getValue(index - 1);
+        Decimal emaPrev = getValue(index - 1);
         return indicator.getValue(index).minus(emaPrev).multipliedBy(multiplier).plus(emaPrev);
     }
 

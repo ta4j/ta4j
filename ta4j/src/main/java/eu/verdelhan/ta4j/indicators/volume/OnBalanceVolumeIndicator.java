@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.volume;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * On-balance volume indicator.
  * <p>
  */
-public class OnBalanceVolumeIndicator extends CachedIndicator<TADecimal> {
+public class OnBalanceVolumeIndicator extends CachedIndicator<Decimal> {
 
     private final TimeSeries series;
 
@@ -40,12 +40,12 @@ public class OnBalanceVolumeIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         if (index == 0) {
-            return TADecimal.ZERO;
+            return Decimal.ZERO;
         }
-        TADecimal yesterdayClose = series.getTick(index - 1).getClosePrice();
-        TADecimal todayClose = series.getTick(index).getClosePrice();
+        Decimal yesterdayClose = series.getTick(index - 1).getClosePrice();
+        Decimal todayClose = series.getTick(index).getClosePrice();
 
         if (yesterdayClose.isGreaterThan(todayClose)) {
             return getValue(index - 1).minus(series.getTick(index).getVolume());

@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageGainIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
@@ -32,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
  * Relative strength index indicator.
  * <p>
  */
-public class RSIIndicator extends CachedIndicator<TADecimal> {
+public class RSIIndicator extends CachedIndicator<Decimal> {
 
     private AverageGainIndicator averageGainIndicator;
 
@@ -40,7 +40,7 @@ public class RSIIndicator extends CachedIndicator<TADecimal> {
 
     private final int timeFrame;
 
-    public RSIIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public RSIIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         averageGainIndicator = new AverageGainIndicator(indicator, timeFrame);
@@ -48,9 +48,9 @@ public class RSIIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
-        return TADecimal.HUNDRED
-                .minus(TADecimal.HUNDRED.dividedBy(TADecimal.ONE.plus(relativeStrength(index))));
+    protected Decimal calculate(int index) {
+        return Decimal.HUNDRED
+                .minus(Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength(index))));
     }
 
     @Override
@@ -62,12 +62,12 @@ public class RSIIndicator extends CachedIndicator<TADecimal> {
      * @param index
      * @return the relative strength
      */
-    private TADecimal relativeStrength(int index) {
+    private Decimal relativeStrength(int index) {
         if (index == 0) {
-            return TADecimal.ZERO;
+            return Decimal.ZERO;
         }
-        TADecimal averageGain = averageGainIndicator.getValue(index);
-        TADecimal averageLoss = averageLossIndicator.getValue(index);
+        Decimal averageGain = averageGainIndicator.getValue(index);
+        Decimal averageLoss = averageLossIndicator.getValue(index);
         return averageGain.dividedBy(averageLoss);
     }
 }

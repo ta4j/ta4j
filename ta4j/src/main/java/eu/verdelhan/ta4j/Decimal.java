@@ -29,25 +29,25 @@ import java.math.RoundingMode;
 /**
  * Immutable, arbitrary-precision signed decimal numbers designed for technical analysis.
  * <p>
- * A {@code TADecimal} consists of a {@code BigDecimal} with arbitrary {@link MathContext} (precision and rounding mode).
+ * A {@code Decimal} consists of a {@code BigDecimal} with arbitrary {@link MathContext} (precision and rounding mode).
  *
  * @see BigDecimal
  * @see MathContext
  * @see RoundingMode
  */
-public final class TADecimal implements Comparable<TADecimal> {
+public final class Decimal implements Comparable<Decimal> {
 
     public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     /** Not-a-Number instance (infinite error) */
-    public static final TADecimal NaN = new TADecimal();
+    public static final Decimal NaN = new Decimal();
 
-    public static final TADecimal ZERO = valueOf(0);
-    public static final TADecimal ONE = valueOf(1);
-    public static final TADecimal TWO = valueOf(2);
-    public static final TADecimal THREE = valueOf(3);
-    public static final TADecimal TEN = valueOf(10);
-    public static final TADecimal HUNDRED = valueOf(100);
+    public static final Decimal ZERO = valueOf(0);
+    public static final Decimal ONE = valueOf(1);
+    public static final Decimal TWO = valueOf(2);
+    public static final Decimal THREE = valueOf(3);
+    public static final Decimal TEN = valueOf(10);
+    public static final Decimal HUNDRED = valueOf(100);
 
     private BigDecimal delegate;
 
@@ -55,14 +55,14 @@ public final class TADecimal implements Comparable<TADecimal> {
      * Constructor.
      * Only used for NaN instance.
      */
-    private TADecimal() {
+    private Decimal() {
     }
 
     /**
      * Constructor.
      * @param val the string representation of the decimal value
      */
-    private TADecimal(String val) {
+    private Decimal(String val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
@@ -70,129 +70,129 @@ public final class TADecimal implements Comparable<TADecimal> {
      * Constructor.
      * @param val the double value
      */
-    private TADecimal(double val) {
+    private Decimal(double val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    private TADecimal(int val) {
+    private Decimal(int val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    private TADecimal(long val) {
+    private Decimal(long val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    private TADecimal(BigDecimal val) {
+    private Decimal(BigDecimal val) {
         this(val.toString());
     }
 
     /**
-     * Returns a {@code TADecimal} whose value is {@code (this + augend)},
+     * Returns a {@code Decimal} whose value is {@code (this + augend)},
      * with rounding according to the context settings.
-     * @param augend value to be added to this {@code TADecimal}.
+     * @param augend value to be added to this {@code Decimal}.
      * @return {@code this + augend}, rounded as necessary
      * @see BigDecimal#add(java.math.BigDecimal, java.math.MathContext)
      */
-    public TADecimal plus(TADecimal augend) {
+    public Decimal plus(Decimal augend) {
         if ((this == NaN) || (augend == NaN)) {
             return NaN;
         }
-        return new TADecimal(delegate.add(augend.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.add(augend.delegate, MATH_CONTEXT));
     }
 
     /**
-     * Returns a {@code TADecimal} whose value is {@code (this - augend)},
+     * Returns a {@code Decimal} whose value is {@code (this - augend)},
      * with rounding according to the context settings.
-     * @param subtrahend value to be subtracted from this {@code TADecimal}.
+     * @param subtrahend value to be subtracted from this {@code Decimal}.
      * @return {@code this - subtrahend}, rounded as necessary
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
-    public TADecimal minus(TADecimal subtrahend) {
+    public Decimal minus(Decimal subtrahend) {
         if ((this == NaN) || (subtrahend == NaN)) {
             return NaN;
         }
-        return new TADecimal(delegate.subtract(subtrahend.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.subtract(subtrahend.delegate, MATH_CONTEXT));
     }
 
     /**
-     * Returns a {@code TADecimal} whose value is {@code this * multiplicand},
+     * Returns a {@code Decimal} whose value is {@code this * multiplicand},
      * with rounding according to the context settings.
-     * @param multiplicand value to be multiplied by this {@code TADecimal}.
+     * @param multiplicand value to be multiplied by this {@code Decimal}.
      * @return {@code this * multiplicand}, rounded as necessary
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
-    public TADecimal multipliedBy(TADecimal multiplicand) {
+    public Decimal multipliedBy(Decimal multiplicand) {
         if ((this == NaN) || (multiplicand == NaN)) {
             return NaN;
         }
-        return new TADecimal(delegate.multiply(multiplicand.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.multiply(multiplicand.delegate, MATH_CONTEXT));
     }
 
     /**
-     * Returns a {@code TADecimal} whose value is {@code (this / divisor)},
+     * Returns a {@code Decimal} whose value is {@code (this / divisor)},
      * with rounding according to the context settings.
-     * @param divisor value by which this {@code TADecimal} is to be divided.
+     * @param divisor value by which this {@code Decimal} is to be divided.
      * @return {@code this / divisor}, rounded as necessary
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
-    public TADecimal dividedBy(TADecimal divisor) {
+    public Decimal dividedBy(Decimal divisor) {
         if ((this == NaN) || (divisor == NaN) || divisor.isZero()) {
             return NaN;
         }
-        return new TADecimal(delegate.divide(divisor.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.divide(divisor.delegate, MATH_CONTEXT));
     }
 
     /**
-     * Returns a {@code TADecimal} whose value is {@code (this % divisor)},
+     * Returns a {@code Decimal} whose value is {@code (this % divisor)},
      * with rounding according to the context settings.
-     * @param divisor value by which this {@code TADecimal} is to be divided.
+     * @param divisor value by which this {@code Decimal} is to be divided.
      * @return {@code this % divisor}, rounded as necessary.
      * @see BigDecimal#remainder(java.math.BigDecimal, java.math.MathContext)
      */
-    public TADecimal remainder(TADecimal divisor) {
+    public Decimal remainder(Decimal divisor) {
         if ((this == NaN) || (divisor == NaN) || divisor.isZero()) {
             return NaN;
         }
-        return new TADecimal(delegate.remainder(divisor.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.remainder(divisor.delegate, MATH_CONTEXT));
     }
 
 
     /**
-     * Returns a {@code TADecimal} whose value is <tt>(this<sup>n</sup>)</tt>.
-     * @param n power to raise this {@code TADecimal} to.
+     * Returns a {@code Decimal} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * @param n power to raise this {@code Decimal} to.
      * @return <tt>this<sup>n</sup></tt>
      * @see BigDecimal#pow(int, java.math.MathContext)
      */
-    public TADecimal pow(int n) {
+    public Decimal pow(int n) {
         if (this == NaN) {
             return NaN;
         }
-        return new TADecimal(delegate.pow(n, MATH_CONTEXT));
+        return new Decimal(delegate.pow(n, MATH_CONTEXT));
     }
 
     /**
-     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code TADecimal}.
+     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Decimal}.
      * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
      * @return the positive square root of {@code this}
      * @see StrictMath#sqrt(double)
      */
-    public TADecimal sqrt() {
+    public Decimal sqrt() {
         if (this == NaN) {
             return NaN;
         }
-        return new TADecimal(StrictMath.sqrt(delegate.doubleValue()));
+        return new Decimal(StrictMath.sqrt(delegate.doubleValue()));
     }
 
     /**
-     * Returns a {@code TADecimal} whose value is the absolute value
-     * of this {@code TADecimal}.
+     * Returns a {@code Decimal} whose value is the absolute value
+     * of this {@code Decimal}.
      * @return {@code abs(this)}
      */
-    public TADecimal abs() {
+    public Decimal abs() {
         if (this == NaN) {
             return NaN;
         }
-        return new TADecimal(delegate.abs());
+        return new Decimal(delegate.abs());
     }
 
     /**
@@ -263,7 +263,7 @@ public final class TADecimal implements Comparable<TADecimal> {
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
-    public boolean isEqual(TADecimal other) {
+    public boolean isEqual(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
@@ -275,7 +275,7 @@ public final class TADecimal implements Comparable<TADecimal> {
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
-    public boolean isGreaterThan(TADecimal other) {
+    public boolean isGreaterThan(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
@@ -287,7 +287,7 @@ public final class TADecimal implements Comparable<TADecimal> {
      * @param other the other value, not null
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
-    public boolean isGreaterThanOrEqual(TADecimal other) {
+    public boolean isGreaterThanOrEqual(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
@@ -299,7 +299,7 @@ public final class TADecimal implements Comparable<TADecimal> {
      * @param other the other value, not null
      * @return true is this is less than the specified value, false otherwise
      */
-    public boolean isLessThan(TADecimal other) {
+    public boolean isLessThan(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
@@ -311,7 +311,7 @@ public final class TADecimal implements Comparable<TADecimal> {
      * @param other the other value, not null
      * @return true is this is less than or equal to the specified value, false otherwise
      */
-    public boolean isLessThanOrEqual(TADecimal other) {
+    public boolean isLessThanOrEqual(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
@@ -319,7 +319,7 @@ public final class TADecimal implements Comparable<TADecimal> {
     }
 
     @Override
-    public int compareTo(TADecimal other) {
+    public int compareTo(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return 0;
         }
@@ -327,14 +327,14 @@ public final class TADecimal implements Comparable<TADecimal> {
     }
 
     /**
-     * Returns the minimum of this {@code TADecimal} and {@code other}.
+     * Returns the minimum of this {@code Decimal} and {@code other}.
      * @param other value with which the minimum is to be computed
-     * @return the {@code TADecimal} whose value is the lesser of this
-     *         {@code TADecimal} and {@code other}.  If they are equal,
-     *         as defined by the {@link #compareTo(TADecimal) compareTo}
+     * @return the {@code Decimal} whose value is the lesser of this
+     *         {@code Decimal} and {@code other}.  If they are equal,
+     *         as defined by the {@link #compareTo(Decimal) compareTo}
      *         method, {@code this} is returned.
      */
-    public TADecimal min(TADecimal other) {
+    public Decimal min(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return NaN;
         }
@@ -342,14 +342,14 @@ public final class TADecimal implements Comparable<TADecimal> {
     }
 
     /**
-     * Returns the maximum of this {@code TADecimal} and {@code other}.
+     * Returns the maximum of this {@code Decimal} and {@code other}.
      * @param  other value with which the maximum is to be computed
-     * @return the {@code TADecimal} whose value is the greater of this
-     *         {@code TADecimal} and {@code other}.  If they are equal,
-     *         as defined by the {@link #compareTo(TADecimal) compareTo}
+     * @return the {@code Decimal} whose value is the greater of this
+     *         {@code Decimal} and {@code other}.  If they are equal,
+     *         as defined by the {@link #compareTo(Decimal) compareTo}
      *         method, {@code this} is returned.
      */
-    public TADecimal max(TADecimal other) {
+    public Decimal max(Decimal other) {
         if ((this == NaN) || (other == NaN)) {
             return NaN;
         }
@@ -357,8 +357,8 @@ public final class TADecimal implements Comparable<TADecimal> {
     }
 
     /**
-     * Converts this {@code TADecimal} to a {@code double}.
-     * @return this {@code TADecimal} converted to a {@code double}
+     * Converts this {@code Decimal} to a {@code double}.
+     * @return this {@code Decimal} converted to a {@code double}
      * @see BigDecimal#doubleValue()
      */
     public double toDouble() {
@@ -392,10 +392,10 @@ public final class TADecimal implements Comparable<TADecimal> {
         if (obj == null) {
             return false;
         }
-        if (!(obj instanceof TADecimal)) {
+        if (!(obj instanceof Decimal)) {
             return false;
         }
-        final TADecimal other = (TADecimal) obj;
+        final Decimal other = (Decimal) obj;
         if (this.delegate != other.delegate
                 && (this.delegate == null || (this.delegate.compareTo(other.delegate) != 0))) {
             return false;
@@ -403,25 +403,25 @@ public final class TADecimal implements Comparable<TADecimal> {
         return true;
     }
 
-    public static TADecimal valueOf(String val) {
+    public static Decimal valueOf(String val) {
         if ("NaN".equals(val)) {
             return NaN;
         }
-        return new TADecimal(val);
+        return new Decimal(val);
     }
 
-    public static TADecimal valueOf(double val) {
+    public static Decimal valueOf(double val) {
         if (Double.isNaN(val)) {
             return NaN;
         }
-        return new TADecimal(val);
+        return new Decimal(val);
     }
 
-    public static TADecimal valueOf(int val) {
-        return new TADecimal(val);
+    public static Decimal valueOf(int val) {
+        return new Decimal(val);
     }
 
-    public static TADecimal valueOf(long val) {
-        return new TADecimal(val);
+    public static Decimal valueOf(long val) {
+        return new Decimal(val);
     }
 }

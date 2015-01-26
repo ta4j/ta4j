@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 
 /**
  * Resistance strategy.
@@ -36,9 +36,9 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     private final Strategy strategy;
 
-    private final Indicator<? extends TADecimal> indicator;
+    private final Indicator<? extends Decimal> indicator;
 
-    private TADecimal resistance;
+    private Decimal resistance;
 
     /**
      * Constructor.
@@ -46,9 +46,9 @@ public class ResistanceStrategy extends AbstractStrategy {
      * @param strategy the strategie
      * @param resistance the resistance threshold
      */
-    public ResistanceStrategy(Indicator<? extends TADecimal> indicator, Strategy strategy, double resistance) {
+    public ResistanceStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, double resistance) {
         this.strategy = strategy;
-        this.resistance = TADecimal.valueOf(resistance);
+        this.resistance = Decimal.valueOf(resistance);
         this.indicator = indicator;
     }
 

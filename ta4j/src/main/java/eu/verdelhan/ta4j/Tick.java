@@ -39,17 +39,17 @@ public class Tick {
     /** Begin time of the tick */
     private DateTime beginTime;
     /** Open price of the period */
-    private TADecimal openPrice = null;
+    private Decimal openPrice = null;
     /** Close price of the period */
-    private TADecimal closePrice = null;
+    private Decimal closePrice = null;
     /** Max price of the period */
-    private TADecimal maxPrice = null;
+    private Decimal maxPrice = null;
     /** Min price of the period */
-    private TADecimal minPrice = null;
+    private Decimal minPrice = null;
     /** Traded amount during the period */
-    private TADecimal amount = TADecimal.ZERO;
+    private Decimal amount = Decimal.ZERO;
     /** Volume of the period */
-    private TADecimal volume = TADecimal.ZERO;
+    private Decimal volume = Decimal.ZERO;
     /** Trade count */
     private int trades = 0;
 
@@ -80,11 +80,11 @@ public class Tick {
      * @param volume the volume of the tick period
      */
     public Tick(DateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
-        this(endTime, TADecimal.valueOf(openPrice),
-                TADecimal.valueOf(highPrice),
-                TADecimal.valueOf(lowPrice),
-                TADecimal.valueOf(closePrice),
-                TADecimal.valueOf(volume));
+        this(endTime, Decimal.valueOf(openPrice),
+                Decimal.valueOf(highPrice),
+                Decimal.valueOf(lowPrice),
+                Decimal.valueOf(closePrice),
+                Decimal.valueOf(volume));
     }
 
     /**
@@ -96,7 +96,7 @@ public class Tick {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(DateTime endTime, TADecimal openPrice, TADecimal highPrice, TADecimal lowPrice, TADecimal closePrice, TADecimal volume) {
+    public Tick(DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
         this.timePeriod = Period.days(1);
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
@@ -110,14 +110,14 @@ public class Tick {
     /**
      * @return the close price of the period
      */
-    public TADecimal getClosePrice() {
+    public Decimal getClosePrice() {
         return closePrice;
     }
 
     /**
      * @return the open price of the period
      */
-    public TADecimal getOpenPrice() {
+    public Decimal getOpenPrice() {
         return openPrice;
     }
 
@@ -131,21 +131,21 @@ public class Tick {
     /**
      * @return the max price of the period
      */
-    public TADecimal getMaxPrice() {
+    public Decimal getMaxPrice() {
         return maxPrice;
     }
 
     /**
      * @return the whole traded amount of the period
      */
-    public TADecimal getAmount() {
+    public Decimal getAmount() {
         return amount;
     }
 
     /**
      * @return the whole traded volume in the period
      */
-    public TADecimal getVolume() {
+    public Decimal getVolume() {
         return volume;
     }
 
@@ -155,7 +155,7 @@ public class Tick {
      * @param tradePrice the price
      */
     public void addTrade(double tradeAmount, double tradePrice) {
-        addTrade(TADecimal.valueOf(tradeAmount), TADecimal.valueOf(tradePrice));
+        addTrade(Decimal.valueOf(tradeAmount), Decimal.valueOf(tradePrice));
     }
 
     /**
@@ -164,7 +164,7 @@ public class Tick {
      * @param tradePrice the price
      */
     public void addTrade(String tradeAmount, String tradePrice) {
-        addTrade(TADecimal.valueOf(tradeAmount), TADecimal.valueOf(tradePrice));
+        addTrade(Decimal.valueOf(tradeAmount), Decimal.valueOf(tradePrice));
     }
 
     /**
@@ -172,7 +172,7 @@ public class Tick {
      * @param tradeAmount the tradable amount
      * @param tradePrice the price
      */
-    public void addTrade(TADecimal tradeAmount, TADecimal tradePrice) {
+    public void addTrade(Decimal tradeAmount, Decimal tradePrice) {
         if (openPrice == null) {
             openPrice = tradePrice;
         }
@@ -196,7 +196,7 @@ public class Tick {
     /**
      * @return the min price of the period
      */
-    public TADecimal getMinPrice() {
+    public Decimal getMinPrice() {
         return minPrice;
     }
 

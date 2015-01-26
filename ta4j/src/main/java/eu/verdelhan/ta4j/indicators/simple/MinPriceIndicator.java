@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * Minimum price indicator.
  * <p>
  */
-public class MinPriceIndicator extends CachedIndicator<TADecimal> {
+public class MinPriceIndicator extends CachedIndicator<Decimal> {
 
     private TimeSeries series;
 
@@ -40,7 +40,7 @@ public class MinPriceIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         return series.getTick(index).getMinPrice();
     }
 }

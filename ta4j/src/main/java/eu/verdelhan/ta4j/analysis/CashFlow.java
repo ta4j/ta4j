@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ import java.util.List;
  * <p>
  * This class allows to follow the money cash flow involved by a list of trades over a time series.
  */
-public class CashFlow implements Indicator<TADecimal> {
+public class CashFlow implements Indicator<Decimal> {
 
     /** The time series */
     private final TimeSeries timeSeries;
@@ -43,7 +43,7 @@ public class CashFlow implements Indicator<TADecimal> {
     /** The list of trades */
     private final List<Trade> trades;
 
-    private List<TADecimal> values;
+    private List<Decimal> values;
 
     /**
      * Constructor.
@@ -53,8 +53,8 @@ public class CashFlow implements Indicator<TADecimal> {
     public CashFlow(TimeSeries timeSeries, List<Trade> trades) {
         this.timeSeries = timeSeries;
         this.trades = trades;
-        values = new ArrayList<TADecimal>();
-        values.add(TADecimal.ONE);
+        values = new ArrayList<Decimal>();
+        values.add(Decimal.ONE);
         calculate();
     }
 
@@ -63,7 +63,7 @@ public class CashFlow implements Indicator<TADecimal> {
      * @return the cash flow value at the index-th position
      */
     @Override
-    public TADecimal getValue(int index) {
+    public Decimal getValue(int index) {
         return values.get(index);
     }
 
@@ -92,7 +92,7 @@ public class CashFlow implements Indicator<TADecimal> {
             }
             int end = trade.getExit().getIndex();
             for (int i = Math.max(begin, 1); i <= end; i++) {
-                TADecimal ratio;
+                Decimal ratio;
                 if (trade.getEntry().isBuy()) {
                     ratio = timeSeries.getTick(i).getClosePrice().dividedBy(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice());
                 } else {

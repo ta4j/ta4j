@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * True range indicator.
  * <p>
  */
-public class TrueRangeIndicator extends CachedIndicator<TADecimal>{
+public class TrueRangeIndicator extends CachedIndicator<Decimal>{
 
     private TimeSeries series;
 
@@ -40,10 +40,10 @@ public class TrueRangeIndicator extends CachedIndicator<TADecimal>{
     }
     
     @Override
-    protected TADecimal calculate(int index) {
-        TADecimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
-        TADecimal ys = index == 0 ? TADecimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
-        TADecimal yst = index == 0 ? TADecimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
+    protected Decimal calculate(int index) {
+        Decimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
+        Decimal ys = index == 0 ? Decimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
+        Decimal yst = index == 0 ? Decimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
         
         return ts.abs().max(ys.abs()).max(yst.abs());
     }

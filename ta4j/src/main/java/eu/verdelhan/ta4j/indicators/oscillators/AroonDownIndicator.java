@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.oscillators;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
  * Aroon down indicator.
  * <p>
  */
-public class AroonDownIndicator extends CachedIndicator<TADecimal> {
+public class AroonDownIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
@@ -49,7 +49,7 @@ public class AroonDownIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         int realTimeFrame = Math.min(timeFrame, index + 1);
 
         // Getting the number of ticks since the lowest close price
@@ -62,6 +62,6 @@ public class AroonDownIndicator extends CachedIndicator<TADecimal> {
             nbTicks++;
         }
         
-        return TADecimal.valueOf(realTimeFrame - nbTicks).dividedBy(TADecimal.valueOf(realTimeFrame)).multipliedBy(TADecimal.HUNDRED);
+        return Decimal.valueOf(realTimeFrame - nbTicks).dividedBy(Decimal.valueOf(realTimeFrame)).multipliedBy(Decimal.HUNDRED);
     }
 }

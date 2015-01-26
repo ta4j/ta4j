@@ -23,7 +23,7 @@
 package ta4jexamples.bots;
 
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import org.joda.time.DateTime;
@@ -37,7 +37,7 @@ import ta4jexamples.strategies.CCICorrectionStrategy;
 public class TradingBotOnMovingTimeSeries {
 
     /** Close price of the last tick */
-    private static TADecimal LAST_TICK_CLOSE_PRICE;
+    private static Decimal LAST_TICK_CLOSE_PRICE;
 
     /**
      * Builds a moving time series (i.e. keeping only the maxTickCount last ticks)
@@ -60,10 +60,10 @@ public class TradingBotOnMovingTimeSeries {
      * @param max the maximum bound
      * @return a random decimal number between min and max
      */
-    private static TADecimal randDecimal(TADecimal min, TADecimal max) {
-        TADecimal randomDecimal = null;
+    private static Decimal randDecimal(Decimal min, Decimal max) {
+        Decimal randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
-            randomDecimal = max.minus(min).multipliedBy(TADecimal.valueOf(Math.random())).plus(min);
+            randomDecimal = max.minus(min).multipliedBy(Decimal.valueOf(Math.random())).plus(min);
         }
         return randomDecimal;
     }
@@ -73,13 +73,13 @@ public class TradingBotOnMovingTimeSeries {
      * @return a random tick
      */
     private static Tick generateRandomTick() {
-        final TADecimal maxRange = TADecimal.valueOf("0.03"); // 3.0%
-        TADecimal openPrice = LAST_TICK_CLOSE_PRICE;
-        TADecimal minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(TADecimal.valueOf(Math.random()))));
-        TADecimal maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(TADecimal.valueOf(Math.random()))));
-        TADecimal closePrice = randDecimal(minPrice, maxPrice);
+        final Decimal maxRange = Decimal.valueOf("0.03"); // 3.0%
+        Decimal openPrice = LAST_TICK_CLOSE_PRICE;
+        Decimal minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(Decimal.valueOf(Math.random()))));
+        Decimal maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(Decimal.valueOf(Math.random()))));
+        Decimal closePrice = randDecimal(minPrice, maxPrice);
         LAST_TICK_CLOSE_PRICE = closePrice;
-        return new Tick(DateTime.now(), openPrice, maxPrice, minPrice, closePrice, TADecimal.ONE);
+        return new Tick(DateTime.now(), openPrice, maxPrice, minPrice, closePrice, Decimal.ONE);
     }
 
     public static void main(String[] args) throws InterruptedException {

@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
@@ -36,9 +36,9 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * William's R indicator.
  * <p>
  */
-public class WilliamsRIndicator extends CachedIndicator<TADecimal> {
+public class WilliamsRIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends TADecimal> indicator;
+    private final Indicator<? extends Decimal> indicator;
 
     private final int timeFrame;
 
@@ -51,7 +51,7 @@ public class WilliamsRIndicator extends CachedIndicator<TADecimal> {
                 timeSeries));
     }
 
-    public WilliamsRIndicator(Indicator<? extends TADecimal> indicator, int timeFrame,
+    public WilliamsRIndicator(Indicator<? extends Decimal> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
@@ -61,16 +61,16 @@ public class WilliamsRIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
         LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 
-        TADecimal highestHighPrice = highestHigh.getValue(index);
-        TADecimal lowestLowPrice = lowestMin.getValue(index);
+        Decimal highestHighPrice = highestHigh.getValue(index);
+        Decimal lowestLowPrice = lowestMin.getValue(index);
 
         return ((highestHighPrice.minus(indicator.getValue(index)))
                 .dividedBy(highestHighPrice.minus(lowestLowPrice)))
-                .multipliedBy(TADecimal.valueOf("-100"));
+                .multipliedBy(Decimal.valueOf("-100"));
     }
 
     @Override

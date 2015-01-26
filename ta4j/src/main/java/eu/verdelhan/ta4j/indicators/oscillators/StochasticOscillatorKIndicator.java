@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
@@ -41,8 +41,8 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * MinPriceIndicator and returns StochasticOsiclatorK over this indicator.
  * 
  */
-public class StochasticOscillatorKIndicator extends CachedIndicator<TADecimal> {
-    private final Indicator<? extends TADecimal> indicator;
+public class StochasticOscillatorKIndicator extends CachedIndicator<Decimal> {
+    private final Indicator<? extends Decimal> indicator;
 
     private final int timeFrame;
 
@@ -55,7 +55,7 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<TADecimal> {
                 timeSeries));
     }
 
-    public StochasticOscillatorKIndicator(Indicator<? extends TADecimal> indicator, int timeFrame,
+    public StochasticOscillatorKIndicator(Indicator<? extends Decimal> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
@@ -65,16 +65,16 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
         LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 
-        TADecimal highestHighPrice = highestHigh.getValue(index);
-        TADecimal lowestLowPrice = lowestMin.getValue(index);
+        Decimal highestHighPrice = highestHigh.getValue(index);
+        Decimal lowestLowPrice = lowestMin.getValue(index);
 
         return indicator.getValue(index).minus(lowestLowPrice)
                 .dividedBy(highestHighPrice.minus(lowestLowPrice))
-                .multipliedBy(TADecimal.HUNDRED);
+                .multipliedBy(Decimal.HUNDRED);
     }
 
     @Override

@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
 
 /**
@@ -44,7 +44,7 @@ public class PipeEnterStrategy extends AbstractStrategy {
      * @param lower the lower indicator
      * @param value the reference indicator
      */
-    public PipeEnterStrategy(Indicator<? extends TADecimal> upper, Indicator<? extends TADecimal> lower, Indicator<? extends TADecimal> value) {
+    public PipeEnterStrategy(Indicator<? extends Decimal> upper, Indicator<? extends Decimal> lower, Indicator<? extends Decimal> value) {
         crossUp = new CrossIndicator(value, upper);
         crossDown = new CrossIndicator(lower, value);
     }

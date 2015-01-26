@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.oscillators;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
 
@@ -31,13 +31,13 @@ import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
  * Percentage price oscillator (PPO) indicator.
  * <p>
  */
-public class PPOIndicator extends CachedIndicator<TADecimal> {
+public class PPOIndicator extends CachedIndicator<Decimal> {
 
     private final EMAIndicator shortTermEma;
 
     private final EMAIndicator longTermEma;
 
-    public PPOIndicator(Indicator<? extends TADecimal> indicator, int shortTimeFrame, int longTimeFrame) {
+    public PPOIndicator(Indicator<? extends Decimal> indicator, int shortTimeFrame, int longTimeFrame) {
         super(indicator);
         if (shortTimeFrame > longTimeFrame) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
@@ -47,11 +47,11 @@ public class PPOIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
-        TADecimal shortEmaValue = shortTermEma.getValue(index);
-        TADecimal longEmaValue = longTermEma.getValue(index);
+    protected Decimal calculate(int index) {
+        Decimal shortEmaValue = shortTermEma.getValue(index);
+        Decimal longEmaValue = longTermEma.getValue(index);
         return shortEmaValue.minus(longEmaValue)
                 .dividedBy(longEmaValue)
-                .multipliedBy(TADecimal.HUNDRED);
+                .multipliedBy(Decimal.HUNDRED);
     }
 }

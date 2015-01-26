@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.*;
@@ -98,8 +98,8 @@ public class CombinedEntryAndExitStrategyTest {
 
     @Test
     public void whenBuyStrategyAndSellStrategyAreEquals() {
-        Indicator<TADecimal> first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
-        Indicator<TADecimal> second = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
+        Indicator<Decimal> first = new MockDecimalIndicator(4d, 7d, 9d, 6d, 3d, 2d);
+        Indicator<Decimal> second = new MockDecimalIndicator(3d, 6d, 10d, 8d, 2d, 1d);
 
         Strategy crossed = new IndicatorCrossedIndicatorStrategy(first, second);
 

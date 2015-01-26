@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
@@ -32,9 +32,9 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * <p>
  * @see http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation
  */
-public class MeanDeviationIndicator extends CachedIndicator<TADecimal> {
+public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<? extends TADecimal> indicator;
+    private Indicator<? extends Decimal> indicator;
 
     private int timeFrame;
 
@@ -45,7 +45,7 @@ public class MeanDeviationIndicator extends CachedIndicator<TADecimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public MeanDeviationIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public MeanDeviationIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
@@ -53,10 +53,10 @@ public class MeanDeviationIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
-        TADecimal absoluteDeviations = TADecimal.ZERO;
+    protected Decimal calculate(int index) {
+        Decimal absoluteDeviations = Decimal.ZERO;
 
-        final TADecimal average = sma.getValue(index);
+        final Decimal average = sma.getValue(index);
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int nbValues = index - startIndex + 1;
 
@@ -64,7 +64,7 @@ public class MeanDeviationIndicator extends CachedIndicator<TADecimal> {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations.dividedBy(TADecimal.valueOf(nbValues));
+        return absoluteDeviations.dividedBy(Decimal.valueOf(nbValues));
     }
 
     @Override

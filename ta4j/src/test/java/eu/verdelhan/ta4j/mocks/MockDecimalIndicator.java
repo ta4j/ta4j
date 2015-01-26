@@ -22,16 +22,16 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 
 /**
  * A sample decimal indicator.
  */
-public class MockDecimalIndicator extends MockIndicator<TADecimal> {
+public class MockDecimalIndicator extends MockIndicator<Decimal> {
 
     public MockDecimalIndicator(double... values) {
         for (double value : values) {
-            addValue(TADecimal.valueOf(value));
+            addValue(Decimal.valueOf(value));
         }
     }
 }

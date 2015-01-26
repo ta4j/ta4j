@@ -22,18 +22,18 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import org.junit.Before;
 import org.junit.Test;
 
 public class SimpleMultiplierIndicatorTest {
-    private ConstantIndicator<TADecimal> constantIndicator;
+    private ConstantIndicator<Decimal> constantIndicator;
     private SimpleMultiplierIndicator simpleMultiplier;
 
     @Before
     public void setUp() {
-        constantIndicator = new ConstantIndicator<TADecimal>(TADecimal.valueOf(5));
+        constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(5));
         simpleMultiplier = new SimpleMultiplierIndicator(constantIndicator, 5d);
     }
 

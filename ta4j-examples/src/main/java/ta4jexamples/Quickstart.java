@@ -24,7 +24,7 @@ package ta4jexamples;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.CashFlow;
@@ -55,7 +55,7 @@ public class Quickstart {
 
 
         // Getting the close price of the ticks
-        TADecimal firstClosePrice = series.getTick(0).getClosePrice();
+        Decimal firstClosePrice = series.getTick(0).getClosePrice();
         System.out.println("First close price: " + firstClosePrice.toDouble());
         // Or within an indicator:
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);

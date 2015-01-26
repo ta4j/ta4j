@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * Close price indicator.
  * <p>
  */
-public class ClosePriceIndicator extends CachedIndicator<TADecimal> {
+public class ClosePriceIndicator extends CachedIndicator<Decimal> {
 
     private TimeSeries series;
 
@@ -40,7 +40,7 @@ public class ClosePriceIndicator extends CachedIndicator<TADecimal> {
     }
 
     @Override
-    protected TADecimal calculate(int index) {
+    protected Decimal calculate(int index) {
         return series.getTick(index).getClosePrice();
     }
 }

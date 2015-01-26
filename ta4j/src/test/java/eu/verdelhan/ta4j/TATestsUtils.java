@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Utility class for {@code TADecimal} tests.
+ * Utility class for {@code Decimal} tests.
  */
 public class TATestsUtils {
 
@@ -33,32 +33,32 @@ public class TATestsUtils {
     public static final double TA_OFFSET = 0.0001;
 
     /**
-     * Verifies that the actual {@code TADecimal} value is equal to the given {@code String} representation.
-     * @param actual the actual {@code TADecimal} value
+     * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
+     * @param actual the actual {@code Decimal} value
      * @param expected the given {@code String} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
      */
-    public static void assertDecimalEquals(TADecimal actual, String expected) {
-        assertEquals(TADecimal.valueOf(expected), actual);
+    public static void assertDecimalEquals(Decimal actual, String expected) {
+        assertEquals(Decimal.valueOf(expected), actual);
     }
 
     /**
-     * Verifies that the actual {@code TADecimal} value is equal to the given {@code Integer} representation.
-     * @param actual the actual {@code TADecimal} value
+     * Verifies that the actual {@code Decimal} value is equal to the given {@code Integer} representation.
+     * @param actual the actual {@code Decimal} value
      * @param expected the given {@code Integer} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
      */
-    public static void assertDecimalEquals(TADecimal actual, int expected) {
-        assertEquals(TADecimal.valueOf(expected), actual);
+    public static void assertDecimalEquals(Decimal actual, int expected) {
+        assertEquals(Decimal.valueOf(expected), actual);
     }
 
     /**
-     * Verifies that the actual {@code TADecimal} value is equal (within a positive offset) to the given {@code Double} representation.
-     * @param actual the actual {@code TADecimal} value
+     * Verifies that the actual {@code Decimal} value is equal (within a positive offset) to the given {@code Double} representation.
+     * @param actual the actual {@code Decimal} value
      * @param expected the given {@code Double} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
      */
-    public static void assertDecimalEquals(TADecimal actual, double expected) {
+    public static void assertDecimalEquals(Decimal actual, double expected) {
         assertEquals(expected, actual.toDouble(), TA_OFFSET);
     }
 }

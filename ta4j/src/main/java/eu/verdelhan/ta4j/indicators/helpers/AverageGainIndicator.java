@@ -23,35 +23,35 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TADecimal;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Average gain indicator.
  * <p>
  */
-public class AverageGainIndicator extends CachedIndicator<TADecimal> {
+public class AverageGainIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends TADecimal> indicator;
+    private final Indicator<? extends Decimal> indicator;
 
     private final int timeFrame;
 
-    public AverageGainIndicator(Indicator<? extends TADecimal> indicator, int timeFrame) {
+    public AverageGainIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected TADecimal calculate(int index) {
-        TADecimal result = TADecimal.ZERO;
+    protected Decimal calculate(int index) {
+        Decimal result = Decimal.ZERO;
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
             if (indicator.getValue(i - 1).isLessThan(indicator.getValue(i))) {
                 result = result.plus(indicator.getValue(i).minus(indicator.getValue(i - 1)));
             }
         }
         final int realTimeFrame = Math.min(timeFrame, index + 1);
-        return result.dividedBy(TADecimal.valueOf(realTimeFrame));
+        return result.dividedBy(Decimal.valueOf(realTimeFrame));
     }
 
     @Override
