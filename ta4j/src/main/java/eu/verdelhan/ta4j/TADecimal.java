@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.math.MathContext;
 import java.math.RoundingMode;
 
@@ -36,9 +35,12 @@ import java.math.RoundingMode;
  * @see MathContext
  * @see RoundingMode
  */
-public class TADecimal implements Comparable<TADecimal> {
+public final class TADecimal implements Comparable<TADecimal> {
 
     public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
+
+    /** Not-a-Number instance (infinite error) */
+    public static final TADecimal NaN = new TADecimal();
 
     public static final TADecimal ZERO = valueOf(0);
     public static final TADecimal ONE = valueOf(1);
@@ -49,27 +51,38 @@ public class TADecimal implements Comparable<TADecimal> {
 
     private BigDecimal delegate;
 
-    public TADecimal(String val) {
+    /**
+     * Constructor.
+     * Only used for NaN instance.
+     */
+    private TADecimal() {
+    }
+
+    /**
+     * Constructor.
+     * @param val the string representation of the decimal value
+     */
+    private TADecimal(String val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    public TADecimal(double val) {
+    /**
+     * Constructor.
+     * @param val the double value
+     */
+    private TADecimal(double val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    public TADecimal(BigInteger val) {
+    private TADecimal(int val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    public TADecimal(int val) {
+    private TADecimal(long val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    public TADecimal(long val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
-    }
-
-    public TADecimal(BigDecimal val) {
+    private TADecimal(BigDecimal val) {
         this(val.toString());
     }
 
@@ -81,6 +94,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#add(java.math.BigDecimal, java.math.MathContext)
      */
     public TADecimal plus(TADecimal augend) {
+        if ((this == NaN) || (augend == NaN)) {
+            return NaN;
+        }
         return new TADecimal(delegate.add(augend.delegate, MATH_CONTEXT));
     }
 
@@ -92,6 +108,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
     public TADecimal minus(TADecimal subtrahend) {
+        if ((this == NaN) || (subtrahend == NaN)) {
+            return NaN;
+        }
         return new TADecimal(delegate.subtract(subtrahend.delegate, MATH_CONTEXT));
     }
 
@@ -103,6 +122,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     public TADecimal multipliedBy(TADecimal multiplicand) {
+        if ((this == NaN) || (multiplicand == NaN)) {
+            return NaN;
+        }
         return new TADecimal(delegate.multiply(multiplicand.delegate, MATH_CONTEXT));
     }
 
@@ -114,6 +136,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
     public TADecimal dividedBy(TADecimal divisor) {
+        if ((this == NaN) || (divisor == NaN) || divisor.isZero()) {
+            return NaN;
+        }
         return new TADecimal(delegate.divide(divisor.delegate, MATH_CONTEXT));
     }
 
@@ -125,6 +150,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#remainder(java.math.BigDecimal, java.math.MathContext)
      */
     public TADecimal remainder(TADecimal divisor) {
+        if ((this == NaN) || (divisor == NaN) || divisor.isZero()) {
+            return NaN;
+        }
         return new TADecimal(delegate.remainder(divisor.delegate, MATH_CONTEXT));
     }
 
@@ -136,6 +164,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#pow(int, java.math.MathContext)
      */
     public TADecimal pow(int n) {
+        if (this == NaN) {
+            return NaN;
+        }
         return new TADecimal(delegate.pow(n, MATH_CONTEXT));
     }
 
@@ -146,6 +177,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see StrictMath#sqrt(double)
      */
     public TADecimal sqrt() {
+        if (this == NaN) {
+            return NaN;
+        }
         return new TADecimal(StrictMath.sqrt(delegate.doubleValue()));
     }
 
@@ -155,6 +189,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return {@code abs(this)}
      */
     public TADecimal abs() {
+        if (this == NaN) {
+            return NaN;
+        }
         return new TADecimal(delegate.abs());
     }
 
@@ -163,6 +200,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true if the value is zero, false otherwise
      */
     public boolean isZero() {
+        if (this == NaN) {
+            return false;
+        }
         return compareTo(ZERO) == 0;
     }
 
@@ -171,6 +211,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true if the value is greater than zero, false otherwise
      */
     public boolean isPositive() {
+        if (this == NaN) {
+            return false;
+        }
         return compareTo(ZERO) > 0;
     }
 
@@ -179,7 +222,18 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true if the value is zero or greater, false otherwise
      */
     public boolean isPositiveOrZero() {
+        if (this == NaN) {
+            return false;
+        }
         return compareTo(ZERO) >= 0;
+    }
+
+    /**
+     * Checks if the value is Not-a-Number.
+     * @return true if the value is Not-a-Number (NaN), false otherwise
+     */
+    public boolean isNaN() {
+        return this == NaN;
     }
 
     /**
@@ -187,6 +241,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true if the value is less than zero, false otherwise
      */
     public boolean isNegative() {
+        if (this == NaN) {
+            return false;
+        }
         return compareTo(ZERO) < 0;
     }
 
@@ -195,6 +252,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true if the value is zero or less, false otherwise
      */
     public boolean isNegativeOrZero() {
+        if (this == NaN) {
+            return false;
+        }
         return compareTo(ZERO) <= 0;
     }
 
@@ -204,6 +264,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true is this is greater than the specified value, false otherwise
      */
     public boolean isEqual(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return false;
+        }
         return compareTo(other) == 0;
     }
 
@@ -213,6 +276,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true is this is greater than the specified value, false otherwise
      */
     public boolean isGreaterThan(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return false;
+        }
         return compareTo(other) > 0;
     }
 
@@ -222,6 +288,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
     public boolean isGreaterThanOrEqual(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return false;
+        }
         return compareTo(other) > -1;
     }
 
@@ -231,6 +300,9 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true is this is less than the specified value, false otherwise
      */
     public boolean isLessThan(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return false;
+        }
         return compareTo(other) < 0;
     }
 
@@ -240,11 +312,17 @@ public class TADecimal implements Comparable<TADecimal> {
      * @return true is this is less than or equal to the specified value, false otherwise
      */
     public boolean isLessThanOrEqual(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return false;
+        }
         return compareTo(other) < 1;
     }
 
     @Override
     public int compareTo(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return 0;
+        }
         return delegate.compareTo(other.delegate);
     }
 
@@ -257,6 +335,9 @@ public class TADecimal implements Comparable<TADecimal> {
      *         method, {@code this} is returned.
      */
     public TADecimal min(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return NaN;
+        }
         return (compareTo(other) <= 0 ? this : other);
     }
 
@@ -269,6 +350,9 @@ public class TADecimal implements Comparable<TADecimal> {
      *         method, {@code this} is returned.
      */
     public TADecimal max(TADecimal other) {
+        if ((this == NaN) || (other == NaN)) {
+            return NaN;
+        }
         return (compareTo(other) >= 0 ? this : other);
     }
 
@@ -278,11 +362,17 @@ public class TADecimal implements Comparable<TADecimal> {
      * @see BigDecimal#doubleValue()
      */
     public double toDouble() {
+        if (this == NaN) {
+            return Double.NaN;
+        }
         return delegate.doubleValue();
     }
 
     @Override
     public String toString() {
+        if (this == NaN) {
+            return "NaN";
+        }
         return delegate.toString();
     }
 
@@ -293,12 +383,16 @@ public class TADecimal implements Comparable<TADecimal> {
         return hash;
     }
 
+    /**
+     * {@inheritDoc}
+     * Warning: This method returns true if `this` and `obj` are both NaN.
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
+        if (!(obj instanceof TADecimal)) {
             return false;
         }
         final TADecimal other = (TADecimal) obj;
@@ -310,10 +404,16 @@ public class TADecimal implements Comparable<TADecimal> {
     }
 
     public static TADecimal valueOf(String val) {
+        if ("NaN".equals(val)) {
+            return NaN;
+        }
         return new TADecimal(val);
     }
 
     public static TADecimal valueOf(double val) {
+        if (Double.isNaN(val)) {
+            return NaN;
+        }
         return new TADecimal(val);
     }
 

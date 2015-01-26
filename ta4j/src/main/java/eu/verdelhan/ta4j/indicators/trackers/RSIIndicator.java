@@ -68,11 +68,6 @@ public class RSIIndicator extends CachedIndicator<TADecimal> {
         }
         TADecimal averageGain = averageGainIndicator.getValue(index);
         TADecimal averageLoss = averageLossIndicator.getValue(index);
-        if (averageLoss.isZero()) {
-            // Should be replaced by a POSITIVE_INFINITY-like
-            return TADecimal.HUNDRED;
-        } else {
-            return averageGain.dividedBy(averageLoss);
-        }
+        return averageGain.dividedBy(averageLoss);
     }
 }
