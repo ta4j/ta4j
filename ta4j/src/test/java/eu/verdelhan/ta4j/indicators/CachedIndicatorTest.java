@@ -29,6 +29,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import java.util.Arrays;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -83,6 +84,21 @@ public class CachedIndicatorTest {
         assertDecimalEquals(sma.getValue(10), 1);
         timeSeries.setMaximumTickCount(12);
         assertDecimalEquals(sma.getValue(19), 1);
+    }
+
+    @Test
+    public void strategyExecutionOnCachedIndicatorAndLimitedTimeSeries() {
+        TimeSeries timeSeries = new MockTimeSeries(1, 2, 3, 4, 5);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
+        // Theoretical values for SMA(2) cache: 1, 1.5, 2.5, 3.5, 4.5
+        timeSeries.setMaximumTickCount(3);
+        // Theoretical values for SMA(2) cache: null, null, 3, 3.5, 4.5
+        // Constant: 3
+        ConstantIndicator<TADecimal> constant = new ConstantIndicator<TADecimal>(TADecimal.THREE);
+
+        IndicatorOverIndicatorStrategy strategy = new IndicatorOverIndicatorStrategy(sma, constant);
+        // Theoretical shouldEnter results: false, false, false, true, true
+        // Theoretical shouldExit results: false, false, true, false, false
     }
 
     @Test

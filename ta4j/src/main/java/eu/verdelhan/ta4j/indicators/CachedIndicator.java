@@ -66,13 +66,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         // Series is not null
 
         final int removedTicksCount = series.getRemovedTicksCount();
-        final int innerIndex = index - removedTicksCount;
+        int innerIndex = index - removedTicksCount;
         if (innerIndex < 0) {
             throw new IllegalArgumentException("Result from tick " + index + " already removed from cache");
         } else {
             // Updating cache length
             increaseLength(innerIndex);
-            removeExceedingResults(series.getMaximumTickCount());
+            innerIndex -= removeExceedingResults(series.getMaximumTickCount());
         }
 
         T result = results.get(innerIndex);
@@ -96,11 +96,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Increases the size of cached results buffer.
-     * @param index
+     * @param index the index to increase length to
      */
     private void increaseLength(int index) {
         if (results.size() <= index) {
-            results.addAll(Collections.<T> nCopies((index - results.size()) + 1, null));
+            int newResultsCount = index - results.size() + 1;
+            results.addAll(Collections.<T> nCopies(newResultsCount, null));
         }
     }
 
@@ -108,8 +109,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Removes the N first results which exceed the maximum tick count.
      * (i.e. keeps only the last maxResultCount results)
      * @param maximumResultCount the number of results to keep
+     * @return the number of removed results
      */
-    private void removeExceedingResults(int maximumResultCount) {
+    private int removeExceedingResults(int maximumResultCount) {
         int resultCount = results.size();
         if (resultCount > maximumResultCount) {
             // Removing old results
@@ -117,6 +119,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             for (int i = 0; i < nbResultsToRemove; i++) {
                 results.remove(0);
             }
+            return nbResultsToRemove;
         }
+        return 0;
     }
 }
