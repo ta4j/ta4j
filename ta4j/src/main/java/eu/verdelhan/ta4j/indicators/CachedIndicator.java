@@ -65,26 +65,33 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
         // Series is not null
 
+        T result;
         final int removedTicksCount = series.getRemovedTicksCount();
         int innerIndex = index - removedTicksCount;
         if (innerIndex < 0) {
-            throw new IllegalArgumentException("Result from tick " + index + " already removed from cache");
+            log.trace("{}: result from tick {} already removed from cache, use {}-th instead",
+                    getClass().getSimpleName(), index, removedTicksCount);
+
+            // Updating cache length
+            increaseLength(0);
+
+            result = results.get(0);
+            if (result == null) {
+                result = calculate(removedTicksCount);
+                results.set(0, result);
+            }
         } else {
             // Updating cache length
             increaseLength(innerIndex);
             innerIndex -= removeExceedingResults(series.getMaximumTickCount());
+
+            result = results.get(innerIndex);
+            if (result == null) {
+                result = calculate(index);
+                results.set(innerIndex, result);
+            }
         }
 
-        T result = results.get(innerIndex);
-        if (result == null) {
-            try {
-                result = calculate(index);
-            } catch (Exception e) {
-                // TODO: throw/catch custom exceptions
-                result = null;
-            }
-            results.set(innerIndex, result);
-        }
         return result;
     }
 

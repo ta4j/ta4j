@@ -102,18 +102,14 @@ public class CachedIndicatorTest {
     }
 
     @Test
-    public void getValueOnResultsCalculatedFromRemovedTicksShouldReturnNull() {
-        double[] data = new double[20];
-        Arrays.fill(data, 1);
-        TimeSeries timeSeries = new MockTimeSeries(data);
-        timeSeries.setMaximumTickCount(12);
-        assertEquals(8, timeSeries.getRemovedTicksCount());
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
-        assertDecimalEquals(sma.getValue(19), 1);
-        assertDecimalEquals(sma.getValue(18), 1);
-        assertDecimalEquals(sma.getValue(17), 1); // Shouldn't be null instead?
-        for (int i = 16; i >= 8; i--) {
-            assertNull(sma.getValue(i));
+    public void getValueOnResultsCalculatedFromRemovedTicksShouldReturnFirstRemainingResult() {
+        TimeSeries timeSeries = new MockTimeSeries(1, 1, 1, 1, 1);
+        timeSeries.setMaximumTickCount(3);
+        assertEquals(2, timeSeries.getRemovedTicksCount());
+        
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
+        for (int i = 0; i < 5; i++) {
+            assertDecimalEquals(sma.getValue(i), 1);
         }
     }
 }
