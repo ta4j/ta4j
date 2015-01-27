@@ -130,9 +130,23 @@ public class TimeSeriesTest {
         assertEquals(defaultName, subSeries.getName());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void getTickWithRemovedIndexOnMovingSeriesShouldThrowException() {
+    @Test
+    public void getTickWithRemovedIndexOnMovingSeriesShouldReturnFirstRemainingTick() {
+        Tick tick = defaultSeries.getTick(4);
         defaultSeries.setMaximumTickCount(2);
+        
+        assertSame(tick, defaultSeries.getTick(0));
+        assertSame(tick, defaultSeries.getTick(1));
+        assertSame(tick, defaultSeries.getTick(2));
+        assertSame(tick, defaultSeries.getTick(3));
+        assertSame(tick, defaultSeries.getTick(4));
+        assertNotSame(tick, defaultSeries.getTick(5));
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void getTickOnMovingAndEmptySeriesShouldThrowException() {
+        defaultSeries.setMaximumTickCount(2);
+        ticks.clear(); // Should not be used like this
         defaultSeries.getTick(1);
     }
 

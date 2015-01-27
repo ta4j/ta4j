@@ -130,17 +130,17 @@ public class TimeSeries {
         int innerIndex = i - removedTicksCount;
         if (innerIndex < 0) {
             if (i < 0) {
-                throw new IndexOutOfBoundsException("Size of series: " + ticks.size()
-                    + " ticks, "
-                    + removedTicksCount + " ticks removed, "
-                    + "index = " + i);
+                // Cannot return the i-th tick if i < 0
+                throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, i));
             }
-            throw new IllegalArgumentException("Tick " + i + " already removed from the series");
+            log.trace("Time series `{}` ({} ticks): tick {} already removed, use {}-th instead", name, ticks.size(), i, removedTicksCount);
+            if (ticks.isEmpty()) {
+                throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, removedTicksCount));
+            }
+            innerIndex = 0;
         } else if (innerIndex >= ticks.size()) {
-            throw new IndexOutOfBoundsException("Size of series: " + ticks.size()
-                    + " ticks, "
-                    + removedTicksCount + " ticks removed, "
-                    + "index = " + i);
+            // Cannot return the n-th tick if n >= ticks.size()
+            throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, i));
         }
         return ticks.get(innerIndex);
     }
@@ -499,5 +499,16 @@ public class TimeSeries {
             }
         }
         return beginIndexes;
+    }
+
+    /**
+     * @param series a time series
+     * @param index an out of bounds tick index
+     * @return a message for an OutOfBoundsException
+     */
+    private static String buildOutOfBoundsMessage(TimeSeries series, int index) {
+        StringBuilder sb = new StringBuilder("Size of series: ").append(series.ticks.size()).append(" ticks, ")
+                .append(series.removedTicksCount).append(" ticks removed, index = ").append(index);
+        return sb.toString();
     }
 }
