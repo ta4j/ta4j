@@ -88,17 +88,42 @@ public class CachedIndicatorTest {
 
     @Test
     public void strategyExecutionOnCachedIndicatorAndLimitedTimeSeries() {
-        TimeSeries timeSeries = new MockTimeSeries(1, 2, 3, 4, 5);
+        TimeSeries timeSeries = new MockTimeSeries(0, 1, 2, 3, 4, 5, 6, 7);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
-        // Theoretical values for SMA(2) cache: 1, 1.5, 2.5, 3.5, 4.5
-        timeSeries.setMaximumTickCount(3);
-        // Theoretical values for SMA(2) cache: null, null, 3, 3.5, 4.5
+        // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
+        timeSeries.setMaximumTickCount(6);
+        // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
         // Constant: 3
         ConstantIndicator<Decimal> constant = new ConstantIndicator<Decimal>(Decimal.THREE);
 
         IndicatorOverIndicatorStrategy strategy = new IndicatorOverIndicatorStrategy(sma, constant);
-        // Theoretical shouldEnter results: false, false, false, true, true
-        // Theoretical shouldExit results: false, false, true, false, false
+        // Theoretical shouldEnter results: false, false, false, false, true, true, true, true
+        // Theoretical shouldExit results: false, false, true, true, false, false, false, false
+
+        // As we return the first tick/result found for the removed ticks:
+        // -> Approximated values for ClosePrice cache: 2, 2, 2, 3, 4, 5, 6, 7
+        // -> Approximated values for SMA(2) cache: 2, 2, 2, 2.5, 3.5, 4.5, 5.5, 6.5
+
+        // Then enters/exits are also approximated:
+        // -> shouldEnter results: false, false, false, false, true, true, true, true
+        // -> shouldExit results: true, true, true, true, false, false, false, false
+
+        assertFalse(strategy.shouldEnter(0));
+        assertTrue(strategy.shouldExit(0));
+        assertFalse(strategy.shouldEnter(1));
+        assertTrue(strategy.shouldExit(1));
+        assertFalse(strategy.shouldEnter(2));
+        assertTrue(strategy.shouldExit(2));
+        assertFalse(strategy.shouldEnter(3));
+        assertTrue(strategy.shouldExit(3));
+        assertTrue(strategy.shouldEnter(4));
+        assertFalse(strategy.shouldExit(4));
+        assertTrue(strategy.shouldEnter(5));
+        assertFalse(strategy.shouldExit(5));
+        assertTrue(strategy.shouldEnter(6));
+        assertFalse(strategy.shouldExit(6));
+        assertTrue(strategy.shouldEnter(7));
+        assertFalse(strategy.shouldExit(7));
     }
 
     @Test
