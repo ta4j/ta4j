@@ -22,8 +22,8 @@
  */
 package ta4jexamples.bots;
 
-import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import org.joda.time.DateTime;
@@ -100,17 +100,17 @@ public class TradingBotOnMovingTimeSeries {
             System.out.println("Tick count: " + series.getTickCount());
 
             // Starting from the end of the series
-            int currentIndex = series.getEnd() + i;
-            if (strategy.shouldEnter(currentIndex)) {
+            int endIndex = series.getEnd();
+            if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
-                System.out.println("Strategy should enter on " + currentIndex);
-            } else if (strategy.shouldExit(currentIndex)) {
+                System.out.println("Strategy should enter on " + endIndex);
+            } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
-                System.out.println("Strategy should exit on " + currentIndex);
+                System.out.println("Strategy should exit on " + endIndex);
             }
-            
+
             // New tick
-            Thread.sleep(20);
+            Thread.sleep(20); // I know...
             Tick newTick = generateRandomTick();
             series.addTick(newTick);
         }
