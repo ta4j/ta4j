@@ -26,9 +26,11 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
+import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import org.joda.time.DateTime;
 import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.strategies.CCICorrectionStrategy;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
@@ -47,11 +49,28 @@ public class TradingBotOnMovingTimeSeries {
     private static TimeSeries buildMovingTimeSeries(int maxTickCount) {
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
         System.out.println("Initial tick count: " + series.getTickCount());
-        // Limitating the number of ticks to 250
+        // Limitating the number of ticks to maxTickCount
         series.setMaximumTickCount(maxTickCount);
         System.out.println("Limited to " + maxTickCount);
         LAST_TICK_CLOSE_PRICE = series.getTick(series.getEnd()).getClosePrice();
         return series;
+    }
+
+    /**
+     * @param series a time series
+     * @return a dummy strategy
+     */
+    private static Strategy buildStrategy(TimeSeries series) {
+        if (series == null) {
+            throw new IllegalArgumentException("Series cannot be null");
+        }
+
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, 2);
+
+        // Signals
+        IndicatorOverIndicatorStrategy buySellSignals = new IndicatorOverIndicatorStrategy(closePrice, sma);
+        return buySellSignals;
     }
 
     /**
@@ -86,18 +105,17 @@ public class TradingBotOnMovingTimeSeries {
         /**
          * Getting the time series
          */
-        TimeSeries series = buildMovingTimeSeries(250);
+        TimeSeries series = buildMovingTimeSeries(20);
 
         /**
          * Building the trading strategy
          */
-        Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
+        Strategy strategy = buildStrategy(series);
 
         /**
-         * We run the strategy for the 300 next ticks.
+         * We run the strategy for the 50 next ticks.
          */
-        for (int i = 0; i < 300; i++) {
-            System.out.println("Tick count: " + series.getTickCount());
+        for (int i = 0; i < 50; i++) {
 
             // Starting from the end of the series
             int endIndex = series.getEnd();
@@ -110,8 +128,9 @@ public class TradingBotOnMovingTimeSeries {
             }
 
             // New tick
-            Thread.sleep(20); // I know...
+            Thread.sleep(30); // I know...
             Tick newTick = generateRandomTick();
+            System.out.println("Adding new tick, close price = " + newTick.getClosePrice().toDouble());
             series.addTick(newTick);
         }
     }
