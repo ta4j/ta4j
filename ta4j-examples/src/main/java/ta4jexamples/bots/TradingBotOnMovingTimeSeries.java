@@ -46,13 +46,13 @@ public class TradingBotOnMovingTimeSeries {
      * @param maxTickCount the number of ticks to keep in the time series (at maximum)
      * @return a moving time series
      */
-    private static TimeSeries buildMovingTimeSeries(int maxTickCount) {
+    private static TimeSeries initMovingTimeSeries(int maxTickCount) {
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
-        System.out.println("Initial tick count: " + series.getTickCount());
+        System.out.print("Initial tick count: " + series.getTickCount());
         // Limitating the number of ticks to maxTickCount
         series.setMaximumTickCount(maxTickCount);
-        System.out.println("Limited to " + maxTickCount);
         LAST_TICK_CLOSE_PRICE = series.getTick(series.getEnd()).getClosePrice();
+        System.out.println(" (limited to " + maxTickCount + "), close price = " + LAST_TICK_CLOSE_PRICE);
         return series;
     }
 
@@ -66,10 +66,12 @@ public class TradingBotOnMovingTimeSeries {
         }
 
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma = new SMAIndicator(closePrice, 2);
+        SMAIndicator sma = new SMAIndicator(closePrice, 12);
 
         // Signals
-        IndicatorOverIndicatorStrategy buySellSignals = new IndicatorOverIndicatorStrategy(closePrice, sma);
+        // Buy when SMA goes over close price
+        // Sell when close price goes over SMA
+        IndicatorOverIndicatorStrategy buySellSignals = new IndicatorOverIndicatorStrategy(sma, closePrice);
         return buySellSignals;
     }
 
@@ -102,36 +104,35 @@ public class TradingBotOnMovingTimeSeries {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        /**
-         * Getting the time series
-         */
-        TimeSeries series = buildMovingTimeSeries(20);
 
-        /**
-         * Building the trading strategy
-         */
+        System.out.println("********************** Initialization **********************");
+        // Getting the time series
+        TimeSeries series = initMovingTimeSeries(20);
+
+        // Building the trading strategy
         Strategy strategy = buildStrategy(series);
-
+        System.out.println("************************************************************");
+        
         /**
          * We run the strategy for the 50 next ticks.
          */
         for (int i = 0; i < 50; i++) {
 
-            // Starting from the end of the series
-            int endIndex = series.getEnd();
-            if (strategy.shouldEnter(endIndex)) {
-                // Our strategy should enter
-                System.out.println("Strategy should enter on " + endIndex);
-            } else if (strategy.shouldExit(endIndex)) {
-                // Our strategy should exit
-                System.out.println("Strategy should exit on " + endIndex);
-            }
-
             // New tick
             Thread.sleep(30); // I know...
             Tick newTick = generateRandomTick();
-            System.out.println("Adding new tick, close price = " + newTick.getClosePrice().toDouble());
+            System.out.println("------------------------------------------------------\n"
+                    + "Tick "+i+" added, close price = " + newTick.getClosePrice().toDouble());
             series.addTick(newTick);
+            
+            int endIndex = series.getEnd();
+            if (strategy.shouldEnter(endIndex)) {
+                // Our strategy should enter
+                System.out.println("Strategy should ENTER on " + endIndex);
+            } else if (strategy.shouldExit(endIndex)) {
+                // Our strategy should exit
+                System.out.println("Strategy should EXIT on " + endIndex);
+            }
         }
     }
 }
