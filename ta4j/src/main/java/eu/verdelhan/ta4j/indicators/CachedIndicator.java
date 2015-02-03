@@ -35,8 +35,11 @@ import java.util.List;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    private List<T> results = new ArrayList<T>();
+    private final List<T> results = new ArrayList<T>();
 
+    /** Should always be the index of the last result in the results list */
+    private int highestResultIndex = -1;
+    
     /**
      * Constructor.
      * @param series the related time series
@@ -64,34 +67,39 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         // Series is not null
-
-        T result;
+        
         final int removedTicksCount = series.getRemovedTicksCount();
-        int innerIndex = index - removedTicksCount;
-        if (innerIndex < 0) {
+        final int maximumResultCount = getTimeSeries().getMaximumTickCount();
+        
+        T result;
+        if (index < removedTicksCount) {
+            // Result already removed from cache
             log.trace("{}: result from tick {} already removed from cache, use {}-th instead",
                     getClass().getSimpleName(), index, removedTicksCount);
-
-            // Updating cache length
-            increaseLength(0);
-
+            increaseLengthTo(removedTicksCount, maximumResultCount);
+            highestResultIndex = removedTicksCount;
             result = results.get(0);
             if (result == null) {
                 result = calculate(removedTicksCount);
                 results.set(0, result);
             }
         } else {
-            // Updating cache length
-            increaseLength(innerIndex);
-            innerIndex -= removeExceedingResults(series.getMaximumTickCount());
-
-            result = results.get(innerIndex);
-            if (result == null) {
+            increaseLengthTo(index, maximumResultCount);
+            if (index > highestResultIndex) {
+                // Result not calculated yet
+                highestResultIndex = index;
                 result = calculate(index);
-                results.set(innerIndex, result);
+                results.set(results.size()-1, result);
+            } else {
+                // Result covered by current cache
+                int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
+                result = results.get(resultInnerIndex);
+                if (result == null) {
+                    result = calculate(index);
+                }
+                results.set(resultInnerIndex, result);
             }
         }
-
         return result;
     }
 
@@ -104,30 +112,38 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Increases the size of cached results buffer.
      * @param index the index to increase length to
+     * @param maxLength the maximum length of the results buffer
      */
-    private void increaseLength(int index) {
-        if (results.size() <= index) {
-            int newResultsCount = index - results.size() + 1;
-            results.addAll(Collections.<T> nCopies(newResultsCount, null));
+    private void increaseLengthTo(int index, int maxLength) {
+        if (highestResultIndex > -1) {
+            int newResultsCount = Math.min(index-highestResultIndex, maxLength);
+            if (newResultsCount == maxLength) {
+                results.clear();
+                results.addAll(Collections.<T> nCopies(maxLength, null));
+            } else if (newResultsCount > 0) {
+                results.addAll(Collections.<T> nCopies(newResultsCount, null));
+                removeExceedingResults(maxLength);
+            }
+        } else {
+            // First use of cache
+            assert results.isEmpty() : "Cache results list should be empty";
+            results.addAll(Collections.<T> nCopies(Math.min(index+1, maxLength), null));
         }
     }
 
     /**
      * Removes the N first results which exceed the maximum tick count.
-     * (i.e. keeps only the last maxResultCount results)
+     * (i.e. keeps only the last maximumResultCount results)
      * @param maximumResultCount the number of results to keep
-     * @return the number of removed results
      */
-    private int removeExceedingResults(int maximumResultCount) {
+    private void removeExceedingResults(int maximumResultCount) {
         int resultCount = results.size();
         if (resultCount > maximumResultCount) {
             // Removing old results
-            int nbResultsToRemove = resultCount - maximumResultCount;
+            final int nbResultsToRemove = resultCount - maximumResultCount;
             for (int i = 0; i < nbResultsToRemove; i++) {
                 results.remove(0);
             }
-            return nbResultsToRemove;
         }
-        return 0;
     }
 }
