@@ -101,7 +101,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%2
 <dependency>
     <groupId>eu.verdelhan</groupId>
     <artifactId>ta4j</artifactId>
-    <version>0.5</version>
+    <version>0.6</version>
 </dependency>
 ```
 
@@ -112,7 +112,7 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current snapshot version is `0.6-SNAPSHOT`.
+The current snapshot version is `0.7-SNAPSHOT`.
 
 
 ## Getting Help
