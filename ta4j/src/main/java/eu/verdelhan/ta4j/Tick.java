@@ -232,7 +232,9 @@ public class Tick {
      * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
      */
     public boolean inPeriod(DateTime timestamp) {
-        return timestamp == null ? false : (!timestamp.isBefore(beginTime) && timestamp.isBefore(endTime));
+        return timestamp != null
+                && !timestamp.isBefore(beginTime)
+                && timestamp.isBefore(endTime);
     }
 
     /**
