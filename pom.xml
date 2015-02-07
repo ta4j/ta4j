@@ -49,8 +49,8 @@
         <connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
         <url>http://github.com/mdeverdelhan/ta4j</url>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>ta4j</module>
