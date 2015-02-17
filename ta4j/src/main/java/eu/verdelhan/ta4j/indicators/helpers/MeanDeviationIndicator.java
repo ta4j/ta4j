@@ -34,7 +34,7 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  */
 public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
 
     private int timeFrame;
 
@@ -45,7 +45,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public MeanDeviationIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
+    public MeanDeviationIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;

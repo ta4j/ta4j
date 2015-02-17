@@ -34,16 +34,16 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 public class CrossIndicator extends CachedIndicator<Boolean> {
 
     /** Upper indicator */
-    private final Indicator<? extends Decimal> up;
+    private final Indicator<Decimal> up;
     /** Lower indicator */
-    private final Indicator<? extends Decimal> low;
+    private final Indicator<Decimal> low;
 
     /**
      * Constructor.
      * @param up the upper indicator
      * @param low the lower indicator
      */
-    public CrossIndicator(Indicator<? extends Decimal> up, Indicator<? extends Decimal> low) {
+    public CrossIndicator(Indicator<Decimal> up, Indicator<Decimal> low) {
         // TODO: check if up series is equal to low series
         super(up);
         this.up = up;
@@ -73,14 +73,14 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
     /**
      * @return the initial lower indicator
      */
-    public Indicator<? extends Decimal> getLow() {
+    public Indicator<Decimal> getLow() {
         return low;
     }
 
     /**
      * @return the initial upper indicator
      */
-    public Indicator<? extends Decimal> getUp() {
+    public Indicator<Decimal> getUp() {
         return up;
     }
 

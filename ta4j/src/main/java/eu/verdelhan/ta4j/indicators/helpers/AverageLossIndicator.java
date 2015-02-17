@@ -32,11 +32,11 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  */
 public class AverageLossIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
     private final int timeFrame;
 
-    public AverageLossIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
+    public AverageLossIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;

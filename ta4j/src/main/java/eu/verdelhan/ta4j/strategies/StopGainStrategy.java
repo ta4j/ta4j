@@ -38,7 +38,7 @@ public class StopGainStrategy extends AbstractStrategy {
 
     private Decimal gain;
 
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
 
     private Decimal value;
 
@@ -48,7 +48,7 @@ public class StopGainStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param gain the gain threshold (in %)
      */
-    public StopGainStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, int gain) {
+    public StopGainStrategy(Indicator<Decimal> indicator, Strategy strategy, int gain) {
         this.strategy = strategy;
         this.gain = Decimal.valueOf(gain);
         this.indicator = indicator;

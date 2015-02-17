@@ -38,7 +38,7 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  */
 public class WilliamsRIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
     private final int timeFrame;
 
@@ -51,7 +51,7 @@ public class WilliamsRIndicator extends CachedIndicator<Decimal> {
                 timeSeries));
     }
 
-    public WilliamsRIndicator(Indicator<? extends Decimal> indicator, int timeFrame,
+    public WilliamsRIndicator(Indicator<Decimal> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
         super(indicator);
         this.indicator = indicator;

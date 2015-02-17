@@ -34,9 +34,9 @@ public class WMAIndicator extends CachedIndicator<Decimal> {
 
     private int timeFrame;
 
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
 
-    public WMAIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
+    public WMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;

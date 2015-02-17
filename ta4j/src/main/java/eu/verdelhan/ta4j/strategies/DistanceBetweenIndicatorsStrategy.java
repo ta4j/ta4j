@@ -36,9 +36,9 @@ import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
  */
 public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
 
-    private Indicator<? extends Decimal> upper;
+    private Indicator<Decimal> upper;
 
-    private Indicator<? extends Decimal> lower;
+    private Indicator<Decimal> lower;
 
     private double distance;
 
@@ -51,10 +51,10 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
      * @param distance the distance
      * @param difference the difference
      */
-    public <T extends Decimal> DistanceBetweenIndicatorsStrategy(Indicator<? extends Decimal> indicator, T constant,
+    public DistanceBetweenIndicatorsStrategy(Indicator<Decimal> indicator, Decimal constant,
             double distance, double difference) {
         this.upper = indicator;
-        this.lower = new ConstantIndicator<T>(constant);
+        this.lower = new ConstantIndicator<Decimal>(constant);
         this.distance = distance;
         this.difference = difference;
     }
@@ -66,7 +66,7 @@ public class DistanceBetweenIndicatorsStrategy extends AbstractStrategy {
      * @param distance the distance
      * @param difference the difference
      */
-    public DistanceBetweenIndicatorsStrategy(Indicator<? extends Decimal> upper, Indicator<? extends Decimal> lower,
+    public DistanceBetweenIndicatorsStrategy(Indicator<Decimal> upper, Indicator<Decimal> lower,
             double distance, double difference) {
         this.upper = upper;
         this.lower = lower;
