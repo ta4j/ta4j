@@ -38,7 +38,7 @@ public class StopLossStrategy extends AbstractStrategy {
 
     private Decimal loss;
 
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
 
     private Decimal value;
 
@@ -48,7 +48,7 @@ public class StopLossStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param loss the loss threshold (in %)
      */
-    public StopLossStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, int loss) {
+    public StopLossStrategy(Indicator<Decimal> indicator, Strategy strategy, int loss) {
         this.strategy = strategy;
         this.loss = Decimal.valueOf(loss);
         this.indicator = indicator;

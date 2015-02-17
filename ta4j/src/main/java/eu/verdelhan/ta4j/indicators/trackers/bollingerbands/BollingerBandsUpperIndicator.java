@@ -34,11 +34,11 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  */
 public class BollingerBandsUpperIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
     private final BollingerBandsMiddleIndicator bbm;
 
-    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<? extends Decimal> indicator) {
+    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Decimal> indicator) {
         // TODO: check for same series between indicators
         super(indicator);
         this.bbm = bbm;

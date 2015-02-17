@@ -32,11 +32,11 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  */
 public class LowestValueIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
     private final int timeFrame;
 
-    public LowestValueIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
+    public LowestValueIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;

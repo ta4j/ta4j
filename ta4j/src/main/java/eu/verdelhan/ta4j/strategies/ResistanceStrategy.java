@@ -36,7 +36,7 @@ public class ResistanceStrategy extends AbstractStrategy {
 
     private final Strategy strategy;
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
     private Decimal resistance;
 
@@ -46,7 +46,7 @@ public class ResistanceStrategy extends AbstractStrategy {
      * @param strategy the strategie
      * @param resistance the resistance threshold
      */
-    public ResistanceStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, double resistance) {
+    public ResistanceStrategy(Indicator<Decimal> indicator, Strategy strategy, double resistance) {
         this.strategy = strategy;
         this.resistance = Decimal.valueOf(resistance);
         this.indicator = indicator;

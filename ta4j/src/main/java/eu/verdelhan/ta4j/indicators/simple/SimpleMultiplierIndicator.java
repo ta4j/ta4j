@@ -32,11 +32,11 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  */
 public class SimpleMultiplierIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
     private Decimal value;
     
 
-    public SimpleMultiplierIndicator(Indicator<? extends Decimal> indicator, double value) {
+    public SimpleMultiplierIndicator(Indicator<Decimal> indicator, double value) {
         super(indicator);
         this.indicator = indicator;
         this.value = Decimal.valueOf(value);

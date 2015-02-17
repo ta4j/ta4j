@@ -38,16 +38,16 @@ public class IndicatorCrossedIndicatorStrategy extends AbstractStrategy {
 
     private final Indicator<Boolean> crossDown;
 
-    private Indicator<? extends Decimal> upper;
+    private Indicator<Decimal> upper;
 
-    private Indicator<? extends Decimal> lower;
+    private Indicator<Decimal> lower;
 
     /**
      * Constructor.
      * @param upper the upper indicator
      * @param lower the lower indicator
      */
-    public IndicatorCrossedIndicatorStrategy(Indicator<? extends Decimal> upper, Indicator<? extends Decimal> lower) {
+    public IndicatorCrossedIndicatorStrategy(Indicator<Decimal> upper, Indicator<Decimal> lower) {
         this.upper = upper;
         this.lower = lower;
         crossUp = new CrossIndicator(upper, lower);

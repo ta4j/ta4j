@@ -44,7 +44,7 @@ public class PipeEnterStrategy extends AbstractStrategy {
      * @param lower the lower indicator
      * @param value the reference indicator
      */
-    public PipeEnterStrategy(Indicator<? extends Decimal> upper, Indicator<? extends Decimal> lower, Indicator<? extends Decimal> value) {
+    public PipeEnterStrategy(Indicator<Decimal> upper, Indicator<Decimal> lower, Indicator<Decimal> value) {
         crossUp = new CrossIndicator(value, upper);
         crossDown = new CrossIndicator(lower, value);
     }

@@ -36,7 +36,7 @@ public class SupportStrategy extends AbstractStrategy {
 
     private final Strategy strategy;
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
     private Decimal support;
 
@@ -46,7 +46,7 @@ public class SupportStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param support the support threshold
      */
-    public SupportStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, double support) {
+    public SupportStrategy(Indicator<Decimal> indicator, Strategy strategy, double support) {
         this.strategy = strategy;
         this.support = Decimal.valueOf(support);
         this.indicator = indicator;

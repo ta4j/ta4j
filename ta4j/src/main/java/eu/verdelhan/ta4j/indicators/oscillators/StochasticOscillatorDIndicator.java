@@ -34,13 +34,13 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  */
 public class StochasticOscillatorDIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
 
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
         this(new SMAIndicator(k, 3));
     }
 
-    public StochasticOscillatorDIndicator(Indicator<? extends Decimal> indicator) {
+    public StochasticOscillatorDIndicator(Indicator<Decimal> indicator) {
         super(indicator);
         this.indicator = indicator;
     }

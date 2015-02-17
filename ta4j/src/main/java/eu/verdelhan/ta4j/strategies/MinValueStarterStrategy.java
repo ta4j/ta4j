@@ -37,7 +37,7 @@ public class MinValueStarterStrategy extends AbstractStrategy {
     /** Strategy */
     private Strategy strategy;
     /** Indicator */
-    private Indicator<? extends Decimal> indicator;
+    private Indicator<Decimal> indicator;
     /** Starting threshold */
     private Decimal start;
 
@@ -47,7 +47,7 @@ public class MinValueStarterStrategy extends AbstractStrategy {
      * @param strategy the strategy
      * @param start the starting threshold
      */
-    public MinValueStarterStrategy(Indicator<? extends Decimal> indicator, Strategy strategy, double start) {
+    public MinValueStarterStrategy(Indicator<Decimal> indicator, Strategy strategy, double start) {
         this.indicator = indicator;
         this.strategy = strategy;
         this.start = Decimal.valueOf(start);

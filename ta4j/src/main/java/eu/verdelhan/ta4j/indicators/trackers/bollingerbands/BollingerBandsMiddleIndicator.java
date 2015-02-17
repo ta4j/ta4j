@@ -34,9 +34,9 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  */
 public class BollingerBandsMiddleIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<? extends Decimal> indicator;
+    private final Indicator<Decimal> indicator;
 
-    public BollingerBandsMiddleIndicator(Indicator<? extends Decimal> indicator) {
+    public BollingerBandsMiddleIndicator(Indicator<Decimal> indicator) {
         super(indicator);
         this.indicator = indicator;
     }

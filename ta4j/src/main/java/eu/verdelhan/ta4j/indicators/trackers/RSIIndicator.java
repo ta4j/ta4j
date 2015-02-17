@@ -40,7 +40,7 @@ public class RSIIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
-    public RSIIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
+    public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         averageGainIndicator = new AverageGainIndicator(indicator, timeFrame);

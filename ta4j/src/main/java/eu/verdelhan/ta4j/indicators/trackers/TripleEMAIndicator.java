@@ -37,7 +37,7 @@ public class TripleEMAIndicator extends CachedIndicator<Decimal> {
 
     private final EMAIndicator ema;
 
-    public TripleEMAIndicator(Indicator<? extends Decimal> indicator, int timeFrame) {
+    public TripleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);

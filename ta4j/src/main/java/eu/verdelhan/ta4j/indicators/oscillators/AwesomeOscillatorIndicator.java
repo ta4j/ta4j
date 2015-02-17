@@ -38,13 +38,13 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
 
     private SMAIndicator sma34;
 
-    public AwesomeOscillatorIndicator(Indicator<? extends Decimal> indicator, int timeFrameSma1, int timeFrameSma2) {
+    public AwesomeOscillatorIndicator(Indicator<Decimal> indicator, int timeFrameSma1, int timeFrameSma2) {
         super(indicator);
         this.sma5 = new SMAIndicator(indicator, timeFrameSma1);
         this.sma34 = new SMAIndicator(indicator, timeFrameSma2);
     }
 
-    public AwesomeOscillatorIndicator(Indicator<? extends Decimal> indicator) {
+    public AwesomeOscillatorIndicator(Indicator<Decimal> indicator) {
         this(indicator, 5, 34);
     }
 
