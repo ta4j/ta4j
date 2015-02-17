@@ -36,7 +36,7 @@ public class BooleanIndicatorRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
+    public boolean isSatisfied(int index) {
         return indicator.getValue(index);
     }
 }

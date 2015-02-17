@@ -36,7 +36,7 @@ public class NotRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
-        return !rule.check(index);
+    public boolean isSatisfied(int index) {
+        return !rule.isSatisfied(index);
     }
 }

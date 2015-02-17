@@ -46,7 +46,7 @@ public interface Rule {
     
     /**
      * @param index the index
-     * @return true if this rule is check, false otherwise
+     * @return true if this rule is satisfied for the provided index, false otherwise
      */
-    boolean check(int index);
+    boolean isSatisfied(int index);
 }

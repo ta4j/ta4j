@@ -44,7 +44,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
+    public boolean isSatisfied(int index) {
         return cross.getValue(index);
     }
 }

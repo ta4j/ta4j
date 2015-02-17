@@ -38,7 +38,7 @@ public class BooleanRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
+    public boolean isSatisfied(int index) {
         return satisfied;
     }
 }

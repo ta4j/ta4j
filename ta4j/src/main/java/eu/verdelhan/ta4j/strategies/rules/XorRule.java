@@ -39,7 +39,7 @@ public class XorRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
-        return rule1.check(index) ^ rule2.check(index);
+    public boolean isSatisfied(int index) {
+        return rule1.isSatisfied(index) ^ rule2.isSatisfied(index);
     }
 }

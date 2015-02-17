@@ -50,7 +50,7 @@ public class InPipeRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
+    public boolean isSatisfied(int index) {
         return ref.getValue(index).isLessThanOrEqual(upper.getValue(index))
                 && ref.getValue(index).isGreaterThanOrEqual(lower.getValue(index));
     }

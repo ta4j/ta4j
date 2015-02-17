@@ -56,7 +56,7 @@ public class UnderIndicatorRule extends AbstractRule {
     }
 
     @Override
-    public boolean check(int index) {
+    public boolean isSatisfied(int index) {
         return first.getValue(index).isLessThan(second.getValue(index));
     }
 }

@@ -30,7 +30,7 @@ public class JustOnceRule extends AbstractRule {
     private boolean satisfied = false;
 
     @Override
-    public boolean check(int index) {
+    public boolean isSatisfied(int index) {
         if (!satisfied) {
             satisfied = true;
             return true;
