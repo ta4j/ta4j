@@ -22,6 +22,7 @@
  */
 package ta4jexamples.strategies;
 
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -31,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
-import eu.verdelhan.ta4j.indicators.simple.SimpleMultiplierIndicator;
+import eu.verdelhan.ta4j.indicators.simple.MultiplierIndicator;
 import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
 import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import java.util.List;
@@ -64,10 +65,12 @@ public class GlobalExtremaStrategy {
         LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_TICKS_PER_WEEK);
 
         // Going long if the close price goes below the min price
-        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(new SimpleMultiplierIndicator(weekMinPrice, 1.004), closePrices);
+        MultiplierIndicator upWeek = new MultiplierIndicator(weekMinPrice, Decimal.valueOf("1.004"));
+        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(upWeek, closePrices);
 
         // Going short if the close price goes above the max price
-        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(closePrices, new SimpleMultiplierIndicator(weekMaxPrice, 0.996));
+        MultiplierIndicator downWeek = new MultiplierIndicator(weekMaxPrice, Decimal.valueOf("0.996"));
+        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(closePrices, downWeek);
 
         Strategy signals = new CombinedEntryAndExitStrategy(buySignal, sellSignal);
 

@@ -30,25 +30,25 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * Simple multiplier indicator.
  * <p>
  */
-public class SimpleMultiplierIndicator extends CachedIndicator<Decimal> {
+public class MultiplierIndicator extends CachedIndicator<Decimal> {
 
     private Indicator<Decimal> indicator;
-    private Decimal value;
     
-
-    public SimpleMultiplierIndicator(Indicator<Decimal> indicator, double value) {
+    private Decimal coefficient;
+    
+    public MultiplierIndicator(Indicator<Decimal> indicator, Decimal coefficient) {
         super(indicator);
         this.indicator = indicator;
-        this.value = Decimal.valueOf(value);
+        this.coefficient = coefficient;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return indicator.getValue(index).multipliedBy(value);
+        return indicator.getValue(index).multipliedBy(coefficient);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " Value: " + value;
+        return getClass().getSimpleName() + " Coefficient: " + coefficient;
     }
 }

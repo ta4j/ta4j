@@ -27,21 +27,21 @@ import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SimpleMultiplierIndicatorTest {
+public class MultiplierIndicatorTest {
     private ConstantIndicator<Decimal> constantIndicator;
-    private SimpleMultiplierIndicator simpleMultiplier;
+    private MultiplierIndicator multiplierIndicator;
 
     @Before
     public void setUp() {
-        constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(5));
-        simpleMultiplier = new SimpleMultiplierIndicator(constantIndicator, 5d);
+        constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(6));
+        multiplierIndicator = new MultiplierIndicator(constantIndicator, Decimal.valueOf("0.75"));
     }
 
     @Test
     public void constantIndicator() {
-        assertDecimalEquals(simpleMultiplier.getValue(10), 25);
-        assertDecimalEquals(simpleMultiplier.getValue(1), 25);
-        assertDecimalEquals(simpleMultiplier.getValue(0), 25);
-        assertDecimalEquals(simpleMultiplier.getValue(30), 25);
+        assertDecimalEquals(multiplierIndicator.getValue(10), "4.5");
+        assertDecimalEquals(multiplierIndicator.getValue(1), "4.5");
+        assertDecimalEquals(multiplierIndicator.getValue(0), "4.5");
+        assertDecimalEquals(multiplierIndicator.getValue(30), "4.5");
     }
 }
