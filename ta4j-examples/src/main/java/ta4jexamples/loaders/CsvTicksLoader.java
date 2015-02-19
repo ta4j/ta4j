@@ -24,7 +24,6 @@ package ta4jexamples.loaders;
 
 import au.com.bytecode.opencsv.CSVReader;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import java.io.IOException;
 import java.io.InputStream;

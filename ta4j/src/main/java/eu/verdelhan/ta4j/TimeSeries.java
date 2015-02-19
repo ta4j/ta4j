@@ -507,8 +507,7 @@ public class TimeSeries {
      * @return a message for an OutOfBoundsException
      */
     private static String buildOutOfBoundsMessage(TimeSeries series, int index) {
-        StringBuilder sb = new StringBuilder("Size of series: ").append(series.ticks.size()).append(" ticks, ")
-                .append(series.removedTicksCount).append(" ticks removed, index = ").append(index);
-        return sb.toString();
+        return "Size of series: " + series.ticks.size() + " ticks, "
+                + series.removedTicksCount + " ticks removed, index = " + index;
     }
 }
