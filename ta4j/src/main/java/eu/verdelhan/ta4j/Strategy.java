@@ -30,41 +30,47 @@ package eu.verdelhan.ta4j;
  * <p>
  * Returns an {@link Operation operation} when giving an index.
  */
-public interface Strategy {
+public class Strategy {
 
+    private Rule entryRule;
+    
+    private Rule exitRule;
+
+    public void setEntryRule(Rule entryRule) {
+        this.entryRule = entryRule;
+    }
+
+    public void setExitRule(Rule exitRule) {
+        this.exitRule = exitRule;
+    }
+    
     /**
      * @param trade a trade
      * @param index the index
      * @return true to recommend an operation, false otherwise (no recommendation)
      */
-    boolean shouldOperate(Trade trade, int index);
+    public boolean shouldOperate(Trade trade, int index) {
+        if (trade.isNew()) {
+            return shouldEnter(index);
+        } else if (trade.isOpened()) {
+            return shouldExit(index);
+        }
+        return false;
+    }
 
     /**
      * @param index the index
      * @return true to recommend to enter (BUY {@link Operation operation}), false otherwise
      */
-    boolean shouldEnter(int index);
+    public boolean shouldEnter(int index) {
+        return entryRule.isSatisfied(index);
+    }
 
     /**
      * @param index the index
      * @return true to recommend to exit (SELL {@link Operation operation}), false otherwise
      */
-    boolean shouldExit(int index);
-
-    /**
-     * @param strategy another trading strategy
-     * @return a strategy which is the AND combination of the current strategy with the provided one
-     */
-    Strategy and(Strategy strategy);
-
-    /**
-     * @param strategy another trading strategy
-     * @return a strategy which is the OR combination of the current strategy with the provided one
-     */
-    Strategy or(Strategy strategy);
-
-    /**
-     * @return a strategy which operates in the opposite way of the current strategy
-     */
-    Strategy opposite();
+    public boolean shouldExit(int index) {
+        return exitRule.isSatisfied(index);
+    }
 }

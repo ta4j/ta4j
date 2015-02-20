@@ -22,44 +22,38 @@
  */
 package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Rule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * An abstract trading {@link Rule rule}.
- */
-public abstract class AbstractRule implements Rule {
+public class CrossedDownIndicatorRuleTest {
 
-    /** The logger */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
-
-    @Override
-    public Rule and(Rule rule) {
-        return new AndRule(this, rule);
-    }
-
-    @Override
-    public Rule or(Rule rule) {
-        return new OrRule(this, rule);
-    }
-
-    @Override
-    public Rule xor(Rule rule) {
-        return new XorRule(this, rule);
-    }
-
-    @Override
-    public Rule negation() {
-        return new NotRule(this);
-    }
-
-    /**
-     * Traces the isSatisfied() method calls.
-     * @param index the index
-     */
-    protected void traceSati(int index) {
-        log.trace("TODO");
+    private Indicator<Decimal> evaluatedIndicator;
+    private Indicator<Decimal> referenceIndicator;
+    private CrossedDownIndicatorRule rule;
+    
+    @Before
+    public void setUp() {
+        evaluatedIndicator = new MockDecimalIndicator(12, 11, 10, 9, 11, 8, 7, 6);
+        referenceIndicator = new ConstantIndicator<Decimal>(Decimal.TEN);
+        rule = new CrossedDownIndicatorRule(referenceIndicator, evaluatedIndicator);
     }
     
+    @Test
+    public void isSatisfied() {
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertTrue(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertTrue(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertFalse(rule.isSatisfied(7));
+    }
 }
+        

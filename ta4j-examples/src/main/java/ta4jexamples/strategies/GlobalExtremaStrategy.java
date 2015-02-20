@@ -22,19 +22,10 @@
  */
 package ta4jexamples.strategies;
 
-import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
-import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
-import eu.verdelhan.ta4j.indicators.simple.MultiplierIndicator;
-import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
 import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
@@ -55,26 +46,27 @@ public class GlobalExtremaStrategy {
             throw new IllegalArgumentException("Series cannot be null");
         }
 
-        ClosePriceIndicator closePrices = new ClosePriceIndicator(series);
-
-        // Getting the max price over the past week
-        MaxPriceIndicator maxPrices = new MaxPriceIndicator(series);
-        HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_TICKS_PER_WEEK);
-        // Getting the min price over the past week
-        MinPriceIndicator minPrices = new MinPriceIndicator(series);
-        LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_TICKS_PER_WEEK);
-
-        // Going long if the close price goes below the min price
-        MultiplierIndicator upWeek = new MultiplierIndicator(weekMinPrice, Decimal.valueOf("1.004"));
-        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(upWeek, closePrices);
-
-        // Going short if the close price goes above the max price
-        MultiplierIndicator downWeek = new MultiplierIndicator(weekMaxPrice, Decimal.valueOf("0.996"));
-        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(closePrices, downWeek);
-
-        Strategy signals = new CombinedEntryAndExitStrategy(buySignal, sellSignal);
-
-        return signals;
+//        ClosePriceIndicator closePrices = new ClosePriceIndicator(series);
+//
+//        // Getting the max price over the past week
+//        MaxPriceIndicator maxPrices = new MaxPriceIndicator(series);
+//        HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_TICKS_PER_WEEK);
+//        // Getting the min price over the past week
+//        MinPriceIndicator minPrices = new MinPriceIndicator(series);
+//        LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_TICKS_PER_WEEK);
+//
+//        // Going long if the close price goes below the min price
+//        MultiplierIndicator upWeek = new MultiplierIndicator(weekMinPrice, Decimal.valueOf("1.004"));
+//        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(upWeek, closePrices);
+//
+//        // Going short if the close price goes above the max price
+//        MultiplierIndicator downWeek = new MultiplierIndicator(weekMaxPrice, Decimal.valueOf("0.996"));
+//        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(closePrices, downWeek);
+//
+//        Strategy signals = new CombinedEntryAndExitStrategy(buySignal, sellSignal);
+//
+//        return signals;
+        return new Strategy();
     }
 
     public static void main(String[] args) {

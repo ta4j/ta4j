@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.strategies.rules;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
  *
@@ -39,11 +40,21 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
+     * @param ref the reference indicator
+     * @param upper the upper threshold
+     * @param lower the lower threshold
+     */
+    public InPipeRule(Indicator<Decimal> ref, Decimal upper, Decimal lower) {
+        this(ref, new ConstantIndicator<Decimal>(upper), new ConstantIndicator<Decimal>(lower));
+    }
+
+    /**
+     * Constructor.
+     * @param ref the reference indicator
      * @param upper the upper indicator
      * @param lower the lower indicator
-     * @param ref the reference indicator
      */
-    public InPipeRule(Indicator<Decimal> upper, Indicator<Decimal> lower, Indicator<Decimal> ref) {
+    public InPipeRule(Indicator<Decimal> ref, Indicator<Decimal> upper, Indicator<Decimal> lower) {
         this.upper = upper;
         this.lower = lower;
         this.ref = ref;

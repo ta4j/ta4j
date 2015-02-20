@@ -23,13 +23,15 @@
 package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Strategy;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
+import eu.verdelhan.ta4j.strategies.rules.OverIndicatorRule;
+import eu.verdelhan.ta4j.strategies.rules.UnderIndicatorRule;
 import java.util.Arrays;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -93,10 +95,10 @@ public class CachedIndicatorTest {
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
         timeSeries.setMaximumTickCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
-        // Constant: 3
-        ConstantIndicator<Decimal> constant = new ConstantIndicator<Decimal>(Decimal.THREE);
-
-        IndicatorOverIndicatorStrategy strategy = new IndicatorOverIndicatorStrategy(sma, constant);
+        
+        Strategy strategy = new Strategy();
+        strategy.setEntryRule(new OverIndicatorRule(sma, Decimal.THREE));
+        strategy.setExitRule(new UnderIndicatorRule(sma, Decimal.THREE));
         // Theoretical shouldEnter results: false, false, false, false, true, true, true, true
         // Theoretical shouldExit results: false, false, true, true, false, false, false, false
 

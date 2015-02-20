@@ -20,34 +20,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-public class MockStrategy extends Strategy {
+public class OverIndicatorRuleTest {
 
-    private Operation[] enter;
-
-    private Operation[] exit;
-
-    public MockStrategy(Operation[] enter, Operation[] exit) {
-        this.enter = enter;
-        this.exit = exit;
+    private Indicator<Decimal> indicator;
+    private OverIndicatorRule rule;
+    
+    @Before
+    public void setUp() {
+        indicator = new MockDecimalIndicator(20, 15, 10, 5, 0, -5, -10, 100);
+        rule = new OverIndicatorRule(indicator, Decimal.valueOf(5));
     }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        return (enter[index] != null);
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        return (exit[index] != null);
-    }
-
-    @Override
-    public String toString() {
-        return "Mock Strategy";
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(rule.isSatisfied(0));
+        assertTrue(rule.isSatisfied(1));
+        assertTrue(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertTrue(rule.isSatisfied(7));
     }
 }
+        

@@ -20,51 +20,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ResistanceStrategyTest {
+public class CrossedUpIndicatorRuleTest {
 
-    private MockDecimalIndicator indicator;
-
+    private Indicator<Decimal> evaluatedIndicator;
+    private Indicator<Decimal> referenceIndicator;
+    private CrossedUpIndicatorRule rule;
+    
     @Before
     public void setUp() {
-        indicator = new MockDecimalIndicator(95d, 96d, 95d, 94d, 97d, 95d, 110d);
+        evaluatedIndicator = new MockDecimalIndicator(8, 9, 10, 12, 9, 11, 12, 13);
+        referenceIndicator = new ConstantIndicator<Decimal>(Decimal.TEN);
+        rule = new CrossedUpIndicatorRule(referenceIndicator, evaluatedIndicator);
     }
-
+    
     @Test
-    public void resistanceShouldSell() {
-        Operation[] enter = new Operation[] { null, null, null, null, null, null, null };
-
-        Strategy neverSell = new MockStrategy(enter, enter);
-
-        Trade trade = new Trade();
-
-        Strategy resistance = new ResistanceStrategy(indicator, neverSell, 96);
-
-        trade.operate(0);
-        assertTrue(resistance.shouldOperate(trade, 1));
-
-        trade = new Trade();
-        trade.operate(2);
-
-        assertFalse(resistance.shouldEnter(2));
-        assertFalse(resistance.shouldOperate(trade, 2));
-        assertFalse(resistance.shouldOperate(trade, 3));
-        assertTrue(resistance.shouldOperate(trade, 4));
-
-        trade = new Trade();
-        trade.operate(5);
-
-        assertFalse(resistance.shouldOperate(trade, 5));
-        assertTrue(resistance.shouldOperate(trade, 6));
+    public void isSatisfied() {
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertTrue(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertTrue(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertFalse(rule.isSatisfied(7));
     }
 }
+        

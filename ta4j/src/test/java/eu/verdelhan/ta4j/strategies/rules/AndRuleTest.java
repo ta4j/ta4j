@@ -20,51 +20,36 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.Trade;
-import static org.junit.Assert.*;
+import eu.verdelhan.ta4j.Rule;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
-public class JustEnterOnceStrategyTest {
+public class AndRuleTest {
 
-    private Strategy strategy;
-
-    private Trade trade;
-
+    private Rule satisfiedRule;
+    private Rule unsatisfiedRule;
+    
     @Before
     public void setUp() {
-        this.strategy = new JustEnterOnceStrategy();
-        this.trade = new Trade();
+        satisfiedRule = new BooleanRule(true);
+        unsatisfiedRule = new BooleanRule(false);
     }
-
+    
     @Test
-    public void shouldBuyTradeOnce() {
-        Operation buy = new Operation(0, OperationType.BUY);
-
-        assertTrue(strategy.shouldOperate(trade, 0));
-        trade.operate(0);
-        assertEquals(buy, trade.getEntry());
-        assertFalse(strategy.shouldOperate(trade, 1));
-        assertFalse(strategy.shouldOperate(trade, 6));
-
+    public void isSatisfied() {
+        assertFalse(satisfiedRule.and(BooleanRule.FALSE).isSatisfied(0));
+        assertFalse(BooleanRule.FALSE.and(satisfiedRule).isSatisfied(0));
+        assertFalse(unsatisfiedRule.and(BooleanRule.FALSE).isSatisfied(0));
+        assertFalse(BooleanRule.FALSE.and(unsatisfiedRule).isSatisfied(0));
+        
+        assertTrue(satisfiedRule.and(BooleanRule.TRUE).isSatisfied(10));
+        assertTrue(BooleanRule.TRUE.and(satisfiedRule).isSatisfied(10));
+        assertFalse(unsatisfiedRule.and(BooleanRule.TRUE).isSatisfied(10));
+        assertFalse(BooleanRule.TRUE.and(unsatisfiedRule).isSatisfied(10));
     }
-
-    @Test
-    public void sameIndexShouldResultSameAnswer() {
-        Operation buy = new Operation(0, OperationType.BUY);
-
-        assertTrue(strategy.shouldOperate(trade, 0));
-        trade.operate(0);
-        assertEquals(buy, trade.getEntry());
-        Trade trade2 = new Trade();
-        assertFalse(strategy.shouldOperate(trade2, 0));
-        trade2.operate(0);
-        assertEquals(buy, trade2.getEntry());
-    }
-
 }
+        

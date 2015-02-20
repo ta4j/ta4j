@@ -40,6 +40,12 @@ public interface Rule {
     Rule or(Rule rule);
 
     /**
+     * @param rule another trading rule
+     * @return a rule which is the XOR combination of this rule with the provided one
+     */
+    Rule xor(Rule rule);
+
+    /**
      * @return a rule which is the logical negation of this rule
      */
     Rule negation();

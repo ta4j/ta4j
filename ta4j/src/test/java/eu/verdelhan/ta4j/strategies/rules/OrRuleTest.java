@@ -20,38 +20,36 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.Rule;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * An exit-pass filter {@link Strategy strategy}.
- * <p>
- * Enter: never<br>
- * Exit: according to the provided {@link Strategy strategy}
- */
-public class ExitPassFilterStrategy extends AbstractStrategy {
-    /** The strategy */
-    private Strategy strategy;
+public class OrRuleTest {
 
-    /**
-     * Constructor.
-     * @param strategy the strategy
-     */
-    public ExitPassFilterStrategy(Strategy strategy) {
-        this.strategy = strategy;
+    private Rule satisfiedRule;
+    private Rule unsatisfiedRule;
+    
+    @Before
+    public void setUp() {
+        satisfiedRule = new BooleanRule(true);
+        unsatisfiedRule = new BooleanRule(false);
     }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        traceEnter(index, false);
-        return false;
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        boolean exit = strategy.shouldExit(index);
-        traceExit(index, exit);
-        return exit;
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(satisfiedRule.or(BooleanRule.FALSE).isSatisfied(0));
+        assertTrue(BooleanRule.FALSE.or(satisfiedRule).isSatisfied(0));
+        assertFalse(unsatisfiedRule.or(BooleanRule.FALSE).isSatisfied(0));
+        assertFalse(BooleanRule.FALSE.or(unsatisfiedRule).isSatisfied(0));
+        
+        assertTrue(satisfiedRule.or(BooleanRule.TRUE).isSatisfied(10));
+        assertTrue(BooleanRule.TRUE.or(satisfiedRule).isSatisfied(10));
+        assertTrue(unsatisfiedRule.or(BooleanRule.TRUE).isSatisfied(10));
+        assertTrue(BooleanRule.TRUE.or(unsatisfiedRule).isSatisfied(10));
     }
 }
+        

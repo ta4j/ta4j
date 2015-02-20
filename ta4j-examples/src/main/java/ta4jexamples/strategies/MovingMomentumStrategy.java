@@ -26,16 +26,6 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorDIndicator;
-import eu.verdelhan.ta4j.indicators.oscillators.StochasticOscillatorKIndicator;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.MACDIndicator;
-import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
-import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
-import eu.verdelhan.ta4j.strategies.ResistanceStrategy;
-import eu.verdelhan.ta4j.strategies.SupportStrategy;
 import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
@@ -55,28 +45,29 @@ public class MovingMomentumStrategy {
             throw new IllegalArgumentException("Series cannot be null");
         }
 
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
-        EMAIndicator longEma = new EMAIndicator(closePrice, 26);
-
-        // The bias is bullish when the shorter-moving average moves above the longer moving average.
-        // The bias is bearish when the shorter-moving average moves below the longer moving average.
-        IndicatorOverIndicatorStrategy shortEmaAboveLongEma = new IndicatorOverIndicatorStrategy(shortEma, longEma);
-
-        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
-        StochasticOscillatorDIndicator stochasticOscillD = new StochasticOscillatorDIndicator(stochasticOscillK);
-
-        SupportStrategy support20 = new SupportStrategy(stochasticOscillK, new AlwaysOperateStrategy().opposite(), 20);
-        ResistanceStrategy resist80 = new ResistanceStrategy(stochasticOscillK, new AlwaysOperateStrategy().opposite(), 80);
-
-        MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
-        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
-
-        IndicatorOverIndicatorStrategy macdAboveSignalLine = new IndicatorOverIndicatorStrategy(macd, emaMacd);
-
-        return shortEmaAboveLongEma
-                .and(new CombinedEntryAndExitStrategy(support20, resist80))
-                .and(macdAboveSignalLine);
+//        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+//        EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
+//        EMAIndicator longEma = new EMAIndicator(closePrice, 26);
+//
+//        // The bias is bullish when the shorter-moving average moves above the longer moving average.
+//        // The bias is bearish when the shorter-moving average moves below the longer moving average.
+//        IndicatorOverIndicatorStrategy shortEmaAboveLongEma = new IndicatorOverIndicatorStrategy(shortEma, longEma);
+//
+//        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
+//        StochasticOscillatorDIndicator stochasticOscillD = new StochasticOscillatorDIndicator(stochasticOscillK);
+//
+//        SupportStrategy support20 = new SupportStrategy(stochasticOscillK, new AlwaysOperateStrategy().opposite(), 20);
+//        ResistanceStrategy resist80 = new ResistanceStrategy(stochasticOscillK, new AlwaysOperateStrategy().opposite(), 80);
+//
+//        MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
+//        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
+//
+//        IndicatorOverIndicatorStrategy macdAboveSignalLine = new IndicatorOverIndicatorStrategy(macd, emaMacd);
+//
+//        return shortEmaAboveLongEma
+//                .and(new CombinedEntryAndExitStrategy(support20, resist80))
+//                .and(macdAboveSignalLine);
+        return new Strategy();
     }
 
     public static void main(String[] args) {

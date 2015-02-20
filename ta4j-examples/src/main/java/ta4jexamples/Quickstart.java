@@ -34,10 +34,6 @@ import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.VersusBuyAndHoldCriterion;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import eu.verdelhan.ta4j.strategies.IndicatorCrossedIndicatorStrategy;
-import eu.verdelhan.ta4j.strategies.StopGainStrategy;
-import eu.verdelhan.ta4j.strategies.StopLossStrategy;
-import eu.verdelhan.ta4j.strategies.SupportStrategy;
 import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
@@ -73,19 +69,19 @@ public class Quickstart {
 
         // Ok, now let's building our trading strategy!
 
-        // Initial strategy:
-        //  - Buy when 5-ticks SMA crosses over 30-ticks SMA
-        //  - Sell when 5-ticks SMA crosses under 30-ticks SMA
-        Strategy ourStrategy = new IndicatorCrossedIndicatorStrategy(shortSma, longSma);
-
-        // Cutomizing our strategy...
-        // We want to buy if the price goes below a defined price (e.g $800.00)
-        ourStrategy = new SupportStrategy(closePrice, ourStrategy, 800d);
-        // And we want to sell if the price looses more than 3%
-        ourStrategy = new StopLossStrategy(closePrice, ourStrategy, 3);
-        // Or if the price earns more than 2%
-        ourStrategy = new StopGainStrategy(closePrice, ourStrategy, 2);
-
+//        // Initial strategy:
+//        //  - Buy when 5-ticks SMA crosses over 30-ticks SMA
+//        //  - Sell when 5-ticks SMA crosses under 30-ticks SMA
+//        Strategy ourStrategy = new IndicatorCrossedIndicatorStrategy(shortSma, longSma);
+//
+//        // Cutomizing our strategy...
+//        // We want to buy if the price goes below a defined price (e.g $800.00)
+//        ourStrategy = new SupportStrategy(closePrice, ourStrategy, 800d);
+//        // And we want to sell if the price looses more than 3%
+//        ourStrategy = new StopLossStrategy(closePrice, ourStrategy, 3);
+//        // Or if the price earns more than 2%
+//        ourStrategy = new StopGainStrategy(closePrice, ourStrategy, 2);
+        Strategy ourStrategy = new Strategy();
 
         // Running our juicy trading strategy...
         List<Trade> trades = series.run(ourStrategy);

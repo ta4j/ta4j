@@ -20,30 +20,35 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
 
-/**
- * A {@link Strategy strategy} which always enters and exits.
- * <p>
- * Enter: always<br>
- * Exit: always
- */
-public class AlwaysOperateStrategy extends AbstractStrategy {
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-    @Override
-    public boolean shouldEnter(int index) {
-        traceEnter(index, true);
-        return true;
+public class BooleanRuleTest {
+
+    private BooleanRule satisfiedRule;
+    private BooleanRule unsatisfiedRule;
+    
+    @Before
+    public void setUp() {
+        satisfiedRule = new BooleanRule(true);
+        unsatisfiedRule = new BooleanRule(false);
     }
-
-    @Override
-    public boolean shouldExit(int index) {
-        traceExit(index, true);
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        return this.getClass().getSimpleName();
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(satisfiedRule.isSatisfied(0));
+        assertTrue(satisfiedRule.isSatisfied(1));
+        assertTrue(satisfiedRule.isSatisfied(2));
+        assertTrue(satisfiedRule.isSatisfied(10));
+        
+        assertFalse(unsatisfiedRule.isSatisfied(0));
+        assertFalse(unsatisfiedRule.isSatisfied(1));
+        assertFalse(unsatisfiedRule.isSatisfied(2));
+        assertFalse(unsatisfiedRule.isSatisfied(10));
     }
 }
+        

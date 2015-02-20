@@ -20,34 +20,36 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.Rule;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-public class MockStrategy extends Strategy {
+public class XorRuleTest {
 
-    private Operation[] enter;
-
-    private Operation[] exit;
-
-    public MockStrategy(Operation[] enter, Operation[] exit) {
-        this.enter = enter;
-        this.exit = exit;
+    private Rule satisfiedRule;
+    private Rule unsatisfiedRule;
+    
+    @Before
+    public void setUp() {
+        satisfiedRule = new BooleanRule(true);
+        unsatisfiedRule = new BooleanRule(false);
     }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        return (enter[index] != null);
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        return (exit[index] != null);
-    }
-
-    @Override
-    public String toString() {
-        return "Mock Strategy";
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(satisfiedRule.xor(BooleanRule.FALSE).isSatisfied(0));
+        assertTrue(BooleanRule.FALSE.xor(satisfiedRule).isSatisfied(0));
+        assertFalse(unsatisfiedRule.xor(BooleanRule.FALSE).isSatisfied(0));
+        assertFalse(BooleanRule.FALSE.xor(unsatisfiedRule).isSatisfied(0));
+        
+        assertFalse(satisfiedRule.xor(BooleanRule.TRUE).isSatisfied(10));
+        assertFalse(BooleanRule.TRUE.xor(satisfiedRule).isSatisfied(10));
+        assertTrue(unsatisfiedRule.xor(BooleanRule.TRUE).isSatisfied(10));
+        assertTrue(BooleanRule.TRUE.xor(unsatisfiedRule).isSatisfied(10));
     }
 }
+        

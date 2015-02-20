@@ -20,9 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-/**
- * Trading strategies.
- * <p>
- * A trading strategy is designed to achieve a profitable return by going long or short over a {@link TimeSeries time series}.
- */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
+
+import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.mocks.MockIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
+
+public class BooleanIndicatorRuleTest {
+
+    private Indicator<Boolean> indicator;
+    private BooleanIndicatorRule rule;
+    
+    @Before
+    public void setUp() {
+        indicator = new MockIndicator<Boolean>(true, true, false, false, true);
+        rule = new BooleanIndicatorRule(indicator);
+    }
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(rule.isSatisfied(0));
+        assertTrue(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertTrue(rule.isSatisfied(4));
+    }
+}
+        

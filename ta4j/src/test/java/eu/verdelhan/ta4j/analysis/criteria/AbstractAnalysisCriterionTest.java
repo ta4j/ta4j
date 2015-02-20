@@ -27,7 +27,7 @@ import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
+import eu.verdelhan.ta4j.strategies.rules.BooleanRule;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.*;
@@ -36,7 +36,7 @@ import org.junit.Test;
 
 public class AbstractAnalysisCriterionTest {
 
-    private AlwaysOperateStrategy alwaysStrategy;
+    private Strategy alwaysStrategy;
 
     private MockStrategy buyAndHoldStrategy;
 
@@ -44,7 +44,9 @@ public class AbstractAnalysisCriterionTest {
 
     @Before
     public void setUp() {
-        alwaysStrategy = new AlwaysOperateStrategy();
+        alwaysStrategy = new Strategy();
+        alwaysStrategy.setEntryRule(BooleanRule.TRUE);
+        alwaysStrategy.setExitRule(BooleanRule.TRUE);
         buyAndHoldStrategy = new MockStrategy(new Operation[] { new Operation(0, OperationType.BUY), null, null, null },
                 new Operation[] { null, null, null, new Operation(4, OperationType.SELL) });
         strategies = new ArrayList<Strategy>();

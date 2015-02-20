@@ -20,39 +20,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * The opposite (logical operator: NOT) of a {@link Strategy strategy}.
- * <p>
- * Enter: the opposite of the provided {@link Strategy strategy}<br>
- * Exit: the opposite of the provided {@link Strategy strategy}
- */
-public class OppositeStrategy extends AbstractStrategy {
+public class UnderIndicatorRuleTest {
 
-    private Strategy strategy;
-
-    /**
-     * Constructor.
-     * @param strategy the strategy to be reversed
-     */
-    public OppositeStrategy(Strategy strategy) {
-        this.strategy = strategy;
+    private Indicator<Decimal> indicator;
+    private UnderIndicatorRule rule;
+    
+    @Before
+    public void setUp() {
+        indicator = new MockDecimalIndicator(0, 5, 8, 5, 1, 10, 20, 30);
+        rule = new UnderIndicatorRule(indicator, Decimal.valueOf(5));
     }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        boolean enter = !strategy.shouldEnter(index);
-        traceEnter(index, enter);
-        return enter;
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        boolean exit = !strategy.shouldExit(index);
-        traceExit(index, exit);
-        return exit;
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertTrue(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertFalse(rule.isSatisfied(7));
     }
 }
+        

@@ -26,13 +26,6 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.RSIIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import eu.verdelhan.ta4j.strategies.CombinedEntryAndExitStrategy;
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
-import eu.verdelhan.ta4j.strategies.ResistanceStrategy;
-import eu.verdelhan.ta4j.strategies.SupportStrategy;
 import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
@@ -52,29 +45,30 @@ public class RSI2Strategy {
             throw new IllegalArgumentException("Series cannot be null");
         }
 
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
-        SMAIndicator longSma = new SMAIndicator(closePrice, 200);
-
-        // Exit point.
-        // Exiting long positions on a move above the 5-period SMA and short positions on a move below the 5-day SMA.
-        IndicatorOverIndicatorStrategy priceBelowSma = new IndicatorOverIndicatorStrategy(shortSma, closePrice);
-
-        // Identifying the major trend using a long-term moving average.
-        // The long-term trend is up when a security is above its 200-period SMA and down when a security is below its 200-period SMA.
-        IndicatorOverIndicatorStrategy shortSmaAboveLongSma = new IndicatorOverIndicatorStrategy(shortSma, longSma);
-
-        // Identifying buying or selling opportunities within the bigger trend.
-        // We use a 2-period RSI indicator.
-        RSIIndicator rsi = new RSIIndicator(closePrice, 2);
-        SupportStrategy support5 = new SupportStrategy(rsi, priceBelowSma, 5);
-        ResistanceStrategy resist95 = new ResistanceStrategy(rsi, priceBelowSma, 95);
-        Strategy buyAndSellSignalsStrategy = new CombinedEntryAndExitStrategy(support5, resist95);
-
-        // To Do
-        // Entering on close.
-
-        return shortSmaAboveLongSma.and(buyAndSellSignalsStrategy);
+//        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+//        SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
+//        SMAIndicator longSma = new SMAIndicator(closePrice, 200);
+//
+//        // Exit point.
+//        // Exiting long positions on a move above the 5-period SMA and short positions on a move below the 5-day SMA.
+//        IndicatorOverIndicatorStrategy priceBelowSma = new IndicatorOverIndicatorStrategy(shortSma, closePrice);
+//
+//        // Identifying the major trend using a long-term moving average.
+//        // The long-term trend is up when a security is above its 200-period SMA and down when a security is below its 200-period SMA.
+//        IndicatorOverIndicatorStrategy shortSmaAboveLongSma = new IndicatorOverIndicatorStrategy(shortSma, longSma);
+//
+//        // Identifying buying or selling opportunities within the bigger trend.
+//        // We use a 2-period RSI indicator.
+//        RSIIndicator rsi = new RSIIndicator(closePrice, 2);
+//        SupportStrategy support5 = new SupportStrategy(rsi, priceBelowSma, 5);
+//        ResistanceStrategy resist95 = new ResistanceStrategy(rsi, priceBelowSma, 95);
+//        Strategy buyAndSellSignalsStrategy = new CombinedEntryAndExitStrategy(support5, resist95);
+//
+//        // To Do
+//        // Entering on close.
+//
+//        return shortSmaAboveLongSma.and(buyAndSellSignalsStrategy);
+        return new Strategy();
     }
 
     public static void main(String[] args) {

@@ -20,34 +20,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.Rule;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-public class MockStrategy extends Strategy {
+public class NotRuleTest {
 
-    private Operation[] enter;
-
-    private Operation[] exit;
-
-    public MockStrategy(Operation[] enter, Operation[] exit) {
-        this.enter = enter;
-        this.exit = exit;
+    private Rule satisfiedRule;
+    private Rule unsatisfiedRule;
+    
+    @Before
+    public void setUp() {
+        satisfiedRule = new BooleanRule(true);
+        unsatisfiedRule = new BooleanRule(false);
     }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        return (enter[index] != null);
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        return (exit[index] != null);
-    }
-
-    @Override
-    public String toString() {
-        return "Mock Strategy";
+    
+    @Test
+    public void isSatisfied() {
+        assertFalse(satisfiedRule.negation().isSatisfied(0));
+        assertTrue(unsatisfiedRule.negation().isSatisfied(0));
+        
+        assertFalse(satisfiedRule.negation().isSatisfied(10));
+        assertTrue(unsatisfiedRule.negation().isSatisfied(10));
     }
 }
+        

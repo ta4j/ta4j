@@ -20,38 +20,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Strategy;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * An entry-pass filter {@link Strategy strategy}.
- * <p>
- * Enter: according to the provided {@link Strategy strategy}<br>
- * Exit: never
- */
-public class EntryPassFilterStrategy extends AbstractStrategy {
-    /** The strategy */
-    private Strategy strategy;
+public class JustOnceRuleTest {
 
-    /**
-     * Constructor.
-     * @param strategy the strategy
-     */
-    public EntryPassFilterStrategy(Strategy strategy) {
-        this.strategy = strategy;
+    private JustOnceRule rule;
+    
+    @Before
+    public void setUp() {
+        rule = new JustOnceRule();
     }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        boolean enter = strategy.shouldEnter(index);
-        traceEnter(index, enter);
-        return enter;
+    
+    @Test
+    public void isSatisfied() {
+        assertTrue(rule.isSatisfied(10));
+        assertFalse(rule.isSatisfied(11));
+        assertFalse(rule.isSatisfied(12));
+        assertFalse(rule.isSatisfied(13));
+        assertFalse(rule.isSatisfied(14));
     }
-
-    @Override
-    public boolean shouldExit(int index) {
-        traceExit(index, false);
-        return false;
+    
+    @Test
+    public void isSatisfiedInReverseOrder() {
+        assertTrue(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(0));
     }
 }
+        

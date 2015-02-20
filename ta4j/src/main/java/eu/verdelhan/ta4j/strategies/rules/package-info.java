@@ -20,37 +20,10 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.strategies;
-
 /**
- * {@link Strategy} which enters just once and never moves later.
+ * Trading rules for trading strategies.
  * <p>
- * Enter: the first time it's called<br>
- * Exit: never
+ * Rules can be combined and set as entry/exit signals for a trading {@link Strategy strategy}.
+ * A trading strategy is designed to achieve a profitable return by going long or short over a {@link TimeSeries time series}.
  */
-public class JustEnterOnceStrategy extends AbstractStrategy {
-
-    private boolean entered = false;
-
-    @Override
-    public boolean shouldEnter(int index) {
-        if (!entered) {
-            entered = true;
-            traceEnter(index, true);
-            return true;
-        }
-        traceEnter(index, false);
-        return false;
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        traceExit(index, false);
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
-}
+package eu.verdelhan.ta4j.strategies.rules;

@@ -28,7 +28,8 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import eu.verdelhan.ta4j.strategies.IndicatorOverIndicatorStrategy;
+import eu.verdelhan.ta4j.strategies.rules.OverIndicatorRule;
+import eu.verdelhan.ta4j.strategies.rules.UnderIndicatorRule;
 import org.joda.time.DateTime;
 import ta4jexamples.loaders.CsvTradesLoader;
 
@@ -71,7 +72,9 @@ public class TradingBotOnMovingTimeSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        IndicatorOverIndicatorStrategy buySellSignals = new IndicatorOverIndicatorStrategy(sma, closePrice);
+        Strategy buySellSignals = new Strategy();
+        buySellSignals.setEntryRule(new OverIndicatorRule(sma, closePrice));
+        buySellSignals.setExitRule(new UnderIndicatorRule(sma, closePrice));
         return buySellSignals;
     }
 
