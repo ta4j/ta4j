@@ -77,7 +77,7 @@ public class BuyAndSellSignalsToChart {
      */
     private static void addBuySellSignals(TimeSeries series, Strategy strategy, XYPlot plot) {
         // Running the strategy
-        List<Trade> trades = series.run(strategy);
+        List<Trade> trades = series.run(strategy).getTrades();
         // Adding markers to plot
         for (Trade trade : trades) {
             // Buy signal

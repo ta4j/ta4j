@@ -84,7 +84,7 @@ public class Quickstart {
         Strategy ourStrategy = new Strategy();
 
         // Running our juicy trading strategy...
-        List<Trade> trades = series.run(ourStrategy);
+        List<Trade> trades = series.run(ourStrategy).getTrades();
         System.out.println("Number of trades for our strategy: " + trades.size());
 
 

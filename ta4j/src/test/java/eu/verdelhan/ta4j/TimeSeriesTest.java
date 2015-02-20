@@ -382,14 +382,14 @@ public class TimeSeriesTest {
     public void runOnWholeSeries() {
         TimeSeries series = new MockTimeSeries(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
 
-        List<Trade> allTrades = series.run(strategy);
+        List<Trade> allTrades = series.run(strategy).getTrades();
         assertEquals(2, allTrades.size());
     }
 
     @Test
     public void runOnSlice() {
         List<TimeSeries> subseries = seriesForRun.split(Period.years(2000));
-        List<Trade> trades = subseries.get(0).run(strategy);
+        List<Trade> trades = subseries.get(0).run(strategy).getTrades();
         assertEquals(2, trades.size());
 
         assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
@@ -406,7 +406,7 @@ public class TimeSeriesTest {
         Operation[] exit = { null, null, null, new Operation(3, OperationType.SELL), null, null, null, null, null };
 
         Strategy strategy = new MockStrategy(enter, exit);
-        List<Trade> trades = subseries.get(0).run(strategy);
+        List<Trade> trades = subseries.get(0).run(strategy).getTrades();
         assertEquals(1, trades.size());
 
         assertEquals(new Operation(1, OperationType.BUY), trades.get(0).getEntry());
@@ -420,7 +420,7 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
         Strategy strategy = new MockStrategy(enter, exit);
-        List<Trade> trades = subseries.get(0).run(strategy, OperationType.SELL);
+        List<Trade> trades = subseries.get(0).run(strategy, OperationType.SELL).getTrades();
         assertEquals(1, trades.size());
 
         assertEquals(new Operation(1, OperationType.SELL), trades.get(0).getEntry());
@@ -431,15 +431,15 @@ public class TimeSeriesTest {
     public void runSplitted() {
         List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
 
-        List<Trade> trades = subseries.get(0).run(strategy);
+        List<Trade> trades = subseries.get(0).run(strategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(new Operation(2, OperationType.BUY), trades.get(0).getEntry());
         assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(1).run(strategy);
+        trades = subseries.get(1).run(strategy).getTrades();
         assertTrue(trades.isEmpty());
 
-        trades = subseries.get(2).run(strategy);
+        trades = subseries.get(2).run(strategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(new Operation(6, OperationType.BUY), trades.get(0).getEntry());
         assertEquals(new Operation(7, OperationType.SELL), trades.get(0).getExit());
@@ -461,30 +461,30 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(Period.years(1));
 
-        List<Trade> trades = subseries.get(0).run(mockStrategy);
+        List<Trade> trades = subseries.get(0).run(mockStrategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(new Operation(0, OperationType.BUY), trades.get(0).getEntry());
         assertEquals(new Operation(2, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(1).run(mockStrategy);
+        trades = subseries.get(1).run(mockStrategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(new Operation(3, OperationType.BUY), trades.get(0).getEntry());
         assertEquals(new Operation(4, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(2).run(mockStrategy);
+        trades = subseries.get(2).run(mockStrategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(new Operation(5, OperationType.BUY), trades.get(0).getEntry());
         assertEquals(new Operation(6, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(3).run(mockStrategy);
+        trades = subseries.get(3).run(mockStrategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(new Operation(7, OperationType.BUY), trades.get(0).getEntry());
         assertEquals(new Operation(9, OperationType.SELL), trades.get(0).getExit());
 
-        trades = subseries.get(4).run(mockStrategy);
+        trades = subseries.get(4).run(mockStrategy).getTrades();
         assertTrue(trades.isEmpty());
 
-        trades = subseries.get(5).run(mockStrategy);
+        trades = subseries.get(5).run(mockStrategy).getTrades();
         assertTrue(trades.isEmpty());
     }
 }

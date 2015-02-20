@@ -77,7 +77,7 @@ public class WalkForward {
                 Strategy strategy = entry.getKey();
                 String name = entry.getValue();
                 // For each strategy...
-                List<Trade> trades = slice.run(strategy);
+                List<Trade> trades = slice.run(strategy).getTrades();
                 double profit = profitCriterion.calculate(slice, trades);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }

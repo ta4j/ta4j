@@ -51,7 +51,7 @@ public class StrategyAnalysis {
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        List<Trade> trades = series.run(strategy);
+        List<Trade> trades = series.run(strategy).getTrades();
 
         /**
          * Analysis criteria

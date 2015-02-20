@@ -25,12 +25,18 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TradingRecord;
 import java.util.List;
 
 /**
  * An abstract analysis criterion.
  */
 public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
+
+    @Override
+    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+        return calculate(series, tradingRecord.getTrades());
+    }
 
     @Override
     public Strategy chooseBest(TimeSeries series, List<Strategy> strategies) {

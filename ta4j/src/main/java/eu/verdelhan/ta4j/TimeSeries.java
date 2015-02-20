@@ -373,9 +373,9 @@ public class TimeSeries {
      * <p>
      * Opens the trades with {@link OperationType.BUY} operations.
      * @param strategy the trading strategy
-     * @return a list of trades
+     * @return the trading record coming from the run
      */
-    public List<Trade> run(Strategy strategy) {
+    public TradingRecord run(Strategy strategy) {
         return run(strategy, OperationType.BUY);
     }
 
@@ -383,43 +383,33 @@ public class TimeSeries {
      * Runs the strategy over the series.
      * @param strategy the trading strategy
      * @param operationType the {@link OperationType} used to open the trades
-     * @return a list of trades
+     * @return the trading record coming from the run
      */
-    public List<Trade> run(Strategy strategy, OperationType operationType) {
+    public TradingRecord run(Strategy strategy, OperationType operationType) {
 
         log.trace("Running strategy: {} (starting with {})", strategy, operationType);
-        List<Trade> trades = new ArrayList<Trade>();
+        TradingRecord tradingRecord = new TradingRecord(operationType);
 
-        Trade lastTrade = new Trade(operationType);
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick in the sub-series...
-            if (strategy.shouldOperate(lastTrade, i)) {
-                lastTrade.operate(i);
-                if (lastTrade.isClosed()) {
-                    // Adding the trade when closed
-                    trades.add(lastTrade);
-                    lastTrade = new Trade(operationType);
-                }
+            if (strategy.shouldOperate(tradingRecord, i)) {
+                tradingRecord.operate(i, Decimal.NaN, Decimal.NaN);
             }
         }
 
-        if (lastTrade.isOpened()) {
+        if (!tradingRecord.isClosed()) {
             // If the last trade is still opened, we search out of the end index.
             // May works if the current series is a sub-series (but not the last sub-series).
             for (int i = endIndex + 1; i < ticks.size(); i++) {
                 // For each tick out of sub-series bound...
                 // --> Trying to close the last trade
-                if (strategy.shouldOperate(lastTrade, i)) {
-                    lastTrade.operate(i);
+                if (strategy.shouldOperate(tradingRecord, i)) {
+                    tradingRecord.operate(i, Decimal.NaN, Decimal.NaN);
                     break;
                 }
             }
-            if (lastTrade.isClosed()) {
-                // Last trade added only if it has been closed finally
-                trades.add(lastTrade);
-            }
         }
-        return trades;
+        return tradingRecord;
     }
 
     /**

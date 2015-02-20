@@ -73,7 +73,7 @@ public class CCICorrectionStrategy {
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        List<Trade> trades = series.run(strategy);
+        List<Trade> trades = series.run(strategy).getTrades();
         System.out.println("Number of trades for the strategy: " + trades.size());
 
         // Analysis

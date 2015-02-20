@@ -45,11 +45,12 @@ public class Strategy {
     }
     
     /**
-     * @param trade a trade
+     * @param tradingRecord the trading record
      * @param index the index
      * @return true to recommend an operation, false otherwise (no recommendation)
      */
-    public boolean shouldOperate(Trade trade, int index) {
+    public boolean shouldOperate(TradingRecord tradingRecord, int index) {
+        Trade trade = tradingRecord.getCurrentTrade();
         if (trade.isNew()) {
             return shouldEnter(index);
         } else if (trade.isOpened()) {

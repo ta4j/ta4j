@@ -110,7 +110,7 @@ public class CashFlowToChart {
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        List<Trade> trades = series.run(strategy);
+        List<Trade> trades = series.run(strategy).getTrades();
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, trades);
 
