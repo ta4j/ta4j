@@ -22,8 +22,7 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.AlwaysOperateStrategy;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Trade;
 import static org.junit.Assert.*;
 import org.junit.Before;

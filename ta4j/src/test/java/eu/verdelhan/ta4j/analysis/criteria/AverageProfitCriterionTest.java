@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -48,8 +48,8 @@ public class AverageProfitCriterionTest {
     public void calculateOnlyWithGainTrades() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         trades.clear();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
+        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(5)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
         assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.calculate(series, trades));
     }
@@ -58,7 +58,7 @@ public class AverageProfitCriterionTest {
     public void calculateWithASimpleTrade() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         trades.clear();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
         assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
@@ -67,8 +67,8 @@ public class AverageProfitCriterionTest {
     public void calculateOnlyWithLossTrades() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         trades.clear();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(5)));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
         assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
     }
@@ -84,7 +84,7 @@ public class AverageProfitCriterionTest {
     @Test
     public void calculateWithOneTrade() {
         series = new MockTimeSeries(100, 105);
-        Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
+        Trade trade = new Trade(Operation.buyAt(0), Operation.sellAt(1));
         AnalysisCriterion average = new AverageProfitCriterion();
         assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }

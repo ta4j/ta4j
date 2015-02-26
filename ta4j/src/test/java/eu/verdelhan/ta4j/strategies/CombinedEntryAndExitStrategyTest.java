@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
@@ -47,8 +46,7 @@ public class CombinedEntryAndExitStrategyTest {
     @Test
     public void shouldEnter() {
 
-        enter = new Operation[] { new Operation(0, OperationType.BUY), null, new Operation(2, OperationType.BUY), null,
-                new Operation(4, OperationType.BUY) };
+        enter = new Operation[] { Operation.buyAt(0), null, Operation.buyAt(2), null, Operation.buyAt(4) };
         exit = new Operation[] { null, null, null, null, null };
 
         buyStrategy = new MockStrategy(enter, null);
@@ -73,9 +71,7 @@ public class CombinedEntryAndExitStrategyTest {
     @Test
     public void shouldExit() {
 
-        exit = new Operation[] { new Operation(0, OperationType.SELL), null, new Operation(2, OperationType.SELL),
-                null, new Operation(4, OperationType.SELL) };
-
+        exit = new Operation[] { Operation.sellAt(0), null, Operation.sellAt(2), null, Operation.sellAt(4) };
         enter = new Operation[] { null, null, null, null, null };
 
         buyStrategy = new MockStrategy(enter, null);

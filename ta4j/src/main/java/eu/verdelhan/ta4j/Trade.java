@@ -22,6 +22,8 @@
  */
 package eu.verdelhan.ta4j;
 
+import eu.verdelhan.ta4j.Operation.OperationType;
+
 /**
  * Set of two {@link Operation operations}. Not a single operation.
  * 

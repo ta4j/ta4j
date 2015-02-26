@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -45,8 +44,8 @@ public class AbstractAnalysisCriterionTest {
     @Before
     public void setUp() {
         alwaysStrategy = new AlwaysOperateStrategy();
-        buyAndHoldStrategy = new MockStrategy(new Operation[] { new Operation(0, OperationType.BUY), null, null, null },
-                new Operation[] { null, null, null, new Operation(4, OperationType.SELL) });
+        buyAndHoldStrategy = new MockStrategy(new Operation[] { Operation.buyAt(0), null, null, null },
+                new Operation[] { null, null, null, Operation.sellAt(4) });
         strategies = new ArrayList<Strategy>();
         strategies.add(alwaysStrategy);
         strategies.add(buyAndHoldStrategy);

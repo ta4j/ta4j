@@ -22,9 +22,8 @@
  */
 package eu.verdelhan.ta4j.strategies;
 
-import eu.verdelhan.ta4j.strategies.NotSoFastStrategy;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -42,11 +41,11 @@ public class NotSoFastStrategyTest {
 
     @Before
     public void setUp() {
-        enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null, null };
+        enter = new Operation[] { Operation.buyAt(0), null, null, null, null, null };
 
-        exit = new Operation[] { null, new Operation(1, OperationType.SELL), null,
-                new Operation(3, OperationType.SELL), new Operation(4, OperationType.SELL),
-                new Operation(5, OperationType.SELL), };
+        exit = new Operation[] { null, Operation.sellAt(1), null,
+                Operation.sellAt(3), Operation.sellAt(4), 
+                Operation.sellAt(5), };
 
         fakeStrategy = new MockStrategy(enter, exit);
     }

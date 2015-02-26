@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
@@ -47,8 +46,8 @@ public class StopGainStrategyGainTest {
         Strategy justBuy = new JustEnterOnceStrategy();
         Strategy stopper = new StopGainStrategy(indicator, justBuy, 4);
 
-        Operation buy = new Operation(0, OperationType.BUY);
-        Operation sell = new Operation(3, OperationType.SELL);
+        Operation buy = Operation.buyAt(0);
+        Operation sell = Operation.sellAt(3);
 
         Trade trade = new Trade();
         assertTrue(stopper.shouldOperate(trade, 0));
@@ -65,15 +64,15 @@ public class StopGainStrategyGainTest {
     @Test
     public void stopperShouldSellIfStrategySays() {
 
-        Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, new Operation(2, OperationType.BUY), null, null };
-        Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, new Operation(4, OperationType.SELL) };
+        Operation[] enter = new Operation[] { Operation.buyAt(0), null, Operation.buyAt(2), null, null };
+        Operation[] exit = new Operation[] { null, Operation.sellAt(1), null, null, Operation.sellAt(4) };
 
         Strategy sell1 = new MockStrategy(enter, exit);
 
         Strategy stopper = new StopGainStrategy(indicator, sell1, 5);
 
-        Operation buy = new Operation(0, OperationType.BUY);
-        Operation sell = new Operation(1, OperationType.SELL);
+        Operation buy = Operation.buyAt(0);
+        Operation sell = Operation.sellAt(1);
 
         Trade trade = new Trade();
         assertTrue(stopper.shouldOperate(trade, 0));
@@ -87,8 +86,8 @@ public class StopGainStrategyGainTest {
         assertEquals(sell, trade.getExit());
         
         trade = new Trade();
-        buy = new Operation(2, OperationType.BUY);
-        sell = new Operation(3, OperationType.SELL);
+        buy = Operation.buyAt(2);
+        sell = Operation.sellAt(3);
 
         assertTrue(stopper.shouldOperate(trade, 2));
         trade.operate(2);

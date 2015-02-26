@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import static org.junit.Assert.*;
@@ -44,7 +44,7 @@ public class JustEnterOnceStrategyTest {
 
     @Test
     public void shouldBuyTradeOnce() {
-        Operation buy = new Operation(0, OperationType.BUY);
+        Operation buy = Operation.buyAt(0);
 
         assertTrue(strategy.shouldOperate(trade, 0));
         trade.operate(0);
@@ -56,7 +56,7 @@ public class JustEnterOnceStrategyTest {
 
     @Test
     public void sameIndexShouldResultSameAnswer() {
-        Operation buy = new Operation(0, OperationType.BUY);
+        Operation buy = Operation.buyAt(0);
 
         assertTrue(strategy.shouldOperate(trade, 0));
         trade.operate(0);

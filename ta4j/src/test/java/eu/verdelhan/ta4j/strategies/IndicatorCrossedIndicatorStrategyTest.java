@@ -24,9 +24,9 @@ package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
 import static org.junit.Assert.*;
@@ -46,14 +46,14 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
         assertTrue(s.shouldOperate(trade, 2));
         trade.operate(2);
-        Operation enter = new Operation(2, OperationType.BUY);
+        Operation enter = Operation.buyAt(2);
         assertEquals(enter, trade.getEntry());
 
         assertFalse(s.shouldOperate(trade, 3));
 
         assertTrue(s.shouldOperate(trade, 4));
         trade.operate(4);
-        Operation exit = new Operation(4, OperationType.SELL);
+        Operation exit = Operation.sellAt(4);
         assertEquals(exit, trade.getExit());
 
         assertFalse(s.shouldOperate(trade, 5));
@@ -79,7 +79,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
 
         Strategy s = new IndicatorCrossedIndicatorStrategy(first, second);
 
-        Operation enter = new Operation(2, OperationType.BUY);
+        Operation enter = Operation.buyAt(2);
         assertTrue(s.shouldOperate(trade, 2));
         trade.operate(2);
         assertEquals(enter, trade.getEntry());
@@ -116,7 +116,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
         Strategy s = new IndicatorCrossedIndicatorStrategy(firstEqual, secondEqual);
         Trade trade = new Trade();
 
-        Operation enter = new Operation(1, OperationType.BUY);
+        Operation enter = Operation.buyAt(1);
 
         assertTrue(s.shouldOperate(trade, 1));
         trade.operate(1);
@@ -126,7 +126,7 @@ public class IndicatorCrossedIndicatorStrategyTest {
             assertFalse(s.shouldOperate(trade, i));
         }
 
-        Operation exit = new Operation(6, OperationType.SELL);
+        Operation exit = Operation.sellAt(6);
         assertTrue(s.shouldOperate(trade, 6));
         trade.operate(6);
         assertEquals(exit, trade.getExit());

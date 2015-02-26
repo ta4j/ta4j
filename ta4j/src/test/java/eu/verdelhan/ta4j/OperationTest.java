@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
+import eu.verdelhan.ta4j.Operation.OperationType;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,11 +33,11 @@ public class OperationTest {
 
     @Before
     public void setUp() {
-        opEquals1 = new Operation(1, OperationType.BUY);
-        opEquals2 = new Operation(1, OperationType.BUY);
+        opEquals1 = Operation.buyAt(1);
+        opEquals2 = Operation.buyAt(1);
 
-        opNotEquals1 = new Operation(1, OperationType.SELL);
-        opNotEquals2 = new Operation(2, OperationType.BUY);
+        opNotEquals1 = Operation.sellAt(1);
+        opNotEquals2 = Operation.buyAt(2);
     }
 
     @Test

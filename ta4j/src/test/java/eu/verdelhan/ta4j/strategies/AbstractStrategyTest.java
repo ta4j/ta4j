@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.*;
@@ -42,36 +42,36 @@ public class AbstractStrategyTest {
     @Before
     public void setUp() {
         enter = new Operation[] { 
-                new Operation(0, OperationType.BUY), 
+                Operation.buyAt(0), 
                 null,
-                new Operation(2, OperationType.BUY), 
+                Operation.buyAt(2), 
                 null,
-                new Operation(4, OperationType.BUY),
+                Operation.buyAt(4), 
                 null};
         
         exit = new Operation[] {
                 null,
-                new Operation(1, OperationType.SELL),
+                Operation.sellAt(1), 
                 null,
-                new Operation(3, OperationType.SELL),
+                Operation.sellAt(3), 
                 null,
-                new Operation(5, OperationType.SELL)
+                Operation.sellAt(5)
         };
         enter2 = new Operation[] {
                 null,
-                new Operation(1, OperationType.BUY), 
+                Operation.buyAt(1), 
                 null,
                 null,
-                new Operation(4, OperationType.BUY), 
+                Operation.buyAt(4), 
                 null};
         
         exit2 = new Operation[] {
                 null,
                 null,
-                new Operation(2, OperationType.SELL),
+                Operation.sellAt(2), 
                 null,
-                new Operation(4, OperationType.SELL),
-                new Operation(5, OperationType.SELL)
+                Operation.sellAt(4), 
+                Operation.sellAt(5)
         };
         this.fakeStrategy = new MockStrategy(enter,exit);
         this.fakeStrategy2 = new MockStrategy(enter2,exit2);

@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
@@ -54,16 +54,16 @@ public class SupportStrategyTest {
         assertFalse(support.shouldOperate(trade, 0));
         assertTrue(support.shouldOperate(trade, 1));
         trade.operate(1);
-        assertEquals(new Operation(1, OperationType.BUY), trade.getEntry());
+        assertEquals(Operation.buyAt(1), trade.getEntry());
         trade = new Trade();
         assertTrue(support.shouldOperate(trade, 2));
         trade.operate(2);
-        assertEquals(new Operation(2, OperationType.BUY), trade.getEntry());
+        assertEquals(Operation.buyAt(2), trade.getEntry());
         trade = new Trade();
         assertFalse(support.shouldOperate(trade, 3));
         assertTrue(support.shouldOperate(trade, 4));
         trade.operate(4);
-        assertEquals(new Operation(4, OperationType.BUY), trade.getEntry());
+        assertEquals(Operation.buyAt(4), trade.getEntry());
         assertFalse(support.shouldOperate(trade, 5));
     }
 }

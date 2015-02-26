@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.*;
@@ -40,19 +40,19 @@ public class OppositeStrategyTest {
     public void setUp() {
         enterOps = new Operation[] {
                 null,
-                new Operation(1, OperationType.BUY), 
+                Operation.buyAt(1), 
                 null,
                 null,
-                new Operation(4, OperationType.BUY), 
+                Operation.buyAt(4), 
                 null};
         
         exitOps = new Operation[] {
                 null,
                 null,
-                new Operation(2, OperationType.SELL),
+                Operation.sellAt(2), 
                 null,
-                new Operation(4, OperationType.SELL),
-                new Operation(5, OperationType.SELL)
+                Operation.sellAt(4), 
+                Operation.sellAt(5)
         };
         strategy = new MockStrategy(enterOps, exitOps);
     }

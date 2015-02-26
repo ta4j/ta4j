@@ -33,6 +33,33 @@ package eu.verdelhan.ta4j;
  */
 public class Operation {
 
+    /**
+     * The type of an {@link Operation operation}.
+     * <p>
+     * A BUY operation correspond to a <i>BID</i> order.<p>
+     * A SELL operation correspond to an <i>ASK</i> order.
+     */
+    public enum OperationType {
+
+        BUY {
+            @Override
+            public OperationType complementType() {
+                return SELL;
+            }
+        },
+        SELL {
+            @Override
+            public OperationType complementType() {
+                return BUY;
+            }
+        };
+
+        /**
+         * @return the complementary operation type
+         */
+        public abstract OperationType complementType();
+    }
+    
     /** Type of the operation */
     private OperationType type;
 
@@ -40,10 +67,11 @@ public class Operation {
     private int index;
 
     /**
-     * @param index the index the operation was executed
+     * Constructor.
+     * @param index the index the operation is executed
      * @param type the type of the operation
      */
-    public Operation(int index, OperationType type) {
+    protected Operation(int index, OperationType type) {
         this.type = type;
         this.index = index;
     }
@@ -95,4 +123,19 @@ public class Operation {
         return " Index: " + index + " type: " + type.toString();
     }
 
+    /**
+     * @param index the index the operation is executed
+     * @return a BUY operation
+     */
+    public static Operation buyAt(int index) {
+        return new Operation(index, OperationType.BUY);
+    }
+
+    /**
+     * @param index the index the operation is executed
+     * @return a SELL operation
+     */
+    public static Operation sellAt(int index) {
+        return new Operation(index, OperationType.SELL);
+    }
 }

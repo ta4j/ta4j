@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import java.util.ArrayList;
@@ -50,8 +49,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public double calculate(TimeSeries series, List<Trade> trades) {
         List<Trade> fakeTrades = new ArrayList<Trade>();
-        fakeTrades.add(new Trade(new Operation(series.getBegin(), OperationType.BUY), new Operation(series.getEnd(),
-                OperationType.SELL)));
+        fakeTrades.add(new Trade(Operation.buyAt(series.getBegin()), Operation.sellAt(series.getEnd())));
 
         return criterion.calculate(series, trades) / criterion.calculate(series, fakeTrades);
     }

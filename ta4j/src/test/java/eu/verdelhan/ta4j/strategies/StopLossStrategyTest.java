@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
@@ -47,8 +47,8 @@ public class StopLossStrategyTest {
         Strategy justBuy = new JustEnterOnceStrategy();
         Strategy stopper = new StopLossStrategy(indicator, justBuy, 5);
 
-        Operation buy = new Operation(0, OperationType.BUY);
-        Operation sell = new Operation(4, OperationType.SELL);
+        Operation buy = Operation.buyAt(0);
+        Operation sell = Operation.sellAt(4);
 
         Trade trade = new Trade();
         assertTrue(stopper.shouldOperate(trade, 0));
@@ -65,15 +65,15 @@ public class StopLossStrategyTest {
     @Test
     public void stopperShouldSellIfStrategySays() {
 
-        Operation[] enter = new Operation[] { new Operation(0, OperationType.BUY), null, null, null, null };
-        Operation[] exit = new Operation[] { null, new Operation(1, OperationType.SELL), null, null, null };
+        Operation[] enter = new Operation[] { Operation.buyAt(0), null, null, null, null };
+        Operation[] exit = new Operation[] { null, Operation.sellAt(1), null, null, null };
 
         Strategy sell1 = new MockStrategy(enter, exit);
 
         Strategy stopper = new StopLossStrategy(indicator, sell1, 500);
 
-        Operation buy = new Operation(0, OperationType.BUY);
-        Operation sell = new Operation(1, OperationType.SELL);
+        Operation buy = Operation.buyAt(0);
+        Operation sell = Operation.sellAt(1);
 
         Trade trade = new Trade();
         assertTrue(stopper.shouldOperate(trade, 0));

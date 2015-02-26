@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -42,10 +42,10 @@ public class LinearTransactionCostCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
 
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
         assertEquals(12.861, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
 
-        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(3)));
         assertEquals(24.3473, TATestsUtils.TA_OFFSET, transactionCost.calculate(series, trades));
 
         Trade t = new Trade();
@@ -62,10 +62,10 @@ public class LinearTransactionCostCriterionTest {
         List<Trade> trades = new ArrayList<Trade>();
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 1.3d);
         
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
         assertEquals(2.6d, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
         
-        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(3, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(3)));
         assertEquals(5.2d, transactionCost.calculate(series, trades), TATestsUtils.TA_OFFSET);
 
         Trade t = new Trade();

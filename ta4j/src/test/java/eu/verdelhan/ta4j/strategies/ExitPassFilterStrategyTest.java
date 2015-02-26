@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.strategies;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.mocks.MockStrategy;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -39,20 +39,20 @@ public class ExitPassFilterStrategyTest {
     @Before
     public void setUp() {
         enter = new Operation[] { 
-                new Operation(0, OperationType.BUY), 
+                Operation.buyAt(0), 
                 null,
-                new Operation(2, OperationType.BUY), 
+                Operation.buyAt(2), 
                 null,
-                new Operation(4, OperationType.BUY),
+                Operation.buyAt(4), 
                 null};
         
         exit = new Operation[] {
                 null,
-                new Operation(1, OperationType.SELL),
+                Operation.sellAt(1), 
                 null,
-                new Operation(3, OperationType.SELL),
+                Operation.sellAt(3), 
                 null,
-                new Operation(5, OperationType.SELL)
+                Operation.sellAt(5)
         };
         mockStrategy = new MockStrategy(enter, exit);
         

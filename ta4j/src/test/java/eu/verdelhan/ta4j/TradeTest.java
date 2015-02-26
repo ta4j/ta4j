@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
+import eu.verdelhan.ta4j.Operation.OperationType;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +56,7 @@ public class TradeTest {
     @Test
     public void whenNewShouldCreateBuyOperationWhenEntering() {
         trade.operate(0);
-        assertEquals(new Operation(0, OperationType.BUY), trade.getEntry());
+        assertEquals(Operation.buyAt(0), trade.getEntry());
     }
 
     @Test
@@ -70,7 +71,7 @@ public class TradeTest {
         trade.operate(0);
         trade.operate(1);
 
-        assertEquals(new Operation(1, OperationType.SELL), trade.getExit());
+        assertEquals(Operation.sellAt(1), trade.getExit());
     }
 
     @Test
@@ -107,7 +108,7 @@ public class TradeTest {
     public void whenNewShouldCreateSellOperationWhenEnteringUncovered() {
         uncoveredTrade.operate(0);
 
-        assertEquals(new Operation(0, OperationType.SELL), uncoveredTrade.getEntry());
+        assertEquals(Operation.sellAt(0), uncoveredTrade.getEntry());
     }
 
     @Test
@@ -115,7 +116,7 @@ public class TradeTest {
         uncoveredTrade.operate(0);
         uncoveredTrade.operate(1);
 
-        assertEquals(new Operation(1, OperationType.BUY), uncoveredTrade.getExit());
+        assertEquals(Operation.buyAt(1), uncoveredTrade.getExit());
     }
 
     @Test
