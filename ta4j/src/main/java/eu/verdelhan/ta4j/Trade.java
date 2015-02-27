@@ -60,6 +60,9 @@ public class Trade {
      * @param exit the exit {@link Operation operation}
      */
     public Trade(Operation entry, Operation exit) {
+        if (entry.getType().equals(exit.getType())) {
+            throw new IllegalArgumentException("Both operations must have different types");
+        }
         this.entry = entry;
         this.exit = exit;
     }

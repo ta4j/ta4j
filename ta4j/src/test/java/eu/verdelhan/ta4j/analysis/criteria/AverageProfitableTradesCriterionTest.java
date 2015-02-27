@@ -38,9 +38,9 @@ public class AverageProfitableTradesCriterionTest {
     public void calculate() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.buyAt(1)));
-        trades.add(new Trade(Operation.buyAt(2), Operation.buyAt(3)));
-        trades.add(new Trade(Operation.buyAt(4), Operation.buyAt(5)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(3)));
+        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
@@ -50,12 +50,12 @@ public class AverageProfitableTradesCriterionTest {
     @Test
     public void calculateWithOneTrade() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
-        Trade trade = new Trade(Operation.buyAt(0), Operation.buyAt(1));
+        Trade trade = new Trade(Operation.buyAt(0), Operation.sellAt(1));
             
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         assertEquals(0d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
         
-        trade = new Trade(Operation.buyAt(1), Operation.buyAt(2));
+        trade = new Trade(Operation.buyAt(1), Operation.sellAt(2));
         assertEquals(1d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
 
