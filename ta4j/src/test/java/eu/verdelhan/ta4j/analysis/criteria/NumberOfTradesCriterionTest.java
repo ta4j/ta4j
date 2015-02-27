@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -48,8 +48,8 @@ public class NumberOfTradesCriterionTest {
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
+        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(5)));
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
         assertEquals(2d, buyAndHold.calculate(series, trades), TATestsUtils.TA_OFFSET);

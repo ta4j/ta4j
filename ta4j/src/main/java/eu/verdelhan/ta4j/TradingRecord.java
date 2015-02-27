@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
+import eu.verdelhan.ta4j.Operation.OperationType;
 import java.util.ArrayList;
 import java.util.List;
 

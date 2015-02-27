@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -46,9 +46,9 @@ public class RewardRiskRatioCriterionTest {
     @Test
     public void rewardRiskRatioCriterion() {
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(4, OperationType.SELL)));
-        trades.add(new Trade(new Operation(5, OperationType.BUY), new Operation(7, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(4)));
+        trades.add(new Trade(Operation.buyAt(5), Operation.sellAt(7)));
 
         MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
 
@@ -63,8 +63,8 @@ public class RewardRiskRatioCriterionTest {
     public void rewardRiskRatioCriterionOnlyWithGain() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(5)));
 
         assertTrue(Double.isInfinite(rrc.calculate(series, trades)));
     }
@@ -79,7 +79,7 @@ public class RewardRiskRatioCriterionTest {
     
     @Test
     public void withOneTrade() {
-        Trade trade = new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL));
+        Trade trade = new Trade(Operation.buyAt(0), Operation.sellAt(1));
 
         MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
 

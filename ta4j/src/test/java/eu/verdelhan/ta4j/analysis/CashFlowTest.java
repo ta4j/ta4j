@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import static eu.verdelhan.ta4j.TATestsUtils.*;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
@@ -50,7 +50,7 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -63,9 +63,9 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(4, OperationType.SELL)));
-        trades.add(new Trade(new Operation(5, OperationType.SELL), new Operation(6, OperationType.BUY)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
+        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(4)));
+        trades.add(new Trade(Operation.sellAt(5), Operation.buyAt(6)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -84,7 +84,7 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1, 2, 4, 8, 16, 32);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(2, OperationType.SELL), new Operation(3, OperationType.BUY)));
+        trades.add(new Trade(Operation.sellAt(2), Operation.buyAt(3)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -101,9 +101,9 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1, 2, 4, 8, 16, 32);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        trades.add(new Trade(new Operation(2, OperationType.SELL), new Operation(4, OperationType.BUY)));
-        trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
+        trades.add(new Trade(Operation.sellAt(2), Operation.buyAt(4)));
+        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -120,7 +120,7 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 1d, 2d);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(1), Operation.sellAt(2)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -134,7 +134,7 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 2d);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -149,8 +149,8 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 4d, 8d, 16d, 32d);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(1, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(1), Operation.sellAt(2)));
+        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -169,9 +169,9 @@ public class CashFlowTest {
                 6d, 7d, 8d, 5d, 6d);
 
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(8, OperationType.SELL)));
-        trades.add(new Trade(new Operation(9, OperationType.BUY), new Operation(11, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
+        trades.add(new Trade(Operation.buyAt(6), Operation.sellAt(8)));
+        trades.add(new Trade(Operation.buyAt(9), Operation.sellAt(11)));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
 
@@ -207,8 +207,8 @@ public class CashFlowTest {
         MockTimeSeries series = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
         TimeSeries constrained = series.subseries(4, 8);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(4, OperationType.BUY), new Operation(5, OperationType.SELL)));
-        trades.add(new Trade(new Operation(6, OperationType.BUY), new Operation(8, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
+        trades.add(new Trade(Operation.buyAt(6), Operation.sellAt(8)));
         CashFlow flow = new CashFlow(constrained, trades);
         assertDecimalEquals(flow.getValue(0), 1);
         assertDecimalEquals(flow.getValue(1), 1);
@@ -226,7 +226,7 @@ public class CashFlowTest {
         int size = 1000000;
         TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Tick) new MockTick(10)));
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(size - 1, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(size - 1)));
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
         assertDecimalEquals(cashFlow.getValue(size - 1), 1);
     }

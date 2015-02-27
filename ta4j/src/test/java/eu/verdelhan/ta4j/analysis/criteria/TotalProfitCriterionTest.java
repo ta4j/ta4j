@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.OperationType;
+import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
@@ -39,8 +39,8 @@ public class TotalProfitCriterionTest {
     public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(2, OperationType.SELL)));
-        trades.add(new Trade(new Operation(3, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
+        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(5)));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
         assertEquals(1.10 * 1.05, profit.calculate(series, trades), TATestsUtils.TA_OFFSET);
@@ -50,8 +50,8 @@ public class TotalProfitCriterionTest {
     public void calculateOnlyWithLossTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.BUY), new Operation(1, OperationType.SELL)));
-        trades.add(new Trade(new Operation(2, OperationType.BUY), new Operation(5, OperationType.SELL)));
+        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
+        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(5)));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
         assertEquals(0.95 * 0.7, profit.calculate(series, trades), TATestsUtils.TA_OFFSET);
@@ -61,8 +61,8 @@ public class TotalProfitCriterionTest {
     public void calculateProfitWithTradesThatStartSelling() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(new Operation(0, OperationType.SELL), new Operation(1, OperationType.BUY)));
-        trades.add(new Trade(new Operation(2, OperationType.SELL), new Operation(5, OperationType.BUY)));
+        trades.add(new Trade(Operation.sellAt(0), Operation.buyAt(1)));
+        trades.add(new Trade(Operation.sellAt(2), Operation.buyAt(5)));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
         assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, trades), TATestsUtils.TA_OFFSET);

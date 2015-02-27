@@ -22,17 +22,18 @@
  */
 package eu.verdelhan.ta4j;
 
+import eu.verdelhan.ta4j.Operation.OperationType;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
 public class TradeTest {
 
-    private Trade trade, uncoveredTrade, trEquals1, trEquals2, trNotEquals1, trNotEquals2;
+    private Trade newTrade, uncoveredTrade, trEquals1, trEquals2, trNotEquals1, trNotEquals2;
 
     @Before
     public void setUp() {
-        this.trade = new Trade();
+        this.newTrade = new Trade();
         this.uncoveredTrade = new Trade(OperationType.SELL);
 
         trEquals1 = new Trade();
@@ -54,48 +55,42 @@ public class TradeTest {
 
     @Test
     public void whenNewShouldCreateBuyOperationWhenEntering() {
-        trade.operate(0);
-        assertEquals(new Operation(0, OperationType.BUY), trade.getEntry());
+        newTrade.operate(0);
+        assertEquals(Operation.buyAt(0), newTrade.getEntry());
     }
 
     @Test
     public void whenNewShouldNotExit() {
-        Trade trade = new Trade();
-        assertFalse(trade.isOpened());
+        assertFalse(newTrade.isOpened());
     }
 
     @Test
     public void whenOpenedShouldCreateSellOperationWhenExiting() {
-        Trade trade = new Trade();
-        trade.operate(0);
-        trade.operate(1);
-
-        assertEquals(new Operation(1, OperationType.SELL), trade.getExit());
+        newTrade.operate(0);
+        newTrade.operate(1);
+        assertEquals(Operation.sellAt(1), newTrade.getExit());
     }
 
     @Test
     public void whenClosedShouldNotEnter() {
-        Trade trade = new Trade();
-        trade.operate(0);
-        trade.operate(1);
-        assertTrue(trade.isClosed());
-        trade.operate(2);
-        assertTrue(trade.isClosed());
+        newTrade.operate(0);
+        newTrade.operate(1);
+        assertTrue(newTrade.isClosed());
+        newTrade.operate(2);
+        assertTrue(newTrade.isClosed());
     }
 
     @Test(expected = IllegalStateException.class)
     public void whenExitIndexIsLessThanEntryIndexShouldThrowException() {
-        Trade trade = new Trade();
-        trade.operate(3);
-        trade.operate(1);
+        newTrade.operate(3);
+        newTrade.operate(1);
     }
 
     @Test
     public void shouldCloseTradeOnSameIndex() {
-        Trade trade = new Trade();
-        trade.operate(3);
-        trade.operate(3);
-        assertTrue(trade.isClosed());
+        newTrade.operate(3);
+        newTrade.operate(3);
+        assertTrue(newTrade.isClosed());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -103,25 +98,27 @@ public class TradeTest {
         Trade t = new Trade(null);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldThrowIllegalArgumentExceptionWhenOperationsHaveSameType() {
+        Trade t = new Trade(Operation.buyAt(0), Operation.buyAt(1));
+    }
+
     @Test
     public void whenNewShouldCreateSellOperationWhenEnteringUncovered() {
         uncoveredTrade.operate(0);
-
-        assertEquals(new Operation(0, OperationType.SELL), uncoveredTrade.getEntry());
+        assertEquals(Operation.sellAt(0), uncoveredTrade.getEntry());
     }
 
     @Test
     public void whenOpenedShouldCreateBuyOperationWhenExitingUncovered() {
         uncoveredTrade.operate(0);
         uncoveredTrade.operate(1);
-
-        assertEquals(new Operation(1, OperationType.BUY), uncoveredTrade.getExit());
+        assertEquals(Operation.buyAt(1), uncoveredTrade.getExit());
     }
 
     @Test
     public void overrideToString() {
         assertEquals(trEquals1.toString(), trEquals2.toString());
-
         assertNotEquals(trEquals1.toString(), trNotEquals1.toString());
         assertNotEquals(trEquals1.toString(), trNotEquals2.toString());
     }
