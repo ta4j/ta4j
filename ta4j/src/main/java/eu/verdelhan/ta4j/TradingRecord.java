@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 
+ * Holds the full trading record when running a {@link Strategy strategy}.
  */
 public class TradingRecord {
 

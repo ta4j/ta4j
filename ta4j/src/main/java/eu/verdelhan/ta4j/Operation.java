@@ -66,6 +66,12 @@ public class Operation {
     /** The index the operation was executed */
     private int index;
 
+    /** The price for the operation */
+    private Decimal price = Decimal.NaN;
+    
+    /** The amount to be (or that was) ordered in the operation */
+    private Decimal amount = Decimal.NaN;
+    
     /**
      * Constructor.
      * @param index the index the operation is executed
@@ -74,6 +80,19 @@ public class Operation {
     protected Operation(int index, OperationType type) {
         this.type = type;
         this.index = index;
+    }
+
+    /**
+     * Constructor.
+     * @param index the index the operation is executed
+     * @param type the type of the operation
+     * @param price the price for the operation
+     * @param amount the amount to be (or that was) ordered in the operation
+     */
+    protected Operation(int index, OperationType type, Decimal price, Decimal amount) {
+        this(index, type);
+        this.price = price;
+        this.amount = amount;
     }
 
     /**
@@ -98,31 +117,65 @@ public class Operation {
     }
 
     /**
-     * @return the index the operation was executed
+     * @return the index the operation is executed
      */
     public int getIndex() {
         return index;
     }
 
+    /**
+     * @return the price for the operation
+     */
+    public Decimal getPrice() {
+        return price;
+    }
+
+    /**
+     * @return the amount to be (or that was) ordered in the operation
+     */
+    public Decimal getAmount() {
+        return amount;
+    }
+
     @Override
     public int hashCode() {
-        return index + (type.hashCode() * 31);
+        int hash = 7;
+        hash = 29 * hash + (this.type != null ? this.type.hashCode() : 0);
+        hash = 29 * hash + this.index;
+        hash = 29 * hash + (this.price != null ? this.price.hashCode() : 0);
+        hash = 29 * hash + (this.amount != null ? this.amount.hashCode() : 0);
+        return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Operation) {
-            Operation o = (Operation) obj;
-            return type.equals(o.getType()) && (index == o.getIndex());
+        if (obj == null) {
+            return false;
         }
-        return false;
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Operation other = (Operation) obj;
+        if (this.type != other.type) {
+            return false;
+        }
+        if (this.index != other.index) {
+            return false;
+        }
+        if (this.price != other.price && (this.price == null || !this.price.equals(other.price))) {
+            return false;
+        }
+        if (this.amount != other.amount && (this.amount == null || !this.amount.equals(other.amount))) {
+            return false;
+        }
+        return true;
     }
 
     @Override
     public String toString() {
-        return " Index: " + index + " type: " + type.toString();
+        return "Operation{" + "type=" + type + ", index=" + index + ", price=" + price + ", amount=" + amount + '}';
     }
-
+    
     /**
      * @param index the index the operation is executed
      * @return a BUY operation
@@ -133,9 +186,29 @@ public class Operation {
 
     /**
      * @param index the index the operation is executed
+     * @param price the price for the operation
+     * @param amount the amount to be (or that was) bought
+     * @return a BUY operation
+     */
+    public static Operation buyAt(int index, Decimal price, Decimal amount) {
+        return new Operation(index, OperationType.BUY, price, amount);
+    }
+
+    /**
+     * @param index the index the operation is executed
      * @return a SELL operation
      */
     public static Operation sellAt(int index) {
         return new Operation(index, OperationType.SELL);
+    }
+
+    /**
+     * @param index the index the operation is executed
+     * @param price the price for the operation
+     * @param amount the amount to be (or that was) sold
+     * @return a SELL operation
+     */
+    public static Operation sellAt(int index, Decimal price, Decimal amount) {
+        return new Operation(index, OperationType.SELL, price, amount);
     }
 }
