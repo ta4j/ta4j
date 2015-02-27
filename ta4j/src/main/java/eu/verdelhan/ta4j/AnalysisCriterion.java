@@ -48,13 +48,6 @@ public interface AnalysisCriterion {
      * @return the criterion value for the trades
      */
     double calculate(TimeSeries series, TradingRecord tradingRecord);
-    
-    /**
-     * @param series a time series
-     * @param trades a list of trades
-     * @return the criterion value for the trades
-     */
-    double calculate(TimeSeries series, List<Trade> trades);
 
     /**
      * @param series the time series

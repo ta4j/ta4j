@@ -27,9 +27,8 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,10 +44,10 @@ public class RewardRiskRatioCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterion() {
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(4)));
-        trades.add(new Trade(Operation.buyAt(5), Operation.sellAt(7)));
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(1),
+                Operation.buyAt(2), Operation.sellAt(4),
+                Operation.buyAt(5), Operation.sellAt(7));
 
         MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
 
@@ -56,25 +55,22 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
-        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, trades), TATestsUtils.TA_OFFSET);
+        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(5)));
-
-        assertTrue(Double.isInfinite(rrc.calculate(series, trades)));
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(1),
+                Operation.buyAt(2), Operation.sellAt(5));
+        assertTrue(Double.isInfinite(rrc.calculate(series, tradingRecord)));
     }
 
     @Test
     public void rewardRiskRatioCriterionWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
-        List<Trade> trades = new ArrayList<Trade>();
-
-        assertTrue(Double.isInfinite(rrc.calculate(series, trades)));
+        assertTrue(Double.isInfinite(rrc.calculate(series, new TradingRecord(OperationType.BUY))));
     }
     
     @Test

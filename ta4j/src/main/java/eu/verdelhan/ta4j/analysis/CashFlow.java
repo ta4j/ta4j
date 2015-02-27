@@ -26,6 +26,7 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,19 +41,19 @@ public class CashFlow implements Indicator<Decimal> {
     /** The time series */
     private final TimeSeries timeSeries;
 
-    /** The list of trades */
-    private final List<Trade> trades;
+    /** The trading record */
+    private final TradingRecord tradingRecord;
 
     private List<Decimal> values;
 
     /**
      * Constructor.
      * @param timeSeries the time series
-     * @param trades the list of trades
+     * @param tradingRecord the trading record
      */
-    public CashFlow(TimeSeries timeSeries, List<Trade> trades) {
+    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
         this.timeSeries = timeSeries;
-        this.trades = trades;
+        this.tradingRecord = tradingRecord;
         values = new ArrayList<Decimal>();
         values.add(Decimal.ONE);
         calculate();
@@ -84,7 +85,7 @@ public class CashFlow implements Indicator<Decimal> {
      */
     private void calculate() {
 
-        for (Trade trade : trades) {
+        for (Trade trade : tradingRecord.getTrades()) {
             // For each trade...
             int begin = trade.getEntry().getIndex() + 1;
             if (begin > values.size()) {

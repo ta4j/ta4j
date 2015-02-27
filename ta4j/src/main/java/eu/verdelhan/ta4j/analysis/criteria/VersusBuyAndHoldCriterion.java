@@ -26,8 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import java.util.ArrayList;
-import java.util.List;
+import eu.verdelhan.ta4j.TradingRecord;
 
 /**
  * Versus "buy and hold" criterion.
@@ -47,18 +46,21 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public double calculate(TimeSeries series, List<Trade> trades) {
-        List<Trade> fakeTrades = new ArrayList<Trade>();
-        fakeTrades.add(new Trade(Operation.buyAt(series.getBegin()), Operation.sellAt(series.getEnd())));
+    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+        TradingRecord fakeRecord = new TradingRecord(Operation.OperationType.BUY);
+        fakeRecord.operate(series.getBegin());
+        fakeRecord.operate(series.getEnd());
 
-        return criterion.calculate(series, trades) / criterion.calculate(series, fakeTrades);
+        return criterion.calculate(series, tradingRecord) / criterion.calculate(series, fakeRecord);
     }
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(trade);
-        return calculate(series, trades);
+        TradingRecord fakeRecord = new TradingRecord(Operation.OperationType.BUY);
+        fakeRecord.operate(series.getBegin());
+        fakeRecord.operate(series.getEnd());
+
+        return criterion.calculate(series, trade) / criterion.calculate(series, fakeRecord);
     }
 
     @Override

@@ -49,11 +49,34 @@ public class TradingRecord {
         currentTrade = new Trade(startingType);
     }
 
+    public TradingRecord(Operation... operations) {
+        // TODO add length check
+        this(operations[0].getType());
+        for (int i = 0; i < operations.length - 1; i += 2) {
+            Operation o1 = operations[i];
+            Operation o2 = i+1 < operations.length ? operations[i+1] : null;
+            currentTrade = new Trade(o1, o2);
+            if (currentTrade.isClosed()) {
+                // Adding the trade when closed
+                trades.add(currentTrade);
+                currentTrade = new Trade(startingType);
+            }
+        }
+    }
+    
     public Trade getCurrentTrade() {
         return currentTrade;
     }
     
-    public void operate(int index, Decimal price, Decimal amount) {
+    public void addTrade(Trade trade) {
+        trades.add(trade);
+    }
+    
+    public void operate(int index) {
+        operate(index, Decimal.NaN, Decimal.NaN);
+    }
+    
+    public final void operate(int index, Decimal price, Decimal amount) {
         currentTrade.operate(index);
         if (currentTrade.isClosed()) {
             // Adding the trade when closed

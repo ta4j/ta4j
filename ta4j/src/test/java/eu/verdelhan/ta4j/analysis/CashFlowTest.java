@@ -27,12 +27,10 @@ import eu.verdelhan.ta4j.Operation.OperationType;
 import static eu.verdelhan.ta4j.TATestsUtils.*;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -41,18 +39,16 @@ public class CashFlowTest {
     @Test
     public void cashFlowSize() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 3d, 4d, 5d);
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new ArrayList<Trade>());
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OperationType.BUY));
         assertEquals(5, cashFlow.getSize());
     }
 
     @Test
     public void cashFlowBuyWithOnlyOneTrade() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d);
+        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(1));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 2);
@@ -61,13 +57,12 @@ public class CashFlowTest {
     @Test
     public void cashFlowWithSellAndBuyOperations() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(1),
+                Operation.buyAt(3), Operation.sellAt(4),
+                Operation.sellAt(5), Operation.buyAt(6));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(4)));
-        trades.add(new Trade(Operation.sellAt(5), Operation.buyAt(6)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), "0.5");
@@ -82,11 +77,9 @@ public class CashFlowTest {
     @Test
     public void cashFlowSell() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1, 2, 4, 8, 16, 32);
+        TradingRecord tradingRecord = new TradingRecord(Operation.sellAt(2), Operation.buyAt(3));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.sellAt(2), Operation.buyAt(3)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 1);
@@ -99,13 +92,12 @@ public class CashFlowTest {
     @Test
     public void cashFlowShortSell() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1, 2, 4, 8, 16, 32);
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(2),
+                Operation.sellAt(2), Operation.buyAt(4),
+                Operation.buyAt(4), Operation.sellAt(5));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
-        trades.add(new Trade(Operation.sellAt(2), Operation.buyAt(4)));
-        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 2);
@@ -118,11 +110,9 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithOnlyOneTradeAndAGapBefore() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 1d, 2d);
+        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(1), Operation.sellAt(2));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(1), Operation.sellAt(2)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 1);
@@ -132,11 +122,9 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithOnlyOneTradeAndAGapAfter() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 2d);
+        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(1));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertEquals(3, cashFlow.getSize());
         assertDecimalEquals(cashFlow.getValue(0), 1);
@@ -147,12 +135,11 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithTwoTradesAndLongTimeWithoutOperations() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 4d, 8d, 16d, 32d);
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(1), Operation.sellAt(2),
+                Operation.buyAt(4), Operation.sellAt(5));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(1), Operation.sellAt(2)));
-        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 1);
@@ -164,16 +151,14 @@ public class CashFlowTest {
 
     @Test
     public void cashFlowValue() {
-
         TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 1000d, 5000d, 0.0001d, 4d, 7d,
                 6d, 7d, 8d, 5d, 6d);
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(2),
+                Operation.buyAt(6), Operation.sellAt(8),
+                Operation.buyAt(9), Operation.sellAt(11));
 
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
-        trades.add(new Trade(Operation.buyAt(6), Operation.sellAt(8)));
-        trades.add(new Trade(Operation.buyAt(9), Operation.sellAt(11)));
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertDecimalEquals(cashFlow.getValue(0), 1);
         assertDecimalEquals(cashFlow.getValue(1), 2d/3);
@@ -193,10 +178,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithNoTrades() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
-        List<Trade> trades = new ArrayList<Trade>();
-
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
-
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OperationType.BUY));
         assertDecimalEquals(cashFlow.getValue(4), 1);
         assertDecimalEquals(cashFlow.getValue(7), 1);
         assertDecimalEquals(cashFlow.getValue(9), 1);
@@ -206,10 +188,11 @@ public class CashFlowTest {
     public void cashFlowWithConstrainedSeries() {
         MockTimeSeries series = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
         TimeSeries constrained = series.subseries(4, 8);
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
-        trades.add(new Trade(Operation.buyAt(6), Operation.sellAt(8)));
-        CashFlow flow = new CashFlow(constrained, trades);
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(4), Operation.sellAt(5),
+                Operation.buyAt(6), Operation.sellAt(8));
+        
+        CashFlow flow = new CashFlow(constrained, tradingRecord);
         assertDecimalEquals(flow.getValue(0), 1);
         assertDecimalEquals(flow.getValue(1), 1);
         assertDecimalEquals(flow.getValue(2), 1);
@@ -225,9 +208,8 @@ public class CashFlowTest {
     public void reallyLongCashFlow() {
         int size = 1000000;
         TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Tick) new MockTick(10)));
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(size - 1)));
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, trades);
+        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(size - 1));
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
         assertDecimalEquals(cashFlow.getValue(size - 1), 1);
     }
 

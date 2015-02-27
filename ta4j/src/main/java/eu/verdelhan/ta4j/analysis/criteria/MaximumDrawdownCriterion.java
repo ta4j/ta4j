@@ -25,9 +25,8 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.CashFlow;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Maximum drawdown criterion.
@@ -37,10 +36,10 @@ import java.util.List;
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, List<Trade> trades) {
+    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
         Decimal maximumDrawdown = Decimal.ZERO;
         Decimal maxPeak = Decimal.ZERO;
-        CashFlow cashFlow = new CashFlow(series, trades);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         for (int i = series.getBegin(); i <= series.getEnd(); i++) {
             Decimal value = cashFlow.getValue(i);
@@ -60,9 +59,9 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(trade);
-        return calculate(series, trades);
+        TradingRecord tradingRecord = new TradingRecord(trade.getEntry().getType());
+        tradingRecord.addTrade(trade);
+        return calculate(series, tradingRecord);
     }
 
     @Override

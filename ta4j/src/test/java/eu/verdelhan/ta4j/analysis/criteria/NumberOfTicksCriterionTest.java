@@ -27,9 +27,8 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -38,21 +37,20 @@ public class NumberOfTicksCriterionTest {
     @Test
     public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-        List<Trade> trades = new ArrayList<Trade>();
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(0, (int) numberOfTicks.calculate(series, trades));
+        assertEquals(0, (int) numberOfTicks.calculate(series, new TradingRecord(OperationType.BUY)));
     }
 
     @Test
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
-        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(5)));
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(2),
+                Operation.buyAt(3), Operation.sellAt(5));
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(6, numberOfTicks.calculate(series, trades), TATestsUtils.TA_OFFSET);
+        assertEquals(6, numberOfTicks.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test

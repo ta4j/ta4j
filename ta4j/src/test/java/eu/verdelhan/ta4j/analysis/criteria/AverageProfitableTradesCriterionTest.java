@@ -27,9 +27,8 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Test;
 public class AverageProfitableTradesCriterionTest {
@@ -37,14 +36,14 @@ public class AverageProfitableTradesCriterionTest {
     @Test
     public void calculate() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
-        List<Trade> trades = new ArrayList<Trade>();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(3)));
-        trades.add(new Trade(Operation.buyAt(4), Operation.sellAt(5)));
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(1),
+                Operation.buyAt(2), Operation.sellAt(3),
+                Operation.buyAt(4), Operation.sellAt(5));
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
-        assertEquals(2d/3, average.calculate(series, trades), TATestsUtils.TA_OFFSET);
+        assertEquals(2d/3, average.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test

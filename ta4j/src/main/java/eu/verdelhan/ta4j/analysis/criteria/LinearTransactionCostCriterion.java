@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.analysis.criteria;
 import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
-import java.util.List;
+import eu.verdelhan.ta4j.TradingRecord;
 
 /**
  * A linear transaction cost criterion.
@@ -72,10 +72,10 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public double calculate(TimeSeries series, List<Trade> trades) {
+    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
         double totalCosts = 0d;
         double tradedAmount = initialAmount;
-        for (Trade trade : trades) {
+        for (Trade trade : tradingRecord.getTrades()) {
             double tradeCost = getTradeCost(series, trade, tradedAmount);
             totalCosts += tradeCost;
             // To calculate the new traded amount:

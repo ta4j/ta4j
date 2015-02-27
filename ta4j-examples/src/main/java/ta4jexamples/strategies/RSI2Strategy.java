@@ -24,9 +24,8 @@ package ta4jexamples.strategies;
 
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -80,11 +79,11 @@ public class RSI2Strategy {
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        List<Trade> trades = series.run(strategy).getTrades();
-        System.out.println("Number of trades for the strategy: " + trades.size());
+        TradingRecord tradingRecord = series.run(strategy);
+        System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, trades));
+        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 
 }

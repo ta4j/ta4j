@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.CashFlow;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
@@ -34,7 +34,6 @@ import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.VersusBuyAndHoldCriterion;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import java.util.List;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -84,26 +83,26 @@ public class Quickstart {
         Strategy ourStrategy = new Strategy();
 
         // Running our juicy trading strategy...
-        List<Trade> trades = series.run(ourStrategy).getTrades();
-        System.out.println("Number of trades for our strategy: " + trades.size());
+        TradingRecord tradingRecord = series.run(ourStrategy);
+        System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 
 
         // Analysis
 
         // Getting the cash flow of the resulting trades
-        CashFlow cashFlow = new CashFlow(series, trades);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         // Getting the profitable trades ratio
         AnalysisCriterion profitTradesRatio = new AverageProfitableTradesCriterion();
-        System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, trades));
+        System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, tradingRecord));
         // Getting the reward-risk ratio
         AnalysisCriterion rewardRiskRatio = new RewardRiskRatioCriterion();
-        System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, trades));
+        System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, tradingRecord));
 
         // Total profit of our strategy
         // vs total profit of a buy-and-hold strategy
         AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, trades));
+        System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!
     }

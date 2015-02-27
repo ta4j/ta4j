@@ -27,58 +27,47 @@ import eu.verdelhan.ta4j.Operation;
 import eu.verdelhan.ta4j.Operation.OperationType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
 import static org.junit.Assert.*;
-import org.junit.Before;
 import org.junit.Test;
 
 public class AverageProfitCriterionTest {
     private MockTimeSeries series;
 
-    private List<Trade> trades;
-
-    @Before
-    public void setUp() {
-        trades = new ArrayList<Trade>();
-    }
-
     @Test
     public void calculateOnlyWithGainTrades() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
-        trades.clear();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
-        trades.add(new Trade(Operation.buyAt(3), Operation.sellAt(5)));
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(2),
+                Operation.buyAt(3), Operation.sellAt(5));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.calculate(series, trades));
+        assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithASimpleTrade() {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
-        trades.clear();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(2)));
+        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(2));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
+        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void calculateOnlyWithLossTrades() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
-        trades.clear();
-        trades.add(new Trade(Operation.buyAt(0), Operation.sellAt(1)));
-        trades.add(new Trade(Operation.buyAt(2), Operation.sellAt(5)));
+        TradingRecord tradingRecord = new TradingRecord(
+                Operation.buyAt(0), Operation.sellAt(1),
+                Operation.buyAt(2), Operation.sellAt(5));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
+        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void calculateWithNoTicksShouldReturn1() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
-        trades.clear();
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1d, averageProfit.calculate(series, trades), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, averageProfit.calculate(series, new TradingRecord(OperationType.BUY)), TATestsUtils.TA_OFFSET);
     }
 
     @Test
