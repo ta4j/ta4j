@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order.OrderType;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +34,7 @@ public class TradeTest {
     @Before
     public void setUp() {
         this.newTrade = new Trade();
-        this.uncoveredTrade = new Trade(OperationType.SELL);
+        this.uncoveredTrade = new Trade(OrderType.SELL);
 
         trEquals1 = new Trade();
         trEquals1.operate(1);
@@ -44,19 +44,19 @@ public class TradeTest {
         trEquals2.operate(1);
         trEquals2.operate(2);
 
-        trNotEquals1 = new Trade(OperationType.SELL);
+        trNotEquals1 = new Trade(OrderType.SELL);
         trNotEquals1.operate(1);
         trNotEquals1.operate(2);
 
-        trNotEquals2 = new Trade(OperationType.SELL);
+        trNotEquals2 = new Trade(OrderType.SELL);
         trNotEquals2.operate(1);
         trNotEquals2.operate(2);
     }
 
     @Test
-    public void whenNewShouldCreateBuyOperationWhenEntering() {
+    public void whenNewShouldCreateBuyOrderWhenEntering() {
         newTrade.operate(0);
-        assertEquals(Operation.buyAt(0), newTrade.getEntry());
+        assertEquals(Order.buyAt(0), newTrade.getEntry());
     }
 
     @Test
@@ -65,10 +65,10 @@ public class TradeTest {
     }
 
     @Test
-    public void whenOpenedShouldCreateSellOperationWhenExiting() {
+    public void whenOpenedShouldCreateSellOrderWhenExiting() {
         newTrade.operate(0);
         newTrade.operate(1);
-        assertEquals(Operation.sellAt(1), newTrade.getExit());
+        assertEquals(Order.sellAt(1), newTrade.getExit());
     }
 
     @Test
@@ -94,26 +94,26 @@ public class TradeTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowIllegalArgumentExceptionWhenOperationTypeIsNull() {
+    public void shouldThrowIllegalArgumentExceptionWhenOrderTypeIsNull() {
         Trade t = new Trade(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowIllegalArgumentExceptionWhenOperationsHaveSameType() {
-        Trade t = new Trade(Operation.buyAt(0), Operation.buyAt(1));
+    public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
+        Trade t = new Trade(Order.buyAt(0), Order.buyAt(1));
     }
 
     @Test
-    public void whenNewShouldCreateSellOperationWhenEnteringUncovered() {
+    public void whenNewShouldCreateSellOrderWhenEnteringUncovered() {
         uncoveredTrade.operate(0);
-        assertEquals(Operation.sellAt(0), uncoveredTrade.getEntry());
+        assertEquals(Order.sellAt(0), uncoveredTrade.getEntry());
     }
 
     @Test
-    public void whenOpenedShouldCreateBuyOperationWhenExitingUncovered() {
+    public void whenOpenedShouldCreateBuyOrderWhenExitingUncovered() {
         uncoveredTrade.operate(0);
         uncoveredTrade.operate(1);
-        assertEquals(Operation.buyAt(1), uncoveredTrade.getExit());
+        assertEquals(Order.buyAt(1), uncoveredTrade.getExit());
     }
 
     @Test

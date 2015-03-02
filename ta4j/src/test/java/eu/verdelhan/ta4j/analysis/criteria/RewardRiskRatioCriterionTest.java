@@ -23,8 +23,8 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order;
+import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -45,9 +45,9 @@ public class RewardRiskRatioCriterionTest {
     @Test
     public void rewardRiskRatioCriterion() {
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(1),
-                Operation.buyAt(2), Operation.sellAt(4),
-                Operation.buyAt(5), Operation.sellAt(7));
+                Order.buyAt(0), Order.sellAt(1),
+                Order.buyAt(2), Order.sellAt(4),
+                Order.buyAt(5), Order.sellAt(7));
 
         MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
 
@@ -62,20 +62,20 @@ public class RewardRiskRatioCriterionTest {
     public void rewardRiskRatioCriterionOnlyWithGain() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(1),
-                Operation.buyAt(2), Operation.sellAt(5));
+                Order.buyAt(0), Order.sellAt(1),
+                Order.buyAt(2), Order.sellAt(5));
         assertTrue(Double.isInfinite(rrc.calculate(series, tradingRecord)));
     }
 
     @Test
     public void rewardRiskRatioCriterionWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
-        assertTrue(Double.isInfinite(rrc.calculate(series, new TradingRecord(OperationType.BUY))));
+        assertTrue(Double.isInfinite(rrc.calculate(series, new TradingRecord(OrderType.BUY))));
     }
     
     @Test
     public void withOneTrade() {
-        Trade trade = new Trade(Operation.buyAt(0), Operation.sellAt(1));
+        Trade trade = new Trade(Order.buyAt(0), Order.sellAt(1));
 
         MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
 

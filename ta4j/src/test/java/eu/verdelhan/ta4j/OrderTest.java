@@ -22,30 +22,30 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order.OrderType;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
-public class OperationTest {
+public class OrderTest {
 
-    Operation opEquals1, opEquals2, opNotEquals1, opNotEquals2;
+    Order opEquals1, opEquals2, opNotEquals1, opNotEquals2;
 
     @Before
     public void setUp() {
-        opEquals1 = Operation.buyAt(1);
-        opEquals2 = Operation.buyAt(1);
+        opEquals1 = Order.buyAt(1);
+        opEquals2 = Order.buyAt(1);
 
-        opNotEquals1 = Operation.sellAt(1);
-        opNotEquals2 = Operation.buyAt(2);
+        opNotEquals1 = Order.sellAt(1);
+        opNotEquals2 = Order.buyAt(2);
     }
 
     @Test
     public void type() {
-        assertEquals(OperationType.SELL, opNotEquals1.getType());
+        assertEquals(OrderType.SELL, opNotEquals1.getType());
         assertFalse(opNotEquals1.isBuy());
         assertTrue(opNotEquals1.isSell());
-        assertEquals(OperationType.BUY, opNotEquals2.getType());
+        assertEquals(OrderType.BUY, opNotEquals2.getType());
         assertTrue(opNotEquals2.isBuy());
         assertFalse(opNotEquals2.isSell());
     }

@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.Operation;
+import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -46,7 +46,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor.
      * (a * x)
      * @param initialAmount the initially traded amount
-     * @param a the a coefficient (e.g. 0.005 for 0.5% per {@link Operation operation})
+     * @param a the a coefficient (e.g. 0.005 for 0.5% per {@link Order order})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a) {
         this(initialAmount, a, 0);
@@ -56,8 +56,8 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor.
      * (a * x + b)
      * @param initialAmount the initially traded amount
-     * @param a the a coefficient (e.g. 0.005 for 0.5% per {@link Operation operation})
-     * @param b the b constant (e.g. 0.2 for $0.2 per {@link Operation operation})
+     * @param a the a coefficient (e.g. 0.005 for 0.5% per {@link Order order})
+     * @param b the b constant (e.g. 0.2 for $0.2 per {@link Order order})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
         this.initialAmount = initialAmount;
@@ -79,7 +79,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             double tradeCost = getTradeCost(series, trade, tradedAmount);
             totalCosts += tradeCost;
             // To calculate the new traded amount:
-            //    - Remove the cost of the first operation
+            //    - Remove the cost of the first order
             //    - Multiply by the profit ratio
             tradedAmount = (tradedAmount - tradeCost) * profit.calculate(series, trade);
         }
@@ -92,35 +92,35 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * @param operation a trade operation
-     * @param tradedAmount the traded amount for the operation
-     * @return the absolute operation cost
+     * @param order a trade order
+     * @param tradedAmount the traded amount for the order
+     * @return the absolute order cost
      */
-    private double getOperationCost(Operation operation, double tradedAmount) {
-        double operationCost = 0d;
-        if (operation != null) {
+    private double getOrderCost(Order order, double tradedAmount) {
+        double orderCost = 0d;
+        if (order != null) {
             return a * tradedAmount + b;
         }
-        return operationCost;
+        return orderCost;
     }
 
     /**
      * @param series the time series
      * @param trade a trade
      * @param initialAmount the initially traded amount for the trade
-     * @return the absolute total cost of all operations in the trade
+     * @return the absolute total cost of all orders in the trade
      */
     private double getTradeCost(TimeSeries series, Trade trade, double initialAmount) {
         double totalTradeCost = 0d;
         if (trade != null) {
             if (trade.getEntry() != null) {
-                totalTradeCost = getOperationCost(trade.getEntry(), initialAmount);
+                totalTradeCost = getOrderCost(trade.getEntry(), initialAmount);
                 if (trade.getExit() != null) {
                     // To calculate the new traded amount:
-                    //    - Remove the cost of the first operation
+                    //    - Remove the cost of the first order
                     //    - Multiply by the profit ratio
                     double newTradedAmount = (initialAmount - totalTradeCost) * profit.calculate(series, trade);
-                    totalTradeCost += getOperationCost(trade.getExit(), newTradedAmount);
+                    totalTradeCost += getOrderCost(trade.getExit(), newTradedAmount);
                 }
             }
         }

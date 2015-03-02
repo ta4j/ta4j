@@ -22,8 +22,8 @@
  */
 package eu.verdelhan.ta4j.analysis;
 
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order;
+import eu.verdelhan.ta4j.Order.OrderType;
 import static eu.verdelhan.ta4j.TATestsUtils.*;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
@@ -39,14 +39,14 @@ public class CashFlowTest {
     @Test
     public void cashFlowSize() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 3d, 4d, 5d);
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OperationType.BUY));
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OrderType.BUY));
         assertEquals(5, cashFlow.getSize());
     }
 
     @Test
     public void cashFlowBuyWithOnlyOneTrade() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d);
-        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(1));
+        TradingRecord tradingRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(1));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -55,12 +55,12 @@ public class CashFlowTest {
     }
 
     @Test
-    public void cashFlowWithSellAndBuyOperations() {
+    public void cashFlowWithSellAndBuyOrders() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(1),
-                Operation.buyAt(3), Operation.sellAt(4),
-                Operation.sellAt(5), Operation.buyAt(6));
+                Order.buyAt(0), Order.sellAt(1),
+                Order.buyAt(3), Order.sellAt(4),
+                Order.sellAt(5), Order.buyAt(6));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -77,7 +77,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowSell() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1, 2, 4, 8, 16, 32);
-        TradingRecord tradingRecord = new TradingRecord(Operation.sellAt(2), Operation.buyAt(3));
+        TradingRecord tradingRecord = new TradingRecord(Order.sellAt(2), Order.buyAt(3));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -93,9 +93,9 @@ public class CashFlowTest {
     public void cashFlowShortSell() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1, 2, 4, 8, 16, 32);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(2),
-                Operation.sellAt(2), Operation.buyAt(4),
-                Operation.buyAt(4), Operation.sellAt(5));
+                Order.buyAt(0), Order.sellAt(2),
+                Order.sellAt(2), Order.buyAt(4),
+                Order.buyAt(4), Order.sellAt(5));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -110,7 +110,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithOnlyOneTradeAndAGapBefore() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 1d, 2d);
-        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(1), Operation.sellAt(2));
+        TradingRecord tradingRecord = new TradingRecord(Order.buyAt(1), Order.sellAt(2));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -122,7 +122,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithOnlyOneTradeAndAGapAfter() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 2d);
-        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(1));
+        TradingRecord tradingRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(1));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -133,11 +133,11 @@ public class CashFlowTest {
     }
 
     @Test
-    public void cashFlowValueWithTwoTradesAndLongTimeWithoutOperations() {
+    public void cashFlowValueWithTwoTradesAndLongTimeWithoutOrders() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 4d, 8d, 16d, 32d);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(1), Operation.sellAt(2),
-                Operation.buyAt(4), Operation.sellAt(5));
+                Order.buyAt(1), Order.sellAt(2),
+                Order.buyAt(4), Order.sellAt(5));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -154,9 +154,9 @@ public class CashFlowTest {
         TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 1000d, 5000d, 0.0001d, 4d, 7d,
                 6d, 7d, 8d, 5d, 6d);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(2),
-                Operation.buyAt(6), Operation.sellAt(8),
-                Operation.buyAt(9), Operation.sellAt(11));
+                Order.buyAt(0), Order.sellAt(2),
+                Order.buyAt(6), Order.sellAt(8),
+                Order.buyAt(9), Order.sellAt(11));
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
@@ -178,7 +178,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithNoTrades() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OperationType.BUY));
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OrderType.BUY));
         assertDecimalEquals(cashFlow.getValue(4), 1);
         assertDecimalEquals(cashFlow.getValue(7), 1);
         assertDecimalEquals(cashFlow.getValue(9), 1);
@@ -189,8 +189,8 @@ public class CashFlowTest {
         MockTimeSeries series = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
         TimeSeries constrained = series.subseries(4, 8);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(4), Operation.sellAt(5),
-                Operation.buyAt(6), Operation.sellAt(8));
+                Order.buyAt(4), Order.sellAt(5),
+                Order.buyAt(6), Order.sellAt(8));
         
         CashFlow flow = new CashFlow(constrained, tradingRecord);
         assertDecimalEquals(flow.getValue(0), 1);
@@ -208,7 +208,7 @@ public class CashFlowTest {
     public void reallyLongCashFlow() {
         int size = 1000000;
         TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Tick) new MockTick(10)));
-        TradingRecord tradingRecord = new TradingRecord(Operation.buyAt(0), Operation.sellAt(size - 1));
+        TradingRecord tradingRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(size - 1));
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
         assertDecimalEquals(cashFlow.getValue(size - 1), 1);
     }

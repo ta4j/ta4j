@@ -23,115 +23,115 @@
 package eu.verdelhan.ta4j;
 
 /**
- * An operation of a {@link Trade trade}.
+ * An order of a {@link Trade trade}.
  * <p>
- * The operation is defined by:
+ * The order is defined by:
  * <ul>
  * <li>the index (in the {@link TimeSeries time series}) it is executed
- * <li>a {@link OperationType type} (BUY or SELL)
+ * <li>a {@link OrderType type} (BUY or SELL)
  * </ul>
  */
-public class Operation {
+public class Order {
 
     /**
-     * The type of an {@link Operation operation}.
+     * The type of an {@link Order order}.
      * <p>
-     * A BUY operation correspond to a <i>BID</i> order.<p>
-     * A SELL operation correspond to an <i>ASK</i> order.
+     * A BUY corresponds to a <i>BID</i> order.<p>
+     * A SELL corresponds to an <i>ASK</i> order.
      */
-    public enum OperationType {
+    public enum OrderType {
 
         BUY {
             @Override
-            public OperationType complementType() {
+            public OrderType complementType() {
                 return SELL;
             }
         },
         SELL {
             @Override
-            public OperationType complementType() {
+            public OrderType complementType() {
                 return BUY;
             }
         };
 
         /**
-         * @return the complementary operation type
+         * @return the complementary order type
          */
-        public abstract OperationType complementType();
+        public abstract OrderType complementType();
     }
     
-    /** Type of the operation */
-    private OperationType type;
+    /** Type of the order */
+    private OrderType type;
 
-    /** The index the operation was executed */
+    /** The index the order was executed */
     private int index;
 
-    /** The price for the operation */
+    /** The price for the order */
     private Decimal price = Decimal.NaN;
     
-    /** The amount to be (or that was) ordered in the operation */
+    /** The amount to be (or that was) ordered in the order */
     private Decimal amount = Decimal.NaN;
     
     /**
      * Constructor.
-     * @param index the index the operation is executed
-     * @param type the type of the operation
+     * @param index the index the order is executed
+     * @param type the type of the order
      */
-    protected Operation(int index, OperationType type) {
+    protected Order(int index, OrderType type) {
         this.type = type;
         this.index = index;
     }
 
     /**
      * Constructor.
-     * @param index the index the operation is executed
-     * @param type the type of the operation
-     * @param price the price for the operation
-     * @param amount the amount to be (or that was) ordered in the operation
+     * @param index the index the order is executed
+     * @param type the type of the order
+     * @param price the price for the order
+     * @param amount the amount to be (or that was) ordered in the order
      */
-    protected Operation(int index, OperationType type, Decimal price, Decimal amount) {
+    protected Order(int index, OrderType type, Decimal price, Decimal amount) {
         this(index, type);
         this.price = price;
         this.amount = amount;
     }
 
     /**
-     * @return the type of the operation (BUY or SELL)
+     * @return the type of the order (BUY or SELL)
      */
-    public OperationType getType() {
+    public OrderType getType() {
         return type;
     }
 
     /**
-     * @return true if this is a BUY operation, false otherwise
+     * @return true if this is a BUY order, false otherwise
      */
     public boolean isBuy() {
-        return type == OperationType.BUY;
+        return type == OrderType.BUY;
     }
 
     /**
-     * @return true if this is a SELL operation, false otherwise
+     * @return true if this is a SELL order, false otherwise
      */
     public boolean isSell() {
-        return type == OperationType.SELL;
+        return type == OrderType.SELL;
     }
 
     /**
-     * @return the index the operation is executed
+     * @return the index the order is executed
      */
     public int getIndex() {
         return index;
     }
 
     /**
-     * @return the price for the operation
+     * @return the price for the order
      */
     public Decimal getPrice() {
         return price;
     }
 
     /**
-     * @return the amount to be (or that was) ordered in the operation
+     * @return the amount to be (or that was) ordered
      */
     public Decimal getAmount() {
         return amount;
@@ -155,7 +155,7 @@ public class Operation {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Operation other = (Operation) obj;
+        final Order other = (Order) obj;
         if (this.type != other.type) {
             return false;
         }
@@ -173,42 +173,42 @@ public class Operation {
 
     @Override
     public String toString() {
-        return "Operation{" + "type=" + type + ", index=" + index + ", price=" + price + ", amount=" + amount + '}';
+        return "Order{" + "type=" + type + ", index=" + index + ", price=" + price + ", amount=" + amount + '}';
     }
     
     /**
-     * @param index the index the operation is executed
-     * @return a BUY operation
+     * @param index the index the order is executed
+     * @return a BUY order
      */
-    public static Operation buyAt(int index) {
-        return new Operation(index, OperationType.BUY);
+    public static Order buyAt(int index) {
+        return new Order(index, OrderType.BUY);
     }
 
     /**
-     * @param index the index the operation is executed
-     * @param price the price for the operation
+     * @param index the index the order is executed
+     * @param price the price for the order
      * @param amount the amount to be (or that was) bought
-     * @return a BUY operation
+     * @return a BUY order
      */
-    public static Operation buyAt(int index, Decimal price, Decimal amount) {
-        return new Operation(index, OperationType.BUY, price, amount);
+    public static Order buyAt(int index, Decimal price, Decimal amount) {
+        return new Order(index, OrderType.BUY, price, amount);
     }
 
     /**
-     * @param index the index the operation is executed
-     * @return a SELL operation
+     * @param index the index the order is executed
+     * @return a SELL order
      */
-    public static Operation sellAt(int index) {
-        return new Operation(index, OperationType.SELL);
+    public static Order sellAt(int index) {
+        return new Order(index, OrderType.SELL);
     }
 
     /**
-     * @param index the index the operation is executed
-     * @param price the price for the operation
+     * @param index the index the order is executed
+     * @param price the price for the order
      * @param amount the amount to be (or that was) sold
-     * @return a SELL operation
+     * @return a SELL order
      */
-    public static Operation sellAt(int index, Decimal price, Decimal amount) {
-        return new Operation(index, OperationType.SELL, price, amount);
+    public static Order sellAt(int index, Decimal price, Decimal amount) {
+        return new Order(index, OrderType.SELL, price, amount);
     }
 }

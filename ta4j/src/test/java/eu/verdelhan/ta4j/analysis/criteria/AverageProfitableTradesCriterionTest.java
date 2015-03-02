@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Operation;
+import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
@@ -37,9 +37,9 @@ public class AverageProfitableTradesCriterionTest {
     public void calculate() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(1),
-                Operation.buyAt(2), Operation.sellAt(3),
-                Operation.buyAt(4), Operation.sellAt(5));
+                Order.buyAt(0), Order.sellAt(1),
+                Order.buyAt(2), Order.sellAt(3),
+                Order.buyAt(4), Order.sellAt(5));
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
@@ -49,12 +49,12 @@ public class AverageProfitableTradesCriterionTest {
     @Test
     public void calculateWithOneTrade() {
         TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
-        Trade trade = new Trade(Operation.buyAt(0), Operation.sellAt(1));
+        Trade trade = new Trade(Order.buyAt(0), Order.sellAt(1));
             
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         assertEquals(0d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
         
-        trade = new Trade(Operation.buyAt(1), Operation.sellAt(2));
+        trade = new Trade(Order.buyAt(1), Order.sellAt(2));
         assertEquals(1d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
     }
 

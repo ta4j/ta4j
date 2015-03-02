@@ -23,8 +23,8 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Operation;
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order;
+import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -39,15 +39,15 @@ public class NumberOfTicksCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(0, (int) numberOfTicks.calculate(series, new TradingRecord(OperationType.BUY)));
+        assertEquals(0, (int) numberOfTicks.calculate(series, new TradingRecord(OrderType.BUY)));
     }
 
     @Test
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new TradingRecord(
-                Operation.buyAt(0), Operation.sellAt(2),
-                Operation.buyAt(3), Operation.sellAt(5));
+                Order.buyAt(0), Order.sellAt(2),
+                Order.buyAt(3), Order.sellAt(5));
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
         assertEquals(6, numberOfTicks.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
@@ -56,7 +56,7 @@ public class NumberOfTicksCriterionTest {
     @Test
     public void calculateWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
-        Trade t = new Trade(Operation.buyAt(2), Operation.sellAt(5));
+        Trade t = new Trade(Order.buyAt(2), Order.sellAt(5));
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
         assertEquals(4, numberOfTicks.calculate(series, t), TATestsUtils.TA_OFFSET);
     }

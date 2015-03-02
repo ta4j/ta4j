@@ -22,32 +22,32 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order.OrderType;
 
 /**
- * Set of two {@link Operation operations}. Not a single operation.
+ * Set of two {@link Order orders}. Not a single order.
  * 
  */
 public class Trade {
 
-    private Operation entry;
+    private Order entry;
 
-    private Operation exit;
+    private Order exit;
 
-    private OperationType startingType;
+    private OrderType startingType;
 
     /**
      * Constructor.
      */
     public Trade() {
-        this(OperationType.BUY);
+        this(OrderType.BUY);
     }
 
     /**
      * Constructor.
-     * @param startingType the starting {@link OperationType operation type} of the trade
+     * @param startingType the starting {@link OrderType order type} of the trade
      */
-    public Trade(OperationType startingType) {
+    public Trade(OrderType startingType) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -56,28 +56,28 @@ public class Trade {
 
     /**
      * Constructor.
-     * @param entry the entry {@link Operation operation}
-     * @param exit the exit {@link Operation operation}
+     * @param entry the entry {@link Order order}
+     * @param exit the exit {@link Order order}
      */
-    public Trade(Operation entry, Operation exit) {
+    public Trade(Order entry, Order exit) {
         if (entry.getType().equals(exit.getType())) {
-            throw new IllegalArgumentException("Both operations must have different types");
+            throw new IllegalArgumentException("Both orders must have different types");
         }
         this.entry = entry;
         this.exit = exit;
     }
 
     /**
-     * @return the entry {@link Operation operation} of the trade
+     * @return the entry {@link Order order} of the trade
      */
-    public Operation getEntry() {
+    public Order getEntry() {
         return entry;
     }
 
     /**
-     * @return the exit {@link Operation operation} of the trade
+     * @return the exit {@link Order order} of the trade
      */
-    public Operation getExit() {
+    public Order getExit() {
         return exit;
     }
 
@@ -101,12 +101,12 @@ public class Trade {
      */
     public void operate(int i) {
         if (isNew()) {
-            entry = new Operation(i, startingType);
+            entry = new Order(i, startingType);
         } else if (isOpened()) {
             if (i < entry.getIndex()) {
-                throw new IllegalStateException("The index i is less than the entryOperation index");
+                throw new IllegalStateException("The index i is less than the entryOrder index");
             }
-            exit = new Operation(i, startingType.complementType());
+            exit = new Order(i, startingType.complementType());
         }
     }
 

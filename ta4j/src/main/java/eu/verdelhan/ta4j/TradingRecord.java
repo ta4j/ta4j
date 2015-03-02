@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order.OrderType;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,15 +33,15 @@ public class TradingRecord {
 
     private List<Trade> trades = new ArrayList<Trade>();
 
-    private OperationType startingType;
+    private OrderType startingType;
     
     private Trade currentTrade;
 
     /**
      * Constructor.
-     * @param startingType the starting {@link OperationType operation type} of the trading session
+     * @param startingType the starting {@link OrderType order type} of the trading session
      */
-    public TradingRecord(OperationType startingType) {
+    public TradingRecord(OrderType startingType) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -49,12 +49,12 @@ public class TradingRecord {
         currentTrade = new Trade(startingType);
     }
 
-    public TradingRecord(Operation... operations) {
+    public TradingRecord(Order... orders) {
         // TODO add length check
-        this(operations[0].getType());
-        for (int i = 0; i < operations.length - 1; i += 2) {
-            Operation o1 = operations[i];
-            Operation o2 = i+1 < operations.length ? operations[i+1] : null;
+        this(orders[0].getType());
+        for (int i = 0; i < orders.length - 1; i += 2) {
+            Order o1 = orders[i];
+            Order o2 = i+1 < orders.length ? orders[i+1] : null;
             currentTrade = new Trade(o1, o2);
             if (currentTrade.isClosed()) {
                 // Adding the trade when closed

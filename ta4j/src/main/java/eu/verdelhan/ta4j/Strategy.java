@@ -28,7 +28,7 @@ package eu.verdelhan.ta4j;
  * <p>
  * Parameter: an {@link Indicator indicator} or another {@link Strategy strategy}
  * <p>
- * Returns an {@link Operation operation} when giving an index.
+ * Returns an {@link Order order} when giving an index.
  */
 public class Strategy {
 
@@ -47,7 +47,7 @@ public class Strategy {
     /**
      * @param tradingRecord the trading record
      * @param index the index
-     * @return true to recommend an operation, false otherwise (no recommendation)
+     * @return true to recommend an order, false otherwise (no recommendation)
      */
     public boolean shouldOperate(TradingRecord tradingRecord, int index) {
         Trade trade = tradingRecord.getCurrentTrade();
@@ -61,7 +61,7 @@ public class Strategy {
 
     /**
      * @param index the index
-     * @return true to recommend to enter (BUY {@link Operation operation}), false otherwise
+     * @return true to recommend to enter (BUY {@link Order order}), false otherwise
      */
     public boolean shouldEnter(int index) {
         return entryRule.isSatisfied(index);
@@ -69,7 +69,7 @@ public class Strategy {
 
     /**
      * @param index the index
-     * @return true to recommend to exit (SELL {@link Operation operation}), false otherwise
+     * @return true to recommend to exit (SELL {@link Order order}), false otherwise
      */
     public boolean shouldExit(int index) {
         return exitRule.isSatisfied(index);

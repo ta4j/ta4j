@@ -22,16 +22,16 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
-import eu.verdelhan.ta4j.Operation;
+import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Strategy;
 
 public class MockStrategy extends Strategy {
 
-    private Operation[] enter;
+    private Order[] enter;
 
-    private Operation[] exit;
+    private Order[] exit;
 
-    public MockStrategy(Operation[] enter, Operation[] exit) {
+    public MockStrategy(Order[] enter, Order[] exit) {
         this.enter = enter;
         this.exit = exit;
     }

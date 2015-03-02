@@ -22,7 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Operation.OperationType;
+import eu.verdelhan.ta4j.Order.OrderType;
 import java.util.ArrayList;
 import java.util.List;
 import org.joda.time.DateTime;
@@ -372,24 +372,24 @@ public class TimeSeries {
     /**
      * Runs the strategy over the series.
      * <p>
-     * Opens the trades with {@link OperationType.BUY} operations.
+     * Opens the trades with {@link OrderType.BUY} orders.
      * @param strategy the trading strategy
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
-        return run(strategy, OperationType.BUY);
+        return run(strategy, OrderType.BUY);
     }
 
     /**
      * Runs the strategy over the series.
      * @param strategy the trading strategy
-     * @param operationType the {@link OperationType} used to open the trades
+     * @param orderType the {@link OrderType} used to open the trades
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OperationType operationType) {
+    public TradingRecord run(Strategy strategy, OrderType orderType) {
 
-        log.trace("Running strategy: {} (starting with {})", strategy, operationType);
-        TradingRecord tradingRecord = new TradingRecord(operationType);
+        log.trace("Running strategy: {} (starting with {})", strategy, orderType);
+        TradingRecord tradingRecord = new TradingRecord(orderType);
 
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick in the sub-series...

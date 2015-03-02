@@ -23,7 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Operation;
+import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -47,7 +47,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        TradingRecord fakeRecord = new TradingRecord(Operation.OperationType.BUY);
+        TradingRecord fakeRecord = new TradingRecord(Order.OrderType.BUY);
         fakeRecord.operate(series.getBegin());
         fakeRecord.operate(series.getEnd());
 
@@ -56,7 +56,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-        TradingRecord fakeRecord = new TradingRecord(Operation.OperationType.BUY);
+        TradingRecord fakeRecord = new TradingRecord(Order.OrderType.BUY);
         fakeRecord.operate(series.getBegin());
         fakeRecord.operate(series.getEnd());
 
