@@ -25,15 +25,22 @@ package eu.verdelhan.ta4j;
 import eu.verdelhan.ta4j.Order.OrderType;
 
 /**
- * Set of two {@link Order orders}. Not a single order.
- * 
+ * Pair of two {@link Order orders}.
+ * <p>
+ * The exit order has the complement type of the entry order.<br>
+ * I.e.:
+ *   entry == BUY --> exit == SELL
+ *   entry == SELL --> exit == BUY
  */
 public class Trade {
 
+    /** The entry order */
     private Order entry;
 
+    /** The exit order */
     private Order exit;
 
+    /** The type of the entry order */
     private OrderType startingType;
 
     /**
@@ -45,7 +52,7 @@ public class Trade {
 
     /**
      * Constructor.
-     * @param startingType the starting {@link OrderType order type} of the trade
+     * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
      */
     public Trade(OrderType startingType) {
         if (startingType == null) {
@@ -63,6 +70,7 @@ public class Trade {
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both orders must have different types");
         }
+        this.startingType = entry.getType();
         this.entry = entry;
         this.exit = exit;
     }

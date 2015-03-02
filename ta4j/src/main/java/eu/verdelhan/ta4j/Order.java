@@ -23,13 +23,16 @@
 package eu.verdelhan.ta4j;
 
 /**
- * An order of a {@link Trade trade}.
+ * An order.
  * <p>
  * The order is defined by:
  * <ul>
  * <li>the index (in the {@link TimeSeries time series}) it is executed
  * <li>a {@link OrderType type} (BUY or SELL)
+ * <li>a price (optional)
+ * <li>an amount to be (or that was) ordered (optional)
  * </ul>
+ * A {@link Trade trade} is a pair of complementary orders.
  */
 public class Order {
 
@@ -69,7 +72,7 @@ public class Order {
     /** The price for the order */
     private Decimal price = Decimal.NaN;
     
-    /** The amount to be (or that was) ordered in the order */
+    /** The amount to be (or that was) ordered */
     private Decimal amount = Decimal.NaN;
     
     /**
@@ -87,7 +90,7 @@ public class Order {
      * @param index the index the order is executed
      * @param type the type of the order
      * @param price the price for the order
-     * @param amount the amount to be (or that was) ordered in the order
+     * @param amount the amount to be (or that was) ordered
      */
     protected Order(int index, OrderType type, Decimal price, Decimal amount) {
         this(index, type);
