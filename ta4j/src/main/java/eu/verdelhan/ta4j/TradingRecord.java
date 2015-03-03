@@ -104,4 +104,9 @@ public class TradingRecord {
     public int getTradeCount() {
         return trades.size();
     }
+    
+    public Order getLastOrder(OrderType orderType) {
+        // TODO
+        return null;
+    }
 }
