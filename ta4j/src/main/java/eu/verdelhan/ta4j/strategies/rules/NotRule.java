@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.strategies.rules;
 
 import eu.verdelhan.ta4j.Rule;
+import eu.verdelhan.ta4j.TradingRecord;
 
 /**
  *
@@ -36,7 +37,7 @@ public class NotRule extends AbstractRule {
     }
 
     @Override
-    public boolean isSatisfied(int index) {
-        return !rule.isSatisfied(index);
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        return !rule.isSatisfied(index, tradingRecord);
     }
 }

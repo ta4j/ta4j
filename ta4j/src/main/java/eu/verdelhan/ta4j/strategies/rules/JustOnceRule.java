@@ -22,6 +22,8 @@
  */
 package eu.verdelhan.ta4j.strategies.rules;
 
+import eu.verdelhan.ta4j.TradingRecord;
+
 /**
  *
  */
@@ -30,7 +32,7 @@ public class JustOnceRule extends AbstractRule {
     private boolean satisfied = false;
 
     @Override
-    public boolean isSatisfied(int index) {
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (!satisfied) {
             satisfied = true;
             return true;

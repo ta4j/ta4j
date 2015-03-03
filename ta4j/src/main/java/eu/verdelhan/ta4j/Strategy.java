@@ -36,6 +36,14 @@ public class Strategy {
     
     private Rule exitRule;
 
+    public Strategy() {
+    }
+
+    public Strategy(Rule entryRule, Rule exitRule) {
+        this.entryRule = entryRule;
+        this.exitRule = exitRule;
+    }
+    
     public void setEntryRule(Rule entryRule) {
         this.entryRule = entryRule;
     }
@@ -45,33 +53,51 @@ public class Strategy {
     }
     
     /**
-     * @param tradingRecord the trading record
      * @param index the index
+     * @param tradingRecord the potentially needed trading history
      * @return true to recommend an order, false otherwise (no recommendation)
      */
-    public boolean shouldOperate(TradingRecord tradingRecord, int index) {
+    public boolean shouldOperate(int index, TradingRecord tradingRecord) {
         Trade trade = tradingRecord.getCurrentTrade();
         if (trade.isNew()) {
-            return shouldEnter(index);
+            return shouldEnter(index, tradingRecord);
         } else if (trade.isOpened()) {
-            return shouldExit(index);
+            return shouldExit(index, tradingRecord);
         }
         return false;
     }
 
     /**
      * @param index the index
-     * @return true to recommend to enter (BUY {@link Order order}), false otherwise
+     * @return true to recommend to enter, false otherwise
      */
     public boolean shouldEnter(int index) {
-        return entryRule.isSatisfied(index);
+        return shouldEnter(index, null);
     }
 
     /**
      * @param index the index
-     * @return true to recommend to exit (SELL {@link Order order}), false otherwise
+     * @param tradingRecord the potentially needed trading history
+     * @return true to recommend to enter, false otherwise
+     */
+    public boolean shouldEnter(int index, TradingRecord tradingRecord) {
+        return entryRule.isSatisfied(index, tradingRecord);
+    }
+
+    /**
+     * @param index the index
+     * @return true to recommend to exit, false otherwise
      */
     public boolean shouldExit(int index) {
-        return exitRule.isSatisfied(index);
+        return shouldExit(index, null);
+    }
+
+    /**
+     * @param index the index
+     * @param tradingRecord the potentially needed trading history
+     * @return true to recommend to exit, false otherwise
+     */
+    public boolean shouldExit(int index, TradingRecord tradingRecord) {
+        return exitRule.isSatisfied(index, tradingRecord);
     }
 }

@@ -20,34 +20,36 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
+package eu.verdelhan.ta4j.strategies.rules;
 
-import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Strategy;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
-public class MockStrategy extends Strategy {
+public class FixedRuleTest {
 
-    private Order[] enter;
-
-    private Order[] exit;
-
-    public MockStrategy(Order[] enter, Order[] exit) {
-        this.enter = enter;
-        this.exit = exit;
-    }
-
-    @Override
-    public boolean shouldEnter(int index) {
-        return (enter[index] != null);
-    }
-
-    @Override
-    public boolean shouldExit(int index) {
-        return (exit[index] != null);
-    }
-
-    @Override
-    public String toString() {
-        return "Mock Strategy";
+    private FixedRule fixedRule;
+    
+    @Test
+    public void isSatisfied() {
+        fixedRule = new FixedRule();
+        assertFalse(fixedRule.isSatisfied(0));
+        assertFalse(fixedRule.isSatisfied(1));
+        assertFalse(fixedRule.isSatisfied(2));
+        assertFalse(fixedRule.isSatisfied(9));
+        
+        fixedRule = new FixedRule(1, 2, 3);
+        assertFalse(fixedRule.isSatisfied(0));
+        assertTrue(fixedRule.isSatisfied(1));
+        assertTrue(fixedRule.isSatisfied(2));
+        assertTrue(fixedRule.isSatisfied(3));
+        assertFalse(fixedRule.isSatisfied(4));
+        assertFalse(fixedRule.isSatisfied(5));
+        assertFalse(fixedRule.isSatisfied(6));
+        assertFalse(fixedRule.isSatisfied(7));
+        assertFalse(fixedRule.isSatisfied(8));
+        assertFalse(fixedRule.isSatisfied(9));
+        assertFalse(fixedRule.isSatisfied(10));
     }
 }
+        

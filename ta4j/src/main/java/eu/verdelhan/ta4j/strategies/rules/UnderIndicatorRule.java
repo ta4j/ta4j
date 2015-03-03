@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.strategies.rules;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
@@ -56,7 +57,7 @@ public class UnderIndicatorRule extends AbstractRule {
     }
 
     @Override
-    public boolean isSatisfied(int index) {
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         return first.getValue(index).isLessThan(second.getValue(index));
     }
 }

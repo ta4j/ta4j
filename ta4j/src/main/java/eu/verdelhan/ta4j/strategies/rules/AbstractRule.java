@@ -54,6 +54,11 @@ public abstract class AbstractRule implements Rule {
         return new NotRule(this);
     }
 
+    @Override
+    public boolean isSatisfied(int index) {
+        return isSatisfied(index, null);
+    }
+    
     /**
      * Traces the isSatisfied() method calls.
      * @param index the index

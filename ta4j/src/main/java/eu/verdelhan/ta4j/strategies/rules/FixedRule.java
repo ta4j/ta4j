@@ -20,46 +20,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j;
+package eu.verdelhan.ta4j.strategies.rules;
+
+import eu.verdelhan.ta4j.TradingRecord;
+import java.util.Arrays;
 
 /**
- * A rule for strategy building.
+ *
  */
-public interface Rule {
+public class FixedRule extends AbstractRule {
 
-    /**
-     * @param rule another trading rule
-     * @return a rule which is the AND combination of this rule with the provided one
-     */
-    Rule and(Rule rule);
+    private final int[] indexes;
 
-    /**
-     * @param rule another trading rule
-     * @return a rule which is the OR combination of this rule with the provided one
-     */
-    Rule or(Rule rule);
+    public FixedRule(int... indexes) {
+        this.indexes = Arrays.copyOf(indexes, indexes.length);
+    }
 
-    /**
-     * @param rule another trading rule
-     * @return a rule which is the XOR combination of this rule with the provided one
-     */
-    Rule xor(Rule rule);
-
-    /**
-     * @return a rule which is the logical negation of this rule
-     */
-    Rule negation();
-    
-    /**
-     * @param index the index
-     * @return true if this rule is satisfied for the provided index, false otherwise
-     */
-    boolean isSatisfied(int index);
-    
-    /**
-     * @param index the index
-     * @param tradingRecord the potentially needed trading history
-     * @return true if this rule is satisfied for the provided index, false otherwise
-     */
-    boolean isSatisfied(int index, TradingRecord tradingRecord);
+    @Override
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        for (int i = 0; i < indexes.length; i++) {
+            if (indexes[i] == index) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

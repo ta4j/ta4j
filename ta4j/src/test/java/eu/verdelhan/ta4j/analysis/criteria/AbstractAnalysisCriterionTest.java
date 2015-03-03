@@ -22,11 +22,10 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
-import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.mocks.MockStrategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.strategies.rules.BooleanRule;
+import eu.verdelhan.ta4j.strategies.rules.FixedRule;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.*;
@@ -37,17 +36,14 @@ public class AbstractAnalysisCriterionTest {
 
     private Strategy alwaysStrategy;
 
-    private MockStrategy buyAndHoldStrategy;
+    private Strategy buyAndHoldStrategy;
 
     private List<Strategy> strategies;
 
     @Before
     public void setUp() {
-        alwaysStrategy = new Strategy();
-        alwaysStrategy.setEntryRule(BooleanRule.TRUE);
-        alwaysStrategy.setExitRule(BooleanRule.TRUE);
-        buyAndHoldStrategy = new MockStrategy(new Order[] { Order.buyAt(0), null, null, null },
-                new Order[] { null, null, null, Order.sellAt(4) });
+        alwaysStrategy = new Strategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        buyAndHoldStrategy = new Strategy(new FixedRule(0), new FixedRule(4));
         strategies = new ArrayList<Strategy>();
         strategies.add(alwaysStrategy);
         strategies.add(buyAndHoldStrategy);
