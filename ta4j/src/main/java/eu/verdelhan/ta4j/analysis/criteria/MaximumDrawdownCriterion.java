@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -59,9 +60,15 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-        TradingRecord tradingRecord = new TradingRecord(trade.getEntry().getType());
-        tradingRecord.addTrade(trade);
-        return calculate(series, tradingRecord);
+        if (trade != null && trade.getEntry() != null && trade.getExit()!= null) {
+            Order entry = trade.getEntry();
+            Order exit = trade.getExit();
+            TradingRecord tradingRecord = new TradingRecord(entry.getType());
+            tradingRecord.operate(entry.getIndex(), entry.getPrice(), entry.getAmount());
+            tradingRecord.operate(exit.getIndex(), exit.getPrice(), exit.getAmount());
+            return calculate(series, tradingRecord);
+        }
+        return 0;
     }
 
     @Override

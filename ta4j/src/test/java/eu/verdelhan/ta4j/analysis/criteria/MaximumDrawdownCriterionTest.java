@@ -27,11 +27,8 @@ import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -70,11 +67,9 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void calculateWithNullSeriesSizeShouldReturn1() {
+    public void calculateWithNullSeriesSizeShouldReturn0() {
         MockTimeSeries series = new MockTimeSeries(new double[] {});
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        List<Trade> trades = new ArrayList<Trade>();
-
         assertEquals(0d, mdd.calculate(series, new TradingRecord(OrderType.BUY)), TATestsUtils.TA_OFFSET);
     }
 

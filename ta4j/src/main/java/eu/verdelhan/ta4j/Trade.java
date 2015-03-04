@@ -104,18 +104,34 @@ public class Trade {
     }
 
     /**
-     * Operates the trade at the i-th position
-     * @param i the index
+     * Operates the trade at the index-th position
+     * @param index the index
+     * @return the order
      */
-    public void operate(int i) {
+    public Order operate(int index) {
+        return operate(index, Decimal.NaN, Decimal.NaN);
+    }
+
+    /**
+     * Operates the trade at the index-th position
+     * @param index the index
+     * @param price the price
+     * @param amount the amount
+     * @return the order
+     */
+    public Order operate(int index, Decimal price, Decimal amount) {
+        Order order = null;
         if (isNew()) {
-            entry = new Order(i, startingType);
+            order = new Order(index, startingType, price, amount);
+            entry = order;
         } else if (isOpened()) {
-            if (i < entry.getIndex()) {
+            if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryOrder index");
             }
-            exit = new Order(i, startingType.complementType());
+            order = new Order(index, startingType.complementType(), price, amount);
+            exit = order;
         }
+        return order;
     }
 
     /**

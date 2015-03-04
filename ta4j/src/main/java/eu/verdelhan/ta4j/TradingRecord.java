@@ -68,10 +68,6 @@ public class TradingRecord {
         return currentTrade;
     }
     
-    public void addTrade(Trade trade) {
-        trades.add(trade);
-    }
-    
     public void operate(int index) {
         operate(index, Decimal.NaN, Decimal.NaN);
     }
@@ -103,6 +99,11 @@ public class TradingRecord {
     
     public int getTradeCount() {
         return trades.size();
+    }
+    
+    public Order getLastOrder() {
+        // TODO
+        return null;
     }
     
     public Order getLastOrder(OrderType orderType) {

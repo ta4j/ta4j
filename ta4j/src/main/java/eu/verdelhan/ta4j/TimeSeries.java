@@ -394,7 +394,7 @@ public class TimeSeries {
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick in the sub-series...
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, Decimal.NaN, Decimal.NaN);
+                tradingRecord.operate(i);
             }
         }
 
@@ -405,7 +405,7 @@ public class TimeSeries {
                 // For each tick out of sub-series bound...
                 // --> Trying to close the last trade
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, Decimal.NaN, Decimal.NaN);
+                    tradingRecord.operate(i);
                     break;
                 }
             }
