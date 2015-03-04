@@ -31,6 +31,12 @@ import java.util.List;
  */
 public class TradingRecord {
 
+    private List<Order> orders = new ArrayList<Order>();
+    
+    private List<Order> buyOrders = new ArrayList<Order>();
+    
+    private List<Order> sellOrders = new ArrayList<Order>();
+    
     private List<Trade> trades = new ArrayList<Trade>();
 
     private OrderType startingType;
@@ -56,11 +62,9 @@ public class TradingRecord {
             Order o1 = orders[i];
             Order o2 = i+1 < orders.length ? orders[i+1] : null;
             currentTrade = new Trade(o1, o2);
-            if (currentTrade.isClosed()) {
-                // Adding the trade when closed
-                trades.add(currentTrade);
-                currentTrade = new Trade(startingType);
-            }
+            recordOrder(o1);
+            recordOrder(o2);
+            recordTrade();
         }
     }
     
@@ -73,12 +77,8 @@ public class TradingRecord {
     }
     
     public final void operate(int index, Decimal price, Decimal amount) {
-        currentTrade.operate(index);
-        if (currentTrade.isClosed()) {
-            // Adding the trade when closed
-            trades.add(currentTrade);
-            currentTrade = new Trade(startingType);
-        }
+        recordOrder(currentTrade.operate(index, price, amount));
+        recordTrade();
     }
     
     public boolean isClosed() {
@@ -102,12 +102,37 @@ public class TradingRecord {
     }
     
     public Order getLastOrder() {
-        // TODO
+        if (!orders.isEmpty()) {
+            return orders.get(orders.size() - 1);
+        }
         return null;
     }
     
     public Order getLastOrder(OrderType orderType) {
-        // TODO
+        if (OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
+            return buyOrders.get(buyOrders.size() - 1);
+        } else if (OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
+            return sellOrders.get(sellOrders.size() - 1);
+        }
         return null;
+    }
+    
+    private void recordOrder(Order order) {
+        if (order != null) {
+            orders.add(order);
+            if (OrderType.BUY.equals(order.getType())) {
+                buyOrders.add(order);
+            } else if (OrderType.SELL.equals(order.getType())) {
+                sellOrders.add(order);
+            }
+        }
+    }
+    
+    private void recordTrade() {
+        if (currentTrade.isClosed()) {
+            // Adding the trade when closed
+            trades.add(currentTrade);
+            currentTrade = new Trade(startingType);
+        }
     }
 }
