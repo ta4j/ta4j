@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -39,7 +38,7 @@ public class NumberOfTicksCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(0, (int) numberOfTicks.calculate(series, new TradingRecord(OrderType.BUY)));
+        assertEquals(0, (int) numberOfTicks.calculate(series, new TradingRecord()));
     }
 
     @Test

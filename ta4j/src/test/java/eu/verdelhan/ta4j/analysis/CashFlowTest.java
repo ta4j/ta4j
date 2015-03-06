@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j.analysis;
 
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import static eu.verdelhan.ta4j.TATestsUtils.*;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
@@ -39,7 +38,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowSize() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(1d, 2d, 3d, 4d, 5d);
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OrderType.BUY));
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord());
         assertEquals(5, cashFlow.getSize());
     }
 
@@ -178,7 +177,7 @@ public class CashFlowTest {
     @Test
     public void cashFlowValueWithNoTrades() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
-        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord(OrderType.BUY));
+        CashFlow cashFlow = new CashFlow(sampleTimeSeries, new TradingRecord());
         assertDecimalEquals(cashFlow.getValue(4), 1);
         assertDecimalEquals(cashFlow.getValue(7), 1);
         assertDecimalEquals(cashFlow.getValue(9), 1);

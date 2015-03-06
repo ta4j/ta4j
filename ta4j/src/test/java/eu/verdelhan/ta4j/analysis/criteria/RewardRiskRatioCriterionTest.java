@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -70,7 +69,7 @@ public class RewardRiskRatioCriterionTest {
     @Test
     public void rewardRiskRatioCriterionWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
-        assertTrue(Double.isInfinite(rrc.calculate(series, new TradingRecord(OrderType.BUY))));
+        assertTrue(Double.isInfinite(rrc.calculate(series, new TradingRecord())));
     }
     
     @Test

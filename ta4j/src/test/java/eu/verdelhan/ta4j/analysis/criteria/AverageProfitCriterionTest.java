@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -67,7 +66,7 @@ public class AverageProfitCriterionTest {
     public void calculateWithNoTicksShouldReturn1() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1d, averageProfit.calculate(series, new TradingRecord(OrderType.BUY)), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, averageProfit.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
     }
 
     @Test

@@ -37,6 +37,10 @@ public class TradingRecord {
     
     private List<Order> sellOrders = new ArrayList<Order>();
     
+    private List<Order> entryOrders = new ArrayList<Order>();
+    
+    private List<Order> exitOrders = new ArrayList<Order>();
+    
     private List<Trade> trades = new ArrayList<Trade>();
 
     private OrderType startingType;
@@ -45,62 +49,109 @@ public class TradingRecord {
 
     /**
      * Constructor.
-     * @param startingType the starting {@link OrderType order type} of the trading session
      */
-    public TradingRecord(OrderType startingType) {
-        if (startingType == null) {
+    public TradingRecord() {
+        this(OrderType.BUY);
+    }
+    
+    /**
+     * Constructor.
+     * @param entryOrderType the {@link OrderType order type} of entries in the trading session
+     */
+    public TradingRecord(OrderType entryOrderType) {
+        if (entryOrderType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
-        this.startingType = startingType;
-        currentTrade = new Trade(startingType);
+        this.startingType = entryOrderType;
+        currentTrade = new Trade(entryOrderType);
     }
 
+    /**
+     * Constructor.
+     * @param orders the orders to be recorded (cannot be empty)
+     */
     public TradingRecord(Order... orders) {
-        // TODO add length check
         this(orders[0].getType());
-        for (int i = 0; i < orders.length - 1; i += 2) {
-            Order o1 = orders[i];
-            Order o2 = i+1 < orders.length ? orders[i+1] : null;
-            currentTrade = new Trade(o1, o2);
-            recordOrder(o1);
-            recordOrder(o2);
-            recordTrade();
+        for (Order o : orders) {
+            boolean newOrderWillBeAnEntry = currentTrade.isNew();
+            if (newOrderWillBeAnEntry && o.getType() != startingType) {
+                // Special case for entry/exit types reversal
+                // E.g.: BUY, SELL,
+                //    BUY, SELL,
+                //    SELL, BUY,
+                //    BUY, SELL
+                currentTrade = new Trade(o.getType());
+            }
+            Order newOrder = currentTrade.operate(o.getIndex(), o.getPrice(), o.getAmount());
+            recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
     
+    /**
+     * @return the current trade
+     */
     public Trade getCurrentTrade() {
         return currentTrade;
     }
     
+    /**
+     * Operates an order in the trading record.
+     * @param index the index to operate the order
+     */
     public void operate(int index) {
         operate(index, Decimal.NaN, Decimal.NaN);
     }
     
+    /**
+     * Operates an order in the trading record.
+     * @param index the index to operate the order
+     * @param price the price of the order
+     * @param amount the amount to be ordered
+     */
     public final void operate(int index, Decimal price, Decimal amount) {
-        recordOrder(currentTrade.operate(index, price, amount));
-        recordTrade();
+        if (currentTrade.isClosed()) {
+            // Current trade closed, should not occur
+            throw new IllegalStateException("Current trade should not be closed");
+        }
+        boolean newOrderWillBeAnEntry = currentTrade.isNew();
+        Order newOrder = currentTrade.operate(index, price, amount);
+        recordOrder(newOrder, newOrderWillBeAnEntry);
     }
     
+    /**
+     * @return true if no trade is open, false otherwise
+     */
     public boolean isClosed() {
         return !currentTrade.isOpened();
     }
     
-    public boolean isEmpty() {
-        return trades.isEmpty();
-    }
-    
-    public Trade getTrade(int index) {
-        return trades.get(index);
-    }
-    
+    /**
+     * @return the recorded trades
+     */
     public List<Trade> getTrades() {
         return trades;
     }
     
+    /**
+     * @return the number of recorded trades
+     */
     public int getTradeCount() {
         return trades.size();
     }
     
+    /**
+     * @return the last trade recorded
+     */
+    public Trade getLastTrade() {
+        if (!trades.isEmpty()) {
+            return trades.get(trades.size() - 1);
+        }
+        return null;
+    }
+    
+    /**
+     * @return the last order recorded
+     */
     public Order getLastOrder() {
         if (!orders.isEmpty()) {
             return orders.get(orders.size() - 1);
@@ -108,6 +159,10 @@ public class TradingRecord {
         return null;
     }
     
+    /**
+     * @param orderType the type of the order to get the last of
+     * @return the last order (of the provided type) recorded
+     */
     public Order getLastOrder(OrderType orderType) {
         if (OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
             return buyOrders.get(buyOrders.size() - 1);
@@ -117,20 +172,55 @@ public class TradingRecord {
         return null;
     }
     
-    private void recordOrder(Order order) {
-        if (order != null) {
-            orders.add(order);
-            if (OrderType.BUY.equals(order.getType())) {
-                buyOrders.add(order);
-            } else if (OrderType.SELL.equals(order.getType())) {
-                sellOrders.add(order);
-            }
+    /**
+     * @return the last entry order recorded
+     */
+    public Order getLastEntry() {
+        if (!entryOrders.isEmpty()) {
+            return entryOrders.get(entryOrders.size() - 1);
         }
+        return null;
     }
     
-    private void recordTrade() {
+    /**
+     * @return the last exit order recorded
+     */
+    public Order getLastExit() {
+        if (!exitOrders.isEmpty()) {
+            return exitOrders.get(exitOrders.size() - 1);
+        }
+        return null;
+    }
+
+    /**
+     * Records an order and the corresponding trade (if closed).
+     * @param order the order to be recorded
+     * @param isEntry true if the order is an entry, false otherwise (exit)
+     */
+    private void recordOrder(Order order, boolean isEntry) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order should not be null");
+        }
+        
+        // Storing the new order in entries/exits lists
+        if (isEntry) {
+            entryOrders.add(order);
+        } else {
+            exitOrders.add(order);
+        }
+        
+        // Storing the new order in orders list
+        orders.add(order);
+        if (OrderType.BUY.equals(order.getType())) {
+            // Storing the new order in buy orders list
+            buyOrders.add(order);
+        } else if (OrderType.SELL.equals(order.getType())) {
+            // Storing the new order in sell orders list
+            sellOrders.add(order);
+        }
+
+        // Storing the trade if closed
         if (currentTrade.isClosed()) {
-            // Adding the trade when closed
             trades.add(currentTrade);
             currentTrade = new Trade(startingType);
         }

@@ -24,13 +24,10 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -39,10 +36,9 @@ public class NumberOfTradesCriterionTest {
     @Test
     public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-        List<Trade> trades = new ArrayList<Trade>();
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(0d, buyAndHold.calculate(series, new TradingRecord(OrderType.BUY)), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, buyAndHold.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
     }
 
     @Test

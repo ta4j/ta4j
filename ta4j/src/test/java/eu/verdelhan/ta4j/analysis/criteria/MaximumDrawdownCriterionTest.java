@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -39,7 +38,7 @@ public class MaximumDrawdownCriterionTest {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 
-        assertEquals(0d, mdd.calculate(series, new TradingRecord(OrderType.BUY)), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -70,7 +69,7 @@ public class MaximumDrawdownCriterionTest {
     public void calculateWithNullSeriesSizeShouldReturn0() {
         MockTimeSeries series = new MockTimeSeries(new double[] {});
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        assertEquals(0d, mdd.calculate(series, new TradingRecord(OrderType.BUY)), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
     }
 
     @Test

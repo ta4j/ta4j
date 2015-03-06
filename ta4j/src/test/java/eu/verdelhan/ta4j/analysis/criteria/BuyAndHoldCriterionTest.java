@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -61,7 +60,7 @@ public class BuyAndHoldCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(0.7, buyAndHold.calculate(series, new TradingRecord(OrderType.BUY)), TATestsUtils.TA_OFFSET);
+        assertEquals(0.7, buyAndHold.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
     }
     
     @Test
