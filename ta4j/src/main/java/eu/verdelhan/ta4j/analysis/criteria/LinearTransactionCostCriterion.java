@@ -75,6 +75,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
         double totalCosts = 0d;
         double tradedAmount = initialAmount;
+        
         for (Trade trade : tradingRecord.getTrades()) {
             double tradeCost = getTradeCost(series, trade, tradedAmount);
             totalCosts += tradeCost;
@@ -83,6 +84,13 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             //    - Multiply by the profit ratio
             tradedAmount = (tradedAmount - tradeCost) * profit.calculate(series, trade);
         }
+        
+        // Special case: if the current trade is open
+        Trade currentTrade = tradingRecord.getCurrentTrade();
+        if (currentTrade.isOpened()) {
+            totalCosts += getOrderCost(currentTrade.getEntry(), tradedAmount);
+        }
+        
         return totalCosts;
     }
 

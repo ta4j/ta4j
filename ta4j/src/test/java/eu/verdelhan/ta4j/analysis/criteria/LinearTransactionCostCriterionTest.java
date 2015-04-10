@@ -46,9 +46,8 @@ public class LinearTransactionCostCriterionTest {
         tradingRecord.operate(3);
         assertEquals(24.3473, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
-        // TODO
-//        tradingRecord.operate(5);
-//        assertEquals(28.2204, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        tradingRecord.operate(5);
+        assertEquals(28.2204, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
@@ -63,9 +62,8 @@ public class LinearTransactionCostCriterionTest {
         tradingRecord.operate(3);
         assertEquals(5.2d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
-        // TODO
-//        tradingRecord.operate(0);
-//        assertEquals(6.5d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        tradingRecord.operate(0);
+        assertEquals(6.5d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
