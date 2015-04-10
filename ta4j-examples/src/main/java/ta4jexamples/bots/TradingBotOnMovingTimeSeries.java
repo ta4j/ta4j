@@ -28,8 +28,8 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
-import eu.verdelhan.ta4j.strategies.rules.OverIndicatorRule;
-import eu.verdelhan.ta4j.strategies.rules.UnderIndicatorRule;
+import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
+import eu.verdelhan.ta4j.trading.rules.UnderIndicatorRule;
 import org.joda.time.DateTime;
 import ta4jexamples.loaders.CsvTradesLoader;
 

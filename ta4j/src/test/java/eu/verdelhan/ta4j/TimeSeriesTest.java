@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j;
 import eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.strategies.rules.FixedRule;
+import eu.verdelhan.ta4j.trading.rules.FixedRule;
 import java.util.LinkedList;
 import java.util.List;
 import org.joda.time.DateTime;

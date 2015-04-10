@@ -24,8 +24,8 @@ package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import eu.verdelhan.ta4j.strategies.rules.BooleanRule;
-import eu.verdelhan.ta4j.strategies.rules.FixedRule;
+import eu.verdelhan.ta4j.trading.rules.BooleanRule;
+import eu.verdelhan.ta4j.trading.rules.FixedRule;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.*;
