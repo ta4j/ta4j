@@ -23,42 +23,51 @@
 package eu.verdelhan.ta4j.strategies.rules;
 
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- *
- */
-public class StopLossRule extends AbstractRule {
+public class StopLossRuleTest {
 
-    /** The close price indicator */
+    private TradingRecord tradingRecord;
     private ClosePriceIndicator closePrice;
+    private StopLossRule rule;
     
-    /** The loss ratio threshold (e.g. 0.97 for 3%) */
-    private Decimal lossRatioThreshold;
-
-    /**
-     * Constructor.
-     * @param closePrice the close price indicator
-     * @param lossPercentage the loss percentage
-     */
-    public StopLossRule(ClosePriceIndicator closePrice, Decimal lossPercentage) {
-        this.closePrice = closePrice;
-        this.lossRatioThreshold = Decimal.HUNDRED.minus(lossPercentage).dividedBy(Decimal.HUNDRED);
+    @Before
+    public void setUp() {
+        tradingRecord = new TradingRecord();
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(
+                100, 105, 110, 120, 100, 150, 110, 100
+        ));
     }
-
-    @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null) {
-            Trade currentTrade = tradingRecord.getCurrentTrade();
-            if (currentTrade.isOpened()) {
-                Decimal entryPrice = currentTrade.getEntry().getPrice();
-                Decimal currentPrice = closePrice.getValue(index);
-                return currentPrice.isLessThanOrEqual(entryPrice.multipliedBy(lossRatioThreshold));
-            }
-        }
-        // No trading history or no trade opened, no loss
-        return false;
+    
+    @Test
+    public void isSatisfied() {
+        final Decimal tradedAmount = Decimal.ONE;
+        
+        // 5% stop-loss
+        rule = new StopLossRule(closePrice, Decimal.valueOf("5"));
+        
+        assertFalse(rule.isSatisfied(0, null));
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+        
+        // Enter at 114
+        tradingRecord.operate(2, Decimal.valueOf("114"), tradedAmount);
+        assertFalse(rule.isSatisfied(2, tradingRecord));
+        assertFalse(rule.isSatisfied(3, tradingRecord));
+        assertTrue(rule.isSatisfied(4, tradingRecord));
+        // Exit
+        tradingRecord.operate(5);
+        
+        // Enter at 128
+        tradingRecord.operate(5, Decimal.valueOf("128"), tradedAmount);
+        assertFalse(rule.isSatisfied(5, tradingRecord));
+        assertTrue(rule.isSatisfied(6, tradingRecord));
+        assertTrue(rule.isSatisfied(7, tradingRecord));
     }
 }
+        
