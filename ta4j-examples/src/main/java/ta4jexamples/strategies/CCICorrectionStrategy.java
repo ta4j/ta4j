@@ -22,10 +22,15 @@
  */
 package ta4jexamples.strategies;
 
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
+import eu.verdelhan.ta4j.indicators.oscillators.CCIIndicator;
+import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
+import eu.verdelhan.ta4j.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -44,23 +49,18 @@ public class CCICorrectionStrategy {
             throw new IllegalArgumentException("Series cannot be null");
         }
 
-//        CCIIndicator longCci = new CCIIndicator(series, 200);
-//        CCIIndicator shortCci = new CCIIndicator(series, 5);
-//        ConstantIndicator<Decimal> plus100 = new ConstantIndicator<Decimal>(Decimal.HUNDRED);
-//        ConstantIndicator<Decimal> minus100 = new ConstantIndicator<Decimal>(Decimal.valueOf(-100));
-//
-//        // Trend
-//        IndicatorOverIndicatorStrategy bullTrend = new IndicatorOverIndicatorStrategy(longCci, plus100);
-//        IndicatorOverIndicatorStrategy bearTrend = new IndicatorOverIndicatorStrategy(longCci, minus100);
-//        Strategy trend = new CombinedEntryAndExitStrategy(bullTrend, bearTrend);
-//
-//        // Signals
-//        IndicatorOverIndicatorStrategy buySignal = new IndicatorOverIndicatorStrategy(minus100, shortCci);
-//        IndicatorOverIndicatorStrategy sellSignal = new IndicatorOverIndicatorStrategy(plus100, shortCci);
-//        Strategy signals = new CombinedEntryAndExitStrategy(buySignal, sellSignal);
-//
-//        return trend.and(signals);
-        return new Strategy();
+        CCIIndicator longCci = new CCIIndicator(series, 200);
+        CCIIndicator shortCci = new CCIIndicator(series, 5);
+        Decimal plus100 = Decimal.HUNDRED;
+        Decimal minus100 = Decimal.valueOf(-100);
+        
+        Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
+                .and(new UnderIndicatorRule(shortCci, minus100)); // Signal
+        
+        Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
+                .and(new OverIndicatorRule(shortCci, plus100)); // Signal
+        
+        return new Strategy(entryRule, exitRule);
     }
 
     public static void main(String[] args) {

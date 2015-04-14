@@ -26,6 +26,7 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
  *
@@ -34,6 +35,15 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     /** The cross indicator */
     private CrossIndicator cross;
+
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param threshold a threshold
+     */
+    public CrossedDownIndicatorRule(Indicator<Decimal> indicator, Decimal threshold) {
+        this(indicator, new ConstantIndicator<Decimal>(threshold));
+    }
 
     /**
      * Constructor.

@@ -25,6 +25,7 @@ package ta4jexamples;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.CashFlow;
@@ -33,7 +34,12 @@ import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.VersusBuyAndHoldCriterion;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
+import eu.verdelhan.ta4j.trading.rules.CrossedDownIndicatorRule;
+import eu.verdelhan.ta4j.trading.rules.CrossedUpIndicatorRule;
+import eu.verdelhan.ta4j.trading.rules.StopGainRule;
+import eu.verdelhan.ta4j.trading.rules.StopLossRule;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -66,24 +72,27 @@ public class Quickstart {
         SMAIndicator longSma = new SMAIndicator(closePrice, 30);
 
 
-        // Ok, now let's building our trading strategy!
+        // Ok, now let's building our trading rules!
 
-//        // Initial strategy:
-//        //  - Buy when 5-ticks SMA crosses over 30-ticks SMA
-//        //  - Sell when 5-ticks SMA crosses under 30-ticks SMA
-//        Strategy ourStrategy = new IndicatorCrossedIndicatorStrategy(shortSma, longSma);
-//
-//        // Cutomizing our strategy...
-//        // We want to buy if the price goes below a defined price (e.g $800.00)
-//        ourStrategy = new SupportStrategy(closePrice, ourStrategy, 800d);
-//        // And we want to sell if the price looses more than 3%
-//        ourStrategy = new StopLossStrategy(closePrice, ourStrategy, 3);
-//        // Or if the price earns more than 2%
-//        ourStrategy = new StopGainStrategy(closePrice, ourStrategy, 2);
-        Strategy ourStrategy = new Strategy();
-
+        // Buying rules
+        // We want to buy:
+        //  - if the 5-ticks SMA crosses over 30-ticks SMA
+        //  - or if the price goes below a defined price (e.g $800.00)
+        ConstantIndicator support = new ConstantIndicator(Decimal.valueOf("800"));
+        Rule buyingRule = new CrossedUpIndicatorRule(shortSma, longSma)
+                .or(new CrossedDownIndicatorRule(closePrice, support));
+        
+        // Selling rules
+        // We want to sell:
+        //  - if the 5-ticks SMA crosses under 30-ticks SMA
+        //  - or if if the price looses more than 3%
+        //  - or if the price earns more than 2%
+        Rule sellingRule = new CrossedDownIndicatorRule(shortSma, longSma)
+                .or(new StopLossRule(closePrice, Decimal.valueOf("3")))
+                .or(new StopGainRule(closePrice, Decimal.valueOf("2")));
+        
         // Running our juicy trading strategy...
-        TradingRecord tradingRecord = series.run(ourStrategy);
+        TradingRecord tradingRecord = series.run(new Strategy(buyingRule, sellingRule));
         System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 
 

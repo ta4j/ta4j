@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.trading.rules;
 
-import eu.verdelhan.ta4j.trading.rules.CrossedDownIndicatorRule;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
