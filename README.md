@@ -50,18 +50,22 @@ Ta4j includes [more than 40 technical indicators](http://github.com/mdeverdelhan
 #### Building a trading strategy
 
 ```java
-// Initial strategy:
-// - Buy when 5-ticks SMA crosses over 30-ticks SMA
-// - Sell when 5-ticks SMA crosses under 30-ticks SMA
-Strategy ourStrategy = new IndicatorCrossedIndicatorStrategy(shortSma, longSma);
+// Buying rules
+// We want to buy:
+//  - if the 5-ticks SMA crosses over 30-ticks SMA
+//  - or if the price goes below a defined price (e.g $800.00)
+ConstantIndicator support = new ConstantIndicator(Decimal.valueOf("800"));
+Rule buyingRule = new CrossedUpIndicatorRule(shortSma, longSma)
+        .or(new CrossedDownIndicatorRule(closePrice, support));
 
-// Cutomizing our strategy...
-// We want to buy if the price goes below a defined price (e.g $800.00)
-ourStrategy = new SupportStrategy(closePrice, ourStrategy, 800d);
-// And we want to sell if the price looses more than 3%
-ourStrategy = new StopLossStrategy(closePrice, ourStrategy, 3);
-// Or if the price earns more than 2%
-ourStrategy = new StopGainStrategy(closePrice, ourStrategy, 2);
+// Selling rules
+// We want to sell:
+//  - if the 5-ticks SMA crosses under 30-ticks SMA
+//  - or if if the price looses more than 3%
+//  - or if the price earns more than 2%
+Rule sellingRule = new CrossedDownIndicatorRule(shortSma, longSma)
+        .or(new StopLossRule(closePrice, Decimal.valueOf("3")))
+        .or(new StopGainRule(closePrice, Decimal.valueOf("2")));
 ```
 
 See also:  [Algorithmic trading strategies](http://en.wikipedia.org/wiki/Algorithmic_trading#Strategies)
@@ -70,27 +74,27 @@ See also:  [Algorithmic trading strategies](http://en.wikipedia.org/wiki/Algorit
 
 ```java
 // Running our juicy trading strategy...
-List<Trade> trades = series.run(ourStrategy);
-System.out.println("Number of trades for our strategy: " + trades.size());
+TradingRecord tradingRecord = series.run(new Strategy(buyingRule, sellingRule));
+System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 ```
 
 #### Analyzing our results
 
 ```java
 // Getting the cash flow of the resulting trades
-CashFlow cashFlow = new CashFlow(series, trades);
+CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
 // Getting the profitable trades ratio
 AnalysisCriterion profitTradesRatio = new AverageProfitableTradesCriterion();
-System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, trades));
+System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, tradingRecord));
 // Getting the reward-risk ratio
 AnalysisCriterion rewardRiskRatio = new RewardRiskRatioCriterion();
-System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, trades));
+System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, tradingRecord));
 
 // Total profit of our strategy
 // vs total profit of a buy-and-hold strategy
 AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, trades));
+System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, tradingRecord));
 ```
 
 ## Maven configuration
