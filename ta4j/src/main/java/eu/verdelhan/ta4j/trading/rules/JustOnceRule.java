@@ -35,8 +35,10 @@ public class JustOnceRule extends AbstractRule {
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (!satisfied) {
             satisfied = true;
+            traceIsSatisfied(index, true);
             return true;
         }
+        traceIsSatisfied(index, false);
         return false;
     }
 }

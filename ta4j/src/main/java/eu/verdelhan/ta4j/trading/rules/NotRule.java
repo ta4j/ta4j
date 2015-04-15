@@ -38,6 +38,8 @@ public class NotRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        return !rule.isSatisfied(index, tradingRecord);
+        final boolean satisfied = !rule.isSatisfied(index, tradingRecord);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

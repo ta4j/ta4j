@@ -22,6 +22,9 @@
  */
 package eu.verdelhan.ta4j;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * A trading strategy.
@@ -31,6 +34,9 @@ package eu.verdelhan.ta4j;
  */
 public class Strategy {
 
+    /** The logger */
+    protected final Logger log = LoggerFactory.getLogger(getClass());
+    
     /** The entry rule */
     private Rule entryRule;
     
@@ -79,7 +85,9 @@ public class Strategy {
      * @return true to recommend to enter, false otherwise
      */
     public boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        return entryRule.isSatisfied(index, tradingRecord);
+        final boolean enter = entryRule.isSatisfied(index, tradingRecord);
+        traceShouldEnter(index, enter);
+        return enter;
     }
 
     /**
@@ -96,6 +104,26 @@ public class Strategy {
      * @return true to recommend to exit, false otherwise
      */
     public boolean shouldExit(int index, TradingRecord tradingRecord) {
-        return exitRule.isSatisfied(index, tradingRecord);
+        final boolean exit = exitRule.isSatisfied(index, tradingRecord);
+        traceShouldExit(index, exit);
+        return exit;
+    }
+
+    /**
+     * Traces the shouldEnter() method calls.
+     * @param index the index
+     * @param enter true if the strategy should enter, false otherwise
+     */
+    protected void traceShouldEnter(int index, boolean enter) {
+        log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
+    }
+
+    /**
+     * Traces the shouldExit() method calls.
+     * @param index the index
+     * @param exit true if the strategy should exit, false otherwise
+     */
+    protected void traceShouldExit(int index, boolean exit) {
+        log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), index, exit);
     }
 }

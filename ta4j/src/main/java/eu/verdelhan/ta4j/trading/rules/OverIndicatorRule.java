@@ -58,6 +58,8 @@ public class OverIndicatorRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        return first.getValue(index).isGreaterThan(second.getValue(index));
+        final boolean satisfied = first.getValue(index).isGreaterThan(second.getValue(index));
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

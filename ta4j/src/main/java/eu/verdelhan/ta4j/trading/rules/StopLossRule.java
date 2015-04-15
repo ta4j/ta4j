@@ -50,15 +50,17 @@ public class StopLossRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        boolean satisfied = false;
+        // No trading history or no trade opened, no loss
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if (currentTrade.isOpened()) {
                 Decimal entryPrice = currentTrade.getEntry().getPrice();
                 Decimal currentPrice = closePrice.getValue(index);
-                return currentPrice.isLessThanOrEqual(entryPrice.multipliedBy(lossRatioThreshold));
+                satisfied = currentPrice.isLessThanOrEqual(entryPrice.multipliedBy(lossRatioThreshold));
             }
         }
-        // No trading history or no trade opened, no loss
-        return false;
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }
