@@ -51,7 +51,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param second the second indicator
      */
     public CrossedDownIndicatorRule(Indicator<Decimal> first, Indicator<Decimal> second) {
-        this.cross = new CrossIndicator(second, first);
+        this.cross = new CrossIndicator(first, second);
     }
 
     @Override
