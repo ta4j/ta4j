@@ -26,29 +26,27 @@ package eu.verdelhan.ta4j;
 /**
  * A trading strategy.
  * <p>
- * Parameter: an {@link Indicator indicator} or another {@link Strategy strategy}
- * <p>
- * Returns an {@link Order order} when giving an index.
+ * A strategy is a pair of {@link Rule rules}. It may recommend to enter or to exit.
+ * Recommendations are based respectively on the entry rule or on the exit rule.
  */
 public class Strategy {
 
+    /** The entry rule */
     private Rule entryRule;
     
+    /** The exit rule */
     private Rule exitRule;
 
-    public Strategy() {
-    }
-
+    /**
+     * Constructor.
+     * @param entryRule the entry rule
+     * @param exitRule the exit rule
+     */
     public Strategy(Rule entryRule, Rule exitRule) {
+        if (entryRule == null || exitRule == null) {
+            throw new IllegalArgumentException("Rules cannot be null");
+        }
         this.entryRule = entryRule;
-        this.exitRule = exitRule;
-    }
-    
-    public void setEntryRule(Rule entryRule) {
-        this.entryRule = entryRule;
-    }
-
-    public void setExitRule(Rule exitRule) {
         this.exitRule = exitRule;
     }
     

@@ -72,9 +72,10 @@ public class TradingBotOnMovingTimeSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        Strategy buySellSignals = new Strategy();
-        buySellSignals.setEntryRule(new OverIndicatorRule(sma, closePrice));
-        buySellSignals.setExitRule(new UnderIndicatorRule(sma, closePrice));
+        Strategy buySellSignals = new Strategy(
+                new OverIndicatorRule(sma, closePrice),
+                new UnderIndicatorRule(sma, closePrice)
+        );
         return buySellSignals;
     }
 

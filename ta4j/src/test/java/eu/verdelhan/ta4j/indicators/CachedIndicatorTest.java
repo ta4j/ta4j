@@ -96,9 +96,10 @@ public class CachedIndicatorTest {
         timeSeries.setMaximumTickCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
         
-        Strategy strategy = new Strategy();
-        strategy.setEntryRule(new OverIndicatorRule(sma, Decimal.THREE));
-        strategy.setExitRule(new UnderIndicatorRule(sma, Decimal.THREE));
+        Strategy strategy = new Strategy(
+                new OverIndicatorRule(sma, Decimal.THREE),
+                new UnderIndicatorRule(sma, Decimal.THREE)
+        );
         // Theoretical shouldEnter results: false, false, false, false, true, true, true, true
         // Theoretical shouldExit results: false, false, true, true, false, false, false, false
 
