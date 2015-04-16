@@ -23,9 +23,11 @@
 package ta4jexamples.bots;
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
@@ -115,6 +117,9 @@ public class TradingBotOnMovingTimeSeries {
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
+        
+        // Initializing the trading history
+        TradingRecord tradingRecord = new TradingRecord();
         System.out.println("************************************************************");
         
         /**
@@ -133,9 +138,25 @@ public class TradingBotOnMovingTimeSeries {
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);
+                if (tradingRecord.getCurrentTrade().isNew()) {
+                    // Entering...
+                    tradingRecord.operate(endIndex, newTick.getClosePrice(), Decimal.TEN);
+                    Order entry = tradingRecord.getLastEntry();
+                    System.out.println("Entered on " + entry.getIndex()
+                            + " (price=" + entry.getPrice().toDouble()
+                            + ", amount=" + entry.getAmount().toDouble() + ")");
+                }
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
                 System.out.println("Strategy should EXIT on " + endIndex);
+                if (tradingRecord.getCurrentTrade().isOpened()) {
+                    // Exiting...
+                    tradingRecord.operate(endIndex, newTick.getClosePrice(), Decimal.TEN);
+                    Order exit = tradingRecord.getLastExit();
+                    System.out.println("Exited on " + exit.getIndex()
+                            + " (price=" + exit.getPrice().toDouble()
+                            + ", amount=" + exit.getAmount().toDouble() + ")");
+                }
             }
         }
     }

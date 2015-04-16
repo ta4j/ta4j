@@ -34,7 +34,6 @@ import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.VersusBuyAndHoldCriterion;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.trading.rules.CrossedDownIndicatorRule;
 import eu.verdelhan.ta4j.trading.rules.CrossedUpIndicatorRule;
@@ -78,9 +77,8 @@ public class Quickstart {
         // We want to buy:
         //  - if the 5-ticks SMA crosses over 30-ticks SMA
         //  - or if the price goes below a defined price (e.g $800.00)
-        ConstantIndicator support = new ConstantIndicator(Decimal.valueOf("800"));
         Rule buyingRule = new CrossedUpIndicatorRule(shortSma, longSma)
-                .or(new CrossedDownIndicatorRule(closePrice, support));
+                .or(new CrossedDownIndicatorRule(closePrice, Decimal.valueOf("800")));
         
         // Selling rules
         // We want to sell:
