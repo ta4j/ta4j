@@ -26,7 +26,10 @@ import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * An OR combination of two {@link Rule rules}.
+ * <p>
+ * Satisfied when one of the two provided rules is satisfied.<br>
+ * Warning: the second rule is not tested if the first rule is satisfied.
  */
 public class OrRule extends AbstractRule {
 
@@ -34,6 +37,11 @@ public class OrRule extends AbstractRule {
     
     private Rule rule2;
 
+    /**
+     * Constructor.
+     * @param rule1 a trading rule
+     * @param rule2 another trading rule
+     */
     public OrRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;
         this.rule2 = rule2;

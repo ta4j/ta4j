@@ -27,24 +27,39 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * A history/record of a trading session.
+ * <p>
  * Holds the full trading record when running a {@link Strategy strategy}.
+ * It is used to:
+ * <ul>
+ * <li>check to satisfaction of some trading rules (when running a strategy)
+ * <li>analyze the performance of a trading strategy
+ * </ul>
  */
 public class TradingRecord {
 
+    /** The recorded orders */
     private List<Order> orders = new ArrayList<Order>();
     
+    /** The recorded BUY orders */
     private List<Order> buyOrders = new ArrayList<Order>();
     
+    /** The recorded SELL orders */
     private List<Order> sellOrders = new ArrayList<Order>();
     
+    /** The recorded entry orders */
     private List<Order> entryOrders = new ArrayList<Order>();
     
+    /** The recorded exit orders */
     private List<Order> exitOrders = new ArrayList<Order>();
     
+    /** The recorded trades */
     private List<Trade> trades = new ArrayList<Trade>();
 
+    /** The entry type (BUY or SELL) in the trading session */
     private OrderType startingType;
     
+    /** The current non-closed trade (there's always one) */
     private Trade currentTrade;
 
     /**

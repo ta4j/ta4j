@@ -23,7 +23,7 @@
 /**
  * Trading rules for trading strategies.
  * <p>
- * Rules can be combined and set as entry/exit signals for a trading {@link Strategy strategy}.
+ * {@link Rule Rules} can be combined and set as entry/exit signals for a trading {@link Strategy strategy}.
  * A trading strategy is designed to achieve a profitable return by going long or short over a {@link TimeSeries time series}.
  */
 package eu.verdelhan.ta4j.trading.rules;

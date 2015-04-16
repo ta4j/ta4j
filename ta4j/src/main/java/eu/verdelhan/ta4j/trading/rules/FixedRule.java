@@ -26,12 +26,18 @@ import eu.verdelhan.ta4j.TradingRecord;
 import java.util.Arrays;
 
 /**
- *
+ * An indexes-based rule.
+ * <p>
+ * Satisfied for provided indexes.
  */
 public class FixedRule extends AbstractRule {
 
     private final int[] indexes;
 
+    /**
+     * Constructor.
+     * @param indexes a sequence of indexes
+     */
     public FixedRule(int... indexes) {
         this.indexes = Arrays.copyOf(indexes, indexes.length);
     }

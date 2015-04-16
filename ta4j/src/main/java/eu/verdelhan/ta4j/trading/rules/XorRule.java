@@ -26,7 +26,9 @@ import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * A XOR combination of two {@link Rule rules}.
+ * <p>
+ * Satisfied when only of the two provided rules is satisfied.
  */
 public class XorRule extends AbstractRule {
 
@@ -34,6 +36,11 @@ public class XorRule extends AbstractRule {
     
     private Rule rule2;
 
+    /**
+     * Constructor.
+     * @param rule1 a trading rule
+     * @param rule2 another trading rule
+     */
     public XorRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;
         this.rule2 = rule2;

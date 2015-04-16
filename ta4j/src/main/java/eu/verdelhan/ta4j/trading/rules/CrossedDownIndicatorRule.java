@@ -29,7 +29,9 @@ import eu.verdelhan.ta4j.indicators.helpers.CrossIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
- *
+ * Crossed-down indicator rule.
+ * <p>
+ * Satisfied when the value of the first {@link Indicator indicator} crosses-down the value of the second one.
  */
 public class CrossedDownIndicatorRule extends AbstractRule {
 

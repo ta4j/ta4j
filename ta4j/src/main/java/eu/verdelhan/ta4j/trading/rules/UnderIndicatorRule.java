@@ -28,7 +28,9 @@ import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
- *
+ * Indicator-under-indicator rule.
+ * <p>
+ * Satisfied when the value of the first {@link Indicator indicator} is strictly lesser than the value of the second one.
  */
 public class UnderIndicatorRule extends AbstractRule {
 

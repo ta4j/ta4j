@@ -28,7 +28,9 @@ import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
- *
+ * Indicator-over-indicator rule.
+ * <p>
+ * Satisfied when the value of the first {@link Indicator indicator} is strictly greater than the value of the second one.
  */
 public class OverIndicatorRule extends AbstractRule {
 

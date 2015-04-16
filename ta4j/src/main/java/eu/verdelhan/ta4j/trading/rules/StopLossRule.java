@@ -28,7 +28,9 @@ import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 
 /**
- *
+ * A stop-loss rule.
+ * <p>
+ * Satisfied when the close price reaches the loss threshold.
  */
 public class StopLossRule extends AbstractRule {
 

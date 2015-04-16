@@ -28,7 +28,9 @@ import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 
 /**
- *
+ * A stop-gain rule.
+ * <p>
+ * Satisfied when the close price reaches the gain threshold.
  */
 public class StopGainRule extends AbstractRule {
 

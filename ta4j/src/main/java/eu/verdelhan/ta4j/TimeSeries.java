@@ -32,8 +32,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Set of {@link Tick ticks} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
+ * Sequence of {@link Tick ticks} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
  * <p>
+ * Notably, a {@link TimeSeries time series} can be:
+ * <ul>
+ * <li>splitted into sub-series
+ * <li>the base of {@link Indicator indicator} calculations
+ * <li>limited to a fixed number of ticks (e.g. for actual trading)
+ * <li>used to run {@link Strategy trading strategies}
+ * </ul>
  */
 public class TimeSeries {
 

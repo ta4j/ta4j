@@ -26,12 +26,19 @@ import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * An opposite (logical operator: NOT) rule.
+ * <p>
+ * Satisfied when provided rule is not satisfied.<br>
+ * Not satisfied when provided rule is satisfied.
  */
 public class NotRule extends AbstractRule {
 
     private Rule rule;
 
+    /**
+     * Constructor.
+     * @param rule a trading rule
+     */
     public NotRule(Rule rule) {
         this.rule = rule;
     }

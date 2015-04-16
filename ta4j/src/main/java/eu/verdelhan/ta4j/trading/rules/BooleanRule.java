@@ -25,16 +25,24 @@ package eu.verdelhan.ta4j.trading.rules;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * A simple boolean rule.
+ * <p>
+ * Satisfied when it has been initialized with true.
  */
 public class BooleanRule extends AbstractRule {
 
-    public static BooleanRule TRUE = new BooleanRule(true);
+    /** An always-true rule */
+    public static final BooleanRule TRUE = new BooleanRule(true);
     
-    public static BooleanRule FALSE = new BooleanRule(false);
+    /** An always-false rule */
+    public static final BooleanRule FALSE = new BooleanRule(false);
     
     private boolean satisfied;
 
+    /**
+     * Constructor.
+     * @param satisfied true for the rule to be always satisfied, false to be never satisfied
+     */
     public BooleanRule(boolean satisfied) {
         this.satisfied = satisfied;
     }

@@ -28,7 +28,9 @@ import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.simple.ConstantIndicator;
 
 /**
- *
+ * Indicator-between-indicators rule.
+ * <p>
+ * Satisfied when the value of the {@link Indicator indicator} is between the values of the boundary (up/down) indicators.
  */
 public class InPipeRule extends AbstractRule {
 

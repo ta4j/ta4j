@@ -25,7 +25,9 @@ package eu.verdelhan.ta4j.trading.rules;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * A one-shot rule.
+ * <p>
+ * Satisfied the first time it's checked then never again.
  */
 public class JustOnceRule extends AbstractRule {
     

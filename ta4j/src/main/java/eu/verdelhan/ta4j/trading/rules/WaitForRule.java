@@ -27,7 +27,9 @@ import static eu.verdelhan.ta4j.Order.OrderType;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * A {@link Rule rule} which waits for a number of {@link Tick ticks} after an order.
+ * <p>
+ * Satisfied after a fixed number of ticks since the last order.
  */
 public class WaitForRule extends AbstractRule {
 

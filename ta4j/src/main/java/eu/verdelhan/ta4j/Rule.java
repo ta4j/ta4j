@@ -24,6 +24,10 @@ package eu.verdelhan.ta4j;
 
 /**
  * A rule for strategy building.
+ * <p>
+ * A trading rule may be composed of a combination of other rules.
+ * 
+ * A {@link Strategy trading strategy} is a pair of complementary (entry and exit) rules.
  */
 public interface Rule {
 

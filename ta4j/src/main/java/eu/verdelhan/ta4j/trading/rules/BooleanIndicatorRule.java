@@ -26,12 +26,18 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TradingRecord;
 
 /**
- *
+ * A boolean-indicator-based rule.
+ * <p>
+ * Satisfied when the value of the {@link Indicator indicator} is true.
  */
 public class BooleanIndicatorRule extends AbstractRule {
 
     private Indicator<Boolean> indicator;
 
+    /**
+     * Constructor.
+     * @param indicator a boolean indicator
+     */
     public BooleanIndicatorRule(Indicator<Boolean> indicator) {
         this.indicator = indicator;
     }
