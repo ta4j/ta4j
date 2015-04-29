@@ -61,7 +61,7 @@ public abstract class AbstractRule implements Rule {
     
     /**
      * Traces the isSatisfied() method calls.
-     * @param index the index
+     * @param index the tick index
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {

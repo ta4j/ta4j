@@ -105,7 +105,7 @@ public class Trade {
 
     /**
      * Operates the trade at the index-th position
-     * @param index the index
+     * @param index the tick index
      * @return the order
      */
     public Order operate(int index) {
@@ -114,7 +114,7 @@ public class Trade {
 
     /**
      * Operates the trade at the index-th position
-     * @param index the index
+     * @param index the tick index
      * @param price the price
      * @param amount the amount
      * @return the order

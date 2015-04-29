@@ -60,7 +60,7 @@ public class CashFlow implements Indicator<Decimal> {
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @return the cash flow value at the index-th position
      */
     @Override

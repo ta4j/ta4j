@@ -149,7 +149,7 @@ public class ParabolicSarIndicator extends CachedIndicator<Decimal> {
 
     /**
      * Calculates the SAR.
-     * @param index the index
+     * @param index the tick index
      * @return the SAR
      */
     private Decimal calculateSar(int index) {

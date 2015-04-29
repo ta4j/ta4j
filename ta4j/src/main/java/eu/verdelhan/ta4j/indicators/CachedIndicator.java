@@ -104,7 +104,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @return the value of the indicator
      */
     protected abstract T calculate(int index);
