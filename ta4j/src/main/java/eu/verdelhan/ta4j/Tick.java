@@ -233,8 +233,8 @@ public class Tick {
 
     @Override
     public String toString() {
-        return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", endTime
-                .toGregorianCalendar(), closePrice);
+        return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]",
+                endTime.toGregorianCalendar(), closePrice.toDouble());
     }
 
     /**
