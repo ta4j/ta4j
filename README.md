@@ -42,7 +42,7 @@ The current snapshot version is `0.7-SNAPSHOT`.
 
 The [wiki](https://github.com/mdeverdelhan/ta4j/wiki) is the best place to start learning about ta4j.
 
-Of course you can ask anything on [my Twitter account](http://twitter.com/MarcdeVerdelhan). For more detailed questions, please use the [issues tracker](http://github.com/mdeverdelhan/ta4j/issues).
+Of course you can ask anything [via Twitter](http://twitter.com/MarcdeVerdelhan). For more detailed questions, please use the [issues tracker](http://github.com/mdeverdelhan/ta4j/issues).
 
 ### Contributing to ta4j
 
