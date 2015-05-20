@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
@@ -38,10 +37,35 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
+        return maximumDrawdown.toDouble();
+    }
+
+    @Override
+    public double calculate(TimeSeries series, Trade trade) {
+        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
+            CashFlow cashFlow = new CashFlow(series, trade);
+            Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
+            return maximumDrawdown.toDouble();
+        }
+        return 0;
+    }
+
+    @Override
+    public boolean betterThan(double criterionValue1, double criterionValue2) {
+        return criterionValue1 < criterionValue2;
+    }
+
+    /**
+     * Calculates the maximum drawdown from a cash flow over a series.
+     * @param series the time series
+     * @param cashFlow the cash flow
+     * @return the maximum drawdown from a cash flow over a series
+     */
+    private Decimal calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
         Decimal maximumDrawdown = Decimal.ZERO;
         Decimal maxPeak = Decimal.ZERO;
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
-
         for (int i = series.getBegin(); i <= series.getEnd(); i++) {
             Decimal value = cashFlow.getValue(i);
             if (value.isGreaterThan(maxPeak)) {
@@ -51,28 +75,8 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
             Decimal drawdown = maxPeak.minus(value).dividedBy(maxPeak);
             if (drawdown.isGreaterThan(maximumDrawdown)) {
                 maximumDrawdown = drawdown;
-                // absolute maximumDrawdown.
-                // should it be maximumDrawdown = drawDown/maxPeak ?
             }
         }
-        return maximumDrawdown.toDouble();
-    }
-
-    @Override
-    public double calculate(TimeSeries series, Trade trade) {
-        if (trade != null && trade.getEntry() != null && trade.getExit()!= null) {
-            Order entry = trade.getEntry();
-            Order exit = trade.getExit();
-            TradingRecord tradingRecord = new TradingRecord(entry.getType());
-            tradingRecord.operate(entry.getIndex(), entry.getPrice(), entry.getAmount());
-            tradingRecord.operate(exit.getIndex(), exit.getPrice(), exit.getAmount());
-            return calculate(series, tradingRecord);
-        }
-        return 0;
-    }
-
-    @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 < criterionValue2;
+        return maximumDrawdown;
     }
 }
