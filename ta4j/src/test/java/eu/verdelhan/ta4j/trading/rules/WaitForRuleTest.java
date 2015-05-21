@@ -22,7 +22,6 @@
  */
 package eu.verdelhan.ta4j.trading.rules;
 
-import eu.verdelhan.ta4j.trading.rules.WaitForRule;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TradingRecord;
 import static org.junit.Assert.assertFalse;
@@ -48,18 +47,18 @@ public class WaitForRuleTest {
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
         
-        tradingRecord.operate(10);
+        tradingRecord.enter(10);
         assertFalse(rule.isSatisfied(10, tradingRecord));
         assertFalse(rule.isSatisfied(11, tradingRecord));
         assertFalse(rule.isSatisfied(12, tradingRecord));
         assertTrue(rule.isSatisfied(13, tradingRecord));
         assertTrue(rule.isSatisfied(14, tradingRecord));
         
-        tradingRecord.operate(15);
+        tradingRecord.exit(15);
         assertTrue(rule.isSatisfied(15, tradingRecord));
         assertTrue(rule.isSatisfied(16, tradingRecord));
         
-        tradingRecord.operate(17);
+        tradingRecord.enter(17);
         assertFalse(rule.isSatisfied(17, tradingRecord));
         assertFalse(rule.isSatisfied(18, tradingRecord));
         assertFalse(rule.isSatisfied(19, tradingRecord));
@@ -74,22 +73,22 @@ public class WaitForRuleTest {
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
         
-        tradingRecord.operate(10);
+        tradingRecord.enter(10);
         assertFalse(rule.isSatisfied(10, tradingRecord));
         assertFalse(rule.isSatisfied(11, tradingRecord));
         assertFalse(rule.isSatisfied(12, tradingRecord));
         assertFalse(rule.isSatisfied(13, tradingRecord));
         
-        tradingRecord.operate(15);
+        tradingRecord.exit(15);
         assertFalse(rule.isSatisfied(15, tradingRecord));
         assertFalse(rule.isSatisfied(16, tradingRecord));
         assertTrue(rule.isSatisfied(17, tradingRecord));
         
-        tradingRecord.operate(17);
+        tradingRecord.enter(17);
         assertTrue(rule.isSatisfied(17, tradingRecord));
         assertTrue(rule.isSatisfied(18, tradingRecord));
         
-        tradingRecord.operate(20);
+        tradingRecord.exit(20);
         assertFalse(rule.isSatisfied(20, tradingRecord));
         assertFalse(rule.isSatisfied(21, tradingRecord));
         assertTrue(rule.isSatisfied(22, tradingRecord));
