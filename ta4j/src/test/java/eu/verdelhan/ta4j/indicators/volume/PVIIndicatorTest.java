@@ -29,27 +29,36 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import org.joda.time.DateTime;
 import org.junit.Test;
 
-public class AccumulationDistributionIndicatorTest {
+public class PVIIndicatorTest {
 
     @Test
-    public void accumulationDistribution() {
-        DateTime now = DateTime.now();
+    public void getValue() {
+
         List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(now, 0d, 10d, 12d, 8d, 0d, 200d, 0));//2-2 * 200 / 4
-        ticks.add(new MockTick(now, 0d, 8d, 10d, 7d, 0d, 100d, 0));//1-2 *100 / 3
-        ticks.add(new MockTick(now, 0d, 9d, 15d, 6d, 0d, 300d, 0));//3-6 *300 /9
-        ticks.add(new MockTick(now, 0d, 20d, 40d, 5d, 0d, 50d, 0));//15-20 *50 / 35
-        ticks.add(new MockTick(now, 0d, 30d, 30d, 3d, 0d, 600d, 0));//27-0 *600 /27
-        
+        ticks.add(new MockTick(1355.69, 2739.55));
+        ticks.add(new MockTick(1325.51, 3119.46));
+        ticks.add(new MockTick(1335.02, 3466.88));
+        ticks.add(new MockTick(1313.72, 2577.12));
+        ticks.add(new MockTick(1319.99, 2480.45));
+        ticks.add(new MockTick(1331.85, 2329.79));
+        ticks.add(new MockTick(1329.04, 2793.07));
+        ticks.add(new MockTick(1362.16, 3378.78));
+        ticks.add(new MockTick(1365.51, 2417.59));
+        ticks.add(new MockTick(1374.02, 1442.81));
         TimeSeries series = new MockTimeSeries(ticks);
-        AccumulationDistributionIndicator ac = new AccumulationDistributionIndicator(series);
-        assertDecimalEquals(ac.getValue(0), 0);
-        assertDecimalEquals(ac.getValue(1), -100d / 3);
-        assertDecimalEquals(ac.getValue(2), -100d -(100d / 3));
-        assertDecimalEquals(ac.getValue(3), (-250d/35) + (-100d -(100d / 3)));
-        assertDecimalEquals(ac.getValue(4), 600d + ((-250d/35) + (-100d -(100d / 3))));
+
+        PVIIndicator pvi = new PVIIndicator(series);
+        assertDecimalEquals(pvi.getValue(0), 1000);
+        assertDecimalEquals(pvi.getValue(1), 977.7383);
+        assertDecimalEquals(pvi.getValue(2), 984.7532);
+        assertDecimalEquals(pvi.getValue(3), 984.7532);
+        assertDecimalEquals(pvi.getValue(4), 984.7532);
+        assertDecimalEquals(pvi.getValue(5), 984.7532);
+        assertDecimalEquals(pvi.getValue(6), 982.6755);
+        assertDecimalEquals(pvi.getValue(7), 1007.164);
+        assertDecimalEquals(pvi.getValue(8), 1007.164);
+        assertDecimalEquals(pvi.getValue(9), 1007.164);
     }
 }

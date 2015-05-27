@@ -20,50 +20,45 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
+package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
-import org.joda.time.DateTime;
+import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * A mock tick with sample data.
+ * Positive Volume Index (PVI) indicator.
+ * <p>
+ * @see http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92
+ * @see http://www.investopedia.com/terms/p/pvi.asp
  */
-public class MockTick extends Tick {
+public class PVIIndicator extends CachedIndicator<Decimal> {
 
-    private Decimal amount = Decimal.ZERO;
+    private final TimeSeries series;
 
-    private int trades = 0;
-
-    public MockTick(double closePrice) {
-        this(new DateTime(), closePrice);
-    }
-
-    public MockTick(double closePrice, double volume) {
-        super(new DateTime(), 0, 0, 0, closePrice, volume);
+    public PVIIndicator(TimeSeries series) {
+        super(series);
+        this.series = series;
     }
     
-    public MockTick(DateTime endTime, double closePrice) {
-        super(endTime, 0, 0, 0, closePrice, 0);
-    }
-
-    public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
-        super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, 0);
-    }
-
-    public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
-        super(endTime, openPrice, maxPrice, minPrice, closePrice, volume);
-        this.amount = Decimal.valueOf(amount);
-        this.trades = trades;
-    }
-
     @Override
-    public Decimal getAmount() {
-        return amount;
+    protected Decimal calculate(int index) {
+        if (index == 0) {
+            return Decimal.THOUSAND;
+        }
+        
+        Tick currentTick = series.getTick(index);
+        Tick previousTick = series.getTick(index - 1);
+        Decimal previousValue = getValue(index - 1);
+        
+        if (currentTick.getVolume().isGreaterThan(previousTick.getVolume())) {
+            Decimal currentPrice = currentTick.getClosePrice();
+            Decimal previousPrice = previousTick.getClosePrice();
+            Decimal priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+            return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
+        }
+        return previousValue;
     }
-
-    @Override
-    public int getTrades() {
-        return trades;
-    }
+	
 }

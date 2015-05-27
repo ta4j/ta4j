@@ -48,6 +48,7 @@ public final class Decimal implements Comparable<Decimal> {
     public static final Decimal THREE = valueOf(3);
     public static final Decimal TEN = valueOf(10);
     public static final Decimal HUNDRED = valueOf(100);
+    public static final Decimal THOUSAND = valueOf(1000);
 
     private BigDecimal delegate;
 

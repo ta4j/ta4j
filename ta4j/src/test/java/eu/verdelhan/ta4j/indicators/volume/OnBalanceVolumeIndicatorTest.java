@@ -34,8 +34,7 @@ import org.junit.Test;
 public class OnBalanceVolumeIndicatorTest {
 
     @Test
-    public void getValue()
-    {
+    public void getValue() {
         DateTime now = DateTime.now();
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(now, 0, 10, 0, 0, 0, 4, 0));
