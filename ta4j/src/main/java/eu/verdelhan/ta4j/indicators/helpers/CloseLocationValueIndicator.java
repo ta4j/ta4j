@@ -20,42 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.volume;
+package eu.verdelhan.ta4j.indicators.helpers;
 
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.CloseLocationValueIndicator;
 
 /**
- * Accumulation-distribution indicator.
+ * Close Location Value (CLV) indicator.
  * <p>
+ * @see http://www.investopedia.com/terms/c/close_location_value.asp
  */
-public class AccumulationDistributionIndicator extends CachedIndicator<Decimal> {
+public class CloseLocationValueIndicator extends CachedIndicator<Decimal> {
 
     private TimeSeries series;
-    
-    private CloseLocationValueIndicator clvIndicator;
 
-    public AccumulationDistributionIndicator(TimeSeries series) {
+    public CloseLocationValueIndicator(TimeSeries series) {
         super(series);
         this.series = series;
-        this.clvIndicator = new CloseLocationValueIndicator(series);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ZERO;
-        }
+        Tick tick = series.getTick(index);
 
-        // Calculating the money flow multiplier
-        Decimal moneyFlowMultiplier = clvIndicator.getValue(index);
-
-        // Calculating the money flow volume
-        Decimal moneyFlowVolume = moneyFlowMultiplier.multipliedBy(series.getTick(index).getVolume());
-
-        return moneyFlowVolume.plus(getValue(index - 1));
+        return ((tick.getClosePrice().minus(tick.getMinPrice())).minus(tick.getMaxPrice().minus(tick.getClosePrice())))
+                 .dividedBy(tick.getMaxPrice().minus(tick.getMinPrice()));
     }
 }

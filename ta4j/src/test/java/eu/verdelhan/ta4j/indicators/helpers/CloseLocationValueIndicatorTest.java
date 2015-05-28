@@ -20,42 +20,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.volume;
+package eu.verdelhan.ta4j.indicators.helpers;
 
-
-import eu.verdelhan.ta4j.Decimal;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.CloseLocationValueIndicator;
+import eu.verdelhan.ta4j.mocks.MockTick;
+import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Accumulation-distribution indicator.
- * <p>
- */
-public class AccumulationDistributionIndicator extends CachedIndicator<Decimal> {
+public class CloseLocationValueIndicatorTest {
 
     private TimeSeries series;
-    
-    private CloseLocationValueIndicator clvIndicator;
 
-    public AccumulationDistributionIndicator(TimeSeries series) {
-        super(series);
-        this.series = series;
-        this.clvIndicator = new CloseLocationValueIndicator(series);
+    @Before
+    public void setUp() {
+        List<Tick> ticks = new ArrayList<Tick>();
+        // open, close, high, low
+        ticks.add(new MockTick(10, 18, 20, 10));
+        ticks.add(new MockTick(17, 20, 21, 17));
+        ticks.add(new MockTick(15, 15, 16, 14));
+        ticks.add(new MockTick(15, 11, 15, 8));
+        ticks.add(new MockTick(11, 12, 12, 10));
+        series = new MockTimeSeries(ticks);
     }
-
-    @Override
-    protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ZERO;
-        }
-
-        // Calculating the money flow multiplier
-        Decimal moneyFlowMultiplier = clvIndicator.getValue(index);
-
-        // Calculating the money flow volume
-        Decimal moneyFlowVolume = moneyFlowMultiplier.multipliedBy(series.getTick(index).getVolume());
-
-        return moneyFlowVolume.plus(getValue(index - 1));
+    
+    @Test
+    public void getValue() {
+        CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
+        assertDecimalEquals(clv.getValue(0), 0.6);
+        assertDecimalEquals(clv.getValue(1), 0.5);
+        assertDecimalEquals(clv.getValue(2), 0);
+        assertDecimalEquals(clv.getValue(3), -1d/7);
+        assertDecimalEquals(clv.getValue(4), 1);
     }
 }
