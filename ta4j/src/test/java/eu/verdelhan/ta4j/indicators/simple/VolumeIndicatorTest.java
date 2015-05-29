@@ -22,27 +22,45 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import java.util.ArrayList;
+import java.util.List;
 import static org.junit.Assert.*;
-import org.junit.Before;
 import org.junit.Test;
 
 public class VolumeIndicatorTest {
-    private VolumeIndicator volumeIndicator;
-
-    TimeSeries timeSeries;
-
-    @Before
-    public void setUp() {
-        timeSeries = new MockTimeSeries();
-        volumeIndicator = new VolumeIndicator(timeSeries);
-    }
 
     @Test
     public void indicatorShouldRetrieveTickVolume() {
+        TimeSeries series = new MockTimeSeries();
+        VolumeIndicator volumeIndicator = new VolumeIndicator(series);
         for (int i = 0; i < 10; i++) {
-            assertEquals(volumeIndicator.getValue(i), timeSeries.getTick(i).getVolume());
+            assertEquals(volumeIndicator.getValue(i), series.getTick(i).getVolume());
         }
+    }
+
+    @Test
+    public void sumOfVolume() {
+        List<Tick> ticks = new ArrayList<Tick>();
+        ticks.add(new MockTick(0, 10));
+        ticks.add(new MockTick(0, 11));
+        ticks.add(new MockTick(0, 12));
+        ticks.add(new MockTick(0, 13));
+        ticks.add(new MockTick(0, 150));
+        ticks.add(new MockTick(0, 155));
+        ticks.add(new MockTick(0, 160));
+        VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(ticks), 3);
+        
+        assertDecimalEquals(volumeIndicator.getValue(0), 10);
+        assertDecimalEquals(volumeIndicator.getValue(1), 21);
+        assertDecimalEquals(volumeIndicator.getValue(2), 33);
+        assertDecimalEquals(volumeIndicator.getValue(3), 36);
+        assertDecimalEquals(volumeIndicator.getValue(4), 175);
+        assertDecimalEquals(volumeIndicator.getValue(5), 318);
+        assertDecimalEquals(volumeIndicator.getValue(6), 465);
     }
 }
