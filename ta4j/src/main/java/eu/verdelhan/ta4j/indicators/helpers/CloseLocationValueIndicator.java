@@ -20,51 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.trading.rules;
+package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.Rule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Tick;
+import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * An abstract trading {@link Rule rule}.
+ * Close Location Value (CLV) indicator.
+ * <p>
+ * @see http://www.investopedia.com/terms/c/close_location_value.asp
  */
-public abstract class AbstractRule implements Rule {
+public class CloseLocationValueIndicator extends CachedIndicator<Decimal> {
 
-    /** The logger */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    private TimeSeries series;
 
-    @Override
-    public Rule and(Rule rule) {
-        return new AndRule(this, rule);
+    public CloseLocationValueIndicator(TimeSeries series) {
+        super(series);
+        this.series = series;
     }
 
     @Override
-    public Rule or(Rule rule) {
-        return new OrRule(this, rule);
-    }
+    protected Decimal calculate(int index) {
+        Tick tick = series.getTick(index);
 
-    @Override
-    public Rule xor(Rule rule) {
-        return new XorRule(this, rule);
-    }
-
-    @Override
-    public Rule negation() {
-        return new NotRule(this);
-    }
-
-    @Override
-    public boolean isSatisfied(int index) {
-        return isSatisfied(index, null);
-    }
-    
-    /**
-     * Traces the isSatisfied() method calls.
-     * @param index the tick index
-     * @param isSatisfied true if the rule is satisfied, false otherwise
-     */
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        log.trace("{}#isSatisfied({}): {}", getClass().getSimpleName(), index, isSatisfied);
+        return ((tick.getClosePrice().minus(tick.getMinPrice())).minus(tick.getMaxPrice().minus(tick.getClosePrice())))
+                 .dividedBy(tick.getMaxPrice().minus(tick.getMinPrice()));
     }
 }

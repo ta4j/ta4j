@@ -28,6 +28,7 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.TradingRecord;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -41,10 +42,19 @@ public class CashFlow implements Indicator<Decimal> {
     /** The time series */
     private final TimeSeries timeSeries;
 
-    /** The trading record */
-    private final TradingRecord tradingRecord;
+    /** The cash flow values */
+    private List<Decimal> values = new ArrayList<Decimal>(Arrays.asList(Decimal.ONE));
 
-    private List<Decimal> values;
+    /**
+     * Constructor.
+     * @param timeSeries the time series
+     * @param trade a single trade
+     */
+    public CashFlow(TimeSeries timeSeries, Trade trade) {
+        this.timeSeries = timeSeries;
+        calculate(trade);
+        fillToTheEnd();
+    }
 
     /**
      * Constructor.
@@ -53,14 +63,12 @@ public class CashFlow implements Indicator<Decimal> {
      */
     public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
         this.timeSeries = timeSeries;
-        this.tradingRecord = tradingRecord;
-        values = new ArrayList<Decimal>();
-        values.add(Decimal.ONE);
-        calculate();
+        calculate(tradingRecord);
+        fillToTheEnd();
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @return the cash flow value at the index-th position
      */
     @Override
@@ -81,29 +89,46 @@ public class CashFlow implements Indicator<Decimal> {
     }
 
     /**
-     * Calculates the cash flow.
+     * Calculates the cash flow for a single trade.
+     * @param trade a single trade
      */
-    private void calculate() {
+    private void calculate(Trade trade) {
+        final int entryIndex = trade.getEntry().getIndex();
+        int begin = entryIndex + 1;
+        if (begin > values.size()) {
+            Decimal lastValue = values.get(values.size() - 1);
+            values.addAll(Collections.nCopies(begin - values.size(), lastValue));
+        }
+        int end = trade.getExit().getIndex();
+        for (int i = Math.max(begin, 1); i <= end; i++) {
+            Decimal ratio;
+            if (trade.getEntry().isBuy()) {
+                ratio = timeSeries.getTick(i).getClosePrice().dividedBy(timeSeries.getTick(entryIndex).getClosePrice());
+            } else {
+                ratio = timeSeries.getTick(entryIndex).getClosePrice().dividedBy(timeSeries.getTick(i).getClosePrice());
+            }
+            values.add(values.get(entryIndex).multipliedBy(ratio));
+        }
+    }
 
+    /**
+     * Calculates the cash flow for a trading record.
+     * @param tradingRecord the trading record
+     */
+    private void calculate(TradingRecord tradingRecord) {
         for (Trade trade : tradingRecord.getTrades()) {
             // For each trade...
-            int begin = trade.getEntry().getIndex() + 1;
-            if (begin > values.size()) {
-                values.addAll(Collections.nCopies(begin - values.size(), values.get(values.size() - 1)));
-            }
-            int end = trade.getExit().getIndex();
-            for (int i = Math.max(begin, 1); i <= end; i++) {
-                Decimal ratio;
-                if (trade.getEntry().isBuy()) {
-                    ratio = timeSeries.getTick(i).getClosePrice().dividedBy(timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice());
-                } else {
-                    ratio = timeSeries.getTick(trade.getEntry().getIndex()).getClosePrice().dividedBy(timeSeries.getTick(i).getClosePrice());
-                }
-                values.add(values.get(trade.getEntry().getIndex()).multipliedBy(ratio));
-            }
+            calculate(trade);
         }
-        if ((timeSeries.getEnd() - values.size()) >= 0) {
-            values.addAll(Collections.nCopies((timeSeries.getEnd() - values.size()) + 1, values.get(values.size() - 1)));
+    }
+
+    /**
+     * Fills with last value till the end of the series.
+     */
+    private void fillToTheEnd() {
+        if (timeSeries.getEnd() >= values.size()) {
+            Decimal lastValue = values.get(values.size() - 1);
+            values.addAll(Collections.nCopies(timeSeries.getEnd() - values.size() + 1, lastValue));
         }
     }
 }

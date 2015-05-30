@@ -59,12 +59,7 @@ public class Tick {
      * @param endTime the end time of the tick period
      */
     public Tick(Period timePeriod, DateTime endTime) {
-        if (timePeriod == null) {
-            throw new IllegalArgumentException("Time period cannot be null");
-        }
-        if (endTime == null) {
-            throw new IllegalArgumentException("End time cannot be null");
-        }
+        checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
@@ -97,7 +92,39 @@ public class Tick {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(DateTime endTime, Period timePeriod, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+    public Tick(DateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
+        this(endTime, Decimal.valueOf(openPrice),
+                Decimal.valueOf(highPrice),
+                Decimal.valueOf(lowPrice),
+                Decimal.valueOf(closePrice),
+                Decimal.valueOf(volume));
+    }
+
+    /**
+     * Constructor.
+     * @param endTime the end time of the tick period
+     * @param openPrice the open price of the tick period
+     * @param highPrice the highest price of the tick period
+     * @param lowPrice the lowest price of the tick period
+     * @param closePrice the close price of the tick period
+     * @param volume the volume of the tick period
+     */
+    public Tick(DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+        this(Period.days(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
+    }
+
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the tick period
+     * @param openPrice the open price of the tick period
+     * @param highPrice the highest price of the tick period
+     * @param lowPrice the lowest price of the tick period
+     * @param closePrice the close price of the tick period
+     * @param volume the volume of the tick period
+     */
+    public Tick(Period timePeriod, DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+        checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
@@ -224,8 +251,8 @@ public class Tick {
 
     @Override
     public String toString() {
-        return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]", endTime
-                .toGregorianCalendar(), closePrice);
+        return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]",
+                endTime.toGregorianCalendar(), closePrice.toDouble());
     }
 
     /**
@@ -250,5 +277,19 @@ public class Tick {
      */
     public String getSimpleDateName() {
         return endTime.toString("dd/MM/yyyy");
+    }
+
+    /**
+     * @param timePeriod the time period
+     * @param endTime the end time of the tick
+     * @throws IllegalArgumentException if one of the arguments is null
+     */
+    private void checkTimeArguments(Period timePeriod, DateTime endTime) throws IllegalArgumentException {
+        if (timePeriod == null) {
+            throw new IllegalArgumentException("Time period cannot be null");
+        }
+        if (endTime == null) {
+            throw new IllegalArgumentException("End time cannot be null");
+        }
     }
 }

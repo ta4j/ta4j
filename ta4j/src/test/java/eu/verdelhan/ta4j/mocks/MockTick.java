@@ -39,6 +39,10 @@ public class MockTick extends Tick {
         this(new DateTime(), closePrice);
     }
 
+    public MockTick(double closePrice, double volume) {
+        super(new DateTime(), 0, 0, 0, closePrice, volume);
+    }
+    
     public MockTick(DateTime endTime, double closePrice) {
         super(endTime, 0, 0, 0, closePrice, 0);
     }

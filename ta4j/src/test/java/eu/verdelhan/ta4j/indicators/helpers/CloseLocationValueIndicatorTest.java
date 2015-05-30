@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.volume;
+package eu.verdelhan.ta4j.indicators.helpers;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
@@ -29,27 +29,32 @@ import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import org.joda.time.DateTime;
+import org.junit.Before;
 import org.junit.Test;
 
-public class AccumulationDistributionIndicatorTest {
+public class CloseLocationValueIndicatorTest {
 
-    @Test
-    public void accumulationDistribution() {
-        DateTime now = DateTime.now();
+    private TimeSeries series;
+
+    @Before
+    public void setUp() {
         List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(now, 0d, 10d, 12d, 8d, 0d, 200d, 0));//2-2 * 200 / 4
-        ticks.add(new MockTick(now, 0d, 8d, 10d, 7d, 0d, 100d, 0));//1-2 *100 / 3
-        ticks.add(new MockTick(now, 0d, 9d, 15d, 6d, 0d, 300d, 0));//3-6 *300 /9
-        ticks.add(new MockTick(now, 0d, 20d, 40d, 5d, 0d, 50d, 0));//15-20 *50 / 35
-        ticks.add(new MockTick(now, 0d, 30d, 30d, 3d, 0d, 600d, 0));//27-0 *600 /27
-        
-        TimeSeries series = new MockTimeSeries(ticks);
-        AccumulationDistributionIndicator ac = new AccumulationDistributionIndicator(series);
-        assertDecimalEquals(ac.getValue(0), 0);
-        assertDecimalEquals(ac.getValue(1), -100d / 3);
-        assertDecimalEquals(ac.getValue(2), -100d -(100d / 3));
-        assertDecimalEquals(ac.getValue(3), (-250d/35) + (-100d -(100d / 3)));
-        assertDecimalEquals(ac.getValue(4), 600d + ((-250d/35) + (-100d -(100d / 3))));
+        // open, close, high, low
+        ticks.add(new MockTick(10, 18, 20, 10));
+        ticks.add(new MockTick(17, 20, 21, 17));
+        ticks.add(new MockTick(15, 15, 16, 14));
+        ticks.add(new MockTick(15, 11, 15, 8));
+        ticks.add(new MockTick(11, 12, 12, 10));
+        series = new MockTimeSeries(ticks);
+    }
+    
+    @Test
+    public void getValue() {
+        CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
+        assertDecimalEquals(clv.getValue(0), 0.6);
+        assertDecimalEquals(clv.getValue(1), 0.5);
+        assertDecimalEquals(clv.getValue(2), 0);
+        assertDecimalEquals(clv.getValue(3), -1d/7);
+        assertDecimalEquals(clv.getValue(4), 1);
     }
 }

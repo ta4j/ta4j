@@ -79,12 +79,12 @@ public class ParabolicSarIndicator extends CachedIndicator<Decimal> {
         Decimal sar;
         if (n2ClosePrice.isGreaterThan(n1ClosePrice) && n1ClosePrice.isLessThan(nClosePrice)) {
             // Trend switch: \_/
-            sar = extremePoint;
+            sar = extremePoint == null ? lowestValueIndicator.getValue(index) : extremePoint;
             extremePoint = highestValueIndicator.getValue(index);
             acceleration = DEFAULT_ACCELERATION;
         } else if (n2ClosePrice.isLessThan(n1ClosePrice) && n1ClosePrice.isGreaterThan(nClosePrice)) {
             // Trend switch: /¯\
-            sar = extremePoint;
+            sar = extremePoint == null ? highestValueIndicator.getValue(index) : extremePoint;
             extremePoint = lowestValueIndicator.getValue(index);
             acceleration = DEFAULT_ACCELERATION;
 
@@ -149,7 +149,7 @@ public class ParabolicSarIndicator extends CachedIndicator<Decimal> {
 
     /**
      * Calculates the SAR.
-     * @param index the index
+     * @param index the tick index
      * @return the SAR
      */
     private Decimal calculateSar(int index) {

@@ -57,15 +57,15 @@ public class StopGainRuleTest {
         assertFalse(rule.isSatisfied(1, tradingRecord));
         
         // Enter at 108
-        tradingRecord.operate(2, Decimal.valueOf("108"), tradedAmount);
+        tradingRecord.enter(2, Decimal.valueOf("108"), tradedAmount);
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertFalse(rule.isSatisfied(3, tradingRecord));
         assertTrue(rule.isSatisfied(4, tradingRecord));
         // Exit
-        tradingRecord.operate(5);
+        tradingRecord.exit(5);
         
         // Enter at 118
-        tradingRecord.operate(5, Decimal.valueOf("118"), tradedAmount);
+        tradingRecord.enter(5, Decimal.valueOf("118"), tradedAmount);
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
         assertTrue(rule.isSatisfied(7, tradingRecord));

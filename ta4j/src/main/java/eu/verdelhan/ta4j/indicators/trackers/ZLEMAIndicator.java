@@ -20,39 +20,52 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.simple;
+package eu.verdelhan.ta4j.indicators.trackers;
 
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * Volume indicator.
+ * Zero-lag exponential moving average indicator.
  * <p>
+ * @see http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm
  */
-public class VolumeIndicator extends CachedIndicator<Decimal> {
+public class ZLEMAIndicator extends CachedIndicator<Decimal> {
 
-    private TimeSeries series;
+    private final Indicator<Decimal> indicator;
 
-    private int timeFrame;
+    private final int timeFrame;
+
+    private final Decimal k;
     
-    public VolumeIndicator(TimeSeries series) {
-        this(series, 1);
-    }
+    private final int lag;
 
-    public VolumeIndicator(TimeSeries series, int timeFrame) {
-        super(series);
-        this.series = series;
+    public ZLEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+        super(indicator);
+        this.indicator = indicator;
         this.timeFrame = timeFrame;
+        k = Decimal.TWO.dividedBy(Decimal.valueOf(timeFrame + 1));
+        lag = (timeFrame - 1) / 2;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        int startIndex = Math.max(0, index - timeFrame + 1);
-        Decimal sumOfVolume = Decimal.ZERO;
-        for (int i = startIndex; i <= index; i++) {
-            sumOfVolume = sumOfVolume.plus(series.getTick(i).getVolume());
+        if (index + 1 < timeFrame) {
+            // Starting point of the ZLEMA
+            return new SMAIndicator(indicator, timeFrame).getValue(index);
         }
-        return sumOfVolume;
+        if (index == 0) {
+            // If the timeframe is bigger than the indicator's value count
+            return indicator.getValue(0);
+        }
+        Decimal zlemaPrev = getValue(index - 1);
+        return k.multipliedBy(Decimal.TWO.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index-lag)))
+                .plus(Decimal.ONE.minus(k).multipliedBy(zlemaPrev));
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

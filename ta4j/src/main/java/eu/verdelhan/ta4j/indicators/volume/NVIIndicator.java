@@ -20,39 +20,46 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.simple;
+package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * Volume indicator.
+ * Negative Volume Index (NVI) indicator.
  * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde
+ * @see http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75
+ * @see http://www.investopedia.com/terms/n/nvi.asp
  */
-public class VolumeIndicator extends CachedIndicator<Decimal> {
+public class NVIIndicator extends CachedIndicator<Decimal> {
 
-    private TimeSeries series;
+    private final TimeSeries series;
 
-    private int timeFrame;
-    
-    public VolumeIndicator(TimeSeries series) {
-        this(series, 1);
-    }
-
-    public VolumeIndicator(TimeSeries series, int timeFrame) {
+    public NVIIndicator(TimeSeries series) {
         super(series);
         this.series = series;
-        this.timeFrame = timeFrame;
     }
-
+    
     @Override
     protected Decimal calculate(int index) {
-        int startIndex = Math.max(0, index - timeFrame + 1);
-        Decimal sumOfVolume = Decimal.ZERO;
-        for (int i = startIndex; i <= index; i++) {
-            sumOfVolume = sumOfVolume.plus(series.getTick(i).getVolume());
+        if (index == 0) {
+            return Decimal.THOUSAND;
         }
-        return sumOfVolume;
+        
+        Tick currentTick = series.getTick(index);
+        Tick previousTick = series.getTick(index - 1);
+        Decimal previousValue = getValue(index - 1);
+        
+        if (currentTick.getVolume().isLessThan(previousTick.getVolume())) {
+            Decimal currentPrice = currentTick.getClosePrice();
+            Decimal previousPrice = previousTick.getClosePrice();
+            Decimal priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+            return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
+        }
+        return previousValue;
     }
+	
 }

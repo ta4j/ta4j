@@ -57,7 +57,7 @@ public class Strategy {
     }
     
     /**
-     * @param index the index
+     * @param index the tick index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend an order, false otherwise (no recommendation)
      */
@@ -72,7 +72,7 @@ public class Strategy {
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @return true to recommend to enter, false otherwise
      */
     public boolean shouldEnter(int index) {
@@ -80,7 +80,7 @@ public class Strategy {
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
      */
@@ -91,7 +91,7 @@ public class Strategy {
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @return true to recommend to exit, false otherwise
      */
     public boolean shouldExit(int index) {
@@ -99,7 +99,7 @@ public class Strategy {
     }
 
     /**
-     * @param index the index
+     * @param index the tick index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to exit, false otherwise
      */
@@ -111,7 +111,7 @@ public class Strategy {
 
     /**
      * Traces the shouldEnter() method calls.
-     * @param index the index
+     * @param index the tick index
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
@@ -120,7 +120,7 @@ public class Strategy {
 
     /**
      * Traces the shouldExit() method calls.
-     * @param index the index
+     * @param index the tick index
      * @param exit true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {

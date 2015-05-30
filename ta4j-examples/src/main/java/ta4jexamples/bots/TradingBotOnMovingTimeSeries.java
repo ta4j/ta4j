@@ -138,9 +138,8 @@ public class TradingBotOnMovingTimeSeries {
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);
-                if (tradingRecord.getCurrentTrade().isNew()) {
-                    // Entering...
-                    tradingRecord.operate(endIndex, newTick.getClosePrice(), Decimal.TEN);
+                boolean entered = tradingRecord.enter(endIndex, newTick.getClosePrice(), Decimal.TEN);
+                if (entered) {
                     Order entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex()
                             + " (price=" + entry.getPrice().toDouble()
@@ -149,9 +148,8 @@ public class TradingBotOnMovingTimeSeries {
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
                 System.out.println("Strategy should EXIT on " + endIndex);
-                if (tradingRecord.getCurrentTrade().isOpened()) {
-                    // Exiting...
-                    tradingRecord.operate(endIndex, newTick.getClosePrice(), Decimal.TEN);
+                boolean exited = tradingRecord.exit(endIndex, newTick.getClosePrice(), Decimal.TEN);
+                if (exited) {
                     Order exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex()
                             + " (price=" + exit.getPrice().toDouble()

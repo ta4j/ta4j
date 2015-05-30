@@ -30,49 +30,47 @@ import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
-public class EMAIndicatorTest {
+public class ZLEMAIndicatorTest {
 
     private TimeSeries data;
 
     @Before
     public void setUp() {
-
         data = new MockTimeSeries(
-                64.75, 63.79, 63.73,
-                63.73, 63.55, 63.19,
-                63.91, 63.85, 62.95,
-                63.37, 61.33, 61.51);
+                10, 15, 20,
+                18, 17, 18,
+                15, 12, 10,
+                8, 5, 2);
     }
 
     @Test
-    public void EMAUsingTimeFrame10UsingClosePrice() {
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
+    public void ZLEMAUsingTimeFrame10UsingClosePrice() {
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
 
-        assertDecimalEquals(ema.getValue(9), 63.6536);
-        assertDecimalEquals(ema.getValue(10), 63.2312);
-        assertDecimalEquals(ema.getValue(11), 62.9182);
+        assertDecimalEquals(zlema.getValue(9), 11.9091);
+        assertDecimalEquals(zlema.getValue(10), 8.8347);
+        assertDecimalEquals(zlema.getValue(11), 5.7739);
     }
 
     @Test
-    public void EMAFirstValueShouldBeEqualsToFirstDataValue() {
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-        assertDecimalEquals(ema.getValue(0), "64.75");
+    public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        assertDecimalEquals(zlema.getValue(0), "10");
     }
 
     @Test
     public void valuesLessThanTimeFrameMustBeEqualsToSMAValues() {
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
 
         for (int i = 0; i < 9; i++) {
-            assertEquals(sma.getValue(i), ema.getValue(i));
+            assertEquals(sma.getValue(i), zlema.getValue(i));
         }
     }
     
     @Test
     public void smallTimeFrame() {
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 1);
-        assertDecimalEquals(ema.getValue(0), "64.75");
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
+        assertDecimalEquals(zlema.getValue(0), "10");
     }
-    
 }

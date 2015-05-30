@@ -113,24 +113,56 @@ public class TradingRecord {
      * Operates an order in the trading record.
      * @param index the index to operate the order
      */
-    public void operate(int index) {
+    public final void operate(int index) {
         operate(index, Decimal.NaN, Decimal.NaN);
     }
     
     /**
-     * Operates an order in the trading record.
-     * @param index the index to operate the order
+     * Operates an entry order in the trading record.
+     * @param index the index to operate the entry
+     * @return true if the entry has been operated, false otherwise
+     */
+    public final boolean enter(int index) {
+        return enter(index, Decimal.NaN, Decimal.NaN);
+    }
+    
+    /**
+     * Operates an entry order in the trading record.
+     * @param index the index to operate the entry
      * @param price the price of the order
      * @param amount the amount to be ordered
+     * @return true if the entry has been operated, false otherwise
      */
-    public final void operate(int index, Decimal price, Decimal amount) {
-        if (currentTrade.isClosed()) {
-            // Current trade closed, should not occur
-            throw new IllegalStateException("Current trade should not be closed");
+    public final boolean enter(int index, Decimal price, Decimal amount) {
+        if (currentTrade.isNew()) {
+            operate(index, price, amount);
+            return true;
         }
-        boolean newOrderWillBeAnEntry = currentTrade.isNew();
-        Order newOrder = currentTrade.operate(index, price, amount);
-        recordOrder(newOrder, newOrderWillBeAnEntry);
+        return false;
+    }
+    
+    /**
+     * Operates an exit order in the trading record.
+     * @param index the index to operate the exit
+     * @return true if the exit has been operated, false otherwise
+     */
+    public final boolean exit(int index) {
+        return exit(index, Decimal.NaN, Decimal.NaN);
+    }
+    
+    /**
+     * Operates an exit order in the trading record.
+     * @param index the index to operate the exit
+     * @param price the price of the order
+     * @param amount the amount to be ordered
+     * @return true if the exit has been operated, false otherwise
+     */
+    public final boolean exit(int index, Decimal price, Decimal amount) {
+        if (currentTrade.isOpened()) {
+            operate(index, price, amount);
+            return true;
+        }
+        return false;
     }
     
     /**
@@ -239,5 +271,21 @@ public class TradingRecord {
             trades.add(currentTrade);
             currentTrade = new Trade(startingType);
         }
+    }
+    
+    /**
+     * Operates an order in the trading record.
+     * @param index the index to operate the order
+     * @param price the price of the order
+     * @param amount the amount to be ordered
+     */
+    private void operate(int index, Decimal price, Decimal amount) {
+        if (currentTrade.isClosed()) {
+            // Current trade closed, should not occur
+            throw new IllegalStateException("Current trade should not be closed");
+        }
+        boolean newOrderWillBeAnEntry = currentTrade.isNew();
+        Order newOrder = currentTrade.operate(index, price, amount);
+        recordOrder(newOrder, newOrderWillBeAnEntry);
     }
 }

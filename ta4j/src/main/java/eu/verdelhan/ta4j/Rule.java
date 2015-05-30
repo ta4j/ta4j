@@ -55,13 +55,13 @@ public interface Rule {
     Rule negation();
     
     /**
-     * @param index the index
+     * @param index the tick index
      * @return true if this rule is satisfied for the provided index, false otherwise
      */
     boolean isSatisfied(int index);
     
     /**
-     * @param index the index
+     * @param index the tick index
      * @param tradingRecord the potentially needed trading history
      * @return true if this rule is satisfied for the provided index, false otherwise
      */
