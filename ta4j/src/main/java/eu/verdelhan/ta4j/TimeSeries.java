@@ -398,7 +398,7 @@ public class TimeSeries {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType) {
-        return run(strategy, orderType, Decimal.NaN, false);
+        return run(strategy, orderType, Decimal.NaN);
 
     }
 
@@ -408,17 +408,16 @@ public class TimeSeries {
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param amount the amount used to open the trades
-     * @param withEntryPrice store the entry price in the trade record or not
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount, Boolean withEntryPrice) {
+    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount) {
 
         log.trace("Running strategy: {} (starting with {})", strategy, orderType);
         TradingRecord tradingRecord = new TradingRecord(orderType);
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick in the sub-series...       
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, getEntryPrice(i, withEntryPrice), amount);
+                tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
             }
         }
 
@@ -430,23 +429,13 @@ public class TimeSeries {
                 // --> Trying to close the last trade
                 
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, getEntryPrice(i, withEntryPrice), amount);
+                    tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
                     break;
                 }
             }
         }
         return tradingRecord;
     }
-
-    /**
-    * get the entry price if needed
-    * @param index the tick index
-    * @param fromTick price from tick or Decimal.Nan
-    * @return 
-    */
-    private Decimal getEntryPrice(int index, Boolean fromTick) {
-        return(fromTick)? ticks.get(index).getClosePrice():Decimal.NaN;
-        }
 
     /**
      * Computes the time period of the series.

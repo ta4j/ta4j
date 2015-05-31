@@ -388,7 +388,7 @@ public class TimeSeriesTest {
     public void runOnWholeSeriesWithAmount() {
         TimeSeries series = new MockTimeSeries(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
 
-        List<Trade> allTrades = series.run(strategy,OrderType.BUY, Decimal.HUNDRED, true).getTrades();
+        List<Trade> allTrades = series.run(strategy,OrderType.BUY, Decimal.HUNDRED).getTrades();
         
         assertEquals(2, allTrades.size());
         assertEquals(Decimal.HUNDRED, allTrades.get(0).getEntry().getAmount());
@@ -402,11 +402,11 @@ public class TimeSeriesTest {
         List<Trade> trades = subseries.get(0).run(strategy).getTrades();
         assertEquals(2, trades.size());
 
-        assertEquals(Order.buyAt(2), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(4), trades.get(0).getExit());
+        assertEquals(Order.buyAt(2, subseries.get(0).getTick(2).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(4, subseries.get(0).getTick(4).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
-        assertEquals(Order.buyAt(6), trades.get(1).getEntry());
-        assertEquals(Order.sellAt(7), trades.get(1).getExit());
+        assertEquals(Order.buyAt(6, subseries.get(0).getTick(6).getClosePrice(), Decimal.NaN), trades.get(1).getEntry());
+        assertEquals(Order.sellAt(7, subseries.get(0).getTick(7).getClosePrice(), Decimal.NaN), trades.get(1).getExit());
     }
 
     @Test
@@ -416,8 +416,8 @@ public class TimeSeriesTest {
         List<Trade> trades = subseries.get(0).run(aStrategy).getTrades();
         assertEquals(1, trades.size());
 
-        assertEquals(Order.buyAt(1), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(3), trades.get(0).getExit());
+        assertEquals(Order.buyAt(1, subseries.get(0).getTick(1).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(3, subseries.get(0).getTick(3).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
     }
 
     @Test
@@ -427,8 +427,8 @@ public class TimeSeriesTest {
         List<Trade> trades = subseries.get(0).run(aStrategy, OrderType.SELL).getTrades();
         assertEquals(1, trades.size());
 
-        assertEquals(Order.sellAt(1), trades.get(0).getEntry());
-        assertEquals(Order.buyAt(3), trades.get(0).getExit());
+        assertEquals(Order.sellAt(1, subseries.get(0).getTick(1).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.buyAt(3, subseries.get(0).getTick(3).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
     }
 
     @Test
@@ -437,16 +437,16 @@ public class TimeSeriesTest {
 
         List<Trade> trades = subseries.get(0).run(strategy).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(2), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(4), trades.get(0).getExit());
+        assertEquals(Order.buyAt(2, subseries.get(0).getTick(2).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(4, subseries.get(0).getTick(4).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
         trades = subseries.get(1).run(strategy).getTrades();
         assertTrue(trades.isEmpty());
 
         trades = subseries.get(2).run(strategy).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(6), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(7), trades.get(0).getExit());
+        assertEquals(Order.buyAt(6, subseries.get(2).getTick(6).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(7, subseries.get(2).getTick(7).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
     }
 
@@ -461,25 +461,31 @@ public class TimeSeriesTest {
 
         List<TimeSeries> subseries = series.split(Period.years(1));
 
+          for(TimeSeries s: subseries){
+            for(int i = s.getBegin(); i<= s.getEnd(); i++){
+            System.out.println("Tick "+i+" "+s.getTick(i));
+        }
+        System.out.println("---");
+        }
         List<Trade> trades = subseries.get(0).run(aStrategy).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(0), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(2), trades.get(0).getExit());
+        assertEquals(Order.buyAt(0, subseries.get(0).getTick(0).getClosePrice(), Decimal.NaN),trades.get(0).getEntry());
+        assertEquals(Order.sellAt(2,subseries.get(0).getTick(2).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
         trades = subseries.get(1).run(aStrategy).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(3), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(4), trades.get(0).getExit());
+        assertEquals(Order.buyAt(3, subseries.get(1).getTick(3).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(4,subseries.get(1).getTick(4).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
         trades = subseries.get(2).run(aStrategy).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(5), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(6), trades.get(0).getExit());
+        assertEquals(Order.buyAt(5,subseries.get(2).getTick(5).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(6,subseries.get(2).getTick(6).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
         trades = subseries.get(3).run(aStrategy).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(7), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(9), trades.get(0).getExit());
+        assertEquals(Order.buyAt(7,subseries.get(3).getTick(7).getClosePrice(), Decimal.NaN), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(9,subseries.get(3).getTick(9).getClosePrice(), Decimal.NaN), trades.get(0).getExit());
 
         trades = subseries.get(4).run(aStrategy).getTrades();
         assertTrue(trades.isEmpty());
