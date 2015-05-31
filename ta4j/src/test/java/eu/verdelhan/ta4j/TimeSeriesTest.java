@@ -460,13 +460,7 @@ public class TimeSeriesTest {
         Strategy aStrategy = new Strategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
         List<TimeSeries> subseries = series.split(Period.years(1));
-
-          for(TimeSeries s: subseries){
-            for(int i = s.getBegin(); i<= s.getEnd(); i++){
-            System.out.println("Tick "+i+" "+s.getTick(i));
-        }
-        System.out.println("---");
-        }
+        
         List<Trade> trades = subseries.get(0).run(aStrategy).getTrades();
         assertEquals(1, trades.size());
         assertEquals(Order.buyAt(0, subseries.get(0).getTick(0).getClosePrice(), Decimal.NaN),trades.get(0).getEntry());
