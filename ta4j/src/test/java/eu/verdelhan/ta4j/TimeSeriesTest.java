@@ -23,7 +23,6 @@
 package eu.verdelhan.ta4j;
 
 import eu.verdelhan.ta4j.Order.OrderType;
-import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.trading.rules.FixedRule;
@@ -434,7 +433,6 @@ public class TimeSeriesTest {
 
     @Test
     public void runSplitted() {
-        // 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d 
         List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
 
         List<Trade> trades = subseries.get(0).run(strategy).getTrades();
@@ -447,7 +445,6 @@ public class TimeSeriesTest {
 
         trades = subseries.get(2).run(strategy).getTrades();
         assertEquals(1, trades.size());
-       
         assertEquals(Order.buyAt(6), trades.get(0).getEntry());
         assertEquals(Order.sellAt(7), trades.get(0).getExit());
 
