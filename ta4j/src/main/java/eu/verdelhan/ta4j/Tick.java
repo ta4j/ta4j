@@ -74,9 +74,8 @@ public class Tick {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(DateTime endTime, Period timePeriod, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
-        this(endTime, timePeriod,
-                Decimal.valueOf(openPrice),
+    public Tick(DateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
+        this(endTime, Decimal.valueOf(openPrice),
                 Decimal.valueOf(highPrice),
                 Decimal.valueOf(lowPrice),
                 Decimal.valueOf(closePrice),

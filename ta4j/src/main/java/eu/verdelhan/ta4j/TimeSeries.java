@@ -3,22 +3,23 @@
  *
  * Copyright (c) 2014-2015 Marc de Verdelhan & respective authors (see AUTHORS)
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package eu.verdelhan.ta4j;
 
@@ -32,7 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Sequence of {@link Tick ticks} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
+ * Sequence of {@link Tick ticks} separated by a predefined period (e.g. 15
+ * minutes, 1 day, etc.)
  * <p>
  * Notably, a {@link TimeSeries time series} can be:
  * <ul>
@@ -44,27 +46,46 @@ import org.slf4j.LoggerFactory;
  */
 public class TimeSeries {
 
-    /** The logger */
+    /**
+     * The logger
+     */
     private final Logger log = LoggerFactory.getLogger(getClass());
-    /** Name of the series */
+    /**
+     * Name of the series
+     */
     private final String name;
-    /** Begin index of the time series */
+    /**
+     * Begin index of the time series
+     */
     private int beginIndex = -1;
-    /** End index of the time series */
+    /**
+     * End index of the time series
+     */
     private int endIndex = -1;
-    /** List of ticks */
+    /**
+     * List of ticks
+     */
     private final List<Tick> ticks;
-    /** Time period of the series */
+    /**
+     * Time period of the series
+     */
     private Period timePeriod;
-    /** Maximum number of ticks for the time series */
+    /**
+     * Maximum number of ticks for the time series
+     */
     private int maximumTickCount = Integer.MAX_VALUE;
-    /** Number of removed ticks */
+    /**
+     * Number of removed ticks
+     */
     private int removedTicksCount = 0;
-    /** True if the current series is a sub-series, false otherwise */
+    /**
+     * True if the current series is a sub-series, false otherwise
+     */
     private boolean subSeries = false;
 
     /**
      * Constructor.
+     *
      * @param name the name of the series
      * @param ticks the list of ticks of the series
      */
@@ -74,6 +95,7 @@ public class TimeSeries {
 
     /**
      * Constructor of an unnamed series.
+     *
      * @param ticks the list of ticks of the series
      */
     public TimeSeries(List<Tick> ticks) {
@@ -82,6 +104,7 @@ public class TimeSeries {
 
     /**
      * Constructor.
+     *
      * @param name the name of the series
      * @param timePeriod the time period (between 2 ticks)
      */
@@ -96,6 +119,7 @@ public class TimeSeries {
 
     /**
      * Constructor of an unnamed series.
+     *
      * @param timePeriod the time period (between 2 ticks)
      */
     public TimeSeries(Period timePeriod) {
@@ -104,11 +128,13 @@ public class TimeSeries {
 
     /**
      * Constructor.
+     *
      * @param name the name of the series
      * @param ticks the list of ticks of the series
      * @param beginIndex the begin index (inclusive) of the time series
      * @param endIndex the end index (inclusive) of the time series
-     * @param subSeries true if the current series is a sub-series, false otherwise
+     * @param subSeries true if the current series is a sub-series, false
+     * otherwise
      */
     private TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex, boolean subSeries) {
         // TODO: add null checks and out of bounds checks
@@ -193,7 +219,8 @@ public class TimeSeries {
     }
 
     /**
-     * @return the description of the series period (e.g. "from 12:00 21/01/2014 to 12:15 21/01/2014")
+     * @return the description of the series period (e.g. "from 12:00 21/01/2014
+     * to 12:15 21/01/2014")
      */
     public String getSeriesPeriodDescription() {
         StringBuilder sb = new StringBuilder();
@@ -218,8 +245,11 @@ public class TimeSeries {
     /**
      * Sets the maximum number of ticks that will be retained in the series.
      * <p>
-     * If a new tick is added to the series such that the number of ticks will exceed the maximum tick count,
-     * then the FIRST tick in the series is automatically removed, ensuring that the maximum tick count is not exceeded.
+     * If a new tick is added to the series such that the number of ticks will
+     * exceed the maximum tick count, then the FIRST tick in the series is
+     * automatically removed, ensuring that the maximum tick count is not
+     * exceeded.
+     *
      * @param maximumTickCount the maximum tick count
      */
     public void setMaximumTickCount(int maximumTickCount) {
@@ -251,8 +281,10 @@ public class TimeSeries {
      * Adds a tick at the end of the series.
      * <p>
      * Begin index set to 0 if if wasn't initialized.<br>
-     * End index set to 0 if if wasn't initialized, or incremented if it matches the end of the series.<br>
+     * End index set to 0 if if wasn't initialized, or incremented if it matches
+     * the end of the series.<br>
      * Exceeding ticks are removed.
+     *
      * @param tick the tick to be added
      * @see TimeSeries#setMaximumTickCount(int)
      */
@@ -278,13 +310,18 @@ public class TimeSeries {
     }
 
     /**
-     * Returns a new time series which is a view of a subset of the current series.
+     * Returns a new time series which is a view of a subset of the current
+     * series.
      * <p>
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
+     * The new series has begin and end indexes which correspond to the bounds
+     * of the sub-set into the full series.<br>
+     * The tick of the series are shared between the original time series and
+     * the returned one (i.e. no copy).
+     *
      * @param beginIndex the begin index (inclusive) of the time series
      * @param endIndex the end index (inclusive) of the time series
-     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
+     * @return a constrained {@link TimeSeries time series} which is a sub-set
+     * of the current series
      */
     public TimeSeries subseries(int beginIndex, int endIndex) {
         if (maximumTickCount != Integer.MAX_VALUE) {
@@ -294,16 +331,21 @@ public class TimeSeries {
     }
 
     /**
-     * Returns a new time series which is a view of a subset of the current series.
+     * Returns a new time series which is a view of a subset of the current
+     * series.
      * <p>
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
+     * The new series has begin and end indexes which correspond to the bounds
+     * of the sub-set into the full series.<br>
+     * The tick of the series are shared between the original time series and
+     * the returned one (i.e. no copy).
+     *
      * @param beginIndex the begin index (inclusive) of the time series
      * @param duration the duration of the time series
-     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
+     * @return a constrained {@link TimeSeries time series} which is a sub-set
+     * of the current series
      */
     public TimeSeries subseries(int beginIndex, Period duration) {
-        
+
         // Calculating the sub-series interval
         DateTime beginInterval = getTick(beginIndex).getEndTime();
         DateTime endInterval = beginInterval.plus(duration);
@@ -322,7 +364,7 @@ public class TimeSeries {
             // --> Incrementing the number of ticks in the subseries
             subseriesNbTicks++;
         }
-        
+
         return subseries(beginIndex, beginIndex + subseriesNbTicks - 1);
     }
 
@@ -330,6 +372,7 @@ public class TimeSeries {
      * Splits the time series into sub-series containing nbTicks ticks each.<br>
      * The current time series is splitted every nbTicks ticks.<br>
      * The last sub-series may have less ticks than nbTicks.
+     *
      * @param nbTicks the number of ticks of each sub-series
      * @return a list of sub-series
      */
@@ -348,6 +391,7 @@ public class TimeSeries {
      * Splits the time series into sub-series lasting sliceDuration.<br>
      * The current time series is splitted every splitDuration.<br>
      * The last sub-series may last less than sliceDuration.
+     *
      * @param splitDuration the duration between 2 splits
      * @param sliceDuration the duration of each sub-series
      * @return a list of sub-series
@@ -369,6 +413,7 @@ public class TimeSeries {
      * Splits the time series into sub-series lasting duration.<br>
      * The current time series is splitted every duration.<br>
      * The last sub-series may last less than duration.
+     *
      * @param duration the duration between 2 splits (and of each sub-series)
      * @return a list of sub-series
      */
@@ -380,6 +425,7 @@ public class TimeSeries {
      * Runs the strategy over the series.
      * <p>
      * Opens the trades with {@link OrderType.BUY} orders.
+     *
      * @param strategy the trading strategy
      * @return the trading record coming from the run
      */
@@ -389,19 +435,41 @@ public class TimeSeries {
 
     /**
      * Runs the strategy over the series.
+     * <p>
+     * Opens the trades with {@link OrderType.BUY} orders.
+     *
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType) {
+        return run(strategy, orderType, Decimal.NaN, false);
+
+    }
+
+    /**
+     * Runs the strategy over the series.
+     *
+     * @param strategy the trading strategy
+     * @param orderType the {@link OrderType} used to open the trades
+     * @param amount the amount used to open the trades
+     * @param withEntryPrice store the entry price in the trade record or not
+     * @return the trading record coming from the run
+     */
+    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount, Boolean withEntryPrice) {
 
         log.trace("Running strategy: {} (starting with {})", strategy, orderType);
         TradingRecord tradingRecord = new TradingRecord(orderType);
-
+        Decimal entryPrice;
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick in the sub-series...
+            if (withEntryPrice) {
+                entryPrice = ticks.get(i).getClosePrice();
+            } else {
+                entryPrice = Decimal.NaN;
+            }
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i);
+                tradingRecord.operate(i, entryPrice, amount);
             }
         }
 
@@ -411,8 +479,13 @@ public class TimeSeries {
             for (int i = endIndex + 1; i < ticks.size(); i++) {
                 // For each tick out of sub-series bound...
                 // --> Trying to close the last trade
+                if (withEntryPrice) {
+                    entryPrice = ticks.get(i).getClosePrice();
+                } else {
+                    entryPrice = Decimal.NaN;
+                }
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i);
+                    tradingRecord.operate(i, entryPrice, amount);
                     break;
                 }
             }
@@ -429,7 +502,7 @@ public class TimeSeries {
         for (int i = beginIndex; i < endIndex; i++) {
             // For each tick interval...
             // Looking for the minimum period.
-            long currentPeriodMillis = getTick(i+1).getEndTime().getMillis() - getTick(i).getEndTime().getMillis();
+            long currentPeriodMillis = getTick(i + 1).getEndTime().getMillis() - getTick(i).getEndTime().getMillis();
             if (minPeriod == null) {
                 minPeriod = new Period(currentPeriodMillis);
             } else {
@@ -465,6 +538,7 @@ public class TimeSeries {
 
     /**
      * Builds a list of split indexes from splitDuration.
+     *
      * @param splitDuration the duration between 2 splits
      * @return a list of begin indexes after split
      */
