@@ -415,16 +415,10 @@ public class TimeSeries {
 
         log.trace("Running strategy: {} (starting with {})", strategy, orderType);
         TradingRecord tradingRecord = new TradingRecord(orderType);
-        Decimal entryPrice;
         for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick in the sub-series...
-            if (withEntryPrice) {
-                entryPrice = ticks.get(i).getClosePrice();
-            } else {
-                entryPrice = Decimal.NaN;
-            }
+            // For each tick in the sub-series...       
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, entryPrice, amount);
+                tradingRecord.operate(i, getEntryPrice(i, withEntryPrice), amount);
             }
         }
 
@@ -434,19 +428,25 @@ public class TimeSeries {
             for (int i = endIndex + 1; i < ticks.size(); i++) {
                 // For each tick out of sub-series bound...
                 // --> Trying to close the last trade
-                if (withEntryPrice) {
-                    entryPrice = ticks.get(i).getClosePrice();
-                } else {
-                    entryPrice = Decimal.NaN;
-                }
+                
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i);
+                    tradingRecord.operate(i, getEntryPrice(i, withEntryPrice), amount);
                     break;
                 }
             }
         }
         return tradingRecord;
     }
+
+    /**
+    * get the entry price if needed
+    * @param index the tick index
+    * @param fromTick price from tick or Decimal.Nan
+    * @return 
+    */
+    private Decimal getEntryPrice(int index, Boolean fromTick) {
+        return(fromTick)? ticks.get(index).getClosePrice():Decimal.NaN;
+        }
 
     /**
      * Computes the time period of the series.
@@ -457,7 +457,7 @@ public class TimeSeries {
         for (int i = beginIndex; i < endIndex; i++) {
             // For each tick interval...
             // Looking for the minimum period.
-            long currentPeriodMillis = getTick(i+1).getEndTime().getMillis() - getTick(i).getEndTime().getMillis();
+            long currentPeriodMillis = getTick(i + 1).getEndTime().getMillis() - getTick(i).getEndTime().getMillis();
             if (minPeriod == null) {
                 minPeriod = new Period(currentPeriodMillis);
             } else {
