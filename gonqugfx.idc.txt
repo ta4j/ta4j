@@ -1,0 +1,63 @@
+﻿Merge branch 'master' of https://github.com/mdeverdelhan/ta4j
+
+Conflicts:
+	ta4j/src/main/java/eu/verdelhan/ta4j/Tick.java
+#
+# It looks like you may be committing a merge.
+# If this is not correct, please remove the file
+#	.git/MERGE_HEAD
+# and try again.
+
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+# On branch master
+# Your branch is up-to-date with 'origin/master'.
+#
+# All conflicts fixed but you are still merging.
+#
+# Changes to be committed:
+#	modified:   README.md
+#	modified:   pom.xml
+#	modified:   ta4j-examples/pom.xml
+#	modified:   ta4j-examples/src/main/java/ta4jexamples/bots/TradingBotOnMovingTimeSeries.java
+#	modified:   ta4j/pom.xml
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Decimal.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Indicator.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Rule.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Strategy.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Tick.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Trade.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/TradingRecord.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/analysis/CashFlow.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/analysis/criteria/MaximumDrawdownCriterion.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/analysis/criteria/VersusBuyAndHoldCriterion.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/CachedIndicator.java
+#	new file:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/helpers/CloseLocationValueIndicator.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/simple/VolumeIndicator.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/trackers/ParabolicSarIndicator.java
+#	new file:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/trackers/ZLEMAIndicator.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/volume/AccumulationDistributionIndicator.java
+#	new file:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/volume/ChaikinMoneyFlowIndicator.java
+#	new file:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/volume/NVIIndicator.java
+#	new file:   ta4j/src/main/java/eu/verdelhan/ta4j/indicators/volume/PVIIndicator.java
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/trading/rules/AbstractRule.java
+#	new file:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/helpers/CloseLocationValueIndicatorTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/simple/VolumeIndicatorTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/trackers/EMAIndicatorTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/trackers/ParabolicSarIndicatorTest.java
+#	new file:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/trackers/ZLEMAIndicatorTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/volume/AccumulationDistributionIndicatorTest.java
+#	new file:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/volume/ChaikinMoneyFlowIndicatorTest.java
+#	new file:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/volume/NVIIndicatorTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/volume/OnBalanceVolumeIndicatorTest.java
+#	new file:   ta4j/src/test/java/eu/verdelhan/ta4j/indicators/volume/PVIIndicatorTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/mocks/MockTick.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/trading/rules/StopGainRuleTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/trading/rules/StopLossRuleTest.java
+#	modified:   ta4j/src/test/java/eu/verdelhan/ta4j/trading/rules/WaitForRuleTest.java
+#
+# Changes not staged for commit:
+#	modified:   ta4j/src/main/java/eu/verdelhan/ta4j/Tick.java
+#
+
