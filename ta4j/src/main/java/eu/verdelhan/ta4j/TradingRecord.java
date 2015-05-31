@@ -279,7 +279,7 @@ public class TradingRecord {
      * @param price the price of the order
      * @param amount the amount to be ordered
      */
-    private void operate(int index, Decimal price, Decimal amount) {
+    public void operate(int index, Decimal price, Decimal amount) {
         if (currentTrade.isClosed()) {
             // Current trade closed, should not occur
             throw new IllegalStateException("Current trade should not be closed");
