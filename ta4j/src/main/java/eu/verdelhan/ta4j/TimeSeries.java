@@ -449,7 +449,7 @@ public class TimeSeries {
 
     /**
      * Runs the strategy over the series.
-     *
+     * <p>
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param amount the amount used to open the trades
