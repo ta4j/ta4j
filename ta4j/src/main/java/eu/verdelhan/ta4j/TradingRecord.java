@@ -118,6 +118,22 @@ public class TradingRecord {
     }
     
     /**
+     * Operates an order in the trading record.
+     * @param index the index to operate the order
+     * @param price the price of the order
+     * @param amount the amount to be ordered
+     */
+    public final void operate(int index, Decimal price, Decimal amount) {
+        if (currentTrade.isClosed()) {
+            // Current trade closed, should not occur
+            throw new IllegalStateException("Current trade should not be closed");
+        }
+        boolean newOrderWillBeAnEntry = currentTrade.isNew();
+        Order newOrder = currentTrade.operate(index, price, amount);
+        recordOrder(newOrder, newOrderWillBeAnEntry);
+    }
+    
+    /**
      * Operates an entry order in the trading record.
      * @param index the index to operate the entry
      * @return true if the entry has been operated, false otherwise
@@ -271,21 +287,5 @@ public class TradingRecord {
             trades.add(currentTrade);
             currentTrade = new Trade(startingType);
         }
-    }
-    
-    /**
-     * Operates an order in the trading record.
-     * @param index the index to operate the order
-     * @param price the price of the order
-     * @param amount the amount to be ordered
-     */
-    public void operate(int index, Decimal price, Decimal amount) {
-        if (currentTrade.isClosed()) {
-            // Current trade closed, should not occur
-            throw new IllegalStateException("Current trade should not be closed");
-        }
-        boolean newOrderWillBeAnEntry = currentTrade.isNew();
-        Order newOrder = currentTrade.operate(index, price, amount);
-        recordOrder(newOrder, newOrderWillBeAnEntry);
     }
 }

@@ -392,14 +392,12 @@ public class TimeSeries {
      * Runs the strategy over the series.
      * <p>
      * Opens the trades with {@link OrderType.BUY} orders.
-     *
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType) {
         return run(strategy, orderType, Decimal.NaN);
-
     }
 
     /**
@@ -407,7 +405,7 @@ public class TimeSeries {
      * <p>
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
-     * @param amount the amount used to open the trades
+     * @param amount the amount used to open/close the trades
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount) {
@@ -427,7 +425,6 @@ public class TimeSeries {
             for (int i = endIndex + 1; i < ticks.size(); i++) {
                 // For each tick out of sub-series bound...
                 // --> Trying to close the last trade
-                
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
                     break;
