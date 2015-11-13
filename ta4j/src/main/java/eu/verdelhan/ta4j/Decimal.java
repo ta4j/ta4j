@@ -50,13 +50,14 @@ public final class Decimal implements Comparable<Decimal> {
     public static final Decimal HUNDRED = valueOf(100);
     public static final Decimal THOUSAND = valueOf(1000);
 
-    private BigDecimal delegate;
+    private final BigDecimal delegate;
 
     /**
      * Constructor.
      * Only used for NaN instance.
      */
     private Decimal() {
+        delegate = null;
     }
 
     /**
