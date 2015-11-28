@@ -38,16 +38,25 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Decimal> {
 
     private final BollingerBandsMiddleIndicator bbm;
 
-    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Decimal> indicator) {
+    private final Decimal k;
+
+    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Decimal> indicator, Decimal k) {
         // TODO: check for same series between indicators
         super(indicator);
         this.bbm = bbm;
         this.indicator = indicator;
+        this.k = k;
     }
+
+    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Decimal> indicator) {
+        this(bbm, indicator, Decimal.TWO);
+    }
+
+    public Decimal getK() { return this.k; }
 
     @Override
     protected Decimal calculate(int index) {
-        return bbm.getValue(index).plus(indicator.getValue(index).multipliedBy(Decimal.TWO));
+        return bbm.getValue(index).plus(indicator.getValue(index).multipliedBy(this.k));
     }
 
     @Override

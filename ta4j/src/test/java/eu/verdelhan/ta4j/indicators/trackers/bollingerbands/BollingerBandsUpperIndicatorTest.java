@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.StandardDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -56,6 +58,8 @@ public class BollingerBandsUpperIndicatorTest {
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
+        assertDecimalEquals(bbuSMA.getK(), 2);
+
         assertDecimalEquals(bbuSMA.getValue(0), 1);
         assertDecimalEquals(bbuSMA.getValue(1), 2.5);
         assertDecimalEquals(bbuSMA.getValue(2), 3.633);
@@ -66,5 +70,20 @@ public class BollingerBandsUpperIndicatorTest {
         assertDecimalEquals(bbuSMA.getValue(7), 5.2761);
         assertDecimalEquals(bbuSMA.getValue(8), 5.633);
         assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
+
+        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, Decimal.valueOf("1.5"));
+
+        assertDecimalEquals(bbuSMAwithK.getK(), 1.5);
+
+        assertDecimalEquals(bbuSMAwithK.getValue(0), 1);
+        assertDecimalEquals(bbuSMAwithK.getValue(1), 2.25);
+        assertDecimalEquals(bbuSMAwithK.getValue(2), 3.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(3), 4.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(4), 4.0404);
+        assertDecimalEquals(bbuSMAwithK.getValue(5), 4.3737);
+        assertDecimalEquals(bbuSMAwithK.getValue(6), 5.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(7), 5.0404);
+        assertDecimalEquals(bbuSMAwithK.getValue(8), 5.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(9), 4.0404);
     }
 }
