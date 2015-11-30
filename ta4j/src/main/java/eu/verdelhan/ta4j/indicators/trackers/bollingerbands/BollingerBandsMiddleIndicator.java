@@ -46,6 +46,10 @@ public class BollingerBandsMiddleIndicator extends CachedIndicator<Decimal> {
         return indicator.getValue(index);
     }
 
+    public Indicator<Decimal> getIndicator() {
+        return indicator;
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " deviation: " + indicator;
