@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.indicators.trackers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Test;
@@ -32,7 +33,7 @@ import org.junit.Test;
 public class WMAIndicatorTest {
 
     @Test
-    public void WMACalculate() {
+    public void calculate() {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Decimal> close = new ClosePriceIndicator(series);
         Indicator<Decimal> wmaIndicator = new WMAIndicator(close, 3);
@@ -46,7 +47,7 @@ public class WMAIndicatorTest {
     }
     
     @Test
-    public void WMACalculateWithTimeFrameGreaterThanSeriesSize() {
+    public void wmaWithTimeFrameGreaterThanSeriesSize() {
         MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Decimal> close = new ClosePriceIndicator(series);
         Indicator<Decimal> wmaIndicator = new WMAIndicator(close, 55);
@@ -57,5 +58,34 @@ public class WMAIndicatorTest {
         assertDecimalEquals(wmaIndicator.getValue(3), 3);
         assertDecimalEquals(wmaIndicator.getValue(4), 3.6666);
         assertDecimalEquals(wmaIndicator.getValue(5), 4.3333);
+    }
+
+    @Test
+    public void wmaUsingTimeFrame9UsingClosePrice() {
+        // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
+        TimeSeries data = new MockTimeSeries(
+                84.53, 87.39, 84.55,
+                82.83, 82.58, 83.74,
+                83.33, 84.57, 86.98,
+                87.10, 83.11, 83.60,
+                83.66, 82.76, 79.22,
+                79.03, 78.18, 77.42,
+                74.65, 77.48, 76.87
+        );
+        
+        WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
+        assertDecimalEquals(wma.getValue(8), 84.4958);
+        assertDecimalEquals(wma.getValue(9), 85.0158);
+        assertDecimalEquals(wma.getValue(10), 84.6807);
+        assertDecimalEquals(wma.getValue(11), 84.5387);
+        assertDecimalEquals(wma.getValue(12), 84.4298);
+        assertDecimalEquals(wma.getValue(13), 84.1224);
+        assertDecimalEquals(wma.getValue(14), 83.1031);
+        assertDecimalEquals(wma.getValue(15), 82.1462);
+        assertDecimalEquals(wma.getValue(16), 81.1149);
+        assertDecimalEquals(wma.getValue(17), 80.0736);
+        assertDecimalEquals(wma.getValue(18), 78.6907);
+        assertDecimalEquals(wma.getValue(19), 78.1504);
+        assertDecimalEquals(wma.getValue(20), 77.6133);
     }
 }
