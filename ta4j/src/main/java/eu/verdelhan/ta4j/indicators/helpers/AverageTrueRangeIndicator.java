@@ -48,7 +48,7 @@ public class AverageTrueRangeIndicator extends CachedIndicator<Decimal> {
         }
         Decimal nbPeriods = Decimal.valueOf(timeFrame);
         Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(tr.getValue(index).dividedBy(nbPeriods));
+        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).plus(tr.getValue(index)).dividedBy(nbPeriods);
     }
 
     @Override
