@@ -265,6 +265,20 @@ public class Tick {
     }
 
     /**
+     * @return true if this is a bearish tick, false otherwise
+     */
+    public boolean isBearish() {
+        return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
+    }
+
+    /**
+     * @return true if this is a bullish tick, false otherwise
+     */
+    public boolean isBullish() {
+        return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
+    }
+    
+    /**
      * @return a human-friendly string of the end timestamp
      */
     public String getDateName() {
