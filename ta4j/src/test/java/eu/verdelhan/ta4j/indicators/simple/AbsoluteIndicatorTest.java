@@ -22,36 +22,21 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+import org.junit.Test;
 
-/**
- * Difference indicator.
- * <p>
- * I.e.: first - second
- */
-public class DifferenceIndicator extends CachedIndicator<Decimal> {
+public class AbsoluteIndicatorTest {
 
-    private Indicator<Decimal> first;
-    
-    private Indicator<Decimal> second;
-    
-    /**
-     * Constructor.
-     * (first minus second)
-     * @param first the first indicator
-     * @param second the second indicator
-     */
-    public DifferenceIndicator(Indicator<Decimal> first, Indicator<Decimal> second) {
-        // TODO: check if first series is equal to second one
-        super(first);
-        this.first = first;
-        this.second = second;
-    }
-
-    @Override
-    protected Decimal calculate(int index) {
-        return first.getValue(index).minus(second.getValue(index));
+    @Test
+    public void constantIndicators() {
+        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Decimal>(Decimal.valueOf(1337)));
+        AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Decimal>(Decimal.ZERO));
+        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Decimal>(Decimal.valueOf(-42.42)));
+        for (int i = 0; i < 10; i++) {
+            assertDecimalEquals(positiveInd.getValue(i), 1337);
+            assertDecimalEquals(zeroInd.getValue(i), 0);
+            assertDecimalEquals(negativeInd.getValue(i), 42.42);
+        }
     }
 }
