@@ -42,12 +42,6 @@ public class AverageTrueRangeIndicator extends CachedIndicator<Decimal> {
         this.tr = new TrueRangeIndicator(series);
     }
     
-    public AverageTrueRangeIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        this.tr = new TrueRangeIndicator(indicator.getTimeSeries());
-    }
-
     @Override
     protected Decimal calculate(int index) {
         if (index == 0) {
