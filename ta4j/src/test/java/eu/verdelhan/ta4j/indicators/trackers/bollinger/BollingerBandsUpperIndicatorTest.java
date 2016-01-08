@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
+package eu.verdelhan.ta4j.indicators.trackers.bollinger;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 
@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Before;
 import org.junit.Test;
 
-public class BollingerBandsLowerIndicatorTest {
+public class BollingerBandsUpperIndicatorTest {
 
     private TimeSeries data;
 
@@ -52,32 +52,38 @@ public class BollingerBandsLowerIndicatorTest {
     }
 
     @Test
-    public void bollingerBandsLowerUsingSMAAndStandardDeviation() {
+    public void bollingerBandsUpperUsingSMAAndStandardDeviation() {
 
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
-        BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
+        BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
-        assertDecimalEquals(bblSMA.getK(), 2);
+        assertDecimalEquals(bbuSMA.getK(), 2);
 
-        assertDecimalEquals(bblSMA.getValue(0), 1);
-        assertDecimalEquals(bblSMA.getValue(1), 0.5);
-        assertDecimalEquals(bblSMA.getValue(2), 0.367);
-        assertDecimalEquals(bblSMA.getValue(3), 1.367);
-        assertDecimalEquals(bblSMA.getValue(4), 2.3905);
-        assertDecimalEquals(bblSMA.getValue(5), 2.7239);
-        assertDecimalEquals(bblSMA.getValue(6), 2.367);
+        assertDecimalEquals(bbuSMA.getValue(0), 1);
+        assertDecimalEquals(bbuSMA.getValue(1), 2.5);
+        assertDecimalEquals(bbuSMA.getValue(2), 3.633);
+        assertDecimalEquals(bbuSMA.getValue(3), 4.633);
+        assertDecimalEquals(bbuSMA.getValue(4), 4.2761);
+        assertDecimalEquals(bbuSMA.getValue(5), 4.6094);
+        assertDecimalEquals(bbuSMA.getValue(6), 5.633);
+        assertDecimalEquals(bbuSMA.getValue(7), 5.2761);
+        assertDecimalEquals(bbuSMA.getValue(8), 5.633);
+        assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
 
-        BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation, Decimal.valueOf("1.5"));
+        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, Decimal.valueOf("1.5"));
 
-        assertDecimalEquals(bblSMAwithK.getK(), 1.5);
+        assertDecimalEquals(bbuSMAwithK.getK(), 1.5);
 
-        assertDecimalEquals(bblSMAwithK.getValue(0), 1);
-        assertDecimalEquals(bblSMAwithK.getValue(1), 0.75);
-        assertDecimalEquals(bblSMAwithK.getValue(2), 0.7752);
-        assertDecimalEquals(bblSMAwithK.getValue(3), 1.7752);
-        assertDecimalEquals(bblSMAwithK.getValue(4), 2.6262);
-        assertDecimalEquals(bblSMAwithK.getValue(5), 2.9595);
-        assertDecimalEquals(bblSMAwithK.getValue(6), 2.7752);
+        assertDecimalEquals(bbuSMAwithK.getValue(0), 1);
+        assertDecimalEquals(bbuSMAwithK.getValue(1), 2.25);
+        assertDecimalEquals(bbuSMAwithK.getValue(2), 3.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(3), 4.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(4), 4.0404);
+        assertDecimalEquals(bbuSMAwithK.getValue(5), 4.3737);
+        assertDecimalEquals(bbuSMAwithK.getValue(6), 5.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(7), 5.0404);
+        assertDecimalEquals(bbuSMAwithK.getValue(8), 5.2247);
+        assertDecimalEquals(bbuSMAwithK.getValue(9), 4.0404);
     }
 }
