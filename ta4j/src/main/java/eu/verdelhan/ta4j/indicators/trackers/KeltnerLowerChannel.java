@@ -39,11 +39,11 @@ public class KeltnerLowerChannel extends CachedIndicator<Decimal> {
 	
 	private final Decimal ratio;
 	
-	public KeltnerLowerChannel(TimeSeries series, int nbEMA, double ratio, int ndATR) {
+	public KeltnerLowerChannel(TimeSeries series, int timeFrameEMA, Decimal ratio, int timeFrameATR) {
 		super(series);
-		this.ratio = Decimal.valueOf(ratio);
-		emaIndicator = new EMAIndicator(new ClosePriceIndicator(series), nbEMA);
-		averageTrueRangeIndicator = new AverageTrueRangeIndicator(series, ndATR);
+		this.ratio = ratio;
+		emaIndicator = new EMAIndicator(new ClosePriceIndicator(series), timeFrameEMA);
+		averageTrueRangeIndicator = new AverageTrueRangeIndicator(series, timeFrameATR);
 	}
 
 	@Override
