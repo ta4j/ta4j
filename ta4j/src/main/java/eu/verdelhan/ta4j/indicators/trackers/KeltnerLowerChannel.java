@@ -26,7 +26,7 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageTrueRangeIndicator;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
 
 /**
  * Keltner Lower Channel
@@ -42,7 +42,7 @@ public class KeltnerLowerChannel extends CachedIndicator<Decimal> {
 	public KeltnerLowerChannel(TimeSeries series, int timeFrameEMA, Decimal ratio, int timeFrameATR) {
 		super(series);
 		this.ratio = ratio;
-		emaIndicator = new EMAIndicator(new ClosePriceIndicator(series), timeFrameEMA);
+		emaIndicator = new EMAIndicator(new TypicalPriceIndicator(series), timeFrameEMA);
 		averageTrueRangeIndicator = new AverageTrueRangeIndicator(series, timeFrameATR);
 	}
 
