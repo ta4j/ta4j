@@ -24,11 +24,10 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * This class implenets a basic trailing stop loss indicator.
+ * This class implenents a basic trailing stop loss indicator.
  * 
  * Basic idea: 
  * Your stop order limit is automatically adjusted while price is rising. 
@@ -41,15 +40,15 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * Rule buyingRule = new BooleanRule(true); // No real buying rule
  *
  * // Selling rule
- * Rule sellingRule = new CrossedDownIndicatorRule(ClosePrice_Indicator,TrailingStopLoss_Indicator) .and(new JustOnceRule());
+ * Rule sellingRule = new CrossedDownIndicatorRule(ClosePrice_Indicator, TrailingStopLoss_Indicator).and(new JustOnceRule());
  *
  * // Strategy
  * Strategy strategy = new Strategy(buyingRule, sellingRule);
  * 
  * Hints:
  * There are two constructors for two use cases: 
- * Constructor 1: No InitialStopLimit is needed. It is taken from the first inicator value
- * Constructor 2: You can set an InitialStopLimit 
+ *  - Constructor 1: No initialStopLimit is needed. It is taken from the first indicator value
+ *  - Constructor 2: You can set an initialStopLimit 
  * It may influence the trade signals of the strategy depending which constructor you choose.  
  * 
  * @author Bastian Engelmann
@@ -58,25 +57,35 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
     
     private final Indicator<Decimal> indicator;
 
-    private Decimal StopLossLimit;
-    private final Decimal StopLossDistance;
+    private Decimal stopLossLimit;
     
-
-    public TrailingStopLossIndicator(Indicator<Decimal> indicator,Decimal StopLossDistance) {
+    private final Decimal stopLossDistance;
+    
+    /**
+     * Constructor.
+     * @param indicator an indicator
+     * @param stopLossDistance the stop-loss distance (absolute)
+     */
+    public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance) {
         super(indicator);
         this.indicator = indicator;
-        this.StopLossLimit = indicator.getValue(0).minus(StopLossDistance);
-        this.StopLossDistance = StopLossDistance;
+        this.stopLossLimit = indicator.getValue(0).minus(stopLossDistance);
+        this.stopLossDistance = stopLossDistance;
     }
     
-    public TrailingStopLossIndicator(Indicator<Decimal> indicator,Decimal StopLossDistance,Decimal InitialStopLossLimit) {
+    /**
+     * Constructor.
+     * @param indicator an indicator
+     * @param stopLossDistance the stop-loss distance (absolute)
+     * @param initialStopLossLimit the initial stop-loss limit
+     */
+    public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance, Decimal initialStopLossLimit) {
         super(indicator);
         this.indicator = indicator;
-        this.StopLossLimit = InitialStopLossLimit;
-        this.StopLossDistance = StopLossDistance;
+        this.stopLossLimit = initialStopLossLimit;
+        this.stopLossDistance = stopLossDistance;
     }
     
-
     /**
      * Simple implementation of the trailing stop loss concept.
      * Logic:
@@ -86,19 +95,12 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
      */
     @Override
     protected Decimal calculate(int index) {
-        Decimal CurrentPrice = indicator.getValue(index);
-             
-        Decimal ComparisonPrice = StopLossLimit.plus(StopLossDistance);
-        int Comparator = CurrentPrice.compareTo(ComparisonPrice);
+        Decimal currentValue = indicator.getValue(index);
+        Decimal referenceValue = stopLossLimit.plus(stopLossDistance);
         
-        if (Comparator > 0)
-        {
-            StopLossLimit = CurrentPrice.minus(StopLossDistance);
-
+        if (currentValue.isGreaterThan(referenceValue)) {
+            stopLossLimit = currentValue.minus(stopLossDistance);
         }
-
-        return StopLossLimit;
-        
+        return stopLossLimit;
     }
-    
 }
