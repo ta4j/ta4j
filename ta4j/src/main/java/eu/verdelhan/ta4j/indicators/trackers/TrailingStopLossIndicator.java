@@ -67,10 +67,7 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
      * @param stopLossDistance the stop-loss distance (absolute)
      */
     public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance) {
-        super(indicator);
-        this.indicator = indicator;
-        this.stopLossLimit = indicator.getValue(0).minus(stopLossDistance);
-        this.stopLossDistance = stopLossDistance;
+        this(indicator, stopLossDistance, Decimal.NaN);
     }
     
     /**
@@ -82,12 +79,12 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
     public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance, Decimal initialStopLossLimit) {
         super(indicator);
         this.indicator = indicator;
-        this.stopLossLimit = initialStopLossLimit;
         this.stopLossDistance = stopLossDistance;
+        this.stopLossLimit = initialStopLossLimit;
     }
     
     /**
-     * Simple implementation of the trailing stop loss concept.
+     * Simple implementation of the trailing stop-loss concept.
      * Logic:
      * IF CurrentPrice - StopLossDistance > StopLossLimit THEN StopLossLimit = CurrentPrice - StopLossDistance
      * @param index
@@ -95,6 +92,10 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
      */
     @Override
     protected Decimal calculate(int index) {
+        if (stopLossLimit.isNaN()) {
+            // Case without initial stop-loss limit value
+            stopLossLimit = indicator.getValue(0).minus(stopLossDistance);
+        }
         Decimal currentValue = indicator.getValue(index);
         Decimal referenceValue = stopLossLimit.plus(stopLossDistance);
         
