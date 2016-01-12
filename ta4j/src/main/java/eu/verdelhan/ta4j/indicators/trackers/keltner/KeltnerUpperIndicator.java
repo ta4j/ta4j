@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2015 Marc de Verdelhan & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2016 Marc de Verdelhan & respective authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -20,35 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers;
+package eu.verdelhan.ta4j.indicators.trackers.keltner;
 
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageTrueRangeIndicator;
-import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
 
 /**
  * Keltner Upper Channel.
  */
-public class KeltnerUpperChannel extends CachedIndicator<Decimal> {
+public class KeltnerUpperIndicator extends CachedIndicator<Decimal> {
 
 	private final AverageTrueRangeIndicator averageTrueRangeIndicator;
 	
-	private final EMAIndicator emaIndicator;
+	private final KeltnerMiddleIndicator keltnerMiddleIndicator;
 	
 	private final Decimal ratio;
 	
-	public KeltnerUpperChannel(TimeSeries series, int timeFrameEMA, Decimal ratio, int timeFrameATR) {
-		super(series);
+	public KeltnerUpperIndicator(KeltnerMiddleIndicator keltnerMiddleIndicator, Decimal ratio, int timeFrameATR) {
+		super(keltnerMiddleIndicator);
 		this.ratio = ratio;
-		emaIndicator = new EMAIndicator(new TypicalPriceIndicator(series), timeFrameEMA);
-		averageTrueRangeIndicator = new AverageTrueRangeIndicator(series, timeFrameATR);
+		this.keltnerMiddleIndicator = keltnerMiddleIndicator;
+		averageTrueRangeIndicator = new AverageTrueRangeIndicator(keltnerMiddleIndicator.getTimeSeries(), timeFrameATR);
 	}
 
 	@Override
 	protected Decimal calculate(int index) {
-		return emaIndicator.getValue(index).plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
+		return keltnerMiddleIndicator.getValue(index).plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
 	} 
 	
 }
