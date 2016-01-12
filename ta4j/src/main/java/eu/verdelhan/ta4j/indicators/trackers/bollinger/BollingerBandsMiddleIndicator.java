@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers.bollingerbands;
+package eu.verdelhan.ta4j.indicators.trackers.bollinger;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
@@ -28,42 +28,30 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Buy - Occurs when the price line cross from down to up de Bollinger Band Low.
- * Sell - Occurs when the price line cross from up to down de Bollinger Band High.
+ * Sell - Occurs when the price line cross from up to down de Bollinger Band
+ * High.
  * 
  */
-public class BollingerBandsUpperIndicator extends CachedIndicator<Decimal> {
+public class BollingerBandsMiddleIndicator extends CachedIndicator<Decimal> {
 
     private final Indicator<Decimal> indicator;
 
-    private final BollingerBandsMiddleIndicator bbm;
-
-    private final Decimal k;
-
-    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Decimal> indicator) {
-        this(bbm, indicator, Decimal.TWO);
-    }
-
-    public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Decimal> indicator, Decimal k) {
+    public BollingerBandsMiddleIndicator(Indicator<Decimal> indicator) {
         super(indicator);
-        this.bbm = bbm;
         this.indicator = indicator;
-        this.k = k;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return bbm.getValue(index).plus(indicator.getValue(index).multipliedBy(k));
+        return indicator.getValue(index);
     }
 
-    /**
-     * @return the K multiplier
-     */
-    public Decimal getK() {
-        return k;
+    public Indicator<Decimal> getIndicator() {
+        return indicator;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "deviation: " + indicator + "series" + bbm;
+        return getClass().getSimpleName() + " deviation: " + indicator;
     }
 }
