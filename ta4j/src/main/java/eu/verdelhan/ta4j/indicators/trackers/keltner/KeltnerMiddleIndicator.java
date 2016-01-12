@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.trackers.keltner;
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
@@ -34,8 +35,12 @@ public class KeltnerMiddleIndicator  extends CachedIndicator<Decimal> {
 	private final EMAIndicator emaIndicator;
 	
 	public KeltnerMiddleIndicator(TimeSeries series, int timeFrameEMA) {
-		super(series);
-		emaIndicator = new EMAIndicator(new TypicalPriceIndicator(series), timeFrameEMA);
+		this(new TypicalPriceIndicator(series), timeFrameEMA);
+	}
+	
+	public KeltnerMiddleIndicator(Indicator<Decimal> indicator , int timeFrameEMA) {
+		super(indicator);
+		emaIndicator = new EMAIndicator(indicator, timeFrameEMA);
 	}
 
 	@Override
