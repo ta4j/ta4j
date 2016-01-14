@@ -20,39 +20,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.helpers;
+package eu.verdelhan.ta4j.indicators.trackers.keltner;
 
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
+import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
 
-/**
- * Average true range indicator.
- * <p>
- */
-public class AverageTrueRangeIndicator extends CachedIndicator<Decimal> {
+public class KeltnerMiddleIndicator  extends CachedIndicator<Decimal> {
 
-    private final int timeFrame;
-    private final TrueRangeIndicator tr;
+	
+	private final EMAIndicator emaIndicator;
+	
+	public KeltnerMiddleIndicator(TimeSeries series, int timeFrameEMA) {
+		this(new TypicalPriceIndicator(series), timeFrameEMA);
+	}
+	
+	public KeltnerMiddleIndicator(Indicator<Decimal> indicator , int timeFrameEMA) {
+		super(indicator);
+		emaIndicator = new EMAIndicator(indicator, timeFrameEMA);
+	}
 
-    public AverageTrueRangeIndicator(TimeSeries series, int timeFrame) {
-        super(series);
-        this.timeFrame = timeFrame;
-        this.tr = new TrueRangeIndicator(series);
-    }
-    
-    @Override
-    protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ONE;
-        }
-        Decimal nbPeriods = Decimal.valueOf(timeFrame);
-        Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).plus(tr.getValue(index)).dividedBy(nbPeriods);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + this.timeFrame;
-    }
+	@Override
+	protected Decimal calculate(int index) {
+		return emaIndicator.getValue(index);
+	} 
+	
 }
