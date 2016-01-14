@@ -26,7 +26,6 @@ import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import org.junit.Before;
 import org.junit.Test;
