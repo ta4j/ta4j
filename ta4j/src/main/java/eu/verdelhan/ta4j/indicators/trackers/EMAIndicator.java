@@ -36,27 +36,34 @@ public class EMAIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
+    private final SMAIndicator sma;
+    
     private final Decimal multiplier;
 
     public EMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
+        sma = new SMAIndicator(indicator, timeFrame);
         multiplier = Decimal.TWO.dividedBy(Decimal.valueOf(timeFrame + 1));
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index + 1 < timeFrame) {
-            // Starting point of the EMA
-            return new SMAIndicator(indicator, timeFrame).getValue(index);
-        }
-        if (index == 0) {
+        int startIndex = Math.max(0, index - timeFrame + 1);
+        Decimal emaValue;
+        if (startIndex == 0) {
             // If the timeframe is bigger than the indicator's value count
-            return indicator.getValue(0);
+            emaValue = indicator.getValue(0);
+        } else {
+            // Starting point of the EMA
+            emaValue = sma.getValue(startIndex);
         }
-        Decimal emaPrev = getValue(index - 1);
-        return indicator.getValue(index).minus(emaPrev).multipliedBy(multiplier).plus(emaPrev);
+        
+        for (int i = startIndex+1; i <= index; i++) {
+            emaValue = indicator.getValue(i).minus(emaValue).multipliedBy(multiplier).plus(emaValue);
+        }
+        return emaValue;
     }
 
     @Override
