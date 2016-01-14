@@ -50,15 +50,15 @@ public class DoubleEMAIndicatorTest {
         DoubleEMAIndicator doubleEma = new DoubleEMAIndicator(closePrice, 5);
 
         assertDecimalEquals(doubleEma.getValue(0), 0.73);
-        assertDecimalEquals(doubleEma.getValue(1), 0.7225);
-        assertDecimalEquals(doubleEma.getValue(2), 0.7983);
+        assertDecimalEquals(doubleEma.getValue(1), 0.7244);
+        assertDecimalEquals(doubleEma.getValue(2), 0.7993);
 
-        assertDecimalEquals(doubleEma.getValue(6), 0.7872);
-        assertDecimalEquals(doubleEma.getValue(7), 0.7381);
-        assertDecimalEquals(doubleEma.getValue(8), 0.6887);
+        assertDecimalEquals(doubleEma.getValue(6), 0.7857);
+        assertDecimalEquals(doubleEma.getValue(7), 0.7389);
+        assertDecimalEquals(doubleEma.getValue(8), 0.6943);
 
-        assertDecimalEquals(doubleEma.getValue(12), 0.7184);
-        assertDecimalEquals(doubleEma.getValue(13), 0.6938);
-        assertDecimalEquals(doubleEma.getValue(14), 0.6859);
+        assertDecimalEquals(doubleEma.getValue(12), 0.7198);
+        assertDecimalEquals(doubleEma.getValue(13), 0.6995);
+        assertDecimalEquals(doubleEma.getValue(14), 0.6932);
     }
 }
