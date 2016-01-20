@@ -28,8 +28,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
  * Buy - Occurs when the price line cross from down to up de Bollinger Band Low.
- * Sell - Occurs when the price line cross from up to down de Bollinger Band
- * High.
+ * Sell - Occurs when the price line cross from up to down de Bollinger Band High.
  * 
  */
 public class BollingerBandsMiddleIndicator extends CachedIndicator<Decimal> {

@@ -20,42 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.candles;
+package eu.verdelhan.ta4j.indicators.trackers.bollinger;
 
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.mocks.MockTick;
-import eu.verdelhan.ta4j.mocks.MockTimeSeries;
-import java.util.ArrayList;
-import java.util.List;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
+import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
-public class BearishEngulfingIndicatorTest {
+/**
+ * Bollinger BandWidth indicator.
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width
+ */
+public class BollingerBandWidthIndicator extends CachedIndicator<Decimal> {
 
-    private TimeSeries series;
-
-    @Before
-    public void setUp() {
-        List<Tick> ticks = new ArrayList<Tick>();
-        // open, close, high, low
-        ticks.add(new MockTick(10, 18, 20, 10));
-        ticks.add(new MockTick(17, 20, 21, 17));
-        ticks.add(new MockTick(21, 15, 22, 14));
-        ticks.add(new MockTick(15, 11, 15, 8));
-        ticks.add(new MockTick(11, 12, 12, 10));
-        series = new MockTimeSeries(ticks);
-    }
+    private final BollingerBandsUpperIndicator bbu;
     
-    @Test
-    public void getValue() {
-        BearishEngulfingIndicator bep = new BearishEngulfingIndicator(series);
-        assertFalse(bep.getValue(0));
-        assertFalse(bep.getValue(1));
-        assertTrue(bep.getValue(2));
-        assertFalse(bep.getValue(3));
-        assertFalse(bep.getValue(4));
+    private final BollingerBandsMiddleIndicator bbm;
+    
+    private final BollingerBandsLowerIndicator bbl;
+
+    public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm, BollingerBandsLowerIndicator bbl) {
+        super(bbm.getTimeSeries());
+        this.bbu = bbu;
+        this.bbm = bbm;
+        this.bbl = bbl;
+    }
+
+    @Override
+    protected Decimal calculate(int index) {
+        return bbu.getValue(index).minus(bbl.getValue(index))
+                .dividedBy(bbm.getValue(index)).multipliedBy(Decimal.HUNDRED);
     }
 }
