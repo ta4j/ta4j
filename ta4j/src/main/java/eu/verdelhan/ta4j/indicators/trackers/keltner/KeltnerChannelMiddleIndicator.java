@@ -29,23 +29,26 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
 
-public class KeltnerMiddleIndicator  extends CachedIndicator<Decimal> {
+/**
+ * Keltner Channel (middle line) indicator
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels
+ */
+public class KeltnerChannelMiddleIndicator extends CachedIndicator<Decimal> {
 
-	
-	private final EMAIndicator emaIndicator;
-	
-	public KeltnerMiddleIndicator(TimeSeries series, int timeFrameEMA) {
-		this(new TypicalPriceIndicator(series), timeFrameEMA);
-	}
-	
-	public KeltnerMiddleIndicator(Indicator<Decimal> indicator , int timeFrameEMA) {
-		super(indicator);
-		emaIndicator = new EMAIndicator(indicator, timeFrameEMA);
-	}
+    private final EMAIndicator emaIndicator;
 
-	@Override
-	protected Decimal calculate(int index) {
-		return emaIndicator.getValue(index);
-	} 
-	
+    public KeltnerChannelMiddleIndicator(TimeSeries series, int timeFrameEMA) {
+        this(new TypicalPriceIndicator(series), timeFrameEMA);
+    }
+
+    public KeltnerChannelMiddleIndicator(Indicator<Decimal> indicator, int timeFrameEMA) {
+        super(indicator);
+        emaIndicator = new EMAIndicator(indicator, timeFrameEMA);
+    }
+
+    @Override
+    protected Decimal calculate(int index) {
+        return emaIndicator.getValue(index);
+    }
+
 }

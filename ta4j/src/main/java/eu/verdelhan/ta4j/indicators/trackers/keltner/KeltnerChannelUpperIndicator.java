@@ -27,26 +27,27 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.AverageTrueRangeIndicator;
 
 /**
- * Keltner Lower Channel
+ * Keltner Channel (upper line) indicator
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels
  */
-public class KeltnerLowerIndicator extends CachedIndicator<Decimal> {
+public class KeltnerChannelUpperIndicator extends CachedIndicator<Decimal> {
 
-	private final AverageTrueRangeIndicator averageTrueRangeIndicator;
-	
-	private final KeltnerMiddleIndicator keltnerMiddleIndicator;
-	
-	private final Decimal ratio;
-	
-	public KeltnerLowerIndicator(KeltnerMiddleIndicator keltnerMiddleIndicator, Decimal ratio, int timeFrameATR) {
-		super(keltnerMiddleIndicator);
-		this.ratio = ratio;
-		this.keltnerMiddleIndicator = keltnerMiddleIndicator;
-		averageTrueRangeIndicator = new AverageTrueRangeIndicator(keltnerMiddleIndicator.getTimeSeries(), timeFrameATR);
-	}
+    private final AverageTrueRangeIndicator averageTrueRangeIndicator;
 
-	@Override
-	protected Decimal calculate(int index) {
-		return keltnerMiddleIndicator.getValue(index).minus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
-	} 
-	
+    private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
+
+    private final Decimal ratio;
+
+    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, Decimal ratio, int timeFrameATR) {
+        super(keltnerMiddleIndicator);
+        this.ratio = ratio;
+        this.keltnerMiddleIndicator = keltnerMiddleIndicator;
+        averageTrueRangeIndicator = new AverageTrueRangeIndicator(keltnerMiddleIndicator.getTimeSeries(), timeFrameATR);
+    }
+
+    @Override
+    protected Decimal calculate(int index) {
+        return keltnerMiddleIndicator.getValue(index).plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
+    }
+
 }
