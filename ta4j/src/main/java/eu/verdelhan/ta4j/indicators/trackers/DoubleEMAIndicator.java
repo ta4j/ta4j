@@ -29,6 +29,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 /**
  * Double exponential moving average indicator.
  * <p>
+ * @see https://en.wikipedia.org/wiki/Double_exponential_moving_average
  */
 public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
 
