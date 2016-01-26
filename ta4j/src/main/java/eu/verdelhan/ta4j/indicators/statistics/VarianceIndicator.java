@@ -20,48 +20,53 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers.bollinger;
+package eu.verdelhan.ta4j.indicators.statistics;
 
-import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * %B indicator.
- * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce
+ * Variance indicator.
+ * <p>
  */
-public class PercentBIndicator extends CachedIndicator<Decimal> {
-    
-    private final Indicator<Decimal> indicator;
+public class VarianceIndicator extends CachedIndicator<Decimal> {
 
-    private final BollingerBandsUpperIndicator bbu;
-    
-    private final BollingerBandsMiddleIndicator bbm;
-    
-    private final BollingerBandsLowerIndicator bbl;
+    private Indicator<Decimal> indicator;
+
+    private int timeFrame;
+
+    private SMAIndicator sma;
 
     /**
      * Constructor.
-     * @param indicator an indicator (usually close price)
+     * @param indicator the indicator
      * @param timeFrame the time frame
-     * @param k the K multiplier (usually 2.0)
      */
-    public PercentBIndicator(Indicator<Decimal> indicator, int timeFrame, Decimal k) {
+    public VarianceIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
-        this.bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, timeFrame));
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, timeFrame);
-        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, k);
-        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, k);;
+        this.timeFrame = timeFrame;
+        sma = new SMAIndicator(indicator, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal value = indicator.getValue(index);
-        Decimal upValue = bbu.getValue(index);
-        Decimal lowValue = bbl.getValue(index);
-        return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
+        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int numberOfObservations = index - startIndex + 1;
+        Decimal variance = Decimal.ZERO;
+        Decimal average = sma.getValue(index);
+        for (int i = startIndex; i <= index; i++) {
+            Decimal pow = indicator.getValue(i).minus(average).pow(2);
+            variance = variance.plus(pow);
+        }
+        variance = variance.dividedBy(Decimal.valueOf(numberOfObservations));
+        return variance;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

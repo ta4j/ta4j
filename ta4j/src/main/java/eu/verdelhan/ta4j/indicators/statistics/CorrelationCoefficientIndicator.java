@@ -20,48 +20,44 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers.bollinger;
+package eu.verdelhan.ta4j.indicators.statistics;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * %B indicator.
- * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce
+ * Correlation coefficient indicator.
+ * <p>
+ * See also: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici
  */
-public class PercentBIndicator extends CachedIndicator<Decimal> {
-    
-    private final Indicator<Decimal> indicator;
+public class CorrelationCoefficientIndicator extends CachedIndicator<Decimal> {
 
-    private final BollingerBandsUpperIndicator bbu;
+    private VarianceIndicator variance1;
     
-    private final BollingerBandsMiddleIndicator bbm;
+    private VarianceIndicator variance2;
     
-    private final BollingerBandsLowerIndicator bbl;
-
+    private CovarianceIndicator covariance;
+    
     /**
      * Constructor.
-     * @param indicator an indicator (usually close price)
+     * @param indicator1 the first indicator
+     * @param indicator2 the second indicator
      * @param timeFrame the time frame
-     * @param k the K multiplier (usually 2.0)
      */
-    public PercentBIndicator(Indicator<Decimal> indicator, int timeFrame, Decimal k) {
-        super(indicator);
-        this.indicator = indicator;
-        this.bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, timeFrame));
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, timeFrame);
-        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, k);
-        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, k);;
+    public CorrelationCoefficientIndicator(Indicator<Decimal> indicator1, Indicator<Decimal> indicator2, int timeFrame) {
+        super(indicator1);
+        variance1 = new VarianceIndicator(indicator1, timeFrame);
+        variance2 = new VarianceIndicator(indicator2, timeFrame);
+        covariance = new CovarianceIndicator(indicator1, indicator2, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal value = indicator.getValue(index);
-        Decimal upValue = bbu.getValue(index);
-        Decimal lowValue = bbl.getValue(index);
-        return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
+        Decimal cov = covariance.getValue(index);
+        Decimal var1 = variance1.getValue(index);
+        Decimal var2 = variance2.getValue(index);
+        
+        return cov.dividedBy(var1.multipliedBy(var2).sqrt());
     }
 }

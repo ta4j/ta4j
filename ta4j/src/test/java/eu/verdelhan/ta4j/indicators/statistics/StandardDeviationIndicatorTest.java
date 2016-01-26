@@ -20,8 +20,9 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.helpers;
+package eu.verdelhan.ta4j.indicators.statistics;
 
+import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
@@ -55,27 +56,9 @@ public class StandardDeviationIndicatorTest {
     }
 
     @Test
-    public void firstValueShouldBeZero() {
-        StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
-        assertDecimalEquals(sdv.getValue(0), 0);
-    }
-
-    @Test
     public void standardDeviationShouldBeZeroWhenTimeFrameIs1() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertDecimalEquals(sdv.getValue(3), 0);
         assertDecimalEquals(sdv.getValue(8), 0);
-    }
-
-    @Test
-    public void standardDeviationUsingTimeFrame2UsingClosePrice() {
-        StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 2);
-
-        assertDecimalEquals(sdv.getValue(0), 0);
-        assertDecimalEquals(sdv.getValue(1), Math.sqrt(0.25));
-        assertDecimalEquals(sdv.getValue(2), Math.sqrt(0.25));
-        assertDecimalEquals(sdv.getValue(3), Math.sqrt(0.25));
-        assertDecimalEquals(sdv.getValue(9), Math.sqrt(2.25));
-        assertDecimalEquals(sdv.getValue(10), Math.sqrt(20.25));
     }
 }

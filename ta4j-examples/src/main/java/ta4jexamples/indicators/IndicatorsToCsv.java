@@ -24,7 +24,7 @@ package ta4jexamples.indicators;
 
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.AverageTrueRangeIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.StandardDeviationIndicator;
+import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.oscillators.PPOIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.PriceVariationIndicator;

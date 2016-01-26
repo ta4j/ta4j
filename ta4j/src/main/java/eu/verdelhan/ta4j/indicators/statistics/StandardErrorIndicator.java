@@ -20,48 +20,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers.bollinger;
+package eu.verdelhan.ta4j.indicators.statistics;
 
-import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * %B indicator.
- * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce
+ * Standard error indicator.
+ * <p>
  */
-public class PercentBIndicator extends CachedIndicator<Decimal> {
-    
-    private final Indicator<Decimal> indicator;
+public class StandardErrorIndicator extends CachedIndicator<Decimal> {
 
-    private final BollingerBandsUpperIndicator bbu;
+    private int timeFrame;
     
-    private final BollingerBandsMiddleIndicator bbm;
-    
-    private final BollingerBandsLowerIndicator bbl;
+    private StandardDeviationIndicator sdev;
 
     /**
      * Constructor.
-     * @param indicator an indicator (usually close price)
+     * @param indicator the indicator
      * @param timeFrame the time frame
-     * @param k the K multiplier (usually 2.0)
      */
-    public PercentBIndicator(Indicator<Decimal> indicator, int timeFrame, Decimal k) {
+    public StandardErrorIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
-        this.indicator = indicator;
-        this.bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, timeFrame));
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, timeFrame);
-        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, k);
-        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, k);;
+        this.timeFrame = timeFrame;
+        sdev = new StandardDeviationIndicator(indicator, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal value = indicator.getValue(index);
-        Decimal upValue = bbu.getValue(index);
-        Decimal lowValue = bbl.getValue(index);
-        return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
+        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int numberOfObservations = index - startIndex + 1;
+        return sdev.getValue(index).dividedBy(Decimal.valueOf(Math.sqrt(numberOfObservations)));
     }
 }

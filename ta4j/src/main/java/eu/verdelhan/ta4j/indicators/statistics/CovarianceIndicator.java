@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.helpers;
+package eu.verdelhan.ta4j.indicators.statistics;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
@@ -28,42 +28,49 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * Standard deviation indicator.
+ * Covariance indicator.
  * <p>
- * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility
  */
-public class StandardDeviationIndicator extends CachedIndicator<Decimal> {
+public class CovarianceIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<Decimal> indicator;
+    private Indicator<Decimal> indicator1;
+    
+    private Indicator<Decimal> indicator2;
 
     private int timeFrame;
 
-    private SMAIndicator sma;
+    private SMAIndicator sma1;
+    
+    private SMAIndicator sma2;
 
     /**
      * Constructor.
-     * @param indicator the indicator
+     * @param indicator1 the first indicator
+     * @param indicator2 the second indicator
      * @param timeFrame the time frame
      */
-    public StandardDeviationIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
+    public CovarianceIndicator(Indicator<Decimal> indicator1, Indicator<Decimal> indicator2, int timeFrame) {
+        super(indicator1);
+        this.indicator1 = indicator1;
+        this.indicator2 = indicator2;
         this.timeFrame = timeFrame;
-        sma = new SMAIndicator(indicator, timeFrame);
+        sma1 = new SMAIndicator(indicator1, timeFrame);
+        sma2 = new SMAIndicator(indicator2, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Decimal standardDeviation = Decimal.ZERO;
-        Decimal average = sma.getValue(index);
+        Decimal covariance = Decimal.ZERO;
+        Decimal average1 = sma1.getValue(index);
+        Decimal average2 = sma2.getValue(index);
         for (int i = startIndex; i <= index; i++) {
-            Decimal pow = indicator.getValue(i).minus(average).pow(2);
-            standardDeviation = standardDeviation.plus(pow);
+            Decimal mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
+            covariance = covariance.plus(mul);
         }
-        standardDeviation = standardDeviation.dividedBy(Decimal.valueOf(numberOfObservations));
-        return standardDeviation.sqrt();
+        covariance = covariance.dividedBy(Decimal.valueOf(numberOfObservations));
+        return covariance;
     }
 
     @Override
