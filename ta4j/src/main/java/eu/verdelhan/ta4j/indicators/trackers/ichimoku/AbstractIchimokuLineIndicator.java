@@ -10,39 +10,30 @@ import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 
 /**
- * The Class TenkanSenIndicator.
+ * The Class AbstractIchimokuLineIndicator.
  */
-public class TenkanSenIndicator extends CachedIndicator<Decimal> {
+public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Decimal>{
 
-    /** The period hight. */
-    private final Indicator<Decimal> periodHight;
-    
+    /** The period high. */
+    private final Indicator<Decimal> periodHigh;
+
     /** The period low. */
     private final Indicator<Decimal> periodLow;
-    /**
-     * Instantiates a new tenkan sen indicator.
-     *
-     * @param series the series
-     */
-    public TenkanSenIndicator(TimeSeries series) {
-        this(series, 9);
-    }
-    
+
     /**
      * Instantiates a new tenkan sen indicator.
      *
      * @param series the series
      * @param timeFrame the time frame
      */
-    public TenkanSenIndicator(TimeSeries series, int timeFrame) {
+    public AbstractIchimokuLineIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        periodHight = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
+        periodHigh = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
         periodLow = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return periodHight.getValue(index).plus(periodLow.getValue(index).dividedBy(Decimal.TWO));
+        return periodHigh.getValue(index).plus(periodLow.getValue(index).dividedBy(Decimal.TWO));
     }
-
 }
