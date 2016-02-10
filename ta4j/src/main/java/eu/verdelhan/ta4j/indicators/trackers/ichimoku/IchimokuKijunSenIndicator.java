@@ -25,13 +25,14 @@ package eu.verdelhan.ta4j.indicators.trackers.ichimoku;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
- * The Class IchimokuKijunSenIndicator.
+ * Ichimoku clouds: Kijun-sen (Base line) indicator
+ * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud
  */
 public class IchimokuKijunSenIndicator extends AbstractIchimokuLineIndicator {
 
     /**
-     * Instantiates a new Ichimoku Kijun-sen indicator.
-     *
+     * Constructor.
      * @param series the series
      */
     public IchimokuKijunSenIndicator(TimeSeries series) {
@@ -39,13 +40,11 @@ public class IchimokuKijunSenIndicator extends AbstractIchimokuLineIndicator {
     }
     
     /**
-     * Instantiates a new Ichimoku Kijun-sen indicator.
-     *
+     * Constructor.
      * @param series the series
      * @param timeFrame the time frame (usually 26)
      */
     public IchimokuKijunSenIndicator(TimeSeries series, int timeFrame) {
         super(series, timeFrame);
     }
-
 }

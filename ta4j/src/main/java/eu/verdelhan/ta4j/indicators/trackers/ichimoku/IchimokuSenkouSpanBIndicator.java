@@ -25,13 +25,14 @@ package eu.verdelhan.ta4j.indicators.trackers.ichimoku;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
- * The Class IchimokuSenkouSpanBIndicator.
+ * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
+ * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud
  */
 public class IchimokuSenkouSpanBIndicator extends AbstractIchimokuLineIndicator {
 
     /**
-     * Instantiates a new Ichimoku Senkou Span B indicator.
-     *
+     * Constructor.
      * @param series the series
      */
     public IchimokuSenkouSpanBIndicator(TimeSeries series) {
@@ -39,8 +40,7 @@ public class IchimokuSenkouSpanBIndicator extends AbstractIchimokuLineIndicator 
     }
 
     /**
-     * Instantiates a new Ichimoku Senkou Span B indicator.
-     *
+     * Constructor.
      * @param series the series
      * @param timeFrame the time frame (usually 52)
      */

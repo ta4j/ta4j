@@ -32,19 +32,20 @@ import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 
 /**
- * The Class AbstractIchimokuLineIndicator.
+ * An abstract class for Ichimoku clouds indicators.
+ * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud
  */
 public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Decimal>{
 
-    /** The period high. */
+    /** The period high */
     private final Indicator<Decimal> periodHigh;
 
-    /** The period low. */
+    /** The period low */
     private final Indicator<Decimal> periodLow;
 
     /**
-     * Instantiates a new tenkan sen indicator.
-     *
+     * Contructor.
      * @param series the series
      * @param timeFrame the time frame
      */

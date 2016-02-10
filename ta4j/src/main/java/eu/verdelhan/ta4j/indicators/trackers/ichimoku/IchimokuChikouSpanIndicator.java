@@ -28,19 +28,20 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 
 /**
- * The Class IchimokuChikouSpanIndicator.
+ * Ichimoku clouds: Chikou Span indicator
+ * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud
  */
 public class IchimokuChikouSpanIndicator extends CachedIndicator<Decimal> {
 
-    /** The close price indicator. */
+    /** The close price */
     private final ClosePriceIndicator closePriceIndicator;
     
-    /** The time delay. */
+    /** The time delay */
     private final int timeDelay;
     
     /**
-     * Instantiates a new ichimoku chikou span indicator.
-     *
+     * Constructor.
      * @param series the series
      */
     public IchimokuChikouSpanIndicator(TimeSeries series) {
@@ -48,8 +49,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Decimal> {
     }
     
     /**
-     * Instantiates a new ichimoku chikou span indicator.
-     *
+     * Constructor.
      * @param series the series
      * @param timeDelay the time delay (usually 26)
      */

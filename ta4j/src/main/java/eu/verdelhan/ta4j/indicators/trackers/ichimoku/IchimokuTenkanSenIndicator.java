@@ -25,13 +25,14 @@ package eu.verdelhan.ta4j.indicators.trackers.ichimoku;
 import eu.verdelhan.ta4j.TimeSeries;
 
 /**
- * The Class IchimokuTenkanSenIndicator.
+ * Ichimoku clouds: Tenkan-sen (Conversion line) indicator
+ * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud
  */
 public class IchimokuTenkanSenIndicator extends AbstractIchimokuLineIndicator {
 
     /**
-     * Instantiates a new Ichimoku Tenkan-sen indicator.
-     *
+     * Constructor.
      * @param series the series
      */
     public IchimokuTenkanSenIndicator(TimeSeries series) {
@@ -39,13 +40,11 @@ public class IchimokuTenkanSenIndicator extends AbstractIchimokuLineIndicator {
     }
     
     /**
-     * Instantiates a new Ichimoku Tenkan-sen indicator.
-     *
+     * Constructor.
      * @param series the series
      * @param timeFrame the time frame (usually 9)
      */
     public IchimokuTenkanSenIndicator(TimeSeries series, int timeFrame) {
         super(series, timeFrame);
     }
-
 }

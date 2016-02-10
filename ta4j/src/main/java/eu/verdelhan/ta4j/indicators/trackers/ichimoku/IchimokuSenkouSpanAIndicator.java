@@ -27,52 +27,50 @@ import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * The Class IchimokuSenkouSpanAIndicator.
+ * Ichimoku clouds: Senkou Span A (Leading Span A) indicator
+ * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud
  */
 public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Decimal> {
 
-    /** The kijun sen indicator. */
-    private final IchimokuKijunSenIndicator conversionLine;
+    /** The Tenkan-sen indicator */
+    private final IchimokuTenkanSenIndicator conversionLine;
 
-    /** The tenkan sen indicator. */
-    private final IchimokuTenkanSenIndicator baseLine;
+    /** The Kijun-sen indicator */
+    private final IchimokuKijunSenIndicator baseLine;
 
     /**
-     * Instantiates a new Ichimoku Senkou Span A indicator.
-     *
+     * Constructor.
      * @param series the series
      */
     public IchimokuSenkouSpanAIndicator(TimeSeries series) {
-        this(series, new IchimokuKijunSenIndicator(series), new IchimokuTenkanSenIndicator(series));
+        this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
     }
     
     /**
-     * Instantiates a new Ichimoku Senkou Span A indicator.
-     *
+     * Constructor.
      * @param series the series
-     * @param timeFrameConversionLine the time frame conversion line (usually 26)
-     * @param timeFrameBaseLine the time frame base line (usually 9)
+     * @param timeFrameConversionLine the time frame for the conversion line (usually 9)
+     * @param timeFrameBaseLine the time frame for the base line (usually 26)
      */
     public IchimokuSenkouSpanAIndicator(TimeSeries series, int timeFrameConversionLine, int timeFrameBaseLine) {
-        this(series, new IchimokuKijunSenIndicator(series, timeFrameConversionLine), new IchimokuTenkanSenIndicator(series, timeFrameBaseLine));
+        this(series, new IchimokuTenkanSenIndicator(series, timeFrameConversionLine), new IchimokuKijunSenIndicator(series, timeFrameBaseLine));
     }
     
     /**
-     * Instantiates a new Ichimoku Senkou Span A indicator.
-     *
+     * Constructor.
      * @param series the series
      * @param conversionLine the conversion line
      * @param baseLine the base line
      */
-    public IchimokuSenkouSpanAIndicator(TimeSeries series, IchimokuKijunSenIndicator conversionLine, IchimokuTenkanSenIndicator baseLine) {
+    public IchimokuSenkouSpanAIndicator(TimeSeries series, IchimokuTenkanSenIndicator conversionLine, IchimokuKijunSenIndicator baseLine) {
         super(series);
-        this.baseLine = baseLine;
         this.conversionLine = conversionLine;
+        this.baseLine = baseLine;
     }
 
     @Override
     protected Decimal calculate(int index) {
         return conversionLine.getValue(index).plus(baseLine.getValue(index)).dividedBy(Decimal.TWO);
     }
-
 }
