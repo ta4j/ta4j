@@ -42,14 +42,13 @@ public class DPOIndicatorTest {
                 22.38, 22.61, 23.36, 24.05, 23.75, 23.83,
                 23.95, 23.63, 23.82, 23.87, 23.65, 23.19,
                 23.10, 23.33, 22.68, 23.10, 22.40, 22.17
-                );
+        );
     }
-    
+
     @Test
-    public void dpo()
-    {
+    public void dpo() {
         DPOIndicator dpo = new DPOIndicator(series, 9);
-        
+
         assertDecimalEquals(dpo.getValue(9), -0.1633);
         assertDecimalEquals(dpo.getValue(10), -0.5056);
         assertDecimalEquals(dpo.getValue(11), -0.4122);
@@ -66,10 +65,9 @@ public class DPOIndicatorTest {
         assertDecimalEquals(dpo.getValue(22), 0.2756);
         assertDecimalEquals(dpo.getValue(23), -0.0478);
     }
-    
+
     @Test(expected = IndexOutOfBoundsException.class)
-    public void dpoIOOBE()
-    {
+    public void dpoIOOBE() {
         DPOIndicator dpo = new DPOIndicator(series, 9);
         dpo.getValue(27);
     }

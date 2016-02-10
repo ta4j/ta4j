@@ -30,7 +30,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 
 /**
- * The Detrended Price Oscillator (DPO).
+ * The Detrended Price Oscillator (DPO) indicator.
  * <p>
  * The Detrended Price Oscillator (DPO) is an indicator designed to remove trend
  * from price and make it easier to identify cycles. DPO does not extend to the
@@ -39,7 +39,6 @@ import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
  * oscillator. Instead, DPO is used to identify cycles highs/lows and estimate
  * cycle length.
  * </p>
- * 
  * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci
  */
 public class DPOIndicator extends CachedIndicator<Decimal> {
@@ -53,8 +52,7 @@ public class DPOIndicator extends CachedIndicator<Decimal> {
     private final SMAIndicator sma;
     
     /**
-     * Instantiates a new DPO indicator.
-     *
+     * Constructor.
      * @param series the series
      * @param timeFrame the time frame
      */
@@ -63,8 +61,7 @@ public class DPOIndicator extends CachedIndicator<Decimal> {
     }
     
     /**
-     * Instantiates a new DPO indicator.
-     *
+     * Constructor.
      * @param price the price
      * @param timeFrame the time frame
      */
@@ -80,5 +77,4 @@ public class DPOIndicator extends CachedIndicator<Decimal> {
     protected Decimal calculate(int index) {
         return price.getValue(index).minus(sma.getValue(index + timeShift));
     }
-
 }
