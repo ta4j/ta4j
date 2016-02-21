@@ -52,4 +52,4 @@ Here are some ways for you to contribute to ta4j:
   * [Fork this repository](http://help.github.com/forking/) and submit pull requests.
   * Consider donating for new feature development. Bitcoin address: `13BMqpqbzJ62LjMWcPGWrTrdocvGqifdJ3`
 
-See also: the [contribution policy](CONTRIBUTING.md).
+See also: the [contribution policy](.github/CONTRIBUTING.md).
