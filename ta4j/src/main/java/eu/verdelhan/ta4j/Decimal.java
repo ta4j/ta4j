@@ -85,7 +85,7 @@ public final class Decimal implements Comparable<Decimal> {
     }
 
     private Decimal(BigDecimal val) {
-        this(val.toString());
+        delegate = val;
     }
 
     /**
