@@ -171,6 +171,19 @@ public final class Decimal implements Comparable<Decimal> {
         }
         return new Decimal(delegate.pow(n, MATH_CONTEXT));
     }
+    
+    /**
+     * Returns the correctly rounded natural logarithm (base e) of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#log(double)} method under the hood.
+     * @return the natural logarithm (base e) of {@code this}
+     * @see StrictMath#log(double)
+     */
+    public Decimal log() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.log(delegate.doubleValue()));
+    }
 
     /**
      * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Decimal}.
