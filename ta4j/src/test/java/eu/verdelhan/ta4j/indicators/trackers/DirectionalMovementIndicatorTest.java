@@ -34,14 +34,13 @@ import org.junit.Test;
 public class DirectionalMovementIndicatorTest {
 
     @Test
-    public void getValue()
-    {
+    public void getValue() {
         List<Tick> ticks = new ArrayList<Tick>();
-        
         ticks.add(new MockTick(0, 0, 10, 2));
         ticks.add(new MockTick(0, 0, 12, 2));
         ticks.add(new MockTick(0, 0, 15, 2));
         MockTimeSeries series = new MockTimeSeries(ticks);
+        
         DirectionalMovementIndicator dm = new DirectionalMovementIndicator(series, 3);
         assertDecimalEquals(dm.getValue(0), 0);
         double dup = (2d / 3 + 2d/3) / (2d/3 + 12d/3);
