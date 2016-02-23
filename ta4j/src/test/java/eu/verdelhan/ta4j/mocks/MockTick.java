@@ -22,9 +22,10 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
+import org.joda.time.DateTime;
+
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
-import org.joda.time.DateTime;
 
 /**
  * A mock tick with sample data.
@@ -48,7 +49,7 @@ public class MockTick extends Tick {
     }
 
     public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
-        super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, 0);
+        super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, 1);
     }
 
     public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
