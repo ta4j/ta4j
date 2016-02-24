@@ -27,24 +27,29 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 
 /**
- * Average loss indicator.
+ * Cumulated losses indicator.
  * <p>
  */
-public class AverageLossIndicator extends CachedIndicator<Decimal> {
+public class CumulatedLossesIndicator extends CachedIndicator<Decimal> {
 
-    private final CumulatedLossesIndicator cumulatedLosses;
+    private final Indicator<Decimal> indicator;
 
     private final int timeFrame;
 
-    public AverageLossIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public CumulatedLossesIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
-        this.cumulatedLosses = new CumulatedLossesIndicator(indicator, timeFrame);
+        this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        final int realTimeFrame = Math.min(timeFrame, index + 1);
-        return cumulatedLosses.getValue(index).dividedBy(Decimal.valueOf(realTimeFrame));
+        Decimal sumOfLosses = Decimal.ZERO;
+        for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
+            if (indicator.getValue(i).isLessThan(indicator.getValue(i - 1))) {
+                sumOfLosses = sumOfLosses.plus(indicator.getValue(i - 1).minus(indicator.getValue(i)));
+            }
+        }
+        return sumOfLosses;
     }
 }
