@@ -29,44 +29,31 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AverageGainIndicatorTest {
+public class CumulatedLossesIndicatorTest {
 
     private TimeSeries data;
 
     @Before
-    public void prepare() {
+    public void setUp() {
         data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
     public void averageGainUsingTimeFrame5UsingClosePrice() {
-        AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 5);
+        CumulatedLossesIndicator losses = new CumulatedLossesIndicator(new ClosePriceIndicator(data), 5);
 
-        assertDecimalEquals(averageGain.getValue(5), "0.8");
-        assertDecimalEquals(averageGain.getValue(6), "0.8");
-        assertDecimalEquals(averageGain.getValue(7), "0.6");
-        assertDecimalEquals(averageGain.getValue(8), "0.4");
-        assertDecimalEquals(averageGain.getValue(9), "0.4");
-        assertDecimalEquals(averageGain.getValue(10), "0.4");
-        assertDecimalEquals(averageGain.getValue(11), "0.2");
-        assertDecimalEquals(averageGain.getValue(12), "0.2");
-    }
-
-    @Test
-    public void averageGainMustReturnZeroWhenTheDataDoesntGain() {
-        AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 3);
-        assertDecimalEquals(averageGain.getValue(9), 0);
-    }
-
-    @Test
-    public void averageGainWhenTimeFrameIsGreaterThanIndicatorDataShouldBeCalculatedWithDataSize() {
-        AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 1000);
-        assertDecimalEquals(averageGain.getValue(12), 6d / data.getTickCount());
-    }
-
-    @Test
-    public void averageGainWhenIndexIsZeroMustBeZero() {
-        AverageGainIndicator averageGain = new AverageGainIndicator(new ClosePriceIndicator(data), 10);
-        assertDecimalEquals(averageGain.getValue(0), 0);
+        assertDecimalEquals(losses.getValue(0), 0);
+        assertDecimalEquals(losses.getValue(1), 0);
+        assertDecimalEquals(losses.getValue(2), 0);
+        assertDecimalEquals(losses.getValue(3), 0);
+        assertDecimalEquals(losses.getValue(4), 1);
+        assertDecimalEquals(losses.getValue(5), 1);
+        assertDecimalEquals(losses.getValue(6), 1);
+        assertDecimalEquals(losses.getValue(7), 2);
+        assertDecimalEquals(losses.getValue(8), 3);
+        assertDecimalEquals(losses.getValue(9), 2);
+        assertDecimalEquals(losses.getValue(10), 2);
+        assertDecimalEquals(losses.getValue(11), 3);
+        assertDecimalEquals(losses.getValue(12), 3);
     }
 }
