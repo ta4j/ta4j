@@ -42,6 +42,7 @@ public class VWAPIndicatorTest {
     @Before
     public void setUp() {
         
+        // @TODO add volumes
         List<Tick> ticks = new ArrayList<Tick>();
         ticks.add(new MockTick(44.98, 45.05, 45.17, 44.96));
         ticks.add(new MockTick(45.05, 45.10, 45.15, 44.99));
@@ -67,8 +68,7 @@ public class VWAPIndicatorTest {
     }
     
     @Test
-    public void vwap()
-    {
+    public void vwap() {
         VWAPIndicator vwap = new VWAPIndicator(data, 5);
         
         assertDecimalEquals(vwap.getValue(5), 45.1453);

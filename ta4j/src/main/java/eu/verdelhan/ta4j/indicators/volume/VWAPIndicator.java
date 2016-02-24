@@ -30,8 +30,10 @@ import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
 import eu.verdelhan.ta4j.indicators.simple.VolumeIndicator;
 
 /**
- * The Volume weighted average price (VWAP) Indicator.
+ * The volume-weighted average price (VWAP) Indicator.
  * @see http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:vwap_intraday
+ * @see https://en.wikipedia.org/wiki/Volume-weighted_average_price
  */
 public class VWAPIndicator extends CachedIndicator<Decimal> {
 
@@ -43,7 +45,6 @@ public class VWAPIndicator extends CachedIndicator<Decimal> {
     
     /**
      * Constructor.
-     *
      * @param series the series
      * @param timeFrame the time frame
      */
@@ -56,8 +57,7 @@ public class VWAPIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        if (index <= 0)
-        {
+        if (index <= 0) {
             return typicalPrice.getValue(index);
         }
         int startIndex = Math.max(0, index - timeFrame + 1);
@@ -70,5 +70,4 @@ public class VWAPIndicator extends CachedIndicator<Decimal> {
         }
         return cumulativeTPV.dividedBy(cumulativeVolume);
     }
-
 }
