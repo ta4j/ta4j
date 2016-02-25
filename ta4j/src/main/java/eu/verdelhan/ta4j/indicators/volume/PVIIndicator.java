@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.indicators.volume;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * Positive Volume Index (PVI) indicator.
@@ -33,7 +33,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * @see http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92
  * @see http://www.investopedia.com/terms/p/pvi.asp
  */
-public class PVIIndicator extends CachedIndicator<Decimal> {
+public class PVIIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final TimeSeries series;
 

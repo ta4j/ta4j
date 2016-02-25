@@ -35,10 +35,14 @@ import java.util.List;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
+    /** List of cached results */
     private final List<T> results = new ArrayList<T>();
 
-    /** Should always be the index of the last result in the results list */
-    private int highestResultIndex = -1;
+    /**
+     * Should always be the index of the last result in the results list.
+     * I.E. the last calculated result.
+     */
+    protected int highestResultIndex = -1;
     
     /**
      * Constructor.

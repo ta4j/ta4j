@@ -24,13 +24,13 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * Average of {@link DirectionalMovementUpIndicator directional movement up indicator}.
  * <p>
  */
-public class AverageDirectionalMovementUpIndicator extends CachedIndicator<Decimal> {
+public class AverageDirectionalMovementUpIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final int timeFrame;
 
@@ -50,10 +50,5 @@ public class AverageDirectionalMovementUpIndicator extends CachedIndicator<Decim
         Decimal nbPeriods = Decimal.valueOf(timeFrame);
         Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
         return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(dmup.getValue(index).dividedBy(nbPeriods));
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName()+ " timeFrame: " + timeFrame;
     }
 }

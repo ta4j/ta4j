@@ -68,11 +68,11 @@ public class MassIndexIndicatorTest {
         MassIndexIndicator massIndex = new MassIndexIndicator(data, 3, 8);
 
         assertDecimalEquals(massIndex.getValue(0), 1);
-        assertDecimalEquals(massIndex.getValue(14), 9.1308);
-        assertDecimalEquals(massIndex.getValue(15), 9.2810);
-        assertDecimalEquals(massIndex.getValue(16), 9.4756);
-        assertDecimalEquals(massIndex.getValue(17), 9.2965);
-        assertDecimalEquals(massIndex.getValue(18), 9.2220);
-        assertDecimalEquals(massIndex.getValue(19), 9.0623);
+        assertDecimalEquals(massIndex.getValue(14), 9.1158);
+        assertDecimalEquals(massIndex.getValue(15), 9.2462);
+        assertDecimalEquals(massIndex.getValue(16), 9.4026);
+        assertDecimalEquals(massIndex.getValue(17), 9.2129);
+        assertDecimalEquals(massIndex.getValue(18), 9.1576);
+        assertDecimalEquals(massIndex.getValue(19), 9.0184);
     }
 }

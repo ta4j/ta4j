@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.indicators.volume;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * Negative Volume Index (NVI) indicator.
@@ -34,7 +34,7 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * @see http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75
  * @see http://www.investopedia.com/terms/n/nvi.asp
  */
-public class NVIIndicator extends CachedIndicator<Decimal> {
+public class NVIIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final TimeSeries series;
 

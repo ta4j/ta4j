@@ -26,6 +26,7 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
@@ -34,10 +35,9 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
 
 /**
  * The Fisher Indicator.
- * 
  * @see http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf
  */
-public class FisherIndicator extends CachedIndicator<Decimal>{
+public class FisherIndicator extends RecursiveCachedIndicator<Decimal>{
 
     private static final Decimal ZERO_DOT_FIVE = Decimal.valueOf("0.5");
     private static final Decimal VALUE_MAX = Decimal.valueOf("0.999");
@@ -79,7 +79,7 @@ public class FisherIndicator extends CachedIndicator<Decimal>{
         this.price = price;
         final Indicator<Decimal> periodHigh = new HighestValueIndicator(new MaxPriceIndicator(price.getTimeSeries()), timeFrame);
         final Indicator<Decimal> periodLow = new LowestValueIndicator(new MinPriceIndicator(price.getTimeSeries()), timeFrame);
-        intermediateValue = new CachedIndicator<Decimal>(price) {
+        intermediateValue = new RecursiveCachedIndicator<Decimal>(price) {
 
             @Override
             protected Decimal calculate(int index) {

@@ -24,50 +24,43 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * Exponential moving average indicator.
  * <p>
  */
-public class EMAIndicator extends CachedIndicator<Decimal> {
+public class EMAIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final Indicator<Decimal> indicator;
 
     private final int timeFrame;
 
-    private final SMAIndicator sma;
-    
     private final Decimal multiplier;
 
+    /**
+     * Constructor.
+     * @param indicator an indicator
+     * @param timeFrame the EMA time frame
+     */
     public EMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
-        sma = new SMAIndicator(indicator, timeFrame);
         multiplier = Decimal.TWO.dividedBy(Decimal.valueOf(timeFrame + 1));
     }
 
     @Override
     protected Decimal calculate(int index) {
-        int startIndex = Math.max(0, index - timeFrame + 1);
-        Decimal emaValue;
-        if (startIndex == 0) {
-            // If the timeframe is bigger than the indicator's value count
-            emaValue = indicator.getValue(0);
-        } else {
+        if (index + 1 < timeFrame) {
             // Starting point of the EMA
-            emaValue = sma.getValue(startIndex);
+            return new SMAIndicator(indicator, timeFrame).getValue(index);
         }
-        
-        for (int i = startIndex+1; i <= index; i++) {
-            emaValue = indicator.getValue(i).minus(emaValue).multipliedBy(multiplier).plus(emaValue);
+        if (index == 0) {
+            // If the timeframe is bigger than the indicator's value count
+            return indicator.getValue(0);
         }
-        return emaValue;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        Decimal emaPrev = getValue(index - 1);
+        return indicator.getValue(index).minus(emaPrev).multipliedBy(multiplier).plus(emaPrev);
     }
 }

@@ -24,14 +24,14 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * Zero-lag exponential moving average indicator.
  * <p>
  * @see http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm
  */
-public class ZLEMAIndicator extends CachedIndicator<Decimal> {
+public class ZLEMAIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final Indicator<Decimal> indicator;
 
@@ -62,10 +62,5 @@ public class ZLEMAIndicator extends CachedIndicator<Decimal> {
         Decimal zlemaPrev = getValue(index - 1);
         return k.multipliedBy(Decimal.TWO.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index-lag)))
                 .plus(Decimal.ONE.minus(k).multipliedBy(zlemaPrev));
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

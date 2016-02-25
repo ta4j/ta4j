@@ -25,14 +25,14 @@ package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.CloseLocationValueIndicator;
 
 /**
  * Accumulation-distribution indicator.
  * <p>
  */
-public class AccumulationDistributionIndicator extends CachedIndicator<Decimal> {
+public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private TimeSeries series;
     

@@ -78,16 +78,6 @@ public class KeltnerChannelMiddleIndicatorTest {
         ticks.add(new MockTick(12287.72, 12318.14, 12331.31, 12253.24));
         ticks.add(new MockTick(12389.74, 12212.79, 12389.82, 12176.31));
         ticks.add(new MockTick(12211.81, 12105.78, 12221.12, 12063.43));
-        ticks.add(new MockTick(12104.56, 12068.50, 12129.62, 11983.17));
-        ticks.add(new MockTick(12060.93, 12130.45, 12151.03, 12060.93));
-        ticks.add(new MockTick(12130.45, 12226.34, 12235.04, 12130.15));
-        ticks.add(new MockTick(12226.49, 12058.02, 12261.38, 12054.99));
-        ticks.add(new MockTick(12057.34, 12066.80, 12115.12, 12018.63));
-        ticks.add(new MockTick(12068.01, 12258.20, 12283.10, 12068.01));
-        ticks.add(new MockTick(12171.09, 12090.03, 12243.44, 12041.60));
-        ticks.add(new MockTick(12085.87, 12214.38, 12251.20, 12072.21));
-        ticks.add(new MockTick(12211.16, 12213.09, 12257.82, 12156.60));
-        ticks.add(new MockTick(12211.43, 12023.89, 12211.43, 11974.39));
         
         data = new MockTimeSeries(ticks);
     }
@@ -96,32 +86,22 @@ public class KeltnerChannelMiddleIndicatorTest {
     public void keltnerChannelMiddleIndicatorTest() {
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
 
-        assertDecimalEquals(km.getValue(13), 11764.2300);
-        assertDecimalEquals(km.getValue(14), 11794.2345);
-        assertDecimalEquals(km.getValue(15), 11819.9335);
-        assertDecimalEquals(km.getValue(16), 11842.0440);
-        assertDecimalEquals(km.getValue(17), 11861.5333);
-        assertDecimalEquals(km.getValue(18), 11865.3065);
-        assertDecimalEquals(km.getValue(19), 11888.6047);
-        assertDecimalEquals(km.getValue(20), 11908.9567);
-        assertDecimalEquals(km.getValue(21), 11929.2530);
-        assertDecimalEquals(km.getValue(22), 11950.4925);
-        assertDecimalEquals(km.getValue(23), 11977.7606);
-        assertDecimalEquals(km.getValue(24), 12010.9641);
-        assertDecimalEquals(km.getValue(25), 12040.6320);
-        assertDecimalEquals(km.getValue(26), 12064.4474);
-        assertDecimalEquals(km.getValue(27), 12090.7992);
-        assertDecimalEquals(km.getValue(28), 12113.2256);
-        assertDecimalEquals(km.getValue(29), 12127.1137);
-        assertDecimalEquals(km.getValue(30), 12147.9852);
-        assertDecimalEquals(km.getValue(31), 12171.6973);
-        assertDecimalEquals(km.getValue(32), 12177.5097);
-        assertDecimalEquals(km.getValue(33), 12168.4757);
-        assertDecimalEquals(km.getValue(34), 12155.0999);
-        assertDecimalEquals(km.getValue(35), 12152.1960);
-        assertDecimalEquals(km.getValue(36), 12161.7124);
-        assertDecimalEquals(km.getValue(37), 12146.8211);
-        assertDecimalEquals(km.getValue(38), 12135.7473);
-        assertDecimalEquals(km.getValue(39), 12152.4143);
+        assertDecimalEquals(km.getValue(13), 11751.376);
+        assertDecimalEquals(km.getValue(14), 11781.9285);
+        assertDecimalEquals(km.getValue(15), 11807.9634);
+        assertDecimalEquals(km.getValue(16), 11831.6269);
+        assertDecimalEquals(km.getValue(17), 11852.7207);
+        assertDecimalEquals(km.getValue(18), 11857.9486);
+        assertDecimalEquals(km.getValue(19), 11882.2434);
+        assertDecimalEquals(km.getValue(20), 11903.5403);
+        assertDecimalEquals(km.getValue(21), 11924.7029);
+        assertDecimalEquals(km.getValue(22), 11947.0292);
+        assertDecimalEquals(km.getValue(23), 11975.6427);
+        assertDecimalEquals(km.getValue(24), 12009.977);
+        assertDecimalEquals(km.getValue(25), 12040.632);
+        assertDecimalEquals(km.getValue(26), 12065.7864);
+        assertDecimalEquals(km.getValue(27), 12093.4496);
+        assertDecimalEquals(km.getValue(28), 12116.7483);
+        assertDecimalEquals(km.getValue(29), 12131.4005);
     }
 }

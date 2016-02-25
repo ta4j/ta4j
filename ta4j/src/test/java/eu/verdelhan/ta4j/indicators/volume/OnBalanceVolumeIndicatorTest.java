@@ -44,12 +44,25 @@ public class OnBalanceVolumeIndicatorTest {
         ticks.add(new MockTick(now, 0, 7, 0, 0, 0, 6, 0));
         ticks.add(new MockTick(now, 0, 6, 0, 0, 0, 10, 0));
 
-        OnBalanceVolumeIndicator onBalance = new OnBalanceVolumeIndicator(new MockTimeSeries(ticks));
-        assertDecimalEquals(onBalance.getValue(0), 0);
-        assertDecimalEquals(onBalance.getValue(1), -2);
-        assertDecimalEquals(onBalance.getValue(2), 1);
-        assertDecimalEquals(onBalance.getValue(3), 9);
-        assertDecimalEquals(onBalance.getValue(4), 9);
-        assertDecimalEquals(onBalance.getValue(5), -1);
+        OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockTimeSeries(ticks));
+        assertDecimalEquals(obv.getValue(0), 0);
+        assertDecimalEquals(obv.getValue(1), -2);
+        assertDecimalEquals(obv.getValue(2), 1);
+        assertDecimalEquals(obv.getValue(3), 9);
+        assertDecimalEquals(obv.getValue(4), 9);
+        assertDecimalEquals(obv.getValue(5), -1);
+    }
+    
+    @Test
+    public void stackOverflowError() {
+        List<Tick> bigListOfTicks = new ArrayList<Tick>();
+        for (int i = 0; i < 10000; i++) {
+            bigListOfTicks.add(new MockTick(i));
+        }
+        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfTicks);
+        OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);
+        // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
+        // does not work as intended.
+        assertDecimalEquals(obv.getValue(9999), 0);
     }
 }

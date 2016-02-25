@@ -50,15 +50,15 @@ public class TripleEMAIndicatorTest {
         TripleEMAIndicator tripleEma = new TripleEMAIndicator(closePrice, 5);
 
         assertDecimalEquals(tripleEma.getValue(0), 0.73);
-        assertDecimalEquals(tripleEma.getValue(1), 0.723);
-        assertDecimalEquals(tripleEma.getValue(2), 0.8185);
+        assertDecimalEquals(tripleEma.getValue(1), 0.7213);
+        assertDecimalEquals(tripleEma.getValue(2), 0.818);
 
-        assertDecimalEquals(tripleEma.getValue(6), 0.8026);
-        assertDecimalEquals(tripleEma.getValue(7), 0.7349);
-        assertDecimalEquals(tripleEma.getValue(8), 0.6787);
+        assertDecimalEquals(tripleEma.getValue(6), 0.8034);
+        assertDecimalEquals(tripleEma.getValue(7), 0.7329);
+        assertDecimalEquals(tripleEma.getValue(8), 0.6723);
 
-        assertDecimalEquals(tripleEma.getValue(12), 0.7415);
-        assertDecimalEquals(tripleEma.getValue(13), 0.7055);
-        assertDecimalEquals(tripleEma.getValue(14), 0.6932);
+        assertDecimalEquals(tripleEma.getValue(12), 0.7385);
+        assertDecimalEquals(tripleEma.getValue(13), 0.6993);
+        assertDecimalEquals(tripleEma.getValue(14), 0.6876);
     }
 }

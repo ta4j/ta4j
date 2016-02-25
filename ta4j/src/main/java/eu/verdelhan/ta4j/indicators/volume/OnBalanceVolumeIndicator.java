@@ -24,13 +24,13 @@ package eu.verdelhan.ta4j.indicators.volume;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * On-balance volume indicator.
  * <p>
  */
-public class OnBalanceVolumeIndicator extends CachedIndicator<Decimal> {
+public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final TimeSeries series;
 

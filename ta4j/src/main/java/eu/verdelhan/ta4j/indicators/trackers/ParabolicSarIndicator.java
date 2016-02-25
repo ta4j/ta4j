@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.simple.MaxPriceIndicator;
@@ -35,7 +35,7 @@ import eu.verdelhan.ta4j.indicators.simple.MinPriceIndicator;
  * Parabolic SAR indicator.
  * <p>
  */
-public class ParabolicSarIndicator extends CachedIndicator<Decimal> {
+public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private static final Decimal DEFAULT_ACCELERATION = Decimal.valueOf("0.02");
     private static final Decimal ACCELERATION_THRESHOLD = Decimal.valueOf("0.19");
@@ -156,10 +156,5 @@ public class ParabolicSarIndicator extends CachedIndicator<Decimal> {
         Decimal previousSar = getValue(index - 1);
         return extremePoint.multipliedBy(acceleration)
                 .plus(Decimal.ONE.minus(acceleration).multipliedBy(previousSar));
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

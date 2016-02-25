@@ -24,13 +24,13 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * Average true range indicator.
  * <p>
  */
-public class AverageTrueRangeIndicator extends CachedIndicator<Decimal> {
+public class AverageTrueRangeIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final int timeFrame;
     private final TrueRangeIndicator tr;
@@ -49,10 +49,5 @@ public class AverageTrueRangeIndicator extends CachedIndicator<Decimal> {
         Decimal nbPeriods = Decimal.valueOf(timeFrame);
         Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
         return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).plus(tr.getValue(index)).dividedBy(nbPeriods);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + this.timeFrame;
     }
 }
