@@ -51,6 +51,10 @@ public class MockTick extends Tick {
     public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
         super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, 1);
     }
+    
+    public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice, double volume) {
+        super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, volume);
+    }
 
     public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
         super(endTime, openPrice, maxPrice, minPrice, closePrice, volume);
