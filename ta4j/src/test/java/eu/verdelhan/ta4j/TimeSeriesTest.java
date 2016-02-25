@@ -86,7 +86,8 @@ public class TimeSeriesTest {
                     dtf.parseDateTime("2015-12-01")
                 });
 
-        strategy = new Strategy(new FixedRule(2, 3, 6), new FixedRule(4, 7, 8));
+        strategy = new Strategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
+        strategy.setUnstablePeriod(2); // Strategy would need a real test class
     }
 
     @Test(expected = IllegalArgumentException.class)

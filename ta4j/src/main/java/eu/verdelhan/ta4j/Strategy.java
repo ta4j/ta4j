@@ -44,6 +44,13 @@ public class Strategy {
     private Rule exitRule;
 
     /**
+     * The unstable period (number of ticks).<br>
+     * During the unstable period of the strategy any order placement will be cancelled.<br>
+     * I.e. no entry/exit signal will be fired before index == unstablePeriod.
+     */
+    private int unstablePeriod;
+    
+    /**
      * Constructor.
      * @param entryRule the entry rule
      * @param exitRule the exit rule
@@ -54,6 +61,21 @@ public class Strategy {
         }
         this.entryRule = entryRule;
         this.exitRule = exitRule;
+    }
+    
+    /**
+     * @param index a tick index
+     * @return true if this strategy is unstable at the provided index, false otherwise (stable)
+     */
+    public boolean isUnstableAt(int index) {
+        return index < unstablePeriod;
+    }
+    
+    /**
+     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     */
+    public void setUnstablePeriod(int unstablePeriod) {
+        this.unstablePeriod = unstablePeriod;
     }
     
     /**
@@ -85,6 +107,9 @@ public class Strategy {
      * @return true to recommend to enter, false otherwise
      */
     public boolean shouldEnter(int index, TradingRecord tradingRecord) {
+        if (isUnstableAt(index)) {
+            return false;
+        }
         final boolean enter = entryRule.isSatisfied(index, tradingRecord);
         traceShouldEnter(index, enter);
         return enter;
@@ -104,6 +129,9 @@ public class Strategy {
      * @return true to recommend to exit, false otherwise
      */
     public boolean shouldExit(int index, TradingRecord tradingRecord) {
+        if (isUnstableAt(index)) {
+            return false;
+        }
         final boolean exit = exitRule.isSatisfied(index, tradingRecord);
         traceShouldExit(index, exit);
         return exit;
