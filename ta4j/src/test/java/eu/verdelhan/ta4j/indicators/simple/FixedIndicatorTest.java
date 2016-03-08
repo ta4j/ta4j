@@ -22,42 +22,37 @@
  */
 package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
-import org.junit.Before;
+import org.junit.Assert;
 import org.junit.Test;
 
-public class DifferenceIndicatorTest {
+public class FixedIndicatorTest {
     
-    private ConstantIndicator<Decimal> constantIndicator;
+    private FixedDecimalIndicator fixedDecimalIndicator;
     
-    private FixedIndicator<Decimal> mockIndicator;
+    private FixedBooleanIndicator fixedBooleanIndicator;
 
-    private DifferenceIndicator differenceIndicator;
-    
-    @Before
-    public void setUp() {
-        constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(6));
-        mockIndicator = new FixedIndicator<Decimal>(
-                Decimal.valueOf("-2.0"),
-                Decimal.valueOf("0.00"),
-                Decimal.valueOf("1.00"),
-                Decimal.valueOf("2.53"),
-                Decimal.valueOf("5.87"),
-                Decimal.valueOf("6.00"),
-                Decimal.valueOf("10.0")
-        );
-        differenceIndicator = new DifferenceIndicator(constantIndicator, mockIndicator);
+    @Test
+    public void getValueOnFixedDecimalIndicator() {
+        fixedDecimalIndicator = new FixedDecimalIndicator(13.37, 42, -17);
+        assertDecimalEquals(fixedDecimalIndicator.getValue(0), 13.37);
+        assertDecimalEquals(fixedDecimalIndicator.getValue(1), 42);
+        assertDecimalEquals(fixedDecimalIndicator.getValue(2), -17);
+        
+        fixedDecimalIndicator = new FixedDecimalIndicator("3.0", "-123.456", "0");
+        assertDecimalEquals(fixedDecimalIndicator.getValue(0), "3");
+        assertDecimalEquals(fixedDecimalIndicator.getValue(1), "-123.456");
+        assertDecimalEquals(fixedDecimalIndicator.getValue(2), "0.0");
+        
     }
 
     @Test
-    public void getValue() {
-        assertDecimalEquals(differenceIndicator.getValue(0), "8");
-        assertDecimalEquals(differenceIndicator.getValue(1), "6");
-        assertDecimalEquals(differenceIndicator.getValue(2), "5");
-        assertDecimalEquals(differenceIndicator.getValue(3), "3.47");
-        assertDecimalEquals(differenceIndicator.getValue(4), "0.13");
-        assertDecimalEquals(differenceIndicator.getValue(5), "0");
-        assertDecimalEquals(differenceIndicator.getValue(6), "-4");
+    public void getValueOnFixedBooleanIndicator() {
+        fixedBooleanIndicator = new FixedBooleanIndicator(false, false, true, false, true);
+        Assert.assertFalse(fixedBooleanIndicator.getValue(0));
+        Assert.assertFalse(fixedBooleanIndicator.getValue(1));
+        Assert.assertTrue(fixedBooleanIndicator.getValue(2));
+        Assert.assertFalse(fixedBooleanIndicator.getValue(3));
+        Assert.assertTrue(fixedBooleanIndicator.getValue(4));
     }
 }

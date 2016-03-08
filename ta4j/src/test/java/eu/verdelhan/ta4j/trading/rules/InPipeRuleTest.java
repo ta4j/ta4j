@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.trading.rules;
 import eu.verdelhan.ta4j.trading.rules.InPipeRule;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
+import eu.verdelhan.ta4j.indicators.simple.FixedDecimalIndicator;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -38,7 +38,7 @@ public class InPipeRuleTest {
     
     @Before
     public void setUp() {
-        indicator = new MockDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
+        indicator = new FixedDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
         rule = new InPipeRule(indicator, Decimal.valueOf(80), Decimal.valueOf(20));
     }
     

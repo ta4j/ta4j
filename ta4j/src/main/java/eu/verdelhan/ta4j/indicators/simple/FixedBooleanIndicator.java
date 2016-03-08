@@ -20,18 +20,18 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
-
-import eu.verdelhan.ta4j.Decimal;
+package eu.verdelhan.ta4j.indicators.simple;
 
 /**
- * A sample decimal indicator.
+ * A fixed boolean indicator.
  */
-public class MockDecimalIndicator extends MockIndicator<Decimal> {
+public class FixedBooleanIndicator extends FixedIndicator<Boolean> {
 
-    public MockDecimalIndicator(double... values) {
-        for (double value : values) {
-            addValue(Decimal.valueOf(value));
-        }
+    /**
+     * Constructor.
+     * @param values the values to be returned by this indicator
+     */
+    public FixedBooleanIndicator(Boolean... values) {
+        super(values);
     }
 }

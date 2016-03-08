@@ -20,38 +20,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.trading.rules;
+package eu.verdelhan.ta4j.indicators.simple;
 
-import eu.verdelhan.ta4j.trading.rules.UnderIndicatorRule;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.indicators.simple.FixedDecimalIndicator;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
 
-public class UnderIndicatorRuleTest {
+/**
+ * A fixed decimal indicator.
+ */
+public class FixedDecimalIndicator extends FixedIndicator<Decimal> {
 
-    private Indicator<Decimal> indicator;
-    private UnderIndicatorRule rule;
-    
-    @Before
-    public void setUp() {
-        indicator = new FixedDecimalIndicator(0, 5, 8, 5, 1, 10, 20, 30);
-        rule = new UnderIndicatorRule(indicator, Decimal.valueOf(5));
+    /**
+     * Constructor.
+     * @param values the values to be returned by this indicator
+     */
+    public FixedDecimalIndicator(double... values) {
+        for (double value : values) {
+            addValue(Decimal.valueOf(value));
+        }
     }
     
-    @Test
-    public void isSatisfied() {
-        assertTrue(rule.isSatisfied(0));
-        assertFalse(rule.isSatisfied(1));
-        assertFalse(rule.isSatisfied(2));
-        assertFalse(rule.isSatisfied(3));
-        assertTrue(rule.isSatisfied(4));
-        assertFalse(rule.isSatisfied(5));
-        assertFalse(rule.isSatisfied(6));
-        assertFalse(rule.isSatisfied(7));
+    /**
+     * Constructor.
+     * @param values the values to be returned by this indicator
+     */
+    public FixedDecimalIndicator(String... values) {
+        for (String value : values) {
+            addValue(Decimal.valueOf(value));
+        }
     }
 }
-        

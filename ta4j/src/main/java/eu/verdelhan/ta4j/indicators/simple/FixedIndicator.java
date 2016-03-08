@@ -20,26 +20,32 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.mocks;
+package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.AbstractIndicator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * A mock indicator.
+ * A fixed indicator.
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
-public class MockIndicator<T> implements Indicator<T> {
+public class FixedIndicator<T> extends AbstractIndicator<T> {
 
-    private List<T> values = new ArrayList<T>();
+    private final List<T> values = new ArrayList<T>();
 
-    public MockIndicator(T... values) {
+    /**
+     * Constructor.
+     * @param values the values to be returned by this indicator
+     */
+    public FixedIndicator(T... values) {
+        super(null);
         this.values.addAll(Arrays.asList(values));
     }
-
+    
     public void addValue(T value) {
         this.values.add(value);
     }
@@ -47,14 +53,5 @@ public class MockIndicator<T> implements Indicator<T> {
     @Override
     public T getValue(int index) {
         return values.get(index);
-    }
-
-    @Override
-    public TimeSeries getTimeSeries() {
-        return null;
-    }
-
-    public String getName() {
-        return toString();
     }
 }

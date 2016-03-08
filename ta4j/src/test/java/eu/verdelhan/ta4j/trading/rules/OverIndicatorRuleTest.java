@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.trading.rules;
 import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
+import eu.verdelhan.ta4j.indicators.simple.FixedDecimalIndicator;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -38,7 +38,7 @@ public class OverIndicatorRuleTest {
     
     @Before
     public void setUp() {
-        indicator = new MockDecimalIndicator(20, 15, 10, 5, 0, -5, -10, 100);
+        indicator = new FixedDecimalIndicator(20, 15, 10, 5, 0, -5, -10, 100);
         rule = new OverIndicatorRule(indicator, Decimal.valueOf(5));
     }
     

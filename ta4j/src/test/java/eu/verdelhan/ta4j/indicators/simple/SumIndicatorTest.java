@@ -24,7 +24,6 @@ package eu.verdelhan.ta4j.indicators.simple;
 
 import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
-import eu.verdelhan.ta4j.mocks.MockIndicator;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,16 +31,16 @@ public class SumIndicatorTest {
     
     private ConstantIndicator<Decimal> constantIndicator;
     
-    private MockIndicator<Decimal> mockIndicator;
+    private FixedIndicator<Decimal> mockIndicator;
     
-    private MockIndicator<Decimal> mockIndicator2;
+    private FixedIndicator<Decimal> mockIndicator2;
 
     private SumIndicator sumIndicator;
     
     @Before
     public void setUp() {
         constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(6));
-        mockIndicator = new MockIndicator<Decimal>(
+        mockIndicator = new FixedIndicator<Decimal>(
                 Decimal.valueOf("-2.0"),
                 Decimal.valueOf("0.00"),
                 Decimal.valueOf("1.00"),
@@ -50,7 +49,7 @@ public class SumIndicatorTest {
                 Decimal.valueOf("6.00"),
                 Decimal.valueOf("10.0")
         );
-        mockIndicator2 = new MockIndicator<Decimal>(
+        mockIndicator2 = new FixedIndicator<Decimal>(
                 Decimal.ZERO,
                 Decimal.ONE,
                 Decimal.TWO,

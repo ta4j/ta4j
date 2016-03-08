@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.trading.rules;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.mocks.MockDecimalIndicator;
+import eu.verdelhan.ta4j.indicators.simple.FixedDecimalIndicator;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -37,7 +37,7 @@ public class CrossedDownIndicatorRuleTest {
     
     @Before
     public void setUp() {
-        evaluatedIndicator = new MockDecimalIndicator(12, 11, 10, 9, 11, 8, 7, 6);
+        evaluatedIndicator = new FixedDecimalIndicator(12, 11, 10, 9, 11, 8, 7, 6);
         rule = new CrossedDownIndicatorRule(evaluatedIndicator, Decimal.TEN);
     }
     
