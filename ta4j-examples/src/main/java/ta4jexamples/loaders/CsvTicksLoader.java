@@ -77,7 +77,7 @@ public class CsvTicksLoader {
         return new TimeSeries("apple_ticks", ticks);
     }
 
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         TimeSeries series = CsvTicksLoader.loadAppleIncSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");

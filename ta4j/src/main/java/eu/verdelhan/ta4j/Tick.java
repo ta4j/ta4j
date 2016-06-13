@@ -297,7 +297,7 @@ public class Tick {
      * @param endTime the end time of the tick
      * @throws IllegalArgumentException if one of the arguments is null
      */
-    private void checkTimeArguments(Period timePeriod, DateTime endTime) throws IllegalArgumentException {
+    private void checkTimeArguments(Period timePeriod, DateTime endTime) {
         if (timePeriod == null) {
             throw new IllegalArgumentException("Time period cannot be null");
         }

@@ -131,7 +131,7 @@ public class CsvTradesLoader {
         }
     }
 
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
