@@ -66,6 +66,6 @@ public class WMAIndicator extends CachedIndicator<Decimal> {
 
     @Override
     public String toString() {
-        return String.format(getClass().getSimpleName() + " timeFrame: %s", timeFrame);
+        return String.format("%s timeFrame: %s", getClass().getSimpleName(), timeFrame);
     }
 }

@@ -42,8 +42,6 @@ public class UlcerIndexIndicator extends CachedIndicator<Decimal> {
     
     private int timeFrame;
 
-    private SMAIndicator sma;
-
     /**
      * Constructor.
      * @param indicator the indicator

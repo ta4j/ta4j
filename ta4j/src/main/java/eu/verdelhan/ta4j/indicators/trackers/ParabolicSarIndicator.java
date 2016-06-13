@@ -52,14 +52,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final HighestValueIndicator highestValueIndicator;
     
-    private final int timeFrame;
-    
     public ParabolicSarIndicator(TimeSeries series, int timeFrame) {
         super(series);
         this.series = series;
         this.lowestValueIndicator = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
         this.highestValueIndicator = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
-        this.timeFrame = timeFrame;
     }
 
     @Override
