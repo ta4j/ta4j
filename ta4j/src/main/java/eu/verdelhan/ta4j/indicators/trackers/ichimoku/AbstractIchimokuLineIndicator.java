@@ -57,6 +57,6 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Deci
 
     @Override
     protected Decimal calculate(int index) {
-        return periodHigh.getValue(index).plus(periodLow.getValue(index).dividedBy(Decimal.TWO));
+        return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(Decimal.TWO);
     }
 }
