@@ -56,7 +56,6 @@ import eu.verdelhan.ta4j.indicators.CachedIndicator;
  * http://www.fool.com/knowledge-center/2015/11/03/annualized-return-vs-cumulative-return.aspx
  * 
  */
-
 public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
       
     private final Indicator<Decimal> indicator;
@@ -81,76 +80,54 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
      * For a timeFrame = number of trading days within a year (e. g. 251 days in the US) 
      * and "end of day"-ticks you will get the 'Annualized Total Return'.
      * Only complete timeFrames are taken into the calculation.
-     * @return 
+     * @return the total return from the calculated results of the method 'calculate'
      */
-    public double getTotalReturn()
-    {
+	public double getTotalReturn() {
 
-        Decimal totalProduct = Decimal.ONE;
-        int completeTimeframes = (this.indicator.getTimeSeries().getTickCount()/this.timeFrame); 
-        
-        for (int i = 1; i <= completeTimeframes; i++)
-        {
-            int index = i*this.timeFrame;
-            Decimal currentReturn = this.getValue(index);
-            
-            if (currentReturn != Decimal.NaN) // Skip NaN at the end of a series
-            {
-                currentReturn = currentReturn.plus(Decimal.ONE);
-                totalProduct = totalProduct.multipliedBy(currentReturn);
-            }
-        }
+		Decimal totalProduct = Decimal.ONE;
+		int completeTimeframes = (getTimeSeries().getTickCount() / timeFrame);
 
-        return (Math.pow(totalProduct.toDouble(),(1.0 /completeTimeframes)));
-             
-    }
+		for (int i = 1; i <= completeTimeframes; i++) {
+			int index = i * timeFrame;
+			Decimal currentReturn = getValue(index);
+
+			// Skip NaN at the end of a series
+			if (currentReturn != Decimal.NaN) {
+				currentReturn = currentReturn.plus(Decimal.ONE);
+				totalProduct = totalProduct.multipliedBy(currentReturn);
+			}
+		}
+
+		return (Math.pow(totalProduct.toDouble(), (1.0 / completeTimeframes)));
+	}
     
-    
-    /**
-     * Do the calculation.
-     * @param index
-     * @return 
-     */
     @Override
-    protected Decimal calculate(int index) {
+	protected Decimal calculate(int index) {
 
-        Decimal currentValue = this.indicator.getValue(index);
-        
-        int helpPartialTimeframe = index % this.timeFrame;
-        double helpFullTimeframes = Math.floor((double)this.indicator.getTimeSeries().getTickCount() / (double)this.timeFrame);
-        double helpIndexTimeframes = (double)index / (double)this.timeFrame;
+		Decimal currentValue = indicator.getValue(index);
 
-        double helpPartialTimeframeHeld = (double)helpPartialTimeframe / (double)this.timeFrame;
-        
-        double PartialTimeframeHeld;
-        if (helpPartialTimeframeHeld == 0)
-        {
-            PartialTimeframeHeld = 1.0;
-        }
-        else
-        {
-            PartialTimeframeHeld = helpPartialTimeframeHeld;
-        }
-        
-        // Avoid calculations of returns:
-        // a.) if index number is below timeframe
-        //     e.g. timeframe = 365, index = 5 => no calculation 
-        // b.) if at the end of a series incomplete timeframes would remain
-        Decimal timeframedReturn = Decimal.NaN;
-        Decimal movingSimpleReturn = Decimal.NaN;
-        if ((index >= this.timeFrame) &&                // a.)
-           (helpIndexTimeframes < helpFullTimeframes))  // b.)
-        {      
-                Decimal movingValue = this.indicator.getValue(index - this.timeFrame);
-                movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+		int helpPartialTimeframe = index % timeFrame;
+		double helpFullTimeframes = Math.floor((double) indicator.getTimeSeries().getTickCount() / (double) timeFrame);
+		double helpIndexTimeframes = (double) index / (double) timeFrame;
 
-                double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.toDouble()),(1/PartialTimeframeHeld)) - 1;
-                timeframedReturn = Decimal.valueOf(timeframedReturn_double);           
-        }
-        
-        return timeframedReturn;
-       
-        
-    }
+		double helpPartialTimeframeHeld = (double) helpPartialTimeframe / (double) timeFrame;
+		double partialTimeframeHeld = (helpPartialTimeframeHeld == 0) ? 1.0 : helpPartialTimeframeHeld;
+
+		// Avoid calculations of returns:
+		// a.) if index number is below timeframe
+		// e.g. timeframe = 365, index = 5 => no calculation
+		// b.) if at the end of a series incomplete timeframes would remain
+		Decimal timeframedReturn = Decimal.NaN;
+		if ((index >= timeFrame) /*(a)*/ && (helpIndexTimeframes < helpFullTimeframes) /*(b)*/) {
+			Decimal movingValue = indicator.getValue(index - timeFrame);
+			Decimal movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+
+			double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.toDouble()), (1 / partialTimeframeHeld)) - 1;
+			timeframedReturn = Decimal.valueOf(timeframedReturn_double);
+		}
+
+		return timeframedReturn;
+
+	}
 }
 

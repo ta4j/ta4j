@@ -42,41 +42,27 @@ public class PeriodicalGrowthRateIndicatorTest {
     
     private ClosePriceIndicator closePrice;
     
-    public PeriodicalGrowthRateIndicatorTest() {
-    }
-    
     @Before
     public void setUp() {
         mockdata = new MockTimeSeries(
-                                  29.49,28.30,27.74,27.65,27.60,28.70,28.60,
-                                  28.19,27.40,27.20,27.28,27.00,27.59,26.20,
-                                  25.75,24.75,23.33,24.45,24.25,25.02,23.60,
-                                  24.20,24.28,25.70,25.46,25.10,25.00,25.00,
-                                  25.85);
+				29.49, 28.30, 27.74, 27.65, 27.60, 28.70, 28.60,
+				28.19, 27.40, 27.20, 27.28, 27.00, 27.59, 26.20,
+				25.75, 24.75, 23.33, 24.45, 24.25, 25.02, 23.60,
+				24.20, 24.28, 25.70, 25.46, 25.10, 25.00, 25.00,
+				25.85);
         closePrice = new ClosePriceIndicator(mockdata);
-
     }
 
-
-    
-    /**
-     * Test of total return calculation
-     */
     @Test
     public void testGetTotalReturn() { 
-        PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice,5);
+        PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
         double expResult = 0.9564;
         double result = gri.getTotalReturn();
-        assertEquals(expResult, result,0.01);
-
+        assertEquals(expResult, result, 0.01);
     }
     
-
-    /**
-     * Test of calculation
-     */
     @Test
-    public void testCalculationMode1() { 
+    public void testCalculation() { 
         PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice,5);
         
         assertEquals(gri.getValue(0), Decimal.NaN);
@@ -90,17 +76,14 @@ public class PeriodicalGrowthRateIndicatorTest {
         assertEquals(gri.getValue(26), Decimal.NaN);
     }
     
-    /**
-     * Test if rules & strategies are working with NaN-Values
-     */
     @Test
     public void testStrategies() { 
         
         PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice,5);
 
         // Rules
-        Rule buyingRule = new CrossedUpIndicatorRule(gri,Decimal.valueOf("0.0")); 
-        Rule sellingRule = new CrossedDownIndicatorRule(gri,Decimal.valueOf("0.0"));     
+        Rule buyingRule = new CrossedUpIndicatorRule(gri, Decimal.ZERO); 
+        Rule sellingRule = new CrossedDownIndicatorRule(gri, Decimal.ZERO);     
         
         Strategy strategy = new Strategy(buyingRule, sellingRule);
                 
@@ -108,11 +91,6 @@ public class PeriodicalGrowthRateIndicatorTest {
         int result = mockdata.run(strategy).getTradeCount();             
         int expResult = 3;
         
-        assertEquals(expResult, result,0.01);
-   
+        assertEquals(expResult, result);
     }
-
-    
-
-    
 }
