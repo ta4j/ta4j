@@ -50,21 +50,21 @@ public class RSIIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-    	if (index == 0) {
+        if (index == 0) {
             return Decimal.ZERO;
         }
 
-    	// Relative strength
+        // Relative strength
         Decimal averageLoss = averageLossIndicator.getValue(index);
         if (averageLoss.isZero()) {
-        	return Decimal.HUNDRED;
+            return Decimal.HUNDRED;
         }
-    	Decimal averageGain = averageGainIndicator.getValue(index);
+        Decimal averageGain = averageGainIndicator.getValue(index);
         Decimal relativeStrength = averageGain.dividedBy(averageLoss);
-        
+
         // Nominal case
-		Decimal ratio = Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength));
-		return Decimal.HUNDRED.minus(ratio);
+        Decimal ratio = Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength));
+        return Decimal.HUNDRED.minus(ratio);
     }
 
     @Override

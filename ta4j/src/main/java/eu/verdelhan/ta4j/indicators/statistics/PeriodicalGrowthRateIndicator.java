@@ -82,52 +82,52 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
      * Only complete timeFrames are taken into the calculation.
      * @return the total return from the calculated results of the method 'calculate'
      */
-	public double getTotalReturn() {
+    public double getTotalReturn() {
 
-		Decimal totalProduct = Decimal.ONE;
-		int completeTimeframes = (getTimeSeries().getTickCount() / timeFrame);
+        Decimal totalProduct = Decimal.ONE;
+        int completeTimeframes = (getTimeSeries().getTickCount() / timeFrame);
 
-		for (int i = 1; i <= completeTimeframes; i++) {
-			int index = i * timeFrame;
-			Decimal currentReturn = getValue(index);
+        for (int i = 1; i <= completeTimeframes; i++) {
+            int index = i * timeFrame;
+            Decimal currentReturn = getValue(index);
 
-			// Skip NaN at the end of a series
-			if (currentReturn != Decimal.NaN) {
-				currentReturn = currentReturn.plus(Decimal.ONE);
-				totalProduct = totalProduct.multipliedBy(currentReturn);
-			}
-		}
+            // Skip NaN at the end of a series
+            if (currentReturn != Decimal.NaN) {
+                currentReturn = currentReturn.plus(Decimal.ONE);
+                totalProduct = totalProduct.multipliedBy(currentReturn);
+            }
+        }
 
-		return (Math.pow(totalProduct.toDouble(), (1.0 / completeTimeframes)));
-	}
+        return (Math.pow(totalProduct.toDouble(), (1.0 / completeTimeframes)));
+    }
     
     @Override
-	protected Decimal calculate(int index) {
+    protected Decimal calculate(int index) {
 
-		Decimal currentValue = indicator.getValue(index);
+        Decimal currentValue = indicator.getValue(index);
 
-		int helpPartialTimeframe = index % timeFrame;
-		double helpFullTimeframes = Math.floor((double) indicator.getTimeSeries().getTickCount() / (double) timeFrame);
-		double helpIndexTimeframes = (double) index / (double) timeFrame;
+        int helpPartialTimeframe = index % timeFrame;
+        double helpFullTimeframes = Math.floor((double) indicator.getTimeSeries().getTickCount() / (double) timeFrame);
+        double helpIndexTimeframes = (double) index / (double) timeFrame;
 
-		double helpPartialTimeframeHeld = (double) helpPartialTimeframe / (double) timeFrame;
-		double partialTimeframeHeld = (helpPartialTimeframeHeld == 0) ? 1.0 : helpPartialTimeframeHeld;
+        double helpPartialTimeframeHeld = (double) helpPartialTimeframe / (double) timeFrame;
+        double partialTimeframeHeld = (helpPartialTimeframeHeld == 0) ? 1.0 : helpPartialTimeframeHeld;
 
-		// Avoid calculations of returns:
-		// a.) if index number is below timeframe
-		// e.g. timeframe = 365, index = 5 => no calculation
-		// b.) if at the end of a series incomplete timeframes would remain
-		Decimal timeframedReturn = Decimal.NaN;
-		if ((index >= timeFrame) /*(a)*/ && (helpIndexTimeframes < helpFullTimeframes) /*(b)*/) {
-			Decimal movingValue = indicator.getValue(index - timeFrame);
-			Decimal movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+        // Avoid calculations of returns:
+        // a.) if index number is below timeframe
+        // e.g. timeframe = 365, index = 5 => no calculation
+        // b.) if at the end of a series incomplete timeframes would remain
+        Decimal timeframedReturn = Decimal.NaN;
+        if ((index >= timeFrame) /*(a)*/ && (helpIndexTimeframes < helpFullTimeframes) /*(b)*/) {
+            Decimal movingValue = indicator.getValue(index - timeFrame);
+            Decimal movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
-			double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.toDouble()), (1 / partialTimeframeHeld)) - 1;
-			timeframedReturn = Decimal.valueOf(timeframedReturn_double);
-		}
+            double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.toDouble()), (1 / partialTimeframeHeld)) - 1;
+            timeframedReturn = Decimal.valueOf(timeframedReturn_double);
+        }
 
-		return timeframedReturn;
+        return timeframedReturn;
 
-	}
+    }
 }
 
