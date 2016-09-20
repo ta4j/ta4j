@@ -49,7 +49,7 @@ public class RSIIndicatorTest {
     }
 
     @Test
-    public void RSIUsingTimeFrame14UsingClosePrice() {
+    public void rsiUsingTimeFrame14UsingClosePrice() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
         assertDecimalEquals(rsi.getValue(15), 62.7451);
@@ -65,9 +65,17 @@ public class RSIIndicatorTest {
     }
 
     @Test
-    public void RSIFirstValueShouldBeZero() {
+    public void rsiFirstValueShouldBeZero() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
 
         assertEquals(Decimal.ZERO, rsi.getValue(0));
+    }
+
+    @Test
+    public void rsiHundredIfNoLoss() {
+        RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 3);
+
+        assertEquals(Decimal.HUNDRED, rsi.getValue(14));
+        assertEquals(Decimal.HUNDRED, rsi.getValue(15));
     }
 }

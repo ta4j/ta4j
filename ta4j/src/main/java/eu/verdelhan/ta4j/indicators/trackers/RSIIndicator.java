@@ -31,6 +31,7 @@ import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
 /**
  * Relative strength index indicator.
  * <p>
+ * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:relative_strength_index_rsi
  */
 public class RSIIndicator extends CachedIndicator<Decimal> {
 
@@ -49,25 +50,25 @@ public class RSIIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return Decimal.HUNDRED
-                .minus(Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength(index))));
+    	if (index == 0) {
+            return Decimal.ZERO;
+        }
+
+    	// Relative strength
+        Decimal averageLoss = averageLossIndicator.getValue(index);
+        if (averageLoss.isZero()) {
+        	return Decimal.HUNDRED;
+        }
+    	Decimal averageGain = averageGainIndicator.getValue(index);
+        Decimal relativeStrength = averageGain.dividedBy(averageLoss);
+        
+        // Nominal case
+		Decimal ratio = Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength));
+		return Decimal.HUNDRED.minus(ratio);
     }
 
     @Override
     public String toString() {
         return getClass().getName() + " timeFrame: " + timeFrame;
-    }
-
-    /**
-     * @param index
-     * @return the relative strength
-     */
-    private Decimal relativeStrength(int index) {
-        if (index == 0) {
-            return Decimal.ZERO;
-        }
-        Decimal averageGain = averageGainIndicator.getValue(index);
-        Decimal averageLoss = averageLossIndicator.getValue(index);
-        return averageGain.dividedBy(averageLoss);
     }
 }
