@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j;
 
 
 import org.joda.time.DateTime;
+import org.joda.time.Days;
 import org.joda.time.Period;
 
 /**
@@ -109,7 +110,7 @@ public class Tick {
      * @param volume the volume of the tick period
      */
     public Tick(DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
-        this(Period.days(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
+        this(Days.days(1).toPeriod(), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
     }
 
     /**
