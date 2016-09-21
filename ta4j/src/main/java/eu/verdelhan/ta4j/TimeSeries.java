@@ -54,8 +54,6 @@ public class TimeSeries {
     private int endIndex = -1;
     /** List of ticks */
     private final List<Tick> ticks;
-    /** Time period of the series */
-    private Period timePeriod;
     /** Maximum number of ticks for the time series */
     private int maximumTickCount = Integer.MAX_VALUE;
     /** Number of removed ticks */
@@ -83,24 +81,17 @@ public class TimeSeries {
     /**
      * Constructor.
      * @param name the name of the series
-     * @param timePeriod the time period (between 2 ticks)
      */
-    public TimeSeries(String name, Period timePeriod) {
-        if (timePeriod == null) {
-            throw new IllegalArgumentException("Time period cannot be null");
-        }
+    public TimeSeries(String name) {
         this.name = name;
         this.ticks = new ArrayList<Tick>();
-        this.timePeriod = timePeriod;
     }
 
     /**
      * Constructor of an unnamed series.
-     *
-     * @param timePeriod the time period (between 2 ticks)
      */
-    public TimeSeries(Period timePeriod) {
-        this("unamed", timePeriod);
+    public TimeSeries() {
+        this("unamed");
     }
 
     /**
@@ -121,7 +112,6 @@ public class TimeSeries {
         this.beginIndex = beginIndex;
         this.endIndex = endIndex;
         this.subSeries = subSeries;
-        computeTimePeriod();
     }
 
     /**
@@ -207,13 +197,6 @@ public class TimeSeries {
                     .append(lastTick.getEndTime().toString(timeFormat));
         }
         return sb.toString();
-    }
-
-    /**
-     * @return the time period of the series
-     */
-    public Period getTimePeriod() {
-        return timePeriod;
     }
 
     /**
@@ -432,33 +415,6 @@ public class TimeSeries {
             }
         }
         return tradingRecord;
-    }
-
-    /**
-     * Computes the time period of the series.
-     */
-    private void computeTimePeriod() {
-
-        Period minPeriod = null;
-        for (int i = beginIndex; i < endIndex; i++) {
-            // For each tick interval...
-            // Looking for the minimum period.
-            long currentPeriodMillis = getTick(i + 1).getEndTime().getMillis() - getTick(i).getEndTime().getMillis();
-            if (minPeriod == null) {
-                minPeriod = new Period(currentPeriodMillis);
-            } else {
-                long minPeriodMillis = minPeriod.getMillis();
-                if (minPeriodMillis > currentPeriodMillis) {
-                    minPeriod = new Period(currentPeriodMillis);
-                }
-            }
-        }
-        if (minPeriod == null || Period.ZERO.equals(minPeriod)) {
-            // Minimum period not found (or zero ms found)
-            // --> Use a one-day period
-            minPeriod = Period.days(1);
-        }
-        timePeriod = minPeriod;
     }
 
     /**

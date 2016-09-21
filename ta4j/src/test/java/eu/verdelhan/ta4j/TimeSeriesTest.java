@@ -70,7 +70,7 @@ public class TimeSeriesTest {
 
         defaultSeries = new TimeSeries(defaultName, ticks);
         subSeries = defaultSeries.subseries(2, 4);
-        emptySeries = new TimeSeries(Period.minutes(15));
+        emptySeries = new TimeSeries();
         final DateTimeFormatter dtf = DateTimeFormat.forPattern("yyyy-MM-dd");
         seriesForRun = new MockTimeSeries(
                 new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
@@ -88,11 +88,6 @@ public class TimeSeriesTest {
 
         strategy = new Strategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void constructorWithNullTimePeriodShouldThrowException() {
-        TimeSeries s = new TimeSeries((Period) null);
     }
 
     @Test
@@ -166,16 +161,6 @@ public class TimeSeriesTest {
         assertEquals(tick, defaultSeries.getTick(4));
     }
 
-    @Test
-    public void getTimePeriod() {
-        // Original series
-        Period origSeriesPeriod = new Period(ticks.get(1).getEndTime().getMillis() - ticks.get(0).getEndTime().getMillis());
-        assertEquals(origSeriesPeriod, defaultSeries.getTimePeriod());
-        // Sub-series
-        Period subSeriesPeriod = new Period(ticks.get(3).getEndTime().getMillis() - ticks.get(2).getEndTime().getMillis());
-        assertEquals(subSeriesPeriod, subSeries.getTimePeriod());
-    }
-
     @Test(expected = IllegalStateException.class)
     public void maximumTickCountOnSubserieShouldThrowException() {
         subSeries.setMaximumTickCount(10);
@@ -213,7 +198,7 @@ public class TimeSeriesTest {
     
     @Test
     public void addTick() {
-        defaultSeries = new TimeSeries(Period.days(1));
+        defaultSeries = new TimeSeries();
         Tick firstTick = new MockTick(date.withDate(2014, 6, 13), 1d);
         Tick secondTick = new MockTick(date.withDate(2014, 6, 14), 2d);
 
@@ -241,7 +226,6 @@ public class TimeSeriesTest {
         assertEquals(5, subSeries2.getEnd());
         assertEquals(defaultSeries.getEnd(), subSeries2.getEnd());
         assertEquals(4, subSeries2.getTickCount());
-        assertNotEquals(defaultSeries.getTimePeriod(), subSeries2.getTimePeriod());
     }
 
     @Test(expected = IllegalStateException.class)
@@ -264,7 +248,6 @@ public class TimeSeriesTest {
         assertEquals(4, subSeries2.getEnd());
         assertNotEquals(defaultSeries.getEnd(), subSeries2.getEnd());
         assertEquals(4, subSeries2.getTickCount());
-        assertEquals(defaultSeries.getTimePeriod(), subSeries2.getTimePeriod());
     }
 
     @Test
