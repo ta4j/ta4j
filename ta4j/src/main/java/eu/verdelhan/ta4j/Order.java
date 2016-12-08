@@ -22,6 +22,8 @@
  */
 package eu.verdelhan.ta4j;
 
+import java.io.Serializable;
+
 /**
  * An order.
  * <p>
@@ -34,9 +36,11 @@ package eu.verdelhan.ta4j;
  * </ul>
  * A {@link Trade trade} is a pair of complementary orders.
  */
-public class Order {
+public class Order implements Serializable {
 
-    /**
+	private static final long serialVersionUID = -905474949010114150L;
+
+	/**
      * The type of an {@link Order order}.
      * <p>
      * A BUY corresponds to a <i>BID</i> order.<p>

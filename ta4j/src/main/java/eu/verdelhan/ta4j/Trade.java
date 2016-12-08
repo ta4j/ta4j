@@ -22,6 +22,8 @@
  */
 package eu.verdelhan.ta4j;
 
+import java.io.Serializable;
+
 import eu.verdelhan.ta4j.Order.OrderType;
 
 /**
@@ -32,9 +34,11 @@ import eu.verdelhan.ta4j.Order.OrderType;
  *   entry == BUY --> exit == SELL
  *   entry == SELL --> exit == BUY
  */
-public class Trade {
+public class Trade implements Serializable {
 
-    /** The entry order */
+	private static final long serialVersionUID = -5484709075767220358L;
+
+	/** The entry order */
     private Order entry;
 
     /** The exit order */

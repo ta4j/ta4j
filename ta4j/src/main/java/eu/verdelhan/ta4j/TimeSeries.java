@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j;
 
 import eu.verdelhan.ta4j.Order.OrderType;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import org.joda.time.DateTime;
@@ -42,9 +44,10 @@ import org.slf4j.LoggerFactory;
  * <li>used to run {@link Strategy trading strategies}
  * </ul>
  */
-public class TimeSeries {
+public class TimeSeries implements Serializable {
 
-    /** The logger */
+	private static final long serialVersionUID = -1878027009398790126L;
+	/** The logger */
     private final Logger log = LoggerFactory.getLogger(getClass());
     /** Name of the series */
     private final String name;

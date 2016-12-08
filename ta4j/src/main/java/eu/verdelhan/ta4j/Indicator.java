@@ -22,13 +22,15 @@
  */
 package eu.verdelhan.ta4j;
 
+import java.io.Serializable;
+
 /**
  * Indicator over a {@link TimeSeries time series}.
  * <p>
  * For each index of the time series, returns a value of type <b>T</b>.
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
-public interface Indicator<T> {
+public interface Indicator<T> extends Serializable {
 
     /**
      * @param index the tick index

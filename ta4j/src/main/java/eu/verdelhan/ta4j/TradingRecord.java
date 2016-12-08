@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j;
 
 import eu.verdelhan.ta4j.Order.OrderType;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,9 +38,11 @@ import java.util.List;
  * <li>analyze the performance of a trading strategy
  * </ul>
  */
-public class TradingRecord {
+public class TradingRecord implements Serializable {
 
-    /** The recorded orders */
+	private static final long serialVersionUID = -4436851731855891220L;
+
+	/** The recorded orders */
     private List<Order> orders = new ArrayList<Order>();
     
     /** The recorded BUY orders */

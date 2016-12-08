@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -35,9 +36,11 @@ import java.math.RoundingMode;
  * @see MathContext
  * @see RoundingMode
  */
-public final class Decimal implements Comparable<Decimal> {
+public final class Decimal implements Comparable<Decimal>, Serializable {
 
-    public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
+	private static final long serialVersionUID = 2225130444465033658L;
+
+	public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     /** Not-a-Number instance (infinite error) */
     public static final Decimal NaN = new Decimal();

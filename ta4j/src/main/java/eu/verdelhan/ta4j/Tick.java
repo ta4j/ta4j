@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j;
 
 
+import java.io.Serializable;
+
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.joda.time.Period;
@@ -31,9 +33,10 @@ import org.joda.time.Period;
  * End tick of a time period.
  * <p>
  */
-public class Tick {
+public class Tick implements Serializable {
 
-    /** Time period (e.g. 1 day, 15 min, etc.) of the tick */
+	private static final long serialVersionUID = 8038383777467488147L;
+	/** Time period (e.g. 1 day, 15 min, etc.) of the tick */
     private Period timePeriod;
     /** End time of the tick */
     private DateTime endTime;
