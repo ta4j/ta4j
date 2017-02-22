@@ -74,11 +74,11 @@ public class CsvTradesLoader {
             DateTime beginTime = new DateTime(Long.parseLong(lines.get(0)[0]) * 1000);
             DateTime endTime = new DateTime(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
             if (beginTime.isAfter(endTime)) {
-                // Looks like the CSV file has the most recent trades at the top of the file - will need to reverse the resulting list.
                 Instant beginInstant = beginTime.toInstant();
                 Instant endInstant = endTime.toInstant();
                 beginTime = new DateTime(endInstant);
                 endTime = new DateTime(beginInstant);
+                // Since the CSV file has the most recent trades at the top of the file, we'll reverse the list to feed the List<Tick> correctly.
                 Collections.reverse(lines);
             }
             // Building the empty ticks (every 300 seconds, yeah welcome in Bitcoin world)
