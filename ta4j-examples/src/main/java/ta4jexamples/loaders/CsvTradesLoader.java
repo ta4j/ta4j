@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -77,6 +78,8 @@ public class CsvTradesLoader {
                 Instant endInstant = endTime.toInstant();
                 beginTime = new DateTime(endInstant);
                 endTime = new DateTime(beginInstant);
+                // Since the CSV file has the most recent trades at the top of the file, we'll reverse the list to feed the List<Tick> correctly.
+                Collections.reverse(lines);
             }
             // Building the empty ticks (every 300 seconds, yeah welcome in Bitcoin world)
             ticks = buildEmptyTicks(beginTime, endTime, 300);
