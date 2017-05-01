@@ -25,46 +25,37 @@ package eu.verdelhan.ta4j.indicators.trackers;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.AverageGainIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.*;
 
 /**
  * Relative strength index indicator.
  * <p>
- * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:relative_strength_index_rsi
+ * This calculation of RSI uses traditional moving averages
+ * as opposed to Wilder's accumulative moving average technique.
+ *
+ * <p>See reference
+ * <a href="https://www.barchart.com/education/technical-indicators#/studies/std_rsi_mod">
+ * RSI calculation</a>.
+ *
+ * @see SmoothedRSIIndicator
  */
 public class RSIIndicator extends CachedIndicator<Decimal> {
 
-    private AverageGainIndicator averageGainIndicator;
-
-    private AverageLossIndicator averageLossIndicator;
-
+    private RelativeStrengthIndexCalculation rsiCalculation;
     private final int timeFrame;
 
     public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
-        averageGainIndicator = new AverageGainIndicator(indicator, timeFrame);
-        averageLossIndicator = new AverageLossIndicator(indicator, timeFrame);
+        rsiCalculation = new RelativeStrengthIndexCalculation(
+            new AverageGainIndicator(indicator, timeFrame),
+            new AverageLossIndicator(indicator, timeFrame)
+        );
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ZERO;
-        }
-
-        // Relative strength
-        Decimal averageLoss = averageLossIndicator.getValue(index);
-        if (averageLoss.isZero()) {
-            return Decimal.HUNDRED;
-        }
-        Decimal averageGain = averageGainIndicator.getValue(index);
-        Decimal relativeStrength = averageGain.dividedBy(averageLoss);
-
-        // Nominal case
-        Decimal ratio = Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength));
-        return Decimal.HUNDRED.minus(ratio);
+        return rsiCalculation.getValue(index);
     }
 
     @Override

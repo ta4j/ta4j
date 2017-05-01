@@ -54,7 +54,7 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void averageLossMustReturnZeroWhenTheDataDoesntGain() {
+    public void averageLossMustReturnZeroWhenTheDataGain() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 4);
         assertDecimalEquals(averageLoss.getValue(3), 0);
     }
@@ -66,7 +66,7 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void averageGainWhenIndexIsZeroMustBeZero() {
+    public void averageLossWhenIndexIsZeroMustBeZero() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 10);
         assertDecimalEquals(averageLoss.getValue(0), 0);
     }
