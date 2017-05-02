@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2016 Marc de Verdelhan & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -20,46 +20,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.trackers;
+package eu.verdelhan.ta4j.indicators.helpers;
 
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.*;
+import eu.verdelhan.ta4j.Indicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
- * Relative strength index indicator.
+ * Average loss indicator calculated using smoothing
  * <p>
- * This calculation of RSI uses traditional moving averages
- * as opposed to Wilder's accumulative moving average technique.
- *
- * <p>See reference
- * <a href="https://www.barchart.com/education/technical-indicators#/studies/std_rsi_mod">
- * RSI calculation</a>.
- *
- * @see SmoothedRSIIndicator
  */
-public class RSIIndicator extends CachedIndicator<Decimal> {
+public class SmoothedAverageLossIndicator extends RecursiveCachedIndicator<Decimal> {
 
-    private RelativeStrengthIndexCalculation rsiCalculation;
+    private final AverageLossIndicator averageLosses;
+    private final Indicator<Decimal> indicator;
+
     private final int timeFrame;
 
-    public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public SmoothedAverageLossIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
+        this.indicator = indicator;
+        this.averageLosses = new AverageLossIndicator(indicator, timeFrame);
         this.timeFrame = timeFrame;
-        rsiCalculation = new RelativeStrengthIndexCalculation(
-            new AverageGainIndicator(indicator, timeFrame),
-            new AverageLossIndicator(indicator, timeFrame)
-        );
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return rsiCalculation.getValue(index);
+        if (index > timeFrame) {
+            return getValue(index - 1)
+                .multipliedBy(Decimal.valueOf(timeFrame - 1))
+                .plus(calculateLoss(index))
+                .dividedBy(Decimal.valueOf(timeFrame));
+        }
+        return averageLosses.getValue(index);
     }
 
-    @Override
-    public String toString() {
-        return getClass().getName() + " timeFrame: " + timeFrame;
+    private Decimal calculateLoss(int index) {
+        Decimal loss = indicator.getValue(index).minus(indicator.getValue(index - 1));
+        return loss.isNegative() ? loss.abs() : Decimal.ZERO;
     }
 }

@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2016 Marc de Verdelhan & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,39 +22,48 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.*;
 
 /**
  * Relative strength index indicator.
  * <p>
- * This calculation of RSI uses traditional moving averages
- * as opposed to Wilder's accumulative moving average technique.
+ * This calculation of RSI is based on accumulative moving average
+ * as described in Wilder's original paper from 1978
  *
  * <p>See reference
- * <a href="https://www.barchart.com/education/technical-indicators#/studies/std_rsi_mod">
+ * <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:relative_strength_index_rsi">
  * RSI calculation</a>.
  *
- * @see SmoothedRSIIndicator
+ * @see RSIIndicator
+ * @since 0.9
  */
-public class RSIIndicator extends CachedIndicator<Decimal> {
+public class SmoothedRSIIndicator extends CachedIndicator<Decimal> {
+
+    private static final Integer SMOOTH_MIN_TICKS = 150;
 
     private RelativeStrengthIndexCalculation rsiCalculation;
     private final int timeFrame;
 
-    public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public SmoothedRSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         rsiCalculation = new RelativeStrengthIndexCalculation(
-            new AverageGainIndicator(indicator, timeFrame),
-            new AverageLossIndicator(indicator, timeFrame)
+            new SmoothedAverageGainIndicator(indicator, timeFrame),
+            new SmoothedAverageLossIndicator(indicator, timeFrame)
         );
     }
 
     @Override
     protected Decimal calculate(int index) {
+        if (index < SMOOTH_MIN_TICKS) {
+            log.warn(
+                "Requesting index : {}. Smoothed RSI needs {} ticks before calculated index in data series to get the best results",
+                index,
+                SMOOTH_MIN_TICKS);
+        }
         return rsiCalculation.getValue(index);
     }
 

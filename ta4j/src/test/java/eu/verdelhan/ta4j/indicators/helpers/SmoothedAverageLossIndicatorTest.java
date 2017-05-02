@@ -1,7 +1,7 @@
-/**
+/*
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2016 Marc de Verdelhan & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,14 +22,16 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
-import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AverageLossIndicatorTest {
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalNotEquals;
+
+public class SmoothedAverageLossIndicatorTest {
 
     private TimeSeries data;
 
@@ -39,34 +41,39 @@ public class AverageLossIndicatorTest {
     }
 
     @Test
-    public void averageLossUsingTimeFrame5UsingClosePrice() {
-        AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 5);
+    public void smoothedAverageLossUsingTimeFrame5UsingClosePrice() {
+        SmoothedAverageLossIndicator averageLoss = new SmoothedAverageLossIndicator(new ClosePriceIndicator(data), 5);
 
         assertDecimalEquals(averageLoss.getValue(5), "0.2");
-        assertDecimalEquals(averageLoss.getValue(6), "0.2");
-        assertDecimalEquals(averageLoss.getValue(7), "0.4");
-        assertDecimalEquals(averageLoss.getValue(8), "0.6");
-        assertDecimalEquals(averageLoss.getValue(9), "0.4");
-        assertDecimalEquals(averageLoss.getValue(10), "0.4");
-        assertDecimalEquals(averageLoss.getValue(11), "0.6");
-        assertDecimalEquals(averageLoss.getValue(12), "0.6");
-
+        assertDecimalEquals(averageLoss.getValue(6), "0.16");
+        assertDecimalEquals(averageLoss.getValue(7), "0.328");
+        assertDecimalEquals(averageLoss.getValue(8), "0.4624");
+        assertDecimalEquals(averageLoss.getValue(9), "0.36992");
+        assertDecimalEquals(averageLoss.getValue(10), "0.295936");
+        assertDecimalEquals(averageLoss.getValue(11), "0.4367488");
+        assertDecimalEquals(averageLoss.getValue(12), "0.54939904");
     }
 
     @Test
-    public void averageLossMustReturnZeroWhenTheDataGain() {
-        AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 4);
+    public void smoothedAverageLossMustReturnZeroWhenPrecedingDataOnlyGain() {
+        SmoothedAverageLossIndicator averageLoss = new SmoothedAverageLossIndicator(new ClosePriceIndicator(data), 4);
         assertDecimalEquals(averageLoss.getValue(3), 0);
     }
 
     @Test
-    public void averageLossWhenTimeFrameIsGreaterThanIndex() {
-        AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 1000);
+    public void smoothedAverageLossMustReturnNonZeroWhenDataLossAtLeastOnce() {
+        SmoothedAverageLossIndicator averageLoss = new SmoothedAverageLossIndicator(new ClosePriceIndicator(data), 2);
+        assertDecimalNotEquals(averageLoss.getValue(6), 0);
+    }
+
+    @Test
+    public void smoothedAverageLossWhenTimeFrameIsGreaterThanIndex() {
+        SmoothedAverageLossIndicator averageLoss = new SmoothedAverageLossIndicator(new ClosePriceIndicator(data), 1000);
         assertDecimalEquals(averageLoss.getValue(12), 5d / data.getTickCount());
     }
 
     @Test
-    public void averageLossWhenIndexIsZeroMustBeZero() {
+    public void smoothedAverageLossWhenIndexIsZeroMustBeZero() {
         AverageLossIndicator averageLoss = new AverageLossIndicator(new ClosePriceIndicator(data), 10);
         assertDecimalEquals(averageLoss.getValue(0), 0);
     }
