@@ -27,6 +27,8 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.trackers.EMAIndicator;
+import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.bollinger.BollingerBandsLowerIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.bollinger.BollingerBandsMiddleIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.bollinger.BollingerBandsUpperIndicator;
@@ -93,10 +95,13 @@ public class IndicatorsToChart {
          */
         // Close price
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        EMAIndicator avg14 = new EMAIndicator(closePrice, 14);
+        StandardDeviationIndicator sd14 = new StandardDeviationIndicator(closePrice, 14);
+
         // Bollinger bands
-        BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(closePrice);
-        BollingerBandsLowerIndicator lowBBand = new BollingerBandsLowerIndicator(middleBBand, closePrice);
-        BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, closePrice);
+        BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(avg14);
+        BollingerBandsLowerIndicator lowBBand = new BollingerBandsLowerIndicator(middleBBand, sd14);
+        BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, sd14);
 
         /**
          * Building chart dataset
