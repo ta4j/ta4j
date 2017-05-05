@@ -26,6 +26,7 @@ import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.simple.FixedDecimalIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -34,6 +35,9 @@ import org.junit.Test;
 public class RSIIndicatorTest {
 
     private TimeSeries data;
+
+    private FixedDecimalIndicator gains;
+    private FixedDecimalIndicator losses;
 
     @Before
     public void setUp() {
@@ -46,6 +50,10 @@ public class RSIIndicatorTest {
                 50.56, 50.52, 50.70,
                 50.55, 50.62, 50.90,
                 50.82, 50.86, 51.20, 51.30, 51.10);
+        
+
+        gains = new FixedDecimalIndicator(1, 1, 0.8, 0.84, 0.672, 0.5376, 0.43008);
+        losses = new FixedDecimalIndicator(2, 0, 0.2, 0.16, 0.328, 0.4624, 0.36992);
     }
 
     @Test
@@ -63,19 +71,40 @@ public class RSIIndicatorTest {
         assertDecimalEquals(rsi.getValue(23), 81.5642);
         assertDecimalEquals(rsi.getValue(24), 85.2459);
     }
+    
+    @Test
+    public void rsiCalculationFromMockedGainsAndLosses() {
+        RSIIndicator rsiCalc = new RSIIndicator(gains, losses);
+
+        assertDecimalEquals(rsiCalc.getValue(2), 80.0);
+        assertDecimalEquals(rsiCalc.getValue(3), 84.0);
+        assertDecimalEquals(rsiCalc.getValue(4), 67.2);
+        assertDecimalEquals(rsiCalc.getValue(5), 53.76);
+        assertDecimalEquals(rsiCalc.getValue(6), 53.76);
+    }
 
     @Test
     public void rsiFirstValueShouldBeZero() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
-
         assertEquals(Decimal.ZERO, rsi.getValue(0));
+    }
+    
+    @Test
+    public void rsiCalcFirstValueShouldBeZero() {
+        RSIIndicator rsiCalc = new RSIIndicator(gains, losses);
+        assertEquals(Decimal.ZERO, rsiCalc.getValue(0));
     }
 
     @Test
     public void rsiHundredIfNoLoss() {
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 3);
-
         assertEquals(Decimal.HUNDRED, rsi.getValue(14));
         assertEquals(Decimal.HUNDRED, rsi.getValue(15));
+    }
+
+    @Test
+    public void rsiCalcHundredIfNoLoss() {
+        RSIIndicator rsiCalc = new RSIIndicator(gains, losses);
+        assertEquals(Decimal.HUNDRED, rsiCalc.getValue(1));
     }
 }

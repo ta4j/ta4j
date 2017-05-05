@@ -44,7 +44,6 @@ public class StochasticRSIIndicator extends CachedIndicator<Decimal> {
 
     /**
      * Constructor.
-     * 
      * @param series the series
      * @param timeFrame the time frame
      */
@@ -54,7 +53,6 @@ public class StochasticRSIIndicator extends CachedIndicator<Decimal> {
 
     /**
      * Constructor.
-     * 
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
@@ -64,7 +62,6 @@ public class StochasticRSIIndicator extends CachedIndicator<Decimal> {
 
     /**
      * Constructor.
-     * 
      * @param rsi the rsi indicator
      * @param timeFrame the time frame
      */

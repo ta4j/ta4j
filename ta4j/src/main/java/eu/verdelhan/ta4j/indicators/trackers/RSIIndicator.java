@@ -22,10 +22,11 @@
  */
 package eu.verdelhan.ta4j.indicators.trackers;
 
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
+import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.*;
+import eu.verdelhan.ta4j.indicators.helpers.AverageGainIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.AverageLossIndicator;
 
 /**
  * Relative strength index indicator.
@@ -41,25 +42,37 @@ import eu.verdelhan.ta4j.indicators.helpers.*;
  */
 public class RSIIndicator extends CachedIndicator<Decimal> {
 
-    private RelativeStrengthIndexCalculation rsiCalculation;
-    private final int timeFrame;
-
+    private Indicator<Decimal> averageGainIndicator;
+    private Indicator<Decimal> averageLossIndicator;
+    
     public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        rsiCalculation = new RelativeStrengthIndexCalculation(
-            new AverageGainIndicator(indicator, timeFrame),
-            new AverageLossIndicator(indicator, timeFrame)
-        );
+        this(new AverageGainIndicator(indicator, timeFrame),
+                new AverageLossIndicator(indicator, timeFrame));
+    }
+
+    public RSIIndicator(Indicator<Decimal> avgGainIndicator, Indicator<Decimal> avgLossIndicator) {
+        super(avgGainIndicator);
+        averageGainIndicator = avgGainIndicator;
+        averageLossIndicator = avgLossIndicator;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return rsiCalculation.getValue(index);
+        if (index == 0) {
+            return Decimal.ZERO;
+        }
+
+        // Relative strength
+        Decimal averageLoss = averageLossIndicator.getValue(index);
+        if (averageLoss.isZero()) {
+            return Decimal.HUNDRED;
+        }
+        Decimal averageGain = averageGainIndicator.getValue(index);
+        Decimal relativeStrength = averageGain.dividedBy(averageLoss);
+
+        // Nominal case
+        Decimal ratio = Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength));
+        return Decimal.HUNDRED.minus(ratio);
     }
 
-    @Override
-    public String toString() {
-        return getClass().getName() + " timeFrame: " + timeFrame;
-    }
 }

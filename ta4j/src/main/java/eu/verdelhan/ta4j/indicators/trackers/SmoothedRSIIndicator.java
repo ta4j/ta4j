@@ -24,8 +24,8 @@ package eu.verdelhan.ta4j.indicators.trackers;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.*;
+import eu.verdelhan.ta4j.indicators.helpers.SmoothedAverageGainIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.SmoothedAverageLossIndicator;
 
 /**
  * Relative strength index indicator.
@@ -40,20 +40,14 @@ import eu.verdelhan.ta4j.indicators.helpers.*;
  * @see RSIIndicator
  * @since 0.9
  */
-public class SmoothedRSIIndicator extends CachedIndicator<Decimal> {
+public class SmoothedRSIIndicator extends RSIIndicator {
 
+    /** Minimum number of ticks needed for smoothing */
     private static final Integer SMOOTH_MIN_TICKS = 150;
 
-    private RelativeStrengthIndexCalculation rsiCalculation;
-    private final int timeFrame;
-
     public SmoothedRSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        rsiCalculation = new RelativeStrengthIndexCalculation(
-            new SmoothedAverageGainIndicator(indicator, timeFrame),
-            new SmoothedAverageLossIndicator(indicator, timeFrame)
-        );
+        super(new SmoothedAverageGainIndicator(indicator, timeFrame),
+                new SmoothedAverageLossIndicator(indicator, timeFrame));
     }
 
     @Override
@@ -64,11 +58,6 @@ public class SmoothedRSIIndicator extends CachedIndicator<Decimal> {
                 index,
                 SMOOTH_MIN_TICKS);
         }
-        return rsiCalculation.getValue(index);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getName() + " timeFrame: " + timeFrame;
+        return super.calculate(index);
     }
 }
