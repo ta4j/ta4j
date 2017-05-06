@@ -73,7 +73,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         // Series is not null
         
         final int removedTicksCount = series.getRemovedTicksCount();
-        final int maximumResultCount = getTimeSeries().getMaximumTickCount();
+        final int maximumResultCount = series.getMaximumTickCount();
         
         T result;
         if (index < removedTicksCount) {
