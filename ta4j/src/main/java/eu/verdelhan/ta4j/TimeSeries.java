@@ -192,7 +192,7 @@ public class TimeSeries implements Serializable {
     public String getSeriesPeriodDescription() {
         StringBuilder sb = new StringBuilder();
         if (!ticks.isEmpty()) {
-            final String timeFormat = "hh:mm dd/MM/yyyy";
+            final String timeFormat = "HH:mm dd/MM/yyyy";
             Tick firstTick = getFirstTick();
             Tick lastTick = getLastTick();
             sb.append(firstTick.getEndTime().toString(timeFormat))
