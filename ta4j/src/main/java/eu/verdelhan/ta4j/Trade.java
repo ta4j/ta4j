@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import eu.verdelhan.ta4j.Order.OrderType;
 
@@ -104,7 +105,7 @@ public class Trade implements Serializable {
 
     @Override
     public int hashCode() {
-        return (entry.hashCode() * 31) + (exit.hashCode() * 17);
+        return Objects.hash(entry, exit);
     }
 
     /**

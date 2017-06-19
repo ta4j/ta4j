@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.Objects;
 
 /**
  * Immutable, arbitrary-precision signed decimal numbers designed for technical analysis.
@@ -396,9 +397,7 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 53 * hash + (this.delegate != null ? this.delegate.hashCode() : 0);
-        return hash;
+        return Objects.hash(delegate);
     }
 
     /**
