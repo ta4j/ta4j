@@ -28,10 +28,11 @@ import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.trading.rules.FixedRule;
 import java.util.LinkedList;
 import java.util.List;
-import org.joda.time.DateTime;
-import org.joda.time.Period;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
+import java.time.Duration;
+import java.time.Period;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,38 +53,38 @@ public class TimeSeriesTest {
 
     private String defaultName;
 
-    private DateTime date;
+    private ZonedDateTime date;
 
     @Before
     public void setUp() {
-        date = new DateTime(0);
+        date = ZonedDateTime.now();
 
-        ticks = new LinkedList<Tick>();
-        ticks.add(new MockTick(date.withDate(2014, 6, 13), 1d));
-        ticks.add(new MockTick(date.withDate(2014, 6, 14), 2d));
-        ticks.add(new MockTick(date.withDate(2014, 6, 15), 3d));
-        ticks.add(new MockTick(date.withDate(2014, 6, 20), 4d));
-        ticks.add(new MockTick(date.withDate(2014, 6, 25), 5d));
-        ticks.add(new MockTick(date.withDate(2014, 6, 30), 6d));
+        ticks = new LinkedList<>();
+        ticks.add(new MockTick(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d));
+        ticks.add(new MockTick(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d));
+        ticks.add(new MockTick(ZonedDateTime.of(2014, 6, 15, 0, 0, 0, 0, ZoneId.systemDefault()), 3d));
+        ticks.add(new MockTick(ZonedDateTime.of(2014, 6, 20, 0, 0, 0, 0, ZoneId.systemDefault()), 4d));
+        ticks.add(new MockTick(ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()), 5d));
+        ticks.add(new MockTick(ZonedDateTime.of(2014, 6, 30, 0, 0, 0, 0, ZoneId.systemDefault()), 6d));
 
         defaultName = "Series Name";
 
         defaultSeries = new TimeSeries(defaultName, ticks);
         subSeries = defaultSeries.subseries(2, 4);
         emptySeries = new TimeSeries();
-        final DateTimeFormatter dtf = DateTimeFormat.forPattern("yyyy-MM-dd");
+        final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         seriesForRun = new MockTimeSeries(
                 new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
-                new DateTime[] {
-                    dtf.parseDateTime("2013-01-01"),
-                    dtf.parseDateTime("2013-08-01"),
-                    dtf.parseDateTime("2013-10-01"),
-                    dtf.parseDateTime("2013-12-01"),
-                    dtf.parseDateTime("2014-02-01"),
-                    dtf.parseDateTime("2015-01-01"),
-                    dtf.parseDateTime("2015-08-01"),
-                    dtf.parseDateTime("2015-10-01"),
-                    dtf.parseDateTime("2015-12-01")
+                new ZonedDateTime[] {
+                    ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2013-12-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2014-02-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2015-01-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
+                    ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf)
                 });
 
         strategy = new Strategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
@@ -109,11 +110,11 @@ public class TimeSeriesTest {
     @Test
     public void getSeriesPeriodDescription() {
         // Original series
-        assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().toString("HH:mm dd/MM/yyyy")));
-        assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().toString("HH:mm dd/MM/yyyy")));
+        assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Sub-series
-        assertTrue(subSeries.getSeriesPeriodDescription().endsWith(ticks.get(subSeries.getEnd()).getEndTime().toString("HH:mm dd/MM/yyyy")));
-        assertTrue(subSeries.getSeriesPeriodDescription().startsWith(ticks.get(subSeries.getBegin()).getEndTime().toString("HH:mm dd/MM/yyyy")));
+        assertTrue(subSeries.getSeriesPeriodDescription().endsWith(ticks.get(subSeries.getEnd()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subSeries.getSeriesPeriodDescription().startsWith(ticks.get(subSeries.getBegin()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
@@ -193,14 +194,14 @@ public class TimeSeriesTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void addTickWithEndTimePriorToSeriesEndTimeShouldThrowException() {
-        defaultSeries.addTick(new MockTick(date.withDate(2000, 1, 1), 99d));
+        defaultSeries.addTick(new MockTick(ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault()), 99d));
     }
     
     @Test
     public void addTick() {
         defaultSeries = new TimeSeries();
-        Tick firstTick = new MockTick(date.withDate(2014, 6, 13), 1d);
-        Tick secondTick = new MockTick(date.withDate(2014, 6, 14), 2d);
+        Tick firstTick = new MockTick(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d);
+        Tick secondTick = new MockTick(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d);
 
         assertEquals(0, defaultSeries.getTickCount());
         assertEquals(-1, defaultSeries.getBegin());
@@ -241,7 +242,18 @@ public class TimeSeriesTest {
 
     @Test
     public void subseriesWithDuration() {
-        TimeSeries subSeries2 = defaultSeries.subseries(1, Period.weeks(2));
+        TimeSeries subSeries2 = defaultSeries.subseries(1, Duration.ofDays(14));
+        assertEquals(defaultSeries.getName(), subSeries2.getName());
+        assertEquals(1, subSeries2.getBegin());
+        assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
+        assertEquals(4, subSeries2.getEnd());
+        assertNotEquals(defaultSeries.getEnd(), subSeries2.getEnd());
+        assertEquals(4, subSeries2.getTickCount());
+    }
+    
+    @Test
+    public void subseriesWithPeriod() {
+        TimeSeries subSeries2 = defaultSeries.subseries(1, Period.ofDays(14));
         assertEquals(defaultSeries.getName(), subSeries2.getName());
         assertEquals(1, subSeries2.getBegin());
         assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
@@ -286,7 +298,7 @@ public class TimeSeriesTest {
                 date.withYear(2015),
                 date.withYear(2016));
 
-        List<TimeSeries> subseries = series.split(Period.years(1), Period.years(2));
+        List<TimeSeries> subseries = series.split(Duration.ofDays(365), Duration.ofDays(730));
 
         assertEquals(5, subseries.size());
 
@@ -307,11 +319,11 @@ public class TimeSeriesTest {
     public void splitByMonthForOneWeekSubseries() {
 
         TimeSeries series = new MockTimeSeries(
-                date.withMonthOfYear(04),
-                date.withMonthOfYear(05),
-                date.withMonthOfYear(07));
+                date.withMonth(04),
+                date.withMonth(05),
+                date.withMonth(07));
 
-        List<TimeSeries> subseries = series.split(Period.months(1), Period.weeks(1));
+        List<TimeSeries> subseries = series.split(Duration.ofDays(30), Duration.ofDays(7));
 
         assertEquals(3, subseries.size());
 
@@ -328,7 +340,7 @@ public class TimeSeriesTest {
     @Test
     public void splitByHour() {
 
-        DateTime time = new DateTime(0).withTime(10, 0, 0, 0);
+        ZonedDateTime time = ZonedDateTime.now().withHour(10).withMinute(0).withSecond(0);
         TimeSeries series = new MockTimeSeries(
                 time,
                 time.plusMinutes(1),
@@ -342,7 +354,41 @@ public class TimeSeriesTest {
                 time.plusHours(10).plusMinutes(20),
                 time.plusHours(10).plusMinutes(30));
 
-        List<TimeSeries> subseries = series.split(Period.hours(1));
+        List<TimeSeries> subseries = series.split(Duration.ofHours(1));
+
+        assertEquals(4, subseries.size());
+
+        assertEquals(0, subseries.get(0).getBegin());
+        assertEquals(5, subseries.get(0).getEnd());
+
+        assertEquals(6, subseries.get(1).getBegin());
+        assertEquals(6, subseries.get(1).getEnd());
+
+        assertEquals(7, subseries.get(2).getBegin());
+        assertEquals(7, subseries.get(2).getEnd());
+
+        assertEquals(8, subseries.get(3).getBegin());
+        assertEquals(10, subseries.get(3).getEnd());
+    }
+    
+    @Test
+    public void splitByDay() {
+
+        ZonedDateTime time = ZonedDateTime.now().withHour(10).withMinute(0).withSecond(0);
+        TimeSeries series = new MockTimeSeries(
+                time,
+                time.plusHours(1),
+                time.plusHours(2),
+                time.plusHours(10),
+                time.plusHours(15),
+                time.plusHours(20),
+                time.plusDays(1),
+                time.plusDays(5),
+                time.plusDays(10).plusHours(5),
+                time.plusDays(10).plusHours(10),
+                time.plusDays(10).plusHours(20));
+
+        List<TimeSeries> subseries = series.split(Period.ofDays(1));
 
         assertEquals(4, subseries.size());
 
@@ -381,7 +427,7 @@ public class TimeSeriesTest {
 
     @Test
     public void runOnSlice() {
-        List<TimeSeries> subseries = seriesForRun.split(Period.years(2000));
+        List<TimeSeries> subseries = seriesForRun.split(Duration.ofDays(365 * 2000));
         TimeSeries slice = subseries.get(0);
         List<Trade> trades = slice.run(strategy).getTrades();
         assertEquals(2, trades.size());
@@ -395,7 +441,7 @@ public class TimeSeriesTest {
 
     @Test
     public void runWithOpenEntryBuyLeft() {
-        List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
+        List<TimeSeries> subseries = seriesForRun.split(Duration.ofDays(365));
         TimeSeries slice = subseries.get(0);
         Strategy aStrategy = new Strategy(new FixedRule(1), new FixedRule(3));
         List<Trade> trades = slice.run(aStrategy).getTrades();
@@ -407,7 +453,7 @@ public class TimeSeriesTest {
 
     @Test
     public void runWithOpenEntrySellLeft() {
-        List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
+        List<TimeSeries> subseries = seriesForRun.split(Duration.ofDays(365));
         TimeSeries slice = subseries.get(0);
         Strategy aStrategy = new Strategy(new FixedRule(1), new FixedRule(3));
         List<Trade> trades = slice.run(aStrategy, OrderType.SELL).getTrades();
@@ -419,7 +465,7 @@ public class TimeSeriesTest {
 
     @Test
     public void runSplitted() {
-        List<TimeSeries> subseries = seriesForRun.split(Period.years(1));
+        List<TimeSeries> subseries = seriesForRun.split(Duration.ofDays(365));
         TimeSeries slice0 = subseries.get(0);
         TimeSeries slice1 = subseries.get(1);
         TimeSeries slice2 = subseries.get(2);
@@ -440,14 +486,14 @@ public class TimeSeriesTest {
 
     @Test
     public void splitted(){
-        DateTime date = new DateTime();
+        ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
         TimeSeries series = new MockTimeSeries(new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
-                    new DateTime[]{date.withYear(2000), date.withYear(2000), date.withYear(2001), date.withYear(2001), date.withYear(2002),
-                                   date.withYear(2002), date.withYear(2002), date.withYear(2003), date.withYear(2004), date.withYear(2005)});
+                    new ZonedDateTime[]{dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001), dateTime.withYear(2001), dateTime.withYear(2002),
+                    dateTime.withYear(2002), dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004), dateTime.withYear(2005)});
 
         Strategy aStrategy = new Strategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
-        List<TimeSeries> subseries = series.split(Period.years(1));
+        List<TimeSeries> subseries = series.split(Period.ofYears(1));
         TimeSeries slice0 = subseries.get(0);
         TimeSeries slice1 = subseries.get(1);
         TimeSeries slice2 = subseries.get(2);

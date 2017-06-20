@@ -33,6 +33,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -63,7 +64,7 @@ public class CashFlowToChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < tickSeries.getTickCount(); i++) {
             Tick tick = tickSeries.getTick(i);
-            chartTimeSeries.add(new Minute(tick.getEndTime().toDate()), indicator.getValue(i).toDouble());
+            chartTimeSeries.add(new Minute(new Date(tick.getEndTime().toEpochSecond()* 1000)), indicator.getValue(i).toDouble());
         }
         return chartTimeSeries;
     }

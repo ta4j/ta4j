@@ -22,7 +22,8 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
-import org.joda.time.DateTime;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
@@ -37,26 +38,26 @@ public class MockTick extends Tick {
     private int trades = 0;
 
     public MockTick(double closePrice) {
-        this(new DateTime(), closePrice);
+        this(ZonedDateTime.now(), closePrice);
     }
 
     public MockTick(double closePrice, double volume) {
-        super(new DateTime(), 0, 0, 0, closePrice, volume);
+        super(ZonedDateTime.now(), 0, 0, 0, closePrice, volume);
     }
     
-    public MockTick(DateTime endTime, double closePrice) {
+    public MockTick(ZonedDateTime endTime, double closePrice) {
         super(endTime, 0, 0, 0, closePrice, 0);
     }
 
     public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice) {
-        super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, 1);
+        super(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, 1);
     }
     
     public MockTick(double openPrice, double closePrice, double maxPrice, double minPrice, double volume) {
-        super(new DateTime(), openPrice, maxPrice, minPrice, closePrice, volume);
+        super(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, volume);
     }
 
-    public MockTick(DateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
+    public MockTick(ZonedDateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
         super(endTime, openPrice, maxPrice, minPrice, closePrice, volume);
         this.amount = Decimal.valueOf(amount);
         this.trades = trades;

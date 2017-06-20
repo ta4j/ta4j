@@ -26,17 +26,17 @@ import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.joda.time.DateTime;
 import org.junit.Test;
 
 public class OnBalanceVolumeIndicatorTest {
 
     @Test
     public void getValue() {
-        DateTime now = DateTime.now();
-        List<Tick> ticks = new ArrayList<Tick>();
+        ZonedDateTime now = ZonedDateTime.now();
+        List<Tick> ticks = new ArrayList<>();
         ticks.add(new MockTick(now, 0, 10, 0, 0, 0, 4, 0));
         ticks.add(new MockTick(now, 0, 5, 0, 0, 0, 2, 0));
         ticks.add(new MockTick(now, 0, 6, 0, 0, 0, 3, 0));
