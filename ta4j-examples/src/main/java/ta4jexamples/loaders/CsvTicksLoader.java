@@ -22,7 +22,6 @@
  */
 package ta4jexamples.loaders;
 
-import au.com.bytecode.opencsv.CSVReader;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import java.io.IOException;
@@ -36,6 +35,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.joda.time.DateTime;
+
+import com.opencsv.CSVReader;
 
 /**
  * This class build a Ta4j time series from a CSV file containing ticks.
