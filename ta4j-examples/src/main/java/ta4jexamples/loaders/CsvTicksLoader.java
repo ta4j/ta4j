@@ -28,22 +28,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.joda.time.DateTime;
 
 import com.opencsv.CSVReader;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * This class build a Ta4j time series from a CSV file containing ticks.
  */
 public class CsvTicksLoader {
 
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
      * @return a time series from Apple Inc. ticks.
@@ -52,13 +51,13 @@ public class CsvTicksLoader {
 
         InputStream stream = CsvTicksLoader.class.getClassLoader().getResourceAsStream("appleinc_ticks_from_20130101_usd.csv");
 
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Tick> ticks = new ArrayList<>();
 
         CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1);
         try {
             String[] line;
             while ((line = csvReader.readNext()) != null) {
-                DateTime date = new DateTime(DATE_FORMAT.parse(line[0]));
+                ZonedDateTime date = ZonedDateTime.parse(line[0], DATE_FORMAT);
                 double open = Double.parseDouble(line[1]);
                 double high = Double.parseDouble(line[2]);
                 double low = Double.parseDouble(line[3]);
@@ -69,8 +68,6 @@ public class CsvTicksLoader {
             }
         } catch (IOException ioe) {
             Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Unable to load ticks from CSV", ioe);
-        } catch (ParseException pe) {
-            Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Error while parsing date", pe);
         } catch (NumberFormatException nfe) {
             Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
