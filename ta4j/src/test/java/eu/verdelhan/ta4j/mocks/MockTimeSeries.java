@@ -26,7 +26,9 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import org.joda.time.DateTime;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 
 /**
  * A time series with sample data.
@@ -41,11 +43,11 @@ public class MockTimeSeries extends TimeSeries {
         super(ticks);
     }
 
-    public MockTimeSeries(double[] data, DateTime[] times) {
+    public MockTimeSeries(double[] data, ZonedDateTime[] times) {
         super(doublesAndTimesToTicks(data, times));
     }
 
-    public MockTimeSeries(DateTime... dates) {
+    public MockTimeSeries(ZonedDateTime... dates) {
         super(timesToTicks(dates));
     }
 
@@ -54,37 +56,37 @@ public class MockTimeSeries extends TimeSeries {
     }
 
     private static List<Tick> doublesToTicks(double... data) {
-        ArrayList<Tick> ticks = new ArrayList<Tick>();
+        ArrayList<Tick> ticks = new ArrayList<>();
         for (int i = 0; i < data.length; i++) {
-            ticks.add(new MockTick(new DateTime().withMillisOfSecond(i), data[i]));
+            ticks.add(new MockTick(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, i), data[i]));
         }
         return ticks;
     }
 
-    private static List<Tick> doublesAndTimesToTicks(double[] data, DateTime[] times) {
+    private static List<Tick> doublesAndTimesToTicks(double[] data, ZonedDateTime[] times) {
         if (data.length != times.length) {
             throw new IllegalArgumentException();
         }
-        ArrayList<Tick> ticks = new ArrayList<Tick>();
+        ArrayList<Tick> ticks = new ArrayList<>();
         for (int i = 0; i < data.length; i++) {
             ticks.add(new MockTick(times[i], data[i]));
         }
         return ticks;
     }
 
-    private static List<Tick> timesToTicks(DateTime... dates) {
-        ArrayList<Tick> ticks = new ArrayList<Tick>();
+    private static List<Tick> timesToTicks(ZonedDateTime... dates) {
+        ArrayList<Tick> ticks = new ArrayList<>();
         int i = 1;
-        for (DateTime date : dates) {
+        for (ZonedDateTime date : dates) {
             ticks.add(new MockTick(date, i++));
         }
         return ticks;
     }
 
     private static List<Tick> arbitraryTicks() {
-        ArrayList<Tick> ticks = new ArrayList<Tick>();
+        ArrayList<Tick> ticks = new ArrayList<>();
         for (double i = 0d; i < 10; i++) {
-            ticks.add(new MockTick(new DateTime(0), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
+            ticks.add(new MockTick(ZonedDateTime.now(), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
         }
         return ticks;
     }

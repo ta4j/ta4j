@@ -32,7 +32,7 @@ import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
 import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
 import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
 import eu.verdelhan.ta4j.trading.rules.UnderIndicatorRule;
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -106,7 +106,7 @@ public class TradingBotOnMovingTimeSeries {
         Decimal maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(Decimal.valueOf(Math.random()))));
         Decimal closePrice = randDecimal(minPrice, maxPrice);
         LAST_TICK_CLOSE_PRICE = closePrice;
-        return new Tick(DateTime.now(), openPrice, maxPrice, minPrice, closePrice, Decimal.ONE);
+        return new Tick(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, Decimal.ONE);
     }
 
     public static void main(String[] args) throws InterruptedException {

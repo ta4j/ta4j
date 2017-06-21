@@ -91,7 +91,7 @@ public class IndicatorsToCsv {
          */
         final int nbTicks = series.getTickCount();
         for (int i = 0; i < nbTicks; i++) {
-            sb.append(series.getTick(i).getEndTime().getMillis() / 1000d).append(',')
+            sb.append(series.getTick(i).getEndTime()).append(',')
             .append(closePrice.getValue(i)).append(',')
             .append(typicalPrice.getValue(i)).append(',')
             .append(priceVariation.getValue(i)).append(',')

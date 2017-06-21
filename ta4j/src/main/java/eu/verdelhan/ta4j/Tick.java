@@ -25,9 +25,10 @@ package eu.verdelhan.ta4j;
 
 import java.io.Serializable;
 
-import org.joda.time.DateTime;
-import org.joda.time.Days;
-import org.joda.time.Period;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * End tick of a time period.
@@ -37,11 +38,11 @@ public class Tick implements Serializable {
 
 	private static final long serialVersionUID = 8038383777467488147L;
 	/** Time period (e.g. 1 day, 15 min, etc.) of the tick */
-    private Period timePeriod;
+    private Duration timePeriod;
     /** End time of the tick */
-    private DateTime endTime;
+    private ZonedDateTime endTime;
     /** Begin time of the tick */
-    private DateTime beginTime;
+    private ZonedDateTime beginTime;
     /** Open price of the period */
     private Decimal openPrice = null;
     /** Close price of the period */
@@ -62,7 +63,7 @@ public class Tick implements Serializable {
      * @param timePeriod the time period
      * @param endTime the end time of the tick period
      */
-    public Tick(Period timePeriod, DateTime endTime) {
+    public Tick(Duration timePeriod, ZonedDateTime endTime) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -78,7 +79,7 @@ public class Tick implements Serializable {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(DateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
+    public Tick(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
         this(endTime, Decimal.valueOf(openPrice),
                 Decimal.valueOf(highPrice),
                 Decimal.valueOf(lowPrice),
@@ -95,7 +96,7 @@ public class Tick implements Serializable {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(DateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
+    public Tick(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
         this(endTime, Decimal.valueOf(openPrice),
                 Decimal.valueOf(highPrice),
                 Decimal.valueOf(lowPrice),
@@ -112,8 +113,8 @@ public class Tick implements Serializable {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
-        this(Days.days(1).toPeriod(), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
+    public Tick(ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+        this(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
     }
 
     /**
@@ -126,7 +127,7 @@ public class Tick implements Serializable {
      * @param closePrice the close price of the tick period
      * @param volume the volume of the tick period
      */
-    public Tick(Period timePeriod, DateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+    public Tick(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -234,35 +235,35 @@ public class Tick implements Serializable {
     /**
      * @return the time period of the tick
      */
-    public Period getTimePeriod() {
+    public Duration getTimePeriod() {
         return timePeriod;
     }
 
     /**
      * @return the begin timestamp of the tick period
      */
-    public DateTime getBeginTime() {
+    public ZonedDateTime getBeginTime() {
         return beginTime;
     }
 
     /**
      * @return the end timestamp of the tick period
      */
-    public DateTime getEndTime() {
+    public ZonedDateTime getEndTime() {
         return endTime;
     }
 
     @Override
     public String toString() {
-        return String.format("[time: %1$td/%1$tm/%1$tY %1$tH:%1$tM:%1$tS, close price: %2$f]",
-                endTime.toGregorianCalendar(), closePrice.toDouble());
+        return String.format("{end time: %1s, close price: %2$f, open price: %3$f, min price: %4$f, max price: %5$f, volume: %6$f}",
+                endTime.withZoneSameInstant(ZoneId.systemDefault()), closePrice.toDouble(), openPrice.toDouble(), minPrice.toDouble(), maxPrice.toDouble(), volume.toDouble());
     }
 
     /**
      * @param timestamp a timestamp
      * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
      */
-    public boolean inPeriod(DateTime timestamp) {
+    public boolean inPeriod(ZonedDateTime timestamp) {
         return timestamp != null
                 && !timestamp.isBefore(beginTime)
                 && timestamp.isBefore(endTime);
@@ -286,14 +287,14 @@ public class Tick implements Serializable {
      * @return a human-friendly string of the end timestamp
      */
     public String getDateName() {
-        return endTime.toString("hh:mm dd/MM/yyyy");
+        return endTime.format(DateTimeFormatter.ISO_DATE);
     }
 
     /**
      * @return a even more human-friendly string of the end timestamp
      */
     public String getSimpleDateName() {
-        return endTime.toString("dd/MM/yyyy");
+        return endTime.format(DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
     /**
@@ -301,7 +302,7 @@ public class Tick implements Serializable {
      * @param endTime the end time of the tick
      * @throws IllegalArgumentException if one of the arguments is null
      */
-    private void checkTimeArguments(Period timePeriod, DateTime endTime) {
+    private void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {
         if (timePeriod == null) {
             throw new IllegalArgumentException("Time period cannot be null");
         }

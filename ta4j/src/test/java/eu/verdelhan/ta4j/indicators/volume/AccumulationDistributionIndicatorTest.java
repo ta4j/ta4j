@@ -27,17 +27,17 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.joda.time.DateTime;
 import org.junit.Test;
 
 public class AccumulationDistributionIndicatorTest {
 
     @Test
     public void accumulationDistribution() {
-        DateTime now = DateTime.now();
-        List<Tick> ticks = new ArrayList<Tick>();
+        ZonedDateTime now = ZonedDateTime.now();
+        List<Tick> ticks = new ArrayList<>();
         ticks.add(new MockTick(now, 0d, 10d, 12d, 8d, 0d, 200d, 0));//2-2 * 200 / 4
         ticks.add(new MockTick(now, 0d, 8d, 10d, 7d, 0d, 100d, 0));//1-2 *100 / 3
         ticks.add(new MockTick(now, 0d, 9d, 15d, 6d, 0d, 300d, 0));//3-6 *300 /9

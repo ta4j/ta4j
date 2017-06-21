@@ -23,8 +23,9 @@
 package eu.verdelhan.ta4j;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
-import org.joda.time.DateTime;
-import org.joda.time.Period;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,15 +34,15 @@ public class TickTest {
 
     private Tick tick;
 
-    private DateTime beginTime;
+    private ZonedDateTime beginTime;
 
-    private DateTime endTime;
+    private ZonedDateTime endTime;
 
     @Before
     public void setUp() {
-        beginTime = new DateTime(2014, 6, 25, 0, 0);
-        endTime = new DateTime(2014, 6, 25, 1, 0);
-        tick = new Tick(Period.hours(1), endTime);
+        beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
+        endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
+        tick = new Tick(Duration.ofHours(1), endTime);
     }
 
     @Test
@@ -76,7 +77,7 @@ public class TickTest {
 
         assertFalse(tick.inPeriod(beginTime.withDayOfMonth(24)));
         assertFalse(tick.inPeriod(beginTime.withDayOfMonth(26)));
-        assertTrue(tick.inPeriod(beginTime.withMinuteOfHour(30)));
+        assertTrue(tick.inPeriod(beginTime.withMinute(30)));
 
         assertTrue(tick.inPeriod(beginTime));
         assertFalse(tick.inPeriod(endTime));

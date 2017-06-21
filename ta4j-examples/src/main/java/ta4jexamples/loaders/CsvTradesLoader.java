@@ -33,11 +33,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.joda.time.DateTime;
-import org.joda.time.Instant;
-import org.joda.time.Period;
+
 
 import com.opencsv.CSVReader;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 /**
  * This class build a Ta4j time series from a CSV file containing trades.
@@ -72,13 +74,13 @@ public class CsvTradesLoader {
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
-            DateTime beginTime = new DateTime(Long.parseLong(lines.get(0)[0]) * 1000);
-            DateTime endTime = new DateTime(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000);
+            ZonedDateTime beginTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(lines.get(0)[0]) * 1000), ZoneId.systemDefault());
+            ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(lines.get(lines.size() - 1)[0]) * 1000), ZoneId.systemDefault());
             if (beginTime.isAfter(endTime)) {
                 Instant beginInstant = beginTime.toInstant();
                 Instant endInstant = endTime.toInstant();
-                beginTime = new DateTime(endInstant);
-                endTime = new DateTime(beginInstant);
+                beginTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault());
+                endTime = ZonedDateTime.ofInstant(beginInstant, ZoneId.systemDefault());
                 // Since the CSV file has the most recent trades at the top of the file, we'll reverse the list to feed the List<Tick> correctly.
                 Collections.reverse(lines);
             }
@@ -86,7 +88,7 @@ public class CsvTradesLoader {
             ticks = buildEmptyTicks(beginTime, endTime, 300);
             // Filling the ticks with trades
             for (String[] tradeLine : lines) {
-                DateTime tradeTimestamp = new DateTime(Long.parseLong(tradeLine[0]) * 1000);
+                ZonedDateTime tradeTimestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000), ZoneId.systemDefault());
                 for (Tick tick : ticks) {
                     if (tick.inPeriod(tradeTimestamp)) {
                         double tradePrice = Double.parseDouble(tradeLine[1]);
@@ -109,15 +111,15 @@ public class CsvTradesLoader {
      * @param duration the tick duration (in seconds)
      * @return the list of empty ticks
      */
-    private static List<Tick> buildEmptyTicks(DateTime beginTime, DateTime endTime, int duration) {
+    private static List<Tick> buildEmptyTicks(ZonedDateTime beginTime, ZonedDateTime endTime, int duration) {
 
-        List<Tick> emptyTicks = new ArrayList<Tick>();
+        List<Tick> emptyTicks = new ArrayList<>();
 
-        Period tickTimePeriod = Period.seconds(duration);
-        DateTime tickEndTime = beginTime;
+        Duration tickDuration = Duration.ofSeconds(duration);
+        ZonedDateTime tickEndTime = beginTime;
         do {
-            tickEndTime = tickEndTime.plus(tickTimePeriod);
-            emptyTicks.add(new Tick(tickTimePeriod, tickEndTime));
+            tickEndTime = tickEndTime.plus(tickDuration);
+            emptyTicks.add(new Tick(tickDuration, tickEndTime));
         } while (tickEndTime.isBefore(endTime));
 
         return emptyTicks;

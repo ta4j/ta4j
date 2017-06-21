@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.joda.time.Period;
+import java.time.Duration;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 import ta4jexamples.strategies.GlobalExtremaStrategy;
@@ -51,7 +51,7 @@ public class WalkForward {
      * @return a map (key: strategy, value: name) of trading strategies
      */
     public static Map<Strategy, String> buildStrategiesMap(TimeSeries series) {
-        HashMap<Strategy, String> strategies = new HashMap<Strategy, String>();
+        HashMap<Strategy, String> strategies = new HashMap<>();
         strategies.put(CCICorrectionStrategy.buildStrategy(series), "CCI Correction");
         strategies.put(GlobalExtremaStrategy.buildStrategy(series), "Global Extrema");
         strategies.put(MovingMomentumStrategy.buildStrategy(series), "Moving Momentum");
@@ -62,7 +62,7 @@ public class WalkForward {
     public static void main(String[] args) {
         // Splitting the series into slices
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
-        List<TimeSeries> subseries = series.split(Period.hours(6), Period.weeks(1));
+        List<TimeSeries> subseries = series.split(Duration.ofHours(6), Duration.ofDays(7));
 
         // Building the map of strategies
         Map<Strategy, String> strategies = buildStrategiesMap(series);
