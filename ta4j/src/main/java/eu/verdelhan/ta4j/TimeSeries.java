@@ -300,7 +300,7 @@ public class TimeSeries implements Serializable {
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick...
             ZonedDateTime tickTime = getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || (tickTime.isEqual(endInterval) || tickTime.isAfter(endInterval))) {
+            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
                 // Tick out of the interval
                 break;
             }
@@ -333,7 +333,7 @@ public class TimeSeries implements Serializable {
             // For each tick...
             ZonedDateTime tickTime = getTick(i).getEndTime();
 
-            if (tickTime.isBefore(beginInterval) || (tickTime.isEqual(endInterval) || tickTime.isAfter(endInterval))) {
+            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
                 // Tick out of the interval
                 break;
             }
@@ -373,8 +373,8 @@ public class TimeSeries implements Serializable {
      */
     public List<TimeSeries> split(Duration splitDuration, Duration sliceDuration) {
         ArrayList<TimeSeries> subseries = new ArrayList<>();
-        if (splitDuration != null && !splitDuration.equals(Duration.ZERO)
-                && sliceDuration != null && !sliceDuration.equals(Duration.ZERO)) {
+        if (splitDuration != null && !splitDuration.isZero()
+                && sliceDuration != null && !sliceDuration.isZero()) {
 
             List<Integer> beginIndexes = getSplitBeginIndexes(splitDuration);
             for (Integer subseriesBegin : beginIndexes) {
@@ -394,8 +394,8 @@ public class TimeSeries implements Serializable {
      */
     public List<TimeSeries> split(Period splitPeriod, Period slicePeriod) {
         ArrayList<TimeSeries> subseries = new ArrayList<>();
-        if (splitPeriod != null && !splitPeriod.equals(Period.ZERO)
-                && slicePeriod != null && !slicePeriod.equals(Period.ZERO)) {
+        if (splitPeriod != null && !splitPeriod.isZero()
+                && slicePeriod != null && !slicePeriod.isZero()) {
 
             List<Integer> beginIndexes = getSplitBeginIndexes(splitPeriod);
             for (Integer subseriesBegin : beginIndexes) {
@@ -518,7 +518,7 @@ public class TimeSeries implements Serializable {
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick...
             ZonedDateTime tickTime = getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || (tickTime.isEqual(endInterval) || tickTime.isAfter(endInterval))) {
+            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
                 // Tick out of the interval
                 if (!endInterval.isAfter(tickTime)) {
                     // Tick after the interval
@@ -552,7 +552,7 @@ public class TimeSeries implements Serializable {
         for (int i = beginIndex; i <= endIndex; i++) {
             // For each tick...
             ZonedDateTime tickTime = getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || (tickTime.isEqual(endInterval) || tickTime.isAfter(endInterval))) {
+            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
                 // Tick out of the interval
                 if (!endInterval.isAfter(tickTime)) {
                     // Tick after the interval

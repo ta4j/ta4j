@@ -43,8 +43,7 @@ public class SumIndicator extends CachedIndicator<Decimal> {
     public SumIndicator(Indicator<Decimal>... operands) {
         // TODO: check if first series is equal to the other ones
         super(operands[0]);
-        this.operands = new Indicator[operands.length];
-        System.arraycopy(operands, 0, this.operands, 0, operands.length);
+        this.operands = operands;
     }
 
     @Override
