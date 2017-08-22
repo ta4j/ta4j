@@ -59,7 +59,11 @@ public class StopGainRule extends AbstractRule {
             if (currentTrade.isOpened()) {
                 Decimal entryPrice = currentTrade.getEntry().getPrice();
                 Decimal currentPrice = closePrice.getValue(index);
-                satisfied = currentPrice.isGreaterThanOrEqual(entryPrice.multipliedBy(gainRatioThreshold));
+                Decimal threshold = entryPrice.multipliedBy(gainRatioThreshold);
+                if (currentTrade.getEntry().isBuy())
+                    satisfied = currentPrice.isGreaterThanOrEqual(threshold);
+                else
+                    satisfied = currentPrice.isLessThanOrEqual(threshold);
             }
         }
         traceIsSatisfied(index, satisfied);

@@ -59,7 +59,11 @@ public class StopLossRule extends AbstractRule {
             if (currentTrade.isOpened()) {
                 Decimal entryPrice = currentTrade.getEntry().getPrice();
                 Decimal currentPrice = closePrice.getValue(index);
-                satisfied = currentPrice.isLessThanOrEqual(entryPrice.multipliedBy(lossRatioThreshold));
+                Decimal threshold = entryPrice.multipliedBy(lossRatioThreshold);
+                if (currentTrade.getEntry().isBuy())
+                    satisfied = currentPrice.isLessThanOrEqual(threshold);
+                else
+                    satisfied = currentPrice.isGreaterThanOrEqual(threshold);
             }
         }
         traceIsSatisfied(index, satisfied);
