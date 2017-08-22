@@ -287,14 +287,14 @@ public class Tick implements Serializable {
      * @return a human-friendly string of the end timestamp
      */
     public String getDateName() {
-        return endTime.format(DateTimeFormatter.ISO_DATE);
+        return endTime.format(DateTimeFormatter.ISO_DATE_TIME);
     }
 
     /**
      * @return a even more human-friendly string of the end timestamp
      */
     public String getSimpleDateName() {
-        return endTime.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        return endTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     /**
