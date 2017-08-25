@@ -1,4 +1,4 @@
-# ta4j [![Build Status](https://travis-ci.org/mdeverdelhan/ta4j.png?branch=master)](https://travis-ci.org/mdeverdelhan/ta4j) [![Chat on Riot.im](https://img.shields.io/badge/chat-riot.im-green.svg)](https://riot.im/app/#/room/#ta4j:matrix.org)
+# ta4j [![Build Status](https://img.shields.io/travis/mdeverdelhan/ta4j.svg)](https://travis-ci.org/mdeverdelhan/ta4j) [![Chat on Riot.im](https://img.shields.io/badge/chat-riot.im-green.svg)](https://riot.im/app/#/room/#ta4j:matrix.org)
 
 ***Technical Analysis For Java***
 
