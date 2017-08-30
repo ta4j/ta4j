@@ -128,6 +128,21 @@ public class Tick implements Serializable {
      * @param volume the volume of the tick period
      */
     public Tick(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, Decimal.ZERO);
+    }
+
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the tick period
+     * @param openPrice the open price of the tick period
+     * @param highPrice the highest price of the tick period
+     * @param lowPrice the lowest price of the tick period
+     * @param closePrice the close price of the tick period
+     * @param volume the volume of the tick period
+     * @param amount the amount of the tick period
+     */
+    public Tick(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume, Decimal amount) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -137,6 +152,7 @@ public class Tick implements Serializable {
         this.minPrice = lowPrice;
         this.closePrice = closePrice;
         this.volume = volume;
+        this.amount = amount;
     }
 
     /**
