@@ -183,28 +183,28 @@ public class Tick implements Serializable {
 
     /**
      * Adds a trade at the end of tick period.
-     * @param tradeAmount the tradable amount
+     * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
-    public void addTrade(double tradeAmount, double tradePrice) {
-        addTrade(Decimal.valueOf(tradeAmount), Decimal.valueOf(tradePrice));
+    public void addTrade(double tradeVolume, double tradePrice) {
+        addTrade(Decimal.valueOf(tradeVolume), Decimal.valueOf(tradePrice));
     }
 
     /**
      * Adds a trade at the end of tick period.
-     * @param tradeAmount the tradable amount
+     * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
-    public void addTrade(String tradeAmount, String tradePrice) {
-        addTrade(Decimal.valueOf(tradeAmount), Decimal.valueOf(tradePrice));
+    public void addTrade(String tradeVolume, String tradePrice) {
+        addTrade(Decimal.valueOf(tradeVolume), Decimal.valueOf(tradePrice));
     }
 
     /**
      * Adds a trade at the end of tick period.
-     * @param tradeAmount the tradable amount
+     * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
-    public void addTrade(Decimal tradeAmount, Decimal tradePrice) {
+    public void addTrade(Decimal tradeVolume, Decimal tradePrice) {
         if (openPrice == null) {
             openPrice = tradePrice;
         }
@@ -220,8 +220,8 @@ public class Tick implements Serializable {
         } else {
             minPrice = minPrice.isGreaterThan(tradePrice) ? tradePrice : minPrice;
         }
-        amount = amount.plus(tradeAmount);
-        volume = volume.plus(tradeAmount.multipliedBy(tradePrice));
+        volume = volume.plus(tradeVolume);
+        amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
         trades++;
     }
 

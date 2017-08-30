@@ -53,12 +53,12 @@ public class TickTest {
         tick.addTrade(2.0, 198.0);
 
         assertEquals(3, tick.getTrades());
-        assertDecimalEquals(tick.getAmount(), 9);
+        assertDecimalEquals(tick.getAmount(), 3 * 200 + 4 * 201 + 2 * 198);
         assertDecimalEquals(tick.getOpenPrice(), 200);
         assertDecimalEquals(tick.getClosePrice(), 198);
         assertDecimalEquals(tick.getMinPrice(), 198);
         assertDecimalEquals(tick.getMaxPrice(), 201);
-        assertDecimalEquals(tick.getVolume(), 3 * 200 + 4 * 201 + 2 * 198);
+        assertDecimalEquals(tick.getVolume(), 9);
     }
 
     @Test
