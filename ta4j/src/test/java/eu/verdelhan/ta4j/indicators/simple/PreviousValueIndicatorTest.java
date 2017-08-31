@@ -36,9 +36,9 @@ import java.util.Random;
 import static org.junit.Assert.assertEquals;
 
 public class PreviousValueIndicatorTest {
+    
     private PreviousValueIndicator prevValueIndicator;
 
-    private PreviousPriceIndicator prevPriceIndicator;
     private ClosePriceIndicator closePriceIndicator;
     private OpenPriceIndicator openPriceIndicator;
     private MinPriceIndicator minPriceIndicator;
@@ -50,10 +50,10 @@ public class PreviousValueIndicatorTest {
     private TimeSeries series;
 
     @Before
-    public void setUp(){
+    public void setUp() {
         Random r = new Random();
         List<Tick> ticks = new ArrayList<>();
-        for (int i = 0; i < 1000; i++){
+        for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
             double max = Math.max(close+r.nextDouble(), open+r.nextDouble());
@@ -64,7 +64,6 @@ public class PreviousValueIndicatorTest {
         }
         this.series = new TimeSeries("test", ticks);
 
-        this.prevPriceIndicator = new PreviousPriceIndicator(this.series);
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
         this.minPriceIndicator = new MinPriceIndicator(this.series);
         this.maxPriceIndicator = new MaxPriceIndicator(this.series);
@@ -74,66 +73,54 @@ public class PreviousValueIndicatorTest {
     }
 
     @Test
-    public void shouldBeSameValueAsPreviousPriceIndicator(){
-
-        //test 1 with existing PreviousPriceIndicator
-        prevValueIndicator = new PreviousValueIndicator(closePriceIndicator);
-        for (int i = 0; i < this.series.getTickCount(); i++){
-            assertEquals(prevValueIndicator.getValue(i), prevPriceIndicator.getValue(i));
-        }
-    }
-
-    @Test
-    public void shouldBePreviousValueFromIndicator(){
+    public void shouldBePreviousValueFromIndicator() {
 
         //test 1 with openPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), openPriceIndicator.getValue(0));
-        for (int i = 1; i < this.series.getTickCount(); i++){
+        for (int i = 1; i < this.series.getTickCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i-1));
-
         }
 
         //test 2 with minPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(minPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), minPriceIndicator.getValue(0));
-        for (int i = 1; i < this.series.getTickCount(); i++){
+        for (int i = 1; i < this.series.getTickCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), minPriceIndicator.getValue(i-1));
-
         }
 
         //test 3 with maxPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(maxPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), maxPriceIndicator.getValue(0));
-        for (int i = 1; i < this.series.getTickCount(); i++){
+        for (int i = 1; i < this.series.getTickCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), maxPriceIndicator.getValue(i-1));
         }
     }
 
     @Test
-    public void shouldBeNthPreviousValueFromIndicator(){
-        for (int i = 0; i < this.series.getTickCount(); i++){
+    public void shouldBeNthPreviousValueFromIndicator() {
+        for (int i = 0; i < this.series.getTickCount(); i++) {
             testWithN(i);
         }
     }
 
-    private void testWithN(int n){
+    private void testWithN(int n) {
 
         // test 1 with volume-indicator
         prevValueIndicator = new PreviousValueIndicator(volumeIndicator,n);
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(0));
-
-        for (int i = n; i < this.series.getTickCount(); i++){
+        }
+        for (int i = n; i < this.series.getTickCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(i-n));
         }
 
         // test 2 with ema-indicator
         prevValueIndicator = new PreviousValueIndicator(emaIndicator,n);
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(0));
-
-        for (int i = n; i < this.series.getTickCount(); i++){
+        }
+        for (int i = n; i < this.series.getTickCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i-n));
         }
     }
