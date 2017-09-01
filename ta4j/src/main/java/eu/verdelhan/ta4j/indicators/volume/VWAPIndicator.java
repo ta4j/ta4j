@@ -26,8 +26,8 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.simple.TypicalPriceIndicator;
-import eu.verdelhan.ta4j.indicators.simple.VolumeIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.TypicalPriceIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.VolumeIndicator;
 
 /**
  * The volume-weighted average price (VWAP) Indicator.

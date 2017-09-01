@@ -27,7 +27,7 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.CloseLocationValueIndicator;
-import eu.verdelhan.ta4j.indicators.simple.VolumeIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.VolumeIndicator;
 
 /**
  * Chaikin Money Flow (CMF) indicator.

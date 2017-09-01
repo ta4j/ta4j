@@ -26,8 +26,8 @@ import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.simple.AbsoluteIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.AbsoluteIndicator;
+import eu.verdelhan.ta4j.indicators.SMAIndicator;
 
 /**
  * Doji indicator.

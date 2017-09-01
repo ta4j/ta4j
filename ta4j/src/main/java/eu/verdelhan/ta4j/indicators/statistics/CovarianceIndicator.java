@@ -25,7 +25,7 @@ package eu.verdelhan.ta4j.indicators.statistics;
 import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
+import eu.verdelhan.ta4j.indicators.SMAIndicator;
 
 /**
  * Covariance indicator.

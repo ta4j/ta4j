@@ -29,7 +29,7 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.CashFlow;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.text.SimpleDateFormat;

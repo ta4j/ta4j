@@ -23,8 +23,8 @@
 package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.trackers.SMAIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.SMAIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import static org.junit.Assert.*;
 import org.junit.Before;

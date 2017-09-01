@@ -24,7 +24,7 @@ package eu.verdelhan.ta4j.indicators.helpers;
 
 import static eu.verdelhan.ta4j.TATestsUtils.*;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.simple.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Before;
 import org.junit.Test;
