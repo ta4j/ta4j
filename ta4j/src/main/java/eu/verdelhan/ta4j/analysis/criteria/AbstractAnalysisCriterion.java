@@ -23,31 +23,11 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TimeSeries;
-import java.util.List;
 
 /**
  * An abstract analysis criterion.
  */
 public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
-
-    @Override
-    public Strategy chooseBest(TimeSeries series, List<Strategy> strategies) {
-        Strategy bestStrategy = strategies.get(0);
-        double bestCriterionValue = calculate(series, series.run(bestStrategy));
-
-        for (int i = 1; i < strategies.size(); i++) {
-            Strategy currentStrategy = strategies.get(i);
-            double currentCriterionValue = calculate(series, series.run(currentStrategy));
-
-            if (betterThan(currentCriterionValue, bestCriterionValue)) {
-                bestStrategy = currentStrategy;
-                bestCriterionValue = currentCriterionValue;
-            }
-        }
-        return bestStrategy;
-    }
 
     @Override
     public String toString() {

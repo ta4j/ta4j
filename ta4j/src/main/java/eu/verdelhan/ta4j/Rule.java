@@ -22,6 +22,11 @@
  */
 package eu.verdelhan.ta4j;
 
+import eu.verdelhan.ta4j.trading.rules.AndRule;
+import eu.verdelhan.ta4j.trading.rules.NotRule;
+import eu.verdelhan.ta4j.trading.rules.OrRule;
+import eu.verdelhan.ta4j.trading.rules.XorRule;
+
 /**
  * A rule for strategy building.
  * <p>
@@ -35,30 +40,40 @@ public interface Rule {
      * @param rule another trading rule
      * @return a rule which is the AND combination of this rule with the provided one
      */
-    Rule and(Rule rule);
+    default Rule and(Rule rule) {
+    	return new AndRule(this, rule);
+    }
 
     /**
      * @param rule another trading rule
      * @return a rule which is the OR combination of this rule with the provided one
      */
-    Rule or(Rule rule);
+    default Rule or(Rule rule) {
+    	return new OrRule(this, rule);
+    }
 
     /**
      * @param rule another trading rule
      * @return a rule which is the XOR combination of this rule with the provided one
      */
-    Rule xor(Rule rule);
+    default Rule xor(Rule rule) {
+    	return new XorRule(this, rule);
+    }
 
     /**
      * @return a rule which is the logical negation of this rule
      */
-    Rule negation();
+    default Rule negation() {
+    	return new NotRule(this);
+    }
     
     /**
      * @param index the tick index
      * @return true if this rule is satisfied for the provided index, false otherwise
      */
-    boolean isSatisfied(int index);
+    default boolean isSatisfied(int index) {
+    	return isSatisfied(index, null);
+    }
     
     /**
      * @param index the tick index

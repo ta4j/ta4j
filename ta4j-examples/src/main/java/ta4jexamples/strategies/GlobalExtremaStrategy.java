@@ -22,6 +22,7 @@
  */
 package ta4jexamples.strategies;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
@@ -72,7 +73,7 @@ public class GlobalExtremaStrategy {
         MultiplierIndicator upWeek = new MultiplierIndicator(weekMaxPrice, Decimal.valueOf("0.996"));
         Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
-        return new Strategy(buyingRule, sellingRule);
+        return new BaseStrategy(buyingRule, sellingRule);
     }
 
     public static void main(String[] args) {

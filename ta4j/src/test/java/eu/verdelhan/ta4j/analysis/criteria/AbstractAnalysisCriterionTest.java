@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.analysis.criteria;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.trading.rules.BooleanRule;
@@ -42,8 +43,8 @@ public class AbstractAnalysisCriterionTest {
 
     @Before
     public void setUp() {
-        alwaysStrategy = new Strategy(BooleanRule.TRUE, BooleanRule.TRUE);
-        buyAndHoldStrategy = new Strategy(new FixedRule(0), new FixedRule(4));
+        alwaysStrategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        buyAndHoldStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(4));
         strategies = new ArrayList<Strategy>();
         strategies.add(alwaysStrategy);
         strategies.add(buyAndHoldStrategy);

@@ -22,6 +22,7 @@
  */
 package ta4jexamples.strategies;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
@@ -75,7 +76,7 @@ public class RSI2Strategy {
         
         // TODO: Finalize the strategy
         
-        return new Strategy(entryRule, exitRule);
+        return new BaseStrategy(entryRule, exitRule);
     }
 
     public static void main(String[] args) {

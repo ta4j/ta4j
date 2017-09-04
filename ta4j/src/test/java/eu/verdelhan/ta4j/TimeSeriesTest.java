@@ -87,7 +87,7 @@ public class TimeSeriesTest {
                     ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf)
                 });
 
-        strategy = new Strategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
+        strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
     }
 
@@ -443,7 +443,7 @@ public class TimeSeriesTest {
     public void runWithOpenEntryBuyLeft() {
         List<TimeSeries> subseries = seriesForRun.split(Duration.ofDays(365));
         TimeSeries slice = subseries.get(0);
-        Strategy aStrategy = new Strategy(new FixedRule(1), new FixedRule(3));
+        Strategy aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
         List<Trade> trades = slice.run(aStrategy).getTrades();
         assertEquals(1, trades.size());
 
@@ -455,7 +455,7 @@ public class TimeSeriesTest {
     public void runWithOpenEntrySellLeft() {
         List<TimeSeries> subseries = seriesForRun.split(Duration.ofDays(365));
         TimeSeries slice = subseries.get(0);
-        Strategy aStrategy = new Strategy(new FixedRule(1), new FixedRule(3));
+        Strategy aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
         List<Trade> trades = slice.run(aStrategy, OrderType.SELL).getTrades();
         assertEquals(1, trades.size());
 
@@ -491,7 +491,7 @@ public class TimeSeriesTest {
                     new ZonedDateTime[]{dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001), dateTime.withYear(2001), dateTime.withYear(2002),
                     dateTime.withYear(2002), dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004), dateTime.withYear(2005)});
 
-        Strategy aStrategy = new Strategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
+        Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
         List<TimeSeries> subseries = series.split(Period.ofYears(1));
         TimeSeries slice0 = subseries.get(0);

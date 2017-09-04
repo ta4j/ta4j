@@ -23,7 +23,7 @@
 package ta4jexamples;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
-import eu.verdelhan.ta4j.Strategy;
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.TimeSeries;
@@ -90,7 +90,7 @@ public class Quickstart {
                 .or(new StopGainRule(closePrice, Decimal.valueOf("2")));
         
         // Running our juicy trading strategy...
-        TradingRecord tradingRecord = series.run(new Strategy(buyingRule, sellingRule));
+        TradingRecord tradingRecord = series.run(new BaseStrategy(buyingRule, sellingRule));
         System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 
 

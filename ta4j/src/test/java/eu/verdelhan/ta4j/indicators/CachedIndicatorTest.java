@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Strategy;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
@@ -97,7 +98,7 @@ public class CachedIndicatorTest {
         timeSeries.setMaximumTickCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
         
-        Strategy strategy = new Strategy(
+        Strategy strategy = new BaseStrategy(
                 new OverIndicatorRule(sma, Decimal.THREE),
                 new UnderIndicatorRule(sma, Decimal.THREE)
         );

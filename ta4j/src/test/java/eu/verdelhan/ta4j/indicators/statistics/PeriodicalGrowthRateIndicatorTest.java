@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.statistics;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
@@ -85,7 +86,7 @@ public class PeriodicalGrowthRateIndicatorTest {
         Rule buyingRule = new CrossedUpIndicatorRule(gri, Decimal.ZERO); 
         Rule sellingRule = new CrossedDownIndicatorRule(gri, Decimal.ZERO);     
         
-        Strategy strategy = new Strategy(buyingRule, sellingRule);
+        Strategy strategy = new BaseStrategy(buyingRule, sellingRule);
                 
         // Check trades
         int result = mockdata.run(strategy).getTradeCount();             

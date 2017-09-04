@@ -22,6 +22,7 @@
  */
 package ta4jexamples.strategies;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
@@ -76,7 +77,7 @@ public class MovingMomentumStrategy {
                 .and(new CrossedUpIndicatorRule(stochasticOscillK, Decimal.valueOf(80))) // Signal 1
                 .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2
         
-        return new Strategy(entryRule, exitRule);
+        return new BaseStrategy(entryRule, exitRule);
     }
 
     public static void main(String[] args) {

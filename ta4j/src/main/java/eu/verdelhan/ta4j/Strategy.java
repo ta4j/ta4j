@@ -22,68 +22,41 @@
  */
 package eu.verdelhan.ta4j;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
 /**
  * A trading strategy.
  * <p>
  * A strategy is a pair of complementary {@link Rule rules}. It may recommend to enter or to exit.
  * Recommendations are based respectively on the entry rule or on the exit rule.
  */
-public class Strategy {
+public interface Strategy {
 
-    /** The logger */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
-    
-    /** The entry rule */
-    private Rule entryRule;
-    
-    /** The exit rule */
-    private Rule exitRule;
-
-    /**
-     * The unstable period (number of ticks).<br>
-     * During the unstable period of the strategy any order placement will be cancelled.<br>
-     * I.e. no entry/exit signal will be fired before index == unstablePeriod.
-     */
-    private int unstablePeriod;
+	/**
+	 * @return the entry rule
+	 */
+    Rule getEntryRule();
     
     /**
-     * Constructor.
-     * @param entryRule the entry rule
-     * @param exitRule the exit rule
+     * @return the exit rule
      */
-    public Strategy(Rule entryRule, Rule exitRule) {
-        if (entryRule == null || exitRule == null) {
-            throw new IllegalArgumentException("Rules cannot be null");
-        }
-        this.entryRule = entryRule;
-        this.exitRule = exitRule;
-    }
+    Rule getExitRule();
+    
+    /**
+     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     */
+    void setUnstablePeriod(int unstablePeriod);
     
     /**
      * @param index a tick index
      * @return true if this strategy is unstable at the provided index, false otherwise (stable)
      */
-    public boolean isUnstableAt(int index) {
-        return index < unstablePeriod;
-    }
-    
-    /**
-     * @param unstablePeriod number of ticks that will be strip off for this strategy
-     */
-    public void setUnstablePeriod(int unstablePeriod) {
-        this.unstablePeriod = unstablePeriod;
-    }
+    boolean isUnstableAt(int index);
     
     /**
      * @param index the tick index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend an order, false otherwise (no recommendation)
      */
-    public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+    default boolean shouldOperate(int index, TradingRecord tradingRecord) {
         Trade trade = tradingRecord.getCurrentTrade();
         if (trade.isNew()) {
             return shouldEnter(index, tradingRecord);
@@ -97,7 +70,7 @@ public class Strategy {
      * @param index the tick index
      * @return true to recommend to enter, false otherwise
      */
-    public boolean shouldEnter(int index) {
+    default boolean shouldEnter(int index) {
         return shouldEnter(index, null);
     }
 
@@ -106,12 +79,11 @@ public class Strategy {
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
      */
-    public boolean shouldEnter(int index, TradingRecord tradingRecord) {
+    default boolean shouldEnter(int index, TradingRecord tradingRecord) {
         if (isUnstableAt(index)) {
             return false;
         }
-        final boolean enter = entryRule.isSatisfied(index, tradingRecord);
-        traceShouldEnter(index, enter);
+        final boolean enter = getEntryRule().isSatisfied(index, tradingRecord);
         return enter;
     }
 
@@ -119,7 +91,7 @@ public class Strategy {
      * @param index the tick index
      * @return true to recommend to exit, false otherwise
      */
-    public boolean shouldExit(int index) {
+    default boolean shouldExit(int index) {
         return shouldExit(index, null);
     }
 
@@ -128,30 +100,11 @@ public class Strategy {
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to exit, false otherwise
      */
-    public boolean shouldExit(int index, TradingRecord tradingRecord) {
+    default boolean shouldExit(int index, TradingRecord tradingRecord) {
         if (isUnstableAt(index)) {
             return false;
         }
-        final boolean exit = exitRule.isSatisfied(index, tradingRecord);
-        traceShouldExit(index, exit);
+        final boolean exit = getExitRule().isSatisfied(index, tradingRecord);
         return exit;
-    }
-
-    /**
-     * Traces the shouldEnter() method calls.
-     * @param index the tick index
-     * @param enter true if the strategy should enter, false otherwise
-     */
-    protected void traceShouldEnter(int index, boolean enter) {
-        log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
-    }
-
-    /**
-     * Traces the shouldExit() method calls.
-     * @param index the tick index
-     * @param exit true if the strategy should exit, false otherwise
-     */
-    protected void traceShouldExit(int index, boolean exit) {
-        log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), index, exit);
     }
 }

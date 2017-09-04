@@ -22,6 +22,7 @@
  */
 package ta4jexamples.strategies;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
@@ -60,7 +61,7 @@ public class CCICorrectionStrategy {
         Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
                 .and(new OverIndicatorRule(shortCci, plus100)); // Signal
         
-        Strategy strategy = new Strategy(entryRule, exitRule);
+        Strategy strategy = new BaseStrategy(entryRule, exitRule);
         strategy.setUnstablePeriod(5);
         return strategy;
     }

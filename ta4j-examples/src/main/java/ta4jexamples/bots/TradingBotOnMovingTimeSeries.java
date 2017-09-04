@@ -22,6 +22,7 @@
  */
 package ta4jexamples.bots;
 
+import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Strategy;
@@ -74,7 +75,7 @@ public class TradingBotOnMovingTimeSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        Strategy buySellSignals = new Strategy(
+        Strategy buySellSignals = new BaseStrategy(
                 new OverIndicatorRule(sma, closePrice),
                 new UnderIndicatorRule(sma, closePrice)
         );

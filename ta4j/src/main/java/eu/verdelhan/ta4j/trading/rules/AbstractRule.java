@@ -33,31 +33,6 @@ public abstract class AbstractRule implements Rule {
 
     /** The logger */
     protected final Logger log = LoggerFactory.getLogger(getClass());
-
-    @Override
-    public Rule and(Rule rule) {
-        return new AndRule(this, rule);
-    }
-
-    @Override
-    public Rule or(Rule rule) {
-        return new OrRule(this, rule);
-    }
-
-    @Override
-    public Rule xor(Rule rule) {
-        return new XorRule(this, rule);
-    }
-
-    @Override
-    public Rule negation() {
-        return new NotRule(this);
-    }
-
-    @Override
-    public boolean isSatisfied(int index) {
-        return isSatisfied(index, null);
-    }
     
     /**
      * Traces the isSatisfied() method calls.
