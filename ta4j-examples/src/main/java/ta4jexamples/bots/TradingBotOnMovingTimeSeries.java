@@ -56,7 +56,7 @@ public class TradingBotOnMovingTimeSeries {
         System.out.print("Initial tick count: " + series.getTickCount());
         // Limitating the number of ticks to maxTickCount
         series.setMaximumTickCount(maxTickCount);
-        LAST_TICK_CLOSE_PRICE = series.getTick(series.getEnd()).getClosePrice();
+        LAST_TICK_CLOSE_PRICE = series.getTick(series.getEndIndex()).getClosePrice();
         System.out.println(" (limited to " + maxTickCount + "), close price = " + LAST_TICK_CLOSE_PRICE);
         return series;
     }
@@ -136,7 +136,7 @@ public class TradingBotOnMovingTimeSeries {
                     + "Tick "+i+" added, close price = " + newTick.getClosePrice().toDouble());
             series.addTick(newTick);
             
-            int endIndex = series.getEnd();
+            int endIndex = series.getEndIndex();
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);

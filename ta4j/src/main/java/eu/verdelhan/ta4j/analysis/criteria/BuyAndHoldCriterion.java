@@ -35,7 +35,7 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return series.getTick(series.getEnd()).getClosePrice().dividedBy(series.getTick(series.getBegin()).getClosePrice()).toDouble();
+        return series.getTick(series.getEndIndex()).getClosePrice().dividedBy(series.getTick(series.getBeginIndex()).getClosePrice()).toDouble();
     }
 
     @Override

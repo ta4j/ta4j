@@ -176,14 +176,14 @@ public class TimeSeries implements Serializable {
     /**
      * @return the begin index of the series
      */
-    public int getBegin() {
+    public int getBeginIndex() {
         return beginIndex;
     }
 
     /**
      * @return the end index of the series
      */
-    public int getEnd() {
+    public int getEndIndex() {
         return endIndex;
     }
 

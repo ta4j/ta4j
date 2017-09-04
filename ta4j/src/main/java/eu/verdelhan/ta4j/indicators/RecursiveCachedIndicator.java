@@ -63,7 +63,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     public T getValue(int index) {
         TimeSeries series = getTimeSeries();
         if (series != null) {
-            final int seriesEndIndex = series.getEnd();
+            final int seriesEndIndex = series.getEndIndex();
             if (index <= seriesEndIndex) {
                 // We are not after the end of the series
                 final int removedTicksCount = series.getRemovedTicksCount();

@@ -126,9 +126,9 @@ public class CashFlow implements Indicator<Decimal> {
      * Fills with last value till the end of the series.
      */
     private void fillToTheEnd() {
-        if (timeSeries.getEnd() >= values.size()) {
+        if (timeSeries.getEndIndex() >= values.size()) {
             Decimal lastValue = values.get(values.size() - 1);
-            values.addAll(Collections.nCopies(timeSeries.getEnd() - values.size() + 1, lastValue));
+            values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, lastValue));
         }
     }
 }

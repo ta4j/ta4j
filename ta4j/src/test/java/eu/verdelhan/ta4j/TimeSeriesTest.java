@@ -94,27 +94,27 @@ public class TimeSeriesTest {
     @Test
     public void getEndGetBeginGetTickCount() {
         // Original series
-        assertEquals(0, defaultSeries.getBegin());
-        assertEquals(ticks.size() - 1, defaultSeries.getEnd());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(ticks.size() - 1, defaultSeries.getEndIndex());
         assertEquals(ticks.size(), defaultSeries.getTickCount());
         // Sub-series
-        assertEquals(2, subSeries.getBegin());
-        assertEquals(4, subSeries.getEnd());
+        assertEquals(2, subSeries.getBeginIndex());
+        assertEquals(4, subSeries.getEndIndex());
         assertEquals(3, subSeries.getTickCount());
         // Empty series
-        assertEquals(-1, emptySeries.getBegin());
-        assertEquals(-1, emptySeries.getEnd());
+        assertEquals(-1, emptySeries.getBeginIndex());
+        assertEquals(-1, emptySeries.getEndIndex());
         assertEquals(0, emptySeries.getTickCount());
     }
 
     @Test
     public void getSeriesPeriodDescription() {
         // Original series
-        assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(ticks.get(defaultSeries.getEnd()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(ticks.get(defaultSeries.getBegin()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(ticks.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(ticks.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Sub-series
-        assertTrue(subSeries.getSeriesPeriodDescription().endsWith(ticks.get(subSeries.getEnd()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(subSeries.getSeriesPeriodDescription().startsWith(ticks.get(subSeries.getBegin()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subSeries.getSeriesPeriodDescription().endsWith(ticks.get(subSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subSeries.getSeriesPeriodDescription().startsWith(ticks.get(subSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
@@ -175,15 +175,15 @@ public class TimeSeriesTest {
     @Test
     public void setMaximumTickCount() {
         // Before
-        assertEquals(0, defaultSeries.getBegin());
-        assertEquals(ticks.size() - 1, defaultSeries.getEnd());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(ticks.size() - 1, defaultSeries.getEndIndex());
         assertEquals(ticks.size(), defaultSeries.getTickCount());
 
         defaultSeries.setMaximumTickCount(3);
 
         // After
-        assertEquals(0, defaultSeries.getBegin());
-        assertEquals(5, defaultSeries.getEnd());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(5, defaultSeries.getEndIndex());
         assertEquals(3, defaultSeries.getTickCount());
     }
 
@@ -204,28 +204,28 @@ public class TimeSeriesTest {
         Tick secondTick = new MockTick(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d);
 
         assertEquals(0, defaultSeries.getTickCount());
-        assertEquals(-1, defaultSeries.getBegin());
-        assertEquals(-1, defaultSeries.getEnd());
+        assertEquals(-1, defaultSeries.getBeginIndex());
+        assertEquals(-1, defaultSeries.getEndIndex());
 
         defaultSeries.addTick(firstTick);
         assertEquals(1, defaultSeries.getTickCount());
-        assertEquals(0, defaultSeries.getBegin());
-        assertEquals(0, defaultSeries.getEnd());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(0, defaultSeries.getEndIndex());
 
         defaultSeries.addTick(secondTick);
         assertEquals(2, defaultSeries.getTickCount());
-        assertEquals(0, defaultSeries.getBegin());
-        assertEquals(1, defaultSeries.getEnd());
+        assertEquals(0, defaultSeries.getBeginIndex());
+        assertEquals(1, defaultSeries.getEndIndex());
     }
 
     @Test
     public void subseriesWithIndexes() {
         TimeSeries subSeries2 = defaultSeries.subseries(2, 5);
         assertEquals(defaultSeries.getName(), subSeries2.getName());
-        assertEquals(2, subSeries2.getBegin());
-        assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
-        assertEquals(5, subSeries2.getEnd());
-        assertEquals(defaultSeries.getEnd(), subSeries2.getEnd());
+        assertEquals(2, subSeries2.getBeginIndex());
+        assertNotEquals(defaultSeries.getBeginIndex(), subSeries2.getBeginIndex());
+        assertEquals(5, subSeries2.getEndIndex());
+        assertEquals(defaultSeries.getEndIndex(), subSeries2.getEndIndex());
         assertEquals(4, subSeries2.getTickCount());
     }
 
@@ -244,10 +244,10 @@ public class TimeSeriesTest {
     public void subseriesWithDuration() {
         TimeSeries subSeries2 = defaultSeries.subseries(1, Duration.ofDays(14));
         assertEquals(defaultSeries.getName(), subSeries2.getName());
-        assertEquals(1, subSeries2.getBegin());
-        assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
-        assertEquals(4, subSeries2.getEnd());
-        assertNotEquals(defaultSeries.getEnd(), subSeries2.getEnd());
+        assertEquals(1, subSeries2.getBeginIndex());
+        assertNotEquals(defaultSeries.getBeginIndex(), subSeries2.getBeginIndex());
+        assertEquals(4, subSeries2.getEndIndex());
+        assertNotEquals(defaultSeries.getEndIndex(), subSeries2.getEndIndex());
         assertEquals(4, subSeries2.getTickCount());
     }
     
@@ -255,10 +255,10 @@ public class TimeSeriesTest {
     public void subseriesWithPeriod() {
         TimeSeries subSeries2 = defaultSeries.subseries(1, Period.ofDays(14));
         assertEquals(defaultSeries.getName(), subSeries2.getName());
-        assertEquals(1, subSeries2.getBegin());
-        assertNotEquals(defaultSeries.getBegin(), subSeries2.getBegin());
-        assertEquals(4, subSeries2.getEnd());
-        assertNotEquals(defaultSeries.getEnd(), subSeries2.getEnd());
+        assertEquals(1, subSeries2.getBeginIndex());
+        assertNotEquals(defaultSeries.getBeginIndex(), subSeries2.getBeginIndex());
+        assertEquals(4, subSeries2.getEndIndex());
+        assertNotEquals(defaultSeries.getEndIndex(), subSeries2.getEndIndex());
         assertEquals(4, subSeries2.getTickCount());
     }
 
@@ -278,14 +278,14 @@ public class TimeSeriesTest {
 
         assertEquals(3, subseries.size());
 
-        assertEquals(0, subseries.get(0).getBegin());
-        assertEquals(2, subseries.get(0).getEnd());
+        assertEquals(0, subseries.get(0).getBeginIndex());
+        assertEquals(2, subseries.get(0).getEndIndex());
 
-        assertEquals(3, subseries.get(1).getBegin());
-        assertEquals(5, subseries.get(1).getEnd());
+        assertEquals(3, subseries.get(1).getBeginIndex());
+        assertEquals(5, subseries.get(1).getEndIndex());
 
-        assertEquals(6, subseries.get(2).getBegin());
-        assertEquals(7, subseries.get(2).getEnd());
+        assertEquals(6, subseries.get(2).getBeginIndex());
+        assertEquals(7, subseries.get(2).getEndIndex());
     }
 
     @Test
@@ -302,17 +302,17 @@ public class TimeSeriesTest {
 
         assertEquals(5, subseries.size());
 
-        assertEquals(0, subseries.get(0).getBegin());
-        assertEquals(1, subseries.get(0).getEnd());
+        assertEquals(0, subseries.get(0).getBeginIndex());
+        assertEquals(1, subseries.get(0).getEndIndex());
 
-        assertEquals(1, subseries.get(1).getBegin());
-        assertEquals(2, subseries.get(1).getEnd());
+        assertEquals(1, subseries.get(1).getBeginIndex());
+        assertEquals(2, subseries.get(1).getEndIndex());
 
-        assertEquals(2, subseries.get(2).getBegin());
-        assertEquals(2, subseries.get(2).getEnd());
+        assertEquals(2, subseries.get(2).getBeginIndex());
+        assertEquals(2, subseries.get(2).getEndIndex());
 
-        assertEquals(4, subseries.get(4).getBegin());
-        assertEquals(4, subseries.get(4).getEnd());
+        assertEquals(4, subseries.get(4).getBeginIndex());
+        assertEquals(4, subseries.get(4).getEndIndex());
     }
 
     @Test
@@ -327,14 +327,14 @@ public class TimeSeriesTest {
 
         assertEquals(3, subseries.size());
 
-        assertEquals(0, subseries.get(0).getBegin());
-        assertEquals(0, subseries.get(0).getEnd());
+        assertEquals(0, subseries.get(0).getBeginIndex());
+        assertEquals(0, subseries.get(0).getEndIndex());
 
-        assertEquals(1, subseries.get(1).getBegin());
-        assertEquals(1, subseries.get(1).getEnd());
+        assertEquals(1, subseries.get(1).getBeginIndex());
+        assertEquals(1, subseries.get(1).getEndIndex());
 
-        assertEquals(2, subseries.get(2).getBegin());
-        assertEquals(2, subseries.get(2).getEnd());
+        assertEquals(2, subseries.get(2).getBeginIndex());
+        assertEquals(2, subseries.get(2).getEndIndex());
     }
 
     @Test
@@ -358,17 +358,17 @@ public class TimeSeriesTest {
 
         assertEquals(4, subseries.size());
 
-        assertEquals(0, subseries.get(0).getBegin());
-        assertEquals(5, subseries.get(0).getEnd());
+        assertEquals(0, subseries.get(0).getBeginIndex());
+        assertEquals(5, subseries.get(0).getEndIndex());
 
-        assertEquals(6, subseries.get(1).getBegin());
-        assertEquals(6, subseries.get(1).getEnd());
+        assertEquals(6, subseries.get(1).getBeginIndex());
+        assertEquals(6, subseries.get(1).getEndIndex());
 
-        assertEquals(7, subseries.get(2).getBegin());
-        assertEquals(7, subseries.get(2).getEnd());
+        assertEquals(7, subseries.get(2).getBeginIndex());
+        assertEquals(7, subseries.get(2).getEndIndex());
 
-        assertEquals(8, subseries.get(3).getBegin());
-        assertEquals(10, subseries.get(3).getEnd());
+        assertEquals(8, subseries.get(3).getBeginIndex());
+        assertEquals(10, subseries.get(3).getEndIndex());
     }
     
     @Test
@@ -392,17 +392,17 @@ public class TimeSeriesTest {
 
         assertEquals(4, subseries.size());
 
-        assertEquals(0, subseries.get(0).getBegin());
-        assertEquals(5, subseries.get(0).getEnd());
+        assertEquals(0, subseries.get(0).getBeginIndex());
+        assertEquals(5, subseries.get(0).getEndIndex());
 
-        assertEquals(6, subseries.get(1).getBegin());
-        assertEquals(6, subseries.get(1).getEnd());
+        assertEquals(6, subseries.get(1).getBeginIndex());
+        assertEquals(6, subseries.get(1).getEndIndex());
 
-        assertEquals(7, subseries.get(2).getBegin());
-        assertEquals(7, subseries.get(2).getEnd());
+        assertEquals(7, subseries.get(2).getBeginIndex());
+        assertEquals(7, subseries.get(2).getEndIndex());
 
-        assertEquals(8, subseries.get(3).getBegin());
-        assertEquals(10, subseries.get(3).getEnd());
+        assertEquals(8, subseries.get(3).getBeginIndex());
+        assertEquals(10, subseries.get(3).getEndIndex());
     }
 
     @Test

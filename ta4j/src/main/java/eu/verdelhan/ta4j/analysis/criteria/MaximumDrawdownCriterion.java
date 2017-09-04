@@ -66,7 +66,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     private Decimal calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
         Decimal maximumDrawdown = Decimal.ZERO;
         Decimal maxPeak = Decimal.ZERO;
-        for (int i = series.getBegin(); i <= series.getEnd(); i++) {
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Decimal value = cashFlow.getValue(i);
             if (value.isGreaterThan(maxPeak)) {
                 maxPeak = value;
