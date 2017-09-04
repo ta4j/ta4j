@@ -26,7 +26,6 @@ import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import java.awt.Color;
-import java.time.Duration;
 import java.util.Date;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -118,7 +117,7 @@ public class CandlestickChart {
         /**
          * Getting time series
          */
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries().subseries(0, Duration.ofHours(6));
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
         
         /**
          * Creating the OHLC dataset

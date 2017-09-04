@@ -96,20 +96,6 @@ public class MaximumDrawdownCriterionTest {
     }
 
     @Test
-    public void withConstrainedTimeSeries() {
-        MockTimeSeries sampleSeries = new MockTimeSeries(new double[] {1, 1, 1, 1, 1, 10, 5, 6, 1, 1, 1 });
-        TimeSeries subSeries = sampleSeries.subseries(4, 8);
-        MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        TradingRecord tradingRecord = new TradingRecord(
-                Order.buyAt(4), Order.sellAt(5),
-                Order.buyAt(5), Order.sellAt(6),
-                Order.buyAt(6), Order.sellAt(7),
-                Order.buyAt(7), Order.sellAt(8));
-        assertEquals(.9d, mdd.calculate(subSeries, tradingRecord), TATestsUtils.TA_OFFSET);
-        
-    }
-
-    @Test
     public void betterThan() {
         AnalysisCriterion criterion = new MaximumDrawdownCriterion();
         assertTrue(criterion.betterThan(0.9, 1.5));

@@ -27,8 +27,6 @@ import eu.verdelhan.ta4j.Order.OrderType;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.Duration;
-import java.time.Period;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
@@ -62,8 +60,6 @@ public class TimeSeries implements Serializable {
     private int maximumTickCount = Integer.MAX_VALUE;
     /** Number of removed ticks */
     private int removedTicksCount = 0;
-    /** True if the current series is a sub-series, false otherwise */
-    private boolean subSeries = false;
 
     /**
      * Constructor.
@@ -71,7 +67,7 @@ public class TimeSeries implements Serializable {
      * @param ticks the list of ticks of the series
      */
     public TimeSeries(String name, List<Tick> ticks) {
-        this(name, ticks, 0, ticks.size() - 1, false);
+        this(name, ticks, 0, ticks.size() - 1);
     }
 
     /**
@@ -100,13 +96,22 @@ public class TimeSeries implements Serializable {
 
     /**
      * Constructor.
+     * @param series
+     * @param beginIndex the begin index (inclusive) of the time series
+     * @param endIndex the end index (inclusive) of the time series
+     */
+    public TimeSeries(TimeSeries series, int beginIndex, int endIndex) {
+        this(series.name, series.ticks, beginIndex, endIndex);
+    }
+
+    /**
+     * Constructor.
      * @param name the name of the series
      * @param ticks the list of ticks of the series
      * @param beginIndex the begin index (inclusive) of the time series
      * @param endIndex the end index (inclusive) of the time series
-     * @param subSeries true if the current series is a sub-series, false otherwise
      */
-    private TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex, boolean subSeries) {
+    private TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex) {
         // TODO: add null checks and out of bounds checks
         if (endIndex < beginIndex - 1) {
             throw new IllegalArgumentException("end cannot be < than begin - 1");
@@ -115,7 +120,6 @@ public class TimeSeries implements Serializable {
         this.ticks = ticks;
         this.beginIndex = beginIndex;
         this.endIndex = endIndex;
-        this.subSeries = subSeries;
     }
 
     /**
@@ -210,9 +214,6 @@ public class TimeSeries implements Serializable {
      * @param maximumTickCount the maximum tick count
      */
     public void setMaximumTickCount(int maximumTickCount) {
-        if (subSeries) {
-            throw new IllegalStateException("Cannot set a maximum tick count on a sub-series");
-        }
         if (maximumTickCount <= 0) {
             throw new IllegalArgumentException("Maximum tick count must be strictly positive");
         }
@@ -262,169 +263,6 @@ public class TimeSeries implements Serializable {
         }
         endIndex++;
         removeExceedingTicks();
-    }
-
-    /**
-     * Returns a new time series which is a view of a subset of the current series.
-     * <p>
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param endIndex the end index (inclusive) of the time series
-     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
-     */
-    public TimeSeries subseries(int beginIndex, int endIndex) {
-        if (maximumTickCount != Integer.MAX_VALUE) {
-            throw new IllegalStateException("Cannot create a sub-series from a time series for which a maximum tick count has been set");
-        }
-        return new TimeSeries(name, ticks, beginIndex, endIndex, true);
-    }
-
-    /**
-     * Returns a new time series which is a view of a subset of the current series.
-     * <p>
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param duration the duration of the time series
-     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
-     */
-    public TimeSeries subseries(int beginIndex, Duration duration) {
-
-        // Calculating the sub-series interval
-        ZonedDateTime beginInterval = getTick(beginIndex).getEndTime();
-        ZonedDateTime endInterval = beginInterval.plus(duration);
-
-        // Checking ticks belonging to the sub-series (starting at the provided index)
-        int subseriesNbTicks = 0;
-        for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick...
-            ZonedDateTime tickTime = getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
-                // Tick out of the interval
-                break;
-            }
-            // Tick in the interval
-            // --> Incrementing the number of ticks in the subseries
-            subseriesNbTicks++;
-        }
-
-        return subseries(beginIndex, beginIndex + subseriesNbTicks - 1);
-    }
-    
-    /**
-     * Returns a new time series which is a view of a subset of the current series.
-     * <p>
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param period the duration of the time series
-     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
-     */
-    public TimeSeries subseries(int beginIndex, Period period) {
-
-        // Calculating the sub-series interval
-        ZonedDateTime beginInterval = getTick(beginIndex).getEndTime();
-        ZonedDateTime endInterval = beginInterval.plus(period);
-
-        // Checking ticks belonging to the sub-series (starting at the provided index)
-        int subseriesNbTicks = 0;
-        for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick...
-            ZonedDateTime tickTime = getTick(i).getEndTime();
-
-            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
-                // Tick out of the interval
-                break;
-            }
-            // Tick in the interval
-            // --> Incrementing the number of ticks in the subseries
-            subseriesNbTicks++;
-        }
-
-        return subseries(beginIndex, beginIndex + subseriesNbTicks - 1);
-    }
-
-    /**
-     * Splits the time series into sub-series containing nbTicks ticks each.<br>
-     * The current time series is splitted every nbTicks ticks.<br>
-     * The last sub-series may have less ticks than nbTicks.
-     * @param nbTicks the number of ticks of each sub-series
-     * @return a list of sub-series
-     */
-    public List<TimeSeries> split(int nbTicks) {
-        ArrayList<TimeSeries> subseries = new ArrayList<>();
-        for (int i = beginIndex; i <= endIndex; i += nbTicks) {
-            // For each nbTicks ticks
-            int subseriesBegin = i;
-            int subseriesEnd = Math.min(subseriesBegin + nbTicks - 1, endIndex);
-            subseries.add(subseries(subseriesBegin, subseriesEnd));
-        }
-        return subseries;
-    }
-
-    /**
-     * Splits the time series into sub-series lasting sliceDuration.<br>
-     * The current time series is splitted every splitDuration.<br>
-     * The last sub-series may last less than sliceDuration.
-     * @param splitDuration the duration between 2 splits
-     * @param sliceDuration the duration of each sub-series
-     * @return a list of sub-series
-     */
-    public List<TimeSeries> split(Duration splitDuration, Duration sliceDuration) {
-        ArrayList<TimeSeries> subseries = new ArrayList<>();
-        if (splitDuration != null && !splitDuration.isZero()
-                && sliceDuration != null && !sliceDuration.isZero()) {
-
-            List<Integer> beginIndexes = getSplitBeginIndexes(splitDuration);
-            for (Integer subseriesBegin : beginIndexes) {
-                subseries.add(subseries(subseriesBegin, sliceDuration));
-            }
-        }
-        return subseries;
-    }
-    
-    /**
-     * Splits the time series into sub-series lasting sliceDuration.<br>
-     * The current time series is splitted every splitDuration.<br>
-     * The last sub-series may last less than sliceDuration.
-     * @param splitPeriod the duration between 2 splits
-     * @param slicePeriod the duration of each sub-series
-     * @return a list of sub-series
-     */
-    public List<TimeSeries> split(Period splitPeriod, Period slicePeriod) {
-        ArrayList<TimeSeries> subseries = new ArrayList<>();
-        if (splitPeriod != null && !splitPeriod.isZero()
-                && slicePeriod != null && !slicePeriod.isZero()) {
-
-            List<Integer> beginIndexes = getSplitBeginIndexes(splitPeriod);
-            for (Integer subseriesBegin : beginIndexes) {
-                subseries.add(subseries(subseriesBegin, slicePeriod));
-            }
-        }
-        return subseries;
-    }
-
-    /**
-     * Splits the time series into sub-series lasting duration.<br>
-     * The current time series is splitted every duration.<br>
-     * The last sub-series may last less than duration.
-     * @param duration the duration between 2 splits (and of each sub-series)
-     * @return a list of sub-series
-     */
-    public List<TimeSeries> split(Duration duration) {
-        return split(duration, duration);
-    }
-    
-    /**
-     * Splits the time series into sub-series lasting duration.<br>
-     * The current time series is splitted every duration.<br>
-     * The last sub-series may last less than duration.
-     * @param period the duration between 2 splits (and of each sub-series)
-     * @return a list of sub-series
-     */
-    public List<TimeSeries> split(Period period) {
-        return split(period, period);
     }
 
     /**
@@ -498,74 +336,6 @@ public class TimeSeries implements Serializable {
             // Updating removed ticks count
             removedTicksCount += nbTicksToRemove;
         }
-    }
-
-    /**
-     * Builds a list of split indexes from splitDuration.
-     * @param splitDuration the duration between 2 splits
-     * @return a list of begin indexes after split
-     */
-    private List<Integer> getSplitBeginIndexes(Duration splitDuration) {
-        ArrayList<Integer> beginIndexes = new ArrayList<>();
-
-        // Adding the first begin index
-        beginIndexes.add(beginIndex);
-
-        // Building the first interval before next split
-        ZonedDateTime beginInterval = getTick(beginIndex).getEndTime();
-        ZonedDateTime endInterval = beginInterval.plus(splitDuration);
-
-        for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick...
-            ZonedDateTime tickTime = getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
-                // Tick out of the interval
-                if (!endInterval.isAfter(tickTime)) {
-                    // Tick after the interval
-                    // --> Adding a new begin index
-                    beginIndexes.add(i);
-                }
-
-                // Building the new interval before next split
-                beginInterval = endInterval.isBefore(tickTime) ? tickTime : endInterval;
-                endInterval = beginInterval.plus(splitDuration);
-            }
-        }
-        return beginIndexes;
-    }
-    
-    /**
-     * Builds a list of split indexes from splitDuration.
-     * @param splitPeriod the duration between 2 splits
-     * @return a list of begin indexes after split
-     */
-    private List<Integer> getSplitBeginIndexes(Period splitPeriod) {
-        ArrayList<Integer> beginIndexes = new ArrayList<>();
-
-        // Adding the first begin index
-        beginIndexes.add(beginIndex);
-
-        // Building the first interval before next split
-        ZonedDateTime beginInterval = getTick(beginIndex).getEndTime();
-        ZonedDateTime endInterval = beginInterval.plus(splitPeriod);
-
-        for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick...
-            ZonedDateTime tickTime = getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
-                // Tick out of the interval
-                if (!endInterval.isAfter(tickTime)) {
-                    // Tick after the interval
-                    // --> Adding a new begin index
-                    beginIndexes.add(i);
-                }
-
-                // Building the new interval before next split
-                beginInterval = endInterval.isBefore(tickTime) ? tickTime : endInterval;
-                endInterval = beginInterval.plus(splitPeriod);
-            }
-        }
-        return beginIndexes;
     }
 
     /**

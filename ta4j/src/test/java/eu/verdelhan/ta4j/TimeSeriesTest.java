@@ -41,8 +41,6 @@ public class TimeSeriesTest {
 
     private TimeSeries defaultSeries;
 
-    private TimeSeries subSeries;
-
     private TimeSeries emptySeries;
 
     private TimeSeries seriesForRun;
@@ -70,7 +68,6 @@ public class TimeSeriesTest {
         defaultName = "Series Name";
 
         defaultSeries = new TimeSeries(defaultName, ticks);
-        subSeries = defaultSeries.subseries(2, 4);
         emptySeries = new TimeSeries();
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         seriesForRun = new MockTimeSeries(
@@ -93,14 +90,10 @@ public class TimeSeriesTest {
 
     @Test
     public void getEndGetBeginGetTickCount() {
-        // Original series
+        // Default series
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(ticks.size() - 1, defaultSeries.getEndIndex());
         assertEquals(ticks.size(), defaultSeries.getTickCount());
-        // Sub-series
-        assertEquals(2, subSeries.getBeginIndex());
-        assertEquals(4, subSeries.getEndIndex());
-        assertEquals(3, subSeries.getTickCount());
         // Empty series
         assertEquals(-1, emptySeries.getBeginIndex());
         assertEquals(-1, emptySeries.getEndIndex());
@@ -109,12 +102,9 @@ public class TimeSeriesTest {
 
     @Test
     public void getSeriesPeriodDescription() {
-        // Original series
+        // Default series
         assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(ticks.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(ticks.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        // Sub-series
-        assertTrue(subSeries.getSeriesPeriodDescription().endsWith(ticks.get(subSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(subSeries.getSeriesPeriodDescription().startsWith(ticks.get(subSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
@@ -122,7 +112,6 @@ public class TimeSeriesTest {
     @Test
     public void getName() {
         assertEquals(defaultName, defaultSeries.getName());
-        assertEquals(defaultName, subSeries.getName());
     }
 
     @Test
@@ -160,11 +149,6 @@ public class TimeSeriesTest {
         Tick tick = defaultSeries.getTick(4);
         defaultSeries.setMaximumTickCount(2);
         assertEquals(tick, defaultSeries.getTick(4));
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void maximumTickCountOnSubserieShouldThrowException() {
-        subSeries.setMaximumTickCount(10);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -216,193 +200,6 @@ public class TimeSeriesTest {
         assertEquals(2, defaultSeries.getTickCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
-    }
-
-    @Test
-    public void subseriesWithIndexes() {
-        TimeSeries subSeries2 = defaultSeries.subseries(2, 5);
-        assertEquals(defaultSeries.getName(), subSeries2.getName());
-        assertEquals(2, subSeries2.getBeginIndex());
-        assertNotEquals(defaultSeries.getBeginIndex(), subSeries2.getBeginIndex());
-        assertEquals(5, subSeries2.getEndIndex());
-        assertEquals(defaultSeries.getEndIndex(), subSeries2.getEndIndex());
-        assertEquals(4, subSeries2.getTickCount());
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void subseriesOnSeriesWithMaximumTickCountShouldThrowException() {
-        defaultSeries.setMaximumTickCount(3);
-        defaultSeries.subseries(0, 1);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void subseriesWithInvalidIndexesShouldThrowException() {
-        defaultSeries.subseries(4, 2);
-    }
-
-    @Test
-    public void subseriesWithDuration() {
-        TimeSeries subSeries2 = defaultSeries.subseries(1, Duration.ofDays(14));
-        assertEquals(defaultSeries.getName(), subSeries2.getName());
-        assertEquals(1, subSeries2.getBeginIndex());
-        assertNotEquals(defaultSeries.getBeginIndex(), subSeries2.getBeginIndex());
-        assertEquals(4, subSeries2.getEndIndex());
-        assertNotEquals(defaultSeries.getEndIndex(), subSeries2.getEndIndex());
-        assertEquals(4, subSeries2.getTickCount());
-    }
-    
-    @Test
-    public void subseriesWithPeriod() {
-        TimeSeries subSeries2 = defaultSeries.subseries(1, Period.ofDays(14));
-        assertEquals(defaultSeries.getName(), subSeries2.getName());
-        assertEquals(1, subSeries2.getBeginIndex());
-        assertNotEquals(defaultSeries.getBeginIndex(), subSeries2.getBeginIndex());
-        assertEquals(4, subSeries2.getEndIndex());
-        assertNotEquals(defaultSeries.getEndIndex(), subSeries2.getEndIndex());
-        assertEquals(4, subSeries2.getTickCount());
-    }
-
-    @Test
-    public void splitEvery3Ticks() {
-        TimeSeries series = new MockTimeSeries(
-                date.withYear(2010),
-                date.withYear(2011),
-                date.withYear(2012),
-                date.withYear(2015),
-                date.withYear(2016),
-                date.withYear(2017),
-                date.withYear(2018),
-                date.withYear(2019));
-
-        List<TimeSeries> subseries = series.split(3);
-
-        assertEquals(3, subseries.size());
-
-        assertEquals(0, subseries.get(0).getBeginIndex());
-        assertEquals(2, subseries.get(0).getEndIndex());
-
-        assertEquals(3, subseries.get(1).getBeginIndex());
-        assertEquals(5, subseries.get(1).getEndIndex());
-
-        assertEquals(6, subseries.get(2).getBeginIndex());
-        assertEquals(7, subseries.get(2).getEndIndex());
-    }
-
-    @Test
-    public void splitByYearForTwoYearsSubseries() {
-
-        TimeSeries series = new MockTimeSeries(
-                date.withYear(2010),
-                date.withYear(2011),
-                date.withYear(2012),
-                date.withYear(2015),
-                date.withYear(2016));
-
-        List<TimeSeries> subseries = series.split(Duration.ofDays(365), Duration.ofDays(730));
-
-        assertEquals(5, subseries.size());
-
-        assertEquals(0, subseries.get(0).getBeginIndex());
-        assertEquals(1, subseries.get(0).getEndIndex());
-
-        assertEquals(1, subseries.get(1).getBeginIndex());
-        assertEquals(2, subseries.get(1).getEndIndex());
-
-        assertEquals(2, subseries.get(2).getBeginIndex());
-        assertEquals(2, subseries.get(2).getEndIndex());
-
-        assertEquals(4, subseries.get(4).getBeginIndex());
-        assertEquals(4, subseries.get(4).getEndIndex());
-    }
-
-    @Test
-    public void splitByMonthForOneWeekSubseries() {
-
-        TimeSeries series = new MockTimeSeries(
-                date.withMonth(04),
-                date.withMonth(05),
-                date.withMonth(07));
-
-        List<TimeSeries> subseries = series.split(Duration.ofDays(30), Duration.ofDays(7));
-
-        assertEquals(3, subseries.size());
-
-        assertEquals(0, subseries.get(0).getBeginIndex());
-        assertEquals(0, subseries.get(0).getEndIndex());
-
-        assertEquals(1, subseries.get(1).getBeginIndex());
-        assertEquals(1, subseries.get(1).getEndIndex());
-
-        assertEquals(2, subseries.get(2).getBeginIndex());
-        assertEquals(2, subseries.get(2).getEndIndex());
-    }
-
-    @Test
-    public void splitByHour() {
-
-        ZonedDateTime time = ZonedDateTime.now().withHour(10).withMinute(0).withSecond(0);
-        TimeSeries series = new MockTimeSeries(
-                time,
-                time.plusMinutes(1),
-                time.plusMinutes(2),
-                time.plusMinutes(10),
-                time.plusMinutes(15),
-                time.plusMinutes(25),
-                time.plusHours(1),
-                time.plusHours(5),
-                time.plusHours(10).plusMinutes(10),
-                time.plusHours(10).plusMinutes(20),
-                time.plusHours(10).plusMinutes(30));
-
-        List<TimeSeries> subseries = series.split(Duration.ofHours(1));
-
-        assertEquals(4, subseries.size());
-
-        assertEquals(0, subseries.get(0).getBeginIndex());
-        assertEquals(5, subseries.get(0).getEndIndex());
-
-        assertEquals(6, subseries.get(1).getBeginIndex());
-        assertEquals(6, subseries.get(1).getEndIndex());
-
-        assertEquals(7, subseries.get(2).getBeginIndex());
-        assertEquals(7, subseries.get(2).getEndIndex());
-
-        assertEquals(8, subseries.get(3).getBeginIndex());
-        assertEquals(10, subseries.get(3).getEndIndex());
-    }
-    
-    @Test
-    public void splitByDay() {
-
-        ZonedDateTime time = ZonedDateTime.now().withHour(10).withMinute(0).withSecond(0);
-        TimeSeries series = new MockTimeSeries(
-                time,
-                time.plusHours(1),
-                time.plusHours(2),
-                time.plusHours(10),
-                time.plusHours(15),
-                time.plusHours(20),
-                time.plusDays(1),
-                time.plusDays(5),
-                time.plusDays(10).plusHours(5),
-                time.plusDays(10).plusHours(10),
-                time.plusDays(10).plusHours(20));
-
-        List<TimeSeries> subseries = series.split(Period.ofDays(1));
-
-        assertEquals(4, subseries.size());
-
-        assertEquals(0, subseries.get(0).getBeginIndex());
-        assertEquals(5, subseries.get(0).getEndIndex());
-
-        assertEquals(6, subseries.get(1).getBeginIndex());
-        assertEquals(6, subseries.get(1).getEndIndex());
-
-        assertEquals(7, subseries.get(2).getBeginIndex());
-        assertEquals(7, subseries.get(2).getEndIndex());
-
-        assertEquals(8, subseries.get(3).getBeginIndex());
-        assertEquals(10, subseries.get(3).getEndIndex());
     }
 
     @Test

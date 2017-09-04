@@ -184,26 +184,6 @@ public class CashFlowTest {
     }
 
     @Test
-    public void cashFlowWithConstrainedSeries() {
-        MockTimeSeries series = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
-        TimeSeries constrained = series.subseries(4, 8);
-        TradingRecord tradingRecord = new TradingRecord(
-                Order.buyAt(4), Order.sellAt(5),
-                Order.buyAt(6), Order.sellAt(8));
-        
-        CashFlow flow = new CashFlow(constrained, tradingRecord);
-        assertDecimalEquals(flow.getValue(0), 1);
-        assertDecimalEquals(flow.getValue(1), 1);
-        assertDecimalEquals(flow.getValue(2), 1);
-        assertDecimalEquals(flow.getValue(3), 1);
-        assertDecimalEquals(flow.getValue(4), 1);
-        assertDecimalEquals(flow.getValue(5), "0.75");
-        assertDecimalEquals(flow.getValue(6), "0.75");
-        assertDecimalEquals(flow.getValue(7), "1.125");
-        assertDecimalEquals(flow.getValue(8), "0.45");
-    }
-
-    @Test
     public void reallyLongCashFlow() {
         int size = 1000000;
         TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Tick) new MockTick(10)));
