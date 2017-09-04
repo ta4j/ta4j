@@ -22,6 +22,7 @@
  */
 package ta4jexamples.loaders;
 
+import eu.verdelhan.ta4j.BaseTick;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import java.io.IOException;
@@ -119,7 +120,7 @@ public class CsvTradesLoader {
         ZonedDateTime tickEndTime = beginTime;
         do {
             tickEndTime = tickEndTime.plus(tickDuration);
-            emptyTicks.add(new Tick(tickDuration, tickEndTime));
+            emptyTicks.add(new BaseTick(tickDuration, tickEndTime));
         } while (tickEndTime.isBefore(endTime));
 
         return emptyTicks;

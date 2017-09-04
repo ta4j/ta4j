@@ -23,6 +23,7 @@
 package ta4jexamples.bots;
 
 import eu.verdelhan.ta4j.BaseStrategy;
+import eu.verdelhan.ta4j.BaseTick;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Strategy;
@@ -107,7 +108,7 @@ public class TradingBotOnMovingTimeSeries {
         Decimal maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(Decimal.valueOf(Math.random()))));
         Decimal closePrice = randDecimal(minPrice, maxPrice);
         LAST_TICK_CLOSE_PRICE = closePrice;
-        return new Tick(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, Decimal.ONE);
+        return new BaseTick(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, Decimal.ONE);
     }
 
     public static void main(String[] args) throws InterruptedException {

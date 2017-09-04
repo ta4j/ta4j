@@ -23,6 +23,7 @@
 package ta4jexamples.loaders;
 
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.BaseTick;
 import eu.verdelhan.ta4j.Tick;
 import java.io.IOException;
 import java.io.InputStream;
@@ -66,7 +67,7 @@ public class CsvTicksLoader {
                 double close = Double.parseDouble(line[4]);
                 double volume = Double.parseDouble(line[5]);
 
-                ticks.add(new Tick(date, open, high, low, close, volume));
+                ticks.add(new BaseTick(date, open, high, low, close, volume));
             }
         } catch (IOException ioe) {
             Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Unable to load ticks from CSV", ioe);

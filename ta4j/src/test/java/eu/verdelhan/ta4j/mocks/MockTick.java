@@ -22,16 +22,15 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
-import java.time.Duration;
 import java.time.ZonedDateTime;
 
+import eu.verdelhan.ta4j.BaseTick;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Tick;
 
 /**
  * A mock tick with sample data.
  */
-public class MockTick extends Tick {
+public class MockTick extends BaseTick {
 
     private Decimal amount = Decimal.ZERO;
 

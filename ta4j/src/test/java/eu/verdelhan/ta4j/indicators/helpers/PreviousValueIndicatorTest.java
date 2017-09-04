@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.helpers;
 
+import eu.verdelhan.ta4j.BaseTick;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.EMAIndicator;
@@ -59,7 +60,7 @@ public class PreviousValueIndicatorTest {
             double max = Math.max(close+r.nextDouble(), open+r.nextDouble());
             double min = Math.min(0, Math.min(close-r.nextDouble(), open-r.nextDouble()));
             ZonedDateTime dateTime = ZonedDateTime.now();
-            Tick tick = new Tick(dateTime, open, close, max, min, i);
+            Tick tick = new BaseTick(dateTime, open, close, max, min, i);
             ticks.add(tick);
         }
         this.series = new TimeSeries("test", ticks);

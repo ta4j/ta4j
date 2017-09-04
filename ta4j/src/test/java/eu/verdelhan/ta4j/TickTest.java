@@ -42,7 +42,7 @@ public class TickTest {
     public void setUp() {
         beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        tick = new Tick(Duration.ofHours(1), endTime);
+        tick = new BaseTick(Duration.ofHours(1), endTime);
     }
 
     @Test
