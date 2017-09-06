@@ -150,6 +150,7 @@ public class CashFlowTest {
 
     @Test
     public void cashFlowValue() {
+    	// First sample series
         TimeSeries sampleTimeSeries = new MockTimeSeries(3d, 2d, 5d, 1000d, 5000d, 0.0001d, 4d, 7d,
                 6d, 7d, 8d, 5d, 6d);
         TradingRecord tradingRecord = new TradingRecord(
@@ -172,6 +173,23 @@ public class CashFlowTest {
         assertDecimalEquals(cashFlow.getValue(10), 5d/3 * 6d/4 * 8d/7);
         assertDecimalEquals(cashFlow.getValue(11), 5d/3 * 6d/4 * 5d/7);
         assertDecimalEquals(cashFlow.getValue(12), 5d/3 * 6d/4 * 5d/7);
+        
+        // Second sample series
+        sampleTimeSeries = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
+		tradingRecord = new TradingRecord(
+				Order.buyAt(4), Order.sellAt(5),
+				Order.buyAt(6), Order.sellAt(8));
+
+		CashFlow flow = new CashFlow(sampleTimeSeries, tradingRecord);
+		assertDecimalEquals(flow.getValue(0), 1);
+		assertDecimalEquals(flow.getValue(1), 1);
+		assertDecimalEquals(flow.getValue(2), 1);
+		assertDecimalEquals(flow.getValue(3), 1);
+		assertDecimalEquals(flow.getValue(4), 1);
+		assertDecimalEquals(flow.getValue(5), "0.75");
+		assertDecimalEquals(flow.getValue(6), "0.75");
+		assertDecimalEquals(flow.getValue(7), "1.125");
+		assertDecimalEquals(flow.getValue(8), "0.45");
     }
 
     @Test
@@ -182,7 +200,7 @@ public class CashFlowTest {
         assertDecimalEquals(cashFlow.getValue(7), 1);
         assertDecimalEquals(cashFlow.getValue(9), 1);
     }
-
+    
     @Test
     public void reallyLongCashFlow() {
         int size = 1000000;

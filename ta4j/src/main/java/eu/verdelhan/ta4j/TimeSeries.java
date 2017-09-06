@@ -37,29 +37,31 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Notably, a {@link TimeSeries time series} can be:
  * <ul>
- * <li>splitted into sub-series
  * <li>the base of {@link Indicator indicator} calculations
+ * <li>constrained between begin and end indexes (e.g. for some backtesting cases)
  * <li>limited to a fixed number of ticks (e.g. for actual trading)
  * <li>used to run {@link Strategy trading strategies}
  * </ul>
  */
 public class TimeSeries implements Serializable {
 
-	private static final long serialVersionUID = -1878027009398790126L;
-	/** The logger */
+    private static final long serialVersionUID = -1878027009398790126L;
+    /** The logger */
     private final Logger log = LoggerFactory.getLogger(getClass());
     /** Name of the series */
     private final String name;
     /** Begin index of the time series */
-    private int beginIndex = -1;
+    private int seriesBeginIndex = -1;
     /** End index of the time series */
-    private int endIndex = -1;
+    private int seriesEndIndex = -1;
     /** List of ticks */
     private final List<Tick> ticks;
     /** Maximum number of ticks for the time series */
     private int maximumTickCount = Integer.MAX_VALUE;
     /** Number of removed ticks */
     private int removedTicksCount = 0;
+    /** True if the current series is constrained (i.e. its indexes cannot change), false otherwise */
+    private boolean constrained = false;
 
     /**
      * Constructor.
@@ -67,7 +69,7 @@ public class TimeSeries implements Serializable {
      * @param ticks the list of ticks of the series
      */
     public TimeSeries(String name, List<Tick> ticks) {
-        this(name, ticks, 0, ticks.size() - 1);
+        this(name, ticks, 0, ticks.size() - 1, false);
     }
 
     /**
@@ -96,30 +98,37 @@ public class TimeSeries implements Serializable {
 
     /**
      * Constructor.
-     * @param series
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param endIndex the end index (inclusive) of the time series
+     * <p>
+     * Constructs a constrained time series from an original one.
+     * @param series the original time series to construct a constrained series from
+     * @param seriesBeginIndex the begin index (inclusive) of the time series
+     * @param seriesEndIndex the end index (inclusive) of the time series
      */
-    public TimeSeries(TimeSeries series, int beginIndex, int endIndex) {
-        this(series.name, series.ticks, beginIndex, endIndex);
+    public TimeSeries(TimeSeries series, int seriesBeginIndex, int seriesEndIndex) {
+        this(series.name, series.ticks, seriesBeginIndex, seriesEndIndex, true);
+        if (series.maximumTickCount != Integer.MAX_VALUE) {
+            throw new IllegalStateException("Cannot create a constrained series from a time series for which a maximum tick count has been set");
+        }
     }
 
     /**
      * Constructor.
      * @param name the name of the series
      * @param ticks the list of ticks of the series
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param endIndex the end index (inclusive) of the time series
+     * @param seriesBeginIndex the begin index (inclusive) of the time series
+     * @param seriesEndIndex the end index (inclusive) of the time series
+     * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
      */
-    private TimeSeries(String name, List<Tick> ticks, int beginIndex, int endIndex) {
+    private TimeSeries(String name, List<Tick> ticks, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
         // TODO: add null checks and out of bounds checks
-        if (endIndex < beginIndex - 1) {
+        if (seriesEndIndex < seriesBeginIndex - 1) {
             throw new IllegalArgumentException("end cannot be < than begin - 1");
         }
         this.name = name;
         this.ticks = ticks;
-        this.beginIndex = beginIndex;
-        this.endIndex = endIndex;
+        this.seriesBeginIndex = seriesBeginIndex;
+        this.seriesEndIndex = seriesEndIndex;
+        this.constrained = constrained;
     }
 
     /**
@@ -156,39 +165,39 @@ public class TimeSeries implements Serializable {
      * @return the first tick of the series
      */
     public Tick getFirstTick() {
-        return getTick(beginIndex);
+        return getTick(seriesBeginIndex);
     }
 
     /**
      * @return the last tick of the series
      */
     public Tick getLastTick() {
-        return getTick(endIndex);
+        return getTick(seriesEndIndex);
     }
 
     /**
      * @return the number of ticks in the series
      */
     public int getTickCount() {
-        if (endIndex < 0) {
+        if (seriesEndIndex < 0) {
             return 0;
         }
-        final int startIndex = Math.max(removedTicksCount, beginIndex);
-        return endIndex - startIndex + 1;
+        final int startIndex = Math.max(removedTicksCount, seriesBeginIndex);
+        return seriesEndIndex - startIndex + 1;
     }
 
     /**
      * @return the begin index of the series
      */
     public int getBeginIndex() {
-        return beginIndex;
+        return seriesBeginIndex;
     }
 
     /**
      * @return the end index of the series
      */
     public int getEndIndex() {
-        return endIndex;
+        return seriesEndIndex;
     }
 
     /**
@@ -214,6 +223,9 @@ public class TimeSeries implements Serializable {
      * @param maximumTickCount the maximum tick count
      */
     public void setMaximumTickCount(int maximumTickCount) {
+        if (constrained) {
+            throw new IllegalStateException("Cannot set a maximum tick count on a constrained time series");
+        }
         if (maximumTickCount <= 0) {
             throw new IllegalArgumentException("Maximum tick count must be strictly positive");
         }
@@ -257,11 +269,11 @@ public class TimeSeries implements Serializable {
         }
 
         ticks.add(tick);
-        if (beginIndex == -1) {
+        if (seriesBeginIndex == -1) {
             // Begin index set to 0 only if if wasn't initialized
-            beginIndex = 0;
+            seriesBeginIndex = 0;
         }
-        endIndex++;
+        seriesEndIndex++;
         removeExceedingTicks();
     }
 
@@ -277,6 +289,19 @@ public class TimeSeries implements Serializable {
     }
 
     /**
+     * Runs the strategy over the series (from startIndex to finishIndex).
+     * <p>
+     * Opens the trades with {@link OrderType.BUY} orders.
+     * @param strategy the trading strategy
+     * @param startIndex the start index for the run (included)
+     * @param finishIndex the finish index for the run (included)
+     * @return the trading record coming from the run
+     */
+    public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
+        return run(strategy, OrderType.BUY, Decimal.NaN, startIndex, finishIndex);
+    }
+
+    /**
      * Runs the strategy over the series.
      * <p>
      * Opens the trades with {@link OrderType.BUY} orders.
@@ -289,6 +314,20 @@ public class TimeSeries implements Serializable {
     }
 
     /**
+     * Runs the strategy over the series (from startIndex to finishIndex).
+     * <p>
+     * Opens the trades with {@link OrderType.BUY} orders.
+     * @param strategy the trading strategy
+     * @param orderType the {@link OrderType} used to open the trades
+     * @param startIndex the start index for the run (included)
+     * @param finishIndex the finish index for the run (included)
+     * @return the trading record coming from the run
+     */
+    public TradingRecord run(Strategy strategy, OrderType orderType, int startIndex, int finishIndex) {
+        return run(strategy, orderType, Decimal.NaN, startIndex, finishIndex);
+    }
+
+    /**
      * Runs the strategy over the series.
      * <p>
      * @param strategy the trading strategy
@@ -297,21 +336,38 @@ public class TimeSeries implements Serializable {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount) {
+        return run(strategy, orderType, amount, seriesBeginIndex, seriesEndIndex);
+    }
 
-        log.trace("Running strategy: {} (starting with {})", strategy, orderType);
+    /**
+     * Runs the strategy over the series (from startIndex to finishIndex).
+     * <p>
+     * @param strategy the trading strategy
+     * @param orderType the {@link OrderType} used to open the trades
+     * @param amount the amount used to open/close the trades
+     * @param startIndex the start index for the run (included)
+     * @param finishIndex the finish index for the run (included)
+     * @return the trading record coming from the run
+     */
+    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount, int startIndex, int finishIndex) {
+
+        int runBeginIndex = Math.max(startIndex, seriesBeginIndex);
+        int runEndIndex = Math.min(finishIndex, seriesEndIndex);
+        
+        log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy, orderType);
         TradingRecord tradingRecord = new TradingRecord(orderType);
-        for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick in the sub-series...       
+        for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            // For each tick between both indexes...       
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
             }
         }
 
         if (!tradingRecord.isClosed()) {
-            // If the last trade is still opened, we search out of the end index.
-            // May works if the current series is a sub-series (but not the last sub-series).
-            for (int i = endIndex + 1; i < ticks.size(); i++) {
-                // For each tick out of sub-series bound...
+            // If the last trade is still opened, we search out of the run end index.
+            // May works if the end index for this run was inferior to the actual number of ticks
+            for (int i = runEndIndex + 1; i < ticks.size(); i++) {
+                // For each tick after the end index of this run...
                 // --> Trying to close the last trade
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
