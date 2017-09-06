@@ -46,6 +46,8 @@ import org.slf4j.LoggerFactory;
 public class TimeSeries implements Serializable {
 
     private static final long serialVersionUID = -1878027009398790126L;
+    /** Name for unamed series */
+    private static final String UNNAMED_SERIES_NAME = "unamed_series";
     /** The logger */
     private final Logger log = LoggerFactory.getLogger(getClass());
     /** Name of the series */
@@ -64,6 +66,29 @@ public class TimeSeries implements Serializable {
     private boolean constrained = false;
 
     /**
+     * Constructor of an unnamed series.
+     */
+    public TimeSeries() {
+        this(UNNAMED_SERIES_NAME);
+    }
+
+    /**
+     * Constructor.
+     * @param name the name of the series
+     */
+    public TimeSeries(String name) {
+        this(name, new ArrayList<Tick>());
+    }
+
+    /**
+     * Constructor of an unnamed series.
+     * @param ticks the list of ticks of the series
+     */
+    public TimeSeries(List<Tick> ticks) {
+        this(UNNAMED_SERIES_NAME, ticks);
+    }
+
+    /**
      * Constructor.
      * @param name the name of the series
      * @param ticks the list of ticks of the series
@@ -73,40 +98,19 @@ public class TimeSeries implements Serializable {
     }
 
     /**
-     * Constructor of an unnamed series.
-     * @param ticks the list of ticks of the series
-     */
-    public TimeSeries(List<Tick> ticks) {
-        this("unnamed", ticks);
-    }
-
-    /**
-     * Constructor.
-     * @param name the name of the series
-     */
-    public TimeSeries(String name) {
-        this.name = name;
-        this.ticks = new ArrayList<Tick>();
-    }
-
-    /**
-     * Constructor of an unnamed series.
-     */
-    public TimeSeries() {
-        this("unamed");
-    }
-
-    /**
      * Constructor.
      * <p>
      * Constructs a constrained time series from an original one.
-     * @param series the original time series to construct a constrained series from
+     * @param origSeries the original time series to construct a constrained series from
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex the end index (inclusive) of the time series
      */
-    public TimeSeries(TimeSeries series, int seriesBeginIndex, int seriesEndIndex) {
-        this(series.name, series.ticks, seriesBeginIndex, seriesEndIndex, true);
-        if (series.maximumTickCount != Integer.MAX_VALUE) {
+    public TimeSeries(TimeSeries origSeries, int seriesBeginIndex, int seriesEndIndex) {
+        this(origSeries.name, origSeries.ticks, seriesBeginIndex, seriesEndIndex, true);
+        if (origSeries.ticks == null || origSeries.ticks.isEmpty()) {
+            throw new IllegalArgumentException("Cannot create a constrained series from a time series with a null/empty list of ticks");
+        }
+        if (origSeries.maximumTickCount != Integer.MAX_VALUE) {
             throw new IllegalStateException("Cannot create a constrained series from a time series for which a maximum tick count has been set");
         }
     }
@@ -120,12 +124,22 @@ public class TimeSeries implements Serializable {
      * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
      */
     private TimeSeries(String name, List<Tick> ticks, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        // TODO: add null checks and out of bounds checks
-        if (seriesEndIndex < seriesBeginIndex - 1) {
-            throw new IllegalArgumentException("end cannot be < than begin - 1");
-        }
         this.name = name;
-        this.ticks = ticks;
+        this.ticks = ticks == null ? new ArrayList<>() : ticks;
+        if (ticks.isEmpty()) {
+        	// Tick list empty
+            this.seriesBeginIndex = -1;
+            this.seriesEndIndex = -1;
+            this.constrained = false;
+            return;
+        }
+        // Tick list not empty: checking indexes
+        if (seriesEndIndex < seriesBeginIndex - 1) {
+            throw new IllegalArgumentException("End index must be >= to begin index - 1");
+        }
+        if (seriesEndIndex >= ticks.size()) {
+        	throw new IllegalArgumentException("End index must be < to the tick list size");
+        }
         this.seriesBeginIndex = seriesBeginIndex;
         this.seriesEndIndex = seriesEndIndex;
         this.constrained = constrained;
@@ -186,6 +200,13 @@ public class TimeSeries implements Serializable {
         return seriesEndIndex - startIndex + 1;
     }
 
+    /**
+     * @return true if the series is empty, false otherwise
+     */
+    public boolean isEmpty() {
+    	return getTickCount() == 0;
+    }
+    
     /**
      * @return the begin index of the series
      */

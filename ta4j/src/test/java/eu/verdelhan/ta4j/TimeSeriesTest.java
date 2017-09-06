@@ -86,19 +86,22 @@ public class TimeSeriesTest {
     }
 
     @Test
-    public void getEndGetBeginGetTickCount() {
+    public void getEndGetBeginGetTickCountIsEmpty() {
         // Default series
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(ticks.size() - 1, defaultSeries.getEndIndex());
         assertEquals(ticks.size(), defaultSeries.getTickCount());
+        assertFalse(defaultSeries.isEmpty());
         // Constrained series
         assertEquals(2, constrainedSeries.getBeginIndex());
         assertEquals(4, constrainedSeries.getEndIndex());
         assertEquals(3, constrainedSeries.getTickCount());
+        assertFalse(constrainedSeries.isEmpty());
         // Empty series
         assertEquals(-1, emptySeries.getBeginIndex());
         assertEquals(-1, emptySeries.getEndIndex());
         assertEquals(0, emptySeries.getTickCount());
+        assertTrue(emptySeries.isEmpty());
     }
 
     @Test
