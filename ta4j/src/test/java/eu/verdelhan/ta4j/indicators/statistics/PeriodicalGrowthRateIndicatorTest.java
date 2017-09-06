@@ -28,6 +28,7 @@ import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import eu.verdelhan.ta4j.trading.rules.CrossedDownIndicatorRule;
@@ -39,19 +40,22 @@ import org.junit.Before;
 
 public class PeriodicalGrowthRateIndicatorTest {
 
-    private TimeSeries mockdata;
+    private TimeSeries mockSeries;
+    
+    private TimeSeriesManager seriesManager;
     
     private ClosePriceIndicator closePrice;
     
     @Before
     public void setUp() {
-        mockdata = new MockTimeSeries(
+        mockSeries = new MockTimeSeries(
                 29.49, 28.30, 27.74, 27.65, 27.60, 28.70, 28.60,
                 28.19, 27.40, 27.20, 27.28, 27.00, 27.59, 26.20,
                 25.75, 24.75, 23.33, 24.45, 24.25, 25.02, 23.60,
                 24.20, 24.28, 25.70, 25.46, 25.10, 25.00, 25.00,
                 25.85);
-        closePrice = new ClosePriceIndicator(mockdata);
+        seriesManager = new TimeSeriesManager(mockSeries);
+        closePrice = new ClosePriceIndicator(mockSeries);
     }
 
     @Test
@@ -89,7 +93,7 @@ public class PeriodicalGrowthRateIndicatorTest {
         Strategy strategy = new BaseStrategy(buyingRule, sellingRule);
                 
         // Check trades
-        int result = mockdata.run(strategy).getTradeCount();             
+        int result = seriesManager.run(strategy).getTradeCount();             
         int expResult = 3;
         
         assertEquals(expResult, result);

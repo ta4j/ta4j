@@ -27,6 +27,8 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
+
 import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -70,6 +72,7 @@ public class StrategyExecutionLogging {
         Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
 
         // Running the strategy
-        series.run(strategy);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        seriesManager.run(strategy);
     }
 }

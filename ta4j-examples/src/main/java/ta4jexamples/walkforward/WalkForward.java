@@ -25,6 +25,7 @@ package ta4jexamples.walkforward;
 import eu.verdelhan.ta4j.AnalysisCriterion;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import java.util.ArrayList;
@@ -169,15 +170,16 @@ public class WalkForward {
         for (TimeSeries slice : subseries) {
             // For each sub-series...
             System.out.println("Sub-series: " + slice.getSeriesPeriodDescription());
+            TimeSeriesManager sliceManager = new TimeSeriesManager(slice);
             for (Map.Entry<Strategy, String> entry : strategies.entrySet()) {
                 Strategy strategy = entry.getKey();
                 String name = entry.getValue();
                 // For each strategy...
-                TradingRecord tradingRecord = slice.run(strategy);
+                TradingRecord tradingRecord = sliceManager.run(strategy);
                 double profit = profitCriterion.calculate(slice, tradingRecord);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
-            Strategy bestStrategy = profitCriterion.chooseBest(slice, new ArrayList<Strategy>(strategies.keySet()));
+            Strategy bestStrategy = profitCriterion.chooseBest(sliceManager, new ArrayList<Strategy>(strategies.keySet()));
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }
     }

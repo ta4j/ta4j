@@ -27,6 +27,7 @@ import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
@@ -88,7 +89,8 @@ public class RSI2Strategy {
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        TradingRecord tradingRecord = series.run(strategy);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis

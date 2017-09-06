@@ -50,18 +50,18 @@ public interface AnalysisCriterion {
     double calculate(TimeSeries series, TradingRecord tradingRecord);
 
     /**
-     * @param series the time series
+     * @param manager the time series manager
      * @param strategies a list of strategies
      * @return the best strategy (among the provided ones) according to the criterion
      */
-    default Strategy chooseBest(TimeSeries series, List<Strategy> strategies) {
+    default Strategy chooseBest(TimeSeriesManager manager, List<Strategy> strategies) {
 
         Strategy bestStrategy = strategies.get(0);
-        double bestCriterionValue = calculate(series, series.run(bestStrategy));
+        double bestCriterionValue = calculate(manager.getTimeSeries(), manager.run(bestStrategy));
 
         for (int i = 1; i < strategies.size(); i++) {
             Strategy currentStrategy = strategies.get(i);
-            double currentCriterionValue = calculate(series, series.run(currentStrategy));
+            double currentCriterionValue = calculate(manager.getTimeSeries(), manager.run(currentStrategy));
 
             if (betterThan(currentCriterionValue, bestCriterionValue)) {
                 bestStrategy = currentStrategy;

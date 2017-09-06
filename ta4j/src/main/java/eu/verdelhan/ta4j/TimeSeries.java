@@ -22,8 +22,6 @@
  */
 package eu.verdelhan.ta4j;
 
-import eu.verdelhan.ta4j.Order.OrderType;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +38,6 @@ import org.slf4j.LoggerFactory;
  * <li>the base of {@link Indicator indicator} calculations
  * <li>constrained between begin and end indexes (e.g. for some backtesting cases)
  * <li>limited to a fixed number of ticks (e.g. for actual trading)
- * <li>used to run {@link Strategy trading strategies}
  * </ul>
  */
 public class TimeSeries implements Serializable {
@@ -208,6 +205,20 @@ public class TimeSeries implements Serializable {
     }
     
     /**
+     * Warning: should be used carefully!
+     * <p>
+     * Returns the raw tick data.
+     * It means that it returns the current List object used internally to store the {@link Tick ticks}.
+     * It may be:
+     *   - a shortened tick list if a maximum tick count has been set
+     *   - a extended tick list if it is a constrained time series
+     * @return the raw tick data
+     */
+    protected List<Tick> getTickData() {
+    	return ticks;
+    }
+    
+    /**
      * @return the begin index of the series
      */
     public int getBeginIndex() {
@@ -296,107 +307,6 @@ public class TimeSeries implements Serializable {
         }
         seriesEndIndex++;
         removeExceedingTicks();
-    }
-
-    /**
-     * Runs the strategy over the series.
-     * <p>
-     * Opens the trades with {@link OrderType.BUY} orders.
-     * @param strategy the trading strategy
-     * @return the trading record coming from the run
-     */
-    public TradingRecord run(Strategy strategy) {
-        return run(strategy, OrderType.BUY);
-    }
-
-    /**
-     * Runs the strategy over the series (from startIndex to finishIndex).
-     * <p>
-     * Opens the trades with {@link OrderType.BUY} orders.
-     * @param strategy the trading strategy
-     * @param startIndex the start index for the run (included)
-     * @param finishIndex the finish index for the run (included)
-     * @return the trading record coming from the run
-     */
-    public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, OrderType.BUY, Decimal.NaN, startIndex, finishIndex);
-    }
-
-    /**
-     * Runs the strategy over the series.
-     * <p>
-     * Opens the trades with {@link OrderType.BUY} orders.
-     * @param strategy the trading strategy
-     * @param orderType the {@link OrderType} used to open the trades
-     * @return the trading record coming from the run
-     */
-    public TradingRecord run(Strategy strategy, OrderType orderType) {
-        return run(strategy, orderType, Decimal.NaN);
-    }
-
-    /**
-     * Runs the strategy over the series (from startIndex to finishIndex).
-     * <p>
-     * Opens the trades with {@link OrderType.BUY} orders.
-     * @param strategy the trading strategy
-     * @param orderType the {@link OrderType} used to open the trades
-     * @param startIndex the start index for the run (included)
-     * @param finishIndex the finish index for the run (included)
-     * @return the trading record coming from the run
-     */
-    public TradingRecord run(Strategy strategy, OrderType orderType, int startIndex, int finishIndex) {
-        return run(strategy, orderType, Decimal.NaN, startIndex, finishIndex);
-    }
-
-    /**
-     * Runs the strategy over the series.
-     * <p>
-     * @param strategy the trading strategy
-     * @param orderType the {@link OrderType} used to open the trades
-     * @param amount the amount used to open/close the trades
-     * @return the trading record coming from the run
-     */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount) {
-        return run(strategy, orderType, amount, seriesBeginIndex, seriesEndIndex);
-    }
-
-    /**
-     * Runs the strategy over the series (from startIndex to finishIndex).
-     * <p>
-     * @param strategy the trading strategy
-     * @param orderType the {@link OrderType} used to open the trades
-     * @param amount the amount used to open/close the trades
-     * @param startIndex the start index for the run (included)
-     * @param finishIndex the finish index for the run (included)
-     * @return the trading record coming from the run
-     */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount, int startIndex, int finishIndex) {
-
-        int runBeginIndex = Math.max(startIndex, seriesBeginIndex);
-        int runEndIndex = Math.min(finishIndex, seriesEndIndex);
-        
-        log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy, orderType);
-        TradingRecord tradingRecord = new TradingRecord(orderType);
-        for (int i = runBeginIndex; i <= runEndIndex; i++) {
-            // For each tick between both indexes...       
-            if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
-            }
-        }
-
-        if (!tradingRecord.isClosed()) {
-            // If the last trade is still opened, we search out of the run end index.
-            // May works if the end index for this run was inferior to the actual number of ticks
-            for (int i = runEndIndex + 1; i < ticks.size(); i++) {
-                // For each tick after the end index of this run...
-                // --> Trying to close the last trade
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, ticks.get(i).getClosePrice(), amount);
-                    break;
-                }
-            }
-        }
-        return tradingRecord;
     }
 
     /**

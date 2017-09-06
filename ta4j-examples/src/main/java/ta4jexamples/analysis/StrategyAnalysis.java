@@ -24,6 +24,7 @@ package ta4jexamples.analysis;
 
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
@@ -50,7 +51,8 @@ public class StrategyAnalysis {
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        TradingRecord tradingRecord = series.run(strategy);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
 
         /**
          * Analysis criteria

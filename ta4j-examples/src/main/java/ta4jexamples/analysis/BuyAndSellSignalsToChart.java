@@ -27,6 +27,7 @@ import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
 import eu.verdelhan.ta4j.Trade;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import java.awt.Color;
@@ -78,7 +79,8 @@ public class BuyAndSellSignalsToChart {
      */
     private static void addBuySellSignals(TimeSeries series, Strategy strategy, XYPlot plot) {
         // Running the strategy
-        List<Trade> trades = series.run(strategy).getTrades();
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        List<Trade> trades = seriesManager.run(strategy).getTrades();
         // Adding markers to plot
         for (Trade trade : trades) {
             // Buy signal

@@ -27,6 +27,7 @@ import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Rule;
 import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.TimeSeriesManager;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.analysis.CashFlow;
 import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
@@ -90,7 +91,8 @@ public class Quickstart {
                 .or(new StopGainRule(closePrice, Decimal.valueOf("2")));
         
         // Running our juicy trading strategy...
-        TradingRecord tradingRecord = series.run(new BaseStrategy(buyingRule, sellingRule));
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        TradingRecord tradingRecord = seriesManager.run(new BaseStrategy(buyingRule, sellingRule));
         System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 
 
