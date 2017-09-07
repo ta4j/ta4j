@@ -24,6 +24,7 @@ package ta4jexamples.bots;
 
 import eu.verdelhan.ta4j.BaseStrategy;
 import eu.verdelhan.ta4j.BaseTick;
+import eu.verdelhan.ta4j.BaseTradingRecord;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.Strategy;
@@ -121,7 +122,7 @@ public class TradingBotOnMovingTimeSeries {
         Strategy strategy = buildStrategy(series);
         
         // Initializing the trading history
-        TradingRecord tradingRecord = new TradingRecord();
+        TradingRecord tradingRecord = new BaseTradingRecord();
         System.out.println("************************************************************");
         
         /**

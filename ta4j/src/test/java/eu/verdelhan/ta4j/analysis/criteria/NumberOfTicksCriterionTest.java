@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
+import eu.verdelhan.ta4j.BaseTradingRecord;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
@@ -38,13 +39,13 @@ public class NumberOfTicksCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(0, (int) numberOfTicks.calculate(series, new TradingRecord()));
+        assertEquals(0, (int) numberOfTicks.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new TradingRecord(
+        TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0), Order.sellAt(2),
                 Order.buyAt(3), Order.sellAt(5));
 

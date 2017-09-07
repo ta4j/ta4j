@@ -32,10 +32,10 @@ public class TradingRecordTest {
 
     @Before
     public void setUp() {
-        emptyRecord = new TradingRecord();
-        openedRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(3),
+        emptyRecord = new BaseTradingRecord();
+        openedRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(3),
                 Order.buyAt(7));
-        closedRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(3),
+        closedRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(3),
                 Order.buyAt(7), Order.sellAt(8));
     }
 
@@ -48,7 +48,7 @@ public class TradingRecordTest {
     
     @Test
     public void operate() {
-        TradingRecord record = new TradingRecord();
+        TradingRecord record = new BaseTradingRecord();
         
         record.operate(1);
         assertTrue(record.getCurrentTrade().isOpened());

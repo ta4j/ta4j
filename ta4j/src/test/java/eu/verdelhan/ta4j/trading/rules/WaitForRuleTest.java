@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.trading.rules;
 
+import eu.verdelhan.ta4j.BaseTradingRecord;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TradingRecord;
 import static org.junit.Assert.assertFalse;
@@ -36,7 +37,7 @@ public class WaitForRuleTest {
     
     @Before
     public void setUp() {
-        tradingRecord = new TradingRecord();
+        tradingRecord = new BaseTradingRecord();
     }
     
     @Test

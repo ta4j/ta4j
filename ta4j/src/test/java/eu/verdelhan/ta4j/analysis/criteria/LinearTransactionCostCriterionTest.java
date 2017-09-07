@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
+import eu.verdelhan.ta4j.BaseTradingRecord;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.Trade;
@@ -39,7 +40,7 @@ public class LinearTransactionCostCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 150, 200, 100, 50, 100);
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
 
-        TradingRecord tradingRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(1));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(1));
         assertEquals(12.861, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(2);
@@ -55,7 +56,7 @@ public class LinearTransactionCostCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 1.3d);
         
-        TradingRecord tradingRecord = new TradingRecord(Order.buyAt(0), Order.sellAt(1));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(1));
         assertEquals(2.6d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
         
         tradingRecord.operate(2);

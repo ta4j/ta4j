@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.analysis.criteria;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
+import eu.verdelhan.ta4j.BaseTradingRecord;
 import eu.verdelhan.ta4j.Order;
 import eu.verdelhan.ta4j.TATestsUtils;
 import eu.verdelhan.ta4j.TimeSeries;
@@ -38,14 +39,14 @@ public class MaximumDrawdownCriterionTest {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 
-        assertEquals(0d, mdd.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void calculateWithOnlyGains() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        TradingRecord tradingRecord = new TradingRecord(
+        TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0), Order.sellAt(1),
                 Order.buyAt(2), Order.sellAt(5));
 
@@ -56,7 +57,7 @@ public class MaximumDrawdownCriterionTest {
     public void calculateShouldWork() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        TradingRecord tradingRecord = new TradingRecord(
+        TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0), Order.sellAt(1),
                 Order.buyAt(3), Order.sellAt(4),
                 Order.buyAt(5), Order.sellAt(6));
@@ -69,14 +70,14 @@ public class MaximumDrawdownCriterionTest {
     public void calculateWithNullSeriesSizeShouldReturn0() {
         MockTimeSeries series = new MockTimeSeries(new double[] {});
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        assertEquals(0d, mdd.calculate(series, new TradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void withTradesThatSellBeforeBuying() {
         MockTimeSeries series = new MockTimeSeries(2, 1, 3, 5, 6, 3, 20);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        TradingRecord tradingRecord = new TradingRecord(
+        TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0), Order.sellAt(1),
                 Order.buyAt(3), Order.sellAt(4),
                 Order.sellAt(5), Order.buyAt(6));
@@ -87,7 +88,7 @@ public class MaximumDrawdownCriterionTest {
     public void withSimpleTrades() {
         MockTimeSeries series = new MockTimeSeries(1, 10, 5, 6, 1);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        TradingRecord tradingRecord = new TradingRecord(
+        TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0), Order.sellAt(1),
                 Order.buyAt(1), Order.sellAt(2),
                 Order.buyAt(2), Order.sellAt(3),

@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.trading.rules;
 
 import eu.verdelhan.ta4j.trading.rules.StopGainRule;
+import eu.verdelhan.ta4j.BaseTradingRecord;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TradingRecord;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
@@ -40,7 +41,7 @@ public class StopGainRuleTest {
     
     @Before
     public void setUp() {
-        tradingRecord = new TradingRecord();
+        tradingRecord = new BaseTradingRecord();
         closePrice = new ClosePriceIndicator(new MockTimeSeries(
                 100, 105, 110, 120, 150, 120, 160, 180
         ));
