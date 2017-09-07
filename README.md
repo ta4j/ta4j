@@ -6,7 +6,11 @@
 
 Ta4j is an open source Java library for [technical analysis](http://en.wikipedia.org/wiki/Technical_analysis). It provides the basic components for creation, evaluation and execution of trading strategies.
 
-> **Important note:** _Ta4j is stable and usable in version 0.9. However, due to lack of time, the project is not maintained anymore. Future PRs and issues will not be treated. See [#192](https://github.com/mdeverdelhan/ta4j/issues/192)._
+---
+
+**Important note:** _Ta4j is stable and usable in version 0.9. However, due to lack of time, the project is not maintained anymore. Future PRs and issues will not be treated. See [#192](https://github.com/mdeverdelhan/ta4j/issues/192)._
+
+---
 
 ### Features
 
