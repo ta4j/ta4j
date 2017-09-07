@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j.indicators;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -60,7 +62,7 @@ public class MassIndexIndicatorTest {
         ticks.add(new MockTick(43.56, 43.95, 43.99, 43.53));
         ticks.add(new MockTick(43.93, 44.47, 44.58, 43.93));
 
-        data = new TimeSeries(ticks);
+        data = new BaseTimeSeries(ticks);
     }
 
     @Test

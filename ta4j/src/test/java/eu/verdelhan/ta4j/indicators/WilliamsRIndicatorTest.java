@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j.indicators;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
@@ -55,7 +57,7 @@ public class WilliamsRIndicatorTest {
         ticks.add(new MockTick(45.43, 45.55, 45.60, 45.35));
         ticks.add(new MockTick(45.58, 45.55, 45.61, 45.39));
 
-        data = new TimeSeries(ticks);
+        data = new BaseTimeSeries(ticks);
     }
 
     @Test

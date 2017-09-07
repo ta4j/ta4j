@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators.statistics;
 
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
@@ -65,7 +66,7 @@ public class CovarianceIndicatorTest {
         ticks.add(new MockTick(11, 110));
         ticks.add(new MockTick(10, 95));
 
-        data = new TimeSeries(ticks);
+        data = new BaseTimeSeries(ticks);
         close = new ClosePriceIndicator(data);
         volume = new VolumeIndicator(data, 2);
     }

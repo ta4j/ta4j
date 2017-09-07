@@ -22,18 +22,17 @@
  */
 package eu.verdelhan.ta4j.mocks;
 
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 
 /**
  * A time series with sample data.
  */
-public class MockTimeSeries extends TimeSeries {
+public class MockTimeSeries extends BaseTimeSeries {
 
     public MockTimeSeries(double... data) {
         super(doublesToTicks(data));

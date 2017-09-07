@@ -25,6 +25,7 @@ package eu.verdelhan.ta4j.indicators.volume;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 
 import eu.verdelhan.ta4j.BaseTick;
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import java.time.ZonedDateTime;
@@ -70,7 +71,7 @@ public class ChaikinMoneyFlowIndicatorTest {
         ticks.add(new BaseTick(now, "0", "63.40", "61.88", "62.40", "10391.690"));
         ticks.add(new BaseTick(now, "0", "63.18", "61.11", "61.55", "8926.512"));
         ticks.add(new BaseTick(now, "0", "62.70", "61.25", "62.69", "7459.575"));
-        TimeSeries series = new TimeSeries(ticks);
+        TimeSeries series = new BaseTimeSeries(ticks);
         
         ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 20);
         

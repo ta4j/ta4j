@@ -23,6 +23,8 @@
 package eu.verdelhan.ta4j.indicators;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.mocks.MockTick;
@@ -54,7 +56,7 @@ public class StochasticOscillatorKIndicatorTest {
         ticks.add(new MockTick(45.58, 119.13, 119.13, 116.88));
         ticks.add(new MockTick(45.58, 115.38, 119.44, 114.56));
 
-        data = new TimeSeries(ticks);
+        data = new BaseTimeSeries(ticks);
     }
 
     @Test

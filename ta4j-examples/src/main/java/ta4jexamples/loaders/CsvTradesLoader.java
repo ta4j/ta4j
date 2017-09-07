@@ -23,6 +23,7 @@
 package ta4jexamples.loaders;
 
 import eu.verdelhan.ta4j.BaseTick;
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import java.io.IOException;
@@ -102,7 +103,7 @@ public class CsvTradesLoader {
             removeEmptyTicks(ticks);
         }
 
-        return new TimeSeries("bitstamp_trades", ticks);
+        return new BaseTimeSeries("bitstamp_trades", ticks);
     }
 
     /**

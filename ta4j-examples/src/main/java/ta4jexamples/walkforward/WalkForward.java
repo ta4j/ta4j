@@ -23,6 +23,7 @@
 package ta4jexamples.walkforward;
 
 import eu.verdelhan.ta4j.AnalysisCriterion;
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Strategy;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.TimeSeriesManager;
@@ -118,7 +119,7 @@ public class WalkForward {
             subseriesNbTicks++;
         }
 
-        return new TimeSeries(series, beginIndex, beginIndex + subseriesNbTicks - 1);
+        return new BaseTimeSeries(series, beginIndex, beginIndex + subseriesNbTicks - 1);
     }
 
     /**

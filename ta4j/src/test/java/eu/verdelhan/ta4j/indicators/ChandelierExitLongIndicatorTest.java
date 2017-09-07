@@ -22,6 +22,7 @@
  */
 package eu.verdelhan.ta4j.indicators;
 
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Decimal;
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 import eu.verdelhan.ta4j.Tick;
@@ -56,7 +57,7 @@ public class ChandelierExitLongIndicatorTest {
         ticks.add(new MockTick(45.45, 45.01, 45.55, 44.80));
         ticks.add(new MockTick(45.03, 44.23, 45.04, 44.17));
 
-        data = new TimeSeries(ticks);
+        data = new BaseTimeSeries(ticks);
     }
 
     @Test

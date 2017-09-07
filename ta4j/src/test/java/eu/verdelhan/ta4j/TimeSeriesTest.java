@@ -59,9 +59,9 @@ public class TimeSeriesTest {
 
         defaultName = "Series Name";
 
-        defaultSeries = new TimeSeries(defaultName, ticks);
-        constrainedSeries = new TimeSeries(defaultSeries, 2, 4);
-        emptySeries = new TimeSeries();
+        defaultSeries = new BaseTimeSeries(defaultName, ticks);
+        constrainedSeries = new BaseTimeSeries(defaultSeries, 2, 4);
+        emptySeries = new BaseTimeSeries();
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -153,7 +153,7 @@ public class TimeSeriesTest {
 
     @Test
     public void constrainedSeriesWithIndexes() {
-        TimeSeries constrSeries = new TimeSeries(defaultSeries, 2, 5);
+        TimeSeries constrSeries = new BaseTimeSeries(defaultSeries, 2, 5);
         assertEquals(defaultSeries.getName(), constrSeries.getName());
         assertEquals(2, constrSeries.getBeginIndex());
         assertNotEquals(defaultSeries.getBeginIndex(), constrSeries.getBeginIndex());
@@ -165,12 +165,12 @@ public class TimeSeriesTest {
     @Test(expected = IllegalStateException.class)
     public void constrainedSeriesOnSeriesWithMaximumTickCountShouldThrowException() {
         defaultSeries.setMaximumTickCount(3);
-        new TimeSeries(defaultSeries, 0, 1);
+        new BaseTimeSeries(defaultSeries, 0, 1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void constrainedSeriesWithInvalidIndexesShouldThrowException() {
-        new TimeSeries(defaultSeries, 4, 2);
+        new BaseTimeSeries(defaultSeries, 4, 2);
     }
     
     @Test(expected = IllegalStateException.class)
@@ -210,7 +210,7 @@ public class TimeSeriesTest {
     
     @Test
     public void addTick() {
-        defaultSeries = new TimeSeries();
+        defaultSeries = new BaseTimeSeries();
         Tick firstTick = new MockTick(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d);
         Tick secondTick = new MockTick(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d);
 

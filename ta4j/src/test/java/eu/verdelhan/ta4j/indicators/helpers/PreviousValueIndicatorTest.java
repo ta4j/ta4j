@@ -23,6 +23,7 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import eu.verdelhan.ta4j.BaseTick;
+import eu.verdelhan.ta4j.BaseTimeSeries;
 import eu.verdelhan.ta4j.Tick;
 import eu.verdelhan.ta4j.TimeSeries;
 import eu.verdelhan.ta4j.indicators.EMAIndicator;
@@ -63,7 +64,7 @@ public class PreviousValueIndicatorTest {
             Tick tick = new BaseTick(dateTime, open, close, max, min, i);
             ticks.add(tick);
         }
-        this.series = new TimeSeries("test", ticks);
+        this.series = new BaseTimeSeries("test", ticks);
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
         this.minPriceIndicator = new MinPriceIndicator(this.series);
