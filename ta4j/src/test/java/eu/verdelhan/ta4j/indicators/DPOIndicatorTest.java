@@ -23,7 +23,9 @@
 package eu.verdelhan.ta4j.indicators;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
+import static org.junit.Assert.assertEquals;
 
+import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,6 +43,16 @@ public class DPOIndicatorTest {
                 22.23, 22.43, 22.24, 22.29, 22.15, 22.39,
                 22.38, 22.61, 23.36, 24.05, 23.75, 23.83,
                 23.95, 23.63, 23.82, 23.87, 23.65, 23.19,
+                23.10, 23.33, 22.68, 23.10, 22.40, 22.17,
+                22.27, 22.19, 22.08, 22.17, 22.18, 22.13,
+                22.23, 22.43, 22.24, 22.29, 22.15, 22.39,
+                22.38, 22.61, 23.36, 24.05, 23.75, 23.83,
+                23.95, 23.63, 23.82, 23.87, 23.65, 23.19,
+                23.10, 23.33, 22.68, 23.10, 22.40, 22.17,
+                22.27, 22.19, 22.08, 22.17, 22.18, 22.13,
+                22.23, 22.43, 22.24, 22.29, 22.15, 22.39,
+                22.38, 22.61, 23.36, 24.05, 23.75, 23.83,
+                23.95, 23.63, 23.82, 23.87, 23.65, 23.19,
                 23.10, 23.33, 22.68, 23.10, 22.40, 22.17
         );
     }
@@ -48,27 +60,23 @@ public class DPOIndicatorTest {
     @Test
     public void dpo() {
         DPOIndicator dpo = new DPOIndicator(series, 9);
+        ClosePriceIndicator cp = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(cp,9);
+        int timeShift = 9/2+1;
+        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++) {
+            assertEquals(dpo.getValue(i), cp.getValue(i).minus(sma.getValue(i-timeShift)));
+        }
 
-        assertDecimalEquals(dpo.getValue(9), -0.1633);
-        assertDecimalEquals(dpo.getValue(10), -0.5056);
-        assertDecimalEquals(dpo.getValue(11), -0.4122);
-        assertDecimalEquals(dpo.getValue(12), -0.5989);
-        assertDecimalEquals(dpo.getValue(13), -0.5533);
-        assertDecimalEquals(dpo.getValue(14), 0.0322);
-        assertDecimalEquals(dpo.getValue(15), 0.5633);
-        assertDecimalEquals(dpo.getValue(16), 0.0978);
-        assertDecimalEquals(dpo.getValue(17), 0.0622);
-        assertDecimalEquals(dpo.getValue(18), 0.2011);
-        assertDecimalEquals(dpo.getValue(19), -0.0133);
-        assertDecimalEquals(dpo.getValue(20), 0.2233);
-        assertDecimalEquals(dpo.getValue(21), 0.4011);
-        assertDecimalEquals(dpo.getValue(22), 0.2756);
-        assertDecimalEquals(dpo.getValue(23), -0.0478);
+        assertDecimalEquals(dpo.getValue(9), 0.111999);
+        assertDecimalEquals(dpo.getValue(10), -0.02);
+        assertDecimalEquals(dpo.getValue(11), 0.21142857142);
+        assertDecimalEquals(dpo.getValue(12), 0.169999999999999);
     }
+
 
     @Test(expected = IndexOutOfBoundsException.class)
     public void dpoIOOBE() {
         DPOIndicator dpo = new DPOIndicator(series, 9);
-        dpo.getValue(27);
+        dpo.getValue(100);
     }
 }
