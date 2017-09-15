@@ -24,6 +24,7 @@ package eu.verdelhan.ta4j.indicators;
 
 import static eu.verdelhan.ta4j.TATestsUtils.assertDecimalEquals;
 
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -104,5 +105,19 @@ public class KAMAIndicatorTest {
         assertDecimalEquals(kama.getValue(46), 111.5688);
         assertDecimalEquals(kama.getValue(47), 111.5522);
         assertDecimalEquals(kama.getValue(48), 111.5595);
+    }
+
+    @Test
+    public void getValueOnDeepIndicesShouldNotCauseStackOverflow() {
+        TimeSeries series = new MockTimeSeries();
+        series.setMaximumTickCount(5000);
+        assertEquals(5000, series.getTickCount());
+
+        KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(series), 10, 2, 30);
+        try {
+            assertDecimalEquals(kama.getValue(3000), "2999.75");
+        } catch (Throwable t) {
+            fail(t.getMessage());
+        }
     }
 }

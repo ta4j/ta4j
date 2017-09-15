@@ -84,7 +84,7 @@ public class MockTimeSeries extends BaseTimeSeries {
 
     private static List<Tick> arbitraryTicks() {
         ArrayList<Tick> ticks = new ArrayList<>();
-        for (double i = 0d; i < 10; i++) {
+        for (double i = 0d; i < 5000; i++) {
             ticks.add(new MockTick(ZonedDateTime.now(), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
         }
         return ticks;

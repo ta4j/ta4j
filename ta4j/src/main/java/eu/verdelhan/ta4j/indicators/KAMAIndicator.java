@@ -24,14 +24,14 @@ package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 
 /**
  * The Kaufman's Adaptive Moving Average (KAMA)  Indicator.
  * 
  * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:kaufman_s_adaptive_moving_average
  */
-public class KAMAIndicator extends CachedIndicator<Decimal> {
+public class KAMAIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private final Indicator<Decimal> price;
     

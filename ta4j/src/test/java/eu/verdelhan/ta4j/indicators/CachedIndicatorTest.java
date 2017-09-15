@@ -153,7 +153,7 @@ public class CachedIndicatorTest {
 
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(series), 1);
         try {
-            assertDecimalEquals(zlema.getValue(8), "9");
+            assertDecimalEquals(zlema.getValue(8), "4996");
         } catch (Throwable t) {
             fail(t.getMessage());
         }
