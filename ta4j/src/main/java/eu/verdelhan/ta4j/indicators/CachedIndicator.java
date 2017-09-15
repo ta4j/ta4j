@@ -103,8 +103,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 result = results.get(resultInnerIndex);
                 if (result == null) {
                     result = calculate(index);
+                    results.set(resultInnerIndex, result);
                 }
-                results.set(resultInnerIndex, result);
             }
         }
         return result;
