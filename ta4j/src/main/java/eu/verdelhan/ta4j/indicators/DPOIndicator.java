@@ -38,6 +38,8 @@ import eu.verdelhan.ta4j.indicators.SMAIndicator;
  * alignment with the most recent is not an issue because DPO is not a momentum
  * oscillator. Instead, DPO is used to identify cycles highs/lows and estimate
  * cycle length.
+ *
+ * In short, DPO(20) equals price 11 days ago less the 20-day SMA.
  * </p>
  * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci
  */
@@ -75,6 +77,6 @@ public class DPOIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return price.getValue(index).minus(sma.getValue(index + timeShift));
+        return price.getValue(index).minus(sma.getValue(index-timeShift));
     }
 }
