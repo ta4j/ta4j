@@ -22,10 +22,8 @@
  */
 package eu.verdelhan.ta4j.indicators;
 
-
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.RecursiveCachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.MaxPriceIndicator;
@@ -33,125 +31,131 @@ import eu.verdelhan.ta4j.indicators.helpers.MinPriceIndicator;
 
 /**
  * Parabolic SAR indicator.
- * <p>
+ * team172011(Simon-Justus Wimmer), 18.09.2017
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
 
-    private static final Decimal DEFAULT_ACCELERATION = Decimal.valueOf("0.02");
-    private static final Decimal ACCELERATION_THRESHOLD = Decimal.valueOf("0.19");
-    private static final Decimal MAX_ACCELERATION = Decimal.valueOf("0.2");
-    private static final Decimal ACCELERATION_INCREMENT = Decimal.valueOf("0.02");
+    private Decimal accelerationFactor;
+    private final Decimal maxAcceleration;
+    private final Decimal accelerationIncrement;
+    private final Decimal accelarationStart;
 
-    private Decimal acceleration = DEFAULT_ACCELERATION;
+
 
     private final TimeSeries series;
 
-    private Decimal extremePoint;
+    private boolean currentTrend; // true if uptrend, false otherwise
+    private int startTrendIndex = 0; // index of start tick of the current trend
+    private MinPriceIndicator minPriceIndicator;
+    private MaxPriceIndicator maxPriceIndicator;
+    private Decimal currentExtremePoint; // the extreme point of the current calculation
+    private Decimal minMaxExtremePoint; // depending on trend the maximum or minimum extreme point value of trend
 
-    private final LowestValueIndicator lowestValueIndicator;
+    /**
+     * Constructor with default parameters
+     * @param series the time series for this indicator
+     */
+    public ParabolicSarIndicator(TimeSeries series){
+        this(series,Decimal.valueOf("0.02"), Decimal.valueOf("0.2"), Decimal.valueOf("0.02"));
 
-    private final HighestValueIndicator highestValueIndicator;
-    
-    public ParabolicSarIndicator(TimeSeries series, int timeFrame) {
+    }
+
+    /**
+     * Constructor with custom parameters and default increment value
+     * @param series the time series for this indicator
+     * @param aF acceleration factor
+     * @param maxA maximum acceleration
+     */
+    public ParabolicSarIndicator(TimeSeries series, Decimal aF,Decimal maxA) {
+        this(series, aF, maxA, Decimal.valueOf("0.02"));
+    }
+
+    /**
+     * Constructor with custom parameters
+     * @param series the time series for this indicator
+     * @param aF acceleration factor
+     * @param maxA maximum acceleration
+     * @param increment the increment step
+     */
+    public ParabolicSarIndicator(TimeSeries series, Decimal aF,Decimal maxA, Decimal increment) {
         super(series);
         this.series = series;
-        this.lowestValueIndicator = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
-        this.highestValueIndicator = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
+        maxPriceIndicator = new MaxPriceIndicator(series);
+        minPriceIndicator = new MinPriceIndicator(series);
+        maxAcceleration = maxA;
+        accelerationFactor = aF;
+        accelerationIncrement = increment;
+        accelarationStart = aF;
     }
 
     @Override
     protected Decimal calculate(int index) {
+        Decimal sar = Decimal.NaN;
+        if (index == series.getBeginIndex()) {
+            return sar; // no trend detection possible for the first value
+        } else if (index == series.getBeginIndex() + 1) {// start trend detection
+            currentTrend = series.getTick(series.getBeginIndex()).getClosePrice().isLessThan(series.getTick(index).getClosePrice());
+            if (!currentTrend) { // down trend
+                sar = maxPriceIndicator.getValue(index); // put sar on max price of candlestick
+                currentExtremePoint = sar;
+                minMaxExtremePoint = currentExtremePoint;
+            } else { // up trend
+                sar = minPriceIndicator.getValue(index); // put sar on min price of candlestick
+                currentExtremePoint = sar;
+                minMaxExtremePoint = currentExtremePoint;
 
-        if (index <= 1) {
-            // Warning: should the min or the max price, according to the trend
-            // But we don't know the trend yet, so we use the close price.
-            extremePoint = series.getTick(index).getClosePrice();
-            return extremePoint;
+            }
+            return sar;
         }
 
-        Decimal n2ClosePrice = series.getTick(index - 2).getClosePrice();
-        Decimal n1ClosePrice = series.getTick(index - 1).getClosePrice();
-        Decimal nClosePrice = series.getTick(index).getClosePrice();
+        Decimal priorSar = getValue(index-1);
+        if (currentTrend) { // if up trend
+            sar = priorSar.plus(accelerationFactor.multipliedBy((currentExtremePoint.minus(priorSar))));
+            currentTrend = minPriceIndicator.getValue(index).isGreaterThan(sar);
+            if (!currentTrend) { // check if sar touches the min price
+                sar = minMaxExtremePoint; // sar starts at the highest extreme point of previous up trend
+                currentTrend = false; // switch to down trend and reset values
+                startTrendIndex = index;
+                accelerationFactor = accelarationStart;
+                currentExtremePoint = series.getTick(index).getMinPrice(); // put point on max
+                minMaxExtremePoint = currentExtremePoint;
+            } else { // up trend is going on
+                currentExtremePoint = new HighestValueIndicator(maxPriceIndicator, index - startTrendIndex).getValue(index);
+                if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
+                    incrementAcceleration();
+                    minMaxExtremePoint = currentExtremePoint;
+                }
 
-        Decimal sar;
-        if (n2ClosePrice.isGreaterThan(n1ClosePrice) && n1ClosePrice.isLessThan(nClosePrice)) {
-            // Trend switch: \_/
-            sar = extremePoint == null ? lowestValueIndicator.getValue(index) : extremePoint;
-            extremePoint = highestValueIndicator.getValue(index);
-            acceleration = DEFAULT_ACCELERATION;
-        } else if (n2ClosePrice.isLessThan(n1ClosePrice) && n1ClosePrice.isGreaterThan(nClosePrice)) {
-            // Trend switch: /¯\
-            sar = extremePoint == null ? highestValueIndicator.getValue(index) : extremePoint;
-            extremePoint = lowestValueIndicator.getValue(index);
-            acceleration = DEFAULT_ACCELERATION;
-
-        } else if (nClosePrice.isLessThan(n1ClosePrice)) {
-             // Downtrend: falling SAR
-            Decimal lowestValue = lowestValueIndicator.getValue(index);
-            if (extremePoint.isGreaterThan(lowestValue)) {
-                incrementAcceleration();
-                extremePoint = lowestValue;
             }
-            sar = calculateSar(index);
-
-            Decimal n2MaxPrice = series.getTick(index - 2).getMaxPrice();
-            Decimal n1MaxPrice = series.getTick(index - 1).getMaxPrice();
-            Decimal nMaxPrice = series.getTick(index).getMaxPrice();
-
-            if (n1MaxPrice.isGreaterThan(sar)) {
-                sar = n1MaxPrice;
-            } else if (n2MaxPrice.isGreaterThan(sar)) {
-                sar = n2MaxPrice;
+        } else { // downtrend
+            sar = priorSar.minus(accelerationFactor.multipliedBy(((priorSar.minus(currentExtremePoint)))));
+            currentTrend = maxPriceIndicator.getValue(index).isGreaterThanOrEqual(sar);
+            if (currentTrend) { // check if switch to up trend
+                sar = minMaxExtremePoint; // sar starts at the lowest extreme point of previous down trend
+                accelerationFactor = accelarationStart;
+                startTrendIndex = index;
+                currentExtremePoint = series.getTick(index).getMaxPrice();
+                minMaxExtremePoint = currentExtremePoint;
+            } else { // down trend io going on
+                currentExtremePoint = new LowestValueIndicator(minPriceIndicator, index - startTrendIndex).getValue(index);
+                if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
+                    incrementAcceleration();
+                    minMaxExtremePoint = currentExtremePoint;
+                }
             }
-            if (nMaxPrice.isGreaterThan(sar)) {
-                sar = series.getTick(index).getMinPrice();
-            }
-
-        } else {
-             // Uptrend: rising SAR
-            Decimal highestValue = highestValueIndicator.getValue(index);
-            if (extremePoint.isLessThan(highestValue)) {
-                incrementAcceleration();
-                extremePoint = highestValue;
-            }
-            sar = calculateSar(index);
-
-            Decimal n2MinPrice = series.getTick(index - 2).getMinPrice();
-            Decimal n1MinPrice = series.getTick(index - 1).getMinPrice();
-            Decimal nMinPrice = series.getTick(index).getMinPrice();
-
-            if (n1MinPrice.isLessThan(sar)) {
-                sar = n1MinPrice;
-            } else if (n2MinPrice.isLessThan(sar)) {
-                sar = n2MinPrice;
-            }
-            if (nMinPrice.isLessThan(sar)) {
-                sar = series.getTick(index).getMaxPrice();
-            }
-
         }
         return sar;
+
     }
 
     /**
      * Increments the acceleration factor.
      */
     private void incrementAcceleration() {
-        if (acceleration.isGreaterThanOrEqual(ACCELERATION_THRESHOLD)) {
-            acceleration = MAX_ACCELERATION;
+        if (accelerationFactor.isGreaterThanOrEqual(maxAcceleration)) {
+            accelerationFactor = maxAcceleration;
         } else {
-            acceleration = acceleration.plus(ACCELERATION_INCREMENT);
+            accelerationFactor = accelerationFactor.plus(accelerationIncrement);
         }
-    }
-
-    /**
-     * Calculates the SAR.
-     * @param index the tick index
-     * @return the SAR
-     */
-    private Decimal calculateSar(int index) {
-        Decimal previousSar = getValue(index - 1);
-        return extremePoint.multipliedBy(acceleration)
-                .plus(Decimal.ONE.minus(acceleration).multipliedBy(previousSar));
     }
 }

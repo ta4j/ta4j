@@ -40,7 +40,7 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 6, 9, 4));
         ticks.add(new MockTick(0, 11, 15, 9));
         ticks.add(new MockTick(0, 13, 15, 9));
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks));
 
         assertDecimalEquals(sar.getValue(0), 10);
         assertDecimalEquals(sar.getValue(1), 8);
@@ -58,7 +58,7 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 10, 15, 9));
         ticks.add(new MockTick(0, 9, 15, 9));
         
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks));
 
         assertDecimalEquals(sar.getValue(0), 10);
         assertDecimalEquals(sar.getValue(1), 10);
@@ -76,7 +76,7 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 19, 17, 12));
         ticks.add(new MockTick(0, 20, 18, 9));
         
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks));
 
         assertDecimalEquals(sar.getValue(0), 10);
         assertDecimalEquals(sar.getValue(1), 17);
@@ -95,7 +95,7 @@ public class ParabolicSarIndicatorTest {
         ticks.add(new MockTick(0, 10, 13, 11));
         ticks.add(new MockTick(0, 10, 30, 11));
         
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks), 1);
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(ticks));
 
         assertDecimalEquals(sar.getValue(0), 20);
         assertDecimalEquals(sar.getValue(1), 19);
