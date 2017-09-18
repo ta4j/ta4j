@@ -61,6 +61,6 @@ Here are some ways for you to contribute to ta4j:
 
   * [Create tickets for bugs and new features](http://github.com/mdeverdelhan/ta4j/issues) and comment on the ones that you are interested in.
   * [Fork this repository](http://help.github.com/forking/) and submit pull requests.
-  * Consider donating for new feature development. Bitcoin address: `13BMqpqbzJ62LjMWcPGWrTrdocvGqifdJ3`
+  * Take a look at [How to contribute](https://github.com/ta4j/ta4j/wiki/How-to-contribute)
 
 See also: the [contribution policy](.github/CONTRIBUTING.md).
