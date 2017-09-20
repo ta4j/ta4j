@@ -23,11 +23,17 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import static eu.verdelhan.ta4j.TATestsUtils.*;
-import eu.verdelhan.ta4j.TimeSeries;
+import static junit.framework.TestCase.assertEquals;
+
+import eu.verdelhan.ta4j.*;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LowestValueIndicatorTest {
 
@@ -41,7 +47,9 @@ public class LowestValueIndicatorTest {
     @Test
     public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-
+        assertDecimalEquals(lowestValue.getValue(1), "1");
+        assertDecimalEquals(lowestValue.getValue(2), "1");
+        assertDecimalEquals(lowestValue.getValue(3), "1");
         assertDecimalEquals(lowestValue.getValue(4), "1");
         assertDecimalEquals(lowestValue.getValue(5), "2");
         assertDecimalEquals(lowestValue.getValue(6), "3");
@@ -64,5 +72,39 @@ public class LowestValueIndicatorTest {
     public void lowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
         assertDecimalEquals(lowestValue.getValue(12), "1");
+    }
+
+    @Test
+    public void onlyNaNValues(){
+        List<Tick> ticks = new ArrayList<>();
+        for (long i = 0; i<= 10000; i++){
+            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+            ticks.add(tick);
+        }
+
+        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 5);
+        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
+            assertEquals(Decimal.NaN.toString(),lowestValue.getValue(i).toString());
+        }
+    }
+
+    @Test
+    public void naNValuesInIntervall(){
+        List<Tick> ticks = new ArrayList<>();
+        for (long i = 0; i<= 10; i++){ // (NaN, 1, NaN, 2, NaN, 3, NaN, 4, ...)
+            Decimal closePrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
+            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+            ticks.add(tick);
+        }
+
+        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 2);
+        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
+            if (i % 2 != 0){
+                assertEquals(series.getTick(i-1).getClosePrice().toString(),lowestValue.getValue(i).toString());
+            } else
+            assertEquals(series.getTick(Math.max(0,i-1)).getClosePrice().toString(),lowestValue.getValue(i).toString());
+        }
     }
 }

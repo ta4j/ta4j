@@ -24,9 +24,8 @@ package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
 import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.MinPriceIndicator;
 
 
 /**
@@ -37,31 +36,33 @@ public class AroonDownIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
-    private final ClosePriceIndicator closePriceIndicator;
-
-    private final LowestValueIndicator lowestClosePriceIndicator;
+    private final LowestValueIndicator lowestMinPriceIndicator;
+    private final MinPriceIndicator minPriceIndicator;
 
     public AroonDownIndicator(TimeSeries series, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
-        closePriceIndicator = new ClosePriceIndicator(series);
-        lowestClosePriceIndicator = new LowestValueIndicator(closePriceIndicator, timeFrame);
+        minPriceIndicator = new MinPriceIndicator(series);
+
+        // + 1 needed for last possible iteration in loop
+        lowestMinPriceIndicator = new LowestValueIndicator(minPriceIndicator, timeFrame+1);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        int realTimeFrame = Math.min(timeFrame, index + 1);
+        if (getTimeSeries().getTick(index).getMaxPrice().isNaN())
+            return Decimal.NaN;
 
         // Getting the number of ticks since the lowest close price
-        int endIndex = index - realTimeFrame;
+        int endIndex = Math.max(0,index - timeFrame);
         int nbTicks = 0;
         for (int i = index; i > endIndex; i--) {
-            if (closePriceIndicator.getValue(i).isEqual(lowestClosePriceIndicator.getValue(index))) {
+            if (minPriceIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
                 break;
             }
             nbTicks++;
         }
         
-        return Decimal.valueOf(realTimeFrame - nbTicks).dividedBy(Decimal.valueOf(realTimeFrame)).multipliedBy(Decimal.HUNDRED);
+        return Decimal.valueOf(timeFrame - nbTicks).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
     }
 }

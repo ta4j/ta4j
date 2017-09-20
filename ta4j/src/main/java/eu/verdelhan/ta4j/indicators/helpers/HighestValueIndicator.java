@@ -44,9 +44,11 @@ public class HighestValueIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        int start = Math.max(0, index - timeFrame + 1);
-        Decimal highest = indicator.getValue(start);
-        for (int i = start + 1; i <= index; i++) {
+        if (indicator.getValue(index).isNaN() && timeFrame != 1)
+            return new LowestValueIndicator(indicator,timeFrame-1).getValue(index-1);
+        int end = Math.max(0, index - timeFrame + 1);
+        Decimal highest = indicator.getValue(index);
+        for (int i = index - 1; i >= end; i--) {
             if (highest.isLessThan(indicator.getValue(i))) {
                 highest = indicator.getValue(i);
             }
