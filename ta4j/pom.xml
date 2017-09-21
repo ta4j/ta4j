@@ -5,7 +5,7 @@
         <artifactId>ta4j-parent</artifactId>
         <version>0.10-SNAPSHOT</version>
     </parent>
-    <artifactId>core</artifactId>
+    <artifactId>ta4j-core</artifactId>
 
     <name>ta4j</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
