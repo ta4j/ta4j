@@ -20,44 +20,49 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package eu.verdelhan.ta4j.indicators.helpers;
+package eu.verdelhan.ta4j.indicators;
 
-import eu.verdelhan.ta4j.Indicator;
 import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
+import eu.verdelhan.ta4j.TimeSeries;
+import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
+import eu.verdelhan.ta4j.indicators.helpers.MaxPriceIndicator;
+
 
 /**
- * Lowest value indicator.
+ * Aroon up indicator.
  * <p>
  */
-public class LowestValueIndicator extends CachedIndicator<Decimal> {
-
-    private final Indicator<Decimal> indicator;
+public class AroonUpIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
-    public LowestValueIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
+    private final HighestValueIndicator highestMaxPriceIndicator;
+    private final MaxPriceIndicator maxPriceIndicator;
+
+    public AroonUpIndicator(TimeSeries series, int timeFrame) {
+        super(series);
         this.timeFrame = timeFrame;
+        maxPriceIndicator = new MaxPriceIndicator(series);
+
+        // + 1 needed for last possible iteration in loop
+        highestMaxPriceIndicator = new HighestValueIndicator(maxPriceIndicator, timeFrame+1);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (indicator.getValue(index).isNaN() && timeFrame != 1)
-            return new LowestValueIndicator(indicator,timeFrame-1).getValue(index-1);
-        int end = Math.max(0, index - timeFrame + 1);
-        Decimal lowest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (lowest.isGreaterThan(indicator.getValue(i))) {
-                lowest = indicator.getValue(i);
-            }
-        }
-        return lowest;
-    }
+        if (getTimeSeries().getTick(index).getMaxPrice().isNaN())
+            return Decimal.NaN;
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        // Getting the number of ticks since the highest close price
+        int endIndex = Math.max(0,index - timeFrame);
+        int nbTicks = 0;
+        for (int i = index; i > endIndex; i--) {
+            if (maxPriceIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
+                break;
+            }
+            nbTicks++;
+        }
+
+        return Decimal.valueOf(timeFrame - nbTicks).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
     }
 }

@@ -23,11 +23,17 @@
 package eu.verdelhan.ta4j.indicators.helpers;
 
 import static eu.verdelhan.ta4j.TATestsUtils.*;
-import eu.verdelhan.ta4j.TimeSeries;
+import static junit.framework.TestCase.assertEquals;
+
+import eu.verdelhan.ta4j.*;
 import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
 import eu.verdelhan.ta4j.mocks.MockTimeSeries;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HighestValueIndicatorTest {
 
@@ -63,5 +69,41 @@ public class HighestValueIndicatorTest {
     public void highestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
         assertDecimalEquals(highestValue.getValue(12), "6");
+    }
+
+    @Test
+    public void onlyNaNValues(){
+        List<Tick> ticks = new ArrayList<>();
+        for (long i = 0; i<= 10000; i++){
+            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+            ticks.add(tick);
+        }
+
+        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
+        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
+            assertEquals(Decimal.NaN.toString(),highestValue.getValue(i).toString());
+        }
+    }
+
+    @Test
+    public void naNValuesInIntervall(){
+        List<Tick> ticks = new ArrayList<>();
+        for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
+            Decimal closePrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
+            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, closePrice, Decimal.NaN);
+            ticks.add(tick);
+        }
+
+        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
+
+        // index is the biggest of (index, index-1)
+        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
+            if (i % 2 != 0) // current is NaN take the previous as highest
+                assertEquals(series.getTick(i-1).getClosePrice().toString(),highestValue.getValue(i).toString());
+            else // current is not NaN but previous, take the current
+                assertEquals(series.getTick(i).getClosePrice().toString(),highestValue.getValue(i).toString());
+        }
     }
 }

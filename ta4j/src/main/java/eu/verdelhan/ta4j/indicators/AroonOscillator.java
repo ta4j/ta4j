@@ -24,44 +24,25 @@ package eu.verdelhan.ta4j.indicators;
 
 import eu.verdelhan.ta4j.Decimal;
 import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.CachedIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-
 
 /**
- * Aroon up indicator.
+ * Aroon Oscillator.
  * <p>
+ * @see !http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator
  */
-public class AroonUpIndicator extends CachedIndicator<Decimal> {
+public class AroonOscillator extends CachedIndicator<Decimal>{
 
-    private final int timeFrame;
+    private final AroonDownIndicator aroonDownIndicator;
+    private final AroonUpIndicator aroonUpIndicator;
 
-    private final ClosePriceIndicator closePriceIndicator;
-
-    private final HighestValueIndicator highestClosePriceIndicator;
-
-    public AroonUpIndicator(TimeSeries series, int timeFrame) {
+    public AroonOscillator(TimeSeries series, int timeFrame) {
         super(series);
-        this.timeFrame = timeFrame;
-        closePriceIndicator = new ClosePriceIndicator(series);
-        highestClosePriceIndicator = new HighestValueIndicator(closePriceIndicator, timeFrame);
+        aroonDownIndicator = new AroonDownIndicator(series, timeFrame);
+        aroonUpIndicator = new AroonUpIndicator(series, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        int realTimeFrame = Math.min(timeFrame, index + 1);
-
-        // Getting the number of ticks since the highest close price
-        int endIndex = index - realTimeFrame;
-        int nbTicks = 0;
-        for (int i = index; i > endIndex; i--) {
-            if (closePriceIndicator.getValue(i).isEqual(highestClosePriceIndicator.getValue(index))) {
-                break;
-            }
-            nbTicks++;
-        }
-
-        return Decimal.valueOf(realTimeFrame - nbTicks).dividedBy(Decimal.valueOf(realTimeFrame)).multipliedBy(Decimal.HUNDRED);
+        return aroonUpIndicator.getValue(index).minus(aroonDownIndicator.getValue(index));
     }
 }
