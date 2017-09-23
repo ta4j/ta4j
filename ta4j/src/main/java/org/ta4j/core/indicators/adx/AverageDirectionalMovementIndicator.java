@@ -20,13 +20,15 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.DirectionalMovementIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
- * Average directional movement indicator.
+ * Average directional movement indicator (ADMI/ADX).
  * <p>
  */
 public class AverageDirectionalMovementIndicator extends RecursiveCachedIndicator<Decimal> {
