@@ -1,13 +1,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>eu.verdelhan</groupId>
+    <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
     <version>0.10-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
-    <url>http://github.com/mdeverdelhan/ta4j</url>
+    <url>http://github.com/ta4j/ta4j</url>
     <inceptionYear>2014</inceptionYear>
 
     <developers>
@@ -25,7 +25,7 @@
 
     <issueManagement>
         <system>GitHub</system>
-        <url>http://github.com/mdeverdelhan/ta4j/issues</url>
+        <url>http://github.com/ta4j/ta4j/issues</url>
     </issueManagement>
 
     <distributionManagement>
@@ -42,13 +42,13 @@
     </distributionManagement>
 
     <ciManagement>
-        <url>http://travis-ci.org/mdeverdelhan/ta4j</url>
+        <url>http://travis-ci.org/ta4j/ta4j</url>
     </ciManagement>
 
     <scm>
-        <connection>scm:git:git://github.com/mdeverdelhan/ta4j.git</connection>
-        <developerConnection>scm:git:git@github.com:mdeverdelhan/ta4j.git</developerConnection>
-        <url>http://github.com/mdeverdelhan/ta4j</url>
+        <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
+        <developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
+        <url>http://github.com/ta4j/ta4j</url>
         <tag>HEAD</tag>
     </scm>
 
