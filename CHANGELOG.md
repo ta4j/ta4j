@@ -7,7 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **AroonUpIndicator and AroonDownIndicator**: wrong calculations fixed and can handle NaN values now
 
 ### Changed
-- #####**BREAKING**: _**new package structure**_: change eu.verdelhan.ta4j to org.ta4j.ta4j-core
+- **BREAKING**: **new package structure** change eu.verdelhan.ta4j to org.ta4j.ta4j-core
 - **new package adx**: new location of AverageDirectionalMovementIndicator and DMI+/DMI-
 - **Ownership of the ta4j repository**: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 - **ParabolicSarIndicator**: old constructor removed (there was no need for time frame parameter after big fix). Three new constructors for default and custom parameters.

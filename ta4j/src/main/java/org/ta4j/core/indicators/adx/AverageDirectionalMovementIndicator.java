@@ -51,4 +51,9 @@ public class AverageDirectionalMovementIndicator extends RecursiveCachedIndicato
         Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
         return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(dm.getValue(index).dividedBy(nbPeriods));
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName()+" timeFrame: "+timeFrame;
+    }
 }

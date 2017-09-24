@@ -53,6 +53,6 @@ public class DirectionalMovementPlusIndicator extends CachedIndicator<Decimal> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+ "time frame: "+timeFrame;
+        return getClass().getSimpleName()+ "timeFrame: "+timeFrame;
     }
 }

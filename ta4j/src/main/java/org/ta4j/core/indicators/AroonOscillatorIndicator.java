@@ -35,9 +35,11 @@ public class AroonOscillatorIndicator extends CachedIndicator<Decimal>{
 
     private final AroonDownIndicator aroonDownIndicator;
     private final AroonUpIndicator aroonUpIndicator;
+    private final int timeFrame;
 
     public AroonOscillatorIndicator(TimeSeries series, int timeFrame) {
         super(series);
+        this.timeFrame = timeFrame;
         aroonDownIndicator = new AroonDownIndicator(series, timeFrame);
         aroonUpIndicator = new AroonUpIndicator(series, timeFrame);
     }
@@ -45,5 +47,10 @@ public class AroonOscillatorIndicator extends CachedIndicator<Decimal>{
     @Override
     protected Decimal calculate(int index) {
         return aroonUpIndicator.getValue(index).minus(aroonDownIndicator.getValue(index));
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName()+" timeFrame: "+timeFrame;
     }
 }

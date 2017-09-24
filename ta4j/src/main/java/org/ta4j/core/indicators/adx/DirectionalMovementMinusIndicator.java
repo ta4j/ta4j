@@ -50,11 +50,11 @@ public class DirectionalMovementMinusIndicator extends CachedIndicator<Decimal>{
 
     @Override
     protected Decimal calculate(int index) {
-        return (averageDirectionalMovementDownIndicator.getValue(index).dividedBy(trueRangeIndicator.getValue(index))).multipliedBy(Decimal.HUNDRED);
+        return averageDirectionalMovementDownIndicator.getValue(index).dividedBy(trueRangeIndicator.getValue(index)).multipliedBy(Decimal.HUNDRED);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+" time frame: "+timeFrame;
+        return getClass().getSimpleName()+" timeFrame: "+timeFrame;
     }
 }
