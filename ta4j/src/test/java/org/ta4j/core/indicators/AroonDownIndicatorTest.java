@@ -102,21 +102,22 @@ public class AroonDownIndicatorTest {
     @Test
     public void naNValuesInIntervall(){
         List<Tick> ticks = new ArrayList<>();
-        for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
-            Decimal maxPrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),Decimal.NaN, maxPrice,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+        for (long i = 10; i >= 0; i--){ // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
+            Decimal minPrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
+            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(10-i),Decimal.NaN, Decimal.NaN, minPrice, Decimal.NaN, Decimal.NaN);
             ticks.add(tick);
         }
+        ticks.add(new BaseTick(ZonedDateTime.now().plusDays(11),Decimal.NaN, Decimal.NaN, Decimal.TEN, Decimal.NaN, Decimal.NaN));
         BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
         AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(series, 5);
-        Decimal[] res = {Decimal.HUNDRED, Decimal.valueOf(80),Decimal.valueOf(60),Decimal.valueOf(40),
-                Decimal.valueOf(20),Decimal.ZERO,Decimal.ZERO,Decimal.ZERO,Decimal.ZERO,Decimal.ZERO,Decimal.ZERO};
+
         for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
-            if (i % 2 != 0){
+            if (i % 2 != 0 && i<11){
                 assertEquals(Decimal.NaN.toString(), aroonDownIndicator.getValue(i).toString());
-            } else {
-                assertDecimalEquals(aroonDownIndicator.getValue(i),res[i].toString());
-            }
+            } else if (i < 11)
+                assertDecimalEquals(aroonDownIndicator.getValue(i), Decimal.HUNDRED.toString());
+            else
+                assertDecimalEquals(aroonDownIndicator.getValue(i),Decimal.valueOf(80).toString());
         }
     }
 }
