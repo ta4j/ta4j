@@ -11,6 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **new package adx**: new location of AverageDirectionalMovementIndicator and DMI+/DMI-
 - **Ownership of the ta4j repository**: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 - **ParabolicSarIndicator**: old constructor removed (there was no need for time frame parameter after big fix). Three new constructors for default and custom parameters.
+- **HighestValueIndicator and LowestValueIndicator:** ignore also NaN values if they are at the current index
 
 ## Added
 - **AroonOscillatorIndicator**: New indicator working with AroonUp/DownIndicator
