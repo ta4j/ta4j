@@ -42,7 +42,7 @@ public class IsEqualRule extends AbstractRule {
     /**
      * Constructor.
      * @param first the first indicator
-     * @param second the second indicator
+     * @param value
      */
     public IsEqualRule(Indicator<Decimal> indicator, Decimal value) {
     	this(indicator, new ConstantIndicator<Decimal>(value));
