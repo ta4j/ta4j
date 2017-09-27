@@ -44,7 +44,7 @@ public class EqualIndicatorRule extends AbstractRule {
      * @param first the first indicator
      * @param second the second indicator
      */
-    public EqualIndicatorRule(Indicator<Decimal> first, Indicator<Decimal> second) {
+    public EqualIndicatorRule(Indicator<Decimal> first, Decimal second) {
         this.first = first;
         this.second = second;
     }
