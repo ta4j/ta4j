@@ -37,7 +37,7 @@ public class IsEqualRule extends AbstractRule {
     /** The first indicator */
     private Indicator<Decimal> first;
     /** The second indicator */
-    private Indicator<Decimal> second;
+    private Decimal second;
     
     /**
      * Constructor.
