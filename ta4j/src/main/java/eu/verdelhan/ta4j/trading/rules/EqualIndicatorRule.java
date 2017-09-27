@@ -38,15 +38,6 @@ public class EqualIndicatorRule extends AbstractRule {
     private Indicator<Decimal> first;
     /** The second indicator */
     private Indicator<Decimal> second;
-
-    /**
-     * Constructor.
-     * @param indicator the indicator
-     * @param threshold a threshold
-     */
-    public EqualIndicatorRule(Indicator<Decimal> indicator, Decimal threshold) {
-        this(indicator, new ConstantIndicator<Decimal>(threshold));
-    }
     
     /**
      * Constructor.
