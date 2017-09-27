@@ -34,7 +34,7 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
  */
 public class IsEqualRule extends AbstractRule {
 
-    /** The first indicator */
+   /** The first indicator */
     private Indicator<Decimal> first;
     /** The second indicator */
     private Decimal second;
@@ -44,14 +44,14 @@ public class IsEqualRule extends AbstractRule {
      * @param first the first indicator
      * @param second the second indicator
      */
-    public EqualIndicatorRule(Indicator<Decimal> first, Decimal second) {
+    public IsEqualRule(Indicator<Decimal> first, Decimal second) {
         this.first = first;
         this.second = second;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = first.getValue(index).isEqual(second.getValue(index));
+        final boolean satisfied = first.getValue(index).isEqual(second);
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
