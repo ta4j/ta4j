@@ -37,12 +37,15 @@ public class IsEqualRuleTest {
     
     @Before
     public void setUp() {
-        indicator = new FixedDecimalIndicator(20);
+        indicator = new FixedDecimalIndicator(20, 10, 0, -20);
         rule = new IsEqualRule(indicator, Decimal.valueOf(20));
     }
     
     @Test
     public void isSatisfied() {
         assertTrue(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
     }
 }
