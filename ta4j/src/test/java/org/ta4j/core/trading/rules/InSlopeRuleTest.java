@@ -33,25 +33,26 @@ import org.junit.Test;
 public class InSlopeRuleTest {
 
     private Indicator<Decimal> indicator;
-    private InSlopeRule rule;
+    private InSlopeRule rulePositiveSlope;
+    private InSlopeRule ruleNegativeSlope;
     
     @Before
     public void setUp() {
         indicator = new FixedDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
-        ruleSlopePositive = new InSlopeRule(indicator, Decimal.valueOf(20), Decimal.valueOf(30));
-        ruleSlopeNegative = new InSlopeRule(indicator, Decimal.valueOf(-20), Decimal.valueOf(-25));
+        rulePositiveSlope = new InSlopeRule(indicator, Decimal.valueOf(20), Decimal.valueOf(30));
+        ruleNegativeSlope = new InSlopeRule(indicator, Decimal.valueOf(-20), Decimal.valueOf(-25));
     }
     
     @Test
     public void isSatisfied() {
-        assertFalse(ruleSlopePositive.isSatisfied(0));
-        assertTrue(ruleSlopePositive.isSatisfied(1));
-        assertFalse(ruleSlopePositive.isSatisfied(2));
-        assertFalse(ruleSlopePositive.isSatisfied(9));
+        assertFalse(rulePositiveSlope.isSatisfied(0));
+        assertTrue(rulePositiveSlope.isSatisfied(1));
+        assertFalse(rulePositiveSlope.isSatisfied(2));
+        assertFalse(rulePositiveSlope.isSatisfied(9));
         
-        assertFalse(ruleSlopeNegative.isSatisfied(0));
-        assertFalse(ruleSlopeNegative.isSatisfied(1));
-        assertTrue(ruleSlopeNegative.isSatisfied(5));
-        assertFalse(ruleSlopeNegative.isSatisfied(9));
+        assertFalse(ruleNegativeSlope.isSatisfied(0));
+        assertFalse(ruleNegativeSlope.isSatisfied(1));
+        assertTrue(ruleNegativeSlope.isSatisfied(5));
+        assertFalse(ruleNegativeSlope.isSatisfied(9));
     }
 }
