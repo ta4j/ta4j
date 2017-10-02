@@ -7,6 +7,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). YOu have to reorganize all your refernces to the new packages!
 In eclipse you can do this easily by selecting your sources and run "Organize imports"
 
+### Added
+- _InSlopeRule_: rule for slopes between two values of same indicator
+
 ### Fixed
 - _ParabolicSarIndicator_: wrong calculation fixed
 - _KAMAIndicator_: stack overflow bug fixed
