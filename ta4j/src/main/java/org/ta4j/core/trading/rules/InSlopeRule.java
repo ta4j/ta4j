@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
  * Indicator-in-slope rule.
  * <p>
  * Satisfied when the difference of the value of the {@link Indicator indicator}
- * and the previous (n-th) value of an indicator is between the values of
+ * and the previous (n-th) value of the {@link Indicator indicator} is between the values of
  * maxSlope or/and minSlope. It can test both, positive and negative slope.
  */
 public class InSlopeRule extends AbstractRule {
@@ -49,21 +49,12 @@ public class InSlopeRule extends AbstractRule {
     /**
      * Constructor.
      * @param ref the reference indicator
-     * @param minumum slope between value of reference and previous indicator
+     * @param minumum slope between reference and previous indicator
      */
     public InSlopeRule(Indicator<Decimal> ref, Decimal minSlope) {
         this(ref, 1, minSlope, Decimal.NaN);
     }
-	
-    /**
-     * Constructor.
-     * @param ref the reference indicator
-     * @param maximum slope between value of reference and previous indicator
-     */
-    public InSlopeRule(Indicator<Decimal> ref, Decimal maxSlope) {
-        this(ref, 1, Decimal.NaN, maxSlope);
-    }
-
+    
     /**
      * Constructor.
      * @param ref the reference indicator
@@ -73,7 +64,7 @@ public class InSlopeRule extends AbstractRule {
     public InSlopeRule(Indicator<Decimal> ref, Decimal minSlope, Decimal maxSlope) {
         this(ref, 1, minSlope, maxSlope);
     }
-	
+    
     /**
      * Constructor.
      * @param ref the reference indicator
@@ -82,16 +73,6 @@ public class InSlopeRule extends AbstractRule {
      */
     public InSlopeRule(Indicator<Decimal> ref, int nthPrevious, Decimal minSlope) {
     	this(ref, nthPrevious, minSlope, Decimal.NaN);
-    }
-	
-    /**
-     * Constructor.
-     * @param ref the reference indicator
-     * @param nthPrevious parameter defines the previous n-th value
-     * @param maximum slope between value of reference and previous indicator
-     */
-    public InSlopeRule(Indicator<Decimal> ref, int nthPrevious, Decimal maxSlope) {
-    	this(ref, nthPrevious, Decimal.NaN, maxSlope);
     }
 
     /**
@@ -108,15 +89,15 @@ public class InSlopeRule extends AbstractRule {
         this.maxSlope = maxSlope;
     }
 
-    @Override
-	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
-		Decimal val = diff.getValue(index);
-		boolean minSlopeSatisfied = minSlope.isNaN() ? true : val.isGreaterThanOrEqual(minSlope);
-		boolean maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isLessThanOrEqual(maxSlope);
+   @Override
+   public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+	DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
+	Decimal val = diff.getValue(index);
+	boolean minSlopeSatisfied = minSlope.isNaN() ? true : val.isGreaterThanOrEqual(minSlope);
+	boolean maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isLessThanOrEqual(maxSlope);
 
-		final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied;
-		traceIsSatisfied(index, satisfied);
-		return satisfied;
-	}
+	final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied;
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
+   }
 }
