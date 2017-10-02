@@ -27,13 +27,15 @@ import org.ta4j.core.Indicator;
 
 /**
  * Chande's Range Action Verification Index (RAVI) indicator.
+ * 
+ * To preserve trend direction, default calculation does not use absolute value.
  */
 public class RAVIIndicator extends CachedIndicator<Decimal> {
 
     private final SMAIndicator shortSma;
-    
     private final SMAIndicator longSma;
-    
+    private final boolean toAbs;
+   
     /**
      * Constructor.
      * @param price the price
@@ -44,15 +46,31 @@ public class RAVIIndicator extends CachedIndicator<Decimal> {
         super(price);
         shortSma = new SMAIndicator(price, shortSmaTimeFrame);
         longSma = new SMAIndicator(price, longSmaTimeFrame);
+        this.toAbs = false;
+    }
+    
+    /**
+     * Constructor.
+     * @param price the price
+     * @param shortSmaTimeFrame the time frame for the short SMA (usually 7)
+     * @param longSmaTimeFrame the time frame for the long SMA (usually 65)
+     * @param toAbs if true, absolute value of indicator is returned
+     */
+    public RAVIIndicator(Indicator<Decimal> price, int shortSmaTimeFrame, int longSmaTimeFrame, boolean toAbs) {
+        super(price);
+        shortSma = new SMAIndicator(price, shortSmaTimeFrame);
+        longSma = new SMAIndicator(price, longSmaTimeFrame);
+        this.toAbs = toAbs;
     }
 
     @Override
     protected Decimal calculate(int index) {
         Decimal shortMA = shortSma.getValue(index);
         Decimal longMA = longSma.getValue(index);
-        return shortMA.minus(longMA)
+        Decimal val = shortMA.minus(longMA)
                 .dividedBy(longMA)
                 .multipliedBy(Decimal.HUNDRED);
+        
+        return toAbs ? val.abs() : val;
     }
-
 }
