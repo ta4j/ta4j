@@ -40,7 +40,7 @@ public class InSlopeRuleTest {
     public void setUp() {
         indicator = new FixedDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
         rulePositiveSlope = new InSlopeRule(indicator, Decimal.valueOf(20), Decimal.valueOf(30));
-        ruleNegativeSlope = new InSlopeRule(indicator, Decimal.valueOf(-20), Decimal.valueOf(-40));
+        ruleNegativeSlope = new InSlopeRule(indicator, Decimal.valueOf(-38), Decimal.valueOf(-20));
     }
     
     @Test
