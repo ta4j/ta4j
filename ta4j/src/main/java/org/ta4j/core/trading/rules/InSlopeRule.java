@@ -50,10 +50,18 @@ public class InSlopeRule extends AbstractRule {
      * Constructor.
      * @param ref the reference indicator
      * @param minumum slope between value of reference and previous indicator
-     * @param maximum slope between value of reference and previous indicator
      */
     public InSlopeRule(Indicator<Decimal> ref, Decimal minSlope) {
         this(ref, 1, minSlope, Decimal.NaN);
+    }
+	
+    /**
+     * Constructor.
+     * @param ref the reference indicator
+     * @param maximum slope between value of reference and previous indicator
+     */
+    public InSlopeRule(Indicator<Decimal> ref, Decimal maxSlope) {
+        this(ref, 1, Decimal.NaN, maxSlope);
     }
 
     /**
@@ -75,6 +83,16 @@ public class InSlopeRule extends AbstractRule {
     public InSlopeRule(Indicator<Decimal> ref, int nthPrevious, Decimal minSlope) {
     	this(ref, nthPrevious, minSlope, Decimal.NaN);
     }
+	
+    /**
+     * Constructor.
+     * @param ref the reference indicator
+     * @param nthPrevious parameter defines the previous n-th value
+     * @param maximum slope between value of reference and previous indicator
+     */
+    public InSlopeRule(Indicator<Decimal> ref, int nthPrevious, Decimal maxSlope) {
+    	this(ref, nthPrevious, Decimal.NaN, maxSlope);
+    }
 
     /**
      * Constructor.
@@ -93,17 +111,9 @@ public class InSlopeRule extends AbstractRule {
     @Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
-		boolean minSlopeSatisfied = false;
-		boolean maxSlopeSatisfied = false;
 		Decimal val = diff.getValue(index);
-
-		if (val.isNegative()) {
-			minSlopeSatisfied = val.isLessThanOrEqual(minSlope);
-			maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isGreaterThanOrEqual(maxSlope);
-		} else {
-			minSlopeSatisfied = val.isGreaterThanOrEqual(minSlope);
-			maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isLessThanOrEqual(maxSlope);
-		}
+		boolean minSlopeSatisfied = minSlope.isNaN() ? true : val.isGreaterThanOrEqual(minSlope);
+		boolean maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isLessThanOrEqual(maxSlope);
 
 		final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied;
 		traceIsSatisfied(index, satisfied);
