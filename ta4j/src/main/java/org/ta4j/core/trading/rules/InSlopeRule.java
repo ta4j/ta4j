@@ -68,7 +68,7 @@ public class InSlopeRule extends AbstractRule {
     /**
      * Constructor.
      * @param ref the reference indicator
-     * @param nthPrevious defines the value of the previous n-th indicator
+     * @param nthPrevious defines the previous n-th indicator
      * @param minSlope minumum slope between value of reference and previous indicator
      */
     public InSlopeRule(Indicator<Decimal> ref, int nthPrevious, Decimal minSlope) {
@@ -78,7 +78,7 @@ public class InSlopeRule extends AbstractRule {
     /**
      * Constructor.
      * @param ref the reference indicator
-     * @param nthPrevious defines the value of the previous n-th indicator
+     * @param nthPrevious defines the previous n-th indicator
      * @param minSlope minumum slope between value of reference and previous indicator
      * @param maxSlope maximum slope between value of reference and previous indicator
      */
