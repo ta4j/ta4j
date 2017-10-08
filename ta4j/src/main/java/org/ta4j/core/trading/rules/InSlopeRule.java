@@ -95,8 +95,9 @@ public class InSlopeRule extends AbstractRule {
 	Decimal val = diff.getValue(index);
 	boolean minSlopeSatisfied = minSlope.isNaN() ? true : val.isGreaterThanOrEqual(minSlope);
 	boolean maxSlopeSatisfied = maxSlope.isNaN() ? true : val.isLessThanOrEqual(maxSlope);
+	boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
-	final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied;
+	final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
 	traceIsSatisfied(index, satisfied);
 	return satisfied;
    }
