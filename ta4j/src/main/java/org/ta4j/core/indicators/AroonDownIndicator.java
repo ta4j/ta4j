@@ -23,29 +23,49 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
+import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 
 /**
  * Aroon down indicator.
  * <p>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonDownIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
     private final LowestValueIndicator lowestMinPriceIndicator;
-    private final MinPriceIndicator minPriceIndicator;
+    private final Indicator<Decimal> minValueIndicator;
 
-    public AroonDownIndicator(TimeSeries series, int timeFrame) {
+    /**
+     * Constructor.
+     * <p>
+     * @param series the time series
+     * @param minValueIndicator the indicator for the maximum price (default {@link MaxPriceIndicator})
+     * @param timeFrame the time frame
+     */
+    public AroonDownIndicator(TimeSeries series, Indicator<Decimal> minValueIndicator, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
-        minPriceIndicator = new MinPriceIndicator(series);
+        this.minValueIndicator = minValueIndicator;
 
         // + 1 needed for last possible iteration in loop
-        lowestMinPriceIndicator = new LowestValueIndicator(minPriceIndicator, timeFrame+1);
+        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, timeFrame+1);
+    }
+
+    /**
+     * Default Constructor that is using the maximum price
+     * <p>
+     * @param series the time series
+     * @param timeFrame the time frame
+     */
+    public AroonDownIndicator(TimeSeries series, int timeFrame) {
+        this(series,new MinPriceIndicator(series), timeFrame);
     }
 
     @Override
@@ -57,7 +77,7 @@ public class AroonDownIndicator extends CachedIndicator<Decimal> {
         int endIndex = Math.max(0,index - timeFrame);
         int nbTicks = 0;
         for (int i = index; i > endIndex; i--) {
-            if (minPriceIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
+            if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
                 break;
             }
             nbTicks++;

@@ -18,6 +18,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
+- **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 
 ## 0.9 (2017-09-07)
 
