@@ -19,6 +19,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
+- **IsFallingRule**: New Rule that is satisfied if indicator strictly decreases within the previous (n-th) values.
+- **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the previous (n-th) values.
+- **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the previous (n-th) values.
+- **IsHighestRule**: New Rule that is satisfied if indicator is the highest within the previous (n-th) values.
 
 ## 0.9 (2017-09-07)
 
