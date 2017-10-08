@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **AroonOscillatorIndicator**: New indicator working with AroonUp/DownIndicator
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
+- **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
 
 ## 0.9 (2017-09-07)
 
