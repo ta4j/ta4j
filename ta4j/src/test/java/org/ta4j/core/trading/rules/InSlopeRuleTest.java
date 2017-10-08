@@ -20,39 +20,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Chande's Range Action Verification Index (RAVI) indicator.
- * 
- * To preserve trend direction, default calculation does not use absolute value.
- */
-public class RAVIIndicator extends CachedIndicator<Decimal> {
+public class InSlopeRuleTest {
 
-    private final SMAIndicator shortSma;
-    private final SMAIndicator longSma;
-   
-    /**
-     * Constructor.
-     * @param price the price
-     * @param shortSmaTimeFrame the time frame for the short SMA (usually 7)
-     * @param longSmaTimeFrame the time frame for the long SMA (usually 65)
-     */
-    public RAVIIndicator(Indicator<Decimal> price, int shortSmaTimeFrame, int longSmaTimeFrame) {
-        super(price);
-        shortSma = new SMAIndicator(price, shortSmaTimeFrame);
-        longSma = new SMAIndicator(price, longSmaTimeFrame);
+    private Indicator<Decimal> indicator;
+    private InSlopeRule rulePositiveSlope;
+    private InSlopeRule ruleNegativeSlope;
+    
+    @Before
+    public void setUp() {
+        indicator = new FixedDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
+        rulePositiveSlope = new InSlopeRule(indicator, Decimal.valueOf(20), Decimal.valueOf(30));
+        ruleNegativeSlope = new InSlopeRule(indicator, Decimal.valueOf(-40), Decimal.valueOf(-20));
     }
-
-    @Override
-    protected Decimal calculate(int index) {
-        Decimal shortMA = shortSma.getValue(index);
-        Decimal longMA = longSma.getValue(index);
-        return shortMA.minus(longMA)
-                .dividedBy(longMA)
-                .multipliedBy(Decimal.HUNDRED);
+    
+    @Test
+    public void isSatisfied() {
+        assertFalse(rulePositiveSlope.isSatisfied(0));
+        assertTrue(rulePositiveSlope.isSatisfied(1));
+        assertFalse(rulePositiveSlope.isSatisfied(2));
+        assertFalse(rulePositiveSlope.isSatisfied(9));
+        
+        assertFalse(ruleNegativeSlope.isSatisfied(0));
+        assertFalse(ruleNegativeSlope.isSatisfied(1));
+        assertTrue(ruleNegativeSlope.isSatisfied(5));
+        assertFalse(ruleNegativeSlope.isSatisfied(9));
     }
 }
