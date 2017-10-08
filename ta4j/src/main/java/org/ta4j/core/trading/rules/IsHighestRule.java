@@ -33,24 +33,26 @@ import org.ta4j.core.trading.rules.OverIndicatorRule;
 /**
  * Indicator-highest-indicator rule.
  * <p>
- * Satisfied when the value of the {@link Indicator indicator} is the highest within the previous (n-th) values.
+ * Satisfied when the value of the {@link Indicator indicator} is the highest
+ * within the previous (n-th) values.
  */
 public class IsHighestRule extends AbstractRule {
 
 	/** The actual indicator */
-    private Indicator<Decimal> ref;
-    /** The previous n-th value of ref */
-    private int nthPrevious;
-    
-    /**
-     * Constructor.
-     * @param ref
-     * @param nthPrevious
-     */
-    public IsHighestRule(Indicator<Decimal> ref, int nthPrevious) {
-    	this.ref = ref;
-    	this.nthPrevious = nthPrevious;
-    }
+	private Indicator<Decimal> ref;
+	/** The previous n-th value of ref */
+	private int nthPrevious;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param ref
+	 * @param nthPrevious
+	 */
+	public IsHighestRule(Indicator<Decimal> ref, int nthPrevious) {
+		this.ref = ref;
+		this.nthPrevious = nthPrevious;
+	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
