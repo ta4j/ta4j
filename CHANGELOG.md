@@ -18,6 +18,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
+- **IsEqualRule**: New Rule that is satisfied if two indicators are equal
 
 ## 0.9 (2017-09-07)
 
