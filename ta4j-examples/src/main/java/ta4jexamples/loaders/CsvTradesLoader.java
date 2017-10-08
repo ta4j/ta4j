@@ -44,7 +44,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * This class build a Ta4j time series from a CSV file containing trades.
+ * This class builds a Ta4j time series from a CSV file containing trades.
  */
 public class CsvTradesLoader {
 
