@@ -34,7 +34,6 @@ public class RAVIIndicator extends CachedIndicator<Decimal> {
 
     private final SMAIndicator shortSma;
     private final SMAIndicator longSma;
-    private final boolean toAbs;
    
     /**
      * Constructor.
@@ -46,7 +45,6 @@ public class RAVIIndicator extends CachedIndicator<Decimal> {
         super(price);
         shortSma = new SMAIndicator(price, shortSmaTimeFrame);
         longSma = new SMAIndicator(price, longSmaTimeFrame);
-        this.toAbs = false;
     }
     
     /**
@@ -54,23 +52,19 @@ public class RAVIIndicator extends CachedIndicator<Decimal> {
      * @param price the price
      * @param shortSmaTimeFrame the time frame for the short SMA (usually 7)
      * @param longSmaTimeFrame the time frame for the long SMA (usually 65)
-     * @param toAbs if true, absolute value of indicator is returned
      */
-    public RAVIIndicator(Indicator<Decimal> price, int shortSmaTimeFrame, int longSmaTimeFrame, boolean toAbs) {
+    public RAVIIndicator(Indicator<Decimal> price, int shortSmaTimeFrame, int longSmaTimeFrame) {
         super(price);
         shortSma = new SMAIndicator(price, shortSmaTimeFrame);
         longSma = new SMAIndicator(price, longSmaTimeFrame);
-        this.toAbs = toAbs;
     }
 
     @Override
     protected Decimal calculate(int index) {
         Decimal shortMA = shortSma.getValue(index);
         Decimal longMA = longSma.getValue(index);
-        Decimal val = shortMA.minus(longMA)
+        return shortMA.minus(longMA)
                 .dividedBy(longMA)
                 .multipliedBy(Decimal.HUNDRED);
-        
-        return toAbs ? val.abs() : val;
     }
 }
