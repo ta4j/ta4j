@@ -47,7 +47,7 @@ public class IsFallingRule extends AbstractRule {
 	 * Constructor.
 	 * 
 	 * @param ref
-	 * @param nthPrevious defines the previous n-th indicator
+	 * @param nthPrevious
 	 */
 	public IsFallingRule(Indicator<Decimal> ref, int nthPrevious) {
 		this.ref = ref;
