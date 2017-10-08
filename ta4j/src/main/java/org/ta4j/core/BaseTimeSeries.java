@@ -210,8 +210,9 @@ public class BaseTimeSeries implements TimeSeries {
         if (tick == null) {
             throw new IllegalArgumentException("Cannot add null tick");
         }
-        final int lastTickIndex = ticks.size() - 1;
+
         if (!ticks.isEmpty()) {
+            final int lastTickIndex = ticks.size() - 1;
             ZonedDateTime seriesEndTime = ticks.get(lastTickIndex).getEndTime();
             if (!tick.getEndTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException("Cannot add a tick with end time <= to series end time");
