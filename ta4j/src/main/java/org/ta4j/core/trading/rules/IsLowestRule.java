@@ -33,24 +33,26 @@ import org.ta4j.core.trading.rules.UnderIndicatorRule;
 /**
  * Indicator-lowest-indicator rule.
  * <p>
- * Satisfied when the value of the {@link Indicator indicator} is the lowest within the previous (n-th) values.
+ * Satisfied when the value of the {@link Indicator indicator} is the lowest
+ * within the previous (n-th) values.
  */
 public class IsLowestRule extends AbstractRule {
 
 	/** The actual indicator */
-    private Indicator<Decimal> ref;
-    /** The previous n-th value of ref */
-    private int nthPrevious;
-    
-    /**
-     * Constructor.
-     * @param ref
-     * @param nthPrevious
-     */
-    public IsLowestRule(Indicator<Decimal> ref, int nthPrevious) {
-    	this.ref = ref;
-    	this.nthPrevious = nthPrevious;
-    }
+	private Indicator<Decimal> ref;
+	/** The previous n-th value of ref */
+	private int nthPrevious;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param ref
+	 * @param nthPrevious
+	 */
+	public IsLowestRule(Indicator<Decimal> ref, int nthPrevious) {
+		this.ref = ref;
+		this.nthPrevious = nthPrevious;
+	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
