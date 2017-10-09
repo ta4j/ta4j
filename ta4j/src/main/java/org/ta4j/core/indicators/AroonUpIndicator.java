@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 
@@ -32,21 +32,39 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 /**
  * Aroon up indicator.
  * <p>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonUpIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
 
     private final HighestValueIndicator highestMaxPriceIndicator;
-    private final MaxPriceIndicator maxPriceIndicator;
+    private final Indicator<Decimal> maxValueIndicator;
 
-    public AroonUpIndicator(TimeSeries series, int timeFrame) {
+    /**
+     * Constructor.
+     * <p>
+     * @param series the time series
+     * @param maxValueIndicator the indicator for the maximum price (default {@link MaxPriceIndicator})
+     * @param timeFrame the time frame
+     */
+    public AroonUpIndicator(TimeSeries series, Indicator<Decimal> maxValueIndicator, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
-        maxPriceIndicator = new MaxPriceIndicator(series);
+        this.maxValueIndicator = maxValueIndicator;
 
         // + 1 needed for last possible iteration in loop
-        highestMaxPriceIndicator = new HighestValueIndicator(maxPriceIndicator, timeFrame+1);
+        highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, timeFrame+1);
+    }
+
+    /**
+     * Default Constructor that is using the maximum price
+     * <p>
+     * @param series the time series
+     * @param timeFrame the time frame
+     */
+    public AroonUpIndicator(TimeSeries series, int timeFrame) {
+        this(series,new MaxPriceIndicator(series), timeFrame);
     }
 
     @Override
@@ -58,7 +76,7 @@ public class AroonUpIndicator extends CachedIndicator<Decimal> {
         int endIndex = Math.max(0,index - timeFrame);
         int nbTicks = 0;
         for (int i = index; i > endIndex; i--) {
-            if (maxPriceIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
+            if (maxValueIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
                 break;
             }
             nbTicks++;

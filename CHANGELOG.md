@@ -19,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
+- **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 
 ## 0.9 (2017-09-07)
 
