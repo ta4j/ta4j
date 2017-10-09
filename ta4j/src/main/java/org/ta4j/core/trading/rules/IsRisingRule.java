@@ -57,12 +57,11 @@ public class IsRisingRule extends AbstractRule {
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		Rule gtPrev = new OverIndicatorRule(ref, new PreviousValueIndicator(ref));
-		if (timeFrame > 1) {
-			for (int i = 1; i < timeFrame - 1; i++) {
-				PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
-				gtPrev = gtPrev.and(new OverIndicatorRule(prev, new PreviousValueIndicator(prev)));
-			}
+		for (int i = 1; i < timeFrame - 1; i++) {
+			PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
+			gtPrev = gtPrev.and(new OverIndicatorRule(prev, new PreviousValueIndicator(prev)));
 		}
+		
 		final boolean satisfied = gtPrev.isSatisfied(index, tradingRecord);
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
