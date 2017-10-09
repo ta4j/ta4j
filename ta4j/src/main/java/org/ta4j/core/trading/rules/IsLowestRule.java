@@ -56,7 +56,7 @@ public class IsLowestRule extends AbstractRule {
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		LowestValueIndicator lowestValue = new LowestValueIndicator(ref, timeFrame);
 
-		final boolean satisfied = ref.getValue(index).equals(lowestValue.getValue(index));
+		final boolean satisfied = !ref.getValue(index).isNaN() && ref.getValue(index).equals(lowestValue.getValue(index));
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}
