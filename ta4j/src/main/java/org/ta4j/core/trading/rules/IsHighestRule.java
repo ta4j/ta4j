@@ -56,7 +56,7 @@ public class IsHighestRule extends AbstractRule {
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		HighestValueIndicator highestValue = new HighestValueIndicator(ref, timeFrame);
 
-		final boolean satisfied = ref.getValue(index).equals(highestValue.getValue(index));
+		final boolean satisfied = !ref.getValue(index).isNaN() && ref.getValue(index).equals(highestValue.getValue(index));
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}
