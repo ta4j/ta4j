@@ -43,7 +43,7 @@ public class IsLowestRuleTest {
     
     @Test
     public void isSatisfied() {
-    	assertFalse(rule.isSatisfied(0));
+    		assertTrue(rule.isSatisfied(0));
 		assertTrue(rule.isSatisfied(1));
 		assertFalse(rule.isSatisfied(2));
 		assertTrue(rule.isSatisfied(3));

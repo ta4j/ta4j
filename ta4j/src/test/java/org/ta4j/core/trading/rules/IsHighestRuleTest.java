@@ -43,7 +43,7 @@ public class IsHighestRuleTest {
 
 	@Test
 	public void isSatisfied() {
-		assertFalse(rule.isSatisfied(0));
+		assertTrue(rule.isSatisfied(0));
 		assertTrue(rule.isSatisfied(1));
 		assertFalse(rule.isSatisfied(2));
 		assertTrue(rule.isSatisfied(3));
@@ -51,7 +51,7 @@ public class IsHighestRuleTest {
 		assertTrue(rule.isSatisfied(5));
 		assertFalse(rule.isSatisfied(6));
 		assertFalse(rule.isSatisfied(7));
-		assertFalse(rule.isSatisfied(8));
+		assertTrue(rule.isSatisfied(8));
 		assertTrue(rule.isSatisfied(9));
 	}
 }
