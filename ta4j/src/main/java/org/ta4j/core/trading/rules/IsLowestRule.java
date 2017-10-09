@@ -24,46 +24,39 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.trading.rules.AbstractRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
 /**
  * Indicator-lowest-indicator rule.
  * <p>
  * Satisfied when the value of the {@link Indicator indicator} is the lowest
- * within the previous (n-th) values.
+ * within the timeFrame.
  */
 public class IsLowestRule extends AbstractRule {
 
 	/** The actual indicator */
 	private Indicator<Decimal> ref;
-	/** The previous n-th value of ref */
-	private int nthPrevious;
+	/** The timeFrame */
+	private int timeFrame;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param ref
-	 * @param nthPrevious
+	 * @param timeFrame
 	 */
-	public IsLowestRule(Indicator<Decimal> ref, int nthPrevious) {
+	public IsLowestRule(Indicator<Decimal> ref, int timeFrame) {
 		this.ref = ref;
-		this.nthPrevious = nthPrevious;
+		this.timeFrame = timeFrame;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		Rule lt = new UnderIndicatorRule(ref, new PreviousValueIndicator(ref));
-		if (nthPrevious > 1) {
-			for (int i = 1; i < nthPrevious; i++) { // i must start again at 1.
-				PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
-				lt = lt.and(new UnderIndicatorRule(ref, new PreviousValueIndicator(prev)));
-			}
-		}
-		final boolean satisfied = lt.isSatisfied(index, tradingRecord);
+		LowestValueIndicator lowestValue = new LowestValueIndicator(ref, timeFrame);
+
+		final boolean satisfied = ref.getValue(index).equals(lowestValue.getValue(index));
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}

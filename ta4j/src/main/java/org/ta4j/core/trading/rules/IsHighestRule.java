@@ -24,46 +24,39 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.trading.rules.AbstractRule;
-import org.ta4j.core.trading.rules.OverIndicatorRule;
 
 /**
  * Indicator-highest-indicator rule.
  * <p>
  * Satisfied when the value of the {@link Indicator indicator} is the highest
- * within the previous (n-th) values.
+ * within the timeFrame.
  */
 public class IsHighestRule extends AbstractRule {
 
 	/** The actual indicator */
 	private Indicator<Decimal> ref;
-	/** The previous n-th value of ref */
-	private int nthPrevious;
+	/** The timeFrame */
+	private int timeFrame;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param ref
-	 * @param nthPrevious
+	 * @param timeFrame
 	 */
-	public IsHighestRule(Indicator<Decimal> ref, int nthPrevious) {
+	public IsHighestRule(Indicator<Decimal> ref, int timeFrame) {
 		this.ref = ref;
-		this.nthPrevious = nthPrevious;
+		this.timeFrame = timeFrame;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		Rule gt = new OverIndicatorRule(ref, new PreviousValueIndicator(ref));
-		if (nthPrevious > 1) {
-			for (int i = 1; i < nthPrevious; i++) { // i must start again at 1.
-				PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
-				gt = gt.and(new OverIndicatorRule(ref, new PreviousValueIndicator(prev)));
-			}
-		}
-		final boolean satisfied = gt.isSatisfied(index, tradingRecord);
+		HighestValueIndicator highestValue = new HighestValueIndicator(ref, timeFrame);
+
+		final boolean satisfied = ref.getValue(index).equals(highestValue.getValue(index));
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}

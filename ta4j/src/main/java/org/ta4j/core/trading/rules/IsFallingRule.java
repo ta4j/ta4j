@@ -34,31 +34,31 @@ import org.ta4j.core.trading.rules.UnderIndicatorRule;
  * Indicator-falling-indicator rule.
  * <p>
  * Satisfied when the values of the {@link Indicator indicator} strict decrease
- * within the previous (n-th) values.
+ * within the timeFrame.
  */
 public class IsFallingRule extends AbstractRule {
 
 	/** The actual indicator */
 	private Indicator<Decimal> ref;
-	/** The previous n-th value of ref */
-	private int nthPrevious;
+	/** The timeFrame */
+	private int timeFrame;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param ref
-	 * @param nthPrevious
+	 * @param timeFrame
 	 */
-	public IsFallingRule(Indicator<Decimal> ref, int nthPrevious) {
+	public IsFallingRule(Indicator<Decimal> ref, int timeFrame) {
 		this.ref = ref;
-		this.nthPrevious = nthPrevious;
+		this.timeFrame = timeFrame;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		Rule ltPrev = new UnderIndicatorRule(ref, new PreviousValueIndicator(ref));
-		if (nthPrevious > 1) {
-			for (int i = 1; i < nthPrevious; i++) { // i must start again at 1.
+		if (timeFrame > 1) {
+			for (int i = 1; i < timeFrame - 1; i++) {
 				PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
 				ltPrev = ltPrev.and(new UnderIndicatorRule(prev, new PreviousValueIndicator(prev)));
 			}
