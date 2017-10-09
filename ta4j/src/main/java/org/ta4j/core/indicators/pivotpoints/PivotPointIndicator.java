@@ -109,9 +109,9 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
 	}
 
     /**
-     * Calculates the indices of the tick in the previous period
-     * @param index index of the tick
-     * @return List of indices of the ticks of the previous period
+     * Calculates the indices of the ticks of the previous period
+     * @param index index of the current tick
+     * @return list of indices of the ticks of the previous period
      */
 	public List<Integer> getTicksOfPreviousPeriod(int index) {
 		List<Integer> previousTicks = new ArrayList<>();
@@ -160,7 +160,6 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
 	private long getPeriod(Tick tick) {
         switch (timeLevel) {
             case PIVOT_TIME_LEVEL_ID_DAY: // return previous day
-                int a = tick.getEndTime().getDayOfYear();
                 return tick.getEndTime().getDayOfYear();
             case PIVOT_TIME_LEVEL_ID_WEEK: // return previous week
                 return tick.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);

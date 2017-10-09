@@ -19,7 +19,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
-
+- **PivotPointIndicator**: New package and Indicators for calculating standard and fibonacci pivot point reversals
+    - **PivotResistance1Indicator**, **PivotResistance2Indicator**, **PivotResistance3Indicator**
+    - **PivotSupport1Indicator**, **PivotSupport2Indicator**, **PivotSupport3Indicator**
+    - **FibonacciPivotResistance1Indicator**, **FibonacciPivotResistance2Indicator**, **FibonacciPivotResistance2Indicator**
+    - **FibonacciPivotSupport1Indicator**, **FibonacciPivotSupport2Indicator**, **FibonacciPivotSupport3Indicator**
+    
 ## 0.9 (2017-09-07)
 
 - **BREAKING** drops Java 7 support
