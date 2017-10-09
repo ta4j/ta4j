@@ -57,12 +57,11 @@ public class IsFallingRule extends AbstractRule {
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		Rule ltPrev = new UnderIndicatorRule(ref, new PreviousValueIndicator(ref));
-		if (timeFrame > 1) {
-			for (int i = 1; i < timeFrame - 1; i++) {
-				PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
-				ltPrev = ltPrev.and(new UnderIndicatorRule(prev, new PreviousValueIndicator(prev)));
-			}
+		for (int i = 1; i < timeFrame - 1; i++) {
+			PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
+			ltPrev = ltPrev.and(new UnderIndicatorRule(prev, new PreviousValueIndicator(prev)));
 		}
+		
 		final boolean satisfied = ltPrev.isSatisfied(index, tradingRecord);
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
