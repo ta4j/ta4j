@@ -37,7 +37,9 @@ public class PivotResistance3Indicator extends RecursiveCachedIndicator<Decimal>
 
     private PivotPointIndicator pivotPointIndicator;
 
-    /**Constructor.
+    /**
+     * Constructor.
+     * <p>
      * Calculates the (standard) resistance 3 reversal
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
      */

@@ -37,7 +37,9 @@ public class PivotSupport2Indicator extends RecursiveCachedIndicator<Decimal> {
 
     private PivotPointIndicator pivotPointIndicator;
 
-    /**Constructor.
+    /**
+     * Constructor.
+     * <p>
      * Calculates the (standard) support 2 reversal
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
      */

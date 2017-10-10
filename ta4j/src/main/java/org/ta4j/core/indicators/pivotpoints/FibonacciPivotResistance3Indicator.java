@@ -38,7 +38,9 @@ public class FibonacciPivotResistance3Indicator extends RecursiveCachedIndicator
     private PivotPointIndicator pivotPointIndicator;
     private final static Decimal FIB_FACTOR = Decimal.ONE;
 
-    /**Constructor.
+    /**
+     * Constructor.
+     * <p>
      * Calculates the (fibonacci) resistance 3 reversal
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
      */

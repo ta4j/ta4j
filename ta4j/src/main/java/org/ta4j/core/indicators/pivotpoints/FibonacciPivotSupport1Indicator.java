@@ -37,7 +37,10 @@ public class FibonacciPivotSupport1Indicator extends RecursiveCachedIndicator<De
 
     private PivotPointIndicator pivotPointIndicator;
     private final static Decimal FIB_FACTOR = Decimal.valueOf(0.382);
-    /**Constructor.
+
+    /**
+     * Constructor.
+     * <p>
      * Calculates the (fibonacci) support 1 reversal
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
      */

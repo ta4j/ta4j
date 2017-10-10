@@ -36,7 +36,10 @@ import java.util.List;
 public class PivotSupport1Indicator extends RecursiveCachedIndicator<Decimal> {
 
     private PivotPointIndicator pivotPointIndicator;
-    /**Constructor.
+
+    /**
+     * Constructor.
+     * <p>
      * Calculates the (standard) support 1 reversal
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
      */

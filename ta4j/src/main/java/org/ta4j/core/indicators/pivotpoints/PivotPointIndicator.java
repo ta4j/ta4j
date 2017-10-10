@@ -49,29 +49,17 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
 
     /**
      * Constructor.
+     * <p>
      * Calculates the pivot reversals based on the time level parameter.
-     *
-     * <table border="1">
-         <tr>
-            <td>Bar size</td> <td>Parameter for timeLevelId</td>
-         </tr>
-         <tr>
-            <td> 1-, 5-, 10- and 15-minute charts </td> <td> PIVOT_TIME_LEVEL_ID_DAY (= 1)</td>
-         </tr>
-         <tr>
-            <td> 30- 60- and 120-minute charts use the prior week's high, low, and close </td> <td>  PIVOT_TIME_LEVEL_ID_WEEK (= 2)</td>
-         </tr>
-         <tr>
-            <td> Pivot Points for daily charts use the prior month's data </td> <td> PIVOT_TIME_LEVEL_ID_MONTH (= 3)</td>
-         </tr>
-         <tr>
-            <td> Pivot Points for weekly and monthly charts use the prior year's data </td> <td> PIVOT_TIME_LEVEL_ID_YEAR (= 4)</td>
-         </tr>
-         <tr>
-            <td> Use last tick data </td> <td> PIVOT_TIME_LEVEL_ID_TICKBASED (= 0)</td>
-         </tr>
-        </table>
      * @param series the time series with adequate endTime of each tick for the given time level.
+     * @param timeLevelId the corresponding time level for pivot calculation:
+     *       <ul>
+     *          <li>1-, 5-, 10- and 15-minute charts use the prior days high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_DAY (= 1)</li>
+     *          <li>30- 60- and 120-minute charts use the prior week's high, low, and close: <b>timeLevelId</b> =  PIVOT_TIME_LEVEL_ID_WEEK (= 2)</li>
+     *          <li>Pivot Points for daily charts use the prior month's high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_MONTH (= 3)</li>
+     *          <li>Pivot Points for weekly and monthly charts use the prior year's high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_YEAR (= 4)</li>
+     *          <li> If you want to use just the last tick data: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_TICKBASED (= 0)</li>
+     *      </ul>
      */
     public PivotPointIndicator(TimeSeries series, int timeLevelId) {
         super(series);
