@@ -36,13 +36,13 @@ public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
     private final WMAIndicator wma;
     
     /**
-	 * Constructor with default values: <br/>
-	 * - longRoCTimeFrame=14 <br/>
-	 * - shortRoCTimeFrame=11 <br/>
-	 * - wmaTimeFrame=10
-	 * 
-	 * @param indicator
-	 */
+      * Constructor with default values: <br/>
+      * - longRoCTimeFrame=14 <br/>
+      * - shortRoCTimeFrame=11 <br/>
+      * - wmaTimeFrame=10
+      * 
+      * @param indicator
+    */
     public CoppockCurveIndicator(Indicator<Decimal> indicator) {
         this(indicator, 14, 11, 10);
     }
