@@ -36,6 +36,23 @@ public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
     private final WMAIndicator wma;
     
     /**
+	 * Constructor with default values: <br/>
+	 * - longRoCTimeFrame=14 <br/>
+	 * - shortRoCTimeFrame=11 <br/>
+	 * - wmaTimeFrame=10
+	 * 
+	 * @param indicator
+	 */
+    public CoppockCurveIndicator(Indicator<Decimal> indicator) {
+        super(indicator);
+        SumIndicator sum = new SumIndicator(
+                new ROCIndicator(indicator, 14),
+                new ROCIndicator(indicator, 11)
+        );
+        wma = new WMAIndicator(sum, 10);
+    }
+    
+    /**
      * Constructor.
      * @param indicator the indicator (usually close price)
      * @param longRoCTimeFrame the time frame for long term RoC
