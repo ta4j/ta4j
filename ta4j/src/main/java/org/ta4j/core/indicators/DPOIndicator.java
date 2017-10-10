@@ -77,4 +77,9 @@ public class DPOIndicator extends CachedIndicator<Decimal> {
     protected Decimal calculate(int index) {
         return price.getValue(index).minus(sma.getValue(index-timeShift));
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }
