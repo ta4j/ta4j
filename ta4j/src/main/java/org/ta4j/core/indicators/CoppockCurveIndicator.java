@@ -44,12 +44,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
 	 * @param indicator
 	 */
     public CoppockCurveIndicator(Indicator<Decimal> indicator) {
-        super(indicator);
-        SumIndicator sum = new SumIndicator(
-                new ROCIndicator(indicator, 14),
-                new ROCIndicator(indicator, 11)
-        );
-        wma = new WMAIndicator(sum, 10);
+        this(indicator, 14, 11, 10);
     }
     
     /**
