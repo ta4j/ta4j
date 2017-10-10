@@ -50,7 +50,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
     }
     
     @Override
-	public String toString() {
-		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-	}
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }
