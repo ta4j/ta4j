@@ -76,6 +76,6 @@ public class WilliamsRIndicator extends CachedIndicator<Decimal> {
 
     @Override
     public String toString() {
-        return getClass().getName();
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }
