@@ -43,11 +43,11 @@ public class IsRisingRuleTest {
 
 	@Test
 	public void isSatisfied() {
-		// The first two values evaluates to false:
-		// 2 previous values (2=3-1) are needed to decide (unstable period).
+		// The first two values evaluate to false:
+		// 2 previous values (2=3-1) are needed to decide.
 		assertFalse(rule.isSatisfied(0));
 		assertFalse(rule.isSatisfied(1));
-		// First time, indicator has at least 2 previous values.
+		// First time to have at least 2 previous values.
 		assertTrue(rule.isSatisfied(2));
 		assertTrue(rule.isSatisfied(3));
 		assertTrue(rule.isSatisfied(4));
