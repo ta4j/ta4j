@@ -63,5 +63,10 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
         return maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index - timeFrame)))
                 .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 
 }
