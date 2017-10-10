@@ -48,4 +48,9 @@ public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
         return ema.getValue(index).multipliedBy(Decimal.TWO)
                 .minus(emaEma.getValue(index));
     }
+    
+    @Override
+	public String toString() {
+		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+	}
 }
