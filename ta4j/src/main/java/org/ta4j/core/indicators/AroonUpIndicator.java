@@ -84,4 +84,9 @@ public class AroonUpIndicator extends CachedIndicator<Decimal> {
 
         return Decimal.valueOf(timeFrame - nbTicks).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
     }
+    
+    @Override
+	public String toString() {
+		return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+	}
 }
