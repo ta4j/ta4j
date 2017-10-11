@@ -23,6 +23,7 @@
 package org.ta4j.core.indicators.pivotpoints;
 
 import org.ta4j.core.Decimal;
+import org.ta4j.core.Tick;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 import java.util.List;
@@ -35,11 +36,16 @@ import java.util.List;
  */
 public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal> {
 
-    private PivotPointIndicator pivotPointIndicator;
-    private PivotLevel level;
+    private final PivotPointIndicator pivotPointIndicator;
+    private final PivotLevel level;
 
     public enum PivotLevel{
-        RESISTANCE_3, RESISTANCE_2, RESISTANCE_1, SUPPORT_1, SUPPORT_2, SUPPORT_3;
+        RESISTANCE_3,
+        RESISTANCE_2,
+        RESISTANCE_1,
+        SUPPORT_1,
+        SUPPORT_2,
+        SUPPORT_3
     }
 
     /**
@@ -58,8 +64,9 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
     @Override
     protected Decimal calculate(int index) {
         List<Integer> ticksOfPreviousPeriod = pivotPointIndicator.getTicksOfPreviousPeriod(index);
-        if (ticksOfPreviousPeriod.isEmpty())
+        if (ticksOfPreviousPeriod.isEmpty()) {
             return Decimal.NaN;
+        }
         switch (level){
             case RESISTANCE_3:
                 return calculateR3(ticksOfPreviousPeriod, index);
@@ -80,8 +87,9 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     private Decimal calculateR3(List<Integer> ticksOfPreviousPeriod, int index){
-        Decimal low = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMinPrice();
-        Decimal high =  getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMaxPrice();
+        Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
+        Decimal low = tick.getMinPrice();
+        Decimal high =  tick.getMaxPrice();
         for(int i: ticksOfPreviousPeriod){
             low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
             high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
@@ -90,8 +98,9 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     private Decimal calculateR2(List<Integer> ticksOfPreviousPeriod, int index){
-        Decimal low = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMinPrice();
-        Decimal high =  getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMaxPrice();
+        Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
+        Decimal low = tick.getMinPrice();
+        Decimal high = tick.getMaxPrice();
         for(int i: ticksOfPreviousPeriod){
             low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
             high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
@@ -116,8 +125,9 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     private Decimal calculateS2(List<Integer> ticksOfPreviousPeriod, int index){
-        Decimal high =  getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMaxPrice();
-        Decimal low = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMinPrice();
+        Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
+        Decimal high =  tick.getMaxPrice();
+        Decimal low = tick.getMinPrice();
         for(int i: ticksOfPreviousPeriod){
             high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
@@ -126,8 +136,9 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     private Decimal calculateS3(List<Integer> ticksOfPreviousPeriod, int index){
-        Decimal high =  getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMaxPrice();
-        Decimal low = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0)).getMinPrice();
+        Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
+        Decimal high =  tick.getMaxPrice();
+        Decimal low = tick.getMinPrice();
         for(int i: ticksOfPreviousPeriod){
             high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getTick(i).getMinPrice()).min(low);

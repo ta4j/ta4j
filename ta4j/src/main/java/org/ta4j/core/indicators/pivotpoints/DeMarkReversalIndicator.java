@@ -29,53 +29,76 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import java.util.List;
 
 /**
- * Fibonacci Reversal Indicator.
+ * DeMark Reversal Indicator.
  * <p>
- * @author team172011(Simon-Justus Wimmer), 09.10.2017
+ * @author team172011(Simon-Justus Wimmer), 11.10.2017
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school: pivotpoints</a>
  */
-public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal> {
+public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Decimal> {
 
-    private final PivotPointIndicator pivotPointIndicator;
-    private final FibReversalTyp fibReversalTyp;
-    private final Decimal fibonacciFactor;
+    private final DeMarkPivotPointIndicator pivotPointIndicator;
+    private final DeMarkPivotLevel level;
 
-    public enum FibReversalTyp{
+    public enum DeMarkPivotLevel{
+
+        RESISTANCE,
         SUPPORT,
-        RESISTANCE
     }
 
-
-    /**Constructor.
+    /**
+     * Constructor.
      * <p>
-     * Calculates a (fibonacci) reversal
-     * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
-     * @param fibonacciFactor the fibunacci factor for this reversal (e.g. 1, 0.618, 0.382, ...)
-     * @param fibReversalTyp the FibonacciReversalIndicator.FibReversalTyp of the reversal (SUPPORT, RESISTANCE)
+     * Calculates the DeMark reversal for the corresponding pivot level
+     * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this reversal
+     * @param level the {@link DeMarkPivotLevel} for this reversal (RESISTANT, SUPPORT)
      */
-    public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, Decimal fibonacciFactor, FibReversalTyp fibReversalTyp) {
+    public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
-        this.fibonacciFactor = fibonacciFactor;
-        this.fibReversalTyp = fibReversalTyp;
+        this.level =level;
     }
 
     @Override
     protected Decimal calculate(int index) {
+        Decimal x = pivotPointIndicator.getValue(index).multipliedBy(Decimal.valueOf(4));
+        Decimal result;
+
+        if(level == DeMarkPivotLevel.SUPPORT){
+            result = calculateSupport(x, index);
+        }
+        else{
+            result = calculateResistance(x, index);
+        }
+
+        return result;
+
+    }
+
+    private Decimal calculateResistance(Decimal x, int index) {
         List<Integer> ticksOfPreviousPeriod = pivotPointIndicator.getTicksOfPreviousPeriod(index);
-        if (ticksOfPreviousPeriod.isEmpty())
+        if (ticksOfPreviousPeriod.isEmpty()){
             return Decimal.NaN;
+        }
         Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
-        Decimal high =  tick.getMaxPrice();
         Decimal low = tick.getMinPrice();
         for(int i: ticksOfPreviousPeriod){
-            high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
         }
 
-        if (fibReversalTyp == FibReversalTyp.RESISTANCE) {
-            return pivotPointIndicator.getValue(index).plus(fibonacciFactor.multipliedBy(high.minus(low)));
-        }
-        return pivotPointIndicator.getValue(index).minus(fibonacciFactor.multipliedBy(high.minus(low)));
+        return x.dividedBy(Decimal.TWO).min(low);
     }
+
+    private Decimal calculateSupport(Decimal x, int index){
+       List<Integer> ticksOfPreviousPeriod = pivotPointIndicator.getTicksOfPreviousPeriod(index);
+        if (ticksOfPreviousPeriod.isEmpty()){
+            return Decimal.NaN;
+        }
+       Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
+       Decimal high = tick.getMaxPrice();
+       for(int i: ticksOfPreviousPeriod){
+           high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
+       }
+
+       return x.dividedBy(Decimal.TWO).min(high);
+   }
 }

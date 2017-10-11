@@ -1315,6 +1315,13 @@ public class PivotPointIndicatorTest {
         assertDecimalEquals(r3.getValue(series_5_minutes.getEndIndex()-80), Double.valueOf("172.3433333"));
         assertDecimalEquals(r3.getValue(series_5_minutes.getEndIndex()), Double.valueOf("174.87666666"));
 
+        DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_5_minutes, DeMarkPivotPointIndicator.PIVOT_TIME_LEVEL_ID_DAY);
+        DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
+        DeMarkReversalIndicator deMarkS1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
+        for (int i = series_5_minutes.getBeginIndex(); i<=series_5_minutes.getEndIndex(); i++){
+            System.out.println(series_5_minutes.getTick(i).getEndTime()+" "+deMarkR1.getValue(i)+" "+deMarkpp.getValue(i)+" "+deMarkS1.getValue(i));
+        }
+
     }
 
     @Test
@@ -1325,17 +1332,17 @@ public class PivotPointIndicatorTest {
         assertEquals(pp.getValue(0), Decimal.NaN);// first tick no data for
         assertEquals(pp.getValue(1), Decimal.NaN);// first tick no data for calculation
         assertEquals(pp.getValue(6), Decimal.NaN);// first tick no data for calculation
-        // result of calculation for second tick is not adequate because the previous day is incomplete..
+        // result of calculation for second tick is not adequate because the previous day is incomplete
         assertDecimalEquals(pp.getValue(28), Double.valueOf("172.08166"));
         assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()-36), Double.valueOf("170.93666")); // prev last tick
         assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()), Double.valueOf("168.0100")); // last tick
 
-        FibonacciReversalIndicator fibR3 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.RESISTANCE_3);
-        FibonacciReversalIndicator fibR2 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.RESISTANCE_2);
-        FibonacciReversalIndicator fibR1 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.RESISTANCE_1);
-        FibonacciReversalIndicator fibS1 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.SUPPORT_1);
-        FibonacciReversalIndicator fibS2 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.SUPPORT_2);
-        FibonacciReversalIndicator fibS3 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.SUPPORT_3);
+        FibonacciReversalIndicator fibR3 = new FibonacciReversalIndicator(pp, Decimal.ONE, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
+        FibonacciReversalIndicator fibR2 = new FibonacciReversalIndicator(pp, Decimal.valueOf(0.618), FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
+        FibonacciReversalIndicator fibR1 = new FibonacciReversalIndicator(pp, Decimal.valueOf(0.382), FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
+        FibonacciReversalIndicator fibS1 = new FibonacciReversalIndicator(pp, Decimal.valueOf(0.382), FibonacciReversalIndicator.FibReversalTyp.SUPPORT);
+        FibonacciReversalIndicator fibS2 = new FibonacciReversalIndicator(pp, Decimal.valueOf(0.618), FibonacciReversalIndicator.FibReversalTyp.SUPPORT);
+        FibonacciReversalIndicator fibS3 = new FibonacciReversalIndicator(pp, Decimal.ONE, FibonacciReversalIndicator.FibReversalTyp.SUPPORT);
 
         assertEquals(fibR3.getValue(series_1_hours.getBeginIndex()), Decimal.NaN);
         assertEquals(fibR2.getValue(1), Decimal.NaN );

@@ -32,12 +32,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Pivot Point indicator.
+ * DeMark Pivot Point indicator.
  * <p>
- * @author team172011(Simon-Justus Wimmer), 09.10.2017
+ * @author team172011(Simon-Justus Wimmer), 11.10.2017
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school: pivotpoints</a>
  */
-public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
+public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
 
     public static final int PIVOT_TIME_LEVEL_ID_TICKBASED = 0;
     public static final int PIVOT_TIME_LEVEL_ID_DAY = 1; // 1-, 5-, 10- and 15-minute charts use the prior day's high, low and close.
@@ -50,7 +50,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
     /**
      * Constructor.
      * <p>
-     * Calculates the pivot point based on the time level parameter.
+     * Calculates the deMark pivot point based on the time level parameter.
      * @param series the time series with adequate endTime of each tick for the given time level.
      * @param timeLevelId the corresponding time level for pivot calculation:
      *       <ul>
@@ -61,7 +61,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
      *          <li> If you want to use just the last tick data: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_TICKBASED (= 0)</li>
      *      </ul>
      */
-    public PivotPointIndicator(TimeSeries series, int timeLevelId) {
+    public DeMarkPivotPointIndicator(TimeSeries series, int timeLevelId) {
         super(series);
         if (timeLevelId<0 || timeLevelId>4) {
             throw new IllegalArgumentException("The following time level id is not supported:" + timeLevelId);
@@ -88,14 +88,29 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
         if (ticksOfPreviousPeriod.isEmpty())
             return Decimal.NaN;
         Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
-		Decimal close = tick.getClosePrice();
+		Decimal open = getTimeSeries().getTick(ticksOfPreviousPeriod.get(ticksOfPreviousPeriod.size()-1)).getOpenPrice();
+        Decimal close = tick.getClosePrice();
 		Decimal high =  tick.getMaxPrice();
 		Decimal low = tick.getMinPrice();
-		for(int i: ticksOfPreviousPeriod){
-			high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
-			low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
-		}
-		return (high.plus(low).plus(close)).dividedBy(Decimal.THREE);
+
+        for(int i: ticksOfPreviousPeriod){
+            high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
+            low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
+        }
+
+		Decimal x;
+
+		if (close.isLessThan(open)){
+		    x = high.plus(Decimal.TWO.multipliedBy(low)).plus(close);
+        }
+        else if (close.isGreaterThan(open)) {
+            x = Decimal.TWO.multipliedBy(high).plus(low).plus(close);
+        }
+        else{
+		    x = high.plus(low).plus(Decimal.TWO.multipliedBy(close));
+        }
+
+		return x.dividedBy(Decimal.valueOf(4));
 	}
 
     /**
