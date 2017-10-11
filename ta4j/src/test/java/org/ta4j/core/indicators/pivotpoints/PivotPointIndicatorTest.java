@@ -1270,12 +1270,12 @@ public class PivotPointIndicatorTest {
     @Test
     public void PivotPointTestDailyTimeFrame(){
         PivotPointIndicator pp = new PivotPointIndicator(series_5_minutes, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_DAY);
-        PivotSupport1Indicator s1 = new PivotSupport1Indicator(pp);
-        PivotSupport2Indicator s2 = new PivotSupport2Indicator(pp);
-        PivotSupport3Indicator s3 = new PivotSupport3Indicator(pp);
-        PivotResistance1Indicator r1 = new PivotResistance1Indicator(pp);
-        PivotResistance2Indicator r2 = new PivotResistance2Indicator(pp);
-        PivotResistance3Indicator r3 = new PivotResistance3Indicator(pp);
+        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_1);
+        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_2);
+        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_3);
+        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_1);
+        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_2);
+        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_3);
 
         //pp
         assertEquals(pp.getTimeLevel(),1);
@@ -1329,17 +1329,38 @@ public class PivotPointIndicatorTest {
         assertDecimalEquals(pp.getValue(28), Double.valueOf("172.08166"));
         assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()-36), Double.valueOf("170.93666")); // prev last tick
         assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()), Double.valueOf("168.0100")); // last tick
+
+        FibonacciReversalIndicator fibR3 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.RESISTANCE_3);
+        FibonacciReversalIndicator fibR2 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.RESISTANCE_2);
+        FibonacciReversalIndicator fibR1 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.RESISTANCE_1);
+        FibonacciReversalIndicator fibS1 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.SUPPORT_1);
+        FibonacciReversalIndicator fibS2 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.SUPPORT_2);
+        FibonacciReversalIndicator fibS3 = new FibonacciReversalIndicator(pp, FibonacciReversalIndicator.PivotLevel.SUPPORT_3);
+
+        assertEquals(fibR3.getValue(series_1_hours.getBeginIndex()), Decimal.NaN);
+        assertEquals(fibR2.getValue(1), Decimal.NaN );
+        assertEquals(fibR1.getValue(2), Decimal.NaN );
+        assertEquals(fibS1.getValue(6), Decimal.NaN);
+        assertEquals(fibS2.getValue(series_1_hours.getBeginIndex()), Decimal.NaN);
+        assertEquals(fibS3.getValue(6), Decimal.NaN);
+
+        assertEquals(fibR3.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(Decimal.ONE.multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
+        assertEquals(fibR2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(Decimal.valueOf(0.618).multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
+        assertEquals(fibR1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(Decimal.valueOf(0.382).multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
+        assertEquals(fibS1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(Decimal.valueOf(0.382).multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
+        assertEquals(fibS2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(Decimal.valueOf(0.618).multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
+        assertEquals(fibS3.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(Decimal.ONE.multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
     }
 
     @Test
     public void PivotPointTestMonthlyTimeFrame(){
         PivotPointIndicator pp = new PivotPointIndicator(series_1_days, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_MONTH);
-        PivotSupport1Indicator s1 = new PivotSupport1Indicator(pp);
-        PivotSupport2Indicator s2 = new PivotSupport2Indicator(pp);
-        PivotSupport3Indicator s3 = new PivotSupport3Indicator(pp);
-        PivotResistance1Indicator r1 = new PivotResistance1Indicator(pp);
-        PivotResistance2Indicator r2 = new PivotResistance2Indicator(pp);
-        PivotResistance3Indicator r3 = new PivotResistance3Indicator(pp);
+        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_1);
+        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_2);
+        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_3);
+        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_1);
+        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_2);
+        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_3);
 
         //pp
         assertEquals(pp.getTimeLevel(),3);
@@ -1391,12 +1412,12 @@ public class PivotPointIndicatorTest {
     @Test
     public void PivotPointTestYearlyTimeFrame(){
         PivotPointIndicator pp = new PivotPointIndicator(series_1_weeks, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_YEAR);
-        PivotSupport1Indicator s1 = new PivotSupport1Indicator(pp);
-        PivotSupport2Indicator s2 = new PivotSupport2Indicator(pp);
-        PivotSupport3Indicator s3 = new PivotSupport3Indicator(pp);
-        PivotResistance1Indicator r1 = new PivotResistance1Indicator(pp);
-        PivotResistance2Indicator r2 = new PivotResistance2Indicator(pp);
-        PivotResistance3Indicator r3 = new PivotResistance3Indicator(pp);
+        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_1);
+        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_2);
+        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_3);
+        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_1);
+        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_2);
+        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_3);
 
         //pp
         assertEquals(pp.getTimeLevel(), 4);
