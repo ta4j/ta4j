@@ -28,26 +28,53 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import java.util.List;
 
 /**
- * Pivot Support 2 Indicator.
+ * Fibonacci Reversal Indicator.
  * <p>
  * @author team172011(Simon-Justus Wimmer), 09.10.2017
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school: pivotpoints</a>
  */
-public class PivotSupport2Indicator extends RecursiveCachedIndicator<Decimal> {
+public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal> {
 
     private PivotPointIndicator pivotPointIndicator;
+    private PivotLevel level;
 
-    /**
-     * Constructor.
-     * <p>
-     * Calculates the (standard) support 2 reversal
-     * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
-     */
-    public PivotSupport2Indicator(PivotPointIndicator pivotPointIndicator) {
-        super(pivotPointIndicator);
-        this.pivotPointIndicator = pivotPointIndicator;
+    public enum PivotLevel{
+        RESISTANCE_3(Decimal.ONE, true),
+        RESISTANCE_2(Decimal.valueOf(0.618), true),
+        RESISTANCE_1(Decimal.valueOf(0.382), true),
+        SUPPORT_1(Decimal.valueOf(0.382), false),
+        SUPPORT_2(Decimal.valueOf(0.618), false),
+        SUPPORT_3(Decimal.ONE, false);
+
+        private Decimal fibFactor;
+        private boolean isResistance;
+
+        PivotLevel(Decimal fibFactor, boolean isResistance){
+            this.fibFactor = fibFactor;
+            this.isResistance = isResistance;
+        }
+
+        public Decimal getFactor(){
+            return this.fibFactor;
+        }
+
+        public boolean isResistance(){
+            return isResistance;
+        }
+
     }
 
+
+    /**Constructor.
+     * <p>
+     * Calculates the (fibonacci) support 3 reversal
+     * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
+     */
+    public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, PivotLevel level) {
+        super(pivotPointIndicator);
+        this.pivotPointIndicator = pivotPointIndicator;
+        this.level = level;
+    }
 
     @Override
     protected Decimal calculate(int index) {
@@ -60,6 +87,10 @@ public class PivotSupport2Indicator extends RecursiveCachedIndicator<Decimal> {
             high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
         }
-        return pivotPointIndicator.getValue(index).minus((high.minus(low)));
+
+        if (level.isResistance())
+            return pivotPointIndicator.getValue(index).plus(level.getFactor().multipliedBy(high.minus(low)));
+
+        return pivotPointIndicator.getValue(index).minus(level.getFactor().multipliedBy(high.minus(low)));
     }
 }
