@@ -45,12 +45,32 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal
         RESISTANCE
     }
 
+    /**
+     * Standard Fibonacci factors
+     */
+    public enum FibonacciFactor {
+        Factor1(Decimal.valueOf(0.382)),
+        Factor2(Decimal.valueOf(0.618)),
+        Factor3(Decimal.ONE);
+
+        private final Decimal factor;
+
+        FibonacciFactor(Decimal factor) {
+            this.factor = factor;
+        }
+
+        public Decimal getFactor(){
+            return this.factor;
+        }
+
+    }
+
 
     /**Constructor.
      * <p>
      * Calculates a (fibonacci) reversal
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
-     * @param fibonacciFactor the fibunacci factor for this reversal (e.g. 1, 0.618, 0.382, ...)
+     * @param fibonacciFactor the fibonacci factor for this reversal
      * @param fibReversalTyp the FibonacciReversalIndicator.FibReversalTyp of the reversal (SUPPORT, RESISTANCE)
      */
     public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, Decimal fibonacciFactor, FibReversalTyp fibReversalTyp) {
@@ -58,6 +78,17 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal
         this.pivotPointIndicator = pivotPointIndicator;
         this.fibonacciFactor = fibonacciFactor;
         this.fibReversalTyp = fibReversalTyp;
+    }
+
+    /**Constructor.
+     * <p>
+     * Calculates a (fibonacci) reversal
+     * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
+     * @param fibonacciFactor the {@link FibonacciFactor} factor for this reversal
+     * @param fibReversalTyp the FibonacciReversalIndicator.FibReversalTyp of the reversal (SUPPORT, RESISTANCE)
+     */
+    public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, FibonacciFactor fibonacciFactor, FibReversalTyp fibReversalTyp){
+        this(pivotPointIndicator,fibonacciFactor.getFactor(),fibReversalTyp);
     }
 
     @Override

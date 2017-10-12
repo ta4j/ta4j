@@ -40,7 +40,6 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Decimal> {
     private final DeMarkPivotLevel level;
 
     public enum DeMarkPivotLevel{
-
         RESISTANCE,
         SUPPORT,
     }

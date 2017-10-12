@@ -13,6 +13,8 @@ import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.*;
+import static org.ta4j.core.indicators.pivotpoints.TimeLevel.*;
 
 public class PivotPointIndicatorTest {
 
@@ -1269,16 +1271,15 @@ public class PivotPointIndicatorTest {
 
     @Test
     public void PivotPointTestDailyTimeFrame(){
-        PivotPointIndicator pp = new PivotPointIndicator(series_5_minutes, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_DAY);
-        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_1);
-        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_2);
-        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_3);
-        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_1);
-        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_2);
-        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_3);
+        PivotPointIndicator pp = new PivotPointIndicator(series_5_minutes, DAY);
+        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, SUPPORT_1);
+        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, SUPPORT_2);
+        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, SUPPORT_3);
+        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, RESISTANCE_1);
+        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, RESISTANCE_2);
+        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         //pp
-        assertEquals(pp.getTimeLevel(),1);
         assertEquals(pp.getValue(0), Decimal.NaN);// first tick no data for calculation
         // result of calculation for 7-27 tick is not adequate because the previous day is incomplete..
         assertDecimalEquals(pp.getValue(170), Double.valueOf("170.426666"));
@@ -1315,7 +1316,7 @@ public class PivotPointIndicatorTest {
         assertDecimalEquals(r3.getValue(series_5_minutes.getEndIndex()-80), Double.valueOf("172.3433333"));
         assertDecimalEquals(r3.getValue(series_5_minutes.getEndIndex()), Double.valueOf("174.87666666"));
 
-        DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_5_minutes, DeMarkPivotPointIndicator.PIVOT_TIME_LEVEL_ID_DAY);
+        DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_5_minutes, DAY);
         DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
         DeMarkReversalIndicator deMarkS1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
         for (int i = series_5_minutes.getBeginIndex(); i<=series_5_minutes.getEndIndex(); i++){
@@ -1326,9 +1327,8 @@ public class PivotPointIndicatorTest {
 
     @Test
     public void PivotPointTestWeeklyTimeFrame(){
-        PivotPointIndicator pp = new PivotPointIndicator(series_1_hours, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_WEEK);
+        PivotPointIndicator pp = new PivotPointIndicator(series_1_hours, TimeLevel.WEEK);
 
-        assertEquals(pp.getTimeLevel(), 2);
         assertEquals(pp.getValue(0), Decimal.NaN);// first tick no data for
         assertEquals(pp.getValue(1), Decimal.NaN);// first tick no data for calculation
         assertEquals(pp.getValue(6), Decimal.NaN);// first tick no data for calculation
@@ -1361,16 +1361,15 @@ public class PivotPointIndicatorTest {
 
     @Test
     public void PivotPointTestMonthlyTimeFrame(){
-        PivotPointIndicator pp = new PivotPointIndicator(series_1_days, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_MONTH);
-        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_1);
-        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_2);
-        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_3);
-        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_1);
-        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_2);
-        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_3);
+        PivotPointIndicator pp = new PivotPointIndicator(series_1_days, MONTH);
+        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, SUPPORT_1);
+        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, SUPPORT_2);
+        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, SUPPORT_3);
+        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, RESISTANCE_1);
+        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, RESISTANCE_2);
+        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         //pp
-        assertEquals(pp.getTimeLevel(),3);
         assertEquals(pp.getValue(0), Decimal.NaN);
         assertEquals(pp.getValue(19), Decimal.NaN); // no previous month for calculation
         assertDecimalEquals(pp.getValue(20), Double.valueOf("126.32333"));
@@ -1418,16 +1417,15 @@ public class PivotPointIndicatorTest {
 
     @Test
     public void PivotPointTestYearlyTimeFrame(){
-        PivotPointIndicator pp = new PivotPointIndicator(series_1_weeks, PivotPointIndicator.PIVOT_TIME_LEVEL_ID_YEAR);
-        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_1);
-        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_2);
-        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.SUPPORT_3);
-        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_1);
-        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_2);
-        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, StandardReversalIndicator.PivotLevel.RESISTANCE_3);
+        PivotPointIndicator pp = new PivotPointIndicator(series_1_weeks, YEAR);
+        StandardReversalIndicator s1 = new StandardReversalIndicator(pp, SUPPORT_1);
+        StandardReversalIndicator s2 = new StandardReversalIndicator(pp, SUPPORT_2);
+        StandardReversalIndicator s3 = new StandardReversalIndicator(pp, SUPPORT_3);
+        StandardReversalIndicator r1 = new StandardReversalIndicator(pp, RESISTANCE_1);
+        StandardReversalIndicator r2 = new StandardReversalIndicator(pp, RESISTANCE_2);
+        StandardReversalIndicator r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         //pp
-        assertEquals(pp.getTimeLevel(), 4);
         assertEquals(pp.getValue(0), Decimal.NaN);
         assertEquals(pp.getValue(33), Decimal.NaN); // no previous year
         assertDecimalEquals(pp.getValue(series_1_weeks.getEndIndex()-100), Double.valueOf("70.823331"));

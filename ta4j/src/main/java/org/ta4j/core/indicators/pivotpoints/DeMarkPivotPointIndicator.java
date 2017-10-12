@@ -39,13 +39,7 @@ import java.util.List;
  */
 public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
 
-    public static final int PIVOT_TIME_LEVEL_ID_TICKBASED = 0;
-    public static final int PIVOT_TIME_LEVEL_ID_DAY = 1; // 1-, 5-, 10- and 15-minute charts use the prior day's high, low and close.
-    public static final int PIVOT_TIME_LEVEL_ID_WEEK = 2; // 30- 60- and 120-minute charts use the prior week's high, low, and close.
-    public static final int PIVOT_TIME_LEVEL_ID_MONTH = 3; // Pivot Points for daily charts use the prior month's data.
-    public static final int PIVOT_TIME_LEVEL_ID_YEAR = 4; // Pivot Points for weekly and monthly charts use the prior year's data
-
-    private final int timeLevel;
+    private final TimeLevel timeLevel;
 
     /**
      * Constructor.
@@ -61,21 +55,9 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
      *          <li> If you want to use just the last tick data: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_TICKBASED (= 0)</li>
      *      </ul>
      */
-    public DeMarkPivotPointIndicator(TimeSeries series, int timeLevelId) {
+    public DeMarkPivotPointIndicator(TimeSeries series, TimeLevel timeLevelId) {
         super(series);
-        if (timeLevelId<0 || timeLevelId>4) {
-            throw new IllegalArgumentException("The following time level id is not supported:" + timeLevelId);
-        }
         this.timeLevel = timeLevelId;
-    }
-
-
-    /**
-     * Getter for the time level id
-     * @return the the time level id this pivot point indicator was initialized with
-     */
-    public int getTimeLevel(){
-        return this.timeLevel;
     }
 
     @Override
@@ -121,7 +103,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
 	public List<Integer> getTicksOfPreviousPeriod(int index) {
 		List<Integer> previousTicks = new ArrayList<>();
 
-        if(timeLevel == PIVOT_TIME_LEVEL_ID_TICKBASED){
+        if(timeLevel == TimeLevel.TICKBASED){
             previousTicks.add(Math.max(0, index-1));
             return previousTicks;
         }
@@ -148,16 +130,16 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
 
 	private long getPreviousPeriod(Tick tick, int indexOfPreviousTick) {
 		switch (timeLevel) {
-            case PIVOT_TIME_LEVEL_ID_DAY: // return previous day
+            case DAY: // return previous day
                 int prevCalendarDay =  tick.getEndTime().minusDays(1).getDayOfYear();
                 // skip weekend and holidays:
                 while (getTimeSeries().getTick(indexOfPreviousTick).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousTick > 0) {
                     prevCalendarDay--;
                 }
                 return prevCalendarDay;
-            case PIVOT_TIME_LEVEL_ID_WEEK: // return previous week
+            case WEEK: // return previous week
                 return tick.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-            case PIVOT_TIME_LEVEL_ID_MONTH: // return previous month
+            case MONTH: // return previous month
                 return tick.getEndTime().minusMonths(1).getMonthValue();
             default: // return previous year
                 return tick.getEndTime().minusYears(1).getYear();
@@ -166,11 +148,11 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
 
 	private long getPeriod(Tick tick) {
         switch (timeLevel) {
-            case PIVOT_TIME_LEVEL_ID_DAY: // return previous day
+            case DAY: // return previous day
                 return tick.getEndTime().getDayOfYear();
-            case PIVOT_TIME_LEVEL_ID_WEEK: // return previous week
+            case WEEK: // return previous week
                 return tick.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-            case PIVOT_TIME_LEVEL_ID_MONTH: // return previous month
+            case MONTH: // return previous month
                 return tick.getEndTime().getMonthValue();
             default: // return previous year
                 return tick.getEndTime().getYear();
