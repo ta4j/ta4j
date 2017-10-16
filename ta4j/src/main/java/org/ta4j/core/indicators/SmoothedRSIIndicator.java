@@ -60,9 +60,4 @@ public class SmoothedRSIIndicator extends RSIIndicator {
         }
         return super.calculate(index);
     }
-    
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-    }
 }
