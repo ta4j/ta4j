@@ -63,4 +63,9 @@ private final MaxPriceIndicator maxPrice;
         return maxPrice.getValue(Math.max(0, index - timeFrame)).minus(minPrice.getValue(index))
                 .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

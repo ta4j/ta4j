@@ -72,4 +72,9 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Decimal> {
     private Decimal getMoneyFlowVolume(int index) {
         return clvIndicator.getValue(index).multipliedBy(series.getTick(index).getVolume());
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

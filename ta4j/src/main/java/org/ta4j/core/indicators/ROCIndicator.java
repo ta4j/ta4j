@@ -52,4 +52,9 @@ public class ROCIndicator extends CachedIndicator<Decimal> {
                 .dividedBy(nPeriodsAgoValue)
                 .multipliedBy(Decimal.HUNDRED);
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

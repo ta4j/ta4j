@@ -15,11 +15,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## Added
 - **AroonOscillatorIndicator**: New indicator working with AroonUp/DownIndicator
+- **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
-- **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
+- **IsFallingRule**: New Rule that is satisfied if indicator strictly decreases within the timeFrame.
+- **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the timeFrame.
+- **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the timeFrame.
+- **IsHighestRule**: New Rule that is satisfied if indicator is the highest within the timeFrame.
 
 ## 0.9 (2017-09-07)
 

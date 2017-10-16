@@ -54,6 +54,6 @@ public class AverageDirectionalMovementIndicator extends RecursiveCachedIndicato
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+" timeFrame: "+timeFrame;
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }
