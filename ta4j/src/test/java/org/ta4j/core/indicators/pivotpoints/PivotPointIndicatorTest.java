@@ -1319,9 +1319,15 @@ public class PivotPointIndicatorTest {
         DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_5_minutes, DAY);
         DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
         DeMarkReversalIndicator deMarkS1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
-        for (int i = series_5_minutes.getBeginIndex(); i<=series_5_minutes.getEndIndex(); i++){
-            System.out.println(series_5_minutes.getTick(i).getEndTime()+" "+deMarkR1.getValue(i)+" "+deMarkpp.getValue(i)+" "+deMarkS1.getValue(i));
-        }
+        assertDecimalEquals(deMarkpp.getValue(0), "NaN");
+        assertDecimalEquals(deMarkR1.getValue(0),"NaN");
+        assertDecimalEquals(deMarkS1.getValue(0), "NaN");
+        assertDecimalEquals(deMarkpp.getValue(222), 170.735);
+        assertDecimalEquals(deMarkR1.getValue(222), 172.66);
+        assertDecimalEquals(deMarkS1.getValue(222), 169.81);
+        assertDecimalEquals(deMarkpp.getValue(series_5_minutes.getEndIndex()), 170.615);
+        assertDecimalEquals(deMarkR1.getValue(series_5_minutes.getEndIndex()), 172.63);
+        assertDecimalEquals(deMarkS1.getValue(series_5_minutes.getEndIndex()), 169.92);
 
     }
 
@@ -1357,6 +1363,20 @@ public class PivotPointIndicatorTest {
         assertEquals(fibS1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(Decimal.valueOf(0.382).multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
         assertEquals(fibS2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(Decimal.valueOf(0.618).multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
         assertEquals(fibS3.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(Decimal.ONE.multipliedBy(Decimal.valueOf(171.66).minus(Decimal.valueOf(161.56)))) );
+
+        DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_1_hours, WEEK);
+        DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
+        DeMarkReversalIndicator deMarkS1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
+        assertDecimalEquals(deMarkpp.getValue(0), "NaN");
+        assertDecimalEquals(deMarkR1.getValue(0),"NaN");
+        assertDecimalEquals(deMarkS1.getValue(0), "NaN");
+        assertDecimalEquals(deMarkpp.getValue(series_1_hours.getEndIndex()-50), 170.5075);
+        assertDecimalEquals(deMarkR1.getValue(series_1_hours.getEndIndex()-50), 171.795);
+        assertDecimalEquals(deMarkS1.getValue(series_1_hours.getEndIndex()-50), 167.965);
+        assertDecimalEquals(deMarkpp.getValue(series_1_hours.getEndIndex()), 168.9225); // June 61th 2017
+        assertDecimalEquals(deMarkR1.getValue(series_1_hours.getEndIndex()), 176.285);
+        assertDecimalEquals(deMarkS1.getValue(series_1_hours.getEndIndex()), 166.185);
+
     }
 
     @Test

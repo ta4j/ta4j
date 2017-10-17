@@ -81,23 +81,23 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Decimal> {
         Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
         Decimal low = tick.getMinPrice();
         for(int i: ticksOfPreviousPeriod){
-            low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
+            low = getTimeSeries().getTick(i).getMinPrice().min(low);
         }
 
-        return x.dividedBy(Decimal.TWO).min(low);
+        return x.dividedBy(Decimal.TWO).minus(low);
     }
 
     private Decimal calculateSupport(Decimal x, int index){
        List<Integer> ticksOfPreviousPeriod = pivotPointIndicator.getTicksOfPreviousPeriod(index);
-        if (ticksOfPreviousPeriod.isEmpty()){
-            return Decimal.NaN;
-        }
+       if (ticksOfPreviousPeriod.isEmpty()) {
+           return Decimal.NaN;
+       }
        Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
        Decimal high = tick.getMaxPrice();
        for(int i: ticksOfPreviousPeriod){
-           high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
+           high = getTimeSeries().getTick(i).getMaxPrice().max(high);
        }
 
-       return x.dividedBy(Decimal.TWO).min(high);
+       return x.dividedBy(Decimal.TWO).minus(high);
    }
 }

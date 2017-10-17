@@ -48,12 +48,14 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
      * @param series the time series with adequate endTime of each tick for the given time level.
      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:
      *       <ul>
-     *          <li>1-, 5-, 10- and 15-minute charts use the prior days high, low and close: <b>timeLevelId</b> TimeLevel.DAY</li>
+     *          <li>1-, 5-, 10- and 15-minute charts use the prior days high, low and close: <b>timeLevelId</b> = TimeLevel.DAY</li>
      *          <li>30- 60- and 120-minute charts use the prior week's high, low, and close: <b>timeLevelId</b> =  TimeLevel.WEEK</li>
      *          <li>Pivot Points for daily charts use the prior month's high, low and close: <b>timeLevelId</b> = TimeLevel.MONTH</li>
      *          <li>Pivot Points for weekly and monthly charts use the prior year's high, low and close: <b>timeLevelId</b> = TimeLevel.YEAR (= 4)</li>
      *          <li> If you want to use just the last tick data: <b>timeLevelId</b> = TimeLevel.TICKBASED</li>
      *      </ul>
+     * The user has to make sure that there are enough previous ticks to calculate correct pivots at the first tick that matters. For example for PIVOT_TIME_LEVEL_ID_MONTH
+     * there will be only correct pivot point values (and reversals) after the first complete month
      */
     public PivotPointIndicator(TimeSeries series,TimeLevel timeLevel) {
         super(series);

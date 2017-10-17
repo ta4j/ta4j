@@ -54,6 +54,8 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
      *          <li>Pivot Points for weekly and monthly charts use the prior year's high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_YEAR (= 4)</li>
      *          <li> If you want to use just the last tick data: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_TICKBASED (= 0)</li>
      *      </ul>
+     * The user has to make sure that there are enough previous ticks to calculate correct pivots at the first tick that matters. For example for PIVOT_TIME_LEVEL_ID_MONTH
+     * there will be only correct pivot point values (and reversals) after the first complete month
      */
     public DeMarkPivotPointIndicator(TimeSeries series, TimeLevel timeLevelId) {
         super(series);
