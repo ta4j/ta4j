@@ -22,18 +22,6 @@
  */
 package ta4jexamples.indicators;
 
-import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.EMAIndicator;
-import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
-import eu.verdelhan.ta4j.indicators.bollinger.BollingerBandsLowerIndicator;
-import eu.verdelhan.ta4j.indicators.bollinger.BollingerBandsMiddleIndicator;
-import eu.verdelhan.ta4j.indicators.bollinger.BollingerBandsUpperIndicator;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -43,7 +31,20 @@ import org.jfree.data.time.Day;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Tick;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import ta4jexamples.loaders.CsvTicksLoader;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * This class builds a graphical chart showing values from indicators.

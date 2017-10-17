@@ -13,8 +13,8 @@
     <dependencies>
         
         <dependency>
-            <groupId>eu.verdelhan</groupId>
-            <artifactId>ta4j</artifactId>
+            <groupId>org.ta4j</groupId>
+            <artifactId>ta4j-core</artifactId>
             <version>0.10-SNAPSHOT</version>
         </dependency>
 
