@@ -20,6 +20,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
+- **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
+- **Pivot Point Indicators Package**: New package with Indicators for calculating standard, Fibonacci and DeMark pivot points and reversals
+    - **PivotPointIndicator**: New indicator for calculating the standard pivot point
+        - **StandardReversalIndicator**: New indicator for calculating the standard reversals (R3,R2,R1,S1,S2,S3)
+        - **FibonacciReversalIndicator**: New indicator for calculating the Fibonacci reversals (R3,R2,R1,S1,S2,S3)
+    - **DeMarkPivotPointIndicator**: New indicator for calculating the DeMark pivot point
+        - **DeMarkReversalIndicator**: new indicator for calculating the DeMark resistance and the DeMark support
 - **IsFallingRule**: New Rule that is satisfied if indicator strictly decreases within the timeFrame.
 - **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the timeFrame.
 - **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the timeFrame.
