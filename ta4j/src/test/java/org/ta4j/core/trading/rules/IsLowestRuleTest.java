@@ -20,37 +20,38 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Double exponential moving average indicator.
- * <p>
- * @see https://en.wikipedia.org/wiki/Double_exponential_moving_average
- */
-public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
+public class IsLowestRuleTest {
 
-    private final int timeFrame;
-
-    private final EMAIndicator ema;
-
-    public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-    }
-
-    @Override
-    protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        return ema.getValue(index).multipliedBy(Decimal.TWO)
-                .minus(emaEma.getValue(index));
+    private Indicator<Decimal> indicator;
+    private IsLowestRule rule;
+    
+    @Before
+    public void setUp() {
+    	indicator = new FixedDecimalIndicator(1, -5, 3, -6, 5, -7, 0, -1, 2, -8);
+        rule = new IsLowestRule(indicator, 3);
     }
     
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    @Test
+    public void isSatisfied() {
+    		assertTrue(rule.isSatisfied(0));
+		assertTrue(rule.isSatisfied(1));
+		assertFalse(rule.isSatisfied(2));
+		assertTrue(rule.isSatisfied(3));
+		assertFalse(rule.isSatisfied(4));
+		assertTrue(rule.isSatisfied(5));
+		assertFalse(rule.isSatisfied(6));
+		assertFalse(rule.isSatisfied(7));
+		assertFalse(rule.isSatisfied(8));
+		assertTrue(rule.isSatisfied(9));
     }
 }

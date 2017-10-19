@@ -27,13 +27,14 @@ import org.ta4j.core.Indicator;
 
 /**
  * Chande's Range Action Verification Index (RAVI) indicator.
+ * 
+ * To preserve trend direction, default calculation does not use absolute value.
  */
 public class RAVIIndicator extends CachedIndicator<Decimal> {
 
     private final SMAIndicator shortSma;
-    
     private final SMAIndicator longSma;
-    
+   
     /**
      * Constructor.
      * @param price the price
@@ -54,5 +55,4 @@ public class RAVIIndicator extends CachedIndicator<Decimal> {
                 .dividedBy(longMA)
                 .multipliedBy(Decimal.HUNDRED);
     }
-
 }

@@ -20,37 +20,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Double exponential moving average indicator.
- * <p>
- * @see https://en.wikipedia.org/wiki/Double_exponential_moving_average
- */
-public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
+public class InSlopeRuleTest {
 
-    private final int timeFrame;
-
-    private final EMAIndicator ema;
-
-    public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-    }
-
-    @Override
-    protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        return ema.getValue(index).multipliedBy(Decimal.TWO)
-                .minus(emaEma.getValue(index));
+    private Indicator<Decimal> indicator;
+    private InSlopeRule rulePositiveSlope;
+    private InSlopeRule ruleNegativeSlope;
+    
+    @Before
+    public void setUp() {
+        indicator = new FixedDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
+        rulePositiveSlope = new InSlopeRule(indicator, Decimal.valueOf(20), Decimal.valueOf(30));
+        ruleNegativeSlope = new InSlopeRule(indicator, Decimal.valueOf(-40), Decimal.valueOf(-20));
     }
     
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    @Test
+    public void isSatisfied() {
+        assertFalse(rulePositiveSlope.isSatisfied(0));
+        assertTrue(rulePositiveSlope.isSatisfied(1));
+        assertFalse(rulePositiveSlope.isSatisfied(2));
+        assertFalse(rulePositiveSlope.isSatisfied(9));
+        
+        assertFalse(ruleNegativeSlope.isSatisfied(0));
+        assertFalse(ruleNegativeSlope.isSatisfied(1));
+        assertTrue(ruleNegativeSlope.isSatisfied(5));
+        assertFalse(ruleNegativeSlope.isSatisfied(9));
     }
 }

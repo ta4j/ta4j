@@ -20,37 +20,46 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.trading.rules.AbstractRule;
 
 /**
- * Double exponential moving average indicator.
+ * Indicator-lowest-indicator rule.
  * <p>
- * @see https://en.wikipedia.org/wiki/Double_exponential_moving_average
+ * Satisfied when the value of the {@link Indicator indicator} is the lowest
+ * within the timeFrame.
  */
-public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
+public class IsLowestRule extends AbstractRule {
 
-    private final int timeFrame;
+	/** The actual indicator */
+	private Indicator<Decimal> ref;
+	/** The timeFrame */
+	private int timeFrame;
 
-    private final EMAIndicator ema;
+	/**
+	 * Constructor.
+	 * 
+	 * @param ref
+	 * @param timeFrame
+	 */
+	public IsLowestRule(Indicator<Decimal> ref, int timeFrame) {
+		this.ref = ref;
+		this.timeFrame = timeFrame;
+	}
 
-    public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-    }
+	@Override
+	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+		LowestValueIndicator lowest = new LowestValueIndicator(ref, timeFrame);
+		Decimal lowestVal = lowest.getValue(index);
+		Decimal refVal = ref.getValue(index);
 
-    @Override
-    protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        return ema.getValue(index).multipliedBy(Decimal.TWO)
-                .minus(emaEma.getValue(index));
-    }
-    
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-    }
+		final boolean satisfied = !refVal.isNaN() && !lowestVal.isNaN() && refVal.equals(lowestVal);
+		traceIsSatisfied(index, satisfied);
+		return satisfied;
+	}
 }

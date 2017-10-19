@@ -70,4 +70,9 @@ public class VWAPIndicator extends CachedIndicator<Decimal> {
         }
         return cumulativeTPV.dividedBy(cumulativeVolume);
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

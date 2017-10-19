@@ -62,4 +62,9 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Decimal> {
         return k.multipliedBy(Decimal.TWO.multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index-lag)))
                 .plus(Decimal.ONE.minus(k).multipliedBy(zlemaPrev));
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    }
 }

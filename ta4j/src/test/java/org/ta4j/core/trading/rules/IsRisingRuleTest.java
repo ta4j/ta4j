@@ -20,37 +20,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
 
-/**
- * Double exponential moving average indicator.
- * <p>
- * @see https://en.wikipedia.org/wiki/Double_exponential_moving_average
- */
-public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
+public class IsRisingRuleTest {
 
-    private final int timeFrame;
+	private Indicator<Decimal> indicator;
+	private IsRisingRule rule;
 
-    private final EMAIndicator ema;
+	@Before
+	public void setUp() {
+		indicator = new FixedDecimalIndicator(1, 2, 3, 4, 5, 6, 0, 1, 2, 3);
+		rule = new IsRisingRule(indicator, 3);
+	}
 
-    public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-    }
-
-    @Override
-    protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        return ema.getValue(index).multipliedBy(Decimal.TWO)
-                .minus(emaEma.getValue(index));
-    }
-    
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-    }
+	@Test
+	public void isSatisfied() {
+		// The first two values evaluate to false:
+		// 2 previous values (2=3-1) are needed to decide.
+		assertFalse(rule.isSatisfied(0));
+		assertFalse(rule.isSatisfied(1));
+		// First time to have at least 2 previous values.
+		assertTrue(rule.isSatisfied(2));
+		assertTrue(rule.isSatisfied(3));
+		assertTrue(rule.isSatisfied(4));
+		assertTrue(rule.isSatisfied(5));
+		assertFalse(rule.isSatisfied(6));
+		assertFalse(rule.isSatisfied(7));
+		assertTrue(rule.isSatisfied(8));
+		assertTrue(rule.isSatisfied(9));
+	}
 }

@@ -20,37 +20,50 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.trading.rules.AbstractRule;
+import org.ta4j.core.trading.rules.OverIndicatorRule;
 
 /**
- * Double exponential moving average indicator.
+ * Indicator-rising-indicator rule.
  * <p>
- * @see https://en.wikipedia.org/wiki/Double_exponential_moving_average
+ * Satisfied when the values of the {@link Indicator indicator} strict increase
+ * within the timeFrame.
  */
-public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
+public class IsRisingRule extends AbstractRule {
 
-    private final int timeFrame;
+	/** The actual indicator */
+	private Indicator<Decimal> ref;
+	/** The timeFrame */
+	private int timeFrame;
 
-    private final EMAIndicator ema;
+	/**
+	 * Constructor.
+	 * 
+	 * @param ref
+	 * @param timeFrame
+	 */
+	public IsRisingRule(Indicator<Decimal> ref, int timeFrame) {
+		this.ref = ref;
+		this.timeFrame = timeFrame;
+	}
 
-    public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-    }
-
-    @Override
-    protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        return ema.getValue(index).multipliedBy(Decimal.TWO)
-                .minus(emaEma.getValue(index));
-    }
-    
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
-    }
+	@Override
+	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+		Rule gtPrev = new OverIndicatorRule(ref, new PreviousValueIndicator(ref));
+		for (int i = 1; i < timeFrame - 1; i++) {
+			PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
+			gtPrev = gtPrev.and(new OverIndicatorRule(prev, new PreviousValueIndicator(prev)));
+		}
+		
+		final boolean satisfied = gtPrev.isSatisfied(index, tradingRecord);
+		traceIsSatisfied(index, satisfied);
+		return satisfied;
+	}
 }
