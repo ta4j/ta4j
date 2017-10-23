@@ -43,7 +43,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class build a Ta4j time series from a CSV file containing trades.
+ * This class builds a Ta4j time series from a CSV file containing trades.
  */
 public class CsvTradesLoader {
 

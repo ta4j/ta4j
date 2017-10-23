@@ -1,6 +1,13 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## Unreleased
+## 0.10 (2017-10-23)
+
+### VERY Important note!!!!
+
+with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). YOu have to reorganize all your refernces to the new packages!
+In eclipse you can do this easily by selecting your sources and run "Organize imports"
+_Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
+
 ### Fixed
 - **ParabolicSarIndicator**: wrong calculation fixed
 - **KAMAIndicator**: stack overflow bug fixed
@@ -14,7 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **HighestValueIndicator and LowestValueIndicator:** ignore also NaN values if they are at the current index
 
 ## Added
-- **AroonOscillatorIndicator**: New indicator working with AroonUp/DownIndicator
+- **AroonOscillatorIndicator**: New indicator based on AroonUp/DownIndicator
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
