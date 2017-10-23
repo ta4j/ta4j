@@ -22,20 +22,11 @@
  */
 package ta4jexamples.analysis;
 
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeriesManager;
-import eu.verdelhan.ta4j.TradingRecord;
-import eu.verdelhan.ta4j.analysis.criteria.AverageProfitCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.AverageProfitableTradesCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.BuyAndHoldCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.LinearTransactionCostCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.MaximumDrawdownCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.NumberOfTicksCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.NumberOfTradesCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.RewardRiskRatioCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.analysis.criteria.VersusBuyAndHoldCriterion;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.*;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 

@@ -22,26 +22,25 @@
  */
 package ta4jexamples.loaders;
 
-import eu.verdelhan.ta4j.BaseTick;
-import eu.verdelhan.ta4j.BaseTimeSeries;
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
+import com.opencsv.CSVReader;
+import org.ta4j.core.BaseTick;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Tick;
+import org.ta4j.core.TimeSeries;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-
-import com.opencsv.CSVReader;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 /**
  * This class builds a Ta4j time series from a CSV file containing trades.

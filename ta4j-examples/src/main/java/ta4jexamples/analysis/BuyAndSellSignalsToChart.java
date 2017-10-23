@@ -22,19 +22,6 @@
  */
 package ta4jexamples.analysis;
 
-import eu.verdelhan.ta4j.Indicator;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeriesManager;
-import eu.verdelhan.ta4j.Trade;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -46,8 +33,15 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
+import org.ta4j.core.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
+
+import java.awt.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
 
 /**
  * This class builds a graphical chart showing the buy/sell signals of a strategy.
