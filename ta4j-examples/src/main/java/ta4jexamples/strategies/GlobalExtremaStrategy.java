@@ -22,22 +22,11 @@
  */
 package ta4jexamples.strategies;
 
-import eu.verdelhan.ta4j.BaseStrategy;
-import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Rule;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeriesManager;
-import eu.verdelhan.ta4j.TradingRecord;
-import eu.verdelhan.ta4j.analysis.criteria.TotalProfitCriterion;
-import eu.verdelhan.ta4j.indicators.helpers.HighestValueIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.LowestValueIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.MaxPriceIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.MinPriceIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.MultiplierIndicator;
-import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
-import eu.verdelhan.ta4j.trading.rules.UnderIndicatorRule;
+import org.ta4j.core.*;
+import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.trading.rules.OverIndicatorRule;
+import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**

@@ -22,24 +22,20 @@
  */
 package ta4jexamples.indicators;
 
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.helpers.AverageTrueRangeIndicator;
-import eu.verdelhan.ta4j.indicators.statistics.StandardDeviationIndicator;
-import eu.verdelhan.ta4j.indicators.PPOIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.PriceVariationIndicator;
-import eu.verdelhan.ta4j.indicators.helpers.TypicalPriceIndicator;
-import eu.verdelhan.ta4j.indicators.EMAIndicator;
-import eu.verdelhan.ta4j.indicators.ROCIndicator;
-import eu.verdelhan.ta4j.indicators.RSIIndicator;
-import eu.verdelhan.ta4j.indicators.SMAIndicator;
-import eu.verdelhan.ta4j.indicators.WilliamsRIndicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.*;
+import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.PriceVariationIndicator;
+import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import ta4jexamples.loaders.CsvTradesLoader;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a CSV file containing values from indicators.

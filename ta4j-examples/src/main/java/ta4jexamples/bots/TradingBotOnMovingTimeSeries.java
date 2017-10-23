@@ -22,21 +22,14 @@
  */
 package ta4jexamples.bots;
 
-import eu.verdelhan.ta4j.BaseStrategy;
-import eu.verdelhan.ta4j.BaseTick;
-import eu.verdelhan.ta4j.BaseTradingRecord;
-import eu.verdelhan.ta4j.Decimal;
-import eu.verdelhan.ta4j.Order;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TradingRecord;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-import eu.verdelhan.ta4j.indicators.SMAIndicator;
-import eu.verdelhan.ta4j.trading.rules.OverIndicatorRule;
-import eu.verdelhan.ta4j.trading.rules.UnderIndicatorRule;
-import java.time.ZonedDateTime;
+import org.ta4j.core.*;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.trading.rules.OverIndicatorRule;
+import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
+
+import java.time.ZonedDateTime;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.

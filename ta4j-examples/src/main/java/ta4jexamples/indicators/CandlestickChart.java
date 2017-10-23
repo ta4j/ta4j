@@ -22,11 +22,6 @@
  */
 package ta4jexamples.indicators;
 
-import eu.verdelhan.ta4j.Tick;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.indicators.helpers.ClosePriceIndicator;
-import java.awt.Color;
-import java.util.Date;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -41,7 +36,13 @@ import org.jfree.data.xy.DefaultHighLowDataset;
 import org.jfree.data.xy.OHLCDataset;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
+import org.ta4j.core.Tick;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import ta4jexamples.loaders.CsvTradesLoader;
+
+import java.awt.*;
+import java.util.Date;
 
 /**
  * This class builds a traditional candlestick chart.

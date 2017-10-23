@@ -25,16 +25,16 @@ package ta4jexamples.logging;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
-import eu.verdelhan.ta4j.Strategy;
-import eu.verdelhan.ta4j.TimeSeries;
-import eu.verdelhan.ta4j.TimeSeriesManager;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.strategies.CCICorrectionStrategy;
 
 import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.slf4j.LoggerFactory;
-import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.strategies.CCICorrectionStrategy;
 
 /**
  * Strategy execution logging example.
