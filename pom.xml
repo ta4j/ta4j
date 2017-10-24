@@ -154,15 +154,22 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>2.5</version>
-                <configuration>
-                    <autoVersionSubmodules>true</autoVersionSubmodules>
-                    <tagNameFormat>@{project.version}</tagNameFormat>
-                    <!-- Avoid issue: http://jira.codehaus.org/browse/MGPG-9 -->
-                    <mavenExecutorId>forked-path</mavenExecutorId>
-                    <useReleaseProfile>false</useReleaseProfile>
-                    <arguments>${arguments} -Psonatype-oss-release</arguments>
-                </configuration>
+                <version>2.5.1</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.shared</groupId>
+                        <artifactId>maven-invoker</artifactId>
+                        <version>2.2</version>
+                    </dependency>
+                </dependencies>
+                <!--  <configuration>
+                     <autoVersionSubmodules>true</autoVersionSubmodules>
+                     <tagNameFormat>@{project.version}</tagNameFormat>
+                     Avoid issue: http://jira.codehaus.org/browse/MGPG-9
+                     <mavenExecutorId>forked-path</mavenExecutorId>
+                     <useReleaseProfile>false</useReleaseProfile>
+                     <arguments>${arguments} -Psonatype-oss-release</arguments>
+                </configuration>-->
             </plugin>
 
         </plugins>
