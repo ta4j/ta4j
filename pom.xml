@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.10-SNAPSHOT</version>
+    <version>0.10</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
@@ -49,7 +49,7 @@
         <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
         <url>http://github.com/ta4j/ta4j</url>
-        <tag>HEAD</tag>
+        <tag>0.10-SNAPSHOT</tag>
     </scm>
 
     <modules>
