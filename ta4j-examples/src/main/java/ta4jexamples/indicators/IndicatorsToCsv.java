@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package ta4jexamples.indicators;
 
@@ -44,13 +44,13 @@ public class IndicatorsToCsv {
 
     public static void main(String[] args) {
 
-        /**
-         * Getting time series
+        /*
+          Getting time series
          */
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
-        /**
-         * Creating indicators
+        /*
+          Creating indicators
          */
         // Close price
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
@@ -77,13 +77,13 @@ public class IndicatorsToCsv {
         // Standard deviation
         StandardDeviationIndicator sd = new StandardDeviationIndicator(closePrice, 14);
 
-        /**
-         * Building header
+        /*
+          Building header
          */
         StringBuilder sb = new StringBuilder("timestamp,close,typical,variation,sma8,sma20,ema8,ema20,ppo,roc,rsi,williamsr,atr,sd\n");
 
-        /**
-         * Adding indicators values
+        /*
+          Adding indicators values
          */
         final int nbTicks = series.getTickCount();
         for (int i = 0; i < nbTicks; i++) {
@@ -103,8 +103,8 @@ public class IndicatorsToCsv {
             .append(sd.getValue(i)).append('\n');
         }
 
-        /**
-         * Writing CSV file
+        /*
+          Writing CSV file
          */
         BufferedWriter writer = null;
         try {
