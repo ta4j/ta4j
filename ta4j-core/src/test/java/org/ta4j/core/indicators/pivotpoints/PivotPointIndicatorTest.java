@@ -1504,4 +1504,3 @@ public class PivotPointIndicatorTest {
         assertDecimalEquals(r3.getValue(series_1_weeks.getEndIndex()), Double.valueOf("180.03999"));
     }
 }
-}
