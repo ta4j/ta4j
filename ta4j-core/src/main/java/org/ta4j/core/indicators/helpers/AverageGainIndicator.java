@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Average gain indicator.
- * <p>
+ * <p></p>
  */
 public class AverageGainIndicator extends CachedIndicator<Decimal> {
 

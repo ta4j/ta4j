@@ -33,8 +33,7 @@ import java.util.List;
 
 /**
  * Pivot Point indicator.
- * <p>
- * @author team172011(Simon-Justus Wimmer), 09.10.2017
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school: pivotpoints</a>
  */
 public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {

@@ -33,7 +33,7 @@ import java.util.List;
 
 /**
  * DeMark Pivot Point indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */

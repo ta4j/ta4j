@@ -29,7 +29,7 @@ import org.ta4j.core.TimeSeries;
 
 /**
  * Abstract {@link Indicator indicator}.
- * <p>
+ * <p></p>
  */
 public abstract class AbstractIndicator<T> implements Indicator<T> {
 

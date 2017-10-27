@@ -38,7 +38,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * Quickstart for ta4j.
- * <p>
+ * <p></p>
  * Global example.
  */
 public class Quickstart {

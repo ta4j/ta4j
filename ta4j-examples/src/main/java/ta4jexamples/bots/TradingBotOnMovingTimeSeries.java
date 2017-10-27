@@ -33,7 +33,7 @@ import java.time.ZonedDateTime;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
- * <p>
+ * <p></p>
  */
 public class TradingBotOnMovingTimeSeries {
 

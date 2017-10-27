@@ -28,7 +28,7 @@ import java.time.ZonedDateTime;
 
 /**
  * Base implementation of a {@link Tick}.
- * <p>
+ * <p></p>
  */
 public class BaseTick implements Tick {
 

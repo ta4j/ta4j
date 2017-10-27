@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Bullish engulfing pattern indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://www.investopedia.com/terms/b/bullishengulfingpattern.asp">
  *     http://www.investopedia.com/terms/b/bullishengulfingpattern.asp</a>
  */

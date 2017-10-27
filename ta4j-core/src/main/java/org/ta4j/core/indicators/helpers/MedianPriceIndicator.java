@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Average high-low indicator.
- * <p>
+ * <p></p>
  */
 public class MedianPriceIndicator extends CachedIndicator<Decimal> {
 

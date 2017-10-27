@@ -30,7 +30,7 @@ import java.util.List;
 
 /**
  * DeMark Reversal Indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */

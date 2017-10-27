@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Simple moving average (SMA) indicator.
- * <p>
+ * <p></p>
  */
 public class SMAIndicator extends CachedIndicator<Decimal> {
 

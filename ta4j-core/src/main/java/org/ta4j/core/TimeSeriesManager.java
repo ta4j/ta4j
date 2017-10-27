@@ -28,7 +28,7 @@ import org.ta4j.core.Order.OrderType;
 
 /**
  * A manager for {@link TimeSeries} objects.
- * <p>
+ * <p></p>
  * Used for backtesting.
  * Allows to run a {@link Strategy trading strategy} over the managed time series.
  */

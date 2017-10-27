@@ -29,7 +29,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Average profit criterion.
- * <p>
+ * <p></p>
  * The {@link TotalProfitCriterion total profit} over the {@link NumberOfTicksCriterion number of ticks}.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {

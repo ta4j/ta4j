@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
  * On-balance volume indicator.
- * <p>
+ * <p></p>
  */
 public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Decimal> {
 

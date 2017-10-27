@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Amount indicator.
- * <p>
+ * <p></p>
  */
 public class AmountIndicator extends CachedIndicator<Decimal> {
 

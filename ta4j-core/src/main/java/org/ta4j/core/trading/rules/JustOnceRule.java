@@ -26,7 +26,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A one-shot rule.
- * <p>
+ * <p></p>
  * Satisfied the first time it's checked then never again.
  */
 public class JustOnceRule extends AbstractRule {

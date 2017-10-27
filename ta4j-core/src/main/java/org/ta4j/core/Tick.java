@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * End tick of a time period.
- * <p>
+ * <p></p>
  * Tick object is aggregated open/high/low/close/volume/etc. data over a time period.
  * It may also be known as "Bar" (with a chart/graphical meaning).
  */

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 
 /**
  * Ulcer index indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index</a>
  * @see <a href="https://en.wikipedia.org/wiki/Ulcer_index">https://en.wikipedia.org/wiki/Ulcer_index</a>

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Lowest value indicator.
- * <p>
+ * <p></p>
  */
 public class LowestValueIndicator extends CachedIndicator<Decimal> {
 

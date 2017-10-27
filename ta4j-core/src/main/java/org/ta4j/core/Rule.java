@@ -29,7 +29,7 @@ import org.ta4j.core.trading.rules.XorRule;
 
 /**
  * A rule for strategy building.
- * <p>
+ * <p></p>
  * A trading rule may be composed of a combination of other rules.
  * 
  * A {@link Strategy trading strategy} is a pair of complementary (entry and exit) rules.

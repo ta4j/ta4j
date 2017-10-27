@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Directional down indicator.
- * <p>
+ * <p></p>
  */
 public class DirectionalDownIndicator extends CachedIndicator<Decimal>{
 

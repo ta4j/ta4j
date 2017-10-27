@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
  * Average true range indicator.
- * <p>
+ * <p></p>
  */
 public class AverageTrueRangeIndicator extends RecursiveCachedIndicator<Decimal> {
 

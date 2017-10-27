@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.CumulatedLossesIndicator;
 
 /**
  * Chande Momentum Oscillator indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/">
  *     http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/</a>
  * @see <a href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp">

@@ -28,7 +28,7 @@ import org.ta4j.core.TimeSeries;
 
 /**
  * Aroon Oscillator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator</a>
  */

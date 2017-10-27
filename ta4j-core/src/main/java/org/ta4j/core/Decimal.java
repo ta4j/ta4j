@@ -30,7 +30,7 @@ import java.util.Objects;
 
 /**
  * Immutable, arbitrary-precision signed decimal numbers designed for technical analysis.
- * <p>
+ * <p></p>
  * A {@code Decimal} consists of a {@code BigDecimal} with arbitrary {@link MathContext} (precision and rounding mode).
  *
  * @see BigDecimal

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Close price indicator.
- * <p>
+ * <p></p>
  */
 public class ClosePriceIndicator extends CachedIndicator<Decimal> {
 

@@ -31,7 +31,7 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 
 /**
  * Aroon up indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonUpIndicator extends CachedIndicator<Decimal> {

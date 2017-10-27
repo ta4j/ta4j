@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Sum indicator.
- * <p>
+ * <p></p>
  * I.e.: operand0 + operand1 + ... + operandN
  */
 public class SumIndicator extends CachedIndicator<Decimal> {

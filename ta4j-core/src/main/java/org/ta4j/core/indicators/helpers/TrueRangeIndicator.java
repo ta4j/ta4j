@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * True range indicator.
- * <p>
+ * <p></p>
  */
 public class TrueRangeIndicator extends CachedIndicator<Decimal>{
 

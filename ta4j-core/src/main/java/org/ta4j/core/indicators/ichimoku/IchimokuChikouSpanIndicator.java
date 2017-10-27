@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 /**
  * Ichimoku clouds: Chikou Span indicator
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */

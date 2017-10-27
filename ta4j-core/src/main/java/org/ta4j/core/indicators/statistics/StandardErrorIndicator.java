@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Standard error indicator.
- * <p>
+ * <p></p>
  */
 public class StandardErrorIndicator extends CachedIndicator<Decimal> {
 

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Highest value indicator.
- * <p>
+ * <p></p>
  */
 public class HighestValueIndicator extends CachedIndicator<Decimal> {
 

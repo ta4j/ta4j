@@ -28,7 +28,7 @@ import org.ta4j.core.Indicator;
 /**
  * Rate of change (ROCIndicator) indicator.
  * Aka. Momentum
- * <p>
+ * <p></p>
  * The ROCIndicator calculation compares the current value with the value "n" periods ago.
  */
 public class ROCIndicator extends CachedIndicator<Decimal> {

@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 
 /**
  * Accumulation-distribution indicator.
- * <p>
+ * <p></p>
  */
 public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Decimal> {
 

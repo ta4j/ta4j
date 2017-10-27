@@ -29,7 +29,7 @@ import java.util.Objects;
 
 /**
  * Pair of two {@link Order orders}.
- * <p>
+ * <p></p>
  * The exit order has the complement type of the entry order.<br>
  * I.e.:
  *   entry == BUY --> exit == SELL

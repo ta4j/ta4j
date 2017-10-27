@@ -29,7 +29,7 @@ import static org.ta4j.core.Order.OrderType;
 
 /**
  * A {@link org.ta4j.core.Rule} which waits for a number of {@link org.ta4j.core.Tick} after an order.
- * <p>
+ * <p></p>
  * Satisfied after a fixed number of ticks since the last order.
  */
 public class WaitForRule extends AbstractRule {

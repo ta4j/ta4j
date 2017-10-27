@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 /**
  * An abstract class for Ichimoku clouds indicators.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */

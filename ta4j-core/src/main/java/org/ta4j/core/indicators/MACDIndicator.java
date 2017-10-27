@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Moving average convergence divergence (MACDIndicator) indicator.
- * <p>
+ * <p></p>
  */
 public class MACDIndicator extends CachedIndicator<Decimal> {
 

@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Exponential moving average indicator.
- * <p>
+ * <p></p>
  */
 public class EMAIndicator extends RecursiveCachedIndicator<Decimal> {
 

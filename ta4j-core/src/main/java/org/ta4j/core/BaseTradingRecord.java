@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * Base implementation of a {@link TradingRecord}.
- * <p>
+ * <p></p>
  */
 public class BaseTradingRecord implements TradingRecord {
 

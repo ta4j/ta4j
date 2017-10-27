@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.SMAIndicator;
 
 /**
  * Covariance indicator.
- * <p>
+ * <p></p>
  */
 public class CovarianceIndicator extends CachedIndicator<Decimal> {
 

@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 
 /**
  * Strategy execution logging example.
- * <p>
+ * <p></p>
  */
 public class StrategyExecutionLogging {
 

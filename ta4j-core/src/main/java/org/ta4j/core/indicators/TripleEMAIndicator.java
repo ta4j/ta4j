@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Triple exponential moving average indicator.
- * <p>
+ * <p></p>
  * a.k.a TRIX
  */
 public class TripleEMAIndicator extends CachedIndicator<Decimal> {

@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 
 /**
  * Indicator-falling-indicator rule.
- * <p>
+ * <p></p>
  * Satisfied when the values of the {@link Indicator indicator} strict decrease
  * within the timeFrame.
  */

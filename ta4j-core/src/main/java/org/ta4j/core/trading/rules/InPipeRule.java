@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 
 /**
  * Indicator-between-indicators rule.
- * <p>
+ * <p></p>
  * Satisfied when the value of the {@link Indicator indicator} is between the values of the boundary (up/down) indicators.
  */
 public class InPipeRule extends AbstractRule {

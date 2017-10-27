@@ -28,12 +28,12 @@ import java.util.List;
 
 /**
  * Sequence of {@link Tick ticks} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
- * <p>
+ * <p></p>
  * Notably, a {@link TimeSeries time series} can be:
  * <ul>
- * <li>the base of {@link Indicator indicator} calculations
- * <li>constrained between begin and end indexes (e.g. for some backtesting cases)
- * <li>limited to a fixed number of ticks (e.g. for actual trading)
+ *     <li>the base of {@link Indicator indicator} calculations
+ *     <li>constrained between begin and end indexes (e.g. for some backtesting cases)
+ *     <li>limited to a fixed number of ticks (e.g. for actual trading)
  * </ul>
  */
 public interface TimeSeries extends Serializable {

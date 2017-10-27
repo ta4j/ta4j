@@ -28,8 +28,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Correlation coefficient indicator.
- * <p>
- * See also: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici
+ * <p></p>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
+ * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */
 public class CorrelationCoefficientIndicator extends CachedIndicator<Decimal> {
 

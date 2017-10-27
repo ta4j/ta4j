@@ -27,13 +27,13 @@ import java.util.Objects;
 
 /**
  * An order.
- * <p>
+ * <p></p>
  * The order is defined by:
  * <ul>
- * <li>the index (in the {@link TimeSeries time series}) it is executed
- * <li>a {@link OrderType type} (BUY or SELL)
- * <li>a price (optional)
- * <li>an amount to be (or that was) ordered (optional)
+ *     <li>the index (in the {@link TimeSeries time series}) it is executed
+ *     <li>a {@link OrderType type} (BUY or SELL)
+ *     <li>a price (optional)
+ *     <li>an amount to be (or that was) ordered (optional)
  * </ul>
  * A {@link Trade trade} is a pair of complementary orders.
  */

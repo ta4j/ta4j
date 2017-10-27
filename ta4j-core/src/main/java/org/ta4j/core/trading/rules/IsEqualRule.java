@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 
 /**
  * Indicator-equal-indicator rule.
- * <p>
+ * <p></p>
  * Satisfied when the value of the first {@link Indicator indicator} is equal to the value of the second one.
  */
 public class IsEqualRule extends AbstractRule {

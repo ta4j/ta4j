@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Average loss indicator.
- * <p>
+ * <p></p>
  */
 public class AverageLossIndicator extends CachedIndicator<Decimal> {
 

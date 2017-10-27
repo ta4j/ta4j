@@ -26,6 +26,7 @@ import org.ta4j.core.AnalysisCriterion;
 
 /**
  * An abstract analysis criterion.
+ * <p></p>
  */
 public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
 

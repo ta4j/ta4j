@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 
 /**
  * Commodity Channel Index (CCI) indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */

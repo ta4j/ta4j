@@ -26,7 +26,7 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
- * <p>
+ * <p></p>
  */
 public class ConstantIndicator<T> extends AbstractIndicator<T> {
 

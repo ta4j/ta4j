@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
  * Average directional movement indicator (ADMI/ADX).
- * <p>
+ * <p></p>
  */
 public class AverageDirectionalMovementIndicator extends RecursiveCachedIndicator<Decimal> {
 

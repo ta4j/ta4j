@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Simple linear regression indicator.
- * <p>
+ * <p></p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
  * y = slope * x + intercept
  * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html

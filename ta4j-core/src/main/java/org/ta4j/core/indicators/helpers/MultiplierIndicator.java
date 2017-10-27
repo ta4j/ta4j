@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Simple multiplier indicator.
- * <p>
+ * <p></p>
  */
 public class MultiplierIndicator extends CachedIndicator<Decimal> {
 

@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.*;
 
 /**
  * William's R indicator.
- * <p>
+ * <p></p>
  */
 public class WilliamsRIndicator extends CachedIndicator<Decimal> {
 

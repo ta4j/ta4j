@@ -31,7 +31,7 @@ import java.util.List;
 
 /**
  * Base implementation of a {@link TimeSeries}.
- * <p>
+ * <p></p>
  */
 public class BaseTimeSeries implements TimeSeries {
 

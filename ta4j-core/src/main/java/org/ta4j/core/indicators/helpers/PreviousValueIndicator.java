@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Returns the previous (n-th) value of an indicator
- * <p>
+ * <p></p>
  */
 public class PreviousValueIndicator extends CachedIndicator<Decimal> {
 

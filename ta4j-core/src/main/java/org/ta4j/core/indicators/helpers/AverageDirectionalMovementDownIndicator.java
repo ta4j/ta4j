@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
  * Average of {@link DirectionalMovementDownIndicator directional movement down indicator}.
- * <p>
+ * <p></p>
  */
 public class AverageDirectionalMovementDownIndicator extends RecursiveCachedIndicator<Decimal> {
     private final int timeFrame;

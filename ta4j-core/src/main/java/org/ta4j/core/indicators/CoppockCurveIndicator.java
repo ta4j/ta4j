@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.helpers.SumIndicator;
 
 /**
  * Coppock Curve indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>
  */

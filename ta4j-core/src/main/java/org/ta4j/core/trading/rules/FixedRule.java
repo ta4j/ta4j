@@ -28,7 +28,7 @@ import java.util.Arrays;
 
 /**
  * An indexes-based rule.
- * <p>
+ * <p></p>
  * Satisfied for provided indexes.
  */
 public class FixedRule extends AbstractRule {

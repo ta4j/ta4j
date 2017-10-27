@@ -27,7 +27,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * An opposite (logical operator: NOT) rule.
- * <p>
+ * <p></p>
  * Satisfied when provided rule is not satisfied.<br>
  * Not satisfied when provided rule is satisfied.
  */

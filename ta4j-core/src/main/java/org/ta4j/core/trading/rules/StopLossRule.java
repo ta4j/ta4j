@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 /**
  * A stop-loss rule.
- * <p>
+ * <p></p>
  * Satisfied when the close price reaches the loss threshold.
  */
 public class StopLossRule extends AbstractRule {

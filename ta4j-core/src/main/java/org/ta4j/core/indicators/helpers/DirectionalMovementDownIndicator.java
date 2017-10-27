@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Directional movement down indicator.
- * <p>
+ * <p></p>
  */
 public class DirectionalMovementDownIndicator extends CachedIndicator<Decimal>{
 

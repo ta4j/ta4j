@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.SMAIndicator;
 
 /**
  * Mean deviation indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
  *     http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */

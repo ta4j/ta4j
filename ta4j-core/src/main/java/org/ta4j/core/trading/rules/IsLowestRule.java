@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 
 /**
  * Indicator-lowest-indicator rule.
- * <p>
+ * <p></p>
  * Satisfied when the value of the {@link Indicator indicator} is the lowest
  * within the timeFrame.
  */

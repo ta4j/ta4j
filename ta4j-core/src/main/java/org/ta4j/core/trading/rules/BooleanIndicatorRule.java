@@ -27,7 +27,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A boolean-indicator-based rule.
- * <p>
+ * <p></p>
  * Satisfied when the value of the {@link Indicator indicator} is true.
  */
 public class BooleanIndicatorRule extends AbstractRule {

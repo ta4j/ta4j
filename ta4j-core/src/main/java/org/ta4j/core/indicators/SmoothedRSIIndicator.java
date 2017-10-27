@@ -29,11 +29,11 @@ import org.ta4j.core.indicators.helpers.SmoothedAverageLossIndicator;
 
 /**
  * Relative strength index indicator.
- * <p>
+ * <p></p>
  * This calculation of RSI is based on accumulative moving average
  * as described in Wilder's original paper from 1978
  *
- * <p>See reference
+ * <p>See reference</p>
  * <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:relative_strength_index_rsi">
  * RSI calculation</a>.
  *

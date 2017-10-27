@@ -30,7 +30,7 @@ import java.util.List;
 
 /**
  * The cash flow.
- * <p>
+ * <p></p>
  * This class allows to follow the money cash flow involved by a list of trades over a time series.
  */
 public class CashFlow implements Indicator<Decimal> {

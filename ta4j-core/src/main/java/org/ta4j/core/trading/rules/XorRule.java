@@ -27,7 +27,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A XOR combination of two {@link Rule rules}.
- * <p>
+ * <p></p>
  * Satisfied when only of the two provided rules is satisfied.
  */
 public class XorRule extends AbstractRule {

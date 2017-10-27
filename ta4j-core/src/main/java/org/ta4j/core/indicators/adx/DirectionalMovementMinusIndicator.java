@@ -31,7 +31,7 @@ import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
 /**
  * Directional movement minus indicator (DMI+).
  * Part of the Directional Movement System
- * <p>
+ * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */

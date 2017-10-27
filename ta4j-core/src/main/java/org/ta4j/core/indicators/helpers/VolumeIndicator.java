@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Volume indicator.
- * <p>
+ * <p></p>
  */
 public class VolumeIndicator extends CachedIndicator<Decimal> {
 

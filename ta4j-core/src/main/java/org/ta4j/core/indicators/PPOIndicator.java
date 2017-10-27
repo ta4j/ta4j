@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Percentage price oscillator (PPO) indicator.
- * <p>
+ * <p></p>
  */
 public class PPOIndicator extends CachedIndicator<Decimal> {
 

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Cross indicator.
- * <p>
+ * <p></p>
  * Boolean indicator which monitors two-indicators crossings.
  */
 public class CrossIndicator extends CachedIndicator<Boolean> {

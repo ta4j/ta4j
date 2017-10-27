@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.helpers.*;
 
 /**
  * Stochastic oscillator K.
- * <p>
+ * <p></p>
  * Receives timeSeries and timeFrame and calculates the StochasticOscillatorKIndicator
  * over ClosePriceIndicator, or receives an indicator, MaxPriceIndicator and
  * MinPriceIndicator and returns StochasticOsiclatorK over this indicator.

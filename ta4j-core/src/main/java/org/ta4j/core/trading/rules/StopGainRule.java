@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 /**
  * A stop-gain rule.
- * <p>
+ * <p></p>
  * Satisfied when the close price reaches the gain threshold.
  */
 public class StopGainRule extends AbstractRule {

@@ -28,7 +28,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Number of ticks criterion.
- * <p>
+ * <p></p>
  * Returns the number of ticks during the provided trade(s).
  */
 public class NumberOfTicksCriterion extends AbstractAnalysisCriterion {

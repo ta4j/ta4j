@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Awesome oscillator. (AO)
- * <p>
+ * <p></p>
  * @see <a href="http://www.forexgurus.co.uk/indicators/awesome-oscillator">http://www.forexgurus.co.uk/indicators/awesome-oscillator</a>
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {

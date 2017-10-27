@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 
 /**
  * Indicator-rising-indicator rule.
- * <p>
+ * <p></p>
  * Satisfied when the values of the {@link Indicator indicator} strict increase
  * within the timeFrame.
  */

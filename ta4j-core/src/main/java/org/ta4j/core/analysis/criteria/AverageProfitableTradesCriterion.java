@@ -29,7 +29,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Average profitable trades criterion.
- * <p>
+ * <p></p>
  * The number of profitable trades.
  */
 public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {

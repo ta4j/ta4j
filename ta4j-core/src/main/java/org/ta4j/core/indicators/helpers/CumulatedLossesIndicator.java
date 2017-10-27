@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Cumulated losses indicator.
- * <p>
+ * <p></p>
  */
 public class CumulatedLossesIndicator extends CachedIndicator<Decimal> {
 

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Minimum price indicator.
- * <p>
+ * <p></p>
  */
 public class MinPriceIndicator extends CachedIndicator<Decimal> {
 

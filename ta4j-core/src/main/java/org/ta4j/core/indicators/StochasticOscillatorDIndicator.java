@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Stochastic oscillator D.
- * <p>
+ * <p></p>
  * Receive {@link StochasticOscillatorKIndicator} and returns its {@link SMAIndicator SMAIndicator(3)}.
  */
 public class StochasticOscillatorDIndicator extends CachedIndicator<Decimal> {

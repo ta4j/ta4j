@@ -29,7 +29,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Reward risk ratio criterion.
- * <p>
+ * <p></p>
  * (i.e. the {@link TotalProfitCriterion total profit} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {

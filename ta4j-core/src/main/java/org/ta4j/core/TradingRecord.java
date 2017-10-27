@@ -29,12 +29,12 @@ import java.util.List;
 
 /**
  * A history/record of a trading session.
- * <p>
+ * <p></p>
  * Holds the full trading record when running a {@link Strategy strategy}.
  * It is used to:
  * <ul>
- * <li>check to satisfaction of some trading rules (when running a strategy)
- * <li>analyze the performance of a trading strategy
+ *     <li>check to satisfaction of some trading rules (when running a strategy)
+ *     <li>analyze the performance of a trading strategy
  * </ul>
  */
 public interface TradingRecord extends Serializable {

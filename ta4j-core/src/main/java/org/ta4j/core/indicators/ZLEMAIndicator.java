@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * Zero-lag exponential moving average indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
  *     href="http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */

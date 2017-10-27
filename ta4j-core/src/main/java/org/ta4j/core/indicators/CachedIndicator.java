@@ -31,7 +31,7 @@ import java.util.List;
 
 /**
  * Cached {@link Indicator indicator}.
- * <p>
+ * <p></p>
  * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {

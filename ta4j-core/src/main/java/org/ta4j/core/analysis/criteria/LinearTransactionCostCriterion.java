@@ -29,7 +29,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A linear transaction cost criterion.
- * <p>
+ * <p></p>
  * That criterion calculate the transaction cost according to an initial traded amount
  * and a linear function defined by a and b (a * x + b).
  */

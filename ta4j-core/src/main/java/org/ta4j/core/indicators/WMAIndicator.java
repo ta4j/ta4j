@@ -27,7 +27,7 @@ import org.ta4j.core.Indicator;
 
 /**
  * WMA indicator.
- * <p>
+ * <p></p>
  */
 public class WMAIndicator extends CachedIndicator<Decimal> {
 

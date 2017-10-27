@@ -28,7 +28,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Buy and hold criterion.
- * <p>
+ * <p></p>
  * @see <a href="http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
  */
 public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {

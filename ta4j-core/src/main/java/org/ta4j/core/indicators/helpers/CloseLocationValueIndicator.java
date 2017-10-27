@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Close Location Value (CLV) indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://www.investopedia.com/terms/c/close_location_value.asp">
  *     http://www.investopedia.com/terms/c/close_location_value.asp</a>
  */

@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Maximum price indicator.
- * <p>
+ * <p></p>
  */
 public class MaxPriceIndicator extends CachedIndicator<Decimal> {
 

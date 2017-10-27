@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Difference indicator.
- * <p>
+ * <p></p>
  * I.e.: first - second
  */
 public class DifferenceIndicator extends CachedIndicator<Decimal> {

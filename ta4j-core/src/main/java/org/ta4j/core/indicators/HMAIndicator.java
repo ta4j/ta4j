@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.MultiplierIndicator;
 
 /**
  * Hull moving average (HMA) indicator.
- * <p>
+ * <p></p>
  * @see <a href="http://alanhull.com/hull-moving-average">
  *     http://alanhull.com/hull-moving-average</a>
  */

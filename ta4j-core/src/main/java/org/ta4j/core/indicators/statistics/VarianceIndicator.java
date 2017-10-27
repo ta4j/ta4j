@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.SMAIndicator;
 
 /**
  * Variance indicator.
- * <p>
+ * <p></p>
  */
 public class VarianceIndicator extends CachedIndicator<Decimal> {
 

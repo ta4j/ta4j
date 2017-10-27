@@ -39,7 +39,7 @@ import java.util.Map;
 
 /**
  * Walk-forward optimization example.
- * <p>
+ * <p></p>
  * @see <a href="http://en.wikipedia.org/wiki/Walk_forward_optimization">
  *     http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
  * @see <a href="http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk">

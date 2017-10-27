@@ -26,11 +26,11 @@ import java.util.List;
 
 /**
  * An analysis criterion.
- * <p>
+ * <p></p>
  * Can be used to:
  * <ul>
- * <li>Analyze the performance of a {@link Strategy strategy}
- * <li>Compare several {@link Strategy strategies} together
+ * 	<li>Analyze the performance of a {@link Strategy strategy}
+ * 	<li>Compare several {@link Strategy strategies} together
  * </ul>
  */
 public interface AnalysisCriterion {

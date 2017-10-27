@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
  * Average gain indicator calculated using smoothing
- * <p>
+ * <p></p>
  */
 public class SmoothedAverageGainIndicator extends RecursiveCachedIndicator<Decimal> {
 

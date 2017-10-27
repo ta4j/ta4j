@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 
 /**
  * Acceleration-deceleration indicator.
- * <p>
+ * <p></p>
  */
 public class AccelerationDecelerationIndicator extends CachedIndicator<Decimal> {
     

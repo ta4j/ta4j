@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Typical price indicator.
- * <p>
+ * <p></p>
  */
 public class TypicalPriceIndicator extends CachedIndicator<Decimal> {
 
