@@ -22,6 +22,7 @@
  */
 package org.ta4j.core.trading.rules;
 
+import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -30,17 +31,26 @@ import org.ta4j.core.TradingRecord;
  * Satisfied the first time it's checked then never again.
  */
 public class JustOnceRule extends AbstractRule {
-    
+
     private boolean satisfied = false;
+    public final Rule rule;
+
+    public JustOnceRule() {
+        rule = null;
+    }
+
+    public JustOnceRule(Rule rule) {
+        this.rule = rule;
+    }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (!satisfied) {
-            satisfied = true;
-            traceIsSatisfied(index, true);
-            return true;
+            if (this.rule == null || this.rule.isSatisfied(index, tradingRecord)) {
+                satisfied = true;
+                return true;
+            }
         }
-        traceIsSatisfied(index, false);
         return false;
     }
 }
