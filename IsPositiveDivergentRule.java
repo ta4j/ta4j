@@ -73,7 +73,7 @@ public class IsPositiveDivergentRule extends AbstractRule {
 	/**
 	 * Constructor.
 	 * 
-	 * Tests for positive divergence between ref and MinPriceIndicator.
+	 * Rule for positive divergence between ref and MinPriceIndicator.
 	 * 
 	 * @param series
 	 * @param ref
