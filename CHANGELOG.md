@@ -25,6 +25,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
+- **ChaikinOscillatorIndicator**: New indicator.
 - **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
 - **IsEqualRule**: New Rule that is satisfied if two indicators are equal
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
