@@ -36,19 +36,13 @@ import org.ta4j.core.trading.rules.AbstractRule;
  * Satisfied when the values of the {@link Indicator indicator} strict increase
  * or is the highest or is not the lowest within the timeFrame and the values of
  * the other {@link Indicator indicator} strict decrease or is the lowest or is
- * not the highest within a timeFrame. It can test both, strict and non-strict
- * divergence.
+ * not the highest within a timeFrame. In short: "other" makes lower lows while
+ * "ref" makes higher lows. It can test both, strict and non-strict divergence.
  */
 public class IsPositiveDivergentRule extends AbstractRule {
 
-	/** The actual indicator */
-	private Indicator<Decimal> ref;
-	/** The other indicator */
-	private Indicator<Decimal> other;
-	/** The timeFrame */
-	private int timeFrame;
-	/** Test for strict divergence. */
-	private boolean useStrictDivergence;
+	/** The rule for positive divergence */
+	private final Rule isPositiveDivergent;
 
 	/**
 	 * Constructor. <br/>
@@ -57,26 +51,39 @@ public class IsPositiveDivergentRule extends AbstractRule {
 	 * "ref" strict increase while the values of the "other" indicator strict
 	 * decrease.
 	 * 
-	 * @param ref
-	 * @param other
+	 * @param ref the indicator
+	 * @param other the other indicator
 	 * @param timeFrame
 	 * @param useStrictDivergence
 	 */
 	public IsPositiveDivergentRule(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
 			boolean useStrictDivergence) {
-		this.ref = ref;
-		this.other = other;
-		this.timeFrame = timeFrame;
-		this.useStrictDivergence = useStrictDivergence;
+
+		Rule refIsRising = new IsRisingRule(ref, timeFrame);
+		Rule otherIsFalling = new IsFallingRule(other, timeFrame);
+
+		if (useStrictDivergence) {
+			isPositiveDivergent = refIsRising.and(otherIsFalling);
+		} else {
+
+			Rule refIsHighest = new IsHighestRule(ref, timeFrame);
+			Rule otherIsLowest = new IsLowestRule(other, timeFrame);
+
+			Rule refIsNotLowest = new IsLowestRule(ref, timeFrame).negation();
+			Rule otherIsNotHighest = new IsHighestRule(other, timeFrame).negation();
+
+			isPositiveDivergent = (refIsRising.or(refIsHighest).or(refIsNotLowest))
+					.and(otherIsFalling.or(otherIsLowest).or(otherIsNotHighest));
+		}
 	}
 	
 	/**
 	 * Constructor.
 	 * 
-	 * Rule for positive divergence between ref and MinPriceIndicator.
+	 * Tests for positive divergence between ref and MinPriceIndicator.
 	 * 
 	 * @param series
-	 * @param ref
+	 * @param ref the indicator
 	 * @param timeFrame
 	 */
 	public IsPositiveDivergentRule(TimeSeries series, Indicator<Decimal> ref, int timeFrame) {
@@ -85,25 +92,7 @@ public class IsPositiveDivergentRule extends AbstractRule {
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		Rule refIsRising = new IsRisingRule(ref, timeFrame);
-		Rule otherIsFalling = new IsFallingRule(other, timeFrame);
-
-		Rule isPositiveDivergent;
-
-		if (useStrictDivergence) {
-			isPositiveDivergent = refIsRising.and(otherIsFalling);
-		} else {
-
-			Rule refIsHighest = new IsHighestRule(ref, timeFrame);
-			Rule otherIsLowest = new IsLowestRule(other, timeFrame);
-			
-			Rule refIsNotLowest = new IsLowestRule(ref, timeFrame).negation();
-			Rule otherIsNotHighest = new IsHighestRule(other, timeFrame).negation();
-
-			isPositiveDivergent = (refIsRising.or(refIsHighest).or(refIsNotLowest))
-					.and(otherIsFalling.or(otherIsLowest).or(otherIsNotHighest));
-		}
-
+		
 		final boolean satisfied = isPositiveDivergent.isSatisfied(index, tradingRecord);
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
