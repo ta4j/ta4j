@@ -67,10 +67,10 @@ public class IsConvergentPositiveRule extends AbstractRule {
 
 			Rule refIsHighest = new IsHighestRule(ref, timeFrame);
 			Rule otherIsHighest = new IsHighestRule(other, timeFrame);
-			Rule otherIsNotHighest = new IsHighestRule(other, timeFrame).negation();
+			Rule refIsNotLowest = new IsLowestRule(other, timeFrame).negation();
 
-			isConvergentPositive = (refIsRising.or(refIsHighest))
-					.and(otherIsRising.or(otherIsHighest).or(otherIsNotHighest));
+			isConvergentPositive = (refIsRising.or(refIsHighest).or(refIsNotLowest))
+					.and(otherIsRising.or(otherIsHighest));
 		}
 	}
 	
