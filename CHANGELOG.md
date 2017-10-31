@@ -1,5 +1,11 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## Unreleased
+
+### Changed
+- **JustOnceRule**: Added new constructor which takes in an "inner" Rule. If specified, JustOnceRule will return true the first time the inner rule returns true
+
+
 ## 0.10 (2017-10-23)
 
 ### VERY Important note!!!!
