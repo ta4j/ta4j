@@ -30,9 +30,14 @@ package org.ta4j.core;
  */
 public interface Strategy {
 
-	/**
-	 * @return the entry rule
-	 */
+    /**
+     * @return the name of the strategy
+     */
+    String getName();
+	
+    /**
+     * @return the entry rule
+     */
     Rule getEntryRule();
     
     /**
@@ -83,8 +88,7 @@ public interface Strategy {
         if (isUnstableAt(index)) {
             return false;
         }
-        final boolean enter = getEntryRule().isSatisfied(index, tradingRecord);
-        return enter;
+        return getEntryRule().isSatisfied(index, tradingRecord);
     }
 
     /**
@@ -104,7 +108,6 @@ public interface Strategy {
         if (isUnstableAt(index)) {
             return false;
         }
-        final boolean exit = getExitRule().isSatisfied(index, tradingRecord);
-        return exit;
+        return getExitRule().isSatisfied(index, tradingRecord);
     }
 }
