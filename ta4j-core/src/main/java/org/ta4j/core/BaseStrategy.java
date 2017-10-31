@@ -34,6 +34,9 @@ public class BaseStrategy implements Strategy {
     /** The logger */
     protected final Logger log = LoggerFactory.getLogger(getClass());
     
+    /** Name of the strategy */
+    private String name;
+	
     /** The entry rule */
     private Rule entryRule;
     
@@ -53,13 +56,25 @@ public class BaseStrategy implements Strategy {
      * @param exitRule the exit rule
      */
     public BaseStrategy(Rule entryRule, Rule exitRule) {
-        this(entryRule, exitRule, 0);
+        this(null, entryRule, exitRule, 0);
+    }
+	
+    /**
+     * Constructor.
+     * @param name the name of the strategy
+     * @param entryRule the entry rule
+     * @param exitRule the exit rule
+     */
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
+        this(name, entryRule, exitRule, 0);
     }
     
     /**
      * Constructor.
+     * @param name the name of the strategy
      * @param entryRule the entry rule
      * @param exitRule the exit rule
+     * @param unstablePeriod
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {
@@ -68,9 +83,15 @@ public class BaseStrategy implements Strategy {
         if (unstablePeriod < 0) {
         	throw new IllegalArgumentException("Unstable period tick count must be >= 0");
         }
+        this.name = name;
         this.entryRule = entryRule;
         this.exitRule = exitRule;
         this.unstablePeriod = unstablePeriod;
+    }
+	
+    @Override
+    public String getName() {
+    	return name;
     }
     
     @Override
@@ -80,8 +101,8 @@ public class BaseStrategy implements Strategy {
     
     @Override
     public Rule getExitRule() {
-		return exitRule;
-	}
+    	return exitRule;
+    }
     
     @Override
     public void setUnstablePeriod(int unstablePeriod) {
