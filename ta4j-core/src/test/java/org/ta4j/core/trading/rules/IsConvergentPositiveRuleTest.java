@@ -53,12 +53,12 @@ public class IsConvergentPositiveRuleTest {
 		assertTrue(isPosConStrict.isSatisfied(2));
 		assertTrue(isPosConStrict.isSatisfied(3));
 		
-		assertFalse(isPosCon.isSatisfied(4));
+		assertTrue(isPosCon.isSatisfied(4));
 		assertFalse(isPosCon.isSatisfied(5));
 		assertFalse(isPosCon.isSatisfied(6));
 		
 		assertFalse(isPosCon.isSatisfied(7));
-		assertFalse(isPosCon.isSatisfied(8));
-		assertTrue(isPosCon.isSatisfied(9));
+		assertTrue(isPosCon.isSatisfied(8));
+		assertFalse(isPosCon.isSatisfied(9));
 	}
 }
