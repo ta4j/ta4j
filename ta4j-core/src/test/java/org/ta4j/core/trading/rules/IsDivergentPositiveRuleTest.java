@@ -58,7 +58,7 @@ public class IsDivergentPositiveRuleTest {
 		assertFalse(isPosDiv.isSatisfied(6));
 		
 		assertFalse(isPosDiv.isSatisfied(7));
-		assertTrue(isPosDiv.isSatisfied(8));
+		assertFalse(isPosDiv.isSatisfied(8));
 		assertTrue(isPosDiv.isSatisfied(9));
 	}
 }
