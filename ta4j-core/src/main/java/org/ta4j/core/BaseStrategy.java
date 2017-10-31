@@ -76,7 +76,7 @@ public class BaseStrategy implements Strategy {
      * @param exitRule the exit rule
      * @param unstablePeriod
      */
-    public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {
             throw new IllegalArgumentException("Rules cannot be null");
         }
