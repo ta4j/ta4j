@@ -49,7 +49,7 @@
         <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
         <url>http://github.com/ta4j/ta4j</url>
-        <tag>0.10-SNAPSHOT</tag>
+        <tag>0.10</tag>
     </scm>
 
     <modules>
@@ -70,7 +70,18 @@
             <id>sonatype-oss-release</id>
             <build>
                 <plugins>
-
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- The Base URL of Nexus instance where we want to stage -->
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <!-- The server "id" element from settings to use authentication from -->
+                            <serverId>sonatype-nexus-staging</serverId>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
@@ -165,14 +176,6 @@
                         <version>2.2</version>
                     </dependency>
                 </dependencies>
-                <!--  <configuration>
-                     <autoVersionSubmodules>true</autoVersionSubmodules>
-                     <tagNameFormat>@{project.version}</tagNameFormat>
-                     Avoid issue: http://jira.codehaus.org/browse/MGPG-9
-                     <mavenExecutorId>forked-path</mavenExecutorId>
-                     <useReleaseProfile>false</useReleaseProfile>
-                     <arguments>${arguments} -Psonatype-oss-release</arguments>
-                </configuration>-->
             </plugin>
 
         </plugins>

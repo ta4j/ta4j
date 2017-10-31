@@ -1,12 +1,12 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.10 (2017-10-23)
+## 0.10 (2017-10-30)
 
-### VERY Important note!!!!
+### VERY Important notes!!!!
 
-with the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). YOu have to reorganize all your refernces to the new packages!
-In eclipse you can do this easily by selecting your sources and run "Organize imports"
-_Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
+- With the release 0.10 we have changed the previous java package definition to org.ta4j or to be more specific to org.ta4j.core (the new organisation). You have to reorganize all your refernces to the new packages!
+In eclipse you can do this easily by selecting your sources and run "Organize imports" <br>
+- **Changed ownership of the ta4j repository**: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 
 ### Fixed
 - **ParabolicSarIndicator**: wrong calculation fixed
