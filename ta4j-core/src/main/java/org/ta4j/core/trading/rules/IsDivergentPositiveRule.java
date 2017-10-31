@@ -68,10 +68,10 @@ public class IsDivergentPositiveRule extends AbstractRule {
 
 			Rule refIsHighest = new IsHighestRule(ref, timeFrame);
 			Rule otherIsLowest = new IsLowestRule(other, timeFrame);
-			Rule otherIsNotHighest = new IsHighestRule(other, timeFrame).negation();
+			Rule refIsNotLowest = new IsLowestRule(other, timeFrame).negation();
 
-			isDivergentPositive = (refIsRising.or(refIsHighest))
-					.and(otherIsFalling.or(otherIsLowest).or(otherIsNotHighest));
+			isDivergentPositive = (refIsRising.or(refIsHighest).or(refIsNotLowest))
+					.and(otherIsFalling.or(otherIsLowest));
 		}
 	}
 	
