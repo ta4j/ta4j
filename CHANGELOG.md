@@ -39,12 +39,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the timeFrame.
 - **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the timeFrame.
 - **IsHighestRule**: New Rule that is satisfied if indicator is the highest within the timeFrame.
-- **IsDivergentPositiveRule**: New Rule that is satisfied if two indicators move in opposite directions within the timeFrame.
-    - The base indicator is bullish while the other indicator (e.g. price) is bearish.
-- **IsDivergentNegativeRule**: New Rule that is satisfied if two indicators move in opposite directions within the timeFrame.
-    - The base indicator is bearish while the other indicator (e.g. price) is bullish.
-- **IsConvergentPositiveRule**: New Rule that is satisfied if two indicators move in same directions within the timeFrame.
-- **IsConvergentNegativeRule**: New Rule that is satisfied if two indicators move in same directions within the timeFrame.
+- **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
 
 
 ## 0.9 (2017-09-07)
