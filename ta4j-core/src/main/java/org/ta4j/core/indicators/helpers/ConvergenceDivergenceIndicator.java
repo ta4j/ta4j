@@ -201,16 +201,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
 		if (isDivergent) {
 			HMAIndicator hmaRef = new HMAIndicator(ref, timeFrame);
+			// if "isDivergent" and "ref" is positive, then "other" must be negative.
 			boolean isRefPositive = ref.getValue(index).isGreaterThan(hmaRef.getValue(index));
-
-			HMAIndicator hmaOther = new HMAIndicator(other, timeFrame);
-			boolean isOtherNegative = other.getValue(index).isLessThan(hmaOther.getValue(index));
 
 			// higher peak in the "ref" against lower lows in "other"
 			boolean refIsHighest = new IsHighestRule(ref, timeFrame).isSatisfied(index);
 			boolean otherIsNotHighest = new IsHighestRule(other, timeFrame).negation().isSatisfied(index);
 
-			return isRefPositive && isOtherNegative && refIsHighest && otherIsNotHighest;
+			return isRefPositive && refIsHighest && otherIsNotHighest;
 		}
 
 		return false;
@@ -228,17 +226,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
 
 		if (isDivergent) {
-			HMAIndicator hmaRef = new HMAIndicator(ref, timeFrame);
+			// if "isDivergent" and "ref" is negative, then "other" must be positive.
 			boolean isRefNegative = ref.getValue(index).isLessThan(hmaRef.getValue(index));
-
-			HMAIndicator hmaOther = new HMAIndicator(other, timeFrame);
-			boolean isOtherPositive = other.getValue(index).isGreaterThan(hmaOther.getValue(index));
 
 			// A lower peak in the ref against higher highs in other.
 			boolean refIsNotHighest = new IsHighestRule(ref, timeFrame).negation().isSatisfied(index);
 			boolean otherIsHighest = new IsHighestRule(other, timeFrame).isSatisfied(index);
 
-			return isRefNegative && isOtherPositive && refIsNotHighest && otherIsHighest;
+			return isRefNegative && refIsNotHighest && otherIsHighest;
 		}
 
 		return false;
