@@ -116,7 +116,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param ref the indicator
 	 * @param other the other indicator
 	 * @param timeFrame
-	 * @param ype of convergence or divergence
+	 * @param type of convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
 			ConvergenceDivergenceType type) {
