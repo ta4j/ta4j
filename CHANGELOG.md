@@ -19,7 +19,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **Ownership of the ta4j repository**: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 - **ParabolicSarIndicator**: old constructor removed (there was no need for time frame parameter after big fix). Three new constructors for default and custom parameters.
 - **HighestValueIndicator and LowestValueIndicator:** ignore also NaN values if they are at the current index
-- A **Strategy** can now have a optional parameter "name"
+- **Strategy:** can now have a optional parameter "name".
 
 ## Added
 - **AroonOscillatorIndicator**: New indicator based on AroonUp/DownIndicator
