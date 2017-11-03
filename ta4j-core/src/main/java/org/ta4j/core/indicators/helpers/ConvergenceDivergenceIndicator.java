@@ -63,7 +63,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * Select the type of convergence or divergence.
 	 */
 	public enum ConvergenceDivergenceType {
-		positiveConvergent, negativeConvergent, positiveDivergent, negativeDivergent;
+		positiveConvergent, 
+		negativeConvergent, 
+		positiveDivergent, 
+		negativeDivergent,
+		positiveConvergentStrict, 
+		negativeConvergentStrict, 
+		positiveDivergentStrict, 
+		negativeDivergentStrict;
 	}
 
 	/** The actual indicator. */
@@ -116,7 +123,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param ref the indicator
 	 * @param other the other indicator
 	 * @param timeFrame
-	 * @param type of convergence or divergence
+	 * @param ype of convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
 			ConvergenceDivergenceType type) {
@@ -150,9 +157,69 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 			return calculatePositiveDivergence(cc, index);
 		case negativeDivergent:
 			return calculateNegativeDivergence(cc, index);
+		case positiveConvergentStrict:
+			return calculatePositiveConvergenceStrict(timeFrame, index);
+		case negativeConvergentStrict:
+			return calculateNegativeConvergenceStrict(timeFrame, index);
+		case positiveDivergentStrict:
+			return calculatePositiveDivergenceStrict(timeFrame, index);
+		case negativeDivergentStrict:
+			return calculateNegativeDivergenceStrict(timeFrame, index);
 		default:
 			return false;
 		}
+	}
+	
+	/**
+	 * @param timeFrame
+	 * @param index
+	 * @return true, if strict positive convergent
+	 */
+	private Boolean calculatePositiveConvergenceStrict(int timeFrame, int index) {
+
+		Rule refIsRising = new IsRisingRule(ref, timeFrame);
+		Rule otherIsRising = new IsRisingRule(ref, timeFrame);
+
+		return (refIsRising.and(otherIsRising)).isSatisfied(index);
+	}
+
+	/**
+	 * @param timeFrame
+	 * @param index
+	 * @return true, if strict negative convergent
+	 */
+	private Boolean calculateNegativeConvergenceStrict(int timeFrame, int index) {
+
+		Rule refIsFalling = new IsFallingRule(ref, timeFrame);
+		Rule otherIsFalling = new IsFallingRule(ref, timeFrame);
+
+		return (refIsFalling.and(otherIsFalling)).isSatisfied(index);
+	}
+
+	/**
+	 * @param timeFrame
+	 * @param index
+	 * @return true, if positive divergent
+	 */
+	private Boolean calculatePositiveDivergenceStrict(int timeFrame, int index) {
+
+		Rule refIsRising = new IsRisingRule(ref, timeFrame);
+		Rule otherIsFalling = new IsFallingRule(ref, timeFrame);
+
+		return (refIsRising.and(otherIsFalling)).isSatisfied(index);
+	}
+
+	/**
+	 * @param timeFrame
+	 * @param index
+	 * @return true, if negative divergent
+	 */
+	private Boolean calculateNegativeDivergenceStrict(int timeFrame, int index) {
+
+		Rule refIsFalling = new IsFallingRule(ref, timeFrame);
+		Rule otherIsRising = new IsRisingRule(ref, timeFrame);
+
+		return (refIsFalling.and(otherIsRising)).isSatisfied(index);
 	}
     
     /**
@@ -170,7 +237,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		
 		return isConvergent && isPositive;
 	}
-    
+	
+
     /**
      * TODO: check logic
      * 
@@ -239,5 +307,4 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
 		return false;
 	}
-	
 }
