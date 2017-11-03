@@ -20,11 +20,12 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;

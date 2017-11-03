@@ -20,7 +20,7 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.SMAIndicator;
 
 /**
  * Mean deviation indicator.
- * <p></p>
+ * <p/>
  * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
  *     http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
