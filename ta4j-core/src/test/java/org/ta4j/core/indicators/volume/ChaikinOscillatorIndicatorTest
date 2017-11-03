@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 
-public class ChaikinOscillatorTest {
+public class ChaikinOscillatorIndicatorTest {
 
     @Test
     public void getValue() {
