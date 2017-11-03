@@ -176,7 +176,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if strict positive convergent
 	 */
 	private Boolean calculatePositiveConvergenceStrict(int timeFrame, int index) {
-
 		Rule refIsRising = new IsRisingRule(ref, timeFrame);
 		Rule otherIsRising = new IsRisingRule(ref, timeFrame);
 
@@ -189,7 +188,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if strict negative convergent
 	 */
 	private Boolean calculateNegativeConvergenceStrict(int timeFrame, int index) {
-
 		Rule refIsFalling = new IsFallingRule(ref, timeFrame);
 		Rule otherIsFalling = new IsFallingRule(ref, timeFrame);
 
@@ -202,7 +200,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if positive divergent
 	 */
 	private Boolean calculatePositiveDivergenceStrict(int timeFrame, int index) {
-
 		Rule refIsRising = new IsRisingRule(ref, timeFrame);
 		Rule otherIsFalling = new IsFallingRule(ref, timeFrame);
 
@@ -215,7 +212,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if negative divergent
 	 */
 	private Boolean calculateNegativeDivergenceStrict(int timeFrame, int index) {
-
 		Rule refIsFalling = new IsFallingRule(ref, timeFrame);
 		Rule otherIsRising = new IsRisingRule(ref, timeFrame);
 
