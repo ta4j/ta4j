@@ -226,6 +226,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
 
 		if (isDivergent) {
+			HMAIndicator hmaRef = new HMAIndicator(ref, timeFrame);
 			// if "isDivergent" and "ref" is negative, then "other" must be positive.
 			boolean isRefNegative = ref.getValue(index).isLessThan(hmaRef.getValue(index));
 
