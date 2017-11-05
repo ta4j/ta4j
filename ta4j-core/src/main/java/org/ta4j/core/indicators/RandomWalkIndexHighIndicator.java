@@ -29,17 +29,15 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 /**
- * The Class RandomWalkIndexHighIndicator.
+ * The Random Walk Index High Indicator. <p />
+ *
+ * See https://www.technicalindicators.net/indicators-technical-analysis/168-rwi-random-walk-index
  */
 public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
 
     private final MaxPriceIndicator maxPrice;
     
     private final MinPriceIndicator minPrice;
-    
-    private final AverageTrueRangeIndicator averageTrueRange;
-    
-    private final Decimal sqrtTimeFrame;
     
     private final int timeFrame;
     
@@ -54,14 +52,28 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
         this.timeFrame = timeFrame;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new AverageTrueRangeIndicator(series, timeFrame);
-        sqrtTimeFrame = Decimal.valueOf(timeFrame).sqrt();
+
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index - timeFrame)))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
+        int lastIndex = Math.max(0, index - timeFrame+1);
+        int n = 2;
+        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
+        Decimal highestRWI = maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index-1)))
+                .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
+
+        for(int i = index-2; i >= lastIndex; i--) {
+            n++;
+            averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
+            Decimal currentRWI = maxPrice.getValue(index).minus(minPrice.getValue(i))
+                    .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
+            if(currentRWI.isGreaterThan(highestRWI)){
+                highestRWI = currentRWI;
+            }
+
+        }
+        return highestRWI;
     }
     
     @Override

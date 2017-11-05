@@ -60,8 +60,23 @@ private final MaxPriceIndicator maxPrice;
 
     @Override
     protected Decimal calculate(int index) {
-        return maxPrice.getValue(Math.max(0, index - timeFrame)).minus(minPrice.getValue(index))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
+        int lastIndex = Math.max(0, index - timeFrame+1);
+        int n = 2;
+        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
+        Decimal lowestRWI = maxPrice.getValue(Math.max(0, index-1)).minus(minPrice.getValue(index))
+                .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
+
+        for(int i = index-2; i >= lastIndex; i--) {
+            n++;
+            averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
+            Decimal currentRWI = maxPrice.getValue(index).minus(minPrice.getValue(i))
+                    .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
+            if(currentRWI.isLessThan(lowestRWI)){
+                lowestRWI = currentRWI;
+            }
+
+        }
+        return lowestRWI;
     }
     
     @Override
