@@ -34,29 +34,6 @@ import org.ta4j.core.trading.rules.IsRisingRule;
 
 /**
  * Indicator-convergence-divergence.
- * <p>
- * - Returns true for <b>"positiveConvergent"</b> when the values of the
- * ref-{@link Indicator indicator} and the values of the other-{@link Indicator
- * indicator} increase within the timeFrame. In short: "other" and "ref" makes
- * higher highs.
- * 
- * <p>
- * - Returns true for <b>"negativeConvergent"</b> when the values of the
- * ref-{@link Indicator indicator} and the values of the other-{@link Indicator
- * indicator} decrease within the timeFrame. In short: "other" and "ref" makes
- * lower lows.
- * 
- * <p>
- * - Returns true for <b>"positiveDivergent"</b> when the values of the
- * ref-{@link Indicator indicator} increase and the values of the
- * other-{@link Indicator indicator} decrease within a timeFrame. In short:
- * "other" makes lower lows while "ref" makes higher lows.
- * 
- * <p>
- * - Returns true for <b>"negativeDivergent"</b> when the values of the
- * ref-{@link Indicator indicator} decrease and the values of the
- * other-{@link Indicator indicator} increase within a timeFrame. In short:
- * "other" makes higher highs while "ref" makes lower highs.
  */
 public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
@@ -66,13 +43,56 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * Select the type of convergence or divergence.
 	 */
 	public enum ConvergenceDivergenceType {
+		/**
+		 * Returns true for <b>"positiveConvergent"</b> when the values of the
+		 * ref-{@link Indicator indicator} and the values of the
+		 * other-{@link Indicator indicator} increase within the timeFrame. In
+		 * short: "other" and "ref" makes higher highs.
+		 */
 		positiveConvergent, 
+		
+		/**
+		 * Returns true for <b>"negativeConvergent"</b> when the values of the
+		 * ref-{@link Indicator indicator} and the values of the
+		 * other-{@link Indicator indicator} decrease within the timeFrame. In
+		 * short: "other" and "ref" makes lower lows.
+		 */
 		negativeConvergent, 
+		
+		/**
+		 * Returns true for <b>"positiveDivergent"</b> when the values of the
+		 * ref-{@link Indicator indicator} increase and the values of the
+		 * other-{@link Indicator indicator} decrease within a timeFrame. In
+		 * short: "other" makes lower lows while "ref" makes higher lows.
+		 */
 		positiveDivergent, 
+		
+		/**
+		 * Returns true for <b>"negativeDivergent"</b> when the values of the
+		 * ref-{@link Indicator indicator} decrease and the values of the
+		 * other-{@link Indicator indicator} increase within a timeFrame. In
+		 * short: "other" makes higher highs while "ref" makes lower highs.
+		 */
 		negativeDivergent,
+		
+		/**
+		 * Strict version of "positiveConvergent".
+		 */
 		positiveConvergentStrict, 
+		
+		/**
+		 * Strict version of "negativeConvergent".
+		 */
 		negativeConvergentStrict, 
+		
+		/**
+		 * Strict version of "positiveDivergent".
+		 */
 		positiveDivergentStrict, 
+		
+		/**
+		 * Strict version of "negativeDivergent".
+		 */
 		negativeDivergentStrict;
 	}
 
@@ -90,8 +110,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	
 	/** The minimum strenght for convergence. **/
 	private Decimal minStrenght;
-	
-	
     
 	/**
 	 * Constructor. <br/>
@@ -149,17 +167,15 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 			minStrenght = Decimal.ONE;
 		}
 
-		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-
 		switch (type) {
 		case positiveConvergent:
-			return calculatePositiveConvergence(cc, index);
+			return calculatePositiveConvergence(index);
 		case negativeConvergent:
-			return calculateNegativeConvergence(cc, index);
+			return calculateNegativeConvergence(index);
 		case positiveDivergent:
-			return calculatePositiveDivergence(cc, index);
+			return calculatePositiveDivergence(index);
 		case negativeDivergent:
-			return calculateNegativeDivergence(cc, index);
+			return calculateNegativeDivergence(index);
 		case positiveConvergentStrict:
 			return calculatePositiveConvergenceStrict(timeFrame, index);
 		case negativeConvergentStrict:
@@ -222,13 +238,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
     
     /**
-     * 
-     * @param cc the correlation coefficient
-     * @param ma the comparable indicator to test for positive-part of the convergence
      * @param index
      * @return true, if positive convergent
      */
-	private Boolean calculatePositiveConvergence(CorrelationCoefficientIndicator cc, int index) {
+	private Boolean calculatePositiveConvergence(int index) {
+		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
 		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 		
 		HMAIndicator hma = new HMAIndicator(ref, timeFrame);
@@ -239,14 +253,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	
 
     /**
-     * TODO: check logic
-     * 
-     * @param cc the correlation coefficient
-     * @param ma the comparable indicator to test for negative-part of the convergence
      * @param index
      * @return true, if negative convergent
      */
-    private Boolean calculateNegativeConvergence(CorrelationCoefficientIndicator cc, int index) {
+    private Boolean calculateNegativeConvergence(int index) {
+    		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
     		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 		
     		HMAIndicator hma = new HMAIndicator(ref, timeFrame);
@@ -256,14 +267,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     }
 	
     /**
-     * TODO: check logic
-     * 
-     * @param cc the correlation coefficient
      * @param index
      * @return true, if positive divergent
      */
-	private Boolean calculatePositiveDivergence(CorrelationCoefficientIndicator cc, int index) {
+	private Boolean calculatePositiveDivergence(int index) {
 		
+		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
 		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
 
 		if (isDivergent) {
@@ -282,14 +291,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
 	
 	/**
-     * 
-     * @param cc the correlation coefficient
-     * @param ma the comparable indicator to test for negative-part of the divergence
      * @param index
      * @return true, if negative divergent
      */
-	private Boolean calculateNegativeDivergence(CorrelationCoefficientIndicator cc, int index) {
+	private Boolean calculateNegativeDivergence(int index) {
 		
+		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
 		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
 
 		if (isDivergent) {
@@ -306,4 +313,5 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
 		return false;
 	}
+	
 }
