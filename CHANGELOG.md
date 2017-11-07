@@ -7,6 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **JustOnceRule**: Now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
+- **MeanDeviationIndicator**: moved to statistics package
 
 ## Added
 
