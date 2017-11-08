@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 
 /**
  * Awesome oscillator. (AO)
- * <p>
+ * <p/>
  * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
