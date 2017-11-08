@@ -62,7 +62,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * Returns true for <b>"positiveDivergent"</b> when the values of the
 		 * ref-{@link Indicator indicator} increase and the values of the
 		 * other-{@link Indicator indicator} decrease within a timeFrame. In
-		 * short: "other" makes lower lows while "ref" makes higher lows.
+		 * short: "other" makes lower lows while "ref" makes higher highs.
 		 */
 		positiveDivergent, 
 		
@@ -70,10 +70,16 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * Returns true for <b>"negativeDivergent"</b> when the values of the
 		 * ref-{@link Indicator indicator} decrease and the values of the
 		 * other-{@link Indicator indicator} increase within a timeFrame. In
-		 * short: "other" makes higher highs while "ref" makes lower highs.
+		 * short: "other" makes higher highs while "ref" makes lower lows.
 		 */
-		negativeDivergent,
-		
+		negativeDivergent;
+	}
+	
+	/**
+	 * Select the type of strict convergence or divergence.
+	 */
+	public enum ConvergenceDivergenceStrictType {
+
 		/**
 		 * Returns true for <b>"positiveConvergentStrict"</b> when the values of
 		 * the ref-{@link Indicator indicator} and the values of the
@@ -109,6 +115,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		negativeDivergentStrict;
 	}
 
+
 	/** The actual indicator. */
 	private final Indicator<Decimal> ref;
 
@@ -120,6 +127,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	
 	/** The type of the convergence or divergence **/
 	private final ConvergenceDivergenceType type;
+	
+	private final ConvergenceDivergenceStrictType strictType;
 	
 	/** The minimum strenght for convergence or divergence. **/
 	private Decimal minStrenght;
@@ -149,7 +158,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param timeFrame
+	 * @param timeFrame the time frame
 	 * @param type of convergence or divergence
 	 * @param minStrenght the minimum required strenght for convergence or divergence
 	 * @param minSlope the minimum required slope for convergence or divergence
@@ -161,6 +170,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.other = other;
 		this.timeFrame = timeFrame;
 		this.type = type;
+		this.strictType = null;
 		this.minStrenght = Decimal.valueOf(minStrenght).abs();
 		this.minSlope = Decimal.valueOf(minSlope);
 	}
@@ -170,7 +180,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param timeFrame
+	 * @param timeFrame the time frame
 	 * @param type of convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
@@ -180,8 +190,29 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.other = other;
 		this.timeFrame = timeFrame;
 		this.type = type;
+		this.strictType = null;
 		this.minStrenght = Decimal.valueOf(0.8).abs();
 		this.minSlope = Decimal.valueOf(0.3);
+	}
+	
+	/**
+	 * Constructor for strict convergence or divergence.
+	 * 
+	 * @param ref the indicator
+	 * @param other the other indicator
+	 * @param timeFrame the time frame
+	 * @param type of strict convergence or divergence
+	 */
+	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+			ConvergenceDivergenceStrictType strictType) {
+		super(ref);
+		this.ref = ref;
+		this.other = other;
+		this.timeFrame = timeFrame;
+		this.type = null;
+		this.strictType = strictType;
+		this.minStrenght = null;
+		this.minSlope = null;
 	}
 
 	@Override
@@ -195,30 +226,41 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 			minStrenght = Decimal.ONE;
 		}
 
-		switch (type) {
-		case positiveConvergent:
-			return calculatePositiveConvergence(index);
-		case negativeConvergent:
-			return calculateNegativeConvergence(index);
-		case positiveDivergent:
-			return calculatePositiveDivergence(index);
-		case negativeDivergent:
-			return calculateNegativeDivergence(index);
-		case positiveConvergentStrict:
-			return calculatePositiveConvergenceStrict(index);
-		case negativeConvergentStrict:
-			return calculateNegativeConvergenceStrict(index);
-		case positiveDivergentStrict:
-			return calculatePositiveDivergenceStrict(index);
-		case negativeDivergentStrict:
-			return calculateNegativeDivergenceStrict(index);
-		default:
-			return false;
+		if (type != null) {
+			switch (type) {
+			case positiveConvergent:
+				return calculatePositiveConvergence(index);
+			case negativeConvergent:
+				return calculateNegativeConvergence(index);
+			case positiveDivergent:
+				return calculatePositiveDivergence(index);
+			case negativeDivergent:
+				return calculateNegativeDivergence(index);
+			default:
+				return false;
+			}
 		}
+
+		else if (strictType != null) {
+			switch (strictType) {
+			case positiveConvergentStrict:
+				return calculatePositiveConvergenceStrict(index);
+			case negativeConvergentStrict:
+				return calculateNegativeConvergenceStrict(index);
+			case positiveDivergentStrict:
+				return calculatePositiveDivergenceStrict(index);
+			case negativeDivergentStrict:
+				return calculateNegativeDivergenceStrict(index);
+			default:
+				return false;
+			}
+		}
+		
+		return false;
 	}
 	
 	/**
-	 * @param index
+	 * @param index the actual index
 	 * @return true, if strict positive convergent
 	 */
 	private Boolean calculatePositiveConvergenceStrict(int index) {
@@ -229,7 +271,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
 
 	/**
-	 * @param index
+	 * @param index the actual index
 	 * @return true, if strict negative convergent
 	 */
 	private Boolean calculateNegativeConvergenceStrict(int index) {
@@ -240,7 +282,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
 
 	/**
-	 * @param index
+	 * @param index the actual index
 	 * @return true, if positive divergent
 	 */
 	private Boolean calculatePositiveDivergenceStrict(int index) {
@@ -251,7 +293,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
 
 	/**
-	 * @param index
+	 * @param index the actual index
 	 * @return true, if negative divergent
 	 */
 	private Boolean calculateNegativeDivergenceStrict(int index) {
@@ -262,7 +304,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
     
     /**
-     * @param index
+     * @param index the actual index
      * @return true, if positive convergent
      */
 	private Boolean calculatePositiveConvergence(int index) {
@@ -277,7 +319,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	
 
     /**
-     * @param index
+     * @param index the actual index
      * @return true, if negative convergent
      */
     private Boolean calculateNegativeConvergence(int index) {
@@ -291,7 +333,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     }
 	
     /**
-     * @param index
+     * @param index the actual index
      * @return true, if positive divergent
      */
 	private Boolean calculatePositiveDivergence(int index) {
@@ -310,7 +352,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	
 	
 	/**
-     * @param index
+     * @param index the actual index
      * @return true, if negative divergent
      */
 	private Boolean calculateNegativeDivergence(int index) {
@@ -328,7 +370,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
 	
 	/**
-	 * @param index
+	 * @param index the actual index
 	 * @return the absolute slope
 	 */
 	private Decimal calculateSlopeAbs(int index) {
@@ -339,7 +381,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	}
 	
 	/**
-	 * @param index
+	 * @param index the actual index
 	 * @return the relative slope
 	 */
 	private Decimal calculateSlopeRel(int index) {
