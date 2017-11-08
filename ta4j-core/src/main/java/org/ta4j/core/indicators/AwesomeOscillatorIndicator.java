@@ -24,26 +24,49 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 
 /**
  * Awesome oscillator. (AO)
- * <p></p>
- * @see <a href="http://www.forexgurus.co.uk/indicators/awesome-oscillator">http://www.forexgurus.co.uk/indicators/awesome-oscillator</a>
+ * <p/>
+ * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
 
-    private SMAIndicator sma5;
+    private final SMAIndicator sma5;
 
-    private SMAIndicator sma34;
+    private final SMAIndicator sma34;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator (normally {@link MedianPriceIndicator})
+     * @param timeFrameSma1 (normally 5)
+     * @param timeFrameSma2 (normally 34)
+     */
     public AwesomeOscillatorIndicator(Indicator<Decimal> indicator, int timeFrameSma1, int timeFrameSma2) {
         super(indicator);
         this.sma5 = new SMAIndicator(indicator, timeFrameSma1);
         this.sma34 = new SMAIndicator(indicator, timeFrameSma2);
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator (normally {@link MedianPriceIndicator})
+     */
     public AwesomeOscillatorIndicator(Indicator<Decimal> indicator) {
         this(indicator, 5, 34);
+    }
+    
+    /**
+     * Constructor.
+     * 
+     * @param series the timeSeries
+     */
+    public AwesomeOscillatorIndicator(TimeSeries series) {
+        this(new MedianPriceIndicator(series), 5, 34);
     }
 
     @Override

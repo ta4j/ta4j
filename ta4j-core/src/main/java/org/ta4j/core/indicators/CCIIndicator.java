@@ -48,7 +48,7 @@ public class CCIIndicator extends CachedIndicator<Decimal> {
     /**
      * Constructor.
      * @param series the time series
-     * @param timeFrame the time frame
+     * @param timeFrame the time frame (normally 20)
      */
     public CCIIndicator(TimeSeries series, int timeFrame) {
         super(series);
