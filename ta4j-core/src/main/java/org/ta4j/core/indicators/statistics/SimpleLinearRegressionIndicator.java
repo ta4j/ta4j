@@ -35,7 +35,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 
-  /**
+	 /**
 	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
 	 */
 	public enum SimpleLinearRegressionType {
@@ -56,7 +56,6 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
 		this(indicator, timeFrame, SimpleLinearRegressionType.y);
-
 	}
 
 	/**
