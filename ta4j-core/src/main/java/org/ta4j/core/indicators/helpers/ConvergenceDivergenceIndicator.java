@@ -26,10 +26,9 @@ import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.HMAIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.trading.rules.IsFallingRule;
-import org.ta4j.core.trading.rules.IsHighestRule;
 import org.ta4j.core.trading.rules.IsRisingRule;
 
 /**
@@ -76,22 +75,36 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		negativeDivergent,
 		
 		/**
-		 * Strict version of "positiveConvergent".
+		 * Returns true for <b>"positiveConvergentStrict"</b> when the values of
+		 * the ref-{@link Indicator indicator} and the values of the
+		 * other-{@link Indicator indicator} increase consecutively within a
+		 * timeFrame. In short: "other" and "ref" makes strict higher highs.
 		 */
-		positiveConvergentStrict, 
+		positiveConvergentStrict,
 		
 		/**
-		 * Strict version of "negativeConvergent".
+		 * Returns true for <b>"negativeConvergentStrict"</b> when the values of
+		 * the ref-{@link Indicator indicator} and the values of the
+		 * other-{@link Indicator indicator} decrease consecutively within a
+		 * timeFrame. In short: "other" and "ref" makes strict lower lows.
 		 */
 		negativeConvergentStrict, 
 		
 		/**
-		 * Strict version of "positiveDivergent".
+		 * Returns true for <b>"positiveDivergentStrict"</b> when the values of
+		 * the ref-{@link Indicator indicator} increase consecutively and the
+		 * values of the other-{@link Indicator indicator} decrease
+		 * consecutively within a timeFrame. In short: "other" makes strict
+		 * higher highs and "ref" makes strict lower lows.
 		 */
 		positiveDivergentStrict, 
 		
 		/**
-		 * Strict version of "negativeDivergent".
+		 * Returns true for <b>"negativeDivergentStrict"</b> when the values of
+		 * the ref-{@link Indicator indicator} decrease consecutively and the
+		 * values of the other-{@link Indicator indicator} increase
+		 * consecutively within a timeFrame. In short: "other" makes strict
+		 * lower lows and "ref" makes strict higher highs.
 		 */
 		negativeDivergentStrict;
 	}
@@ -108,8 +121,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	/** The type of the convergence or divergence **/
 	private final ConvergenceDivergenceType type;
 	
-	/** The minimum strenght for convergence. **/
+	/** The minimum strenght for convergence or divergence. **/
 	private Decimal minStrenght;
+	
+	/** The minimum slope for divergence. **/
+	private Decimal minSlope;
     
 	/**
 	 * Constructor. <br/>
@@ -120,22 +136,33 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * <br/>
 	 * 0.1: very weak <br/>
 	 * 0.8: strong (recommended) <br/>
-	 * 1.0: very strong/strict <br/>
+	 * 1.0: very strong <br/>
+	 * 
+	 * <br/>
+	 * 
+	 * The <b>"minSlope"</b> is the minimum required slope for convergence or divergence
+	 * and must be a number between "0.1" and "1.0": <br/>
+	 * <br/>
+	 * 0.1: very unstrict<br/>
+	 * 0.3: strict (recommended) <br/>
+	 * 1.0: very strict <br/>
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
 	 * @param timeFrame
 	 * @param type of convergence or divergence
 	 * @param minStrenght the minimum required strenght for convergence or divergence
+	 * @param minSlope the minimum required slope for convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
-			ConvergenceDivergenceType type, double minStrenght) {
+			ConvergenceDivergenceType type, double minStrenght, double minSlope) {
 		super(ref);
 		this.ref = ref;
 		this.other = other;
 		this.timeFrame = timeFrame;
 		this.type = type;
 		this.minStrenght = Decimal.valueOf(minStrenght).abs();
+		this.minSlope = Decimal.valueOf(minSlope);
 	}
 	
 	/**
@@ -144,7 +171,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param ref the indicator
 	 * @param other the other indicator
 	 * @param timeFrame
-	 * @param ype of convergence or divergence
+	 * @param type of convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
 			ConvergenceDivergenceType type) {
@@ -154,6 +181,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.timeFrame = timeFrame;
 		this.type = type;
 		this.minStrenght = Decimal.valueOf(0.8).abs();
+		this.minSlope = Decimal.valueOf(0.3);
 	}
 
 	@Override
@@ -244,10 +272,10 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculatePositiveConvergence(int index) {
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
 		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
-		
-		HMAIndicator hma = new HMAIndicator(ref, timeFrame);
-		boolean isPositive = ref.getValue(index).isGreaterThan(hma.getValue(index));
-		
+
+		Decimal slope = calculateSlopeRel(index);
+		boolean isPositive = slope.isGreaterThanOrEqual(minSlope.abs());
+
 		return isConvergent && isPositive;
 	}
 	
@@ -260,8 +288,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
     		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 		
-    		HMAIndicator hma = new HMAIndicator(ref, timeFrame);
-    		boolean isNegative = ref.getValue(index).isLessThan(hma.getValue(index));
+    		Decimal slope = calculateSlopeRel(index);
+    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(Decimal.valueOf(-1)));
 		
 		return isConvergent && isNegative;
     }
@@ -276,19 +304,15 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
 
 		if (isDivergent) {
-			HMAIndicator hmaRef = new HMAIndicator(ref, timeFrame);
-			// if "isDivergent" and "ref" is positive, then "other" must be negative.
-			boolean isRefPositive = ref.getValue(index).isGreaterThan(hmaRef.getValue(index));
-
-			// higher peak in the "ref" against lower lows in "other"
-			boolean refIsHighest = new IsHighestRule(ref, timeFrame).isSatisfied(index);
-			boolean otherIsNotHighest = new IsHighestRule(other, timeFrame).negation().isSatisfied(index);
-
-			return isRefPositive && refIsHighest && otherIsNotHighest;
+			// If "isDivergent" and "ref" is positive, then "other" must be negative.
+			Decimal slope = calculateSlopeRel(index);
+			return slope.isGreaterThanOrEqual(minSlope.abs());
 		}
 
 		return false;
 	}
+	
+	
 	
 	/**
      * @param index
@@ -300,18 +324,34 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
 
 		if (isDivergent) {
-			HMAIndicator hmaRef = new HMAIndicator(ref, timeFrame);
-			// if "isDivergent" and "ref" is negative, then "other" must be positive.
-			boolean isRefNegative = ref.getValue(index).isLessThan(hmaRef.getValue(index));
-
-			// A lower peak in the ref against higher highs in other.
-			boolean refIsNotHighest = new IsHighestRule(ref, timeFrame).negation().isSatisfied(index);
-			boolean otherIsHighest = new IsHighestRule(other, timeFrame).isSatisfied(index);
-
-			return isRefNegative && refIsNotHighest && otherIsHighest;
+			// If "isDivergent" and "ref" is positive, then "other" must be negative.
+			Decimal slope = calculateSlopeRel(index);
+			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(Decimal.valueOf(-1)));
 		}
 
 		return false;
+	}
+	
+	/**
+	 * @param index
+	 * @return the absolute slope
+	 */
+	private Decimal calculateSlopeAbs(int index) {
+		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
+		int firstIndex = Math.max(0, index - timeFrame + 1);
+		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
+				.dividedBy(Decimal.valueOf(timeFrame).minus(Decimal.valueOf(firstIndex)));
+	}
+	
+	/**
+	 * @param index
+	 * @return the relative slope
+	 */
+	private Decimal calculateSlopeRel(int index) {
+		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
+		int firstIndex = Math.max(0, index - timeFrame + 1);
+		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
+				.dividedBy(slrRef.getValue(index));
 	}
 	
 }
