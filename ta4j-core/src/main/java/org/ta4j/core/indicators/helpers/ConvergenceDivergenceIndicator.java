@@ -128,6 +128,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	/** The type of the convergence or divergence **/
 	private final ConvergenceDivergenceType type;
 	
+	/** The type of the strict convergence or strict divergence **/
 	private final ConvergenceDivergenceStrictType strictType;
 	
 	/** The minimum strenght for convergence or divergence. **/
