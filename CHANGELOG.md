@@ -10,7 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **MeanDeviationIndicator**: moved to statistics package
 
 ## Added
-
+- **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
 
 ## 0.10 (2017-10-23)
 
@@ -52,7 +52,6 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the timeFrame.
 - **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the timeFrame.
 - **IsHighestRule**: New Rule that is satisfied if indicator is the highest within the timeFrame.
-- **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
 
 
 ## 0.9 (2017-09-07)
