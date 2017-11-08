@@ -58,6 +58,16 @@ public class BaseStrategy implements Strategy {
     public BaseStrategy(Rule entryRule, Rule exitRule) {
         this(null, entryRule, exitRule, 0);
     }
+
+     /**
+     * Constructor.
+     * @param entryRule the entry rule
+     * @param exitRule the exit rule
+     * @param unstablePeriod
+     */
+    public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
+        this(null, entryRule, exitRule, unstablePeriod);
+    }
 	
     /**
      * Constructor.
