@@ -75,52 +75,6 @@ public class ConvergenceDivergenceIndicatorTest {
 	@Test
 	public void isSatisfied() {
 
-		// positive convergence
-		assertFalse(isPosCon.getValue(0));
-		assertFalse(isPosCon.getValue(1));
-		assertFalse(isPosCon.getValue(2));
-		assertFalse(isPosCon.getValue(3));
-		assertFalse(isPosCon.getValue(4));
-		assertFalse(isPosCon.getValue(5));
-		assertTrue(isPosCon.getValue(6));
-		assertTrue(isPosCon.getValue(7));
-		assertTrue(isPosCon.getValue(8));
-		assertFalse(isPosCon.getValue(9));
 		
-		// negative convergence
-		assertFalse(isNegCon.getValue(0));
-		assertFalse(isNegCon.getValue(1));
-		assertFalse(isNegCon.getValue(2));
-		assertFalse(isNegCon.getValue(3));
-		assertFalse(isNegCon.getValue(4));
-		assertFalse(isNegCon.getValue(5));
-		assertFalse(isNegCon.getValue(6));
-		assertTrue(isNegCon.getValue(7));
-		assertTrue(isNegCon.getValue(8));
-		assertFalse(isNegCon.getValue(9));
-
-		// TODO: positive divergence
-		assertFalse(isPosDiv.getValue(0));
-		assertFalse(isPosDiv.getValue(1));
-		assertFalse(isPosDiv.getValue(2));
-		assertFalse(isPosDiv.getValue(3));
-		assertFalse(isPosDiv.getValue(4));
-		assertFalse(isPosDiv.getValue(5));
-		assertFalse(isPosDiv.getValue(6));
-		assertFalse(isPosDiv.getValue(7));
-		assertFalse(isPosDiv.getValue(8));
-		assertFalse(isPosDiv.getValue(9));
-		
-		//  TODO: negative divergence
-		assertFalse(isNegDiv.getValue(0));
-		assertFalse(isNegDiv.getValue(1));
-		assertFalse(isNegDiv.getValue(2));
-		assertFalse(isNegDiv.getValue(3));
-		assertFalse(isNegDiv.getValue(4));
-		assertFalse(isNegDiv.getValue(5));
-		assertFalse(isNegDiv.getValue(6));
-		assertFalse(isNegDiv.getValue(7));
-		assertFalse(isNegDiv.getValue(8));
-		assertFalse(isNegDiv.getValue(9));
 	}
 }
