@@ -71,7 +71,7 @@ public class RandomWalkIndexHighIndicatorTest {
     
     @Test
     public void randomWalkIndexHigh() {
-        RandomWalkIndexHighIndicator rwih = new RandomWalkIndexHighIndicator(data, 5);
+        RWIHighIndicator rwih = new RWIHighIndicator(data, 5);
         for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++){
             System.out.println(String.format("[index: %s] rwih: %s",i,rwih.getValue(i)));
         }
