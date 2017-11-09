@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
  *
  * See https://www.technicalindicators.net/indicators-technical-analysis/168-rwi-random-walk-index
  */
-public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
+public class RWIHighIndicator extends CachedIndicator<Decimal> {
 
     private final MaxPriceIndicator maxPrice;
     
@@ -47,7 +47,7 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
      * @param series the series
      * @param timeFrame the time frame
      */
-    public RandomWalkIndexHighIndicator(TimeSeries series, int timeFrame) {
+    public RWIHighIndicator(TimeSeries series, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
         maxPrice = new MaxPriceIndicator(series);
@@ -57,23 +57,26 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        int lastIndex = Math.max(0, index - timeFrame+1);
-        int n = 2;
-        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
-        Decimal highestRWI = maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index-1)))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
-
-        for(int i = index-2; i >= lastIndex; i--) {
-            n++;
-            averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
-            Decimal currentRWI = maxPrice.getValue(index).minus(minPrice.getValue(i))
-                    .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
-            if(currentRWI.isGreaterThan(highestRWI)){
-                highestRWI = currentRWI;
-            }
-
+        Decimal highestRWI = Decimal.NaN;
+        
+        for(int n = 2; n <= this.timeFrame; n++) {
+           Decimal currentRWI = calcRWIHighValue(index, index-n, n);
+           if(currentRWI.isGreaterThan(highestRWI)){
+               highestRWI = currentRWI;
+           }   
         }
         return highestRWI;
+    }
+    
+    /**
+     * @param t = current index
+     * @param t_n = current index - n
+     * @param n = n starting at 2 increments until n = time frame
+     */
+    private Decimal calcRWIHighValue(int t, int t_n, int n){
+        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
+        return maxPrice.getValue(t).minus(minPrice.getValue(t_n))
+                    .dividedBy(averageTrueRange.getValue(t).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
     }
     
     @Override
