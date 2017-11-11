@@ -46,13 +46,13 @@ public interface Strategy {
     Rule getExitRule();
 	
     /**
-     * @param strategy
+     * @param strategy the other strategy
      * @return the AND combination of two {@link Strategy strategies}
      */
     Strategy and(Strategy strategy);
     
     /**
-     * @param strategy the strategy
+     * @param strategy the other strategy
      * @return the OR combination of two {@link Strategy strategies}
      */
     Strategy or(Strategy strategy);
