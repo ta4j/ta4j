@@ -115,6 +115,21 @@ public class BaseStrategy implements Strategy {
     }
     
     @Override
+    public Strategy and(Strategy strategy) {
+    	return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()));
+    }
+
+    @Override
+    public Strategy or(Strategy strategy) {
+    	return new BaseStrategy(entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()));
+    }
+
+    @Override
+    public Strategy opposite(Strategy strategy) {
+    	return new BaseStrategy(exitRule, entryRule);
+    }
+    
+    @Override
     public void setUnstablePeriod(int unstablePeriod) {
         this.unstablePeriod = unstablePeriod;
     }
