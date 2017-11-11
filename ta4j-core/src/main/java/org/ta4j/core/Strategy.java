@@ -52,21 +52,41 @@ public interface Strategy {
     Strategy and(Strategy strategy);
     
     /**
-     * @param strategy
+     * @param strategy the strategy
      * @return the OR combination of two {@link Strategy strategies}
      */
     Strategy or(Strategy strategy);
+
+    /**
+     * @param name the name of the strategy
+     * @param strategy the other strategy
+     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     * @return the AND combination of two {@link Strategy strategies}
+     */
+    Strategy and(String name, Strategy strategy, int unstablePeriod);
     
     /**
-     * @param strategy
-     * @return the opposite of a {@link Strategy strategy}
+     * @param name the name of the strategy
+     * @param strategy the other strategy
+     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     * @return the OR combination of two {@link Strategy strategies}
      */
-    Strategy opposite(Strategy strategy);
+    Strategy or(String name, Strategy strategy, int unstablePeriod);
+    
+    /**
+     * @return the opposite of the {@link Strategy strategy}
+     */
+    Strategy opposite();
     
     /**
      * @param unstablePeriod number of ticks that will be strip off for this strategy
      */
     void setUnstablePeriod(int unstablePeriod);
+    
+    /**
+     * @return unstablePeriod number of ticks that will be strip off for this strategy
+     */
+    int getUnstablePeriod();
     
     /**
      * @param index a tick index
