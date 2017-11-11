@@ -154,7 +154,7 @@ public class BaseStrategy implements Strategy {
     public Strategy or(Strategy strategy) {
         String orName = "or(" + name + "," + strategy.getName() + ")";
         int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
-        return and(orName, strategy, unstable);
+        return or(orName, strategy, unstable);
     }
 
     @Override
