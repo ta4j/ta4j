@@ -116,7 +116,7 @@ public class BaseStrategy implements Strategy {
     
     @Override
     public Strategy and(Strategy strategy) {
-    	return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()));
+    	return new BaseStrategy(entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()));
     }
 
     @Override
