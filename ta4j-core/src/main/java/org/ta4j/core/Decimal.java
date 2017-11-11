@@ -81,11 +81,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
     }
 
     private Decimal(int val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(long val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(BigDecimal val) {
