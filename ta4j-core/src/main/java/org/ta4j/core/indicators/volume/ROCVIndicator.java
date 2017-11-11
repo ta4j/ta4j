@@ -46,7 +46,7 @@ public class ROCVIndicator extends CachedIndicator<Decimal> {
      * @param timeFrame the time frame
      */
     public ROCVIndicator(TimeSeries series, int timeFrame) {
-    		super(series);
+        super(series);
         this.series = series;
         this.timeFrame = timeFrame;
     }
