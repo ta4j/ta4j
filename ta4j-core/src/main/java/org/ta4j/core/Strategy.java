@@ -44,6 +44,24 @@ public interface Strategy {
      * @return the exit rule
      */
     Rule getExitRule();
+	
+    /**
+     * @param strategy
+     * @return the AND combination of two {@link Strategy strategies}
+     */
+    Strategy and(Strategy strategy);
+    
+    /**
+     * @param strategy
+     * @return the OR combination of two {@link Strategy strategies}
+     */
+    Strategy or(Strategy strategy);
+    
+    /**
+     * @param strategy
+     * @return the opposite of a {@link Strategy strategy}
+     */
+    Strategy opposite(Strategy strategy);
     
     /**
      * @param unstablePeriod number of ticks that will be strip off for this strategy
