@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 - **JustOnceRule**: Now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
+- **Decimal**: Use `BigDecimal::valueof` instead of instantiating a new BigDecimal for int and long
 
 ## Added
 - **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
