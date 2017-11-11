@@ -36,6 +36,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 ## Added
 - **AroonOscillatorIndicator**: New indicator based on AroonUp/DownIndicator
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
+- **ROCVIndicator**: Rate of Change of Volume
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **ChaikinOscillatorIndicator**: New indicator.
