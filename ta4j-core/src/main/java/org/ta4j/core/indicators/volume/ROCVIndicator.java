@@ -34,12 +34,17 @@ import org.ta4j.core.indicators.CachedIndicator;
  */
 public class ROCVIndicator extends CachedIndicator<Decimal> {
 
-	private static final long serialVersionUID = 6366365574748347534L;
+    private static final long serialVersionUID = 6366365574748347534L;
 
-	private final TimeSeries series;
-
+    private final TimeSeries series;
     private final int timeFrame;
 
+    /**
+     * Constructor.
+     * 
+     * @param series the time series
+     * @param timeFrame the time frame
+     */
     public ROCVIndicator(TimeSeries series, int timeFrame) {
     		super(series);
         this.series = series;
