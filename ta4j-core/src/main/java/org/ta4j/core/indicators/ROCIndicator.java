@@ -33,10 +33,17 @@ import org.ta4j.core.Indicator;
  */
 public class ROCIndicator extends CachedIndicator<Decimal> {
 
+    private static final long serialVersionUID = 7983097470035346856L;
+	
     private final Indicator<Decimal> indicator;
-
     private final int timeFrame;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param timeFrame the time frame
+     */
     public ROCIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
