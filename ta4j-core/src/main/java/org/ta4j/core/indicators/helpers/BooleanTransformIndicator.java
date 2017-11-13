@@ -1,0 +1,207 @@
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.indicators.helpers;
+
+import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
+
+/**
+ * Simple boolean transform indicator.
+ * </p>
+ * Transforms any decimal indicator to a boolean indicator by using common
+ * logical operators.
+ */
+public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
+
+	private static final long serialVersionUID = -6196778603319962795L;
+
+	/**
+	 * Select the type for transformation.
+	 */
+	public enum BooleanTransformType {
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.equals(coefficient).
+		 */
+		equals,
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isGreaterThan(coefficient).
+		 */
+		isGreaterThan,
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * indicator.isGreaterThanOrEqual(coefficient).
+		 */
+		isGreaterThanOrEqual,
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isLessThan(coefficient).
+		 */
+		isLessThan,
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isLessThanOrEqual(coefficient).
+		 */
+		isLessThanOrEqual;
+	}
+	
+	/**
+	 * Select the type for transformation.
+	 */
+	public enum BooleanTransformSimpleType {
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isNaN().
+		 */
+		isNaN,
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isNegative().
+		 */
+		isNegative,
+
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isNegativeOrZero().
+		 */
+		isNegativeOrZero,
+		
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isPositive().
+		 */
+		isPositive,
+		
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isPositiveOrZero().
+		 */
+		isPositiveOrZero,
+		
+		/**
+		 * Transforms the decimal indicator 
+		 * to a boolean indicator
+		 * by indicator.isZero().
+		 */
+		isZero;
+	}
+
+    private Indicator<Decimal> indicator;
+    private Decimal coefficient;
+    private BooleanTransformType type;
+    private BooleanTransformSimpleType simpleType;
+    
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param coefficient the value for transformation
+     * @param type the type of the transformation
+     */
+    public BooleanTransformIndicator(Indicator<Decimal> indicator, Decimal coefficient, BooleanTransformType type) {
+        super(indicator);
+        this.indicator = indicator;
+        this.coefficient = coefficient;
+        this.type = type;
+    }
+    
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param type the type of the transformation
+     */
+    public BooleanTransformIndicator(Indicator<Decimal> indicator, BooleanTransformSimpleType type) {
+        super(indicator);
+        this.indicator = indicator;
+        this.simpleType = type;
+    }
+
+	@Override
+	protected Boolean calculate(int index) {
+
+		if (type != null) {
+			switch (type) {
+			case equals:
+				return indicator.getValue(index).equals(coefficient);
+			case isGreaterThan:
+				return indicator.getValue(index).isGreaterThan(coefficient);
+			case isGreaterThanOrEqual:
+				return indicator.getValue(index).isGreaterThanOrEqual(coefficient);
+			case isLessThan:
+				return indicator.getValue(index).isLessThan(coefficient);
+			case isLessThanOrEqual:
+				return indicator.getValue(index).isLessThanOrEqual(coefficient);
+			default:
+				break;
+			}
+		}
+
+		else if (simpleType != null) {
+			switch (simpleType) {
+			case isNaN:
+				return indicator.getValue(index).isNaN();
+			case isNegative:
+				return indicator.getValue(index).isNegative();
+			case isNegativeOrZero:
+				return indicator.getValue(index).isNegativeOrZero();
+			case isPositive:
+				return indicator.getValue(index).isPositive();
+			case isPositiveOrZero:
+				return indicator.getValue(index).isPositiveOrZero();
+			case isZero:
+				return indicator.getValue(index).isZero();
+			default:
+				break;
+			}
+		}
+
+		return false;
+	}
+
+    @Override
+	public String toString() {
+		if (type != null) {
+			return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
+		}
+		return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
+	}
+}
