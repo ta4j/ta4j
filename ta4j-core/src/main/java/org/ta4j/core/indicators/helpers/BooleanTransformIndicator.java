@@ -158,18 +158,20 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 	@Override
 	protected Boolean calculate(int index) {
 
+		Decimal val = indicator.getValue(index);
+
 		if (type != null) {
 			switch (type) {
 			case equals:
-				return indicator.getValue(index).equals(coefficient);
+				return val.equals(coefficient);
 			case isGreaterThan:
-				return indicator.getValue(index).isGreaterThan(coefficient);
+				return val.isGreaterThan(coefficient);
 			case isGreaterThanOrEqual:
-				return indicator.getValue(index).isGreaterThanOrEqual(coefficient);
+				return val.isGreaterThanOrEqual(coefficient);
 			case isLessThan:
-				return indicator.getValue(index).isLessThan(coefficient);
+				return val.isLessThan(coefficient);
 			case isLessThanOrEqual:
-				return indicator.getValue(index).isLessThanOrEqual(coefficient);
+				return val.isLessThanOrEqual(coefficient);
 			default:
 				break;
 			}
@@ -178,17 +180,17 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 		else if (simpleType != null) {
 			switch (simpleType) {
 			case isNaN:
-				return indicator.getValue(index).isNaN();
+				return val.isNaN();
 			case isNegative:
-				return indicator.getValue(index).isNegative();
+				return val.isNegative();
 			case isNegativeOrZero:
-				return indicator.getValue(index).isNegativeOrZero();
+				return val.isNegativeOrZero();
 			case isPositive:
-				return indicator.getValue(index).isPositive();
+				return val.isPositive();
 			case isPositiveOrZero:
-				return indicator.getValue(index).isPositiveOrZero();
+				return val.isPositiveOrZero();
 			case isZero:
-				return indicator.getValue(index).isZero();
+				return val.isZero();
 			default:
 				break;
 			}
