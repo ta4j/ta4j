@@ -54,7 +54,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 		isGreaterThan,
 
 		/**
-		 * Transforms the decimal indicator to a boolean indicator
+		 * Transforms the decimal indicator to a boolean indicator by
 		 * indicator.isGreaterThanOrEqual(coefficient).
 		 */
 		isGreaterThanOrEqual,
