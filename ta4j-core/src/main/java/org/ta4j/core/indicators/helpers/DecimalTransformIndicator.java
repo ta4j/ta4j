@@ -131,23 +131,26 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
         this.simpleType = type;
     }
 
+
     @Override
     protected Decimal calculate(int index) {
+    		
+    		Decimal val = indicator.getValue(index);
     		
     		if(type != null){
         		switch (type) {
     			case plus:
-    				return indicator.getValue(index).plus(coefficient);
+    				return val.plus(coefficient);
     			case minus:
-    				return indicator.getValue(index).minus(coefficient);
+    				return val.minus(coefficient);
     			case multiply:
-    				return indicator.getValue(index).multipliedBy(coefficient);
+    				return val.multipliedBy(coefficient);
     			case divide:
-    				return indicator.getValue(index).dividedBy(coefficient);
+    				return val.dividedBy(coefficient);
     			case max:
-    				return indicator.getValue(index).max(coefficient);
+    				return val.max(coefficient);
     			case min:
-    				return indicator.getValue(index).min(coefficient);
+    				return val.min(coefficient);
     			default:
     				break;
     			}
@@ -156,17 +159,17 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 		else if (simpleType != null) {
 			switch (simpleType) {
 			case sqrt:
-				return indicator.getValue(index).sqrt();
+				return val.sqrt();
 			case abs:
-				return indicator.getValue(index).abs();
+				return val.abs();
 			case log:
-				return indicator.getValue(index).log();
+				return val.log();
 			default:
 				break;
 			}
     		}
     	
-        return indicator.getValue(index);
+        return val;
     }
 
     @Override
