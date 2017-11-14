@@ -76,7 +76,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 		 */
 		min;
 	}
-	
+
 	/**
 	 * Select the type for transformation.
 	 */
@@ -100,79 +100,78 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 		log;
 	}
 
-    private Indicator<Decimal> indicator;
-    private Decimal coefficient;
-    private DecimalTransformType type;
-    private DecimalTransformSimpleType simpleType;
-    
-    /**
-     * Constructor.
-     * 
-     * @param indicator the indicator
-     * @param coefficient the value for transformation
-     * @param type the type of the transformation
-     */
-    public DecimalTransformIndicator(Indicator<Decimal> indicator, Decimal coefficient, DecimalTransformType type) {
-        super(indicator);
-        this.indicator = indicator;
-        this.coefficient = coefficient;
-        this.type = type;
-    }
-    
-    /**
-     * Constructor.
-     * 
-     * @param indicator the indicator
-     * @param type the type of the transformation
-     */
-    public DecimalTransformIndicator(Indicator<Decimal> indicator, DecimalTransformSimpleType type) {
-        super(indicator);
-        this.indicator = indicator;
-        this.simpleType = type;
-    }
+	private Indicator<Decimal> indicator;
+	private Decimal coefficient;
+	private DecimalTransformType type;
+	private DecimalTransformSimpleType simpleType;
 
+	/**
+	 * Constructor.
+	 * 
+	 * @param indicator the indicator
+	 * @param coefficient the value for transformation
+	 * @param type the type of the transformation
+	 */
+	public DecimalTransformIndicator(Indicator<Decimal> indicator, Decimal coefficient, DecimalTransformType type) {
+		super(indicator);
+		this.indicator = indicator;
+		this.coefficient = coefficient;
+		this.type = type;
+	}
 
-    @Override
-    protected Decimal calculate(int index) {
-    		
-    		Decimal val = indicator.getValue(index);
-    		
-    		if(type != null) {
-        	switch (type) {
-    			case plus:
-    				return val.plus(coefficient);
-    			case minus:
-    				return val.minus(coefficient);
-    			case multiply:
-    				return val.multipliedBy(coefficient);
-    			case divide:
-    				return val.dividedBy(coefficient);
-    			case max:
-    				return val.max(coefficient);
-    			case min:
-    				return val.min(coefficient);
-    			default:
-    				break;
-    			}
-    		}
-    		
-    		else if (simpleType != null) {
-       		switch (simpleType) {
-    			case sqrt:
-    				return val.sqrt();
-    			case abs:
-    				return val.abs();
-    			case log:
-    				return val.log();
-    			default:
-    				break;
-    			}
-    		}
+	/**
+	 * Constructor.
+	 * 
+	 * @param indicator the indicator
+	 * @param type the type of the transformation
+	 */
+	public DecimalTransformIndicator(Indicator<Decimal> indicator, DecimalTransformSimpleType type) {
+		super(indicator);
+		this.indicator = indicator;
+		this.simpleType = type;
+	}
+
+	@Override
+	protected Decimal calculate(int index) {
+
+		Decimal val = indicator.getValue(index);
+
+		if (type != null) {
+			switch (type) {
+			case plus:
+				return val.plus(coefficient);
+			case minus:
+				return val.minus(coefficient);
+			case multiply:
+				return val.multipliedBy(coefficient);
+			case divide:
+				return val.dividedBy(coefficient);
+			case max:
+				return val.max(coefficient);
+			case min:
+				return val.min(coefficient);
+			default:
+				break;
+			}
+		}
+
+		else if (simpleType != null) {
+			switch (simpleType) {
+			case sqrt:
+				return val.sqrt();
+			case abs:
+				return val.abs();
+			case log:
+				return val.log();
+			default:
+				break;
+			}
+		}
 
 		return val;
-  }
+	}
 
-    @Override
+	@Override
 	public String toString() {
 		if (type != null) {
 			return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
