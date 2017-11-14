@@ -137,8 +137,8 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
     		
     		Decimal val = indicator.getValue(index);
     		
-    		if(type != null){
-        		switch (type) {
+    		if(type != null) {
+        	switch (type) {
     			case plus:
     				return val.plus(coefficient);
     			case minus:
@@ -156,21 +156,21 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
     			}
     		}
     		
-		else if (simpleType != null) {
-			switch (simpleType) {
-			case sqrt:
-				return val.sqrt();
-			case abs:
-				return val.abs();
-			case log:
-				return val.log();
-			default:
-				break;
-			}
+    		else if (simpleType != null) {
+       		switch (simpleType) {
+    			case sqrt:
+    				return val.sqrt();
+    			case abs:
+    				return val.abs();
+    			case log:
+    				return val.log();
+    			default:
+    				break;
+    			}
     		}
-    	
-        return val;
-    }
+
+		return val;
+  }
 
     @Override
 	public String toString() {
