@@ -20,44 +20,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.SmoothedAverageGainIndicator;
-import org.ta4j.core.indicators.helpers.SmoothedAverageLossIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * Relative strength index indicator.
- * <p>
- * This calculation of RSI is based on accumulative moving average
- * as described in Wilder's original paper from 1978
- *
- * <p>See reference
- * <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:relative_strength_index_rsi">
- * RSI calculation</a>.
- *
- * @see RSIIndicator
- * @since 0.9
+ * Gain indicator.
  */
-public class SmoothedRSIIndicator extends RSIIndicator {
+public class GainIndicator extends CachedIndicator<Decimal> {
 
-    /** Minimum number of ticks needed for smoothing */
-    private static final Integer SMOOTH_MIN_TICKS = 150;
+    private final Indicator<Decimal> indicator;
 
-    public SmoothedRSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(new SmoothedAverageGainIndicator(indicator, timeFrame),
-                new SmoothedAverageLossIndicator(indicator, timeFrame));
+    public GainIndicator(Indicator<Decimal> indicator) {
+        super(indicator);
+        this.indicator = indicator;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index < SMOOTH_MIN_TICKS) {
-            log.warn(
-                "Requesting index : {}. Smoothed RSI needs {} ticks before calculated index in data series to get the best results",
-                index,
-                SMOOTH_MIN_TICKS);
+        if (index == 0) {
+            return Decimal.ZERO;
         }
-        return super.calculate(index);
+        if (indicator.getValue(index).isGreaterThan(indicator.getValue(index - 1))) {
+            return indicator.getValue(index).minus(indicator.getValue(index - 1));
+        } else {
+            return Decimal.ZERO;
+        }
     }
 }

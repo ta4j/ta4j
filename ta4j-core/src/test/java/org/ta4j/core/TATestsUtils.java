@@ -22,6 +22,7 @@
  */
 package org.ta4j.core;
 
+import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -35,6 +36,7 @@ public class TATestsUtils {
 
     /**
      * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
+     *
      * @param actual the actual {@code Decimal} value
      * @param expected the given {@code String} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
@@ -45,6 +47,7 @@ public class TATestsUtils {
 
     /**
      * Verifies that the actual {@code Decimal} value is equal to the given {@code Integer} representation.
+     *
      * @param actual the actual {@code Decimal} value
      * @param expected the given {@code Integer} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
@@ -55,6 +58,7 @@ public class TATestsUtils {
 
     /**
      * Verifies that the actual {@code Decimal} value is equal (within a positive offset) to the given {@code Double} representation.
+     *
      * @param actual the actual {@code Decimal} value
      * @param expected the given {@code Double} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
@@ -65,11 +69,26 @@ public class TATestsUtils {
 
     /**
      * Verifies that the actual {@code Decimal} value is not equal to the given {@code Integer} representation.
+     *
      * @param actual the actual {@code Decimal} value
      * @param unexpected the given {@code Integer} representation to compare the actual value to
      * @throws AssertionError if the actual value is equal to the given {@code Integer} representation
      */
     public static void assertDecimalNotEquals(Decimal actual, int unexpected) {
         assertNotEquals(Decimal.valueOf(unexpected), actual);
+    }
+
+    /**
+     * Verifies that expected values match indicator values.
+     *
+     * @param expectedValues expected list of values
+     * @param actualIndicator indicator to compare
+     */
+    public static void assertValuesEquals(Indicator<Decimal> actualIndicator, List<Decimal> expectedValues) {
+        assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getTickCount());
+        for (int i = 0; i < expectedValues.size(); i++) {
+            assertEquals(String.format("Values at index <%d> does not match,", i),
+                    expectedValues.get(i).toDouble(), actualIndicator.getValue(i).toDouble(), TA_OFFSET);
+        }
     }
 }

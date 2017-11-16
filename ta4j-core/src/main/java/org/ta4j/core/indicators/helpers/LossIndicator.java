@@ -24,39 +24,29 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * Average loss indicator calculated using smoothing
- * <p>
+ * Gain indicator.
  */
-public class SmoothedAverageLossIndicator extends RecursiveCachedIndicator<Decimal> {
+public class LossIndicator extends CachedIndicator<Decimal> {
 
-    private final AverageLossIndicator averageLosses;
     private final Indicator<Decimal> indicator;
 
-    private final int timeFrame;
-
-    public SmoothedAverageLossIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public LossIndicator(Indicator<Decimal> indicator) {
         super(indicator);
         this.indicator = indicator;
-        this.averageLosses = new AverageLossIndicator(indicator, timeFrame);
-        this.timeFrame = timeFrame;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index > timeFrame) {
-            return getValue(index - 1)
-                .multipliedBy(Decimal.valueOf(timeFrame - 1))
-                .plus(calculateLoss(index))
-                .dividedBy(Decimal.valueOf(timeFrame));
+        if (index == 0) {
+            return Decimal.ZERO;
         }
-        return averageLosses.getValue(index);
-    }
-
-    private Decimal calculateLoss(int index) {
-        Decimal loss = indicator.getValue(index).minus(indicator.getValue(index - 1));
-        return loss.isNegative() ? loss.abs() : Decimal.ZERO;
+        if (indicator.getValue(index).isLessThan(indicator.getValue(index - 1))) {
+            return indicator.getValue(index - 1).minus(indicator.getValue(index));
+        } else {
+            return Decimal.ZERO;
+        }
     }
 }

@@ -24,36 +24,34 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-public class CumulatedLossesIndicatorTest {
+public class GainIndicatorTest {
 
     private TimeSeries data;
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2);
     }
 
     @Test
-    public void averageGainUsingTimeFrame5UsingClosePrice() {
-        CumulatedLossesIndicator losses = new CumulatedLossesIndicator(new ClosePriceIndicator(data), 5);
-
-        assertDecimalEquals(losses.getValue(0), 0);
-        assertDecimalEquals(losses.getValue(1), 0);
-        assertDecimalEquals(losses.getValue(2), 0);
-        assertDecimalEquals(losses.getValue(3), 0);
-        assertDecimalEquals(losses.getValue(4), 1);
-        assertDecimalEquals(losses.getValue(5), 1);
-        assertDecimalEquals(losses.getValue(6), 1);
-        assertDecimalEquals(losses.getValue(7), 2);
-        assertDecimalEquals(losses.getValue(8), 3);
-        assertDecimalEquals(losses.getValue(9), 2);
-        assertDecimalEquals(losses.getValue(10), 2);
-        assertDecimalEquals(losses.getValue(11), 3);
-        assertDecimalEquals(losses.getValue(12), 3);
+    public void gainUsingClosePrice() {
+        GainIndicator gain = new GainIndicator(new ClosePriceIndicator(data));
+        assertDecimalEquals(gain.getValue(0), 0);
+        assertDecimalEquals(gain.getValue(1), 1);
+        assertDecimalEquals(gain.getValue(2), 1);
+        assertDecimalEquals(gain.getValue(3), 1);
+        assertDecimalEquals(gain.getValue(4), 0);
+        assertDecimalEquals(gain.getValue(5), 1);
+        assertDecimalEquals(gain.getValue(6), 3);
+        assertDecimalEquals(gain.getValue(7), 0);
+        assertDecimalEquals(gain.getValue(8), 0);
+        assertDecimalEquals(gain.getValue(9), 0);
+        assertDecimalEquals(gain.getValue(10), 2);
+        assertDecimalEquals(gain.getValue(11), 0);
+        assertDecimalEquals(gain.getValue(12), 0);
     }
 }
