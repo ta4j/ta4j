@@ -116,6 +116,11 @@ public class BaseStrategy implements Strategy {
     public Rule getExitRule() {
     	return exitRule;
     }
+	
+    @Override
+    public int getUnstablePeriod() {
+    	return unstablePeriod;
+    }
     
     @Override
     public void setUnstablePeriod(int unstablePeriod) {
@@ -139,6 +144,35 @@ public class BaseStrategy implements Strategy {
         boolean exit = Strategy.super.shouldExit(index, tradingRecord);
         traceShouldExit(index, exit);
         return exit;
+    }
+	
+    @Override
+    public Strategy and(Strategy strategy) {
+        String andName = "and(" + name + "," + strategy.getName() + ")";
+        int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
+        return and(andName, strategy, unstable);
+    }
+
+    @Override
+    public Strategy or(Strategy strategy) {
+        String orName = "or(" + name + "," + strategy.getName() + ")";
+        int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
+        return or(orName, strategy, unstable);
+    }
+
+    @Override
+    public Strategy opposite() {
+        return new BaseStrategy("opposite(" + name + ")", exitRule, entryRule, unstablePeriod);
+    }
+
+    @Override
+    public Strategy and(String name, Strategy strategy, int unstablePeriod) {
+        return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()), unstablePeriod);
+    }
+
+    @Override
+    public Strategy or(String name, Strategy strategy, int unstablePeriod) {
+        return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()), unstablePeriod);
     }
 
     /**

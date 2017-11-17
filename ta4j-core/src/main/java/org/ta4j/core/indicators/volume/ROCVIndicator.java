@@ -20,41 +20,42 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * Rate of change (ROCIndicator) indicator.
- * Aka. Momentum
+ * Rate of change of volume (ROCVIndicator) indicator.
+ * Aka. Momentum of Volume
  * <p></p>
- * The ROCIndicator calculation compares the current value with the value "n" periods ago.
+ * The ROCVIndicator calculation compares the current volume with the volume "n" periods ago.
  */
-public class ROCIndicator extends CachedIndicator<Decimal> {
+public class ROCVIndicator extends CachedIndicator<Decimal> {
 
-    private static final long serialVersionUID = 7983097470035346856L;
-	
-    private final Indicator<Decimal> indicator;
+    private static final long serialVersionUID = 6366365574748347534L;
+
+    private final TimeSeries series;
     private final int timeFrame;
 
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
+     * @param series the time series
      * @param timeFrame the time frame
      */
-    public ROCIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
+    public ROCVIndicator(TimeSeries series, int timeFrame) {
+        super(series);
+        this.series = series;
         this.timeFrame = timeFrame;
     }
 
     @Override
     protected Decimal calculate(int index) {
         int nIndex = Math.max(index - timeFrame, 0);
-        Decimal nPeriodsAgoValue = indicator.getValue(nIndex);
-        Decimal currentValue = indicator.getValue(index);
+        Decimal nPeriodsAgoValue = series.getTick(nIndex).getVolume();
+        Decimal currentValue = series.getTick(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)
                 .multipliedBy(Decimal.HUNDRED);

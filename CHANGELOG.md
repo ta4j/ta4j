@@ -37,6 +37,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 ## Added
 - **AroonOscillatorIndicator**: New indicator based on AroonUp/DownIndicator
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
+- **ROCVIndicator**: Rate of Change of Volume
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
 - **ChaikinOscillatorIndicator**: New indicator.
@@ -53,7 +54,8 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the timeFrame.
 - **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the timeFrame.
 - **IsHighestRule**: New Rule that is satisfied if indicator is the highest within the timeFrame.
-
+- **BooleanTransformIndicator**: New indicator to transform any decimal indicator to a boolean indicator by using logical operations.
+- **DecimalTransformIndicator**: New indicator to transforms any indicator by using common math operations.
 
 ## 0.9 (2017-09-07)
 
