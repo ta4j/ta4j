@@ -70,6 +70,6 @@ public class DecimalTransformIndicatorTest {
         
         assertDecimalEquals(transAbs.getValue(0), "4");
         assertDecimalEquals(transSqrt.getValue(0), "2");
-        assertDecimalEquals(transLog.getValue(0), "1.3862943611198905724535279659904");
+        assertDecimalEquals(transLog.getValue(0), "1.3862943611198906");
     }
 }
