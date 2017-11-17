@@ -9,9 +9,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **JustOnceRule**: Now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: Use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
+- **Strategy:** can now have a optional parameter "name".
 
 ## Added
 - **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
+- **BooleanTransformIndicator**: New indicator to transform any decimal indicator to a boolean indicator by using logical operations.
+- **DecimalTransformIndicator**: New indicator to transforms any indicator by using common math operations.
+
 
 ## 0.10 (2017-10-23)
 
@@ -27,35 +31,34 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **AroonUpIndicator and AroonDownIndicator**: wrong calculations fixed and can handle NaN values now
 
 ### Changed
-- **BREAKING**: **new package structure** change eu.verdelhan.ta4j to org.ta4j.ta4j-core
+- **BREAKING**: **new package structure**: change eu.verdelhan.ta4j to org.ta4j.ta4j-core
 - **new package adx**: new location of AverageDirectionalMovementIndicator and DMI+/DMI-
 - **Ownership of the ta4j repository**: from mdeverdelhan/ta4j (stopped the maintenance) to ta4j/ta4j (new organization)
 - **ParabolicSarIndicator**: old constructor removed (there was no need for time frame parameter after big fix). Three new constructors for default and custom parameters.
 - **HighestValueIndicator and LowestValueIndicator:** ignore also NaN values if they are at the current index
-- **Strategy:** can now have a optional parameter "name".
+
 
 ## Added
-- **AroonOscillatorIndicator**: New indicator based on AroonUp/DownIndicator
+- **AroonOscillatorIndicator**: new indicator based on AroonUp/DownIndicator
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
-- **ROCVIndicator**: Rate of Change of Volume
-- **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
-- **DirectionalMovementDownIndicator**: New indicator for Directional Movement System (DMI-)
-- **ChaikinOscillatorIndicator**: New indicator.
-- **InSlopeRule**: New Rule that is satisfied if the slope of two indicators are within a boundary
-- **IsEqualRule**: New Rule that is satisfied if two indicators are equal
-- **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
-- **Pivot Point Indicators Package**: New package with Indicators for calculating standard, Fibonacci and DeMark pivot points and reversals
-    - **PivotPointIndicator**: New indicator for calculating the standard pivot point
-        - **StandardReversalIndicator**: New indicator for calculating the standard reversals (R3,R2,R1,S1,S2,S3)
-        - **FibonacciReversalIndicator**: New indicator for calculating the Fibonacci reversals (R3,R2,R1,S1,S2,S3)
-    - **DeMarkPivotPointIndicator**: New indicator for calculating the DeMark pivot point
+- **ROCVIndicator**: rate of Change of Volume
+- **DirectionalMovementPlusIndicator**: new indicator for Directional Movement System (DMI+)
+- **DirectionalMovementDownIndicator**: new indicator for Directional Movement System (DMI-)
+- **ChaikinOscillatorIndicator**: new indicator.
+- **InSlopeRule**: new rule that is satisfied if the slope of two indicators are within a boundary
+- **IsEqualRule**: new rule that is satisfied if two indicators are equal
+- **AroonUpIndicator** and **AroonDownIndicator**: new constructor with parameter for custom indicator for min price and max price calculation
+- **Pivot Point Indicators Package**: new package with Indicators for calculating standard, Fibonacci and DeMark pivot points and reversals
+    - **PivotPointIndicator**: new indicator for calculating the standard pivot point
+        - **StandardReversalIndicator**: new indicator for calculating the standard reversals (R3,R2,R1,S1,S2,S3)
+        - **FibonacciReversalIndicator**: new indicator for calculating the Fibonacci reversals (R3,R2,R1,S1,S2,S3)
+    - **DeMarkPivotPointIndicator**: new indicator for calculating the DeMark pivot point
         - **DeMarkReversalIndicator**: new indicator for calculating the DeMark resistance and the DeMark support
-- **IsFallingRule**: New Rule that is satisfied if indicator strictly decreases within the timeFrame.
-- **IsRisingRule**: New Rule that is satisfied if indicator strictly increases within the timeFrame.
-- **IsLowestRule**: New Rule that is satisfied if indicator is the lowest within the timeFrame.
-- **IsHighestRule**: New Rule that is satisfied if indicator is the highest within the timeFrame.
-- **BooleanTransformIndicator**: New indicator to transform any decimal indicator to a boolean indicator by using logical operations.
-- **DecimalTransformIndicator**: New indicator to transforms any indicator by using common math operations.
+- **IsFallingRule**: new rule that is satisfied if indicator strictly decreases within the timeFrame.
+- **IsRisingRule**: new rule that is satisfied if indicator strictly increases within the timeFrame.
+- **IsLowestRule**: new rule that is satisfied if indicator is the lowest within the timeFrame.
+- **IsHighestRule**: new rule that is satisfied if indicator is the highest within the timeFrame.
+
 
 ## 0.9 (2017-09-07)
 
