@@ -43,7 +43,7 @@ public class SigmaIndicatorTest {
     public void test() {
     		SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
 
-    		assertDecimalEquals(zScore.getValue(1), 1.0);
+        assertDecimalEquals(zScore.getValue(1), 1.0);
         assertDecimalEquals(zScore.getValue(2), 1.224744871391589);
         assertDecimalEquals(zScore.getValue(3), 1.34164078649987387);
         assertDecimalEquals(zScore.getValue(4), 1.414213562373095);
