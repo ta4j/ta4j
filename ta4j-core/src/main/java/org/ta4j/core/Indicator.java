@@ -26,20 +26,46 @@ import java.io.Serializable;
 
 /**
  * Indicator over a {@link TimeSeries time series}.
- * <p></p>
+ * <p>
+ * </p>
  * For each index of the time series, returns a value of type <b>T</b>.
+ * 
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> extends Serializable {
 
-    /**
-     * @param index the tick index
-     * @return the value of the indicator
-     */
-    T getValue(int index);
+	/**
+	 * @param index the tick index
+	 * @return the value of the indicator
+	 */
+	T getValue(int index);
 
-    /**
-     * @return the related time series
-     */
-    TimeSeries getTimeSeries();
+	/**
+	 * @return the related time series
+	 */
+	TimeSeries getTimeSeries();
+
+	/**
+	 * Returns all values from an {@link Indicator} as a Array of Doubles. The
+	 * returned doubles could have a minor loss of precise, if {@link Indicator}
+	 * was based on {@link Decimal Decimal}.
+	 * 
+	 * @param ref the indicator
+	 * @param index the index
+	 * @param timeFrame the timeFrame
+	 * @return array of double within the timeFrame
+	 */
+	static Double[] toDouble(Indicator<Decimal> ref, int index, int timeFrame) {
+
+		int end = Math.max(0, index - timeFrame + 1);
+		Double[] all = new Double[timeFrame];
+
+		for (int i = index - 1; i >= end; i--) {
+			Decimal number = ref.getValue(index);
+			all[i] = number.toDouble();
+		}
+
+		return all;
+	}
+
 }
