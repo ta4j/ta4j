@@ -30,7 +30,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
-public class ZScoreIndicatorTest {
+public class SigmaIndicatorTest {
 
     private TimeSeries data;
 
@@ -40,13 +40,13 @@ public class ZScoreIndicatorTest {
     }
 
     @Test
-    public void meanDeviationUsingTimeFrame5UsingClosePrice() {
-    		ZScoreIndicator zScore = new ZScoreIndicator(new ClosePriceIndicator(data), 5);
+    public void test() {
+    		SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
 
-    		assertDecimalEquals(zScore.getValue(1), 3.0);
-        assertDecimalEquals(zScore.getValue(2), 2.857738033247041);
-        assertDecimalEquals(zScore.getValue(3), 2.6832815729997477); // should be not larget than 1 ??
-        assertDecimalEquals(zScore.getValue(4), 2.6870057685088806);
-        assertDecimalEquals(zScore.getValue(5), 3.394112549695428); // TODO: ?? should not be larger than 3
+    		assertDecimalEquals(zScore.getValue(1), 1.0);
+        assertDecimalEquals(zScore.getValue(2), 1.224744871391589);
+        assertDecimalEquals(zScore.getValue(3), 1.34164078649987387);
+        assertDecimalEquals(zScore.getValue(4), 1.414213562373095);
+        assertDecimalEquals(zScore.getValue(5), 1.414213562373095);
     }
 }
