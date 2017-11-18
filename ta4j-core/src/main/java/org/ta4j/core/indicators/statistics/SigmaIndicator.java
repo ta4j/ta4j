@@ -34,8 +34,9 @@ import org.ta4j.core.indicators.SMAIndicator;
  */
 public class SigmaIndicator extends CachedIndicator<Decimal> {
 
-	private static final long serialVersionUID = 6283425887025798038L;
-	private Indicator<Decimal> ref;
+    private static final long serialVersionUID = 6283425887025798038L;
+    
+    private Indicator<Decimal> ref;
     private int timeFrame;
 
     private SMAIndicator mean;
@@ -56,7 +57,7 @@ public class SigmaIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-    		// z-score = (ref - mean) / sd
+        // z-score = (ref - mean) / sd
         return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
     }
 
