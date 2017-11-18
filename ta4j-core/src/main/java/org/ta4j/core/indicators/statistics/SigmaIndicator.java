@@ -25,19 +25,20 @@ package org.ta4j.core.indicators.statistics;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 
 /**
- * Z-Score indicator.
+ * Sigma-Indicator (also called, "Z-Score").
  * <p/>
  * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
-public class ZScoreIndicator extends CachedIndicator<Decimal> {
+public class SigmaIndicator extends CachedIndicator<Decimal> {
 
 	private static final long serialVersionUID = 6283425887025798038L;
 	private Indicator<Decimal> ref;
     private int timeFrame;
 
-    private MeanDeviationIndicator mean;
+    private SMAIndicator mean;
     private StandardDeviationIndicator sd;
     
     /**
@@ -45,11 +46,11 @@ public class ZScoreIndicator extends CachedIndicator<Decimal> {
      * @param ref the indicator
      * @param timeFrame the time frame
      */
-    public ZScoreIndicator(Indicator<Decimal> ref, int timeFrame) {
+    public SigmaIndicator(Indicator<Decimal> ref, int timeFrame) {
         super(ref);
         this.ref = ref;
         this.timeFrame = timeFrame;
-        mean = new MeanDeviationIndicator(ref, timeFrame);
+        mean = new SMAIndicator(ref, timeFrame);
         sd = new StandardDeviationIndicator(ref, timeFrame);
     }
 
