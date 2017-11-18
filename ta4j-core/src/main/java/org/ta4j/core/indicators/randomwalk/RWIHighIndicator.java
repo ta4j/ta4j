@@ -20,67 +20,76 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.randomwalk;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 /**
- * The Class RandomWalkIndexLowIndicator.
+ * The Random Walk Index High Indicator. <p/>
+ *
+ * See https://www.technicalindicators.net/indicators-technical-analysis/168-rwi-random-walk-index
  */
-public class RandomWalkIndexLowIndicator extends CachedIndicator<Decimal>{
+public class RWIHighIndicator extends CachedIndicator<Decimal> {
 
-private final MaxPriceIndicator maxPrice;
-    
+    private final MaxPriceIndicator maxPrice;
     private final MinPriceIndicator minPrice;
-    
-    private final AverageTrueRangeIndicator averageTrueRange;
-    
-    private final Decimal sqrtTimeFrame;
-    
     private final int timeFrame;
-    
+
     /**
-     * Constructor.
-     *
-     * @param series the series
+     * Constructor
+     * <p/>
+     * @param series the time series
      * @param timeFrame the time frame
      */
-    public RandomWalkIndexLowIndicator(TimeSeries series, int timeFrame) {
+    public RWIHighIndicator(TimeSeries series, int timeFrame) {
         super(series);
+        if(timeFrame <= 0){
+            throw new IllegalArgumentException("Time frame must be bigger than zero");
+        }
+
         this.timeFrame = timeFrame;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new AverageTrueRangeIndicator(series, timeFrame);
-        sqrtTimeFrame = Decimal.valueOf(timeFrame).sqrt();
+
     }
 
     @Override
     protected Decimal calculate(int index) {
-        int lastIndex = Math.max(0, index - timeFrame+1);
-        int n = 2;
-        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
-        Decimal lowestRWI = maxPrice.getValue(Math.max(0, index-1)).minus(minPrice.getValue(index))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
+        Decimal highestRWI = Decimal.NaN;
 
-        for(int i = index-2; i >= lastIndex; i--) {
-            n++;
-            averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
-            Decimal currentRWI = maxPrice.getValue(index).minus(minPrice.getValue(i))
-                    .dividedBy(averageTrueRange.getValue(index).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
-            if(currentRWI.isLessThan(lowestRWI)){
-                lowestRWI = currentRWI;
-            }
-
+        if(index <= timeFrame){
+            return highestRWI;
         }
-        return lowestRWI;
+
+        for(int n = index-1; n >= index-timeFrame+1; n--) {
+           Decimal currentRWI = calcRWIHighValue(index, n);
+           if(currentRWI.isGreaterThan(highestRWI) || highestRWI.isNaN()){
+               highestRWI = currentRWI;
+           }   
+        }
+        return highestRWI;
+    }
+
+    /**
+     * Calculates the current RWI
+     * @param endIndex tick index of the current calculation
+     * @param currentIndex iterates from index-1 to index-timeFrame+1
+     * @return the RWI value for the current iteration
+     */
+    private Decimal calcRWIHighValue(int endIndex, int currentIndex){
+        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), endIndex-currentIndex);
+        return maxPrice.getValue(endIndex).minus(minPrice.getValue(currentIndex))
+                    .dividedBy(averageTrueRange.getValue(endIndex).multipliedBy(Decimal.valueOf(Math.sqrt(endIndex-currentIndex))));
     }
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " time frame: "+timeFrame;
     }
+
 }

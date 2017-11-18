@@ -20,25 +20,23 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.randomwalk;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 /**
- * The Random Walk Index High Indicator. <p />
- *
- * See https://www.technicalindicators.net/indicators-technical-analysis/168-rwi-random-walk-index
+ * The Class RWILowIndicator.
  */
-public class RWIHighIndicator extends CachedIndicator<Decimal> {
+public class RWILowIndicator extends CachedIndicator<Decimal> {
 
-    private final MaxPriceIndicator maxPrice;
+private final MaxPriceIndicator maxPrice;
     
     private final MinPriceIndicator minPrice;
-    
     private final int timeFrame;
     
     /**
@@ -47,8 +45,12 @@ public class RWIHighIndicator extends CachedIndicator<Decimal> {
      * @param series the series
      * @param timeFrame the time frame
      */
-    public RWIHighIndicator(TimeSeries series, int timeFrame) {
+    public RWILowIndicator(TimeSeries series, int timeFrame) {
         super(series);
+        if(timeFrame <= 0){
+            throw new IllegalArgumentException("Time frame must be bigger than zero");
+        }
+
         this.timeFrame = timeFrame;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
@@ -57,31 +59,35 @@ public class RWIHighIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal highestRWI = Decimal.NaN;
-        
-        for(int n = 2; n <= this.timeFrame; n++) {
-           Decimal currentRWI = calcRWIHighValue(index, index-n, n);
-           if(currentRWI.isGreaterThan(highestRWI)){
-               highestRWI = currentRWI;
-           }   
+        Decimal lowestRWI = Decimal.NaN;
+
+        if(index <= timeFrame){
+            return lowestRWI;
         }
-        return highestRWI;
+
+        for(int n = index-1; n >= index-timeFrame+1; n--) {
+            Decimal currentRWI = calcRWIHighValue(index, n);
+            if(currentRWI.isLessThan(lowestRWI) || lowestRWI.isNaN()){
+                lowestRWI = currentRWI;
+            }
+        }
+        return lowestRWI;
     }
-    
+
     /**
-     * @param t = current index
-     * @param t_n = current index - n
-     * @param n = n starting at 2 increments until n = time frame
+     * Calculates the current RWI
+     * @param endIndex tick index of the current calculation
+     * @param currentIndex iterates from index-1 to index-timeFrame+1
+     * @return the RWI value for the current iteration
      */
-    private Decimal calcRWIHighValue(int t, int t_n, int n){
-        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), n);
-        return maxPrice.getValue(t).minus(minPrice.getValue(t_n))
-                    .dividedBy(averageTrueRange.getValue(t).multipliedBy(Decimal.valueOf(Math.sqrt(n))));
+    private Decimal calcRWIHighValue(int endIndex, int currentIndex){
+        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), endIndex-currentIndex);
+        return maxPrice.getValue(endIndex).minus(minPrice.getValue(currentIndex))
+                .dividedBy(averageTrueRange.getValue(endIndex).multipliedBy(Decimal.valueOf(Math.sqrt(endIndex-currentIndex))));
     }
     
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
-
 }
