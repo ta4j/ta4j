@@ -20,54 +20,47 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
 
 /**
- * Mean deviation indicator.
+ * Rate of change of volume (ROCVIndicator) indicator.
+ * Aka. Momentum of Volume
  * <p></p>
- * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
- *     http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
+ * The ROCVIndicator calculation compares the current volume with the volume "n" periods ago.
  */
-public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
+public class ROCVIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<Decimal> indicator;
+    private static final long serialVersionUID = 6366365574748347534L;
 
-    private int timeFrame;
+    private final TimeSeries series;
+    private final int timeFrame;
 
-    private SMAIndicator sma;
-    
     /**
      * Constructor.
-     * @param indicator the indicator
+     * 
+     * @param series the time series
      * @param timeFrame the time frame
      */
-    public MeanDeviationIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
+    public ROCVIndicator(TimeSeries series, int timeFrame) {
+        super(series);
+        this.series = series;
         this.timeFrame = timeFrame;
-        sma = new SMAIndicator(indicator, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal absoluteDeviations = Decimal.ZERO;
-
-        final Decimal average = sma.getValue(index);
-        final int startIndex = Math.max(0, index - timeFrame + 1);
-        final int nbValues = index - startIndex + 1;
-
-        for (int i = startIndex; i <= index; i++) {
-            // For each period...
-            absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
-        }
-        return absoluteDeviations.dividedBy(Decimal.valueOf(nbValues));
+        int nIndex = Math.max(index - timeFrame, 0);
+        Decimal nPeriodsAgoValue = series.getTick(nIndex).getVolume();
+        Decimal currentValue = series.getTick(index).getVolume();
+        return currentValue.minus(nPeriodsAgoValue)
+                .dividedBy(nPeriodsAgoValue)
+                .multipliedBy(Decimal.HUNDRED);
     }
-
+    
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;

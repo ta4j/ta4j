@@ -34,12 +34,15 @@ public abstract class AbstractRule implements Rule {
     /** The logger */
     protected final Logger log = LoggerFactory.getLogger(getClass());
     
+    /** The class name */
+    protected final String className = getClass().getSimpleName();
+    
     /**
      * Traces the isSatisfied() method calls.
      * @param index the tick index
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        log.trace("{}#isSatisfied({}): {}", getClass().getSimpleName(), index, isSatisfied);
+        log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
     }
 }

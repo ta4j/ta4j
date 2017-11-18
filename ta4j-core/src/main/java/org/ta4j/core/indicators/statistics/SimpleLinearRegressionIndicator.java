@@ -35,19 +35,43 @@ import org.ta4j.core.indicators.CachedIndicator;
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<Decimal> indicator;
-    
-    private int timeFrame;
-    
-    private Decimal slope;
-    
-    private Decimal intercept;
-    
-    public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
-        this.timeFrame = timeFrame;
-    }
+	 /**
+	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
+	 */
+	public enum SimpleLinearRegressionType {
+		y, slope, intercept;
+	}
+
+	private Indicator<Decimal> indicator;
+	private int timeFrame;
+	private Decimal slope;
+	private Decimal intercept;
+	private SimpleLinearRegressionType type;
+
+	/**
+	 * Constructor for the y-values of the formula (y = slope * x + intercept).
+	 * 
+	 * @param indicator the indicator for the x-values of the formula.
+	 * @param timeFrame
+	 */
+	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
+		this(indicator, timeFrame, SimpleLinearRegressionType.y);
+	}
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param indicator the indicator for the x-values of the formula.
+	 * @param timeFrame
+	 * @param type the type of the outcome value (y, slope, intercept)
+	 */
+	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame,
+			SimpleLinearRegressionType type) {
+		super(indicator);
+		this.indicator = indicator;
+		this.timeFrame = timeFrame;
+		this.type = type;
+	}
 
     @Override
     protected Decimal calculate(int index) {
@@ -58,6 +82,15 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
             return Decimal.NaN;
         }
         calculateRegressionLine(startIndex, endIndex);
+        
+        if (type == SimpleLinearRegressionType.slope) {
+            return slope;
+        }
+
+        if (type == SimpleLinearRegressionType.intercept) {
+            return intercept;
+        }
+      
         return slope.multipliedBy(Decimal.valueOf(index)).plus(intercept);
     }
     

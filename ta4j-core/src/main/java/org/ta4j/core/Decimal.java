@@ -77,15 +77,15 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param val the double value
      */
     private Decimal(double val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(int val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(long val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(BigDecimal val) {

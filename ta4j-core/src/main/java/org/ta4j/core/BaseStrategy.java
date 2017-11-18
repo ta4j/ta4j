@@ -34,6 +34,12 @@ public class BaseStrategy implements Strategy {
     /** The logger */
     protected final Logger log = LoggerFactory.getLogger(getClass());
     
+    /** The class name */
+    protected final String className = getClass().getSimpleName();
+    
+    /** Name of the strategy */
+    private String name;
+	
     /** The entry rule */
     private Rule entryRule;
     
@@ -53,24 +59,52 @@ public class BaseStrategy implements Strategy {
      * @param exitRule the exit rule
      */
     public BaseStrategy(Rule entryRule, Rule exitRule) {
-        this(entryRule, exitRule, 0);
+        this(null, entryRule, exitRule, 0);
+    }
+
+     /**
+     * Constructor.
+     * @param entryRule the entry rule
+     * @param exitRule the exit rule
+     * @param unstablePeriod
+     */
+    public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
+        this(null, entryRule, exitRule, unstablePeriod);
+    }
+	
+    /**
+     * Constructor.
+     * @param name the name of the strategy
+     * @param entryRule the entry rule
+     * @param exitRule the exit rule
+     */
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
+        this(name, entryRule, exitRule, 0);
     }
     
     /**
      * Constructor.
+     * @param name the name of the strategy
      * @param entryRule the entry rule
      * @param exitRule the exit rule
+     * @param unstablePeriod
      */
-    public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {
             throw new IllegalArgumentException("Rules cannot be null");
         }
         if (unstablePeriod < 0) {
         	throw new IllegalArgumentException("Unstable period tick count must be >= 0");
         }
+        this.name = name;
         this.entryRule = entryRule;
         this.exitRule = exitRule;
         this.unstablePeriod = unstablePeriod;
+    }
+	
+    @Override
+    public String getName() {
+    	return name;
     }
     
     @Override
@@ -80,8 +114,13 @@ public class BaseStrategy implements Strategy {
     
     @Override
     public Rule getExitRule() {
-		return exitRule;
-	}
+    	return exitRule;
+    }
+	
+    @Override
+    public int getUnstablePeriod() {
+    	return unstablePeriod;
+    }
     
     @Override
     public void setUnstablePeriod(int unstablePeriod) {
@@ -106,6 +145,35 @@ public class BaseStrategy implements Strategy {
         traceShouldExit(index, exit);
         return exit;
     }
+	
+    @Override
+    public Strategy and(Strategy strategy) {
+        String andName = "and(" + name + "," + strategy.getName() + ")";
+        int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
+        return and(andName, strategy, unstable);
+    }
+
+    @Override
+    public Strategy or(Strategy strategy) {
+        String orName = "or(" + name + "," + strategy.getName() + ")";
+        int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
+        return or(orName, strategy, unstable);
+    }
+
+    @Override
+    public Strategy opposite() {
+        return new BaseStrategy("opposite(" + name + ")", exitRule, entryRule, unstablePeriod);
+    }
+
+    @Override
+    public Strategy and(String name, Strategy strategy, int unstablePeriod) {
+        return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()), unstablePeriod);
+    }
+
+    @Override
+    public Strategy or(String name, Strategy strategy, int unstablePeriod) {
+        return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()), unstablePeriod);
+    }
 
     /**
      * Traces the shouldEnter() method calls.
@@ -113,7 +181,7 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
+        log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
     }
 
     /**
@@ -122,6 +190,6 @@ public class BaseStrategy implements Strategy {
      * @param exit true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), index, exit);
+        log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
     }
 }

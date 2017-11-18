@@ -24,12 +24,12 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.MeanDeviationIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
+import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 
 /**
  * Commodity Channel Index (CCI) indicator.
- * <p></p>
+ * <p/>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
@@ -48,7 +48,7 @@ public class CCIIndicator extends CachedIndicator<Decimal> {
     /**
      * Constructor.
      * @param series the time series
-     * @param timeFrame the time frame
+     * @param timeFrame the time frame (normally 20)
      */
     public CCIIndicator(TimeSeries series, int timeFrame) {
         super(series);

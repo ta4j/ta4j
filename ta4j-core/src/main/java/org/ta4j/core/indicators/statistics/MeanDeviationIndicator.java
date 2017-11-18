@@ -20,40 +20,52 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 
 /**
- * Highest value indicator.
+ * Mean deviation indicator.
  * <p/>
+ * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
+ *     http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
-public class HighestValueIndicator extends CachedIndicator<Decimal> {
+public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<Decimal> indicator;
+    private Indicator<Decimal> indicator;
 
-    private final int timeFrame;
+    private int timeFrame;
 
-    public HighestValueIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    private SMAIndicator sma;
+    
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param timeFrame the time frame
+     */
+    public MeanDeviationIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
+        sma = new SMAIndicator(indicator, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (indicator.getValue(index).isNaN() && timeFrame != 1)
-            return new HighestValueIndicator(indicator,timeFrame-1).getValue(index-1);
-        int end = Math.max(0, index - timeFrame + 1);
-        Decimal highest = indicator.getValue(index);
-        for (int i = index - 1; i >= end; i--) {
-            if (highest.isLessThan(indicator.getValue(i))) {
-                highest = indicator.getValue(i);
-            }
+        Decimal absoluteDeviations = Decimal.ZERO;
+
+        final Decimal average = sma.getValue(index);
+        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int nbValues = index - startIndex + 1;
+
+        for (int i = startIndex; i <= index; i++) {
+            // For each period...
+            absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return highest;
+        return absoluteDeviations.dividedBy(Decimal.valueOf(nbValues));
     }
 
     @Override
