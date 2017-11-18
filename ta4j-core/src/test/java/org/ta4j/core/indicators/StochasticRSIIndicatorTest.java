@@ -43,15 +43,14 @@ public class StochasticRSIIndicatorTest {
     @Test
     public void stochasticRSI() {
         StochasticRSIIndicator srsi = new StochasticRSIIndicator(data, 14);
-
         TATestsUtils.assertDecimalEquals(srsi.getValue(15), 1);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(16), 1);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(16), 0.9460);
         TATestsUtils.assertDecimalEquals(srsi.getValue(17), 1);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(18), 0.9546);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(19), 0.9711);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(18), 0.8365);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(19), 0.8610);
         TATestsUtils.assertDecimalEquals(srsi.getValue(20), 1);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(21), 0.9543);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(22), 1);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(21), 0.9186);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(22), 0.9305);
         TATestsUtils.assertDecimalEquals(srsi.getValue(23), 1);
         TATestsUtils.assertDecimalEquals(srsi.getValue(24), 1);
     }

@@ -27,36 +27,43 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
- * Average gain indicator calculated using smoothing
+ * Modified moving average indicator.
  * <p>
+ * It is similar to exponential moving average but smoothes more slowly.
+ * Used in Welles Wilder's indicators like ADX, RSI.
  */
-public class SmoothedAverageGainIndicator extends RecursiveCachedIndicator<Decimal> {
+public class MMAIndicator extends RecursiveCachedIndicator<Decimal> {
 
-    private final AverageGainIndicator averageGains;
     private final Indicator<Decimal> indicator;
 
     private final int timeFrame;
 
-    public SmoothedAverageGainIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    private final Decimal multiplier;
+
+    /**
+     * Constructor.
+     *
+     * @param indicator an indicator
+     * @param timeFrame the MMA time frame
+     */
+    public MMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
-        this.averageGains = new AverageGainIndicator(indicator, timeFrame);
         this.timeFrame = timeFrame;
+        multiplier = Decimal.ONE.dividedBy(Decimal.valueOf(timeFrame));
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if(index > timeFrame) {
-            return getValue(index - 1)
-                .multipliedBy(Decimal.valueOf(timeFrame - 1))
-                .plus(calculateGain(index))
-                .dividedBy(Decimal.valueOf(timeFrame));
+        if (index == 0) {
+            return indicator.getValue(0);
         }
-        return averageGains.getValue(index);
+        Decimal mmaPrev = getValue(index - 1);
+        return indicator.getValue(index).minus(mmaPrev).multipliedBy(multiplier).plus(mmaPrev);
     }
 
-    private Decimal calculateGain(int index){
-        Decimal gain = indicator.getValue(index).minus(indicator.getValue(index - 1));
-        return gain.isPositive() ? gain : Decimal.ZERO;
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

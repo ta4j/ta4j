@@ -22,34 +22,36 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.junit.Before;
+import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 
-/**
- * Cumulated losses indicator.
- * <p>
- */
-public class CumulatedLossesIndicator extends CachedIndicator<Decimal> {
+public class LossIndicatorTest {
 
-    private final Indicator<Decimal> indicator;
+    private TimeSeries data;
 
-    private final int timeFrame;
-
-    public CumulatedLossesIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
-        this.timeFrame = timeFrame;
+    @Before
+    public void setUp() {
+        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2);
     }
 
-    @Override
-    protected Decimal calculate(int index) {
-        Decimal sumOfLosses = Decimal.ZERO;
-        for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
-            if (indicator.getValue(i).isLessThan(indicator.getValue(i - 1))) {
-                sumOfLosses = sumOfLosses.plus(indicator.getValue(i - 1).minus(indicator.getValue(i)));
-            }
-        }
-        return sumOfLosses;
+    @Test
+    public void lossUsingClosePrice() {
+        LossIndicator loss = new LossIndicator(new ClosePriceIndicator(data));
+        assertDecimalEquals(loss.getValue(0), 0);
+        assertDecimalEquals(loss.getValue(1), 0);
+        assertDecimalEquals(loss.getValue(2), 0);
+        assertDecimalEquals(loss.getValue(3), 0);
+        assertDecimalEquals(loss.getValue(4), 1);
+        assertDecimalEquals(loss.getValue(5), 0);
+        assertDecimalEquals(loss.getValue(6), 0);
+        assertDecimalEquals(loss.getValue(7), 3);
+        assertDecimalEquals(loss.getValue(8), 1);
+        assertDecimalEquals(loss.getValue(9), 0);
+        assertDecimalEquals(loss.getValue(10), 0);
+        assertDecimalEquals(loss.getValue(11), 2);
+        assertDecimalEquals(loss.getValue(12), 1);
     }
 }
