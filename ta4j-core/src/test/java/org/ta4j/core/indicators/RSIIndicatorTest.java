@@ -89,7 +89,7 @@ public class RSIIndicatorTest {
         XlsTestsUtils.setParamValue(sheet, 0, timeFrame);
         TimeSeries inputSeries = XlsTestsUtils.readTimeSeries(sheet);
         RSIIndicator actualIndicator = new RSIIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        List<Decimal> expectedValues = XlsTestsUtils.readValues(sheet, 9);
+        List<Decimal> expectedValues = XlsTestsUtils.readValues(sheet, 10);
         TATestsUtils.assertValuesEquals(actualIndicator, expectedValues);
     }
 

@@ -56,7 +56,7 @@ public class XlsTestsUtils {
 
     public static TimeSeries readTimeSeries(Sheet sheet) {
         // prices starts from 7th row until the end of sheet
-        // price data exists in first 5 columns (week date, open, high, low, close)
+        // price data exists in first 6 columns (week date, open, high, low, close, volume)
         TimeSeries series = new BaseTimeSeries();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         Cell cell;
@@ -79,12 +79,15 @@ public class XlsTestsUtils {
             cell = row.getCell(4);
             value = evaluator.evaluate(cell);
             double close = value.getNumberValue();
+            cell = row.getCell(5);
+            value = evaluator.evaluate(cell);
+            double volume = value.getNumberValue();
             Tick tick = new BaseTick(weekDuration, weekEndDateTime,
                     Decimal.valueOf(open),
                     Decimal.valueOf(high),
                     Decimal.valueOf(low),
                     Decimal.valueOf(close),
-                    null);
+                    Decimal.valueOf(volume));
             series.addTick(tick);
         }
         return series;
