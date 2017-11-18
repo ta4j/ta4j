@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 
 /**
- * Sigma-Indicator (also called, "Z-Score").
+ * Sigma-Indicator (also called, "z-score" or "standard score").
  * <p/>
  * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
