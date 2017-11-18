@@ -24,53 +24,40 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.AverageGainIndicator;
-import org.ta4j.core.indicators.helpers.AverageLossIndicator;
+import org.ta4j.core.indicators.helpers.GainIndicator;
+import org.ta4j.core.indicators.helpers.LossIndicator;
+import org.ta4j.core.indicators.helpers.MMAIndicator;
 
 /**
  * Relative strength index indicator.
- * <p></p>
- * This calculation of RSI uses traditional moving averages
- * as opposed to Wilder's accumulative moving average technique.
- *
- * @see <a href="https://www.barchart.com/education/technical-indicators#/studies/std_rsi_mod">
- * RSI calculation</a>.
- *
- * @see SmoothedRSIIndicator
+ * <p>
+ * Computed using original Welles Wilder formula.
  */
 public class RSIIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<Decimal> averageGainIndicator;
-    private Indicator<Decimal> averageLossIndicator;
-    
-    public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        this(new AverageGainIndicator(indicator, timeFrame),
-                new AverageLossIndicator(indicator, timeFrame));
-    }
+    private final Indicator<Decimal> averageGainIndicator;
+    private final Indicator<Decimal> averageLossIndicator;
 
-    public RSIIndicator(Indicator<Decimal> avgGainIndicator, Indicator<Decimal> avgLossIndicator) {
-        super(avgGainIndicator);
-        averageGainIndicator = avgGainIndicator;
-        averageLossIndicator = avgLossIndicator;
+    public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
+        super(indicator);
+        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), timeFrame);
+        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ZERO;
-        }
-
-        // Relative strength
+        // compute relative strength
+        Decimal averageGain = averageGainIndicator.getValue(index);
         Decimal averageLoss = averageLossIndicator.getValue(index);
         if (averageLoss.isZero()) {
-            return Decimal.HUNDRED;
+            if (averageGain.isZero()) {
+                return Decimal.ZERO;
+            } else {
+                return Decimal.HUNDRED;
+            }
         }
-        Decimal averageGain = averageGainIndicator.getValue(index);
         Decimal relativeStrength = averageGain.dividedBy(averageLoss);
-
-        // Nominal case
-        Decimal ratio = Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength));
-        return Decimal.HUNDRED.minus(ratio);
+        // compute relative strength index
+        return Decimal.HUNDRED.minus(Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength)));
     }
-
 }
