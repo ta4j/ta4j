@@ -203,6 +203,58 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
     }
 
     /**
+     * Returns the correctly rounded hyperbolic tangent of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#tanh(double)} method under the hood.
+     * @return the hyperbolic tangent of {@code this}
+     * @see StrictMath#tanh(double)
+     */
+    public Decimal tanh() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.tanh(delegate.doubleValue()));
+    }
+    
+    /**
+     * Returns the correctly rounded arc tangent of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#atan(double)} method under the hood.
+     * @return the arc tangent of {@code this}
+     * @see StrictMath#atan(double)
+     */
+    public Decimal atan() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.atan(delegate.doubleValue()));
+    }
+    
+    /**
+     * Returns the correctly rounded trigonometric cosine of an angle of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#cos(double)} method under the hood.
+     * @return the trigonometric cosine of {@code this}
+     * @see StrictMath#cos(double)
+     */
+    public Decimal cos() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.cos(delegate.doubleValue()));
+    }
+    
+    /**
+     * Returns the correctly rounded trigonometric sine of an angle of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#sin(double)} method under the hood.
+     * @return the trigonometric sine of {@code this}
+     * @see StrictMath#sin(double)
+     */
+    public Decimal sin() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.sin(delegate.doubleValue()));
+    }
+
+    /**
      * Returns a {@code Decimal} whose value is the absolute value
      * of this {@code Decimal}.
      * @return {@code abs(this)}
