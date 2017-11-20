@@ -1,18 +1,29 @@
-.classpath
-.project
-.settings/
-.idea/
-nb-configuration.xml
-nbactions.xml
-*.iml
-.DS_Store
-log/
-bin/
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### custom ###
+out/
 target/
 
-*.class
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
 
-# Package Files #
-*.jar
-*.war
-*.ear
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/

@@ -1,0 +1,4 @@
+rootProject.name = 'ta4j-parent'
+
+include ':ta4j-core'
+include ':ta4j-examples'

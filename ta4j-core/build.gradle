@@ -1,0 +1,9 @@
+
+description = 'Ta4j Core'
+
+dependencies {
+    compile('org.slf4j:slf4j-api:1.7.25')
+
+    testCompile('junit:junit:4.12')
+    testCompile('org.apache.commons:commons-math3:3.6.1')
+}

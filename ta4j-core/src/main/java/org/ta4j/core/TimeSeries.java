@@ -102,7 +102,7 @@ public interface TimeSeries extends Serializable {
      */
     default String getSeriesPeriodDescription() {
         StringBuilder sb = new StringBuilder();
-        if (!getTickData().isEmpty()) {
+        if (!isEmpty()) {
             Tick firstTick = getFirstTick();
             Tick lastTick = getLastTick();
             sb.append(firstTick.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
