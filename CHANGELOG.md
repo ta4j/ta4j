@@ -15,6 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
 - **BooleanTransformIndicator**: New indicator to transform any decimal indicator to a boolean indicator by using logical operations.
 - **DecimalTransformIndicator**: New indicator to transforms any indicator by using common math operations.
+- **ZScoreIndicator**: New indicator to measure the statistic z-score.
 
 
 ## 0.10 (2017-10-23)
@@ -42,7 +43,6 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **AroonOscillatorIndicator**: new indicator based on AroonUp/DownIndicator
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 - **ROCVIndicator**: rate of Change of Volume
-- **ZScoreIndicator**: the statistic z-score
 - **DirectionalMovementPlusIndicator**: new indicator for Directional Movement System (DMI+)
 - **DirectionalMovementDownIndicator**: new indicator for Directional Movement System (DMI-)
 - **ChaikinOscillatorIndicator**: new indicator.
