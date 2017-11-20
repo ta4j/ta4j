@@ -60,7 +60,7 @@ public class TATestsUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
      */
     public static void assertDecimalEquals(Decimal actual, double expected) {
-        assertEquals(expected, actual.toDouble(), TA_OFFSET);
+        assertEquals(expected, actual.doubleValue(), TA_OFFSET);
     }
 
     /**
