@@ -24,8 +24,8 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.CumulatedGainsIndicator;
-import org.ta4j.core.indicators.helpers.CumulatedLossesIndicator;
+import org.ta4j.core.indicators.helpers.GainIndicator;
+import org.ta4j.core.indicators.helpers.LossIndicator;
 
 /**
  * Chande Momentum Oscillator indicator.
@@ -37,25 +37,35 @@ import org.ta4j.core.indicators.helpers.CumulatedLossesIndicator;
  */
 public class CMOIndicator extends CachedIndicator<Decimal> {
 
-    private final CumulatedGainsIndicator cumulatedGains;
+    private final GainIndicator gainIndicator;
 
-    private final CumulatedLossesIndicator cumulatedLosses;
+    private final LossIndicator lossIndicator;
+
+    private final int timeFrame;
 
     /**
      * Constructor.
-     * @param price a price indicator
+     *
+     * @param indicator a price indicator
      * @param timeFrame the time frame
      */
-    public CMOIndicator(Indicator<Decimal> price, int timeFrame) {
-        super(price);
-        cumulatedGains = new CumulatedGainsIndicator(price, timeFrame);
-        cumulatedLosses = new CumulatedLossesIndicator(price, timeFrame);
+    public CMOIndicator(Indicator<Decimal> indicator, int timeFrame) {
+        super(indicator);
+        this.gainIndicator = new GainIndicator(indicator);
+        this.lossIndicator = new LossIndicator(indicator);
+        this.timeFrame = timeFrame;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal sumOfGains = cumulatedGains.getValue(index);
-        Decimal sumOfLosses = cumulatedLosses.getValue(index);
+        Decimal sumOfGains = Decimal.ZERO;
+        for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
+            sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
+        }
+        Decimal sumOfLosses = Decimal.ZERO;
+        for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
+            sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
+        }
         return sumOfGains.minus(sumOfLosses)
                 .dividedBy(sumOfGains.plus(sumOfLosses))
                 .multipliedBy(Decimal.HUNDRED);
