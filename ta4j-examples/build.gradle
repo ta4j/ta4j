@@ -1,0 +1,10 @@
+
+description = 'Ta4j Examples'
+
+dependencies {
+  compile project(':ta4j-core')
+
+  compile('com.opencsv:opencsv:3.9')
+  compile('org.jfree:jfreechart:1.0.17')
+  compile('ch.qos.logback:logback-classic:1.2.3')
+}
