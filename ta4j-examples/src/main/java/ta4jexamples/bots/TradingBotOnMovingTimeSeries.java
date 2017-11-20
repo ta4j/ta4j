@@ -127,7 +127,7 @@ public class TradingBotOnMovingTimeSeries {
             Thread.sleep(30); // I know...
             Tick newTick = generateRandomTick();
             System.out.println("------------------------------------------------------\n"
-                    + "Tick "+i+" added, close price = " + newTick.getClosePrice().toDouble());
+                    + "Tick "+i+" added, close price = " + newTick.getClosePrice().doubleValue());
             series.addTick(newTick);
             
             int endIndex = series.getEndIndex();
@@ -138,8 +138,8 @@ public class TradingBotOnMovingTimeSeries {
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex()
-                            + " (price=" + entry.getPrice().toDouble()
-                            + ", amount=" + entry.getAmount().toDouble() + ")");
+                            + " (price=" + entry.getPrice().doubleValue()
+                            + ", amount=" + entry.getAmount().doubleValue() + ")");
                 }
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
@@ -148,8 +148,8 @@ public class TradingBotOnMovingTimeSeries {
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex()
-                            + " (price=" + exit.getPrice().toDouble()
-                            + ", amount=" + exit.getAmount().toDouble() + ")");
+                            + " (price=" + exit.getPrice().doubleValue()
+                            + ", amount=" + exit.getAmount().doubleValue() + ")");
                 }
             }
         }
