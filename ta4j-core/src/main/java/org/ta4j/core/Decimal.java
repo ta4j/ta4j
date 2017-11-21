@@ -39,9 +39,9 @@ import java.util.Objects;
  */
 public final class Decimal implements Comparable<Decimal>, Serializable {
 
-	private static final long serialVersionUID = 2225130444465033658L;
+    private static final long serialVersionUID = 2225130444465033658L;
 
-	public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
+    public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     /** Not-a-Number instance (infinite error) */
     public static final Decimal NaN = new Decimal();
@@ -265,6 +265,32 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
             return NaN;
         }
         return new Decimal(StrictMath.sin(delegate.doubleValue()));
+    }
+	
+    /**
+     * Returns the correctly rounded the hyperbolic cosine of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#cosh(double)} method under the hood.
+     * @return the hyperbolic cosine of {@code this}
+     * @see StrictMath#cosh(double)
+     */
+    public Decimal cosh() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.cosh(delegate.doubleValue()));
+    }
+    
+    /**
+     * Returns the correctly rounded hyperbolic sine of the <code>double</code> value of this {@code Decimal}.
+     * /!\ Warning! Uses the {@code StrictMath#sinh(double)} method under the hood.
+     * @return the hyperbolic sine of {@code this}
+     * @see StrictMath#sinh(double)
+     */
+    public Decimal sinh() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(StrictMath.sinh(delegate.doubleValue()));
     }
 
     /**
