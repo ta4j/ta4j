@@ -36,11 +36,6 @@ public interface Strategy {
     String getName();
 	
     /**
-     * @return the description of the strategy
-     */
-    String getHint();
-	
-    /**
      * @return the entry rule
      */
     Rule getEntryRule();
@@ -82,11 +77,6 @@ public interface Strategy {
      * @return the opposite of the {@link Strategy strategy}
      */
     Strategy opposite();
-	
-    /**
-     * @param hint the description of the strategy
-     */
-    void setHint(String hint);
     
     /**
      * @param unstablePeriod number of ticks that will be strip off for this strategy
