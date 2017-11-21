@@ -39,9 +39,6 @@ public class BaseStrategy implements Strategy {
     
     /** Name of the strategy */
     private String name;
-
-    /** The description of this strategy */
-    private String hint;
 	
     /** The entry rule */
     private Rule entryRule;
@@ -109,11 +106,6 @@ public class BaseStrategy implements Strategy {
     public String getName() {
     	return name;
     }
-
-    @Override
-    public String getHint() {
-    	return hint;
-    }
     
     @Override
     public Rule getEntryRule() {
@@ -128,11 +120,6 @@ public class BaseStrategy implements Strategy {
     @Override
     public int getUnstablePeriod() {
     	return unstablePeriod;
-    }
-	
-    @Override
-    public void setHint(String hint) {
-    	this.hint = hint;
     }
     
     @Override
