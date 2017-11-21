@@ -51,7 +51,7 @@ public class Quickstart {
 
         // Getting the close price of the ticks
         Decimal firstClosePrice = series.getTick(0).getClosePrice();
-        System.out.println("First close price: " + firstClosePrice.toDouble());
+        System.out.println("First close price: " + firstClosePrice.doubleValue());
         // Or within an indicator:
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         // Here is the same close price:
@@ -60,7 +60,7 @@ public class Quickstart {
         // Getting the simple moving average (SMA) of the close price over the last 5 ticks
         SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
         // Here is the 5-ticks-SMA value at the 42nd index
-        System.out.println("5-ticks-SMA value at the 42nd index: " + shortSma.getValue(42).toDouble());
+        System.out.println("5-ticks-SMA value at the 42nd index: " + shortSma.getValue(42).doubleValue());
 
         // Getting a longer SMA (e.g. over the 30 last ticks)
         SMAIndicator longSma = new SMAIndicator(closePrice, 30);
