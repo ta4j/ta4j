@@ -39,7 +39,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
         Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
-        return maximumDrawdown.doubleValue();
+        return maximumDrawdown.toDouble();
     }
 
     @Override
@@ -47,7 +47,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
         if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
             CashFlow cashFlow = new CashFlow(series, trade);
             Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
-            return maximumDrawdown.doubleValue();
+            return maximumDrawdown.toDouble();
         }
         return 0;
     }
