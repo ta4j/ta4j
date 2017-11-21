@@ -25,22 +25,32 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
+import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 /**
  * The Fisher Indicator.
- * @see <a href="http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf">
- *     http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf</a>
+ * 
+ * <p/>
+ * see http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf
  */
-public class FisherIndicator extends RecursiveCachedIndicator<Decimal>{
+public class FisherIndicator extends RecursiveCachedIndicator<Decimal> {
+	
+	private static final long serialVersionUID = 4622250625267906228L;
+	
+	private static final Decimal ZERO_DOT_FIVE = Decimal.valueOf(0.5);
+    private static final Decimal VALUE_MAX = Decimal.valueOf(0.999);
+    private static final Decimal VALUE_MIN = Decimal.valueOf(-0.999);
 
-    private static final Decimal ZERO_DOT_FIVE = Decimal.valueOf("0.5");
-    private static final Decimal VALUE_MAX = Decimal.valueOf("0.999");
-    private static final Decimal VALUE_MIN = Decimal.valueOf("-0.999");
-
-    private final Indicator<Decimal> price;
-    
+    private final Indicator<Decimal> ref;
     private final Indicator<Decimal> intermediateValue;
+    private final Decimal densityFactor;
+    private final Decimal gamma;
+    private final Decimal delta;
     
     /**
      * Constructor.
@@ -52,61 +62,149 @@ public class FisherIndicator extends RecursiveCachedIndicator<Decimal>{
     }
     
     /**
-     * Constructor.
+     * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
      * @param timeFrame the time frame (usually 10)
      */
     public FisherIndicator(Indicator<Decimal> price, int timeFrame) {
-        this(price, timeFrame, Decimal.valueOf("0.33"), Decimal.valueOf("0.67"));
+        this(price, timeFrame, Decimal.valueOf(0.33), Decimal.valueOf(0.67), ZERO_DOT_FIVE, ZERO_DOT_FIVE, Decimal.ONE, true);
+    }
+    
+    /**
+     * Constructor (with gamma 0.5, delta 0.5).
+     * 
+     * @param price price the price indicator (usually {@link MedianPriceIndicator})
+     * @param timeFrame the time frame (usually 10)
+     * @param alpha the alpha (usually 0.33 or 0.5)
+     * @param beta the beta (usually 0.67 0.5 or)
+     */
+    public FisherIndicator(Indicator<Decimal> price, int timeFrame, double alpha, double beta) {
+    		this(price, timeFrame, Decimal.valueOf(alpha), Decimal.valueOf(beta), ZERO_DOT_FIVE, ZERO_DOT_FIVE, Decimal.ONE, true);
     }
     
     /**
      * Constructor.
-     *
-     * @param price the price indicator (usually {@link MedianPriceIndicator})
+     * 
+     * @param price price the price indicator (usually {@link MedianPriceIndicator})
      * @param timeFrame the time frame (usually 10)
-     * @param alpha the alpha (usually 0.33)
-     * @param beta the beta (usually 0.67)
+     * @param alpha the alpha (usually 0.33 or 0.5)
+     * @param beta the beta (usually 0.67 or 0.5)
+     * @param gamma the gamma (usually 0.25 or 0.5)
+     * @param delta the delta (usually 0.5)
      */
-    public FisherIndicator(Indicator<Decimal> price, int timeFrame, final Decimal alpha, final Decimal beta) {
-        super(price);
-        this.price = price;
-        final Indicator<Decimal> periodHigh = new HighestValueIndicator(new MaxPriceIndicator(price.getTimeSeries()), timeFrame);
-        final Indicator<Decimal> periodLow = new LowestValueIndicator(new MinPriceIndicator(price.getTimeSeries()), timeFrame);
-        intermediateValue = new RecursiveCachedIndicator<Decimal>(price) {
+    public FisherIndicator(Indicator<Decimal> price, int timeFrame, double alpha, double beta, double gamma, double delta) {
+    		this(price, timeFrame, Decimal.valueOf(alpha), Decimal.valueOf(beta), Decimal.valueOf(gamma), Decimal.valueOf(delta), Decimal.ONE, true);
+    }
+    
+    /**
+     * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
+     * 
+     * @param ref the indicator
+     * @param timeFrame the time frame (usually 10)
+     * @param isPriceIndicator use true, if "ref" is a price indicator
+     */
+    public FisherIndicator(Indicator<Decimal> ref, int timeFrame, boolean isPriceIndicator) {
+        this(ref, timeFrame, Decimal.valueOf(0.33), Decimal.valueOf(0.67), ZERO_DOT_FIVE, ZERO_DOT_FIVE, Decimal.ONE, isPriceIndicator);
+    }
+    
+    /**
+     * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
+     * 
+     * @param ref the indicator
+     * @param timeFrame the time frame (usually 10)
+     * @param densityFactor the density factor (usually 1.0)
+     * @param isPriceIndicator use true, if "ref" is a price indicator
+     */
+    public FisherIndicator(Indicator<Decimal> ref, int timeFrame, double densityFactor, boolean isPriceIndicator) {
+        this(ref, timeFrame, Decimal.valueOf(0.33), Decimal.valueOf(0.67), ZERO_DOT_FIVE, ZERO_DOT_FIVE, Decimal.valueOf(densityFactor), isPriceIndicator);
+    }
+    
+    /**
+     * Constructor.
+     * 
+     * @param ref the indicator
+     * @param timeFrame the time frame (usually 10)
+     * @param alpha the alpha (usually 0.33 or 0.5)
+     * @param beta the beta (usually 0.67 or 0.5)
+     * @param gamma the gamma (usually 0.25 or 0.5)
+     * @param delta the delta (usually 0.5)
+     * @param densityFactor the density factor (usually 1.0)
+     * @param isPriceIndicator use true, if "ref" is a price indicator
+     */
+    public FisherIndicator(Indicator<Decimal> ref, int timeFrame, double alpha, double beta, double gamma, double delta, double densityFactor, boolean isPriceIndicator) {
+        this(ref, timeFrame, Decimal.valueOf(alpha), Decimal.valueOf(beta), Decimal.valueOf(gamma), Decimal.valueOf(delta), Decimal.valueOf(densityFactor), isPriceIndicator);
+    }
+    
+	/**
+	 * Constructor
+	 *
+	 * @param ref the indicator
+	 * @param timeFrame the time frame (usually 10)
+	 * @param alpha the alpha (usually 0.33 or 0.5)
+	 * @param beta the beta (usually 0.67 or 0.5)
+	 * @param gamma the gamma (usually 0.25 or 0.5)
+	 * @param delta the delta (usually 0.5)
+	 * @param densityFactor the density factor (usually 1.0)
+	 * @param isPriceIndicator use true, if "ref" is a price indicator
+	 */
+	public FisherIndicator(Indicator<Decimal> ref, int timeFrame, final Decimal alpha, final Decimal beta,
+			final Decimal gamma, final Decimal delta, Decimal densityFactor, boolean isPriceIndicator) {
+        super(ref);
+        this.ref = ref;
+        this.gamma = gamma;
+        this.delta = delta;
+        
+		if (densityFactor == null || densityFactor.isNaN()) {
+			this.densityFactor = Decimal.ONE;
+		} else {
+			this.densityFactor = densityFactor;
+		}
+        
+        final Indicator<Decimal> periodHigh = new HighestValueIndicator(isPriceIndicator ? new MaxPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
+        final Indicator<Decimal> periodLow = new LowestValueIndicator(isPriceIndicator ? new MinPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
+               
+        intermediateValue = new RecursiveCachedIndicator<Decimal>(ref) {
 
-            @Override
-            protected Decimal calculate(int index) {
-                if (index <= 0) {
-                    return Decimal.ZERO;
-                }
-                // alpha * 2 * ((price - MinL) / (MaxH - MinL) - 0.5) + beta * prior value
-                Decimal currentPrice = FisherIndicator.this.price.getValue(index);
-                Decimal minL = periodLow.getValue(index);
-                Decimal maxH = periodHigh.getValue(index);
-                Decimal firstPart = currentPrice.minus(minL).dividedBy(maxH.min(minL)).minus(ZERO_DOT_FIVE);
-                Decimal secondPart = alpha.multipliedBy(Decimal.TWO).multipliedBy(firstPart);
-                Decimal value = secondPart.plus(beta.multipliedBy(getValue(index - 1)));
-                if (value.isGreaterThan(VALUE_MAX)) {
-                    value = VALUE_MAX;
-                } else if (value.isLessThan(VALUE_MIN)) {
-                    value = VALUE_MIN;
-                }
-                return value;
-            }
+			private static final long serialVersionUID = 1242564751445450654L;
+
+			@Override
+			protected Decimal calculate(int index) {
+				if (index <= 0) {
+					return Decimal.ZERO;
+				}
+
+				// Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta * priorValue) / densityFactor
+				Decimal currentRef = FisherIndicator.this.ref.getValue(index);
+				Decimal minL = periodLow.getValue(index);
+				Decimal maxH = periodHigh.getValue(index);
+				Decimal term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(ZERO_DOT_FIVE);
+				Decimal term2 = alpha.multipliedBy(Decimal.TWO).multipliedBy(term1);
+				Decimal term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
+				Decimal value = term3.dividedBy(FisherIndicator.this.densityFactor);
+
+				if (value.isGreaterThan(VALUE_MAX)) {
+					value = VALUE_MAX;
+				} else if (value.isLessThan(VALUE_MIN)) {
+					value = VALUE_MIN;
+				}
+
+				return value;
+			}
         };
     }
 
-    @Override
-    protected Decimal calculate(int index) {
-        if (index <= 0) {
-            return Decimal.ZERO;
-        }
-        //Fish = 0.5 * MathLog((1 + Value) / (1 - Value)) + 0.5 * Fish1
-        Decimal value = intermediateValue.getValue(index);
-        Decimal ext = Decimal.ONE.plus(value).dividedBy(Decimal.ONE.minus(value)).log();
-        return ext.plus(getValue(index - 1)).dividedBy(Decimal.TWO);
-    }
+	@Override
+	protected Decimal calculate(int index) {
+		if (index <= 0) {
+			return Decimal.ZERO;
+		}
+
+		// Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
+		Decimal value = intermediateValue.getValue(index);
+		Decimal term1 = Decimal.ONE.plus(value).dividedBy(Decimal.ONE.minus(value)).log();
+		Decimal term2 = getValue(index - 1);
+		return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
+	}
 
 }
