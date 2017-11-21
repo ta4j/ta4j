@@ -67,11 +67,11 @@ public class CandlestickChart {
         for (int i = 0; i < nbTicks; i++) {
             Tick tick = series.getTick(i);
             dates[i] = new Date(tick.getEndTime().toEpochSecond() * 1000);
-            opens[i] = tick.getOpenPrice().doubleValue();
-            highs[i] = tick.getMaxPrice().doubleValue();
-            lows[i] = tick.getMinPrice().doubleValue();
-            closes[i] = tick.getClosePrice().doubleValue();
-            volumes[i] = tick.getVolume().doubleValue();
+            opens[i] = tick.getOpenPrice().toDouble();
+            highs[i] = tick.getMaxPrice().toDouble();
+            lows[i] = tick.getMinPrice().toDouble();
+            closes[i] = tick.getClosePrice().toDouble();
+            volumes[i] = tick.getVolume().toDouble();
         }
         
         OHLCDataset dataset = new DefaultHighLowDataset("btc", dates, highs, lows, opens, closes, volumes);
@@ -90,7 +90,7 @@ public class CandlestickChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
         for (int i = 0; i < series.getTickCount(); i++) {
             Tick tick = series.getTick(i);
-            chartTimeSeries.add(new Second(new Date(tick.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).doubleValue());
+            chartTimeSeries.add(new Second(new Date(tick.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).toDouble());
         }
         dataset.addSeries(chartTimeSeries);
         return dataset;

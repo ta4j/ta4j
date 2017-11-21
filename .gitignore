@@ -9,7 +9,6 @@ nbactions.xml
 log/
 bin/
 target/
-out/
 
 *.class
 

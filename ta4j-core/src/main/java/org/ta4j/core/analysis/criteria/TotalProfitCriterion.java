@@ -71,6 +71,6 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
                 profit = entryClosePrice.dividedBy(exitClosePrice);
             }
         }
-        return profit.doubleValue();
+        return profit.toDouble();
     }
 }
