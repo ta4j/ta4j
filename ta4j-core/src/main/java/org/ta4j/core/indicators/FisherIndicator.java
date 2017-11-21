@@ -40,9 +40,9 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
  */
 public class FisherIndicator extends RecursiveCachedIndicator<Decimal> {
 	
-	private static final long serialVersionUID = 4622250625267906228L;
+    private static final long serialVersionUID = 4622250625267906228L;
 	
-	private static final Decimal ZERO_DOT_FIVE = Decimal.valueOf(0.5);
+    private static final Decimal ZERO_DOT_FIVE = Decimal.valueOf(0.5);
     private static final Decimal VALUE_MAX = Decimal.valueOf(0.999);
     private static final Decimal VALUE_MIN = Decimal.valueOf(-0.999);
 
@@ -155,42 +155,42 @@ public class FisherIndicator extends RecursiveCachedIndicator<Decimal> {
         this.gamma = gamma;
         this.delta = delta;
         
-		if (densityFactor == null || densityFactor.isNaN()) {
-			this.densityFactor = Decimal.ONE;
-		} else {
-			this.densityFactor = densityFactor;
-		}
+        if (densityFactor == null || densityFactor.isNaN()) {
+		this.densityFactor = Decimal.ONE;
+        } else {
+		this.densityFactor = densityFactor;
+        }
         
         final Indicator<Decimal> periodHigh = new HighestValueIndicator(isPriceIndicator ? new MaxPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
         final Indicator<Decimal> periodLow = new LowestValueIndicator(isPriceIndicator ? new MinPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
                
         intermediateValue = new RecursiveCachedIndicator<Decimal>(ref) {
 
-			private static final long serialVersionUID = 1242564751445450654L;
+		private static final long serialVersionUID = 1242564751445450654L;
 
-			@Override
-			protected Decimal calculate(int index) {
-				if (index <= 0) {
-					return Decimal.ZERO;
-				}
-
-				// Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta * priorValue) / densityFactor
-				Decimal currentRef = FisherIndicator.this.ref.getValue(index);
-				Decimal minL = periodLow.getValue(index);
-				Decimal maxH = periodHigh.getValue(index);
-				Decimal term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(ZERO_DOT_FIVE);
-				Decimal term2 = alpha.multipliedBy(Decimal.TWO).multipliedBy(term1);
-				Decimal term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
-				Decimal value = term3.dividedBy(FisherIndicator.this.densityFactor);
-
-				if (value.isGreaterThan(VALUE_MAX)) {
-					value = VALUE_MAX;
-				} else if (value.isLessThan(VALUE_MIN)) {
-					value = VALUE_MIN;
-				}
-
-				return value;
+		@Override
+		protected Decimal calculate(int index) {
+			if (index <= 0) {
+				return Decimal.ZERO;
 			}
+
+			// Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta * priorValue) / densityFactor
+			Decimal currentRef = FisherIndicator.this.ref.getValue(index);
+			Decimal minL = periodLow.getValue(index);
+			Decimal maxH = periodHigh.getValue(index);
+			Decimal term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(ZERO_DOT_FIVE);
+			Decimal term2 = alpha.multipliedBy(Decimal.TWO).multipliedBy(term1);
+			Decimal term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
+			Decimal value = term3.dividedBy(FisherIndicator.this.densityFactor);
+
+			if (value.isGreaterThan(VALUE_MAX)) {
+				value = VALUE_MAX;
+			} else if (value.isLessThan(VALUE_MIN)) {
+				value = VALUE_MIN;
+			}
+
+			return value;
+		}
         };
     }
 
