@@ -547,6 +547,9 @@ public final class Decimal
      * @return the {@code Decimal}
      */
     public static Decimal valueOf(float val) {
+        if (val == Float.NaN) {
+            return Decimal.NaN;
+        }
         return new Decimal(val);
     }
 
@@ -556,6 +559,9 @@ public final class Decimal
      * @return the {@code Decimal}
      */
     public static Decimal valueOf(double val) {
+        if (val == Double.NaN) {
+            return Decimal.NaN;
+        }
         return new Decimal(val);
     }
 
