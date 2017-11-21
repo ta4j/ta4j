@@ -38,7 +38,7 @@ public interface Strategy {
     /**
      * @return the description of the strategy
      */
-    String getDescription();
+    String getHint();
 	
     /**
      * @return the entry rule
@@ -84,9 +84,9 @@ public interface Strategy {
     Strategy opposite();
 	
     /**
-     * @param description the description of the strategy
+     * @param hint the description of the strategy
      */
-    void setDescription(String description);
+    void setHint(String hint);
     
     /**
      * @param unstablePeriod number of ticks that will be strip off for this strategy
