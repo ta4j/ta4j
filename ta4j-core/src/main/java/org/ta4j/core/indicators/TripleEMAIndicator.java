@@ -61,7 +61,7 @@ public class TripleEMAIndicator extends CachedIndicator<Decimal> {
     @Override
     protected Decimal calculate(int index) {
     	
-    		// trix = 3 * ema - 3 * emaEma + emaEmaEma 
+    	// trix = 3 * ema - 3 * emaEma + emaEmaEma 
         return Decimal.THREE.multipliedBy(
         		ema.getValue(index).minus(
         				emaEma.getValue(index))).plus(
