@@ -41,7 +41,7 @@ public class BaseStrategy implements Strategy {
     private String name;
 
     /** The description of this strategy */
-    private String description;
+    private String hint;
 	
     /** The entry rule */
     private Rule entryRule;
@@ -111,8 +111,8 @@ public class BaseStrategy implements Strategy {
     }
 
     @Override
-    public String getDescription() {
-    	return description;
+    public String getHint() {
+    	return hint;
     }
     
     @Override
@@ -131,8 +131,8 @@ public class BaseStrategy implements Strategy {
     }
 	
     @Override
-    public void setDescription(String description) {
-    	this.description = description;
+    public void setHint(String hint) {
+    	this.hint = hint;
     }
     
     @Override
