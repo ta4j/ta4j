@@ -83,7 +83,7 @@ public final class Decimal
     }
 
     private Decimal(long val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(float val) {
@@ -91,7 +91,7 @@ public final class Decimal
     }
 
     private Decimal(double val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(BigDecimal val) {
@@ -509,7 +509,9 @@ public final class Decimal
      * @return the {@code Decimal}
      */
     public static Decimal valueOf(String val) {
-        return new Decimal(val);
+        return val.equals("NaN")
+                ? Decimal.NaN
+                : new Decimal(val);
     }
 
     /**
@@ -555,6 +557,15 @@ public final class Decimal
      */
     public static Decimal valueOf(double val) {
         return new Decimal(val);
+    }
+
+    /**
+     * Returns a {@code Decimal} version of the given {@code Decimal}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
+    public static Decimal valueOf(Decimal val) {
+        return val;
     }
 
     /**
