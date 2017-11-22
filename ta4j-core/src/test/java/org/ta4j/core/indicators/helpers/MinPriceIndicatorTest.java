@@ -41,9 +41,9 @@ public class MinPriceIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickMinPrice() {
+    public void indicatorShouldRetrieveBarMinPrice() {
         for (int i = 0; i < 10; i++) {
-            assertEquals(minPriceIndicator.getValue(i), timeSeries.getTick(i).getMinPrice());
+            assertEquals(minPriceIndicator.getValue(i), timeSeries.getBar(i).getMinPrice());
         }
     }
 }

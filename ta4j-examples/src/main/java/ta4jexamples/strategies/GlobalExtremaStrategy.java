@@ -35,7 +35,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 public class GlobalExtremaStrategy {
 
     // We assume that there were at least one trade every 5 minutes during the whole week
-    private static final int NB_TICKS_PER_WEEK = 12 * 24 * 7;
+    private static final int NB_BARS_PER_WEEK = 12 * 24 * 7;
 
     /**
      * @param series a time series
@@ -50,10 +50,10 @@ public class GlobalExtremaStrategy {
 
         // Getting the max price over the past week
         MaxPriceIndicator maxPrices = new MaxPriceIndicator(series);
-        HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_TICKS_PER_WEEK);
+        HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_BARS_PER_WEEK);
         // Getting the min price over the past week
         MinPriceIndicator minPrices = new MinPriceIndicator(series);
-        LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_TICKS_PER_WEEK);
+        LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the min price
         MultiplierIndicator downWeek = new MultiplierIndicator(weekMinPrice, Decimal.valueOf("1.004"));

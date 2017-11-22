@@ -50,16 +50,16 @@ public class CashFlowToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * @param tickSeries the ta4j time series
+     * @param barseries the ta4j time series
      * @param indicator the indicator
      * @param name the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries tickSeries, Indicator<Decimal> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Decimal> indicator, String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < tickSeries.getTickCount(); i++) {
-            Tick tick = tickSeries.getTick(i);
-            chartTimeSeries.add(new Minute(new Date(tick.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).toDouble());
+        for (int i = 0; i < barseries.getBarCount(); i++) {
+            Bar bar = barseries.getBar(i);
+            chartTimeSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).toDouble());
         }
         return chartTimeSeries;
     }

@@ -110,7 +110,7 @@ public class Trade implements Serializable {
 
     /**
      * Operates the trade at the index-th position
-     * @param index the tick index
+     * @param index the bar index
      * @return the order
      */
     public Order operate(int index) {
@@ -119,7 +119,7 @@ public class Trade implements Serializable {
 
     /**
      * Operates the trade at the index-th position
-     * @param index the tick index
+     * @param index the bar index
      * @param price the price
      * @param amount the amount
      * @return the order

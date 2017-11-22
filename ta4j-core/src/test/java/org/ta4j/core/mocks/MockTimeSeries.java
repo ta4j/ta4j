@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.mocks;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Tick;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
@@ -36,58 +36,58 @@ import java.util.List;
 public class MockTimeSeries extends BaseTimeSeries {
 
     public MockTimeSeries(double... data) {
-        super(doublesToTicks(data));
+        super(doublesToBars(data));
     }
 
-    public MockTimeSeries(List<Tick> ticks) {
-        super(ticks);
+    public MockTimeSeries(List<Bar> bars) {
+        super(bars);
     }
 
     public MockTimeSeries(double[] data, ZonedDateTime[] times) {
-        super(doublesAndTimesToTicks(data, times));
+        super(doublesAndTimesToBars(data, times));
     }
 
     public MockTimeSeries(ZonedDateTime... dates) {
-        super(timesToTicks(dates));
+        super(timesToBars(dates));
     }
 
     public MockTimeSeries() {
-        super(arbitraryTicks());
+        super(arbitraryBars());
     }
 
-    private static List<Tick> doublesToTicks(double... data) {
-        ArrayList<Tick> ticks = new ArrayList<>();
+    private static List<Bar> doublesToBars(double... data) {
+        ArrayList<Bar> bars = new ArrayList<>();
         for (int i = 0; i < data.length; i++) {
-            ticks.add(new MockTick(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, i), data[i]));
+            bars.add(new MockBar(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, i), data[i]));
         }
-        return ticks;
+        return bars;
     }
 
-    private static List<Tick> doublesAndTimesToTicks(double[] data, ZonedDateTime[] times) {
+    private static List<Bar> doublesAndTimesToBars(double[] data, ZonedDateTime[] times) {
         if (data.length != times.length) {
             throw new IllegalArgumentException();
         }
-        ArrayList<Tick> ticks = new ArrayList<>();
+        ArrayList<Bar> bars = new ArrayList<>();
         for (int i = 0; i < data.length; i++) {
-            ticks.add(new MockTick(times[i], data[i]));
+            bars.add(new MockBar(times[i], data[i]));
         }
-        return ticks;
+        return bars;
     }
 
-    private static List<Tick> timesToTicks(ZonedDateTime... dates) {
-        ArrayList<Tick> ticks = new ArrayList<>();
+    private static List<Bar> timesToBars(ZonedDateTime... dates) {
+        ArrayList<Bar> bars = new ArrayList<>();
         int i = 1;
         for (ZonedDateTime date : dates) {
-            ticks.add(new MockTick(date, i++));
+            bars.add(new MockBar(date, i++));
         }
-        return ticks;
+        return bars;
     }
 
-    private static List<Tick> arbitraryTicks() {
-        ArrayList<Tick> ticks = new ArrayList<>();
+    private static List<Bar> arbitraryBars() {
+        ArrayList<Bar> bars = new ArrayList<>();
         for (double i = 0d; i < 5000; i++) {
-            ticks.add(new MockTick(ZonedDateTime.now(), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
+            bars.add(new MockBar(ZonedDateTime.now(), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
         }
-        return ticks;
+        return bars;
     }
 }

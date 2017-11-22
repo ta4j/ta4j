@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 import java.util.List;
@@ -93,15 +93,15 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal
 
     @Override
     protected Decimal calculate(int index) {
-        List<Integer> ticksOfPreviousPeriod = pivotPointIndicator.getTicksOfPreviousPeriod(index);
-        if (ticksOfPreviousPeriod.isEmpty())
+        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        if (barsOfPreviousPeriod.isEmpty())
             return Decimal.NaN;
-        Tick tick = getTimeSeries().getTick(ticksOfPreviousPeriod.get(0));
-        Decimal high =  tick.getMaxPrice();
-        Decimal low = tick.getMinPrice();
-        for(int i: ticksOfPreviousPeriod){
-            high = (getTimeSeries().getTick(i).getMaxPrice()).max(high);
-            low = (getTimeSeries().getTick(i).getMinPrice()).min(low);
+        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Decimal high =  bar.getMaxPrice();
+        Decimal low = bar.getMinPrice();
+        for(int i: barsOfPreviousPeriod){
+            high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
+            low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
         }
 
         if (fibReversalTyp == FibReversalTyp.RESISTANCE) {

@@ -22,12 +22,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import static junit.framework.TestCase.assertEquals;
 
 public class AmountIndicatorTest {
 
@@ -42,9 +42,9 @@ public class AmountIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickAmountPrice() {
+    public void indicatorShouldRetrieveBarAmountPrice() {
         for (int i = 0; i < 10; i++) {
-            assertEquals(amountIndicator.getValue(i), timeSeries.getTick(i).getAmount());
+            assertEquals(amountIndicator.getValue(i), timeSeries.getBar(i).getAmount());
         }
     }
 }

@@ -36,7 +36,7 @@ public class TimeSeriesManager {
 
     /** The logger */
     private final Logger log = LoggerFactory.getLogger(getClass());
-    
+
     /** The managed time series */
     private TimeSeries timeSeries;
 
@@ -45,7 +45,7 @@ public class TimeSeriesManager {
      */
     public TimeSeriesManager() {
 	}
-    
+
     /**
      * Constructor.
      * @param timeSeries the time series to be managed
@@ -60,14 +60,14 @@ public class TimeSeriesManager {
     public void setTimeSeries(TimeSeries timeSeries) {
 		this.timeSeries = timeSeries;
 	}
-    
+
     /**
      * @return the managed time series
      */
     public TimeSeries getTimeSeries() {
 		return timeSeries;
 	}
-    
+
     /**
      * Runs the provided strategy over the managed series.
      * <p>
@@ -142,25 +142,25 @@ public class TimeSeriesManager {
 
         int runBeginIndex = Math.max(startIndex, timeSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());
-        
+
         log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy, orderType);
         TradingRecord tradingRecord = new BaseTradingRecord(orderType);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
-            // For each tick between both indexes...       
+            // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, timeSeries.getTick(i).getClosePrice(), amount);
+                tradingRecord.operate(i, timeSeries.getBar(i).getClosePrice(), amount);
             }
         }
 
         if (!tradingRecord.isClosed()) {
             // If the last trade is still opened, we search out of the run end index.
-            // May works if the end index for this run was inferior to the actual number of ticks
-        	int seriesMaxSize = Math.max(timeSeries.getEndIndex() + 1, timeSeries.getTickData().size());
+            // May works if the end index for this run was inferior to the actual number of bars
+        	int seriesMaxSize = Math.max(timeSeries.getEndIndex() + 1, timeSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                // For each tick after the end index of this run...
+                // For each bar after the end index of this run...
                 // --> Trying to close the last trade
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, timeSeries.getTick(i).getClosePrice(), amount);
+                    tradingRecord.operate(i, timeSeries.getBar(i).getClosePrice(), amount);
                     break;
                 }
             }

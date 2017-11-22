@@ -22,18 +22,18 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseTick;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Tick;
-import org.ta4j.core.TimeSeries;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 
 public class DirectionalMovementMinusIndicatorTest {
 
@@ -804,47 +804,47 @@ public class DirectionalMovementMinusIndicatorTest {
 
 
         String[] dataLine = rawData.split("\n");
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = dataLine.length-1; i >= 0; i--) {
-            String[] tickData = dataLine[i].split(",");
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),tickData[3],tickData[4],tickData[5],tickData[1],tickData[2]);
-            ticks.add(tick);
+            String[] barData = dataLine[i].split(",");
+            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i),barData[3],barData[4],barData[5],barData[1],barData[2]);
+            bars.add(bar);
         }
-        data = new BaseTimeSeries("FB_daily",ticks);
+        data = new BaseTimeSeries("FB_daily", bars);
 
         /* old Data (to less for this test)
         data = new BaseTimeSeries();
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(100), 169.95, 172.06, 169.66, 171.96, 0)); // FB, daily, 07.8.'17
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(101), 171.88, 173.05, 170.62, 171.23, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(102), 169.98, 171.45, 169.56, 171.18, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(103), 170.06, 170.59, 166.85, 167.4, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(104), 167.95, 168.82, 166.85, 168.08, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(105), 170.09, 171.08, 169.29, 170.75, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(106), 171.49, 171.5, 170.01, 171, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(107), 171.25, 171.38, 169.24, 170, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(108), 169.34, 169.86, 166.85, 166.91,0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(109), 166.84, 168.67, 166.21, 167.41, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(110), 167.16, 168, 165.82, 167.78, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(111), 168.28, 169.87, 167.15, 169.64, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(112), 168.84, 169.36, 168.2, 168.71, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(113), 168.88, 169.29, 166.41, 167.74, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(114), 167.86, 168.38, 166.18 ,166.32, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(115), 166.91, 167.7, 166.33, 167.24, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(116), 165.25, 168.43, 165, 168.05, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(117), 168.17, 170.18, 167.63, 169.92, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(118), 170.40, 172.15, 170.06, 171.97, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(119), 172.40, 172.92, 171.31, 172.02, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(120), 171.27, 172.39, 169.55, 170.72, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(121), 170.91, 172.48, 169.57, 172.09, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(122), 171.94, 173.31, 170.27, 173.21, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(123), 173.09, 173.49, 170.8, 170.95, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(124), 172.40, 173.89, 172.2, 173.51, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(125), 173.76, 174.17, 175, 172.96, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(126), 173.01, 173.17, 172.06, 173.05, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(127), 172.26, 172.28, 170.5, 170.96, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(128), 170.88, 172.34, 170.26, 171.64, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(129), 171.99, 172.07, 169.34, 170.01, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(130), 170.62, 172.56, 170.36, 172.52, 0)); // FB, daily, 9.19.'17
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(100), 169.95, 172.06, 169.66, 171.96, 0)); // FB, daily, 07.8.'17
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(101), 171.88, 173.05, 170.62, 171.23, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(102), 169.98, 171.45, 169.56, 171.18, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(103), 170.06, 170.59, 166.85, 167.4, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(104), 167.95, 168.82, 166.85, 168.08, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(105), 170.09, 171.08, 169.29, 170.75, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(106), 171.49, 171.5, 170.01, 171, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(107), 171.25, 171.38, 169.24, 170, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(108), 169.34, 169.86, 166.85, 166.91,0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(109), 166.84, 168.67, 166.21, 167.41, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(110), 167.16, 168, 165.82, 167.78, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(111), 168.28, 169.87, 167.15, 169.64, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(112), 168.84, 169.36, 168.2, 168.71, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(113), 168.88, 169.29, 166.41, 167.74, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(114), 167.86, 168.38, 166.18 ,166.32, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(115), 166.91, 167.7, 166.33, 167.24, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(116), 165.25, 168.43, 165, 168.05, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(117), 168.17, 170.18, 167.63, 169.92, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(118), 170.40, 172.15, 170.06, 171.97, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(119), 172.40, 172.92, 171.31, 172.02, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(120), 171.27, 172.39, 169.55, 170.72, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(121), 170.91, 172.48, 169.57, 172.09, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(122), 171.94, 173.31, 170.27, 173.21, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(123), 173.09, 173.49, 170.8, 170.95, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(124), 172.40, 173.89, 172.2, 173.51, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(125), 173.76, 174.17, 175, 172.96, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(126), 173.01, 173.17, 172.06, 173.05, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(127), 172.26, 172.28, 170.5, 170.96, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(128), 170.88, 172.34, 170.26, 171.64, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(129), 171.99, 172.07, 169.34, 170.01, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(130), 170.62, 172.56, 170.36, 172.52, 0)); // FB, daily, 9.19.'17
 
         */
     }

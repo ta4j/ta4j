@@ -24,8 +24,8 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -47,11 +47,11 @@ public class CCIIndicatorTest {
 
     @Before
     public void setUp() {
-        ArrayList<Tick> ticks = new ArrayList<Tick>();
+        ArrayList<Bar> bars = new ArrayList<Bar>();
         for (Double price : typicalPrices) {
-            ticks.add(new MockTick(price, price, price, price));
+            bars.add(new MockBar(price, price, price, price));
         }
-        series = new MockTimeSeries(ticks);
+        series = new MockTimeSeries(bars);
     }
 
     @Test

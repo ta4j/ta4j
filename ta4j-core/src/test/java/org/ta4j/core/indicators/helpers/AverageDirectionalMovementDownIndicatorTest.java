@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -34,24 +34,24 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 
 public class AverageDirectionalMovementDownIndicatorTest {
-    
+
     @Test
     public void averageDirectionalMovement()
     {
-        MockTick tick1 = new MockTick(0, 0, 13, 7);
-        MockTick tick2 = new MockTick(0, 0, 11, 5);
-        MockTick tick3 = new MockTick(0, 0, 15, 3);
-        MockTick tick4 = new MockTick(0, 0, 14, 2);
-        MockTick tick5 = new MockTick(0, 0, 13, 0.2);
-        
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(tick1);
-        ticks.add(tick2);
-        ticks.add(tick3);
-        ticks.add(tick4);
-        ticks.add(tick5);
-        
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        MockBar bar1 = new MockBar(0, 0, 13, 7);
+        MockBar bar2 = new MockBar(0, 0, 11, 5);
+        MockBar bar3 = new MockBar(0, 0, 15, 3);
+        MockBar bar4 = new MockBar(0, 0, 14, 2);
+        MockBar bar5 = new MockBar(0, 0, 13, 0.2);
+
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(bar1);
+        bars.add(bar2);
+        bars.add(bar3);
+        bars.add(bar4);
+        bars.add(bar5);
+
+        MockTimeSeries series = new MockTimeSeries(bars);
         AverageDirectionalMovementDownIndicator admdown = new AverageDirectionalMovementDownIndicator(series, 3);
         assertDecimalEquals(admdown.getValue(0), 1);
         assertDecimalEquals(admdown.getValue(1), 4d/3);

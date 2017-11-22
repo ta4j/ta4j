@@ -27,17 +27,17 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * Base implementation of a {@link Tick}.
+ * Base implementation of a {@link Bar}.
  * <p></p>
  */
-public class BaseTick implements Tick {
+public class BaseBar implements Bar {
 
 	private static final long serialVersionUID = 8038383777467488147L;
-	/** Time period (e.g. 1 day, 15 min, etc.) of the tick */
+	/** Time period (e.g. 1 day, 15 min, etc.) of the bar */
     private Duration timePeriod;
-    /** End time of the tick */
+    /** End time of the bar */
     private ZonedDateTime endTime;
-    /** Begin time of the tick */
+    /** Begin time of the bar */
     private ZonedDateTime beginTime;
     /** Open price of the period */
     private Decimal openPrice = null;
@@ -57,9 +57,9 @@ public class BaseTick implements Tick {
     /**
      * Constructor.
      * @param timePeriod the time period
-     * @param endTime the end time of the tick period
+     * @param endTime the end time of the bar period
      */
-    public BaseTick(Duration timePeriod, ZonedDateTime endTime) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -68,14 +68,14 @@ public class BaseTick implements Tick {
 
     /**
      * Constructor.
-     * @param endTime the end time of the tick period
-     * @param openPrice the open price of the tick period
-     * @param highPrice the highest price of the tick period
-     * @param lowPrice the lowest price of the tick period
-     * @param closePrice the close price of the tick period
-     * @param volume the volume of the tick period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
      */
-    public BaseTick(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
+    public BaseBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
         this(endTime, Decimal.valueOf(openPrice),
                 Decimal.valueOf(highPrice),
                 Decimal.valueOf(lowPrice),
@@ -85,14 +85,14 @@ public class BaseTick implements Tick {
 
     /**
      * Constructor.
-     * @param endTime the end time of the tick period
-     * @param openPrice the open price of the tick period
-     * @param highPrice the highest price of the tick period
-     * @param lowPrice the lowest price of the tick period
-     * @param closePrice the close price of the tick period
-     * @param volume the volume of the tick period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
      */
-    public BaseTick(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
+    public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
         this(endTime, Decimal.valueOf(openPrice),
                 Decimal.valueOf(highPrice),
                 Decimal.valueOf(lowPrice),
@@ -102,43 +102,43 @@ public class BaseTick implements Tick {
 
     /**
      * Constructor.
-     * @param endTime the end time of the tick period
-     * @param openPrice the open price of the tick period
-     * @param highPrice the highest price of the tick period
-     * @param lowPrice the lowest price of the tick period
-     * @param closePrice the close price of the tick period
-     * @param volume the volume of the tick period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
      */
-    public BaseTick(ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+    public BaseBar(ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
         this(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
     }
 
     /**
      * Constructor.
      * @param timePeriod the time period
-     * @param endTime the end time of the tick period
-     * @param openPrice the open price of the tick period
-     * @param highPrice the highest price of the tick period
-     * @param lowPrice the lowest price of the tick period
-     * @param closePrice the close price of the tick period
-     * @param volume the volume of the tick period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
      */
-    public BaseTick(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
         this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, Decimal.ZERO);
     }
 
     /**
      * Constructor.
      * @param timePeriod the time period
-     * @param endTime the end time of the tick period
-     * @param openPrice the open price of the tick period
-     * @param highPrice the highest price of the tick period
-     * @param lowPrice the lowest price of the tick period
-     * @param closePrice the close price of the tick period
-     * @param volume the volume of the tick period
-     * @param amount the amount of the tick period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
+     * @param amount the amount of the bar period
      */
-    public BaseTick(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume, Decimal amount) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume, Decimal amount) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -201,28 +201,28 @@ public class BaseTick implements Tick {
     }
 
     /**
-     * @return the time period of the tick
+     * @return the time period of the bar
      */
     public Duration getTimePeriod() {
         return timePeriod;
     }
 
     /**
-     * @return the begin timestamp of the tick period
+     * @return the begin timestamp of the bar period
      */
     public ZonedDateTime getBeginTime() {
         return beginTime;
     }
 
     /**
-     * @return the end timestamp of the tick period
+     * @return the end timestamp of the bar period
      */
     public ZonedDateTime getEndTime() {
         return endTime;
     }
 
     /**
-     * Adds a trade at the end of tick period.
+     * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
@@ -255,7 +255,7 @@ public class BaseTick implements Tick {
 
     /**
      * @param timePeriod the time period
-     * @param endTime the end time of the tick
+     * @param endTime the end time of the bar
      * @throws IllegalArgumentException if one of the arguments is null
      */
     private void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {

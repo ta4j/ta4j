@@ -40,11 +40,11 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 public class ChaikinMoneyFlowIndicator extends CachedIndicator<Decimal> {
 
     private TimeSeries series;
-    
+
     private CloseLocationValueIndicator clvIndicator;
-    
+
     private VolumeIndicator volumeIndicator;
-    
+
     private int timeFrame;
 
     public ChaikinMoneyFlowIndicator(TimeSeries series, int timeFrame) {
@@ -63,18 +63,18 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Decimal> {
             sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
         }
         Decimal sumOfVolume = volumeIndicator.getValue(index);
-        
+
         return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
     }
-    
+
     /**
-     * @param index the tick index
-     * @return the money flow volume for the i-th period/tick
+     * @param index the bar index
+     * @return the money flow volume for the i-th period/bar
      */
     private Decimal getMoneyFlowVolume(int index) {
-        return clvIndicator.getValue(index).multipliedBy(series.getTick(index).getVolume());
+        return clvIndicator.getValue(index).multipliedBy(series.getBar(index).getVolume());
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;

@@ -31,9 +31,9 @@ import org.jfree.data.time.Day;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
+import org.ta4j.core.Bar;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
@@ -41,7 +41,7 @@ import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import ta4jexamples.loaders.CsvTicksLoader;
+import ta4jexamples.loaders.CsvBarsLoader;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -53,16 +53,16 @@ public class IndicatorsToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * @param tickSeries the ta4j time series
+     * @param barseries the ta4j time series
      * @param indicator the indicator
      * @param name the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries tickSeries, Indicator<Decimal> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Decimal> indicator, String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < tickSeries.getTickCount(); i++) {
-            Tick tick = tickSeries.getTick(i);
-            chartTimeSeries.add(new Day(Date.from(tick.getEndTime().toInstant())), indicator.getValue(i).toDouble());
+        for (int i = 0; i < barseries.getBarCount(); i++) {
+            Bar bar = barseries.getBar(i);
+            chartTimeSeries.add(new Day(Date.from(bar.getEndTime().toInstant())), indicator.getValue(i).toDouble());
         }
         return chartTimeSeries;
     }
@@ -90,7 +90,7 @@ public class IndicatorsToChart {
         /*
           Getting time series
          */
-        TimeSeries series = CsvTicksLoader.loadAppleIncSeries();
+        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         /*
           Creating indicators

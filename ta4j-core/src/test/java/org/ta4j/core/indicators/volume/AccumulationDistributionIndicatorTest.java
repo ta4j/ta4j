@@ -23,9 +23,9 @@
 package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.time.ZonedDateTime;
@@ -39,14 +39,14 @@ public class AccumulationDistributionIndicatorTest {
     @Test
     public void accumulationDistribution() {
         ZonedDateTime now = ZonedDateTime.now();
-        List<Tick> ticks = new ArrayList<>();
-        ticks.add(new MockTick(now, 0d, 10d, 12d, 8d, 0d, 200d, 0));//2-2 * 200 / 4
-        ticks.add(new MockTick(now, 0d, 8d, 10d, 7d, 0d, 100d, 0));//1-2 *100 / 3
-        ticks.add(new MockTick(now, 0d, 9d, 15d, 6d, 0d, 300d, 0));//3-6 *300 /9
-        ticks.add(new MockTick(now, 0d, 20d, 40d, 5d, 0d, 50d, 0));//15-20 *50 / 35
-        ticks.add(new MockTick(now, 0d, 30d, 30d, 3d, 0d, 600d, 0));//27-0 *600 /27
-        
-        TimeSeries series = new MockTimeSeries(ticks);
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(now, 0d, 10d, 12d, 8d, 0d, 200d, 0));//2-2 * 200 / 4
+        bars.add(new MockBar(now, 0d, 8d, 10d, 7d, 0d, 100d, 0));//1-2 *100 / 3
+        bars.add(new MockBar(now, 0d, 9d, 15d, 6d, 0d, 300d, 0));//3-6 *300 /9
+        bars.add(new MockBar(now, 0d, 20d, 40d, 5d, 0d, 50d, 0));//15-20 *50 / 35
+        bars.add(new MockBar(now, 0d, 30d, 30d, 3d, 0d, 600d, 0));//27-0 *600 /27
+
+        TimeSeries series = new MockTimeSeries(bars);
         AccumulationDistributionIndicator ac = new AccumulationDistributionIndicator(series);
         assertDecimalEquals(ac.getValue(0), 0);
         assertDecimalEquals(ac.getValue(1), -100d / 3);

@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -34,18 +34,18 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 
 public class AverageDirectionalMovementUpIndicatorTest {
-    
+
     @Test
     public void averageDirectionalMovement()
     {
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 0, 10, 2));
-        ticks.add(new MockTick(0, 0, 12, 2));
-        ticks.add(new MockTick(0, 0, 15, 2));
-        ticks.add(new MockTick(0, 0, 11, 2));
-        ticks.add(new MockTick(0, 0, 13, 7));
-        
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 0, 10, 2));
+        bars.add(new MockBar(0, 0, 12, 2));
+        bars.add(new MockBar(0, 0, 15, 2));
+        bars.add(new MockBar(0, 0, 11, 2));
+        bars.add(new MockBar(0, 0, 13, 7));
+
+        MockTimeSeries series = new MockTimeSeries(bars);
         AverageDirectionalMovementUpIndicator admup = new AverageDirectionalMovementUpIndicator(series, 3);
         assertDecimalEquals(admup.getValue(0), 1);
         assertDecimalEquals(admup.getValue(1), 4d/3);

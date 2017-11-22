@@ -27,9 +27,10 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-import org.ta4j.core.Tick;
+
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 public class MMAIndicatorTest {
@@ -61,11 +62,11 @@ public class MMAIndicatorTest {
 
     @Test
     public void stackOverflowError() {
-        List<Tick> bigListOfTicks = new ArrayList<>();
+        List<Bar> bigListOfBars = new ArrayList<>();
         for (int i = 0; i < 10000; i++) {
-            bigListOfTicks.add(new MockTick(i));
+            bigListOfBars.add(new MockBar(i));
         }
-        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfTicks);
+        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
         MMAIndicator mma = new MMAIndicator(closePrice, 10);
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.

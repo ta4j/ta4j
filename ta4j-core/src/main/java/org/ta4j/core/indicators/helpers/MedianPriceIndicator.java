@@ -41,7 +41,7 @@ public class MedianPriceIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return series.getTick(index).getMaxPrice().plus(series.getTick(index).getMinPrice())
+        return series.getBar(index).getMaxPrice().plus(series.getBar(index).getMinPrice())
                 .dividedBy(Decimal.TWO);
     }
 }

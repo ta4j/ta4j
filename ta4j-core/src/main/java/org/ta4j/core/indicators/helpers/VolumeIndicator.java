@@ -35,7 +35,7 @@ public class VolumeIndicator extends CachedIndicator<Decimal> {
     private TimeSeries series;
 
     private int timeFrame;
-    
+
     public VolumeIndicator(TimeSeries series) {
         this(series, 1);
     }
@@ -51,7 +51,7 @@ public class VolumeIndicator extends CachedIndicator<Decimal> {
         int startIndex = Math.max(0, index - timeFrame + 1);
         Decimal sumOfVolume = Decimal.ZERO;
         for (int i = startIndex; i <= index; i++) {
-            sumOfVolume = sumOfVolume.plus(series.getTick(i).getVolume());
+            sumOfVolume = sumOfVolume.plus(series.getBar(i).getVolume());
         }
         return sumOfVolume;
     }

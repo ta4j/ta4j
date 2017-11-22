@@ -32,9 +32,9 @@ import java.time.ZonedDateTime;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
-public class TickTest {
+public class BarTest {
 
-    private Tick tick;
+    private Bar bar;
 
     private ZonedDateTime beginTime;
 
@@ -44,44 +44,44 @@ public class TickTest {
     public void setUp() {
         beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        tick = new BaseTick(Duration.ofHours(1), endTime);
+        bar = new BaseBar(Duration.ofHours(1), endTime);
     }
 
     @Test
     public void addTrades() {
 
-        tick.addTrade(3.0, 200.0);
-        tick.addTrade(4.0, 201.0);
-        tick.addTrade(2.0, 198.0);
+        bar.addTrade(3.0, 200.0);
+        bar.addTrade(4.0, 201.0);
+        bar.addTrade(2.0, 198.0);
 
-        assertEquals(3, tick.getTrades());
-        assertDecimalEquals(tick.getAmount(), 3 * 200 + 4 * 201 + 2 * 198);
-        assertDecimalEquals(tick.getOpenPrice(), 200);
-        assertDecimalEquals(tick.getClosePrice(), 198);
-        assertDecimalEquals(tick.getMinPrice(), 198);
-        assertDecimalEquals(tick.getMaxPrice(), 201);
-        assertDecimalEquals(tick.getVolume(), 9);
+        assertEquals(3, bar.getTrades());
+        assertDecimalEquals(bar.getAmount(), 3 * 200 + 4 * 201 + 2 * 198);
+        assertDecimalEquals(bar.getOpenPrice(), 200);
+        assertDecimalEquals(bar.getClosePrice(), 198);
+        assertDecimalEquals(bar.getMinPrice(), 198);
+        assertDecimalEquals(bar.getMaxPrice(), 201);
+        assertDecimalEquals(bar.getVolume(), 9);
     }
 
     @Test
     public void getTimePeriod() {
-        assertEquals(beginTime, tick.getEndTime().minus(tick.getTimePeriod()));
+        assertEquals(beginTime, bar.getEndTime().minus(bar.getTimePeriod()));
     }
 
     @Test
     public void getBeginTime() {
-        assertEquals(beginTime, tick.getBeginTime());
+        assertEquals(beginTime, bar.getBeginTime());
     }
 
     @Test
     public void inPeriod() {
-        assertFalse(tick.inPeriod(null));
+        assertFalse(bar.inPeriod(null));
 
-        assertFalse(tick.inPeriod(beginTime.withDayOfMonth(24)));
-        assertFalse(tick.inPeriod(beginTime.withDayOfMonth(26)));
-        assertTrue(tick.inPeriod(beginTime.withMinute(30)));
+        assertFalse(bar.inPeriod(beginTime.withDayOfMonth(24)));
+        assertFalse(bar.inPeriod(beginTime.withDayOfMonth(26)));
+        assertTrue(bar.inPeriod(beginTime.withMinute(30)));
 
-        assertTrue(tick.inPeriod(beginTime));
-        assertFalse(tick.inPeriod(endTime));
+        assertTrue(bar.inPeriod(beginTime));
+        assertFalse(bar.inPeriod(endTime));
     }
 }

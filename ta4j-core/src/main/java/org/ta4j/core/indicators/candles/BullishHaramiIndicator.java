@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -36,7 +36,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
 
     private final TimeSeries series;
-    
+
     /**
      * Constructor.
      * @param series a time series
@@ -52,13 +52,13 @@ public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
             // Harami is a 2-candle pattern
             return false;
         }
-        Tick prevTick = series.getTick(index-1);
-        Tick currTick = series.getTick(index);
-        if (prevTick.isBearish() && currTick.isBullish()) {
-            final Decimal prevOpenPrice = prevTick.getOpenPrice();
-            final Decimal prevClosePrice = prevTick.getClosePrice();
-            final Decimal currOpenPrice = currTick.getOpenPrice();
-            final Decimal currClosePrice = currTick.getClosePrice();
+        Bar prevBar = series.getBar(index-1);
+        Bar currBar = series.getBar(index);
+        if (prevBar.isBearish() && currBar.isBullish()) {
+            final Decimal prevOpenPrice = prevBar.getOpenPrice();
+            final Decimal prevClosePrice = prevBar.getClosePrice();
+            final Decimal currOpenPrice = currBar.getOpenPrice();
+            final Decimal currClosePrice = currBar.getClosePrice();
             return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
                     && currClosePrice.isLessThan(prevOpenPrice) && currClosePrice.isGreaterThan(prevClosePrice);
         }

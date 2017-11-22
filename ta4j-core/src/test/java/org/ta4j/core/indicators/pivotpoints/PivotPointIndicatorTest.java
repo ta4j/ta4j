@@ -22,9 +22,18 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.*;
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_1;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_2;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_3;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.SUPPORT_1;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.SUPPORT_2;
+import static org.ta4j.core.indicators.pivotpoints.PivotLevel.SUPPORT_3;
+import static org.ta4j.core.indicators.pivotpoints.TimeLevel.DAY;
+import static org.ta4j.core.indicators.pivotpoints.TimeLevel.MONTH;
+import static org.ta4j.core.indicators.pivotpoints.TimeLevel.WEEK;
+import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -33,10 +42,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-import static org.ta4j.core.indicators.pivotpoints.PivotLevel.*;
-import static org.ta4j.core.indicators.pivotpoints.TimeLevel.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.TimeSeries;
 
 public class PivotPointIndicatorTest {
 
@@ -596,18 +608,18 @@ public class PivotPointIndicatorTest {
                 "2017-10-06,21:55:00,171.95,172.25,171.95,172.24,287810,0\n" +
                 "2017-10-06,22:00:00,172.24,172.37,172.16,172.23,1062537,0";
         String[] dataLine = rawData_5_minutes.split("\n");
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = 0; i < dataLine.length; i++) {
-            String[] tickData = dataLine[i].split(",");
-            ZonedDateTime date = ZonedDateTime.parse(tickData[0]+" "+tickData[1]+" PST", DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s z"));
-            double open = Double.parseDouble(tickData[2]);
-            double high = Double.parseDouble(tickData[3]);
-            double low = Double.parseDouble(tickData[4]);
-            double close = Double.parseDouble(tickData[5]);
-            double volume = Double.parseDouble(tickData[6]);
-            ticks.add(new BaseTick(date, open, high, low, close, volume));
+            String[] barData = dataLine[i].split(",");
+            ZonedDateTime date = ZonedDateTime.parse(barData[0]+" "+barData[1]+" PST", DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s z"));
+            double open = Double.parseDouble(barData[2]);
+            double high = Double.parseDouble(barData[3]);
+            double low = Double.parseDouble(barData[4]);
+            double close = Double.parseDouble(barData[5]);
+            double volume = Double.parseDouble(barData[6]);
+            bars.add(new BaseBar(date, open, high, low, close, volume));
         }
-        series_5_minutes = new BaseTimeSeries("FB_5_minutes", ticks);
+        series_5_minutes = new BaseTimeSeries("FB_5_minutes", bars);
     }
 
     @Before
@@ -789,18 +801,18 @@ public class PivotPointIndicatorTest {
                 "2017-10-06,21:00:00,171.68,171.71,171.36,171.6728,569716,0\n" +
                 "2017-10-06,22:00:00,171.67,172.37,171.55,172.23,2317180,0";
         String[] dataLine = rawData_1_hours.split("\n");
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = 0; i < dataLine.length; i++) {
-            String[] tickData = dataLine[i].split(",");
-            ZonedDateTime date = ZonedDateTime.parse(tickData[0]+" "+tickData[1]+" PST", DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s z"));
-            double open = Double.parseDouble(tickData[2]);
-            double high = Double.parseDouble(tickData[3]);
-            double low = Double.parseDouble(tickData[4]);
-            double close = Double.parseDouble(tickData[5]);
-            double volume = Double.parseDouble(tickData[6]);
-            ticks.add(new BaseTick(date, open, high, low, close, volume));
+            String[] barData = dataLine[i].split(",");
+            ZonedDateTime date = ZonedDateTime.parse(barData[0]+" "+barData[1]+" PST", DateTimeFormatter.ofPattern("yyyy-MM-dd H:m:s z"));
+            double open = Double.parseDouble(barData[2]);
+            double high = Double.parseDouble(barData[3]);
+            double low = Double.parseDouble(barData[4]);
+            double close = Double.parseDouble(barData[5]);
+            double volume = Double.parseDouble(barData[6]);
+            bars.add(new BaseBar(date, open, high, low, close, volume));
         }
-        series_1_hours = new BaseTimeSeries("FB_1_hours",ticks);
+        series_1_hours = new BaseTimeSeries("FB_1_hours", bars);
     }
 
     @Before
@@ -965,18 +977,18 @@ public class PivotPointIndicatorTest {
                 "2017/01/04,118.6900,19594560.0000,117.5500,119.6600,117.2900\n" +
                 "2017/01/03,116.8600,20635600.0000,116.0300,117.8400,115.5100";
         String[] dataLine = rawData_1_days.split("\n");
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = dataLine.length-1; i >=0; i--) {
-            String[] tickData = dataLine[i].split(",");
-            ZonedDateTime date = LocalDate.parse(tickData[0], DateTimeFormatter.ofPattern("yyyy/MM/dd")).atStartOfDay(ZoneId.systemDefault());
-            double close = Double.parseDouble(tickData[1]);
-            double volume = Double.parseDouble(tickData[2]);
-            double open = Double.parseDouble(tickData[3]);
-            double high = Double.parseDouble(tickData[4]);
-            double low = Double.parseDouble(tickData[5]);
-            ticks.add(new BaseTick(date, open, high, low, close, volume));
+            String[] barData = dataLine[i].split(",");
+            ZonedDateTime date = LocalDate.parse(barData[0], DateTimeFormatter.ofPattern("yyyy/MM/dd")).atStartOfDay(ZoneId.systemDefault());
+            double close = Double.parseDouble(barData[1]);
+            double volume = Double.parseDouble(barData[2]);
+            double open = Double.parseDouble(barData[3]);
+            double high = Double.parseDouble(barData[4]);
+            double low = Double.parseDouble(barData[5]);
+            bars.add(new BaseBar(date, open, high, low, close, volume));
         }
-        series_1_days = new BaseTimeSeries("FB_daily",ticks);
+        series_1_days = new BaseTimeSeries("FB_daily", bars);
     }
     @Before
     public void initDataForYearlyTimeFrame(){
@@ -1264,18 +1276,18 @@ public class PivotPointIndicatorTest {
                 "2017-09-25,169.240005,171.660004,161.559998,170.869995,170.869995,111376500\n" +
                 "2017-10-02,171.389999,172.369995,168.289993,172.229996,172.229996,60993900";
         String[] dataLine = rawData_1_week.split("\n");
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = 0; i < dataLine.length; i++) {
-            String[] tickData = dataLine[i].split(",");
-            ZonedDateTime date = LocalDate.parse(tickData[0], DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay(ZoneId.systemDefault());
-            double open = Double.parseDouble(tickData[1]);
-            double high = Double.parseDouble(tickData[2]);
-            double low = Double.parseDouble(tickData[3]);
-            double close = Double.parseDouble(tickData[4]);
-            double volume = Double.parseDouble(tickData[6]);
-            ticks.add(new BaseTick(date, open, high, low, close, volume));
+            String[] barData = dataLine[i].split(",");
+            ZonedDateTime date = LocalDate.parse(barData[0], DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay(ZoneId.systemDefault());
+            double open = Double.parseDouble(barData[1]);
+            double high = Double.parseDouble(barData[2]);
+            double low = Double.parseDouble(barData[3]);
+            double close = Double.parseDouble(barData[4]);
+            double volume = Double.parseDouble(barData[6]);
+            bars.add(new BaseBar(date, open, high, low, close, volume));
         }
-        series_1_weeks = new BaseTimeSeries("FB_daily",ticks);
+        series_1_weeks = new BaseTimeSeries("FB_daily", bars);
     }
 
     @Test
@@ -1289,11 +1301,11 @@ public class PivotPointIndicatorTest {
         StandardReversalIndicator r3 = new StandardReversalIndicator(pp, RESISTANCE_3);
 
         //pp
-        assertEquals(pp.getValue(0), Decimal.NaN);// first tick no data for calculation
-        // result of calculation for 7-27 tick is not adequate because the previous day is incomplete..
+        assertEquals(pp.getValue(0), Decimal.NaN);// first bar no data for calculation
+        // result of calculation for 7-27 bar is not adequate because the previous day is incomplete..
         assertDecimalEquals(pp.getValue(170), Double.valueOf("170.426666"));
-        assertDecimalEquals(pp.getValue(series_5_minutes.getEndIndex()-80), Double.valueOf("169.1266666")); // prev last tick
-        assertDecimalEquals(pp.getValue(series_5_minutes.getEndIndex()), Double.valueOf("170.383333")); // last tick
+        assertDecimalEquals(pp.getValue(series_5_minutes.getEndIndex()-80), Double.valueOf("169.1266666")); // prev last bar
+        assertDecimalEquals(pp.getValue(series_5_minutes.getEndIndex()), Double.valueOf("170.383333")); // last bar
 
         //s1
         assertEquals(s1.getValue(0), Decimal.NaN);
@@ -1344,13 +1356,13 @@ public class PivotPointIndicatorTest {
     public void PivotPointTestWeeklyTimeFrame(){
         PivotPointIndicator pp = new PivotPointIndicator(series_1_hours, TimeLevel.WEEK);
 
-        assertEquals(pp.getValue(0), Decimal.NaN);// first tick no data for
-        assertEquals(pp.getValue(1), Decimal.NaN);// first tick no data for calculation
-        assertEquals(pp.getValue(6), Decimal.NaN);// first tick no data for calculation
-        // result of calculation for second tick is not adequate because the previous day is incomplete
+        assertEquals(pp.getValue(0), Decimal.NaN);// first bar no data for
+        assertEquals(pp.getValue(1), Decimal.NaN);// first bar no data for calculation
+        assertEquals(pp.getValue(6), Decimal.NaN);// first bar no data for calculation
+        // result of calculation for second bar is not adequate because the previous day is incomplete
         assertDecimalEquals(pp.getValue(28), Double.valueOf("172.08166"));
-        assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()-36), Double.valueOf("170.93666")); // prev last tick
-        assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()), Double.valueOf("168.0100")); // last tick
+        assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()-36), Double.valueOf("170.93666")); // prev last bar
+        assertDecimalEquals(pp.getValue(series_1_hours.getEndIndex()), Double.valueOf("168.0100")); // last bar
 
         FibonacciReversalIndicator fibR3 = new FibonacciReversalIndicator(pp, Decimal.ONE, FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
         FibonacciReversalIndicator fibR2 = new FibonacciReversalIndicator(pp, Decimal.valueOf(0.618), FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);

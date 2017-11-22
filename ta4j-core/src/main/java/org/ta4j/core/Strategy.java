@@ -34,23 +34,23 @@ public interface Strategy {
      * @return the name of the strategy
      */
     String getName();
-	
+
     /**
      * @return the entry rule
      */
     Rule getEntryRule();
-    
+
     /**
      * @return the exit rule
      */
     Rule getExitRule();
-	
+
     /**
      * @param strategy the other strategy
      * @return the AND combination of two {@link Strategy strategies}
      */
     Strategy and(Strategy strategy);
-    
+
     /**
      * @param strategy the other strategy
      * @return the OR combination of two {@link Strategy strategies}
@@ -60,42 +60,42 @@ public interface Strategy {
     /**
      * @param name the name of the strategy
      * @param strategy the other strategy
-     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     * @param unstablePeriod number of bars that will be strip off for this strategy
      * @return the AND combination of two {@link Strategy strategies}
      */
     Strategy and(String name, Strategy strategy, int unstablePeriod);
-    
+
     /**
      * @param name the name of the strategy
      * @param strategy the other strategy
-     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     * @param unstablePeriod number of bars that will be strip off for this strategy
      * @return the OR combination of two {@link Strategy strategies}
      */
     Strategy or(String name, Strategy strategy, int unstablePeriod);
-    
+
     /**
      * @return the opposite of the {@link Strategy strategy}
      */
     Strategy opposite();
-    
+
     /**
-     * @param unstablePeriod number of ticks that will be strip off for this strategy
+     * @param unstablePeriod number of bars that will be strip off for this strategy
      */
     void setUnstablePeriod(int unstablePeriod);
-    
+
     /**
-     * @return unstablePeriod number of ticks that will be strip off for this strategy
+     * @return unstablePeriod number of bars that will be strip off for this strategy
      */
     int getUnstablePeriod();
-    
+
     /**
-     * @param index a tick index
+     * @param index a bar index
      * @return true if this strategy is unstable at the provided index, false otherwise (stable)
      */
     boolean isUnstableAt(int index);
-    
+
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend an order, false otherwise (no recommendation)
      */
@@ -110,7 +110,7 @@ public interface Strategy {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index) {
@@ -118,7 +118,7 @@ public interface Strategy {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
      */
@@ -130,7 +130,7 @@ public interface Strategy {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index) {
@@ -138,7 +138,7 @@ public interface Strategy {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to exit, false otherwise
      */

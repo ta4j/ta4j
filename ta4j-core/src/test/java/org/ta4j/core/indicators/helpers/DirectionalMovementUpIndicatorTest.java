@@ -22,63 +22,63 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockTimeSeries;
 
 public class DirectionalMovementUpIndicatorTest {
 
     @Test
     public void zeroDirectionalMovement()
     {
-        MockTick yesterdayTick = new MockTick(0, 0, 10, 2);
-        MockTick todayTick = new MockTick(0, 0, 6, 6);
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(yesterdayTick);
-        ticks.add(todayTick);
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        MockBar yesterdayBar = new MockBar(0, 0, 10, 2);
+        MockBar todayBar = new MockBar(0, 0, 6, 6);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockTimeSeries series = new MockTimeSeries(bars);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
         assertDecimalEquals(dup.getValue(1), 0);
     }
-    
+
     @Test
     public void zeroDirectionalMovement2() {
-        MockTick yesterdayTick = new MockTick(0, 0, 6, 12);
-        MockTick todayTick = new MockTick(0, 0, 12, 6);
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(yesterdayTick);
-        ticks.add(todayTick);
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 12);
+        MockBar todayBar = new MockBar(0, 0, 12, 6);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockTimeSeries series = new MockTimeSeries(bars);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
         assertDecimalEquals(dup.getValue(1), 0);
     }
 
     @Test
     public void zeroDirectionalMovement3() {
-        MockTick yesterdayTick = new MockTick(0, 0, 6, 20);
-        MockTick todayTick = new MockTick(0, 0, 12, 4);
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(yesterdayTick);
-        ticks.add(todayTick);
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 20);
+        MockBar todayBar = new MockBar(0, 0, 12, 4);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockTimeSeries series = new MockTimeSeries(bars);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
         assertDecimalEquals(dup.getValue(1), 0);
     }
 
     @Test
     public void positiveDirectionalMovement() {
-        MockTick yesterdayTick = new MockTick(0, 0, 6, 6);
-        MockTick todayTick = new MockTick(0, 0, 12, 4);
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(yesterdayTick);
-        ticks.add(todayTick);
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 6);
+        MockBar todayBar = new MockBar(0, 0, 12, 4);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockTimeSeries series = new MockTimeSeries(bars);
         DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
         assertDecimalEquals(dup.getValue(1), 6);
     }

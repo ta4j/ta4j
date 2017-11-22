@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -34,19 +34,19 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 
 public class DirectionalDownIndicatorTest {
-    
+
     @Test
     public void averageDirectionalMovement()
     {
-        
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 0, 13, 7));
-        ticks.add(new MockTick(0, 0, 11, 5));
-        ticks.add(new MockTick(0, 0, 15, 3));
-        ticks.add(new MockTick(0, 0, 14, 2));
-        ticks.add(new MockTick(0, 0, 13, 0.2));
-        
-        MockTimeSeries series = new MockTimeSeries(ticks);
+
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 0, 13, 7));
+        bars.add(new MockBar(0, 0, 11, 5));
+        bars.add(new MockBar(0, 0, 15, 3));
+        bars.add(new MockBar(0, 0, 14, 2));
+        bars.add(new MockBar(0, 0, 13, 0.2));
+
+        MockTimeSeries series = new MockTimeSeries(bars);
         DirectionalDownIndicator ddown = new DirectionalDownIndicator(series, 3);
         assertDecimalEquals(ddown.getValue(0), 1);
         assertDecimalEquals(ddown.getValue(1), (4d/3) / (13d/3));

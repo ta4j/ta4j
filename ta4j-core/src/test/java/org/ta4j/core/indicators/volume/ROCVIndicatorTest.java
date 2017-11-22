@@ -24,9 +24,9 @@ package org.ta4j.core.indicators.volume;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
@@ -39,18 +39,18 @@ public class ROCVIndicatorTest {
 
     @Before
     public void setUp() {
-    		List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(1355.69, 1000));
-        ticks.add(new MockTick(1325.51, 3000));
-        ticks.add(new MockTick(1335.02, 3500));
-        ticks.add(new MockTick(1313.72, 2200));
-        ticks.add(new MockTick(1319.99, 2300));
-        ticks.add(new MockTick(1331.85, 200));
-        ticks.add(new MockTick(1329.04, 2700));
-        ticks.add(new MockTick(1362.16, 5000));
-        ticks.add(new MockTick(1365.51, 1000));
-        ticks.add(new MockTick(1374.02, 2500));
-        series = new MockTimeSeries(ticks);
+    		List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(1355.69, 1000));
+        bars.add(new MockBar(1325.51, 3000));
+        bars.add(new MockBar(1335.02, 3500));
+        bars.add(new MockBar(1313.72, 2200));
+        bars.add(new MockBar(1319.99, 2300));
+        bars.add(new MockBar(1331.85, 200));
+        bars.add(new MockBar(1329.04, 2700));
+        bars.add(new MockBar(1362.16, 5000));
+        bars.add(new MockBar(1365.51, 1000));
+        bars.add(new MockBar(1374.02, 2500));
+        series = new MockTimeSeries(bars);
     }
 
     @Test

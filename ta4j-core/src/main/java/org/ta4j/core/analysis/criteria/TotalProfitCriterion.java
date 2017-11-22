@@ -62,8 +62,8 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
     private double calculateProfit(TimeSeries series, Trade trade) {
         Decimal profit = Decimal.ONE;
         if (trade.isClosed()) {
-            Decimal exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
-            Decimal entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
+            Decimal exitClosePrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Decimal entryClosePrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
             if (trade.getEntry().isBuy()) {
                 profit = exitClosePrice.dividedBy(entryClosePrice);

@@ -44,10 +44,10 @@ public class DirectionalMovementUpIndicator extends CachedIndicator<Decimal>
         if (index == 0) {
             return Decimal.ZERO;
         }
-        Decimal prevMaxPrice = series.getTick(index - 1).getMaxPrice();
-        Decimal maxPrice = series.getTick(index).getMaxPrice();
-        Decimal prevMinPrice = series.getTick(index - 1).getMinPrice();
-        Decimal minPrice = series.getTick(index).getMinPrice();
+        Decimal prevMaxPrice = series.getBar(index - 1).getMaxPrice();
+        Decimal maxPrice = series.getBar(index).getMaxPrice();
+        Decimal prevMinPrice = series.getBar(index - 1).getMinPrice();
+        Decimal minPrice = series.getBar(index).getMinPrice();
 
         if ((maxPrice.isLessThan(prevMaxPrice) && minPrice.isGreaterThan(prevMinPrice))
                 || prevMinPrice.minus(minPrice).isEqual(maxPrice.minus(prevMaxPrice))) {
@@ -56,7 +56,7 @@ public class DirectionalMovementUpIndicator extends CachedIndicator<Decimal>
         if (maxPrice.minus(prevMaxPrice).isGreaterThan(prevMinPrice.minus(minPrice))) {
             return maxPrice.minus(prevMaxPrice);
         }
-        
+
         return Decimal.ZERO;
     }
 }

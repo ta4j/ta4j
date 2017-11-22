@@ -24,9 +24,9 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 
@@ -38,7 +38,7 @@ import java.util.Random;
 import static org.junit.Assert.assertEquals;
 
 public class PreviousValueIndicatorTest {
-    
+
     private PreviousValueIndicator prevValueIndicator;
 
     private OpenPriceIndicator openPriceIndicator;
@@ -53,17 +53,17 @@ public class PreviousValueIndicatorTest {
     @Before
     public void setUp() {
         Random r = new Random();
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
             double max = Math.max(close+r.nextDouble(), open+r.nextDouble());
             double min = Math.min(0, Math.min(close-r.nextDouble(), open-r.nextDouble()));
             ZonedDateTime dateTime = ZonedDateTime.now();
-            Tick tick = new BaseTick(dateTime, open, close, max, min, i);
-            ticks.add(tick);
+            Bar bar = new BaseBar(dateTime, open, close, max, min, i);
+            bars.add(bar);
         }
-        this.series = new BaseTimeSeries("test", ticks);
+        this.series = new BaseTimeSeries("test", bars);
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
         this.minPriceIndicator = new MinPriceIndicator(this.series);
@@ -79,28 +79,28 @@ public class PreviousValueIndicatorTest {
         //test 1 with openPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), openPriceIndicator.getValue(0));
-        for (int i = 1; i < this.series.getTickCount(); i++) {
+        for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i-1));
         }
 
         //test 2 with minPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(minPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), minPriceIndicator.getValue(0));
-        for (int i = 1; i < this.series.getTickCount(); i++) {
+        for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), minPriceIndicator.getValue(i-1));
         }
 
         //test 3 with maxPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(maxPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), maxPriceIndicator.getValue(0));
-        for (int i = 1; i < this.series.getTickCount(); i++) {
+        for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), maxPriceIndicator.getValue(i-1));
         }
     }
 
     @Test
     public void shouldBeNthPreviousValueFromIndicator() {
-        for (int i = 0; i < this.series.getTickCount(); i++) {
+        for (int i = 0; i < this.series.getBarCount(); i++) {
             testWithN(i);
         }
     }
@@ -112,7 +112,7 @@ public class PreviousValueIndicatorTest {
         for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(0));
         }
-        for (int i = n; i < this.series.getTickCount(); i++) {
+        for (int i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(i-n));
         }
 
@@ -121,7 +121,7 @@ public class PreviousValueIndicatorTest {
         for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(0));
         }
-        for (int i = n; i < this.series.getTickCount(); i++) {
+        for (int i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i-n));
         }
     }

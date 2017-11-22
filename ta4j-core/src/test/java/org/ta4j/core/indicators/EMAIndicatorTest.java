@@ -24,10 +24,10 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -77,11 +77,11 @@ public class EMAIndicatorTest {
 
     @Test
     public void stackOverflowError() {
-        List<Tick> bigListOfTicks = new ArrayList<Tick>();
+        List<Bar> bigListOfBars = new ArrayList<Bar>();
         for (int i = 0; i < 10000; i++) {
-            bigListOfTicks.add(new MockTick(i));
+            bigListOfBars.add(new MockBar(i));
         }
-        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfTicks);
+        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
         EMAIndicator ema = new EMAIndicator(closePrice, 10);
         // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator

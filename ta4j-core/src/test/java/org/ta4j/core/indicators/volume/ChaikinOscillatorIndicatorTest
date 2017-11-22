@@ -23,10 +23,10 @@
 package org.ta4j.core.indicators.volume;
 
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.ChaikinOscillatorIndicator;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,21 +37,21 @@ public class ChaikinOscillatorIndicatorTest {
     @Test
     public void getValue() {
 
-        List<Tick> ticks = new ArrayList<Tick>();
-        
-        ticks.add(new MockTick(12.915, 13.600, 12.890, 13.550, 264266));
-        ticks.add(new MockTick(13.550, 13.770, 13.310, 13.505, 305427));
-        ticks.add(new MockTick(13.510, 13.590, 13.425, 13.490, 104077));
-        ticks.add(new MockTick(13.515, 13.545, 13.400, 13.480, 136135));
-        ticks.add(new MockTick(13.490, 13.495, 13.310, 13.345, 92090));
-        ticks.add(new MockTick(13.350, 13.490, 13.325, 13.420, 80948));
-        ticks.add(new MockTick(13.415, 13.460, 13.290, 13.300, 82983));
-        ticks.add(new MockTick(13.320, 13.320, 13.090, 13.130, 126918));
-        ticks.add(new MockTick(13.145, 13.225, 13.090, 13.150, 68560));
-        ticks.add(new MockTick(13.150, 13.250, 13.110, 13.245, 41178));
-        ticks.add(new MockTick(13.245, 13.250, 13.120, 13.210, 63606));
-        ticks.add(new MockTick(13.210, 13.275, 13.185, 13.275, 34402));
-        TimeSeries series = new MockTimeSeries(ticks);
+        List<Bar> bars = new ArrayList<Bar>();
+
+        bars.add(new MockBar(12.915, 13.600, 12.890, 13.550, 264266));
+        bars.add(new MockBar(13.550, 13.770, 13.310, 13.505, 305427));
+        bars.add(new MockBar(13.510, 13.590, 13.425, 13.490, 104077));
+        bars.add(new MockBar(13.515, 13.545, 13.400, 13.480, 136135));
+        bars.add(new MockBar(13.490, 13.495, 13.310, 13.345, 92090));
+        bars.add(new MockBar(13.350, 13.490, 13.325, 13.420, 80948));
+        bars.add(new MockBar(13.415, 13.460, 13.290, 13.300, 82983));
+        bars.add(new MockBar(13.320, 13.320, 13.090, 13.130, 126918));
+        bars.add(new MockBar(13.145, 13.225, 13.090, 13.150, 68560));
+        bars.add(new MockBar(13.150, 13.250, 13.110, 13.245, 41178));
+        bars.add(new MockBar(13.245, 13.250, 13.120, 13.210, 63606));
+        bars.add(new MockBar(13.210, 13.275, 13.185, 13.275, 34402));
+        TimeSeries series = new MockTimeSeries(bars);
 
         ChaikinOscillatorIndicator co = new ChaikinOscillatorIndicator(series);
         assertDecimalEquals(co.getValue(0), 0.0);

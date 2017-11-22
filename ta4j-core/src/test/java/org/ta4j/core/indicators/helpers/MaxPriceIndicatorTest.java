@@ -22,12 +22,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import static junit.framework.TestCase.assertEquals;
 
 public class MaxPriceIndicatorTest {
     private MaxPriceIndicator maxPriceIndicator;
@@ -42,9 +42,9 @@ public class MaxPriceIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickMaxPrice() {
+    public void indicatorShouldRetrieveBarMaxPrice() {
         for (int i = 0; i < 10; i++) {
-            assertEquals(maxPriceIndicator.getValue(i), timeSeries.getTick(i).getMaxPrice());
+            assertEquals(maxPriceIndicator.getValue(i), timeSeries.getBar(i).getMaxPrice());
         }
     }
 }

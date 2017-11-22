@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -36,14 +36,14 @@ public class AverageTrueRangeIndicatorTest {
 
     @Test
     public void getValue() {
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 12, 15, 8));
-        ticks.add(new MockTick(0, 8, 11, 6));
-        ticks.add(new MockTick(0, 15, 17, 14));
-        ticks.add(new MockTick(0, 15, 17, 14));
-        ticks.add(new MockTick(0, 0, 0, 2));
-        AverageTrueRangeIndicator atr = new AverageTrueRangeIndicator(new MockTimeSeries(ticks), 3);
-        
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 12, 15, 8));
+        bars.add(new MockBar(0, 8, 11, 6));
+        bars.add(new MockBar(0, 15, 17, 14));
+        bars.add(new MockBar(0, 15, 17, 14));
+        bars.add(new MockBar(0, 0, 0, 2));
+        AverageTrueRangeIndicator atr = new AverageTrueRangeIndicator(new MockTimeSeries(bars), 3);
+
         assertDecimalEquals(atr.getValue(0), 1);
         assertDecimalEquals(atr.getValue(1), 8d/3);
         assertDecimalEquals(atr.getValue(2), 8d/3 * 2d/3 + 3);

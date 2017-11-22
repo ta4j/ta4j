@@ -23,9 +23,9 @@
 package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -38,18 +38,18 @@ public class NVIIndicatorTest {
     @Test
     public void getValue() {
 
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(1355.69, 2739.55));
-        ticks.add(new MockTick(1325.51, 3119.46));
-        ticks.add(new MockTick(1335.02, 3466.88));
-        ticks.add(new MockTick(1313.72, 2577.12));
-        ticks.add(new MockTick(1319.99, 2480.45));
-        ticks.add(new MockTick(1331.85, 2329.79));
-        ticks.add(new MockTick(1329.04, 2793.07));
-        ticks.add(new MockTick(1362.16, 3378.78));
-        ticks.add(new MockTick(1365.51, 2417.59));
-        ticks.add(new MockTick(1374.02, 1442.81));
-        TimeSeries series = new MockTimeSeries(ticks);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(1355.69, 2739.55));
+        bars.add(new MockBar(1325.51, 3119.46));
+        bars.add(new MockBar(1335.02, 3466.88));
+        bars.add(new MockBar(1313.72, 2577.12));
+        bars.add(new MockBar(1319.99, 2480.45));
+        bars.add(new MockBar(1331.85, 2329.79));
+        bars.add(new MockBar(1329.04, 2793.07));
+        bars.add(new MockBar(1362.16, 3378.78));
+        bars.add(new MockBar(1365.51, 2417.59));
+        bars.add(new MockBar(1374.02, 1442.81));
+        TimeSeries series = new MockTimeSeries(bars);
 
         NVIIndicator nvi = new NVIIndicator(series);
         assertDecimalEquals(nvi.getValue(0), 1000);

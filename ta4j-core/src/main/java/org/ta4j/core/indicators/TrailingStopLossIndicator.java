@@ -27,14 +27,14 @@ import org.ta4j.core.Indicator;
 
 /**
  * This class implenents a basic trailing stop loss indicator.
- * 
- * Basic idea: 
- * Your stop order limit is automatically adjusted while price is rising. 
- * On falling prices the initial StopLossDistance is reduced. 
+ *
+ * Basic idea:
+ * Your stop order limit is automatically adjusted while price is rising.
+ * On falling prices the initial StopLossDistance is reduced.
  * Sell signal: When StopLossDistance becomes '0'
- * 
+ *
  * Usage:
- *  
+ *
  * // Buying rule
  * Rule buyingRule = new BooleanRule(true); // No real buying rule
  *
@@ -43,23 +43,23 @@ import org.ta4j.core.Indicator;
  *
  * // Strategy
  * Strategy strategy = new Strategy(buyingRule, sellingRule);
- * 
+ *
  * Hints:
- * There are two constructors for two use cases: 
+ * There are two constructors for two use cases:
  *  - Constructor 1: No initialStopLimit is needed. It is taken from the first indicator value
- *  - Constructor 2: You can set an initialStopLimit 
- * It may influence the trade signals of the strategy depending which constructor you choose.  
- * 
+ *  - Constructor 2: You can set an initialStopLimit
+ * It may influence the trade signals of the strategy depending which constructor you choose.
+ *
  * @author Bastian Engelmann
  */
 public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
-    
+
     private final Indicator<Decimal> indicator;
 
     private Decimal stopLossLimit;
-    
+
     private final Decimal stopLossDistance;
-    
+
     /**
      * Constructor.
      * @param indicator an indicator
@@ -68,7 +68,7 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
     public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance) {
         this(indicator, stopLossDistance, Decimal.NaN);
     }
-    
+
     /**
      * Constructor.
      * @param indicator an indicator
@@ -81,12 +81,12 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
         this.stopLossDistance = stopLossDistance;
         this.stopLossLimit = initialStopLossLimit;
     }
-    
+
     /**
      * Simple implementation of the trailing stop-loss concept.
      * Logic:
      * IF CurrentPrice - StopLossDistance > StopLossLimit THEN StopLossLimit = CurrentPrice - StopLossDistance
-     * @param index the index of the tick
+     * @param index the index of the bar
      * @return Decimal
      */
     @Override
@@ -97,7 +97,7 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
         }
         Decimal currentValue = indicator.getValue(index);
         Decimal referenceValue = stopLossLimit.plus(stopLossDistance);
-        
+
         if (currentValue.isGreaterThan(referenceValue)) {
             stopLossLimit = currentValue.minus(stopLossDistance);
         }

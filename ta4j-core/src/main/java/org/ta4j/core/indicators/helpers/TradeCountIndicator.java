@@ -40,6 +40,6 @@ public class TradeCountIndicator extends CachedIndicator<Integer> {
 
     @Override
     protected Integer calculate(int index) {
-        return series.getTick(index).getTrades();
+        return series.getBar(index).getTrades();
     }
 }

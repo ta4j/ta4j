@@ -22,32 +22,33 @@
  */
 package org.ta4j.core.trading.rules;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.Order;
 import org.ta4j.core.TradingRecord;
 
 import static org.ta4j.core.Order.OrderType;
 
 /**
- * A {@link org.ta4j.core.Rule} which waits for a number of {@link org.ta4j.core.Tick} after an order.
+ * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after an order.
  * <p></p>
- * Satisfied after a fixed number of ticks since the last order.
+ * Satisfied after a fixed number of bars since the last order.
  */
 public class WaitForRule extends AbstractRule {
 
     /** The type of the order since we have to wait for */
     private OrderType orderType;
-    
-    /** The number of ticks to wait for */
-    private int numberOfTicks;
+
+    /** The number of bars to wait for */
+    private int numberOfBars;
 
     /**
      * Constructor.
      * @param orderType the type of the order since we have to wait for
-     * @param numberOfTicks the number of ticks to wait for
+     * @param numberOfBars the number of bars to wait for
      */
-    public WaitForRule(OrderType orderType, int numberOfTicks) {
+    public WaitForRule(OrderType orderType, int numberOfBars) {
         this.orderType = orderType;
-        this.numberOfTicks = numberOfTicks;
+        this.numberOfBars = numberOfBars;
     }
 
     @Override
@@ -57,8 +58,8 @@ public class WaitForRule extends AbstractRule {
         if (tradingRecord != null) {
             Order lastOrder = tradingRecord.getLastOrder(orderType);
             if (lastOrder != null) {
-                int currentNumberOfTicks = index - lastOrder.getIndex();
-                satisfied = currentNumberOfTicks >= numberOfTicks;
+                int currentNumberOfBars = index - lastOrder.getIndex();
+                satisfied = currentNumberOfBars >= numberOfBars;
             }
         }
         traceIsSatisfied(index, satisfied);

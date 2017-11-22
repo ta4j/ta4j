@@ -58,7 +58,7 @@ public class CachedIndicatorTest {
 
     @Test
     public void getValueWithNullTimeSeries() {
-        
+
         ConstantIndicator<Decimal> constant = new ConstantIndicator<Decimal>(Decimal.TEN);
         assertEquals(Decimal.TEN, constant.getValue(0));
         assertEquals(Decimal.TEN, constant.getValue(100));
@@ -86,7 +86,7 @@ public class CachedIndicatorTest {
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
         assertDecimalEquals(sma.getValue(5), 1);
         assertDecimalEquals(sma.getValue(10), 1);
-        timeSeries.setMaximumTickCount(12);
+        timeSeries.setMaximumBarCount(12);
         assertDecimalEquals(sma.getValue(19), 1);
     }
 
@@ -95,9 +95,9 @@ public class CachedIndicatorTest {
         TimeSeries timeSeries = new MockTimeSeries(0, 1, 2, 3, 4, 5, 6, 7);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
-        timeSeries.setMaximumTickCount(6);
+        timeSeries.setMaximumBarCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
-        
+
         Strategy strategy = new BaseStrategy(
                 new OverIndicatorRule(sma, Decimal.THREE),
                 new UnderIndicatorRule(sma, Decimal.THREE)
@@ -105,7 +105,7 @@ public class CachedIndicatorTest {
         // Theoretical shouldEnter results: false, false, false, false, true, true, true, true
         // Theoretical shouldExit results: false, false, true, true, false, false, false, false
 
-        // As we return the first tick/result found for the removed ticks:
+        // As we return the first bar/result found for the removed bars:
         // -> Approximated values for ClosePrice cache: 2, 2, 2, 3, 4, 5, 6, 7
         // -> Approximated values for SMA(2) cache: 2, 2, 2, 2.5, 3.5, 4.5, 5.5, 6.5
 
@@ -132,24 +132,24 @@ public class CachedIndicatorTest {
     }
 
     @Test
-    public void getValueOnResultsCalculatedFromRemovedTicksShouldReturnFirstRemainingResult() {
+    public void getValueOnResultsCalculatedFromRemovedBarsShouldReturnFirstRemainingResult() {
         TimeSeries timeSeries = new MockTimeSeries(1, 1, 1, 1, 1);
-        timeSeries.setMaximumTickCount(3);
-        assertEquals(2, timeSeries.getRemovedTicksCount());
-        
+        timeSeries.setMaximumBarCount(3);
+        assertEquals(2, timeSeries.getRemovedBarsCount());
+
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         for (int i = 0; i < 5; i++) {
             assertDecimalEquals(sma.getValue(i), 1);
         }
     }
-    
+
     @Test
     public void recursiveCachedIndicatorOnMovingTimeSeriesShouldNotCauseStackOverflow() {
         // Added to check issue #120: https://github.com/mdeverdelhan/ta4j/issues/120
         // See also: CachedIndicator#getValue(int index)
         series = new MockTimeSeries();
-        series.setMaximumTickCount(5);
-        assertEquals(5, series.getTickCount());
+        series.setMaximumBarCount(5);
+        assertEquals(5, series.getBarCount());
 
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(series), 1);
         try {

@@ -33,7 +33,7 @@ import java.io.Serializable;
 public interface Indicator<T> extends Serializable {
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @return the value of the indicator
      */
     T getValue(int index);

@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -32,8 +32,8 @@ import org.ta4j.core.indicators.CachedIndicator;
  * <p></p>
  * Provides the (absolute) difference between the max price and the highest price of the candle body.
  * I.e.: max price - max(open price, close price)
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
- *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#formation">
+ *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#formation</a>
  */
 public class UpperShadowIndicator extends CachedIndicator<Decimal> {
 
@@ -50,7 +50,7 @@ public class UpperShadowIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        Tick t = series.getTick(index);
+        Bar t = series.getBar(index);
         final Decimal openPrice = t.getOpenPrice();
         final Decimal closePrice = t.getClosePrice();
         if (closePrice.isGreaterThan(openPrice)) {

@@ -22,14 +22,14 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import static junit.framework.TestCase.assertEquals;
 
 public class TypicalPriceIndicatorTest {
 
@@ -44,10 +44,10 @@ public class TypicalPriceIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickMaxPrice() {
+    public void indicatorShouldRetrieveBarMaxPrice() {
         for (int i = 0; i < 10; i++) {
-            Tick tick = timeSeries.getTick(i);
-            Decimal typicalPrice = tick.getMaxPrice().plus(tick.getMinPrice()).plus(tick.getClosePrice())
+            Bar bar = timeSeries.getBar(i);
+            Decimal typicalPrice = bar.getMaxPrice().plus(bar.getMinPrice()).plus(bar.getClosePrice())
                     .dividedBy(Decimal.THREE);
             assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
         }

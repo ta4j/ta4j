@@ -24,9 +24,9 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -41,15 +41,15 @@ public class AccelerationDecelerationIndicatorTest {
     @Before
     public void setUp() {
 
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Bar> bars = new ArrayList<Bar>();
 
-        ticks.add(new MockTick(0, 0, 16, 8));
-        ticks.add(new MockTick(0, 0, 12, 6));
-        ticks.add(new MockTick(0, 0, 18, 14));
-        ticks.add(new MockTick(0, 0, 10, 6));
-        ticks.add(new MockTick(0, 0, 8, 4));
+        bars.add(new MockBar(0, 0, 16, 8));
+        bars.add(new MockBar(0, 0, 12, 6));
+        bars.add(new MockBar(0, 0, 18, 14));
+        bars.add(new MockBar(0, 0, 10, 6));
+        bars.add(new MockBar(0, 0, 8, 4));
 
-        series = new MockTimeSeries(ticks);
+        series = new MockTimeSeries(bars);
     }
 
     @Test

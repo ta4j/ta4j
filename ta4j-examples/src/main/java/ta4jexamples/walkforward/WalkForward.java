@@ -22,20 +22,26 @@
  */
 package ta4jexamples.walkforward;
 
-import org.ta4j.core.*;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
-import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.strategies.CCICorrectionStrategy;
-import ta4jexamples.strategies.GlobalExtremaStrategy;
-import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.strategies.RSI2Strategy;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+
+import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.strategies.CCICorrectionStrategy;
+import ta4jexamples.strategies.GlobalExtremaStrategy;
+import ta4jexamples.strategies.MovingMomentumStrategy;
+import ta4jexamples.strategies.RSI2Strategy;
 
 /**
  * Walk-forward optimization example.
@@ -46,7 +52,7 @@ import java.util.Map;
  *     http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
  */
 public class WalkForward {
-    
+
     /**
      * Builds a list of split indexes from splitDuration.
      * @param series the time series to get split begin indexes of
@@ -58,38 +64,38 @@ public class WalkForward {
 
         int beginIndex = series.getBeginIndex();
         int endIndex = series.getEndIndex();
-        
+
         // Adding the first begin index
         beginIndexes.add(beginIndex);
 
         // Building the first interval before next split
-        ZonedDateTime beginInterval = series.getFirstTick().getEndTime();
+        ZonedDateTime beginInterval = series.getFirstBar().getEndTime();
         ZonedDateTime endInterval = beginInterval.plus(splitDuration);
 
         for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick...
-            ZonedDateTime tickTime = series.getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
-                // Tick out of the interval
-                if (!endInterval.isAfter(tickTime)) {
-                    // Tick after the interval
+            // For each bar...
+            ZonedDateTime barTime = series.getBar(i).getEndTime();
+            if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
+                // Bar out of the interval
+                if (!endInterval.isAfter(barTime)) {
+                    // Bar after the interval
                     // --> Adding a new begin index
                     beginIndexes.add(i);
                 }
 
                 // Building the new interval before next split
-                beginInterval = endInterval.isBefore(tickTime) ? tickTime : endInterval;
+                beginInterval = endInterval.isBefore(barTime) ? barTime : endInterval;
                 endInterval = beginInterval.plus(splitDuration);
             }
         }
         return beginIndexes;
     }
-    
+
     /**
      * Returns a new time series which is a view of a subset of the current series.
      * <p>
      * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The tick of the series are shared between the original time series and the returned one (i.e. no copy).
+     * The bar of the series are shared between the original time series and the returned one (i.e. no copy).
      * @param series the time series to get a sub-series of
      * @param beginIndex the begin index (inclusive) of the time series
      * @param duration the duration of the time series
@@ -98,25 +104,25 @@ public class WalkForward {
     public static TimeSeries subseries(TimeSeries series, int beginIndex, Duration duration) {
 
         // Calculating the sub-series interval
-        ZonedDateTime beginInterval = series.getTick(beginIndex).getEndTime();
+        ZonedDateTime beginInterval = series.getBar(beginIndex).getEndTime();
         ZonedDateTime endInterval = beginInterval.plus(duration);
 
-        // Checking ticks belonging to the sub-series (starting at the provided index)
-        int subseriesNbTicks = 0;
+        // Checking bars belonging to the sub-series (starting at the provided index)
+        int subseriesNbBars = 0;
         int endIndex = series.getEndIndex();
         for (int i = beginIndex; i <= endIndex; i++) {
-            // For each tick...
-            ZonedDateTime tickTime = series.getTick(i).getEndTime();
-            if (tickTime.isBefore(beginInterval) || !tickTime.isBefore(endInterval)) {
-                // Tick out of the interval
+            // For each bar...
+            ZonedDateTime barTime = series.getBar(i).getEndTime();
+            if (barTime.isBefore(beginInterval) || !barTime.isBefore(endInterval)) {
+                // Bar out of the interval
                 break;
             }
-            // Tick in the interval
-            // --> Incrementing the number of ticks in the subseries
-            subseriesNbTicks++;
+            // Bar in the interval
+            // --> Incrementing the number of bars in the subseries
+            subseriesNbBars++;
         }
 
-        return new BaseTimeSeries(series, beginIndex, beginIndex + subseriesNbTicks - 1);
+        return new BaseTimeSeries(series, beginIndex, beginIndex + subseriesNbBars - 1);
     }
 
     /**
@@ -181,5 +187,5 @@ public class WalkForward {
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }
     }
-    
+
 }

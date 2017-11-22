@@ -44,11 +44,11 @@ public class DirectionalMovementDownIndicator extends CachedIndicator<Decimal>{
         if (index == 0) {
             return Decimal.ZERO;
         }
-        Decimal prevMaxPrice = series.getTick(index - 1).getMaxPrice();
-        Decimal maxPrice = series.getTick(index).getMaxPrice();
-        Decimal prevMinPrice = series.getTick(index - 1).getMinPrice();
-        Decimal minPrice = series.getTick(index).getMinPrice();
-        
+        Decimal prevMaxPrice = series.getBar(index - 1).getMaxPrice();
+        Decimal maxPrice = series.getBar(index).getMaxPrice();
+        Decimal prevMinPrice = series.getBar(index - 1).getMinPrice();
+        Decimal minPrice = series.getBar(index).getMinPrice();
+
         if ((prevMaxPrice.isGreaterThanOrEqual(maxPrice) && prevMinPrice.isLessThanOrEqual(minPrice))
                 || maxPrice.minus(prevMaxPrice).isGreaterThanOrEqual(prevMinPrice.minus(minPrice))) {
             return Decimal.ZERO;

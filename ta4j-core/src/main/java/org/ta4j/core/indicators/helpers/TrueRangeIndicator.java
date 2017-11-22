@@ -38,13 +38,13 @@ public class TrueRangeIndicator extends CachedIndicator<Decimal>{
         super(series);
         this.series = series;
     }
-    
+
     @Override
     protected Decimal calculate(int index) {
-        Decimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
-        Decimal ys = index == 0 ? Decimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
-        Decimal yst = index == 0 ? Decimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
-        
+        Decimal ts = series.getBar(index).getMaxPrice().minus(series.getBar(index).getMinPrice());
+        Decimal ys = index == 0 ? Decimal.ZERO : series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getClosePrice());
+        Decimal yst = index == 0 ? Decimal.ZERO : series.getBar(index - 1).getClosePrice().minus(series.getBar(index).getMinPrice());
+
         return ts.abs().max(ys.abs()).max(yst.abs());
     }
 }

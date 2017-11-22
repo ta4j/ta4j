@@ -41,6 +41,6 @@ public class ClosePriceIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return series.getTick(index).getClosePrice();
+        return series.getBar(index).getClosePrice();
     }
 }
