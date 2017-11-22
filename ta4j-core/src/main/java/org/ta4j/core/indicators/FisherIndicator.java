@@ -74,7 +74,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Decimal> {
     /**
      * Constructor (with gamma 0.5, delta 0.5).
      * 
-     * @param price price the price indicator (usually {@link MedianPriceIndicator})
+     * @param price the price indicator (usually {@link MedianPriceIndicator})
      * @param timeFrame the time frame (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 0.5 or)
@@ -86,7 +86,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Decimal> {
     /**
      * Constructor.
      * 
-     * @param price price the price indicator (usually {@link MedianPriceIndicator})
+     * @param price the price indicator (usually {@link MedianPriceIndicator})
      * @param timeFrame the time frame (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 or 0.5)
