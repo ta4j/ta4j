@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: Use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
 - **Strategy:** can now have a optional parameter "name".
+- **Tick:** Tick has been renamed to **Bar** for a more appropriate description of the price movement over a set period of time. 
 
 ## Added
 - **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
