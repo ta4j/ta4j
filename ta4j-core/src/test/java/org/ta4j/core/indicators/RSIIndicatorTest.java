@@ -22,13 +22,10 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.List;
 import static junit.framework.TestCase.assertEquals;
-import org.apache.poi.ss.usermodel.Sheet;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Decimal;
-import org.ta4j.core.TATestsUtils;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.XlsTestsUtils;
