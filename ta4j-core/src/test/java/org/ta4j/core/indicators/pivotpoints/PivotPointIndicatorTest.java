@@ -1439,7 +1439,7 @@ public class PivotPointIndicatorTest {
         //r3
         assertEquals(r3.getValue(0), Decimal.NaN);
         assertEquals(r3.getValue(19), Decimal.NaN); // no previous month
-        assertDecimalEquals(r3.getValue(series_1_days.getEndIndex()-19), Double.valueOf("168.7399"));
+        assertDecimalEquals(r3.getValue(series_1_days.getEndIndex()-19), Double.valueOf("168.74"));
         assertDecimalEquals(r3.getValue(series_1_days.getEndIndex()), Double.valueOf("208.25000"));
 
     }
