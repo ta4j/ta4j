@@ -20,27 +20,23 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.randomwalk;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
 /**
- * The Class RandomWalkIndexHighIndicator.
+ * The Class RWILowIndicator.
  */
-public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
+public class RWILowIndicator extends CachedIndicator<Decimal> {
 
-    private final MaxPriceIndicator maxPrice;
+private final MaxPriceIndicator maxPrice;
     
     private final MinPriceIndicator minPrice;
-    
-    private final AverageTrueRangeIndicator averageTrueRange;
-    
-    private final Decimal sqrtTimeFrame;
-    
     private final int timeFrame;
     
     /**
@@ -49,24 +45,49 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
      * @param series the series
      * @param timeFrame the time frame
      */
-    public RandomWalkIndexHighIndicator(TimeSeries series, int timeFrame) {
+    public RWILowIndicator(TimeSeries series, int timeFrame) {
         super(series);
+        if(timeFrame <= 0){
+            throw new IllegalArgumentException("Time frame must be bigger than zero");
+        }
+
         this.timeFrame = timeFrame;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new AverageTrueRangeIndicator(series, timeFrame);
-        sqrtTimeFrame = Decimal.valueOf(timeFrame).sqrt();
+
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index - timeFrame)))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
+        Decimal lowestRWI = Decimal.NaN;
+
+        if(index <= timeFrame){
+            return lowestRWI;
+        }
+
+        for(int n = index-1; n >= index-timeFrame+1; n--) {
+            Decimal currentRWI = calcRWIHighValue(index, n);
+            if(currentRWI.isLessThan(lowestRWI) || lowestRWI.isNaN()){
+                lowestRWI = currentRWI;
+            }
+        }
+        return lowestRWI;
+    }
+
+    /**
+     * Calculates the current RWI
+     * @param endIndex tick index of the current calculation
+     * @param currentIndex iterates from index-1 to index-timeFrame+1
+     * @return the RWI value for the current iteration
+     */
+    private Decimal calcRWIHighValue(int endIndex, int currentIndex){
+        AverageTrueRangeIndicator averageTrueRange = new AverageTrueRangeIndicator(getTimeSeries(), endIndex-currentIndex);
+        return maxPrice.getValue(endIndex).minus(minPrice.getValue(currentIndex))
+                .dividedBy(averageTrueRange.getValue(endIndex).multipliedBy(Decimal.valueOf(Math.sqrt(endIndex-currentIndex))));
     }
     
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
-
 }
