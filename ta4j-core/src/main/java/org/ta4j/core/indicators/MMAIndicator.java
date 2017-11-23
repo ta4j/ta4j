@@ -20,11 +20,10 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 /**
  * Modified moving average indicator.
@@ -32,13 +31,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
  * It is similar to exponential moving average but smoothes more slowly.
  * Used in Welles Wilder's indicators like ADX, RSI.
  */
-public class MMAIndicator extends RecursiveCachedIndicator<Decimal> {
-
-    private final Indicator<Decimal> indicator;
-
-    private final int timeFrame;
-
-    private final Decimal multiplier;
+public class MMAIndicator extends AbstractEMAIndicator {
 
     /**
      * Constructor.
@@ -47,23 +40,6 @@ public class MMAIndicator extends RecursiveCachedIndicator<Decimal> {
      * @param timeFrame the MMA time frame
      */
     public MMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
-        this.timeFrame = timeFrame;
-        multiplier = Decimal.ONE.dividedBy(Decimal.valueOf(timeFrame));
-    }
-
-    @Override
-    protected Decimal calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
-        }
-        Decimal mmaPrev = getValue(index - 1);
-        return indicator.getValue(index).minus(mmaPrev).multipliedBy(multiplier).plus(mmaPrev);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        super(indicator, timeFrame, Decimal.ONE.dividedBy(Decimal.valueOf(timeFrame)));
     }
 }

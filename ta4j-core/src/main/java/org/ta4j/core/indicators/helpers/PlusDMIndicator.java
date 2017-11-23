@@ -20,36 +20,36 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.helpers;
 
-import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * +DM indicator.
+ * <p/>
+ */
+public class PlusDMIndicator extends CachedIndicator<Decimal> {
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+    private final TimeSeries series;
 
+    public PlusDMIndicator(TimeSeries series) {
+        super(series);
+        this.series = series;
+    }
 
-public class DirectionalMovementIndicatorTest {
-
-    @Test
-    public void getValue() {
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 0, 10, 2));
-        ticks.add(new MockTick(0, 0, 12, 2));
-        ticks.add(new MockTick(0, 0, 15, 2));
-        MockTimeSeries series = new MockTimeSeries(ticks);
-        
-        DirectionalMovementIndicator dm = new DirectionalMovementIndicator(series, 3);
-        assertDecimalEquals(dm.getValue(0), 0);
-        double dup = (2d / 3 + 2d/3) / (2d/3 + 12d/3);
-        double ddown = (2d/3) /(2d/3 + 12d/3);
-        assertDecimalEquals(dm.getValue(1), (dup - ddown) / (dup + ddown) * 100d);
-        dup = ((2d / 3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3);
-        ddown = (4d/9) /((2d/3 + 12d/3) * 2d/3 + 15d/3);
-        assertDecimalEquals(dm.getValue(2), (dup - ddown) / (dup + ddown) * 100d);
+    @Override
+    protected Decimal calculate(int index) {
+        if (index == 0) {
+            return Decimal.ZERO;
+        }
+        Decimal upMove = series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getMaxPrice());
+        Decimal downMove = series.getTick(index - 1).getMinPrice().minus(series.getTick(index).getMinPrice());
+        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(Decimal.ZERO)) {
+            return upMove;
+        } else {
+            return Decimal.ZERO;
+        }
     }
 }

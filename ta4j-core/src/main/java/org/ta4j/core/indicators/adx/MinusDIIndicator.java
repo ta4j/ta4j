@@ -24,36 +24,39 @@ package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.AverageDirectionalMovementUpIndicator;
-import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
+import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.helpers.MinusDMIndicator;
 
 /**
- * Directional movement plus indicator (DMI+).
+ * -DI indicator.
  * Part of the Directional Movement System
- * <p></p>
+ * <p>
+ * </p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
+ * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
-public class DirectionalMovementPlusIndicator extends CachedIndicator<Decimal> {
-    private final AverageDirectionalMovementUpIndicator averageDirectionalMovementUpIndicator;
-    private final AverageTrueRangeIndicator trueRangeIndicator;
+public class MinusDIIndicator extends CachedIndicator<Decimal> {
+
+    private final MMAIndicator avgMinusDMIndicator;
+    private final ATRIndicator atrIndicator;
     private final int timeFrame;
 
-    public DirectionalMovementPlusIndicator(TimeSeries series, int timeFrame) {
+    public MinusDIIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        this.averageDirectionalMovementUpIndicator = new AverageDirectionalMovementUpIndicator(series, timeFrame);
-        this.trueRangeIndicator = new AverageTrueRangeIndicator(series, timeFrame);
         this.timeFrame = timeFrame;
+        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), timeFrame);
+        this.atrIndicator = new ATRIndicator(series, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return averageDirectionalMovementUpIndicator.getValue(index).dividedBy(trueRangeIndicator.getValue(index)).multipliedBy(Decimal.HUNDRED);
+        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(Decimal.HUNDRED);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

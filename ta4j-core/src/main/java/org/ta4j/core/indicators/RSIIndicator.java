@@ -26,7 +26,6 @@ import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
-import org.ta4j.core.indicators.helpers.MMAIndicator;
 
 /**
  * Relative strength index indicator.
@@ -35,8 +34,8 @@ import org.ta4j.core.indicators.helpers.MMAIndicator;
  */
 public class RSIIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<Decimal> averageGainIndicator;
-    private final Indicator<Decimal> averageLossIndicator;
+    private final MMAIndicator averageGainIndicator;
+    private final MMAIndicator averageLossIndicator;
 
     public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);

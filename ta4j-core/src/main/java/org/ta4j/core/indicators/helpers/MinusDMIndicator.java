@@ -22,35 +22,34 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * -DM indicator.
+ * <p/>
+ */
+public class MinusDMIndicator extends CachedIndicator<Decimal> {
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+    private final TimeSeries series;
 
+    public MinusDMIndicator(TimeSeries series) {
+        super(series);
+        this.series = series;
+    }
 
-public class AverageDirectionalMovementUpIndicatorTest {
-    
-    @Test
-    public void averageDirectionalMovement()
-    {
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 0, 10, 2));
-        ticks.add(new MockTick(0, 0, 12, 2));
-        ticks.add(new MockTick(0, 0, 15, 2));
-        ticks.add(new MockTick(0, 0, 11, 2));
-        ticks.add(new MockTick(0, 0, 13, 7));
-        
-        MockTimeSeries series = new MockTimeSeries(ticks);
-        AverageDirectionalMovementUpIndicator admup = new AverageDirectionalMovementUpIndicator(series, 3);
-        assertDecimalEquals(admup.getValue(0), 1);
-        assertDecimalEquals(admup.getValue(1), 4d/3);
-        assertDecimalEquals(admup.getValue(2), 4d/3 * 2d/3 + 1);
-        assertDecimalEquals(admup.getValue(3), (4d/3 * 2d/3 + 1) * 2d/3);
-        assertDecimalEquals(admup.getValue(4), (4d/3 * 2d/3 + 1) * 2d/3 * 2d/3 + 2d/3);
+    @Override
+    protected Decimal calculate(int index) {
+        if (index == 0) {
+            return Decimal.ZERO;
+        }
+        Decimal upMove = series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getMaxPrice());
+        Decimal downMove = series.getTick(index - 1).getMinPrice().minus(series.getTick(index).getMinPrice());
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(Decimal.ZERO)) {
+            return downMove;
+        } else {
+            return Decimal.ZERO;
+        }
     }
 }

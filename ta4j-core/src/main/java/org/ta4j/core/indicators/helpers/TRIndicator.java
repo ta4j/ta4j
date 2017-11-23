@@ -20,40 +20,30 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.DirectionalMovementIndicator;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * Average directional movement indicator (ADMI/ADX).
- * <p></p>
+ * True range indicator.
+ * <p/>
  */
-public class AverageDirectionalMovementIndicator extends RecursiveCachedIndicator<Decimal> {
+public class TRIndicator extends CachedIndicator<Decimal> {
 
-    private final int timeFrame;
-    private final DirectionalMovementIndicator dm;
+    private final TimeSeries series;
 
-    public AverageDirectionalMovementIndicator(TimeSeries series, int timeFrame) {
+    public TRIndicator(TimeSeries series) {
         super(series);
-        this.timeFrame = timeFrame;
-        this.dm = new DirectionalMovementIndicator(series, timeFrame);
+        this.series = series;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ONE;
-        }
-        Decimal nbPeriods = Decimal.valueOf(timeFrame);
-        Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(dm.getValue(index).dividedBy(nbPeriods));
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        Decimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
+        Decimal ys = index == 0 ? Decimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
+        Decimal yst = index == 0 ? Decimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
+        return ts.abs().max(ys.abs()).max(yst.abs());
     }
 }

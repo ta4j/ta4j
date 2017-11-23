@@ -24,7 +24,7 @@ package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
 
 /**
  * Keltner Channel (lower line) indicator
@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
  */
 public class KeltnerChannelLowerIndicator extends CachedIndicator<Decimal> {
 
-    private final AverageTrueRangeIndicator averageTrueRangeIndicator;
+    private final ATRIndicator averageTrueRangeIndicator;
 
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
 
@@ -43,7 +43,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Decimal> {
         super(keltnerMiddleIndicator);
         this.ratio = ratio;
         this.keltnerMiddleIndicator = keltnerMiddleIndicator;
-        averageTrueRangeIndicator = new AverageTrueRangeIndicator(keltnerMiddleIndicator.getTimeSeries(), timeFrameATR);
+        averageTrueRangeIndicator = new ATRIndicator(keltnerMiddleIndicator.getTimeSeries(), timeFrameATR);
     }
 
     @Override

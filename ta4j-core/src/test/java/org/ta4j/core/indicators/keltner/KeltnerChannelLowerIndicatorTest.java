@@ -22,19 +22,17 @@
  */
 package org.ta4j.core.indicators.keltner;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Decimal;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTick;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class KeltnerChannelLowerIndicatorTest {
 
@@ -42,8 +40,8 @@ public class KeltnerChannelLowerIndicatorTest {
 
     @Before
     public void setUp() {
-        
-        List<Tick> ticks = new ArrayList<Tick>();
+
+        List<Tick> ticks = new ArrayList<>();
         ticks.add(new MockTick(11577.43, 11670.75, 11711.47, 11577.35));
         ticks.add(new MockTick(11670.90, 11691.18, 11698.22, 11635.74));
         ticks.add(new MockTick(11688.61, 11722.89, 11742.68, 11652.89));
@@ -77,7 +75,7 @@ public class KeltnerChannelLowerIndicatorTest {
         ticks.add(new MockTick(12219.79, 12288.17, 12303.16, 12219.79));
         ticks.add(new MockTick(12287.72, 12318.14, 12331.31, 12253.24));
         ticks.add(new MockTick(12389.74, 12212.79, 12389.82, 12176.31));
-        
+
         data = new MockTimeSeries(ticks);
     }
 
@@ -85,23 +83,23 @@ public class KeltnerChannelLowerIndicatorTest {
     public void keltnerChannelLowerIndicatorTest() {
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
         KeltnerChannelLowerIndicator kl = new KeltnerChannelLowerIndicator(km, Decimal.valueOf(2), 14);
-        
-        assertDecimalEquals(kl.getValue(13), 11645.2878);
-        assertDecimalEquals(kl.getValue(14), 11666.9952);
-        assertDecimalEquals(kl.getValue(15), 11688.7782);
-        assertDecimalEquals(kl.getValue(16), 11712.5707);
-        assertDecimalEquals(kl.getValue(17), 11735.3684);
-        assertDecimalEquals(kl.getValue(18), 11724.4143);
-        assertDecimalEquals(kl.getValue(19), 11735.5588);
-        assertDecimalEquals(kl.getValue(20), 11761.7046);
-        assertDecimalEquals(kl.getValue(21), 11778.7855);
-        assertDecimalEquals(kl.getValue(22), 11802.0144);
-        assertDecimalEquals(kl.getValue(23), 11827.1846);
-        assertDecimalEquals(kl.getValue(24), 11859.4459);
-        assertDecimalEquals(kl.getValue(25), 11891.4189);
-        assertDecimalEquals(kl.getValue(26), 11915.3814);
-        assertDecimalEquals(kl.getValue(27), 11938.7221);
-        assertDecimalEquals(kl.getValue(28), 11967.3156);
-        assertDecimalEquals(kl.getValue(29), 11981.9387);
+
+        assertDecimalEquals(kl.getValue(13), 11556.5468);
+        assertDecimalEquals(kl.getValue(14), 11583.7971);
+        assertDecimalEquals(kl.getValue(15), 11610.8331);
+        assertDecimalEquals(kl.getValue(16), 11639.5955);
+        assertDecimalEquals(kl.getValue(17), 11667.0877);
+        assertDecimalEquals(kl.getValue(18), 11660.5619);
+        assertDecimalEquals(kl.getValue(19), 11675.8782);
+        assertDecimalEquals(kl.getValue(20), 11705.9497);
+        assertDecimalEquals(kl.getValue(21), 11726.7208);
+        assertDecimalEquals(kl.getValue(22), 11753.4154);
+        assertDecimalEquals(kl.getValue(23), 11781.8375);
+        assertDecimalEquals(kl.getValue(24), 11817.1476);
+        assertDecimalEquals(kl.getValue(25), 11851.9771);
+        assertDecimalEquals(kl.getValue(26), 11878.6139);
+        assertDecimalEquals(kl.getValue(27), 11904.4570);
+        assertDecimalEquals(kl.getValue(28), 11935.3907);
+        assertDecimalEquals(kl.getValue(29), 11952.2012);
     }
 }

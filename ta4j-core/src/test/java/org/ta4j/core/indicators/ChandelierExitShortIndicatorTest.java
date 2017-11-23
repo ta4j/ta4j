@@ -22,26 +22,24 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Decimal;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTick;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
 public class ChandelierExitShortIndicatorTest {
-    
+
     private TimeSeries data;
 
     @Before
     public void setUp() {
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Tick> ticks = new ArrayList<>();
         // open, close, high, low
         ticks.add(new MockTick(44.98, 45.05, 45.17, 44.96));
         ticks.add(new MockTick(45.05, 45.10, 45.15, 44.99));
@@ -66,15 +64,15 @@ public class ChandelierExitShortIndicatorTest {
     public void massIndexUsing3And8TimeFrames() {
         ChandelierExitShortIndicator ces = new ChandelierExitShortIndicator(data, 5, Decimal.TWO);
 
-        assertDecimalEquals(ces.getValue(5), 45.8424);
-        assertDecimalEquals(ces.getValue(6), 45.7579);
-        assertDecimalEquals(ces.getValue(7), 45.6623);
-        assertDecimalEquals(ces.getValue(8), 45.6199);
-        assertDecimalEquals(ces.getValue(9), 45.6099);
-        assertDecimalEquals(ces.getValue(10), 45.5459);
-        assertDecimalEquals(ces.getValue(11), 45.5807);
-        assertDecimalEquals(ces.getValue(12), 45.6126);
-        assertDecimalEquals(ces.getValue(13), 45.4781);
-        assertDecimalEquals(ces.getValue(14), 45.0605);
+        assertDecimalEquals(ces.getValue(5), 45.3246);
+        assertDecimalEquals(ces.getValue(6), 45.3437);
+        assertDecimalEquals(ces.getValue(7), 45.3309);
+        assertDecimalEquals(ces.getValue(8), 45.3547);
+        assertDecimalEquals(ces.getValue(9), 45.3978);
+        assertDecimalEquals(ces.getValue(10), 45.3762);
+        assertDecimalEquals(ces.getValue(11), 45.4450);
+        assertDecimalEquals(ces.getValue(12), 45.5040);
+        assertDecimalEquals(ces.getValue(13), 45.3912);
+        assertDecimalEquals(ces.getValue(14), 44.9909);
     }
 }

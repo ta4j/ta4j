@@ -20,40 +20,44 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.DirectionalDownIndicator;
-import org.ta4j.core.indicators.helpers.DirectionalUpIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.helpers.DXIndicator;
 
 /**
- * Directional movement indicator.
- * <p></p>
+ * ADX indicator.
+ * Part of the Directional Movement System
+ * <p>
+ * </p>
  */
-public class DirectionalMovementIndicator extends CachedIndicator<Decimal>{
+public class ADXIndicator extends CachedIndicator<Decimal> {
 
-    private final int timeFrame;
-    private final DirectionalUpIndicator dup;
-    private final DirectionalDownIndicator ddown;
+    private final MMAIndicator averageDXIndicator;
+    private final int diTimeFrame;
+    private final int adxTimeFrame;
 
-    public DirectionalMovementIndicator(TimeSeries series, int timeFrame) {
+    public ADXIndicator(TimeSeries series, int diTimeFrame, int adxTimeFrame) {
         super(series);
-        this.timeFrame = timeFrame;
-        dup = new DirectionalUpIndicator(series, timeFrame);
-        ddown = new DirectionalDownIndicator(series, timeFrame);
+        this.diTimeFrame = diTimeFrame;
+        this.adxTimeFrame = adxTimeFrame;
+        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diTimeFrame), adxTimeFrame);
+    }
+
+    public ADXIndicator(TimeSeries series, int timeFrame) {
+        this(series, timeFrame, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal dupValue = dup.getValue(index);
-        Decimal ddownValue = ddown.getValue(index);
-        Decimal difference = dupValue.minus(ddownValue);
-        return difference.abs().dividedBy(dupValue.plus(ddownValue)).multipliedBy(Decimal.HUNDRED);
+        return averageDXIndicator.getValue(index);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " diTimeFrame: " + diTimeFrame + " adxTimeFrame: " + adxTimeFrame;
     }
 }

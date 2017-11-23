@@ -20,39 +20,33 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
-
-import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+package org.ta4j.core.indicators.helpers;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.ta4j.core.Tick;
+import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockTimeSeries;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
-public class AverageDirectionalMovementIndicatorTest {
+public class TRIndicatorTest {
 
     @Test
-    public void getValue()
-    {
-        List<Tick> ticks = new ArrayList<Tick>();
-        
-        ticks.add(new MockTick(0, 0, 10, 2));
-        ticks.add(new MockTick(0, 0, 12, 2));
-        ticks.add(new MockTick(0, 0, 15, 2));
-        MockTimeSeries series = new MockTimeSeries(ticks);
-        AverageDirectionalMovementIndicator adm = new AverageDirectionalMovementIndicator(series, 3);
+    public void getValue() {
+        List<Tick> ticks = new ArrayList<>();
+        ticks.add(new MockTick(0, 12, 15, 8));
+        ticks.add(new MockTick(0, 8, 11, 6));
+        ticks.add(new MockTick(0, 15, 17, 14));
+        ticks.add(new MockTick(0, 15, 17, 14));
+        ticks.add(new MockTick(0, 0, 0, 2));
+        TRIndicator tr = new TRIndicator(new MockTimeSeries(ticks));
 
-        assertDecimalEquals(adm.getValue(0), 1);
-        double dup = (2d/3 + 2d/3) / (2d/3 + 12d/3);
-        double ddown = (2d/3) /(2d/3 + 12d/3);
-        double firstdm = (dup - ddown) / (dup + ddown) * 100;
-        assertDecimalEquals(adm.getValue(1), 2d/3 + firstdm/3);
-        dup = ((2d/3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3);
-        ddown = (4d/9) / ((2d/3 + 12d/3) * 2d/3 + 15d/3);
-        double secondDm = (dup - ddown) / (dup + ddown) * 100;
-        assertDecimalEquals(adm.getValue(2), (2d/3 + firstdm/3) * 2d/3 + secondDm/3);
+        assertDecimalEquals(tr.getValue(0), 7);
+        assertDecimalEquals(tr.getValue(1), 6);
+        assertDecimalEquals(tr.getValue(2), 9);
+        assertDecimalEquals(tr.getValue(3), 3);
+        assertDecimalEquals(tr.getValue(4), 15);
     }
 }

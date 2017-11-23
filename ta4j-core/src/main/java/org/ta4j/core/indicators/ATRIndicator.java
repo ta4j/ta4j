@@ -20,31 +20,27 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 
 /**
- * True range indicator.
- * <p></p>
+ * Average true range indicator.
+ * <p/>
  */
-public class TrueRangeIndicator extends CachedIndicator<Decimal>{
+public class ATRIndicator extends CachedIndicator<Decimal> {
 
-    private TimeSeries series;
+    private final MMAIndicator averageTrueRangeIndicator;
 
-    public TrueRangeIndicator(TimeSeries series) {
+    public ATRIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        this.series = series;
+        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), timeFrame);
     }
-    
+
     @Override
     protected Decimal calculate(int index) {
-        Decimal ts = series.getTick(index).getMaxPrice().minus(series.getTick(index).getMinPrice());
-        Decimal ys = index == 0 ? Decimal.ZERO : series.getTick(index).getMaxPrice().minus(series.getTick(index - 1).getClosePrice());
-        Decimal yst = index == 0 ? Decimal.ZERO : series.getTick(index - 1).getClosePrice().minus(series.getTick(index).getMinPrice());
-        
-        return ts.abs().max(ys.abs()).max(yst.abs());
+        return averageTrueRangeIndicator.getValue(index);
     }
 }

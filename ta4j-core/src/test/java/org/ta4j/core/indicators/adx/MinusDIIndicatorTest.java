@@ -20,37 +20,33 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.junit.Test;
+import org.ta4j.core.XlsTestsUtils;
 
-/**
- * Directional up indicator.
- * <p></p>
- */
-public class DirectionalUpIndicator extends CachedIndicator<Decimal>{
+public class MinusDIIndicatorTest {
 
-    private final Indicator<Decimal> admup;
-    private final Indicator<Decimal> atr;
-    private int timeFrame;
-
-    public DirectionalUpIndicator(TimeSeries series, int timeFrame) {
-        super(series);
-        this.admup = new AverageDirectionalMovementUpIndicator(series, timeFrame);
-        this.atr = new AverageTrueRangeIndicator(series, timeFrame);
-        this.timeFrame = timeFrame;
+    private void minusDIXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(MinusDIIndicatorTest.class, "ADX.xls", timeFrame, 13, (inputSeries) -> {
+            return new MinusDIIndicator(inputSeries, timeFrame);
+        });
     }
 
-    @Override
-    protected Decimal calculate(int index) {
-        return admup.getValue(index).dividedBy(atr.getValue(index));
+    @Test
+    public void minusDIXls1() throws Exception {
+        minusDIXls(1);
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    @Test
+    public void minusDIXls3() throws Exception {
+        minusDIXls(3);
+    }
+
+    @Test
+    public void minusDIXls13() throws Exception {
+        minusDIXls(13);
     }
 }

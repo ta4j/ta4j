@@ -22,14 +22,14 @@
  */
 package org.ta4j.core.indicators;
 
+import static junit.framework.TestCase.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class SMAIndicatorTest {
 
@@ -48,14 +48,14 @@ public class SMAIndicatorTest {
         assertDecimalEquals(sma.getValue(1), 1.5);
         assertDecimalEquals(sma.getValue(2), 2);
         assertDecimalEquals(sma.getValue(3), 3);
-        assertDecimalEquals(sma.getValue(4), 10d/3);
-        assertDecimalEquals(sma.getValue(5), 11d/3);
+        assertDecimalEquals(sma.getValue(4), 10d / 3);
+        assertDecimalEquals(sma.getValue(5), 11d / 3);
         assertDecimalEquals(sma.getValue(6), 4);
-        assertDecimalEquals(sma.getValue(7), 13d/3);
+        assertDecimalEquals(sma.getValue(7), 13d / 3);
         assertDecimalEquals(sma.getValue(8), 4);
-        assertDecimalEquals(sma.getValue(9), 10d/3);
-        assertDecimalEquals(sma.getValue(10), 10d/3);
-        assertDecimalEquals(sma.getValue(11), 10d/3);
+        assertDecimalEquals(sma.getValue(9), 10d / 3);
+        assertDecimalEquals(sma.getValue(10), 10d / 3);
+        assertDecimalEquals(sma.getValue(11), 10d / 3);
         assertDecimalEquals(sma.getValue(12), 3);
     }
 
@@ -65,5 +65,28 @@ public class SMAIndicatorTest {
         for (int i = 0; i < data.getTickCount(); i++) {
             assertEquals(data.getTick(i).getClosePrice(), quoteSMA.getValue(i));
         }
+    }
+
+    private void smaXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(SMAIndicatorTest.class, "SMA.xls", timeFrame, 6, (inputSeries) -> {
+            return new SMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
+        });
+    }
+
+    @Test
+    public void smaXls1() throws Exception {
+        smaXls(1);
+    }
+
+    @Test
+    public void smaXls3() throws Exception {
+        smaXls(3);
+    }
+
+    @Test
+    public void smaXls13() throws Exception {
+        smaXls(13);
     }
 }

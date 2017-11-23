@@ -24,7 +24,6 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 
@@ -37,7 +36,7 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Decimal> {
 
     private final HighestValueIndicator high;
     
-    private final AverageTrueRangeIndicator atr;
+    private final ATRIndicator atr;
     
     private final Decimal k;
 
@@ -58,7 +57,7 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Decimal> {
     public ChandelierExitLongIndicator(TimeSeries series, int timeFrame, Decimal k) {
         super(series);
         high = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
-        atr = new AverageTrueRangeIndicator(series, timeFrame);
+        atr = new ATRIndicator(series, timeFrame);
         this.k = k;
     }
 

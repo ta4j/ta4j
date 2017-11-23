@@ -22,17 +22,15 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTick;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 /**
  * The Class RandomWalkIndexHighIndicatorTest.
@@ -43,8 +41,7 @@ public class RandomWalkIndexHighIndicatorTest {
 
     @Before
     public void setUp() {
-
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Tick> ticks = new ArrayList<>();
         ticks.add(new MockTick(44.98, 45.05, 45.17, 44.96));
         ticks.add(new MockTick(45.05, 45.10, 45.15, 44.99));
         ticks.add(new MockTick(45.11, 45.19, 45.32, 45.11));
@@ -66,26 +63,24 @@ public class RandomWalkIndexHighIndicatorTest {
         ticks.add(new MockTick(43.56, 43.95, 43.99, 43.53));
         ticks.add(new MockTick(43.93, 44.47, 44.58, 43.93));
         data = new MockTimeSeries(ticks);
-        
     }
-    
+
     @Test
-    public void randomWalkIndexHigh()
-    {
+    public void randomWalkIndexHigh() {
         RandomWalkIndexHighIndicator rwih = new RandomWalkIndexHighIndicator(data, 5);
-        
-        assertDecimalEquals(rwih.getValue(6), 0.2118);
-        assertDecimalEquals(rwih.getValue(7), 0.1581);
-        assertDecimalEquals(rwih.getValue(8), 0.3741);
-        assertDecimalEquals(rwih.getValue(9), 0.5798);
-        assertDecimalEquals(rwih.getValue(10), 0.7518);
-        assertDecimalEquals(rwih.getValue(11), 0.9861);
-        assertDecimalEquals(rwih.getValue(12), 0.9652);
-        assertDecimalEquals(rwih.getValue(13), 0.5408);
-        assertDecimalEquals(rwih.getValue(14), -0.1607);
-        assertDecimalEquals(rwih.getValue(15), -1.0879);
-        assertDecimalEquals(rwih.getValue(16), -1.1186);
-        assertDecimalEquals(rwih.getValue(17), -1.4072);
-        assertDecimalEquals(rwih.getValue(18), -0.6779);
+
+        assertDecimalEquals(rwih.getValue(6), 0.5006);
+        assertDecimalEquals(rwih.getValue(7), 0.3381);
+        assertDecimalEquals(rwih.getValue(8), 0.7223);
+        assertDecimalEquals(rwih.getValue(9), 0.9549);
+        assertDecimalEquals(rwih.getValue(10), 1.1681);
+        assertDecimalEquals(rwih.getValue(11), 1.3740);
+        assertDecimalEquals(rwih.getValue(12), 1.2531);
+        assertDecimalEquals(rwih.getValue(13), 0.6202);
+        assertDecimalEquals(rwih.getValue(14), -0.1743);
+        assertDecimalEquals(rwih.getValue(15), -1.1591);
+        assertDecimalEquals(rwih.getValue(16), -1.1662);
+        assertDecimalEquals(rwih.getValue(17), -1.4539);
+        assertDecimalEquals(rwih.getValue(18), -0.6963);
     }
 }

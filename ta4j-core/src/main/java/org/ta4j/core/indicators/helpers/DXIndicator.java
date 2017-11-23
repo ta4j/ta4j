@@ -24,30 +24,40 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.adx.MinusDIIndicator;
+import org.ta4j.core.indicators.adx.PlusDIIndicator;
 
 /**
- * Average true range indicator.
- * <p></p>
+ * DX indicator.
+ * <p>
+ * </p>
  */
-public class AverageTrueRangeIndicator extends RecursiveCachedIndicator<Decimal> {
+public class DXIndicator extends CachedIndicator<Decimal> {
 
     private final int timeFrame;
-    private final TrueRangeIndicator tr;
+    private final PlusDIIndicator plusDIIndicator;
+    private final MinusDIIndicator minusDIIndicator;
 
-    public AverageTrueRangeIndicator(TimeSeries series, int timeFrame) {
+    public DXIndicator(TimeSeries series, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
-        this.tr = new TrueRangeIndicator(series);
+        plusDIIndicator = new PlusDIIndicator(series, timeFrame);
+        minusDIIndicator = new MinusDIIndicator(series, timeFrame);
     }
-    
+
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ONE;
+        Decimal pdiValue = plusDIIndicator.getValue(index);
+        Decimal mdiValue = minusDIIndicator.getValue(index);
+        if (pdiValue.plus(mdiValue).equals(Decimal.ZERO)) {
+            return Decimal.ZERO;
         }
-        Decimal nbPeriods = Decimal.valueOf(timeFrame);
-        Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).plus(tr.getValue(index)).dividedBy(nbPeriods);
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(Decimal.HUNDRED);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

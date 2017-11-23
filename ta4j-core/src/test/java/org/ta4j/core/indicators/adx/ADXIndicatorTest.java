@@ -20,37 +20,33 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.junit.Test;
+import org.ta4j.core.XlsTestsUtils;
 
-/**
- * Directional down indicator.
- * <p></p>
- */
-public class DirectionalDownIndicator extends CachedIndicator<Decimal>{
+public class ADXIndicatorTest {
 
-    private final Indicator<Decimal> admdown;
-    private final Indicator<Decimal> atr;
-    private final int timeFrame;
-
-    public DirectionalDownIndicator(TimeSeries series, int timeFrame) {
-        super(series);
-        this.admdown = new AverageDirectionalMovementDownIndicator(series, timeFrame);
-        this.atr = new AverageTrueRangeIndicator(series, timeFrame);
-        this.timeFrame = timeFrame;
+    private void adxXls(int diTimeFrame, int adxTimeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(ADXIndicatorTest.class, "ADX.xls", diTimeFrame, adxTimeFrame, 15, (inputSeries) -> {
+            return new ADXIndicator(inputSeries, diTimeFrame, adxTimeFrame);
+        });
     }
 
-    @Override
-    protected Decimal calculate(int index) {
-        return admdown.getValue(index).dividedBy(atr.getValue(index));
+    @Test
+    public void adxXls1_1() throws Exception {
+        adxXls(1, 1);
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: "+ timeFrame;
+    @Test
+    public void adxXls3_2() throws Exception {
+        adxXls(3, 2);
+    }
+
+    @Test
+    public void adxXls13_8() throws Exception {
+        adxXls(13, 8);
     }
 }

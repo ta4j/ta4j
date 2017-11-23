@@ -20,34 +20,33 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.XlsTestsUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+public class PlusDIIndicatorTest {
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-public class AverageTrueRangeIndicatorTest {
+    private void plusDIXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(PlusDIIndicatorTest.class, "ADX.xls", timeFrame, 12, (inputSeries) -> {
+            return new PlusDIIndicator(inputSeries, timeFrame);
+        });
+    }
 
     @Test
-    public void getValue() {
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 12, 15, 8));
-        ticks.add(new MockTick(0, 8, 11, 6));
-        ticks.add(new MockTick(0, 15, 17, 14));
-        ticks.add(new MockTick(0, 15, 17, 14));
-        ticks.add(new MockTick(0, 0, 0, 2));
-        AverageTrueRangeIndicator atr = new AverageTrueRangeIndicator(new MockTimeSeries(ticks), 3);
-        
-        assertDecimalEquals(atr.getValue(0), 1);
-        assertDecimalEquals(atr.getValue(1), 8d/3);
-        assertDecimalEquals(atr.getValue(2), 8d/3 * 2d/3 + 3);
-        assertDecimalEquals(atr.getValue(3), (8d/3 * 2d/3 + 3) * 2d/3 + 1);
-        assertDecimalEquals(atr.getValue(4), ((8d/3 * 2d/3 + 3) * 2d/3 + 1) * 2d/3 + 15d/3);
+    public void plusDIXls1() throws Exception {
+        plusDIXls(1);
+    }
+
+    @Test
+    public void plusDIXls3() throws Exception {
+        plusDIXls(3);
+    }
+
+    @Test
+    public void plusDIXls13() throws Exception {
+        plusDIXls(13);
     }
 }

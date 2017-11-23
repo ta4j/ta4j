@@ -20,35 +20,56 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
-
-import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+package org.ta4j.core.indicators;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import org.junit.Test;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.ta4j.core.Tick;
+import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockTimeSeries;
 
-public class TrueRangeIndicatorTest {
+public class ATRIndicatorTest {
 
     @Test
     public void getValue() {
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Tick> ticks = new ArrayList<>();
         ticks.add(new MockTick(0, 12, 15, 8));
         ticks.add(new MockTick(0, 8, 11, 6));
         ticks.add(new MockTick(0, 15, 17, 14));
         ticks.add(new MockTick(0, 15, 17, 14));
         ticks.add(new MockTick(0, 0, 0, 2));
-        TrueRangeIndicator tr = new TrueRangeIndicator(new MockTimeSeries(ticks));
+        ATRIndicator atr = new ATRIndicator(new MockTimeSeries(ticks), 3);
 
-        assertDecimalEquals(tr.getValue(0), 7);
-        assertDecimalEquals(tr.getValue(1), 6);
-        assertDecimalEquals(tr.getValue(2), 9);
-        assertDecimalEquals(tr.getValue(3), 3);
-        assertDecimalEquals(tr.getValue(4), 15);
+        assertDecimalEquals(atr.getValue(0), 7d);
+        assertDecimalEquals(atr.getValue(1), 6d / 3 + (1 - 1d / 3) * atr.getValue(0).toDouble());
+        assertDecimalEquals(atr.getValue(2), 9d / 3 + (1 - 1d / 3) * atr.getValue(1).toDouble());
+        assertDecimalEquals(atr.getValue(3), 3d / 3 + (1 - 1d / 3) * atr.getValue(2).toDouble());
+        assertDecimalEquals(atr.getValue(4), 15d / 3 + (1 - 1d / 3) * atr.getValue(3).toDouble());
     }
 
+    private void atrXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(ATRIndicatorTest.class, "ATR.xls", timeFrame, 7, (inputSeries) -> {
+            return new ATRIndicator(inputSeries, timeFrame);
+        });
+    }
+
+    @Test
+    public void atrXls1() throws Exception {
+        atrXls(1);
+    }
+
+    @Test
+    public void atrXls3() throws Exception {
+        atrXls(3);
+    }
+
+    @Test
+    public void atrXls13() throws Exception {
+        atrXls(13);
+    }
 }
