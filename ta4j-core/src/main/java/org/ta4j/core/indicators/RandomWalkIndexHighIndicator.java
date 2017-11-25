@@ -24,7 +24,6 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
@@ -37,7 +36,7 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
     
     private final MinPriceIndicator minPrice;
     
-    private final AverageTrueRangeIndicator averageTrueRange;
+    private final ATRIndicator averageTrueRange;
     
     private final Decimal sqrtTimeFrame;
     
@@ -54,7 +53,7 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
         this.timeFrame = timeFrame;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new AverageTrueRangeIndicator(series, timeFrame);
+        averageTrueRange = new ATRIndicator(series, timeFrame);
         sqrtTimeFrame = Decimal.valueOf(timeFrame).sqrt();
     }
 

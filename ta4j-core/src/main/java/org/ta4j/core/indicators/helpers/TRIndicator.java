@@ -22,36 +22,28 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * True range indicator.
+ * <p/>
+ */
+public class TRIndicator extends CachedIndicator<Decimal> {
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+    private final TimeSeries series;
 
+    public TRIndicator(TimeSeries series) {
+        super(series);
+        this.series = series;
+    }
 
-public class DirectionalUpIndicatorTest {
-
-    @Test
-    public void getValue()
-    {
-        List<Bar> bars = new ArrayList<Bar>();
-
-        bars.add(new MockBar(0, 0, 10, 2));
-        bars.add(new MockBar(0, 0, 12, 2));
-        bars.add(new MockBar(0, 0, 15, 2));
-        bars.add(new MockBar(0, 0, 11, 2));
-        bars.add(new MockBar(0, 0, 13, 7));
-
-        MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalUpIndicator dup = new DirectionalUpIndicator(series, 3);
-        assertDecimalEquals(dup.getValue(0), 1);
-        assertDecimalEquals(dup.getValue(1), (4d/3) / (14d/3));
-        assertDecimalEquals(dup.getValue(2), (4d/3 * 2d/3 + 1) / (14d/3 * 2d/3 + 15d/3));
-        assertDecimalEquals(dup.getValue(3), ((4d/3 * 2d/3 + 1) * 2d/3) / (((14d/3 * 2d/3 + 15d/3) * 2d/3) + 11d/3));
-        assertDecimalEquals(dup.getValue(4), ((4d/3 * 2d/3 + 1) * 2d/3 * 2d/3 + 2d/3) / (((((14d/3 * 2d/3 + 15d/3) * 2d/3) + 11d/3) * 2d/3) + 13d/3));
+    @Override
+    protected Decimal calculate(int index) {
+        Decimal ts = series.getBar(index).getMaxPrice().minus(series.getBar(index).getMinPrice());
+        Decimal ys = index == 0 ? Decimal.ZERO : series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getClosePrice());
+        Decimal yst = index == 0 ? Decimal.ZERO : series.getBar(index - 1).getClosePrice().minus(series.getBar(index).getMinPrice());
+        return ts.abs().max(ys.abs()).max(yst.abs());
     }
 }

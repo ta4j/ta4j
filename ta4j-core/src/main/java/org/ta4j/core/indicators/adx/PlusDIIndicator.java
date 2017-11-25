@@ -20,34 +20,43 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.helpers.PlusDMIndicator;
 
 /**
- * Average true range indicator.
- * <p></p>
+ * +DI indicator.
+ * Part of the Directional Movement System
+ * <p>
+ * </p>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
+ * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
-public class AverageTrueRangeIndicator extends RecursiveCachedIndicator<Decimal> {
+public class PlusDIIndicator extends CachedIndicator<Decimal> {
 
+    private final MMAIndicator avgPlusDMIndicator;
+    private final ATRIndicator atrIndicator;
     private final int timeFrame;
-    private final TrueRangeIndicator tr;
 
-    public AverageTrueRangeIndicator(TimeSeries series, int timeFrame) {
+    public PlusDIIndicator(TimeSeries series, int timeFrame) {
         super(series);
+        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), timeFrame);
+        this.atrIndicator = new ATRIndicator(series, timeFrame);
         this.timeFrame = timeFrame;
-        this.tr = new TrueRangeIndicator(series);
     }
-    
+
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ONE;
-        }
-        Decimal nbPeriods = Decimal.valueOf(timeFrame);
-        Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).plus(tr.getValue(index)).dividedBy(nbPeriods);
+        return avgPlusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(Decimal.HUNDRED);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "timeFrame: " + timeFrame;
     }
 }

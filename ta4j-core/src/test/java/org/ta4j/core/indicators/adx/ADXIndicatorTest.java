@@ -20,40 +20,33 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.DirectionalDownIndicator;
-import org.ta4j.core.indicators.helpers.DirectionalUpIndicator;
+import org.junit.Test;
+import org.ta4j.core.XlsTestsUtils;
 
-/**
- * Directional movement indicator.
- * <p></p>
- */
-public class DirectionalMovementIndicator extends CachedIndicator<Decimal>{
+public class ADXIndicatorTest {
 
-    private final int timeFrame;
-    private final DirectionalUpIndicator dup;
-    private final DirectionalDownIndicator ddown;
-
-    public DirectionalMovementIndicator(TimeSeries series, int timeFrame) {
-        super(series);
-        this.timeFrame = timeFrame;
-        dup = new DirectionalUpIndicator(series, timeFrame);
-        ddown = new DirectionalDownIndicator(series, timeFrame);
+    private void adxXls(int diTimeFrame, int adxTimeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(ADXIndicatorTest.class, "ADX.xls", diTimeFrame, adxTimeFrame, 15, (inputSeries) -> {
+            return new ADXIndicator(inputSeries, diTimeFrame, adxTimeFrame);
+        });
     }
 
-    @Override
-    protected Decimal calculate(int index) {
-        Decimal dupValue = dup.getValue(index);
-        Decimal ddownValue = ddown.getValue(index);
-        Decimal difference = dupValue.minus(ddownValue);
-        return difference.abs().dividedBy(dupValue.plus(ddownValue)).multipliedBy(Decimal.HUNDRED);
+    @Test
+    public void adxXls1_1() throws Exception {
+        adxXls(1, 1);
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+    @Test
+    public void adxXls3_2() throws Exception {
+        adxXls(3, 2);
+    }
+
+    @Test
+    public void adxXls13_8() throws Exception {
+        adxXls(13, 8);
     }
 }

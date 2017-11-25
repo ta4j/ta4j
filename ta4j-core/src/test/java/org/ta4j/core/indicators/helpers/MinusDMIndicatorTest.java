@@ -32,7 +32,7 @@ import java.util.List;
 
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
-public class DirectionalMovementDownIndicatorTest {
+public class MinusDMIndicatorTest {
 
     @Test
     public void zeroDirectionalMovement() {
@@ -42,7 +42,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 0);
     }
 
@@ -54,7 +54,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 0);
     }
 
@@ -66,7 +66,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 0);
     }
 
@@ -78,7 +78,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 16);
     }
 }

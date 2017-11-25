@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
@@ -22,6 +22,10 @@
  */
 package org.ta4j.core;
 
+import org.apache.poi.hssf.usermodel.HSSFDateUtil;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -29,13 +33,6 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import org.apache.poi.hssf.usermodel.HSSFDateUtil;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellValue;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
 
 public class XlsTestsUtils {
 
@@ -106,5 +103,31 @@ public class XlsTestsUtils {
             values.add(Decimal.valueOf(d));
         }
         return values;
+    }
+
+    public static void testXlsIndicator(Class testClass, String xlsFileName, Double param1Value, Double param2Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
+        // read time series from xls
+        Sheet sheet = getDataSheet(testClass, xlsFileName);
+        TimeSeries inputSeries = readTimeSeries(sheet);
+        // compute and read expected values from xls
+        if (param1Value != null) {
+            setParamValue(sheet, 0, param1Value);
+        }
+        if (param2Value != null) {
+            setParamValue(sheet, 1, param2Value);
+        }
+        List<Decimal> expectedValues = readValues(sheet, valueColumnIdx);
+        // create indicator using time series
+        Indicator<Decimal> actualIndicator = indicatorFactory.createIndicator(inputSeries);
+        // compare values computed by indicator with values computed independently in excel
+        TATestsUtils.assertValuesEquals(actualIndicator, expectedValues);
+    }
+
+    public static void testXlsIndicator(Class testClass, String xlsFileName, int param1Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
+        testXlsIndicator(testClass, xlsFileName, new Double(param1Value), null, valueColumnIdx, indicatorFactory);
+    }
+
+    public static void testXlsIndicator(Class testClass, String xlsFileName, int param1Value, int param2Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
+        testXlsIndicator(testClass, xlsFileName, new Double(param1Value), new Double(param2Value), valueColumnIdx, indicatorFactory);
     }
 }

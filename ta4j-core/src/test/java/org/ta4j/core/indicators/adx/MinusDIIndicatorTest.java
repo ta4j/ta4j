@@ -20,36 +20,33 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.adx;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.XlsTestsUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+public class MinusDIIndicatorTest {
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-
-public class DirectionalMovementIndicatorTest {
+    private void minusDIXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(MinusDIIndicatorTest.class, "ADX.xls", timeFrame, 13, (inputSeries) -> {
+            return new MinusDIIndicator(inputSeries, timeFrame);
+        });
+    }
 
     @Test
-    public void getValue() {
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 0, 10, 2));
-        bars.add(new MockBar(0, 0, 12, 2));
-        bars.add(new MockBar(0, 0, 15, 2));
-        MockTimeSeries series = new MockTimeSeries(bars);
+    public void minusDIXls1() throws Exception {
+        minusDIXls(1);
+    }
 
-        DirectionalMovementIndicator dm = new DirectionalMovementIndicator(series, 3);
-        assertDecimalEquals(dm.getValue(0), 0);
-        double dup = (2d / 3 + 2d/3) / (2d/3 + 12d/3);
-        double ddown = (2d/3) /(2d/3 + 12d/3);
-        assertDecimalEquals(dm.getValue(1), (dup - ddown) / (dup + ddown) * 100d);
-        dup = ((2d / 3 + 2d/3) * 2d/3 + 1) / ((2d/3 + 12d/3) * 2d/3 + 15d/3);
-        ddown = (4d/9) /((2d/3 + 12d/3) * 2d/3 + 15d/3);
-        assertDecimalEquals(dm.getValue(2), (dup - ddown) / (dup + ddown) * 100d);
+    @Test
+    public void minusDIXls3() throws Exception {
+        minusDIXls(3);
+    }
+
+    @Test
+    public void minusDIXls13() throws Exception {
+        minusDIXls(13);
     }
 }

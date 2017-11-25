@@ -70,22 +70,21 @@ public class RandomWalkIndexHighIndicatorTest {
     }
 
     @Test
-    public void randomWalkIndexHigh()
-    {
+    public void randomWalkIndexHigh() {
         RandomWalkIndexHighIndicator rwih = new RandomWalkIndexHighIndicator(data, 5);
 
-        assertDecimalEquals(rwih.getValue(6), 0.2118);
-        assertDecimalEquals(rwih.getValue(7), 0.1581);
-        assertDecimalEquals(rwih.getValue(8), 0.3741);
-        assertDecimalEquals(rwih.getValue(9), 0.5798);
-        assertDecimalEquals(rwih.getValue(10), 0.7518);
-        assertDecimalEquals(rwih.getValue(11), 0.9861);
-        assertDecimalEquals(rwih.getValue(12), 0.9652);
-        assertDecimalEquals(rwih.getValue(13), 0.5408);
-        assertDecimalEquals(rwih.getValue(14), -0.1607);
-        assertDecimalEquals(rwih.getValue(15), -1.0879);
-        assertDecimalEquals(rwih.getValue(16), -1.1186);
-        assertDecimalEquals(rwih.getValue(17), -1.4072);
-        assertDecimalEquals(rwih.getValue(18), -0.6779);
+        assertDecimalEquals(rwih.getValue(6), 0.5006);
+        assertDecimalEquals(rwih.getValue(7), 0.3381);
+        assertDecimalEquals(rwih.getValue(8), 0.7223);
+        assertDecimalEquals(rwih.getValue(9), 0.9549);
+        assertDecimalEquals(rwih.getValue(10), 1.1681);
+        assertDecimalEquals(rwih.getValue(11), 1.3740);
+        assertDecimalEquals(rwih.getValue(12), 1.2531);
+        assertDecimalEquals(rwih.getValue(13), 0.6202);
+        assertDecimalEquals(rwih.getValue(14), -0.1743);
+        assertDecimalEquals(rwih.getValue(15), -1.1591);
+        assertDecimalEquals(rwih.getValue(16), -1.1662);
+        assertDecimalEquals(rwih.getValue(17), -1.4539);
+        assertDecimalEquals(rwih.getValue(18), -0.6963);
     }
 }

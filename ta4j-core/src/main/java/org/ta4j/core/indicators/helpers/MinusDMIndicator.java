@@ -24,31 +24,32 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * Average of {@link DirectionalMovementUpIndicator directional movement up indicator}.
- * <p></p>
+ * -DM indicator.
+ * <p/>
  */
-public class AverageDirectionalMovementUpIndicator extends RecursiveCachedIndicator<Decimal> {
+public class MinusDMIndicator extends CachedIndicator<Decimal> {
 
-    private final int timeFrame;
+    private final TimeSeries series;
 
-    private final DirectionalMovementUpIndicator dmup;
-
-    public AverageDirectionalMovementUpIndicator(TimeSeries series, int timeFrame) {
+    public MinusDMIndicator(TimeSeries series) {
         super(series);
-        this.timeFrame = timeFrame;
-        dmup = new DirectionalMovementUpIndicator(series);
+        this.series = series;
     }
 
     @Override
     protected Decimal calculate(int index) {
         if (index == 0) {
-            return Decimal.ONE;
+            return Decimal.ZERO;
         }
-        Decimal nbPeriods = Decimal.valueOf(timeFrame);
-        Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(dmup.getValue(index).dividedBy(nbPeriods));
+        Decimal upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
+        Decimal downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(Decimal.ZERO)) {
+            return downMove;
+        } else {
+            return Decimal.ZERO;
+        }
     }
 }

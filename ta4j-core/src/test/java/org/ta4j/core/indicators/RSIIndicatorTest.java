@@ -22,18 +22,16 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.List;
-import static junit.framework.TestCase.assertEquals;
-import org.apache.poi.ss.usermodel.Sheet;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Decimal;
-import org.ta4j.core.TATestsUtils;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class RSIIndicatorTest {
 
@@ -85,12 +83,9 @@ public class RSIIndicatorTest {
     private void rsiXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        Sheet sheet = XlsTestsUtils.getDataSheet(RSIIndicatorTest.class, "RSI.xls");
-        XlsTestsUtils.setParamValue(sheet, 0, timeFrame);
-        TimeSeries inputSeries = XlsTestsUtils.readTimeSeries(sheet);
-        RSIIndicator actualIndicator = new RSIIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        List<Decimal> expectedValues = XlsTestsUtils.readValues(sheet, 10);
-        TATestsUtils.assertValuesEquals(actualIndicator, expectedValues);
+        XlsTestsUtils.testXlsIndicator(RSIIndicatorTest.class, "RSI.xls", timeFrame, 10, (inputSeries) -> {
+            return new RSIIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
+        });
     }
 
     @Test

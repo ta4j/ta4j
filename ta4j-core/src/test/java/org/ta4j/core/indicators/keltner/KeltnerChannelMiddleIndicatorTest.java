@@ -85,22 +85,22 @@ public class KeltnerChannelMiddleIndicatorTest {
     public void keltnerChannelMiddleIndicatorTest() {
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
 
-        assertDecimalEquals(km.getValue(13), 11751.376);
-        assertDecimalEquals(km.getValue(14), 11781.9285);
-        assertDecimalEquals(km.getValue(15), 11807.9634);
-        assertDecimalEquals(km.getValue(16), 11831.6269);
-        assertDecimalEquals(km.getValue(17), 11852.7207);
-        assertDecimalEquals(km.getValue(18), 11857.9486);
-        assertDecimalEquals(km.getValue(19), 11882.2434);
-        assertDecimalEquals(km.getValue(20), 11903.5403);
-        assertDecimalEquals(km.getValue(21), 11924.7029);
-        assertDecimalEquals(km.getValue(22), 11947.0292);
-        assertDecimalEquals(km.getValue(23), 11975.6427);
-        assertDecimalEquals(km.getValue(24), 12009.977);
-        assertDecimalEquals(km.getValue(25), 12040.632);
-        assertDecimalEquals(km.getValue(26), 12065.7864);
-        assertDecimalEquals(km.getValue(27), 12093.4496);
-        assertDecimalEquals(km.getValue(28), 12116.7483);
-        assertDecimalEquals(km.getValue(29), 12131.4005);
+        assertDecimalEquals(km.getValue(13), 11764.23);
+        assertDecimalEquals(km.getValue(14), 11793.0687);
+        assertDecimalEquals(km.getValue(15), 11817.6182);
+        assertDecimalEquals(km.getValue(16), 11839.9944);
+        assertDecimalEquals(km.getValue(17), 11859.9725);
+        assertDecimalEquals(km.getValue(18), 11864.2335);
+        assertDecimalEquals(km.getValue(19), 11887.6903);
+        assertDecimalEquals(km.getValue(20), 11908.2609);
+        assertDecimalEquals(km.getValue(21), 11928.7941);
+        assertDecimalEquals(km.getValue(22), 11950.5749);
+        assertDecimalEquals(km.getValue(23), 11978.7156);
+        assertDecimalEquals(km.getValue(24), 12012.6402);
+        assertDecimalEquals(km.getValue(25), 12042.9401);
+        assertDecimalEquals(km.getValue(26), 12067.7868);
+        assertDecimalEquals(km.getValue(27), 12095.1832);
+        assertDecimalEquals(km.getValue(28), 12118.2508);
+        assertDecimalEquals(km.getValue(29), 12132.7027);
     }
 }

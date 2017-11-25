@@ -66,15 +66,15 @@ public class ChandelierExitShortIndicatorTest {
     public void massIndexUsing3And8TimeFrames() {
         ChandelierExitShortIndicator ces = new ChandelierExitShortIndicator(data, 5, Decimal.TWO);
 
-        assertDecimalEquals(ces.getValue(5), 45.8424);
-        assertDecimalEquals(ces.getValue(6), 45.7579);
-        assertDecimalEquals(ces.getValue(7), 45.6623);
-        assertDecimalEquals(ces.getValue(8), 45.6199);
-        assertDecimalEquals(ces.getValue(9), 45.6099);
-        assertDecimalEquals(ces.getValue(10), 45.5459);
-        assertDecimalEquals(ces.getValue(11), 45.5807);
-        assertDecimalEquals(ces.getValue(12), 45.6126);
-        assertDecimalEquals(ces.getValue(13), 45.4781);
-        assertDecimalEquals(ces.getValue(14), 45.0605);
+        assertDecimalEquals(ces.getValue(5), 45.3246);
+        assertDecimalEquals(ces.getValue(6), 45.3437);
+        assertDecimalEquals(ces.getValue(7), 45.3309);
+        assertDecimalEquals(ces.getValue(8), 45.3547);
+        assertDecimalEquals(ces.getValue(9), 45.3978);
+        assertDecimalEquals(ces.getValue(10), 45.3762);
+        assertDecimalEquals(ces.getValue(11), 45.4450);
+        assertDecimalEquals(ces.getValue(12), 45.5040);
+        assertDecimalEquals(ces.getValue(13), 45.3912);
+        assertDecimalEquals(ces.getValue(14), 44.9909);
     }
 }

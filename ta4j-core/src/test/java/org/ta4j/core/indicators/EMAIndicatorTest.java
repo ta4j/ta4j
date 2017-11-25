@@ -26,6 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -33,7 +34,6 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class EMAIndicatorTest {
@@ -42,7 +42,6 @@ public class EMAIndicatorTest {
 
     @Before
     public void setUp() {
-
         data = new MockTimeSeries(
                 64.75, 63.79, 63.73,
                 63.73, 63.55, 63.19,
@@ -51,28 +50,17 @@ public class EMAIndicatorTest {
     }
 
     @Test
-    public void emaUsingTimeFrame10UsingClosePrice() {
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-
-        assertDecimalEquals(ema.getValue(9), 63.6536);
-        assertDecimalEquals(ema.getValue(10), 63.2312);
-        assertDecimalEquals(ema.getValue(11), 62.9182);
-    }
-
-    @Test
     public void emaFirstValueShouldBeEqualsToFirstDataValue() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 1);
-        assertDecimalEquals(ema.getValue(0), "64.75");
+        assertDecimalEquals(ema.getValue(0), 64.75);
     }
 
     @Test
-    public void valuesLessThanTimeFrameMustBeEqualsToSmaValues() {
+    public void emaUsingTimeFrame10UsingClosePrice() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 10);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
-
-        for (int i = 0; i < 9; i++) {
-            assertEquals(sma.getValue(i), ema.getValue(i));
-        }
+        assertDecimalEquals(ema.getValue(9), 63.6948);
+        assertDecimalEquals(ema.getValue(10), 63.2648);
+        assertDecimalEquals(ema.getValue(11), 62.9457);
     }
 
     @Test
@@ -84,9 +72,30 @@ public class EMAIndicatorTest {
         MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
         EMAIndicator ema = new EMAIndicator(closePrice, 10);
-        // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
         assertDecimalEquals(ema.getValue(9999), 9994.5);
+    }
 
+    private void emaXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(EMAIndicatorTest.class, "EMA.xls", timeFrame, 6, (inputSeries) -> {
+            return new EMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
+        });
+    }
+
+    @Test
+    public void emaXls1() throws Exception {
+        emaXls(1);
+    }
+
+    @Test
+    public void emaXls3() throws Exception {
+        emaXls(3);
+    }
+
+    @Test
+    public void emaXls13() throws Exception {
+        emaXls(13);
     }
 }

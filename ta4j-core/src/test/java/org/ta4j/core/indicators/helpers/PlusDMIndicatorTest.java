@@ -22,17 +22,17 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class DirectionalMovementUpIndicatorTest {
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+
+public class PlusDMIndicatorTest {
 
     @Test
     public void zeroDirectionalMovement()
@@ -43,7 +43,7 @@ public class DirectionalMovementUpIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
+        PlusDMIndicator dup = new PlusDMIndicator(series);
         assertDecimalEquals(dup.getValue(1), 0);
     }
 
@@ -55,7 +55,7 @@ public class DirectionalMovementUpIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
+        PlusDMIndicator dup = new PlusDMIndicator(series);
         assertDecimalEquals(dup.getValue(1), 0);
     }
 
@@ -67,7 +67,7 @@ public class DirectionalMovementUpIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
+        PlusDMIndicator dup = new PlusDMIndicator(series);
         assertDecimalEquals(dup.getValue(1), 0);
     }
 
@@ -79,7 +79,7 @@ public class DirectionalMovementUpIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementUpIndicator dup = new DirectionalMovementUpIndicator(series);
+        PlusDMIndicator dup = new PlusDMIndicator(series);
         assertDecimalEquals(dup.getValue(1), 6);
     }
 }

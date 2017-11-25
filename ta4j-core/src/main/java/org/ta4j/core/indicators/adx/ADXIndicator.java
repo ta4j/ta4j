@@ -20,37 +20,44 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.helpers.DXIndicator;
 
 /**
- * Directional up indicator.
- * <p></p>
+ * ADX indicator.
+ * Part of the Directional Movement System
+ * <p>
+ * </p>
  */
-public class DirectionalUpIndicator extends CachedIndicator<Decimal>{
+public class ADXIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<Decimal> admup;
-    private final Indicator<Decimal> atr;
-    private int timeFrame;
+    private final MMAIndicator averageDXIndicator;
+    private final int diTimeFrame;
+    private final int adxTimeFrame;
 
-    public DirectionalUpIndicator(TimeSeries series, int timeFrame) {
+    public ADXIndicator(TimeSeries series, int diTimeFrame, int adxTimeFrame) {
         super(series);
-        this.admup = new AverageDirectionalMovementUpIndicator(series, timeFrame);
-        this.atr = new AverageTrueRangeIndicator(series, timeFrame);
-        this.timeFrame = timeFrame;
+        this.diTimeFrame = diTimeFrame;
+        this.adxTimeFrame = adxTimeFrame;
+        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diTimeFrame), adxTimeFrame);
+    }
+
+    public ADXIndicator(TimeSeries series, int timeFrame) {
+        this(series, timeFrame, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return admup.getValue(index).dividedBy(atr.getValue(index));
+        return averageDXIndicator.getValue(index);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " diTimeFrame: " + diTimeFrame + " adxTimeFrame: " + adxTimeFrame;
     }
 }

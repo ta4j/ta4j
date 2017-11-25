@@ -20,39 +20,43 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.MMAIndicator;
+import org.ta4j.core.indicators.helpers.MinusDMIndicator;
 
 /**
- * Directional movement down indicator.
- * <p></p>
+ * -DI indicator.
+ * Part of the Directional Movement System
+ * <p>
+ * </p>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
+ * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
-public class DirectionalMovementDownIndicator extends CachedIndicator<Decimal>{
+public class MinusDIIndicator extends CachedIndicator<Decimal> {
 
-    private TimeSeries series;
+    private final MMAIndicator avgMinusDMIndicator;
+    private final ATRIndicator atrIndicator;
+    private final int timeFrame;
 
-    public DirectionalMovementDownIndicator(TimeSeries series) {
+    public MinusDIIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        this.series = series;
+        this.timeFrame = timeFrame;
+        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), timeFrame);
+        this.atrIndicator = new ATRIndicator(series, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ZERO;
-        }
-        Decimal prevMaxPrice = series.getBar(index - 1).getMaxPrice();
-        Decimal maxPrice = series.getBar(index).getMaxPrice();
-        Decimal prevMinPrice = series.getBar(index - 1).getMinPrice();
-        Decimal minPrice = series.getBar(index).getMinPrice();
+        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(Decimal.HUNDRED);
+    }
 
-        if ((prevMaxPrice.isGreaterThanOrEqual(maxPrice) && prevMinPrice.isLessThanOrEqual(minPrice))
-                || maxPrice.minus(prevMaxPrice).isGreaterThanOrEqual(prevMinPrice.minus(minPrice))) {
-            return Decimal.ZERO;
-        }
-        return prevMinPrice.minus(minPrice);
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

@@ -27,14 +27,14 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * Directional movement up indicator.
- * <p></p>
+ * +DM indicator.
+ * <p/>
  */
-public class DirectionalMovementUpIndicator extends CachedIndicator<Decimal>
-{
-    private TimeSeries series;
+public class PlusDMIndicator extends CachedIndicator<Decimal> {
 
-    public DirectionalMovementUpIndicator(TimeSeries series) {
+    private final TimeSeries series;
+
+    public PlusDMIndicator(TimeSeries series) {
         super(series);
         this.series = series;
     }
@@ -44,19 +44,12 @@ public class DirectionalMovementUpIndicator extends CachedIndicator<Decimal>
         if (index == 0) {
             return Decimal.ZERO;
         }
-        Decimal prevMaxPrice = series.getBar(index - 1).getMaxPrice();
-        Decimal maxPrice = series.getBar(index).getMaxPrice();
-        Decimal prevMinPrice = series.getBar(index - 1).getMinPrice();
-        Decimal minPrice = series.getBar(index).getMinPrice();
-
-        if ((maxPrice.isLessThan(prevMaxPrice) && minPrice.isGreaterThan(prevMinPrice))
-                || prevMinPrice.minus(minPrice).isEqual(maxPrice.minus(prevMaxPrice))) {
+        Decimal upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
+        Decimal downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
+        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(Decimal.ZERO)) {
+            return upMove;
+        } else {
             return Decimal.ZERO;
         }
-        if (maxPrice.minus(prevMaxPrice).isGreaterThan(prevMinPrice.minus(minPrice))) {
-            return maxPrice.minus(prevMaxPrice);
-        }
-
-        return Decimal.ZERO;
     }
 }

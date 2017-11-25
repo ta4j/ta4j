@@ -22,20 +22,24 @@
  */
 package ta4jexamples.indicators;
 
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.*;
-import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.PriceVariationIndicator;
-import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
-import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import ta4jexamples.loaders.CsvTradesLoader;
-
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.PPOIndicator;
+import org.ta4j.core.indicators.ROCIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.WilliamsRIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.PriceVariationIndicator;
+import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a CSV file containing values from indicators.
@@ -73,7 +77,7 @@ public class IndicatorsToCsv {
         // Williams %R
         WilliamsRIndicator williamsR = new WilliamsRIndicator(series, 20);
         // Average true range
-        AverageTrueRangeIndicator atr = new AverageTrueRangeIndicator(series, 20);
+        ATRIndicator atr = new ATRIndicator(series, 20);
         // Standard deviation
         StandardDeviationIndicator sd = new StandardDeviationIndicator(closePrice, 14);
 
