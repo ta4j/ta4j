@@ -85,7 +85,7 @@ public class TATestsUtils {
      * @param actualIndicator indicator to compare
      */
     public static void assertValuesEquals(Indicator<Decimal> actualIndicator, List<Decimal> expectedValues) {
-        assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getTickCount());
+        assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getBarCount());
         for (int i = 0; i < expectedValues.size(); i++) {
             assertEquals(String.format("Values at index <%d> does not match,", i),
                     expectedValues.get(i).toDouble(), actualIndicator.getValue(i).toDouble(), TA_OFFSET);

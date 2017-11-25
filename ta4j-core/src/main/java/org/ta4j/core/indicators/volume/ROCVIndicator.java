@@ -41,7 +41,7 @@ public class ROCVIndicator extends CachedIndicator<Decimal> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the time series
      * @param timeFrame the time frame
      */
@@ -54,13 +54,13 @@ public class ROCVIndicator extends CachedIndicator<Decimal> {
     @Override
     protected Decimal calculate(int index) {
         int nIndex = Math.max(index - timeFrame, 0);
-        Decimal nPeriodsAgoValue = series.getTick(nIndex).getVolume();
-        Decimal currentValue = series.getTick(index).getVolume();
+        Decimal nPeriodsAgoValue = series.getBar(nIndex).getVolume();
+        Decimal currentValue = series.getBar(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)
                 .multipliedBy(Decimal.HUNDRED);
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;

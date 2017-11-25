@@ -52,10 +52,10 @@ public class StrategyAnalysis {
         // Total profit
         TotalProfitCriterion totalProfit = new TotalProfitCriterion();
         System.out.println("Total profit: " + totalProfit.calculate(series, tradingRecord));
-        // Number of ticks
-        System.out.println("Number of ticks: " + new NumberOfTicksCriterion().calculate(series, tradingRecord));
-        // Average profit (per tick)
-        System.out.println("Average profit (per tick): " + new AverageProfitCriterion().calculate(series, tradingRecord));
+        // Number of bars
+        System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
+        // Average profit (per bar)
+        System.out.println("Average profit (per bar): " + new AverageProfitCriterion().calculate(series, tradingRecord));
         // Number of trades
         System.out.println("Number of trades: " + new NumberOfTradesCriterion().calculate(series, tradingRecord));
         // Profitable trades ratio

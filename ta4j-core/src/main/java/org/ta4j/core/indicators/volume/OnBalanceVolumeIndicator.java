@@ -44,13 +44,13 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Decimal> 
         if (index == 0) {
             return Decimal.ZERO;
         }
-        Decimal yesterdayClose = series.getTick(index - 1).getClosePrice();
-        Decimal todayClose = series.getTick(index).getClosePrice();
+        Decimal yesterdayClose = series.getBar(index - 1).getClosePrice();
+        Decimal todayClose = series.getBar(index).getClosePrice();
 
         if (yesterdayClose.isGreaterThan(todayClose)) {
-            return getValue(index - 1).minus(series.getTick(index).getVolume());
+            return getValue(index - 1).minus(series.getBar(index).getVolume());
         } else if (yesterdayClose.isLessThan(todayClose)) {
-            return getValue(index - 1).plus(series.getTick(index).getVolume());
+            return getValue(index - 1).plus(series.getBar(index).getVolume());
         }
         return getValue(index - 1);
     }

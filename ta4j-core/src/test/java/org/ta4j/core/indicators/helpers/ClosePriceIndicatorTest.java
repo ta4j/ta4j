@@ -41,9 +41,9 @@ public class ClosePriceIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickClosePrice() {
+    public void indicatorShouldRetrieveBarClosePrice() {
         for (int i = 0; i < 10; i++) {
-            assertEquals(closePrice.getValue(i), timeSeries.getTick(i).getClosePrice());
+            assertEquals(closePrice.getValue(i), timeSeries.getBar(i).getClosePrice());
         }
     }
 }

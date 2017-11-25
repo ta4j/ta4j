@@ -27,19 +27,19 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Number of ticks criterion.
+ * Number of bars criterion.
  * <p></p>
- * Returns the number of ticks during the provided trade(s).
+ * Returns the number of bars during the provided trade(s).
  */
-public class NumberOfTicksCriterion extends AbstractAnalysisCriterion {
+public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        int nTicks = 0;
+        int nBars = 0;
         for (Trade trade : tradingRecord.getTrades()) {
-            nTicks += calculate(series, trade);
+            nBars += calculate(series, trade);
         }
-        return nTicks;
+        return nBars;
     }
 
     @Override

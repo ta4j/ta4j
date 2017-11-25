@@ -22,11 +22,15 @@
  */
 package org.ta4j.core.analysis;
 
-import org.ta4j.core.*;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 
 /**
  * The cash flow.
@@ -64,7 +68,7 @@ public class CashFlow implements Indicator<Decimal> {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @return the cash flow value at the index-th position
      */
     @Override
@@ -81,7 +85,7 @@ public class CashFlow implements Indicator<Decimal> {
      * @return the size of the time series
      */
     public int getSize() {
-        return timeSeries.getTickCount();
+        return timeSeries.getBarCount();
     }
 
     /**
@@ -99,9 +103,9 @@ public class CashFlow implements Indicator<Decimal> {
         for (int i = Math.max(begin, 1); i <= end; i++) {
             Decimal ratio;
             if (trade.getEntry().isBuy()) {
-                ratio = timeSeries.getTick(i).getClosePrice().dividedBy(timeSeries.getTick(entryIndex).getClosePrice());
+                ratio = timeSeries.getBar(i).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
             } else {
-                ratio = timeSeries.getTick(entryIndex).getClosePrice().dividedBy(timeSeries.getTick(i).getClosePrice());
+                ratio = timeSeries.getBar(entryIndex).getClosePrice().dividedBy(timeSeries.getBar(i).getClosePrice());
             }
             values.add(values.get(entryIndex).multipliedBy(ratio));
         }

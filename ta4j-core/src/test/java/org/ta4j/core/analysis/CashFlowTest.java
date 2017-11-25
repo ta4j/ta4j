@@ -24,7 +24,7 @@ package org.ta4j.core.analysis;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.Collections;
@@ -172,7 +172,7 @@ public class CashFlowTest {
         assertDecimalEquals(cashFlow.getValue(10), 5d/3 * 6d/4 * 8d/7);
         assertDecimalEquals(cashFlow.getValue(11), 5d/3 * 6d/4 * 5d/7);
         assertDecimalEquals(cashFlow.getValue(12), 5d/3 * 6d/4 * 5d/7);
-        
+
         // Second sample series
         sampleTimeSeries = new MockTimeSeries(5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
 		tradingRecord = new BaseTradingRecord(
@@ -199,11 +199,11 @@ public class CashFlowTest {
         assertDecimalEquals(cashFlow.getValue(7), 1);
         assertDecimalEquals(cashFlow.getValue(9), 1);
     }
-    
+
     @Test
     public void reallyLongCashFlow() {
         int size = 1000000;
-        TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Tick) new MockTick(10)));
+        TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Bar) new MockBar(10)));
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(size - 1));
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
         assertDecimalEquals(cashFlow.getValue(size - 1), 1);

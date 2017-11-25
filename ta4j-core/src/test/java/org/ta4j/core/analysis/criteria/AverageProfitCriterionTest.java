@@ -60,7 +60,7 @@ public class AverageProfitCriterionTest {
     }
 
     @Test
-    public void calculateWithNoTicksShouldReturn1() {
+    public void calculateWithNoBarsShouldReturn1() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
         assertEquals(1d, averageProfit.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);

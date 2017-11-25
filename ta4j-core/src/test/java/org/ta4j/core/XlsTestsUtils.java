@@ -82,13 +82,13 @@ public class XlsTestsUtils {
             cell = row.getCell(5);
             value = evaluator.evaluate(cell);
             double volume = value.getNumberValue();
-            Tick tick = new BaseTick(weekDuration, weekEndDateTime,
+            Bar bar = new BaseBar(weekDuration, weekEndDateTime,
                     Decimal.valueOf(open),
                     Decimal.valueOf(high),
                     Decimal.valueOf(low),
                     Decimal.valueOf(close),
                     Decimal.valueOf(volume));
-            series.addTick(tick);
+            series.addBar(bar);
         }
         return series;
     }

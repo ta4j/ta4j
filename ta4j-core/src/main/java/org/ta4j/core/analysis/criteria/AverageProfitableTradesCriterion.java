@@ -42,10 +42,10 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         Decimal result;
         if (trade.getEntry().isBuy()) {
             // buy-then-sell trade
-            result = series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice());
+            result = series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
         } else {
             // sell-then-buy trade
-            result = series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice());
+            result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
         }
 
         return (result.isGreaterThan(Decimal.ONE)) ? 1d : 0d;
@@ -61,10 +61,10 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             Decimal result;
             if (trade.getEntry().isBuy()) {
                 // buy-then-sell trade
-                result = series.getTick(exitIndex).getClosePrice().dividedBy(series.getTick(entryIndex).getClosePrice());
+                result = series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
             } else {
                 // sell-then-buy trade
-                result = series.getTick(entryIndex).getClosePrice().dividedBy(series.getTick(exitIndex).getClosePrice());
+                result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
             }
             if (result.isGreaterThan(Decimal.ONE)) {
                 numberOfProfitable++;

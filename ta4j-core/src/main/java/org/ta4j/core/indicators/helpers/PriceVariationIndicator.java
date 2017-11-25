@@ -41,8 +41,8 @@ public class PriceVariationIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal previousTickClosePrice = series.getTick(Math.max(0, index - 1)).getClosePrice();
-        Decimal currentTickClosePrice = series.getTick(index).getClosePrice();
-        return currentTickClosePrice.dividedBy(previousTickClosePrice);
+        Decimal previousBarClosePrice = series.getBar(Math.max(0, index - 1)).getClosePrice();
+        Decimal currentBarClosePrice = series.getBar(index).getClosePrice();
+        return currentBarClosePrice.dividedBy(previousBarClosePrice);
     }
 }

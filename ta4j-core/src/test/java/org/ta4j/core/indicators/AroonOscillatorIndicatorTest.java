@@ -23,18 +23,18 @@
 package org.ta4j.core.indicators;
 
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseTick;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Tick;
-import org.ta4j.core.TimeSeries;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 
 
 public class AroonOscillatorIndicatorTest {
@@ -207,13 +207,13 @@ public class AroonOscillatorIndicatorTest {
 
 
         String[] dataLine = rawData.split("\n");
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (int i = dataLine.length-1; i >= 0; i--) {
-            String[] tickData = dataLine[i].split(",");
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),tickData[3],tickData[4],tickData[5],tickData[1],tickData[2]);
-            ticks.add(tick);
+            String[] barData = dataLine[i].split(",");
+            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i),barData[3],barData[4],barData[5],barData[1],barData[2]);
+            bars.add(bar);
         }
-        data = new BaseTimeSeries("FB_daily",ticks);
+        data = new BaseTimeSeries("FB_daily", bars);
 
     }
 

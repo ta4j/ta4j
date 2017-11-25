@@ -22,41 +22,41 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
-import org.ta4j.core.mocks.MockTimeSeries;
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockTimeSeries;
 
 public class VolumeIndicatorTest {
 
     @Test
-    public void indicatorShouldRetrieveTickVolume() {
+    public void indicatorShouldRetrieveBarVolume() {
         TimeSeries series = new MockTimeSeries();
         VolumeIndicator volumeIndicator = new VolumeIndicator(series);
         for (int i = 0; i < 10; i++) {
-            assertEquals(volumeIndicator.getValue(i), series.getTick(i).getVolume());
+            assertEquals(volumeIndicator.getValue(i), series.getBar(i).getVolume());
         }
     }
 
     @Test
     public void sumOfVolume() {
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(0, 10));
-        ticks.add(new MockTick(0, 11));
-        ticks.add(new MockTick(0, 12));
-        ticks.add(new MockTick(0, 13));
-        ticks.add(new MockTick(0, 150));
-        ticks.add(new MockTick(0, 155));
-        ticks.add(new MockTick(0, 160));
-        VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(ticks), 3);
-        
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 10));
+        bars.add(new MockBar(0, 11));
+        bars.add(new MockBar(0, 12));
+        bars.add(new MockBar(0, 13));
+        bars.add(new MockBar(0, 150));
+        bars.add(new MockBar(0, 155));
+        bars.add(new MockBar(0, 160));
+        VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(bars), 3);
+
         assertDecimalEquals(volumeIndicator.getValue(0), 10);
         assertDecimalEquals(volumeIndicator.getValue(1), 21);
         assertDecimalEquals(volumeIndicator.getValue(2), 33);

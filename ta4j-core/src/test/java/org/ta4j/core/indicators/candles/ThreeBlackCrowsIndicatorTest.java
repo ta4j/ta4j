@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -42,19 +42,19 @@ public class ThreeBlackCrowsIndicatorTest {
 
     @Before
     public void setUp() {
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
-        ticks.add(new MockTick(19, 19, 22, 15));
-        ticks.add(new MockTick(10, 18, 20, 8));
-        ticks.add(new MockTick(17, 20, 21, 17));
-        ticks.add(new MockTick(19, 17, 20, 16.9));
-        ticks.add(new MockTick(17.5, 14, 18, 13.9));
-        ticks.add(new MockTick(15, 11, 15, 11));
-        ticks.add(new MockTick(12, 14, 15, 8));
-        ticks.add(new MockTick(13, 16, 16, 11));
-        series = new MockTimeSeries(ticks);
+        bars.add(new MockBar(19, 19, 22, 15));
+        bars.add(new MockBar(10, 18, 20, 8));
+        bars.add(new MockBar(17, 20, 21, 17));
+        bars.add(new MockBar(19, 17, 20, 16.9));
+        bars.add(new MockBar(17.5, 14, 18, 13.9));
+        bars.add(new MockBar(15, 11, 15, 11));
+        bars.add(new MockBar(12, 14, 15, 8));
+        bars.add(new MockBar(13, 16, 16, 11));
+        series = new MockTimeSeries(bars);
     }
-    
+
     @Test
     public void getValue() {
         ThreeBlackCrowsIndicator tbc = new ThreeBlackCrowsIndicator(series, 3, Decimal.valueOf("0.1"));

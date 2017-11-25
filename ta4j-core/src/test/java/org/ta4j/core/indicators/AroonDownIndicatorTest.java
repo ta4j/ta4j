@@ -40,26 +40,26 @@ public class AroonDownIndicatorTest {
     @Before
     public void init() {
         data = new BaseTimeSeries();
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(1),168.28, 169.87, 167.15, 169.64, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(2),168.84, 169.36, 168.2, 168.71, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(3),168.88, 169.29, 166.41, 167.74, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(4),168, 168.38, 166.18, 166.32, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(5),166.89, 167.7, 166.33, 167.24, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(6),165.25, 168.43, 165, 168.05, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(7),168.17, 170.18, 167.63, 169.92, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(8),170.42, 172.15, 170.06, 171.97, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(9),172.41, 172.92, 171.31, 172.02, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(10),171.2, 172.39, 169.55, 170.72, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(11),170.91, 172.48, 169.57, 172.09, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(12),171.8, 173.31, 170.27, 173.21, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(13),173.09, 173.49, 170.8, 170.95, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(14),172.41, 173.89, 172.2, 173.51, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(15),173.87, 174.17, 175, 172.96, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(16),173, 173.17, 172.06, 173.05, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(17),172.26, 172.28, 170.5, 170.96, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(18),170.88, 172.34, 170.26, 171.64, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(19),171.85, 172.07, 169.34, 170.01, 0));
-        data.addTick(new BaseTick(ZonedDateTime.now().plusDays(20),170.75, 172.56, 170.36, 172.52, 0)); // FB, daily, 9.19.'17
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(1),168.28, 169.87, 167.15, 169.64, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(2),168.84, 169.36, 168.2, 168.71, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(3),168.88, 169.29, 166.41, 167.74, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(4),168, 168.38, 166.18, 166.32, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(5),166.89, 167.7, 166.33, 167.24, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(6),165.25, 168.43, 165, 168.05, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(7),168.17, 170.18, 167.63, 169.92, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(8),170.42, 172.15, 170.06, 171.97, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(9),172.41, 172.92, 171.31, 172.02, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(10),171.2, 172.39, 169.55, 170.72, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(11),170.91, 172.48, 169.57, 172.09, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(12),171.8, 173.31, 170.27, 173.21, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(13),173.09, 173.49, 170.8, 170.95, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(14),172.41, 173.89, 172.2, 173.51, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(15),173.87, 174.17, 175, 172.96, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(16),173, 173.17, 172.06, 173.05, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(17),172.26, 172.28, 170.5, 170.96, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(18),170.88, 172.34, 170.26, 171.64, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(19),171.85, 172.07, 169.34, 170.01, 0));
+        data.addBar(new BaseBar(ZonedDateTime.now().plusDays(20),170.75, 172.56, 170.36, 172.52, 0)); // FB, daily, 9.19.'17
 
     }
 
@@ -86,13 +86,13 @@ public class AroonDownIndicatorTest {
 
     @Test
     public void onlyNaNValues(){
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (long i = 0; i<= 1000; i++){
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i), Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
-            ticks.add(tick);
+            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i), Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+            bars.add(bar);
         }
 
-        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        BaseTimeSeries series = new BaseTimeSeries("NaN test", bars);
         AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(series, 5);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++){
             assertEquals(Decimal.NaN.toString(), aroonDownIndicator.getValue(i).toString());
@@ -101,14 +101,14 @@ public class AroonDownIndicatorTest {
 
     @Test
     public void naNValuesInIntervall(){
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (long i = 10; i >= 0; i--){ // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
             Decimal minPrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(10-i),Decimal.NaN, Decimal.NaN, minPrice, Decimal.NaN, Decimal.NaN);
-            ticks.add(tick);
+            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(10-i),Decimal.NaN, Decimal.NaN, minPrice, Decimal.NaN, Decimal.NaN);
+            bars.add(bar);
         }
-        ticks.add(new BaseTick(ZonedDateTime.now().plusDays(11),Decimal.NaN, Decimal.NaN, Decimal.TEN, Decimal.NaN, Decimal.NaN));
-        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        bars.add(new BaseBar(ZonedDateTime.now().plusDays(11),Decimal.NaN, Decimal.NaN, Decimal.TEN, Decimal.NaN, Decimal.NaN));
+        BaseTimeSeries series = new BaseTimeSeries("NaN test", bars);
         AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(series, 5);
 
         for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){

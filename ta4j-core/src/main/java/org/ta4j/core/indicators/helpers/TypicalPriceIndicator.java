@@ -41,9 +41,9 @@ public class TypicalPriceIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal maxPrice = series.getTick(index).getMaxPrice();
-        Decimal minPrice = series.getTick(index).getMinPrice();
-        Decimal closePrice = series.getTick(index).getClosePrice();
+        Decimal maxPrice = series.getBar(index).getMaxPrice();
+        Decimal minPrice = series.getBar(index).getMinPrice();
+        Decimal closePrice = series.getBar(index).getClosePrice();
         return maxPrice.plus(minPrice).plus(closePrice).dividedBy(Decimal.THREE);
     }
 }

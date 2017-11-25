@@ -41,9 +41,9 @@ public class TradeCountIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickTrade() {
+    public void indicatorShouldRetrieveBarTrade() {
         for (int i = 0; i < 10; i++) {
-            assertEquals((int) tradeIndicator.getValue(i), timeSeries.getTick(i).getTrades());
+            assertEquals((int) tradeIndicator.getValue(i), timeSeries.getBar(i).getTrades());
         }
     }
 }

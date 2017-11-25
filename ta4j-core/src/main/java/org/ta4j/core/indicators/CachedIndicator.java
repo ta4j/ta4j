@@ -44,7 +44,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * I.E. the last calculated result.
      */
     protected int highestResultIndex = -1;
-    
+
     /**
      * Constructor.
      * @param series the related time series
@@ -72,20 +72,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         // Series is not null
-        
-        final int removedTicksCount = series.getRemovedTicksCount();
-        final int maximumResultCount = series.getMaximumTickCount();
-        
+
+        final int removedBarsCount = series.getRemovedBarsCount();
+        final int maximumResultCount = series.getMaximumBarCount();
+
         T result;
-        if (index < removedTicksCount) {
+        if (index < removedBarsCount) {
             // Result already removed from cache
-            log.trace("{}: result from tick {} already removed from cache, use {}-th instead",
-                    getClass().getSimpleName(), index, removedTicksCount);
-            increaseLengthTo(removedTicksCount, maximumResultCount);
-            highestResultIndex = removedTicksCount;
+            log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+                    getClass().getSimpleName(), index, removedBarsCount);
+            increaseLengthTo(removedBarsCount, maximumResultCount);
+            highestResultIndex = removedBarsCount;
             result = results.get(0);
             if (result == null) {
-                // It should be "result = calculate(removedTicksCount);".
+                // It should be "result = calculate(removedBarsCount);".
                 // We use "result = calculate(0);" as a workaround
                 // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
                 result = calculate(0);
@@ -112,7 +112,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @return the value of the indicator
      */
     protected abstract T calculate(int index);
@@ -140,7 +140,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Removes the N first results which exceed the maximum tick count.
+     * Removes the N first results which exceed the maximum bar count.
      * (i.e. keeps only the last maximumResultCount results)
      * @param maximumResultCount the number of results to keep
      */

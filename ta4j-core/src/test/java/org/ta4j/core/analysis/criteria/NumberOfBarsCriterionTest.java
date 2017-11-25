@@ -22,20 +22,27 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.*;
-
-public class NumberOfTicksCriterionTest {
+public class NumberOfBarsCriterionTest {
 
     @Test
     public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
 
-        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(0, (int) numberOfTicks.calculate(series, new BaseTradingRecord()));
+        AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
+        assertEquals(0, (int) numberOfBars.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -45,21 +52,21 @@ public class NumberOfTicksCriterionTest {
                 Order.buyAt(0), Order.sellAt(2),
                 Order.buyAt(3), Order.sellAt(5));
 
-        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(6, numberOfTicks.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
+        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void calculateWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade t = new Trade(Order.buyAt(2), Order.sellAt(5));
-        AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
-        assertEquals(4, numberOfTicks.calculate(series, t), TATestsUtils.TA_OFFSET);
+        AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
+        assertEquals(4, numberOfBars.calculate(series, t), TATestsUtils.TA_OFFSET);
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new NumberOfTicksCriterion();
+        AnalysisCriterion criterion = new NumberOfBarsCriterion();
         assertTrue(criterion.betterThan(3, 6));
         assertFalse(criterion.betterThan(6, 2));
     }

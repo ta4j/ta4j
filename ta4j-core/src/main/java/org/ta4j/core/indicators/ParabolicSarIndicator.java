@@ -45,7 +45,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
     private final TimeSeries series;
 
     private boolean currentTrend; // true if uptrend, false otherwise
-    private int startTrendIndex = 0; // index of start tick of the current trend
+    private int startTrendIndex = 0; // index of start bar of the current trend
     private MinPriceIndicator minPriceIndicator;
     private MaxPriceIndicator maxPriceIndicator;
     private Decimal currentExtremePoint; // the extreme point of the current calculation
@@ -94,7 +94,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
         if (index == series.getBeginIndex()) {
             return sar; // no trend detection possible for the first value
         } else if (index == series.getBeginIndex() + 1) {// start trend detection
-            currentTrend = series.getTick(series.getBeginIndex()).getClosePrice().isLessThan(series.getTick(index).getClosePrice());
+            currentTrend = series.getBar(series.getBeginIndex()).getClosePrice().isLessThan(series.getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
                 sar = maxPriceIndicator.getValue(index); // put sar on max price of candlestick
                 currentExtremePoint = sar;
@@ -117,7 +117,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
                 currentTrend = false; // switch to down trend and reset values
                 startTrendIndex = index;
                 accelerationFactor = accelarationStart;
-                currentExtremePoint = series.getTick(index).getMinPrice(); // put point on max
+                currentExtremePoint = series.getBar(index).getMinPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
                 currentExtremePoint = new HighestValueIndicator(maxPriceIndicator, index - startTrendIndex).getValue(index);
@@ -134,7 +134,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Decimal> {
                 sar = minMaxExtremePoint; // sar starts at the lowest extreme point of previous down trend
                 accelerationFactor = accelarationStart;
                 startTrendIndex = index;
-                currentExtremePoint = series.getTick(index).getMaxPrice();
+                currentExtremePoint = series.getBar(index).getMaxPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
                 currentExtremePoint = new LowestValueIndicator(minPriceIndicator, index - startTrendIndex).getValue(index);

@@ -24,9 +24,9 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -37,38 +37,38 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 public class FisherIndicatorTest {
 
 protected TimeSeries data;
-    
+
     @Before
     public void setUp() {
-        
-        List<Tick> ticks = new ArrayList<Tick>();
-        ticks.add(new MockTick(44.98, 45.05, 45.17, 44.96));
-        ticks.add(new MockTick(45.05, 45.10, 45.15, 44.99));
-        ticks.add(new MockTick(45.11, 45.19, 45.32, 45.11));
-        ticks.add(new MockTick(45.19, 45.14, 45.25, 45.04));
-        ticks.add(new MockTick(45.12, 45.15, 45.20, 45.10));
-        ticks.add(new MockTick(45.15, 45.14, 45.20, 45.10));
-        ticks.add(new MockTick(45.13, 45.10, 45.16, 45.07));
-        ticks.add(new MockTick(45.12, 45.15, 45.22, 45.10));
-        ticks.add(new MockTick(45.15, 45.22, 45.27, 45.14));
-        ticks.add(new MockTick(45.24, 45.43, 45.45, 45.20));
-        ticks.add(new MockTick(45.43, 45.44, 45.50, 45.39));
-        ticks.add(new MockTick(45.43, 45.55, 45.60, 45.35));
-        ticks.add(new MockTick(45.58, 45.55, 45.61, 45.39));
-        ticks.add(new MockTick(45.45, 45.01, 45.55, 44.80));
-        ticks.add(new MockTick(45.03, 44.23, 45.04, 44.17));
-        ticks.add(new MockTick(44.23, 43.95, 44.29, 43.81));
-        ticks.add(new MockTick(43.91, 43.08, 43.99, 43.08));
-        ticks.add(new MockTick(43.07, 43.55, 43.65, 43.06));
-        ticks.add(new MockTick(43.56, 43.95, 43.99, 43.53));
-        ticks.add(new MockTick(43.93, 44.47, 44.58, 43.93));
-        data = new MockTimeSeries(ticks);
+
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96));
+        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99));
+        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11));
+        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04));
+        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10));
+        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10));
+        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07));
+        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10));
+        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14));
+        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20));
+        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39));
+        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35));
+        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39));
+        bars.add(new MockBar(45.45, 45.01, 45.55, 44.80));
+        bars.add(new MockBar(45.03, 44.23, 45.04, 44.17));
+        bars.add(new MockBar(44.23, 43.95, 44.29, 43.81));
+        bars.add(new MockBar(43.91, 43.08, 43.99, 43.08));
+        bars.add(new MockBar(43.07, 43.55, 43.65, 43.06));
+        bars.add(new MockBar(43.56, 43.95, 43.99, 43.53));
+        bars.add(new MockBar(43.93, 44.47, 44.58, 43.93));
+        data = new MockTimeSeries(bars);
     }
-    
+
     @Test
     public void fisher() {
         FisherIndicator fisher = new FisherIndicator(data);
-        
+
         assertDecimalEquals(fisher.getValue(10), -3.8634);
         assertDecimalEquals(fisher.getValue(11), -4.0571);
         assertDecimalEquals(fisher.getValue(12), -4.2018);

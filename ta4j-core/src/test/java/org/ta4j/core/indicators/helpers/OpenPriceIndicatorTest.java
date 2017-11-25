@@ -22,12 +22,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import static junit.framework.TestCase.assertEquals;
 
 public class OpenPriceIndicatorTest {
     private OpenPriceIndicator openPriceIndicator;
@@ -41,9 +41,9 @@ public class OpenPriceIndicatorTest {
     }
 
     @Test
-    public void indicatorShouldRetrieveTickOpenPrice() {
+    public void indicatorShouldRetrieveBarOpenPrice() {
         for (int i = 0; i < 10; i++) {
-            assertEquals(openPriceIndicator.getValue(i), timeSeries.getTick(i).getOpenPrice());
+            assertEquals(openPriceIndicator.getValue(i), timeSeries.getBar(i).getOpenPrice());
         }
     }
 }

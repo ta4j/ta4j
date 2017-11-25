@@ -30,30 +30,30 @@ import org.ta4j.core.TradingRecord;
 /**
  * Average profit criterion.
  * <p></p>
- * The {@link TotalProfitCriterion total profit} over the {@link NumberOfTicksCriterion number of ticks}.
+ * The {@link TotalProfitCriterion total profit} over the {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
     private AnalysisCriterion totalProfit = new TotalProfitCriterion();
 
-    private AnalysisCriterion numberOfTicks = new NumberOfTicksCriterion();
+    private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        double ticks = numberOfTicks.calculate(series, tradingRecord);
-        if (ticks == 0) {
+        double bars = numberOfBars.calculate(series, tradingRecord);
+        if (bars == 0) {
             return 1;
         }
-        return Math.pow(totalProfit.calculate(series, tradingRecord), 1d / ticks);
+        return Math.pow(totalProfit.calculate(series, tradingRecord), 1d / bars);
     }
 
     @Override
     public double calculate(TimeSeries series, Trade trade) {
-        double ticks = numberOfTicks.calculate(series, trade);
-        if (ticks == 0) {
+        double bars = numberOfBars.calculate(series, trade);
+        if (bars == 0) {
             return 1;
         }
-        return Math.pow(totalProfit.calculate(series, trade), 1d / ticks);
+        return Math.pow(totalProfit.calculate(series, trade), 1d / bars);
     }
 
     @Override

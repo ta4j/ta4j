@@ -41,6 +41,6 @@ public class OpenPriceIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return series.getTick(index).getOpenPrice();
+        return series.getBar(index).getOpenPrice();
     }
 }

@@ -41,6 +41,6 @@ public class MaxPriceIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return series.getTick(index).getMaxPrice();
+        return series.getBar(index).getMaxPrice();
     }
 }

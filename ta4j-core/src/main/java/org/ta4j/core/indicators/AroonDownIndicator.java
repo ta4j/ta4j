@@ -70,20 +70,20 @@ public class AroonDownIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        if (getTimeSeries().getTick(index).getMinPrice().isNaN())
+        if (getTimeSeries().getBar(index).getMinPrice().isNaN())
             return Decimal.NaN;
 
-        // Getting the number of ticks since the lowest close price
+        // Getting the number of bars since the lowest close price
         int endIndex = Math.max(0,index - timeFrame);
-        int nbTicks = 0;
+        int nbBars = 0;
         for (int i = index; i > endIndex; i--) {
             if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
                 break;
             }
-            nbTicks++;
+            nbBars++;
         }
-        
-        return Decimal.valueOf(timeFrame - nbTicks).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
+
+        return Decimal.valueOf(timeFrame - nbBars).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
     }
 
     @Override

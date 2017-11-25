@@ -22,12 +22,6 @@
  */
 package ta4jexamples.loaders;
 
-import com.opencsv.CSVReader;
-import org.ta4j.core.BaseTick;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Tick;
-import org.ta4j.core.TimeSeries;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -41,21 +35,28 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
+
+import com.opencsv.CSVReader;
+
 /**
- * This class build a Ta4j time series from a CSV file containing ticks.
+ * This class build a Ta4j time series from a CSV file containing bars.
  */
-public class CsvTicksLoader {
+public class CsvBarsLoader {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
-     * @return a time series from Apple Inc. ticks.
+     * @return a time series from Apple Inc. bars.
      */
     public static TimeSeries loadAppleIncSeries() {
 
-        InputStream stream = CsvTicksLoader.class.getClassLoader().getResourceAsStream("appleinc_ticks_from_20130101_usd.csv");
+        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_bars_from_20130101_usd.csv");
 
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
 
         CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1);
         try {
@@ -68,25 +69,25 @@ public class CsvTicksLoader {
                 double close = Double.parseDouble(line[4]);
                 double volume = Double.parseDouble(line[5]);
 
-                ticks.add(new BaseTick(date, open, high, low, close, volume));
+                bars.add(new BaseBar(date, open, high, low, close, volume));
             }
         } catch (IOException ioe) {
-            Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Unable to load ticks from CSV", ioe);
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
         } catch (NumberFormatException nfe) {
-            Logger.getLogger(CsvTicksLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
 
-        return new BaseTimeSeries("apple_ticks", ticks);
+        return new BaseTimeSeries("apple_bars", bars);
     }
 
     public static void main(String[] args) {
-        TimeSeries series = CsvTicksLoader.loadAppleIncSeries();
+        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of ticks: " + series.getTickCount());
-        System.out.println("First tick: \n"
-                + "\tVolume: " + series.getTick(0).getVolume() + "\n"
-                + "\tOpen price: " + series.getTick(0).getOpenPrice()+ "\n"
-                + "\tClose price: " + series.getTick(0).getClosePrice());
+        System.out.println("Number of bars: " + series.getBarCount());
+        System.out.println("First bar: \n"
+                + "\tVolume: " + series.getBar(0).getVolume() + "\n"
+                + "\tOpen price: " + series.getBar(0).getOpenPrice()+ "\n"
+                + "\tClose price: " + series.getBar(0).getClosePrice());
     }
 }

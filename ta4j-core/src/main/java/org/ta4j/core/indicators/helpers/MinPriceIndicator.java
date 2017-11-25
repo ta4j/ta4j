@@ -41,6 +41,6 @@ public class MinPriceIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return series.getTick(index).getMinPrice();
+        return series.getBar(index).getMinPrice();
     }
 }

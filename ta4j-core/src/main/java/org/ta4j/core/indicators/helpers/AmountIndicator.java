@@ -41,6 +41,6 @@ public class AmountIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return series.getTick(index).getAmount();
+        return series.getBar(index).getAmount();
     }
 }

@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators.adx;
 
 import org.junit.Test;
-import org.ta4j.core.Tick;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -37,12 +37,12 @@ public class AverageDirectionalMovementIndicatorTest {
     @Test
     public void getValue()
     {
-        List<Tick> ticks = new ArrayList<Tick>();
-        
-        ticks.add(new MockTick(0, 0, 10, 2));
-        ticks.add(new MockTick(0, 0, 12, 2));
-        ticks.add(new MockTick(0, 0, 15, 2));
-        MockTimeSeries series = new MockTimeSeries(ticks);
+        List<Bar> bars = new ArrayList<Bar>();
+
+        bars.add(new MockBar(0, 0, 10, 2));
+        bars.add(new MockBar(0, 0, 12, 2));
+        bars.add(new MockBar(0, 0, 15, 2));
+        MockTimeSeries series = new MockTimeSeries(bars);
         AverageDirectionalMovementIndicator adm = new AverageDirectionalMovementIndicator(series, 3);
 
         assertDecimalEquals(adm.getValue(0), 1);

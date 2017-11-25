@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
@@ -45,24 +45,24 @@ public class NVIIndicator extends RecursiveCachedIndicator<Decimal> {
         super(series);
         this.series = series;
     }
-    
+
     @Override
     protected Decimal calculate(int index) {
         if (index == 0) {
             return Decimal.THOUSAND;
         }
-        
-        Tick currentTick = series.getTick(index);
-        Tick previousTick = series.getTick(index - 1);
+
+        Bar currentBar = series.getBar(index);
+        Bar previousBar = series.getBar(index - 1);
         Decimal previousValue = getValue(index - 1);
-        
-        if (currentTick.getVolume().isLessThan(previousTick.getVolume())) {
-            Decimal currentPrice = currentTick.getClosePrice();
-            Decimal previousPrice = previousTick.getClosePrice();
+
+        if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
+            Decimal currentPrice = currentBar.getClosePrice();
+            Decimal previousPrice = previousBar.getClosePrice();
             Decimal priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
             return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
         }
         return previousValue;
     }
-	
+
 }

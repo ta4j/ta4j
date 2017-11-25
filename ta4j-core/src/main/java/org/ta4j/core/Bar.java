@@ -29,12 +29,11 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * End tick of a time period.
+ * End bar of a time period.
  * <p></p>
- * Tick object is aggregated open/high/low/close/volume/etc. data over a time period.
- * It may also be known as "Bar" (with a chart/graphical meaning).
+ * Bar object is aggregated open/high/low/close/volume/etc. data over a time period.
  */
-public interface Tick extends Serializable {
+public interface Bar extends Serializable {
 
     /**
      * @return the open price of the period
@@ -50,7 +49,7 @@ public interface Tick extends Serializable {
      * @return the max price of the period
      */
     Decimal getMaxPrice();
-    
+
     /**
      * @return the close price of the period
      */
@@ -72,17 +71,17 @@ public interface Tick extends Serializable {
     Decimal getAmount();
 
     /**
-     * @return the time period of the tick
+     * @return the time period of the bar
      */
     Duration getTimePeriod();
 
     /**
-     * @return the begin timestamp of the tick period
+     * @return the begin timestamp of the bar period
      */
     ZonedDateTime getBeginTime();
 
     /**
-     * @return the end timestamp of the tick period
+     * @return the end timestamp of the bar period
      */
     ZonedDateTime getEndTime();
 
@@ -95,7 +94,7 @@ public interface Tick extends Serializable {
                 && !timestamp.isBefore(getBeginTime())
                 && timestamp.isBefore(getEndTime());
     }
-    
+
     /**
      * @return a human-friendly string of the end timestamp
      */
@@ -111,7 +110,7 @@ public interface Tick extends Serializable {
     }
 
     /**
-     * @return true if this is a bearish tick, false otherwise
+     * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
     	Decimal openPrice = getOpenPrice();
@@ -120,7 +119,7 @@ public interface Tick extends Serializable {
     }
 
     /**
-     * @return true if this is a bullish tick, false otherwise
+     * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
     	Decimal openPrice = getOpenPrice();
@@ -129,7 +128,7 @@ public interface Tick extends Serializable {
     }
 
     /**
-     * Adds a trade at the end of tick period.
+     * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
@@ -138,7 +137,7 @@ public interface Tick extends Serializable {
     }
 
     /**
-     * Adds a trade at the end of tick period.
+     * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
@@ -147,7 +146,7 @@ public interface Tick extends Serializable {
     }
 
     /**
-     * Adds a trade at the end of tick period.
+     * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */

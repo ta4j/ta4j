@@ -42,7 +42,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * TODO Should be variable (depending on the sub-indicators used in this indicator)
      */
     private static final int RECURSION_THRESHOLD = 100;
-    
+
     /**
      * Constructor.
      * @param series the related time series
@@ -66,8 +66,8 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
             final int seriesEndIndex = series.getEndIndex();
             if (index <= seriesEndIndex) {
                 // We are not after the end of the series
-                final int removedTicksCount = series.getRemovedTicksCount();
-                int startIndex = Math.max(removedTicksCount, highestResultIndex);
+                final int removedBarsCount = series.getRemovedBarsCount();
+                int startIndex = Math.max(removedBarsCount, highestResultIndex);
                 if (index - startIndex > RECURSION_THRESHOLD) {
                     // Too many uncalculated values; the risk for a StackOverflowError becomes high.
                     // Calculating the previous values iteratively
@@ -77,7 +77,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
                 }
             }
         }
-        
+
         return super.getValue(index);
     }
 }

@@ -23,17 +23,17 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Real (candle) body height indicator.
  * <p></p>
- * Provides the (relative) difference between the open price and the close price of a tick.
+ * Provides the (relative) difference between the open price and the close price of a bar.
  * I.e.: close price - open price
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
- *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#formation">
+ *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#formation</a>
  */
 public class RealBodyIndicator extends CachedIndicator<Decimal> {
 
@@ -50,7 +50,7 @@ public class RealBodyIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        Tick t = series.getTick(index);
+        Bar t = series.getBar(index);
         return t.getClosePrice().minus(t.getOpenPrice());
     }
 }

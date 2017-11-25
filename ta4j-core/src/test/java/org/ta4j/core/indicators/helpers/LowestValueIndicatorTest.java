@@ -75,13 +75,13 @@ public class LowestValueIndicatorTest {
 
     @Test
     public void onlyNaNValues(){
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (long i = 0; i<= 10000; i++){
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i), Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
-            ticks.add(tick);
+            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i), Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+            bars.add(bar);
         }
 
-        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        BaseTimeSeries series = new BaseTimeSeries("NaN test", bars);
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 5);
         for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
             assertEquals(Decimal.NaN.toString(),lowestValue.getValue(i).toString());
@@ -90,20 +90,20 @@ public class LowestValueIndicatorTest {
 
     @Test
     public void naNValuesInIntervall(){
-        List<Tick> ticks = new ArrayList<>();
+        List<Bar> bars = new ArrayList<>();
         for (long i = 0; i<= 10; i++){ // (NaN, 1, NaN, 2, NaN, 3, NaN, 4, ...)
             Decimal closePrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
-            Tick tick = new BaseTick(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
-            ticks.add(tick);
+            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
+            bars.add(bar);
         }
 
-        BaseTimeSeries series = new BaseTimeSeries("NaN test",ticks);
+        BaseTimeSeries series = new BaseTimeSeries("NaN test", bars);
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 2);
         for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
             if (i % 2 != 0){
-                assertEquals(series.getTick(i-1).getClosePrice().toString(),lowestValue.getValue(i).toString());
+                assertEquals(series.getBar(i-1).getClosePrice().toString(),lowestValue.getValue(i).toString());
             } else
-            assertEquals(series.getTick(Math.max(0,i-1)).getClosePrice().toString(),lowestValue.getValue(i).toString());
+            assertEquals(series.getBar(Math.max(0,i-1)).getClosePrice().toString(),lowestValue.getValue(i).toString());
         }
     }
 }

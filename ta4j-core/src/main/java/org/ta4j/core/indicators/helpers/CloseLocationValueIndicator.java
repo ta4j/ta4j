@@ -24,7 +24,7 @@ package org.ta4j.core.indicators.helpers;
 
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Tick;
+import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -45,9 +45,9 @@ public class CloseLocationValueIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        Tick tick = series.getTick(index);
+        Bar bar = series.getBar(index);
 
-        return ((tick.getClosePrice().minus(tick.getMinPrice())).minus(tick.getMaxPrice().minus(tick.getClosePrice())))
-                 .dividedBy(tick.getMaxPrice().minus(tick.getMinPrice()));
+        return ((bar.getClosePrice().minus(bar.getMinPrice())).minus(bar.getMaxPrice().minus(bar.getClosePrice())))
+                 .dividedBy(bar.getMaxPrice().minus(bar.getMinPrice()));
     }
 }

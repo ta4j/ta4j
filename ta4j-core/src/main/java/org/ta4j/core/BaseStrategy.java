@@ -33,26 +33,26 @@ public class BaseStrategy implements Strategy {
 
     /** The logger */
     protected final Logger log = LoggerFactory.getLogger(getClass());
-    
+
     /** The class name */
     protected final String className = getClass().getSimpleName();
-    
+
     /** Name of the strategy */
     private String name;
-	
+
     /** The entry rule */
     private Rule entryRule;
-    
+
     /** The exit rule */
     private Rule exitRule;
 
     /**
-     * The unstable period (number of ticks).<br>
+     * The unstable period (number of bars).<br>
      * During the unstable period of the strategy any order placement will be cancelled.<br>
      * I.e. no entry/exit signal will be fired before index == unstablePeriod.
      */
     private int unstablePeriod;
-    
+
     /**
      * Constructor.
      * @param entryRule the entry rule
@@ -71,7 +71,7 @@ public class BaseStrategy implements Strategy {
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
         this(null, entryRule, exitRule, unstablePeriod);
     }
-	
+
     /**
      * Constructor.
      * @param name the name of the strategy
@@ -81,7 +81,7 @@ public class BaseStrategy implements Strategy {
     public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
         this(name, entryRule, exitRule, 0);
     }
-    
+
     /**
      * Constructor.
      * @param name the name of the strategy
@@ -94,39 +94,39 @@ public class BaseStrategy implements Strategy {
             throw new IllegalArgumentException("Rules cannot be null");
         }
         if (unstablePeriod < 0) {
-        	throw new IllegalArgumentException("Unstable period tick count must be >= 0");
+        	throw new IllegalArgumentException("Unstable period bar count must be >= 0");
         }
         this.name = name;
         this.entryRule = entryRule;
         this.exitRule = exitRule;
         this.unstablePeriod = unstablePeriod;
     }
-	
+
     @Override
     public String getName() {
     	return name;
     }
-    
+
     @Override
     public Rule getEntryRule() {
     	return entryRule;
     }
-    
+
     @Override
     public Rule getExitRule() {
     	return exitRule;
     }
-	
+
     @Override
     public int getUnstablePeriod() {
     	return unstablePeriod;
     }
-    
+
     @Override
     public void setUnstablePeriod(int unstablePeriod) {
         this.unstablePeriod = unstablePeriod;
     }
-    
+
     @Override
     public boolean isUnstableAt(int index) {
         return index < unstablePeriod;
@@ -145,7 +145,7 @@ public class BaseStrategy implements Strategy {
         traceShouldExit(index, exit);
         return exit;
     }
-	
+
     @Override
     public Strategy and(Strategy strategy) {
         String andName = "and(" + name + "," + strategy.getName() + ")";
@@ -177,7 +177,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Traces the shouldEnter() method calls.
-     * @param index the tick index
+     * @param index the bar index
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
@@ -186,7 +186,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Traces the shouldExit() method calls.
-     * @param index the tick index
+     * @param index the bar index
      * @param exit true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
