@@ -22,17 +22,19 @@
  */
 package org.ta4j.core.indicators.keltner;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Decimal;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class KeltnerChannelUpperIndicatorTest {
 
