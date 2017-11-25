@@ -44,8 +44,8 @@ public class MinusDMIndicator extends CachedIndicator<Decimal> {
         if (index == 0) {
             return Decimal.ZERO;
         }
-        Decimal upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
-        Decimal downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
+        Decimal upMove = series.getBar(index).getMaxPrice().minus(series.getTick(index - 1).getMaxPrice());
+        Decimal downMove = series.getBar(index - 1).getMinPrice().minus(series.getTick(index).getMinPrice());
         if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(Decimal.ZERO)) {
             return downMove;
         } else {

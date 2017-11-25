@@ -22,15 +22,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Bar;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class MinusDMIndicatorTest {
 

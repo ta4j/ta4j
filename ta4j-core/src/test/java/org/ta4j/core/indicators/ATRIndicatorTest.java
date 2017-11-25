@@ -22,16 +22,16 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Bar;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class ATRIndicatorTest {
 
@@ -44,12 +44,12 @@ public class ATRIndicatorTest {
         bars.add(new MockBar(0, 15, 17, 14));
         bars.add(new MockBar(0, 0, 0, 2));
         ATRIndicator atr = new ATRIndicator(new MockTimeSeries(bars), 3);
-
-        assertDecimalEquals(atr.getValue(0), 7d);
-        assertDecimalEquals(atr.getValue(1), 6d / 3 + (1 - 1d / 3) * atr.getValue(0).toDouble());
-        assertDecimalEquals(atr.getValue(2), 9d / 3 + (1 - 1d / 3) * atr.getValue(1).toDouble());
-        assertDecimalEquals(atr.getValue(3), 3d / 3 + (1 - 1d / 3) * atr.getValue(2).toDouble());
-        assertDecimalEquals(atr.getValue(4), 15d / 3 + (1 - 1d / 3) * atr.getValue(3).toDouble());
+        
+        assertDecimalEquals(atr.getValue(0), 1);
+        assertDecimalEquals(atr.getValue(1), 8d/3);
+        assertDecimalEquals(atr.getValue(2), 8d/3 * 2d/3 + 3);
+        assertDecimalEquals(atr.getValue(3), (8d/3 * 2d/3 + 3) * 2d/3 + 1);
+        assertDecimalEquals(atr.getValue(4), ((8d/3 * 2d/3 + 3) * 2d/3 + 1) * 2d/3 + 15d/3);
     }
 
     private void atrXls(int timeFrame) throws Exception {
