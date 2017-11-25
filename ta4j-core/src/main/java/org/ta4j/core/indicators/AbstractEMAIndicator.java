@@ -20,38 +20,37 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.adx;
+package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.AverageDirectionalMovementDownIndicator;
-import org.ta4j.core.indicators.helpers.AverageTrueRangeIndicator;
+import org.ta4j.core.Indicator;
 
 /**
- * Directional movement minus indicator (DMI+).
- * Part of the Directional Movement System
- * <p></p>
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
+ * Base class for Exponential Moving Average implementations.
+ * <p/>
  */
+public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Decimal> {
 
-public class DirectionalMovementMinusIndicator extends CachedIndicator<Decimal>{
+    private final Indicator<Decimal> indicator;
 
-    private final AverageDirectionalMovementDownIndicator averageDirectionalMovementDownIndicator;
-    private final AverageTrueRangeIndicator trueRangeIndicator;
     private final int timeFrame;
 
-    public DirectionalMovementMinusIndicator(TimeSeries series, int timeFrame) {
-        super(series);
+    private final Decimal multiplier;
+
+    public AbstractEMAIndicator(Indicator<Decimal> indicator, int timeFrame, Decimal multiplier) {
+        super(indicator);
+        this.indicator = indicator;
         this.timeFrame = timeFrame;
-        this.averageDirectionalMovementDownIndicator = new AverageDirectionalMovementDownIndicator(series, timeFrame);
-        this.trueRangeIndicator = new AverageTrueRangeIndicator(series, timeFrame);
+        this.multiplier = multiplier;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return averageDirectionalMovementDownIndicator.getValue(index).dividedBy(trueRangeIndicator.getValue(index)).multipliedBy(Decimal.HUNDRED);
+        if (index == 0) {
+            return indicator.getValue(0);
+        }
+        Decimal prevValue = getValue(index - 1);
+        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
     }
 
     @Override

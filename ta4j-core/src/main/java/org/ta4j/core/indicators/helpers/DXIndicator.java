@@ -23,34 +23,41 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.adx.MinusDIIndicator;
+import org.ta4j.core.indicators.adx.PlusDIIndicator;
 
 /**
- * Directional down indicator.
- * <p></p>
+ * DX indicator.
+ * <p>
+ * </p>
  */
-public class DirectionalDownIndicator extends CachedIndicator<Decimal>{
+public class DXIndicator extends CachedIndicator<Decimal> {
 
-    private final Indicator<Decimal> admdown;
-    private final Indicator<Decimal> atr;
     private final int timeFrame;
+    private final PlusDIIndicator plusDIIndicator;
+    private final MinusDIIndicator minusDIIndicator;
 
-    public DirectionalDownIndicator(TimeSeries series, int timeFrame) {
+    public DXIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        this.admdown = new AverageDirectionalMovementDownIndicator(series, timeFrame);
-        this.atr = new AverageTrueRangeIndicator(series, timeFrame);
         this.timeFrame = timeFrame;
+        plusDIIndicator = new PlusDIIndicator(series, timeFrame);
+        minusDIIndicator = new MinusDIIndicator(series, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return admdown.getValue(index).dividedBy(atr.getValue(index));
+        Decimal pdiValue = plusDIIndicator.getValue(index);
+        Decimal mdiValue = minusDIIndicator.getValue(index);
+        if (pdiValue.plus(mdiValue).equals(Decimal.ZERO)) {
+            return Decimal.ZERO;
+        }
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(Decimal.HUNDRED);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: "+ timeFrame;
+        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
 }

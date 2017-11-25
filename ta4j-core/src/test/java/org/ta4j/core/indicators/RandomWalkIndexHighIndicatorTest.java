@@ -22,17 +22,15 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 /**
  * The Class RandomWalkIndexHighIndicatorTest.
@@ -70,8 +68,7 @@ public class RandomWalkIndexHighIndicatorTest {
     }
 
     @Test
-    public void randomWalkIndexHigh()
-    {
+    public void randomWalkIndexHigh() {
         RandomWalkIndexHighIndicator rwih = new RandomWalkIndexHighIndicator(data, 5);
 
         assertDecimalEquals(rwih.getValue(6), 0.2118);

@@ -22,18 +22,17 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Decimal;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class ChandelierExitLongIndicatorTest {
 
@@ -66,15 +65,15 @@ public class ChandelierExitLongIndicatorTest {
     public void massIndexUsing3And8TimeFrames() {
         ChandelierExitLongIndicator cel = new ChandelierExitLongIndicator(data, 5, Decimal.TWO);
 
-        assertDecimalEquals(cel.getValue(5), 44.4676);
-        assertDecimalEquals(cel.getValue(6), 44.6021);
-        assertDecimalEquals(cel.getValue(7), 44.6277);
-        assertDecimalEquals(cel.getValue(8), 44.7201);
-        assertDecimalEquals(cel.getValue(9), 44.9101);
-        assertDecimalEquals(cel.getValue(10), 45.0241);
-        assertDecimalEquals(cel.getValue(11), 45.1193);
-        assertDecimalEquals(cel.getValue(12), 45.1374);
-        assertDecimalEquals(cel.getValue(13), 44.9319);
-        assertDecimalEquals(cel.getValue(14), 44.7195);
+        assertDecimalEquals(cel.getValue(5), 44.9853);
+        assertDecimalEquals(cel.getValue(6), 45.0162);
+        assertDecimalEquals(cel.getValue(7), 44.9590);
+        assertDecimalEquals(cel.getValue(8), 44.9852);
+        assertDecimalEquals(cel.getValue(9), 45.1221);
+        assertDecimalEquals(cel.getValue(10), 45.1937);
+        assertDecimalEquals(cel.getValue(11), 45.2549);
+        assertDecimalEquals(cel.getValue(12), 45.2459);
+        assertDecimalEquals(cel.getValue(13), 45.0187);
+        assertDecimalEquals(cel.getValue(14), 44.7890);
     }
 }

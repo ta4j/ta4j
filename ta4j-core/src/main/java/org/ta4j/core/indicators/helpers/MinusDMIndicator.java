@@ -27,24 +27,29 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
- * True range indicator.
- * <p></p>
+ * -DM indicator.
+ * <p/>
  */
-public class TrueRangeIndicator extends CachedIndicator<Decimal>{
+public class MinusDMIndicator extends CachedIndicator<Decimal> {
 
-    private TimeSeries series;
+    private final TimeSeries series;
 
-    public TrueRangeIndicator(TimeSeries series) {
+    public MinusDMIndicator(TimeSeries series) {
         super(series);
         this.series = series;
     }
 
     @Override
     protected Decimal calculate(int index) {
-        Decimal ts = series.getBar(index).getMaxPrice().minus(series.getBar(index).getMinPrice());
-        Decimal ys = index == 0 ? Decimal.ZERO : series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getClosePrice());
-        Decimal yst = index == 0 ? Decimal.ZERO : series.getBar(index - 1).getClosePrice().minus(series.getBar(index).getMinPrice());
-
-        return ts.abs().max(ys.abs()).max(yst.abs());
+        if (index == 0) {
+            return Decimal.ZERO;
+        }
+        Decimal upMove = series.getBar(index).getMaxPrice().minus(series.getTick(index - 1).getMaxPrice());
+        Decimal downMove = series.getBar(index - 1).getMinPrice().minus(series.getTick(index).getMinPrice());
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(Decimal.ZERO)) {
+            return downMove;
+        } else {
+            return Decimal.ZERO;
+        }
     }
 }

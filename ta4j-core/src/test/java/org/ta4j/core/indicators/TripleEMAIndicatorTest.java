@@ -24,11 +24,10 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class TripleEMAIndicatorTest {
 
@@ -49,15 +48,15 @@ public class TripleEMAIndicatorTest {
         TripleEMAIndicator tripleEma = new TripleEMAIndicator(closePrice, 5);
 
         assertDecimalEquals(tripleEma.getValue(0), 0.73);
-        assertDecimalEquals(tripleEma.getValue(1), 0.7213);
-        assertDecimalEquals(tripleEma.getValue(2), 0.818);
+        assertDecimalEquals(tripleEma.getValue(1), 0.7229);
+        assertDecimalEquals(tripleEma.getValue(2), 0.8185);
 
-        assertDecimalEquals(tripleEma.getValue(6), 0.8034);
-        assertDecimalEquals(tripleEma.getValue(7), 0.7329);
-        assertDecimalEquals(tripleEma.getValue(8), 0.6723);
+        assertDecimalEquals(tripleEma.getValue(6), 0.8027);
+        assertDecimalEquals(tripleEma.getValue(7), 0.7328);
+        assertDecimalEquals(tripleEma.getValue(8), 0.6725);
 
-        assertDecimalEquals(tripleEma.getValue(12), 0.7385);
-        assertDecimalEquals(tripleEma.getValue(13), 0.6993);
+        assertDecimalEquals(tripleEma.getValue(12), 0.7386);
+        assertDecimalEquals(tripleEma.getValue(13), 0.6994);
         assertDecimalEquals(tripleEma.getValue(14), 0.6876);
     }
 }

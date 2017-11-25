@@ -20,35 +20,27 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 
 /**
- * Average of {@link DirectionalMovementUpIndicator directional movement up indicator}.
- * <p></p>
+ * Average true range indicator.
+ * <p/>
  */
-public class AverageDirectionalMovementUpIndicator extends RecursiveCachedIndicator<Decimal> {
+public class ATRIndicator extends CachedIndicator<Decimal> {
 
-    private final int timeFrame;
+    private final MMAIndicator averageTrueRangeIndicator;
 
-    private final DirectionalMovementUpIndicator dmup;
-
-    public AverageDirectionalMovementUpIndicator(TimeSeries series, int timeFrame) {
+    public ATRIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        this.timeFrame = timeFrame;
-        dmup = new DirectionalMovementUpIndicator(series);
+        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        if (index == 0) {
-            return Decimal.ONE;
-        }
-        Decimal nbPeriods = Decimal.valueOf(timeFrame);
-        Decimal nbPeriodsMinusOne = Decimal.valueOf(timeFrame - 1);
-        return getValue(index - 1).multipliedBy(nbPeriodsMinusOne).dividedBy(nbPeriods).plus(dmup.getValue(index).dividedBy(nbPeriods));
+        return averageTrueRangeIndicator.getValue(index);
     }
 }

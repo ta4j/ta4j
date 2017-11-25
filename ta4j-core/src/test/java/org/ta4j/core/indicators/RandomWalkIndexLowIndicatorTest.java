@@ -22,17 +22,16 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 /**
  * The Class RandomWalkIndexLowIndicatorTest.
@@ -72,19 +71,18 @@ public class RandomWalkIndexLowIndicatorTest {
     public void randomWalkIndexLow() {
         RandomWalkIndexLowIndicator rwil = new RandomWalkIndexLowIndicator(data, 5);
 
-        assertDecimalEquals(rwil.getValue(6), 0.0997);
-        assertDecimalEquals(rwil.getValue(7), 0.3162);
-        assertDecimalEquals(rwil.getValue(8), 0.1789);
+        assertDecimalEquals(rwil.getValue(6), 0.2355);
+        assertDecimalEquals(rwil.getValue(7), 0.6762);
+        assertDecimalEquals(rwil.getValue(8), 0.3454);
         assertDecimalEquals(rwil.getValue(9), 0.0000);
-        assertDecimalEquals(rwil.getValue(10), -0.3571);
-        assertDecimalEquals(rwil.getValue(11), -0.3535);
-        assertDecimalEquals(rwil.getValue(12), -0.3217);
-        assertDecimalEquals(rwil.getValue(13), 0.6200);
-        assertDecimalEquals(rwil.getValue(14), 1.2857);
-        assertDecimalEquals(rwil.getValue(15), 1.6714);
-        assertDecimalEquals(rwil.getValue(16), 2.0726);
-        assertDecimalEquals(rwil.getValue(17), 2.0622);
-        assertDecimalEquals(rwil.getValue(18), 1.6905);
+        assertDecimalEquals(rwil.getValue(10), -0.5548);
+        assertDecimalEquals(rwil.getValue(11), -0.4925);
+        assertDecimalEquals(rwil.getValue(12), -0.4177);
+        assertDecimalEquals(rwil.getValue(13), 0.7110);
+        assertDecimalEquals(rwil.getValue(14), 1.3945);
+        assertDecimalEquals(rwil.getValue(15), 1.7809);
+        assertDecimalEquals(rwil.getValue(16), 2.1609);
+        assertDecimalEquals(rwil.getValue(17), 2.1307);
+        assertDecimalEquals(rwil.getValue(18), 1.7366);
     }
-
 }

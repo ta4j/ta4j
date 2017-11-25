@@ -22,19 +22,17 @@
  */
 package org.ta4j.core.indicators.keltner;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Decimal;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class KeltnerChannelUpperIndicatorTest {
 
@@ -82,26 +80,25 @@ public class KeltnerChannelUpperIndicatorTest {
 
     @Test
     public void keltnerChannelUpperIndicatorTest() {
-
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
         KeltnerChannelUpperIndicator ku = new KeltnerChannelUpperIndicator(km, Decimal.valueOf(2), 14);
 
-        assertDecimalEquals(ku.getValue(13), 11857.4642);
-        assertDecimalEquals(ku.getValue(14), 11896.8619);
-        assertDecimalEquals(ku.getValue(15), 11927.1486);
-        assertDecimalEquals(ku.getValue(16), 11950.6832);
-        assertDecimalEquals(ku.getValue(17), 11970.0729);
-        assertDecimalEquals(ku.getValue(18), 11991.4828);
-        assertDecimalEquals(ku.getValue(19), 12028.9281);
-        assertDecimalEquals(ku.getValue(20), 12045.3761);
-        assertDecimalEquals(ku.getValue(21), 12070.6204);
-        assertDecimalEquals(ku.getValue(22), 12092.044);
-        assertDecimalEquals(ku.getValue(23), 12124.1007);
-        assertDecimalEquals(ku.getValue(24), 12160.508);
-        assertDecimalEquals(ku.getValue(25), 12189.8451);
-        assertDecimalEquals(ku.getValue(26), 12216.1915);
-        assertDecimalEquals(ku.getValue(27), 12248.1771);
-        assertDecimalEquals(ku.getValue(28), 12266.181);
-        assertDecimalEquals(ku.getValue(29), 12280.8623);
+        assertDecimalEquals(ku.getValue(13), 11971.9132);
+        assertDecimalEquals(ku.getValue(14), 12002.3402);
+        assertDecimalEquals(ku.getValue(15), 12024.4032);
+        assertDecimalEquals(ku.getValue(16), 12040.3933);
+        assertDecimalEquals(ku.getValue(17), 12052.8572);
+        assertDecimalEquals(ku.getValue(18), 12067.9050);
+        assertDecimalEquals(ku.getValue(19), 12099.5025);
+        assertDecimalEquals(ku.getValue(20), 12110.5722);
+        assertDecimalEquals(ku.getValue(21), 12130.8675);
+        assertDecimalEquals(ku.getValue(22), 12147.7344);
+        assertDecimalEquals(ku.getValue(23), 12175.5937);
+        assertDecimalEquals(ku.getValue(24), 12208.1327);
+        assertDecimalEquals(ku.getValue(25), 12233.9032);
+        assertDecimalEquals(ku.getValue(26), 12256.9596);
+        assertDecimalEquals(ku.getValue(27), 12285.9094);
+        assertDecimalEquals(ku.getValue(28), 12301.1108);
+        assertDecimalEquals(ku.getValue(29), 12313.2042);
     }
 }

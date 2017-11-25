@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +30,8 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
@@ -71,5 +73,28 @@ public class MMAIndicatorTest {
         MMAIndicator mma = new MMAIndicator(closePrice, 10);
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
         assertDecimalEquals(mma.getValue(9999), 9990.0);
+    }
+
+    private void mmaXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(MMAIndicatorTest.class, "MMA.xls", timeFrame, 6, (inputSeries) -> {
+            return new MMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
+        });
+    }
+
+    @Test
+    public void mmaXls1() throws Exception {
+        mmaXls(1);
+    }
+
+    @Test
+    public void mmaXls3() throws Exception {
+        mmaXls(3);
+    }
+
+    @Test
+    public void mmaXls13() throws Exception {
+        mmaXls(13);
     }
 }

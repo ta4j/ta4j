@@ -20,19 +20,20 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
-
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+package org.ta4j.core.indicators;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.mocks.MockBar;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.ta4j.core.Bar;
+import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockTimeSeries;
 
-public class TrueRangeIndicatorTest {
+public class ATRIndicatorTest {
 
     @Test
     public void getValue() {
@@ -42,13 +43,35 @@ public class TrueRangeIndicatorTest {
         bars.add(new MockBar(0, 15, 17, 14));
         bars.add(new MockBar(0, 15, 17, 14));
         bars.add(new MockBar(0, 0, 0, 2));
-        TrueRangeIndicator tr = new TrueRangeIndicator(new MockTimeSeries(bars));
-
-        assertDecimalEquals(tr.getValue(0), 7);
-        assertDecimalEquals(tr.getValue(1), 6);
-        assertDecimalEquals(tr.getValue(2), 9);
-        assertDecimalEquals(tr.getValue(3), 3);
-        assertDecimalEquals(tr.getValue(4), 15);
+        ATRIndicator atr = new ATRIndicator(new MockTimeSeries(bars), 3);
+        
+        assertDecimalEquals(atr.getValue(0), 1);
+        assertDecimalEquals(atr.getValue(1), 8d/3);
+        assertDecimalEquals(atr.getValue(2), 8d/3 * 2d/3 + 3);
+        assertDecimalEquals(atr.getValue(3), (8d/3 * 2d/3 + 3) * 2d/3 + 1);
+        assertDecimalEquals(atr.getValue(4), ((8d/3 * 2d/3 + 3) * 2d/3 + 1) * 2d/3 + 15d/3);
     }
 
+    private void atrXls(int timeFrame) throws Exception {
+        // compare values computed by indicator
+        // with values computed independently in excel
+        XlsTestsUtils.testXlsIndicator(ATRIndicatorTest.class, "ATR.xls", timeFrame, 7, (inputSeries) -> {
+            return new ATRIndicator(inputSeries, timeFrame);
+        });
+    }
+
+    @Test
+    public void atrXls1() throws Exception {
+        atrXls(1);
+    }
+
+    @Test
+    public void atrXls3() throws Exception {
+        atrXls(3);
+    }
+
+    @Test
+    public void atrXls13() throws Exception {
+        atrXls(13);
+    }
 }

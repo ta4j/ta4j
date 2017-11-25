@@ -22,17 +22,15 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Test;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import org.ta4j.core.Bar;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-public class DirectionalMovementDownIndicatorTest {
+public class MinusDMIndicatorTest {
 
     @Test
     public void zeroDirectionalMovement() {
@@ -42,7 +40,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 0);
     }
 
@@ -54,7 +52,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 0);
     }
 
@@ -66,7 +64,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 0);
     }
 
@@ -78,7 +76,7 @@ public class DirectionalMovementDownIndicatorTest {
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
-        DirectionalMovementDownIndicator down = new DirectionalMovementDownIndicator(series);
+        MinusDMIndicator down = new MinusDMIndicator(series);
         assertDecimalEquals(down.getValue(1), 16);
     }
 }
