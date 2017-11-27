@@ -38,8 +38,8 @@ public class IsRisingRule extends AbstractRule {
 	private final Indicator<Decimal> ref;
 	/** The timeFrame */
 	private final int timeFrame;
-	/** The rising factor */
-	private double risingFactor;
+	/** The minimum required strenght of the rising */
+	private double minStrenght;
 
 	/**
 	 * Constructor for strict rising.
@@ -56,31 +56,31 @@ public class IsRisingRule extends AbstractRule {
 	 * 
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
-	 * @param risingFactor the rising factor between '0' and '1' (e.g. '1' means strict rising)
+	 * @param minStrenght the minum required strenght of the rising (between '0' and '1', e.g. '1' means strict rising)
 	 */
-	public IsRisingRule(Indicator<Decimal> ref, int timeFrame, double risingFactor) {
+	public IsRisingRule(Indicator<Decimal> ref, int timeFrame, double minStrenght) {
 		this.ref = ref;
 		this.timeFrame = timeFrame;
-		this.risingFactor = risingFactor;
+		this.minStrenght = minStrenght;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		
-		if (risingFactor >= 1) {
-			risingFactor = 0.99;
+		if (minStrenght >= 1) {
+			minStrenght = 0.99;
 		}
 		
-		int countRisings = 0;
+		int count = 0;
 		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
 			if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(0, i - 1)))) {
-				countRisings += 1;
+				count += 1;
 			}
 		}
 
-		double ratio = countRisings / (double) timeFrame;
+		double ratio = count / (double) timeFrame;
 		
-		final boolean satisfied = ratio >= risingFactor ? true : false;
+		final boolean satisfied = ratio >= minStrenght ? true : false;
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}
