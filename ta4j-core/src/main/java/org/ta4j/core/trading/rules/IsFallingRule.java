@@ -24,14 +24,12 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 
 /**
  * Indicator-falling-indicator rule.
  * <p></p>
- * Satisfied when the values of the {@link Indicator indicator} strict decrease
+ * Satisfied when the values of the {@link Indicator indicator} decrease
  * within the timeFrame.
  */
 public class IsFallingRule extends AbstractRule {
@@ -40,6 +38,8 @@ public class IsFallingRule extends AbstractRule {
 	private Indicator<Decimal> ref;
 	/** The timeFrame */
 	private int timeFrame;
+	/** The falling factor in percentage */
+	private double fallingFactor;
 
 	/**
 	 * Constructor.
@@ -48,19 +48,41 @@ public class IsFallingRule extends AbstractRule {
 	 * @param timeFrame the time frame
 	 */
 	public IsFallingRule(Indicator<Decimal> ref, int timeFrame) {
+		this(ref, timeFrame, 1.0);
+	}
+	
+	/**
+	 * Constructor.
+	 * 
+	 * @param ref the indicator
+	 * @param timeFrame the time frame
+	 * @param fallingFactor the falling factor between '0' and '1' (e.g. '1' means strict falling)
+	 */
+	public IsFallingRule(Indicator<Decimal> ref, int timeFrame, double fallingFactor) {
 		this.ref = ref;
 		this.timeFrame = timeFrame;
+		this.fallingFactor = fallingFactor;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		Rule ltPrev = new UnderIndicatorRule(ref, new PreviousValueIndicator(ref));
-		for (int i = 1; i < timeFrame - 1; i++) {
-			PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
-			ltPrev = ltPrev.and(new UnderIndicatorRule(prev, new PreviousValueIndicator(prev)));
+		
+		if (fallingFactor >= 1) {
+			fallingFactor = 0.99;
 		}
 		
-		final boolean satisfied = ltPrev.isSatisfied(index, tradingRecord);
+		int end = Math.max(0, index - timeFrame + 1);
+		int countFalling = 0;
+		
+		for (int i = index; i >= end; i--) {
+			if (ref.getValue(i).isLessThan(ref.getValue(Math.max(0, i - 1)))) {
+				countFalling += 1;
+			}
+		}
+
+		double ratio = countFalling / (double) timeFrame;
+
+		final boolean satisfied = ratio >= fallingFactor ? true : false;
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}
