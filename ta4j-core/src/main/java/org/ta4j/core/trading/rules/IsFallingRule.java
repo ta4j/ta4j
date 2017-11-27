@@ -56,7 +56,7 @@ public class IsFallingRule extends AbstractRule {
 	 * 
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
-	 * @param minStrenght the minimum required strenght of the falling (between '0' and '1', e.g. '1' means strict falling)
+	 * @param minStrenght the minimum required falling strength (between '0' and '1', e.g. '1' for strict falling)
 	 */
 	public IsFallingRule(Indicator<Decimal> ref, int timeFrame, double minStrenght) {
 		this.ref = ref;
