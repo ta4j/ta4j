@@ -56,7 +56,7 @@ public class IsRisingRule extends AbstractRule {
 	 * 
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
-	 * @param minStrenght the minimum required strenght of the rising (between '0' and '1', e.g. '1' means strict rising)
+	 * @param minStrenght the minimum required rising strenght (between '0' and '1', e.g. '1' for strict rising)
 	 */
 	public IsRisingRule(Indicator<Decimal> ref, int timeFrame, double minStrenght) {
 		this.ref = ref;
