@@ -38,8 +38,8 @@ public class IsFallingRule extends AbstractRule {
 	private Indicator<Decimal> ref;
 	/** The timeFrame */
 	private int timeFrame;
-	/** The falling factor */
-	private double fallingFactor;
+	/** The minimum required strenght of the falling */
+	private double minStrenght;
 
 	/**
 	 * Constructor.
@@ -56,31 +56,31 @@ public class IsFallingRule extends AbstractRule {
 	 * 
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
-	 * @param fallingFactor the falling factor between '0' and '1' (e.g. '1' means strict falling)
+	 * @param minStrenght the minimum required strenght of the falling (between '0' and '1', e.g. '1' means strict falling)
 	 */
-	public IsFallingRule(Indicator<Decimal> ref, int timeFrame, double fallingFactor) {
+	public IsFallingRule(Indicator<Decimal> ref, int timeFrame, double minStrenght) {
 		this.ref = ref;
 		this.timeFrame = timeFrame;
-		this.fallingFactor = fallingFactor;
+		this.minStrenght = minStrenght;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		
-		if (fallingFactor >= 1) {
-			fallingFactor = 0.99;
+		if (minStrenght >= 1) {
+			minStrenght = 0.99;
 		}
 		
-		int countFalling = 0;
+		int count = 0;
 		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
 			if (ref.getValue(i).isLessThan(ref.getValue(Math.max(0, i - 1)))) {
-				countFalling += 1;
+				count += 1;
 			}
 		}
 
-		double ratio = countFalling / (double) timeFrame;
+		double ratio = count / (double) timeFrame;
 
-		final boolean satisfied = ratio >= fallingFactor ? true : false;
+		final boolean satisfied = ratio >= minStrenght ? true : false;
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}
