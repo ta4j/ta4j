@@ -43,18 +43,16 @@ public class IsRisingRuleTest {
 
 	@Test
 	public void isSatisfied() {
-		// The first two values evaluate to false:
-		// 2 previous values (2=3-1) are needed to decide.
 		assertFalse(rule.isSatisfied(0));
 		assertFalse(rule.isSatisfied(1));
-		// First time to have at least 2 previous values.
-		assertTrue(rule.isSatisfied(2));
+		assertFalse(rule.isSatisfied(2));
+		// First time to have at least 3 rising values.
 		assertTrue(rule.isSatisfied(3));
 		assertTrue(rule.isSatisfied(4));
 		assertTrue(rule.isSatisfied(5));
 		assertFalse(rule.isSatisfied(6));
 		assertFalse(rule.isSatisfied(7));
-		assertTrue(rule.isSatisfied(8));
+		assertFalse(rule.isSatisfied(8));
 		assertTrue(rule.isSatisfied(9));
 	}
 }
