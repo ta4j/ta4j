@@ -24,43 +24,65 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 
 /**
  * Indicator-rising-indicator rule.
  * <p></p>
- * Satisfied when the values of the {@link Indicator indicator} strict increase
+ * Satisfied when the values of the {@link Indicator indicator} increase
  * within the timeFrame.
  */
 public class IsRisingRule extends AbstractRule {
 
 	/** The actual indicator */
-	private Indicator<Decimal> ref;
+	private final Indicator<Decimal> ref;
 	/** The timeFrame */
-	private int timeFrame;
+	private final int timeFrame;
+	/** The rising factor in percentage */
+	private double risingFactor;
 
 	/**
-	 * Constructor.
+	 * Constructor for strict rising.
 	 * 
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
 	 */
 	public IsRisingRule(Indicator<Decimal> ref, int timeFrame) {
+		this(ref, timeFrame, 1);
+	}
+	
+	/**
+	 * Constructor.
+	 * 
+	 * @param ref the indicator
+	 * @param timeFrame the time frame
+	 * @param risingFactor the rising factor between '0' and '1' (e.g. '1' means strict rising)
+	 */
+	public IsRisingRule(Indicator<Decimal> ref, int timeFrame, double risingFactor) {
 		this.ref = ref;
 		this.timeFrame = timeFrame;
+		this.risingFactor = risingFactor;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		Rule gtPrev = new OverIndicatorRule(ref, new PreviousValueIndicator(ref));
-		for (int i = 1; i < timeFrame - 1; i++) {
-			PreviousValueIndicator prev = new PreviousValueIndicator(ref, i);
-			gtPrev = gtPrev.and(new OverIndicatorRule(prev, new PreviousValueIndicator(prev)));
+		
+		if (risingFactor >= 1) {
+			risingFactor = 0.99;
 		}
 		
-		final boolean satisfied = gtPrev.isSatisfied(index, tradingRecord);
+		int end = Math.max(0, index - timeFrame + 1);
+		int countRisings = 0;
+		
+		for (int i = index; i >= end; i--) {
+			if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(0, i - 1)))) {
+				countRisings += 1;
+			}
+		}
+
+		double ratio = countRisings / (double) timeFrame;
+		
+		final boolean satisfied = ratio >= risingFactor ? true : false;
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}
