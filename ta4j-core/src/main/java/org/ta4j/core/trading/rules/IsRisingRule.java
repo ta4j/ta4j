@@ -38,7 +38,7 @@ public class IsRisingRule extends AbstractRule {
 	private final Indicator<Decimal> ref;
 	/** The timeFrame */
 	private final int timeFrame;
-	/** The rising factor in percentage */
+	/** The rising factor */
 	private double risingFactor;
 
 	/**
@@ -71,10 +71,8 @@ public class IsRisingRule extends AbstractRule {
 			risingFactor = 0.99;
 		}
 		
-		int end = Math.max(0, index - timeFrame + 1);
 		int countRisings = 0;
-		
-		for (int i = index; i >= end; i--) {
+		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
 			if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(0, i - 1)))) {
 				countRisings += 1;
 			}
