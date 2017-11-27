@@ -38,7 +38,7 @@ public class IsFallingRule extends AbstractRule {
 	private Indicator<Decimal> ref;
 	/** The timeFrame */
 	private int timeFrame;
-	/** The falling factor in percentage */
+	/** The falling factor */
 	private double fallingFactor;
 
 	/**
@@ -71,10 +71,8 @@ public class IsFallingRule extends AbstractRule {
 			fallingFactor = 0.99;
 		}
 		
-		int end = Math.max(0, index - timeFrame + 1);
 		int countFalling = 0;
-		
-		for (int i = index; i >= end; i--) {
+		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
 			if (ref.getValue(i).isLessThan(ref.getValue(Math.max(0, i - 1)))) {
 				countFalling += 1;
 			}
