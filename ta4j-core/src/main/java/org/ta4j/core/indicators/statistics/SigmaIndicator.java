@@ -20,52 +20,49 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
 
 /**
- * The Class RandomWalkIndexHighIndicator.
+ * Sigma-Indicator (also called, "z-score" or "standard score").
+ * <p/>
+ * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
-public class RandomWalkIndexHighIndicator extends CachedIndicator<Decimal> {
+public class SigmaIndicator extends CachedIndicator<Decimal> {
 
-    private final MaxPriceIndicator maxPrice;
+    private static final long serialVersionUID = 6283425887025798038L;
     
-    private final MinPriceIndicator minPrice;
-    
-    private final ATRIndicator averageTrueRange;
-    
-    private final Decimal sqrtTimeFrame;
-    
-    private final int timeFrame;
+    private Indicator<Decimal> ref;
+    private int timeFrame;
+
+    private SMAIndicator mean;
+    private StandardDeviationIndicator sd;
     
     /**
      * Constructor.
-     *
-     * @param series the series
+     * @param ref the indicator
      * @param timeFrame the time frame
      */
-    public RandomWalkIndexHighIndicator(TimeSeries series, int timeFrame) {
-        super(series);
+    public SigmaIndicator(Indicator<Decimal> ref, int timeFrame) {
+        super(ref);
+        this.ref = ref;
         this.timeFrame = timeFrame;
-        maxPrice = new MaxPriceIndicator(series);
-        minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new ATRIndicator(series, timeFrame);
-        sqrtTimeFrame = Decimal.valueOf(Math.sqrt(timeFrame));
+        mean = new SMAIndicator(ref, timeFrame);
+        sd = new StandardDeviationIndicator(ref, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        return maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index - timeFrame)))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
+        // z-score = (ref - mean) / sd
+        return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;
     }
-
 }

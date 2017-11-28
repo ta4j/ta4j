@@ -20,39 +20,34 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.trading.rules;
+package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
-public class IsRisingRuleTest {
+public class SigmaIndicatorTest {
 
-    private IsRisingRule rule;
+    private TimeSeries data;
 
-	@Before
-	public void setUp() {
-        Indicator<Decimal> indicator = new FixedDecimalIndicator(1, 2, 3, 4, 5, 6, 0, 1, 2, 3);
-		rule = new IsRisingRule(indicator, 3);
-	}
+    @Before
+    public void setUp() {
+        data = new MockTimeSeries(1, 2, 3, 4, 5, 6);
+    }
 
-	@Test
-	public void isSatisfied() {
-		assertFalse(rule.isSatisfied(0));
-		assertFalse(rule.isSatisfied(1));
-		assertFalse(rule.isSatisfied(2));
-		// First time to have at least 3 rising values.
-		assertTrue(rule.isSatisfied(3));
-		assertTrue(rule.isSatisfied(4));
-		assertTrue(rule.isSatisfied(5));
-		assertFalse(rule.isSatisfied(6));
-		assertFalse(rule.isSatisfied(7));
-		assertFalse(rule.isSatisfied(8));
-		assertTrue(rule.isSatisfied(9));
-	}
+    @Test
+    public void test() {
+      
+        SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
+      
+        assertDecimalEquals(zScore.getValue(1), 1.0);
+        assertDecimalEquals(zScore.getValue(2), 1.224744871391589);
+        assertDecimalEquals(zScore.getValue(3), 1.34164078649987387);
+        assertDecimalEquals(zScore.getValue(4), 1.414213562373095);
+        assertDecimalEquals(zScore.getValue(5), 1.414213562373095);
+    }
 }

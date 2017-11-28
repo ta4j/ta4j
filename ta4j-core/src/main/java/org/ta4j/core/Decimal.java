@@ -39,9 +39,9 @@ import java.util.Objects;
  */
 public final class Decimal implements Comparable<Decimal>, Serializable {
 
-	private static final long serialVersionUID = 2225130444465033658L;
+    private static final long serialVersionUID = 2225130444465033658L;
 
-	public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
+    public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     /** Not-a-Number instance (infinite error) */
     public static final Decimal NaN = new Decimal();
@@ -183,32 +183,7 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
         }
         return new Decimal(delegate.pow(n, MATH_CONTEXT));
     }
-    
-    /**
-     * Returns the correctly rounded natural logarithm (base e) of the <code>double</code> value of this {@code Decimal}.
-     * /!\ Warning! Uses the {@code StrictMath#log(double)} method under the hood.
-     * @return the natural logarithm (base e) of {@code this}
-     * @see StrictMath#log(double)
-     */
-    public Decimal log() {
-        if (this == NaN) {
-            return NaN;
-        }
-        return new Decimal(StrictMath.log(delegate.doubleValue()));
-    }
 
-    /**
-     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Decimal}.
-     * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
-     * @return the positive square root of {@code this}
-     * @see StrictMath#sqrt(double)
-     */
-    public Decimal sqrt() {
-        if (this == NaN) {
-            return NaN;
-        }
-        return new Decimal(StrictMath.sqrt(delegate.doubleValue()));
-    }
 
     /**
      * Returns a {@code Decimal} whose value is the absolute value

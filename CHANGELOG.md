@@ -20,6 +20,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DecimalTransformIndicator**: new indicator to transforms any indicator by using common math operations.
 - **Decimal**: added functions Decimal `valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 
+
 ## 0.10 (2017-10-23)
 
 ### VERY Important note!!!!
