@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.indicators.FisherIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
@@ -36,8 +37,8 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class FisherIndicatorTest {
 
-protected TimeSeries data;
-
+protected TimeSeries series;
+    
     @Before
     public void setUp() {
 
@@ -62,21 +63,18 @@ protected TimeSeries data;
         bars.add(new MockBar(43.07, 43.55, 43.65, 43.06));
         bars.add(new MockBar(43.56, 43.95, 43.99, 43.53));
         bars.add(new MockBar(43.93, 44.47, 44.58, 43.93));
-        data = new MockTimeSeries(bars);
+        series = new MockTimeSeries(bars);
     }
 
     @Test
     public void fisher() {
-        FisherIndicator fisher = new FisherIndicator(data);
+        FisherIndicator fisher = new FisherIndicator(series);
 
-        assertDecimalEquals(fisher.getValue(10), -3.8634);
-        assertDecimalEquals(fisher.getValue(11), -4.0571);
-        assertDecimalEquals(fisher.getValue(12), -4.2018);
-        assertDecimalEquals(fisher.getValue(13), -4.3354);
-        assertDecimalEquals(fisher.getValue(14), -4.4245);
-        assertDecimalEquals(fisher.getValue(15), -4.5590);
-        assertDecimalEquals(fisher.getValue(16), -4.5996);
-        assertDecimalEquals(fisher.getValue(17), -4.6695);
-        assertDecimalEquals(fisher.getValue(18), -4.5763);
+        assertDecimalEquals(fisher.getValue(10), 0.6448642008177138);
+        assertDecimalEquals(fisher.getValue(11), 0.8361770425706673);
+        assertDecimalEquals(fisher.getValue(12), 0.9936697984965788);
+        assertDecimalEquals(fisher.getValue(13), 0.8324807235379169);
+        assertDecimalEquals(fisher.getValue(14), 0.5026313552592737);
+        assertDecimalEquals(fisher.getValue(15), 0.06492516204615063);
     }
 }
