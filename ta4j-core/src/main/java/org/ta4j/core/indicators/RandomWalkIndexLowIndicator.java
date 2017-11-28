@@ -54,7 +54,7 @@ private final MaxPriceIndicator maxPrice;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
         averageTrueRange = new ATRIndicator(series, timeFrame);
-        sqrtTimeFrame = Decimal.valueOf(timeFrame).sqrt();
+        sqrtTimeFrame = Decimal.valueOf(Math.sqrt(timeFrame));
     }
 
     @Override

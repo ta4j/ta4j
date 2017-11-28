@@ -27,26 +27,45 @@ import org.ta4j.core.Indicator;
 
 /**
  * Triple exponential moving average indicator.
- * <p></p>
+ * </p>
  * a.k.a TRIX
+ * </p>
+ * TEMA needs "3 * period - 2" of data to start producing values in contrast to
+ * the period samples needed by a regular EMA.
+ * </p>
+ * see https://en.wikipedia.org/wiki/Triple_exponential_moving_average
  */
 public class TripleEMAIndicator extends CachedIndicator<Decimal> {
 
+    private static final long serialVersionUID = -3091675249185831978L;
+
     private final int timeFrame;
-
     private final EMAIndicator ema;
+    private final EMAIndicator emaEma;
+    private final EMAIndicator emaEmaEma;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param timeFrame the time frame
+     */
     public TripleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
+        this.emaEma = new EMAIndicator(ema, timeFrame);
+        this.emaEmaEma = new EMAIndicator(emaEma, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
-        EMAIndicator emaEmaEma = new EMAIndicator(emaEma, timeFrame);
-        return Decimal.THREE.multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
+    	
+    		// trix = 3 * ema - 3 * emaEma + emaEmaEma 
+        return Decimal.THREE.multipliedBy(
+        		ema.getValue(index)
+        			.minus(emaEma.getValue(index)))
+        			.plus(emaEmaEma.getValue(index));
     }
     
     @Override

@@ -27,25 +27,32 @@ import org.ta4j.core.Indicator;
 
 /**
  * Double exponential moving average indicator.
- * <p></p>
- * @see <a href="https://en.wikipedia.org/wiki/Double_exponential_moving_average">
- *     https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
+ * </p/>
+ * see https://en.wikipedia.org/wiki/Double_exponential_moving_average
  */
 public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
 
+    private static final long serialVersionUID = 502597792760330884L;
+	
     private final int timeFrame;
-
     private final EMAIndicator ema;
+    private final EMAIndicator emaEma;
 
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param timeFrame the time frame
+     */
     public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
+        this.emaEma = new EMAIndicator(ema, timeFrame);
     }
 
     @Override
     protected Decimal calculate(int index) {
-        EMAIndicator emaEma = new EMAIndicator(ema, timeFrame);
         return ema.getValue(index).multipliedBy(Decimal.TWO)
                 .minus(emaEma.getValue(index));
     }

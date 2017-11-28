@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
 - **BooleanTransformIndicator**: New indicator to transform any decimal indicator to a boolean indicator by using logical operations.
 - **DecimalTransformIndicator**: New indicator to transforms any indicator by using common math operations.
+- **SigmaIndicator**: New indicator to measure the statistic z-score.
 
 
 ## 0.10 (2017-10-23)
