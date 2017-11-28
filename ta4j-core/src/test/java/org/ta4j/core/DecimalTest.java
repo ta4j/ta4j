@@ -28,8 +28,16 @@ public class DecimalTest {
         Decimal decimalTen = Decimal.valueOf(ten);
         Decimal zero = decimalTen.minus(Decimal.valueOf(BigDecimal.valueOf(10)));
 
+        BigDecimal tenPlaces = BigDecimal.valueOf(10.1234567891);
+        Decimal tenPlacesDecimal = Decimal.valueOf(tenPlaces);
+
+
         assertEquals(decimalTen.toString(), ten.toString());
         assertEquals(ten, decimalTen.getDelegate());
         assertDecimalEquals(zero, 0);
+
+        assertEquals(tenPlaces, tenPlacesDecimal.getDelegate());
+        assertEquals(tenPlaces.multiply(ten), decimalTen.multipliedBy(tenPlacesDecimal).getDelegate()); // BigDecimal = BigDecimal
+        assertEquals(Decimal.valueOf(tenPlaces.multiply(ten)), decimalTen.multipliedBy(tenPlacesDecimal)); // Decimal = Decimal
     }
 }
