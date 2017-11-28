@@ -3,20 +3,22 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## unreleased (...)
 
+- **BREAKING**: Tick has been renamed to **Bar**
+
 ### Fixed
 
 ### Changed
-- **JustOnceRule**: Now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
+- **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
-- **Decimal**: Use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
+- **Decimal**: use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
 - **Strategy:** can now have a optional parameter "name".
-- **Tick:** Tick has been renamed to **Bar** for a more appropriate description of the price movement over a set period of time. 
+- **Tick:** `Tick` has been renamed to **`Bar`** for a more appropriate description of the price movement over a set period of time. 
 
 ## Added
-- **ConvergenceDivergenceIndicator**: New Indicator for positive/negative convergence and divergence.
-- **BooleanTransformIndicator**: New indicator to transform any decimal indicator to a boolean indicator by using logical operations.
-- **DecimalTransformIndicator**: New indicator to transforms any indicator by using common math operations.
-- **SigmaIndicator**: New indicator to measure the statistic z-score.
+- **ConvergenceDivergenceIndicator**: new Indicator for positive/negative convergence and divergence.
+- **BooleanTransformIndicator**: new indicator to transform any decimal indicator to a boolean indicator by using logical operations.
+- **DecimalTransformIndicator**: new indicator to transforms any indicator by using common math operations.
+- **Decimal**: added functions Decimal `valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 
 
 ## 0.10 (2017-10-23)

@@ -93,6 +93,14 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
     }
 
     /**
+     * Returns the underlying {@link BigDecimal} delegate
+     * @return BigDecimal delegate instance of this instance
+     */
+    public BigDecimal getDelegate(){
+        return delegate;
+    }
+
+    /**
      * Returns a {@code Decimal} whose value is {@code (this + augend)},
      * with rounding according to the context settings.
      * @param augend value to be added to this {@code Decimal}.
@@ -415,5 +423,9 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
 
     public static Decimal valueOf(long val) {
         return new Decimal(val);
+    }
+
+    public static Decimal valueOf(BigDecimal val){
+                return new Decimal(val);
     }
 }
