@@ -6,19 +6,28 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BREAKING**: Tick has been renamed to **Bar**
 
 ### Fixed
+- **ATRIndicator**: fixed calculations
+- **PlusDI, MinusDI, ADX**: fixed calculations
 
 ### Changed
 - **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
 - **Strategy:** can now have a optional parameter "name".
-- **Tick:** `Tick` has been renamed to **`Bar`** for a more appropriate description of the price movement over a set period of time. 
+- **Tick:** `Tick` has been renamed to **`Bar`** for a more appropriate description of the price movement over a set period of time.
+- **MMAIndicator**: restructured and moved from `helpers` to `indicators` package
+- **AverageTrueRangeIndicator**: renamed to **ATRIndicator**
+- **AverageDirectionalMovementDownIndicator**: renamed to **ADXIndicator**
+-  **ADXIndicator**: added new two argument constructor
+- **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
+
 
 ## Added
 - **ConvergenceDivergenceIndicator**: new Indicator for positive/negative convergence and divergence.
 - **BooleanTransformIndicator**: new indicator to transform any decimal indicator to a boolean indicator by using logical operations.
 - **DecimalTransformIndicator**: new indicator to transforms any indicator by using common math operations.
-- **Decimal**: added functions Decimal `valueOf(BigDecimal)` and `BigDecimal getDelegate()`
+- **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
+- **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
 
 
 ## 0.10 (2017-10-23)
