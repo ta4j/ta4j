@@ -47,10 +47,10 @@ public class ATRIndicatorTest {
 
 
         assertDecimalEquals(atr.getValue(0), 7d);
-        assertDecimalEquals(atr.getValue(1), 6d / 3 + (1 - 1d / 3) * atr.getValue(0).toDouble());
-        assertDecimalEquals(atr.getValue(2), 9d / 3 + (1 - 1d / 3) * atr.getValue(1).toDouble());
-        assertDecimalEquals(atr.getValue(3), 3d / 3 + (1 - 1d / 3) * atr.getValue(2).toDouble());
-        assertDecimalEquals(atr.getValue(4), 15d / 3 + (1 - 1d / 3) * atr.getValue(3).toDouble());
+        assertDecimalEquals(atr.getValue(1), 6d / 3 + (1 - 1d / 3) * atr.getValue(0).doubleValue());
+        assertDecimalEquals(atr.getValue(2), 9d / 3 + (1 - 1d / 3) * atr.getValue(1).doubleValue());
+        assertDecimalEquals(atr.getValue(3), 3d / 3 + (1 - 1d / 3) * atr.getValue(2).doubleValue());
+        assertDecimalEquals(atr.getValue(4), 15d / 3 + (1 - 1d / 3) * atr.getValue(3).doubleValue());
     }
 
     private void atrXls(int timeFrame) throws Exception {

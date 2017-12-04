@@ -201,7 +201,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Decimal> {
         }
 
         // Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
-        Decimal term1 = Decimal.valueOf((Math.log(Decimal.ONE.plus(value).dividedBy(Decimal.ONE.minus(value)).toDouble())));
+        Decimal term1 = Decimal.valueOf((Math.log(Decimal.ONE.plus(value).dividedBy(Decimal.ONE.minus(value)).doubleValue())));
         Decimal term2 = getValue(index - 1);
         return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
     }

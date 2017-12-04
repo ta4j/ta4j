@@ -159,11 +159,11 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 		else if (simpleType != null) {
 			switch (simpleType) {
 			case sqrt:
-				return Decimal.valueOf(Math.sqrt(val.toDouble()));
+				return Decimal.valueOf(Math.sqrt(val.doubleValue()));
 			case abs:
 				return val.abs();
 			case log:
-				return Decimal.valueOf(Math.log(val.toDouble()));
+				return Decimal.valueOf(Math.log(val.doubleValue()));
 			default:
 				break;
 			}

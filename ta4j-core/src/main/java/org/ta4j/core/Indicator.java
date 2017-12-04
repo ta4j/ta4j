@@ -60,7 +60,7 @@ public interface Indicator<T> extends Serializable {
 
 		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
 			Decimal number = ref.getValue(index);
-			all[i] = number.toDouble();
+			all[i] = number.doubleValue();
 		}
 
 		return all;

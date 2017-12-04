@@ -64,7 +64,7 @@ public class TATestsUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
      */
     public static void assertDecimalEquals(Decimal actual, double expected) {
-        assertEquals(expected, actual.toDouble(), TA_OFFSET);
+        assertEquals(expected, actual.doubleValue(), TA_OFFSET);
     }
 
     /**
@@ -88,7 +88,7 @@ public class TATestsUtils {
         assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getBarCount());
         for (int i = 0; i < expectedValues.size(); i++) {
             assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expectedValues.get(i).toDouble(), actualIndicator.getValue(i).toDouble(), TA_OFFSET);
+                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), TA_OFFSET);
         }
     }
 }

@@ -49,6 +49,6 @@ public class StandardDeviationIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-        return Decimal.valueOf(Math.sqrt(variance.getValue(index).toDouble()));
+        return Decimal.valueOf(Math.sqrt(variance.getValue(index).doubleValue()));
     }
 }

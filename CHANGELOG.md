@@ -13,6 +13,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
+    - now `Decimal` extends `Number` 
 - **Strategy:** can now have a optional parameter "name".
 - **Tick:** `Tick` has been renamed to **`Bar`** for a more appropriate description of the price movement over a set period of time.
 - **MMAIndicator**: restructured and moved from `helpers` to `indicators` package

@@ -59,7 +59,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Decimal> {
         Decimal cov = covariance.getValue(index);
         Decimal var1 = variance1.getValue(index);
         Decimal var2 = variance2.getValue(index);
-        Decimal var1_2_sqrt = Decimal.valueOf(Math.sqrt(var1.multipliedBy(var2).toDouble()));
+        Decimal var1_2_sqrt = Decimal.valueOf(Math.sqrt(var1.multipliedBy(var2).doubleValue()));
         return cov.dividedBy(var1_2_sqrt);
 
 
