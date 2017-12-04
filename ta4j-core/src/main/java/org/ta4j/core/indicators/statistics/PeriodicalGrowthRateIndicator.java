@@ -98,7 +98,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
             }
         }
 
-        return (Math.pow(totalProduct.toDouble(), (1.0 / completeTimeframes)));
+        return (Math.pow(totalProduct.doubleValue(), (1.0 / completeTimeframes)));
     }
 
     @Override
@@ -122,7 +122,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
             Decimal movingValue = indicator.getValue(index - timeFrame);
             Decimal movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
-            double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.toDouble()), (1 / partialTimeframeHeld)) - 1;
+            double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.doubleValue()), (1 / partialTimeframeHeld)) - 1;
             timeframedReturn = Decimal.valueOf(timeframedReturn_double);
         }
 

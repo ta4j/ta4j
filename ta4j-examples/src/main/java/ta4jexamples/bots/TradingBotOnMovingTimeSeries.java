@@ -42,7 +42,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
- * <p></p>
+ * <p/>
  */
 public class TradingBotOnMovingTimeSeries {
 
@@ -147,8 +147,8 @@ public class TradingBotOnMovingTimeSeries {
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex()
-                            + " (price=" + entry.getPrice().toDouble()
-                            + ", amount=" + entry.getAmount().toDouble() + ")");
+                            + " (price=" + entry.getPrice().doubleValue()
+                            + ", amount=" + entry.getAmount().doubleValue() + ")");
                 }
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
@@ -157,8 +157,8 @@ public class TradingBotOnMovingTimeSeries {
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex()
-                            + " (price=" + exit.getPrice().toDouble()
-                            + ", amount=" + exit.getAmount().toDouble() + ")");
+                            + " (price=" + exit.getPrice().doubleValue()
+                            + ", amount=" + exit.getAmount().doubleValue() + ")");
                 }
             }
         }
