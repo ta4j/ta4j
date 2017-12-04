@@ -231,10 +231,4 @@ public class TimeSeriesTest {
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
     }
-
-    @Test
-    public void subSeriesVsSeries(){
-        assertEquals(constrainedSeries.getBar(0), defaultSeries.getBar(0));
-        assertEquals(constrainedSeries.getBar(5), defaultSeries.getBar(5));
-    }
 }
