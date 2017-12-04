@@ -65,10 +65,13 @@ public class TimeSeriesTest {
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
+
+
     }
 
     @Test
     public void getEndGetBeginGetBarCountIsEmpty() {
+
         // Default series
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(bars.size() - 1, defaultSeries.getEndIndex());
@@ -227,5 +230,11 @@ public class TimeSeriesTest {
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
+    }
+
+    @Test
+    public void subSeriesVsSeries(){
+        assertEquals(constrainedSeries.getBar(0), defaultSeries.getBar(0));
+        assertEquals(constrainedSeries.getBar(5), defaultSeries.getBar(5));
     }
 }

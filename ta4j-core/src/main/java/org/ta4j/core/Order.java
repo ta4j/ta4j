@@ -75,19 +75,22 @@ public class Order implements Serializable {
     private int index;
 
     /** The price for the order */
-    private Decimal price = Decimal.NaN;
+    private Decimal price;
     
     /** The amount to be (or that was) ordered */
-    private Decimal amount = Decimal.NaN;
+    private Decimal amount;
     
     /**
      * Constructor.
      * @param index the index the order is executed
+     * @param series the time series
      * @param type the type of the order
      */
-    protected Order(int index, OrderType type) {
+    protected Order(int index, TimeSeries series, OrderType type) {
         this.type = type;
         this.index = index;
+        this.amount = Decimal.valueOf(1);
+        this.price = series.getBar(index).getClosePrice();
     }
 
     /**
@@ -98,7 +101,8 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) ordered
      */
     protected Order(int index, OrderType type, Decimal price, Decimal amount) {
-        this(index, type);
+        this.type = type;
+        this.index = index;
         this.price = price;
         this.amount = amount;
     }
@@ -168,10 +172,7 @@ public class Order implements Serializable {
         if (this.price != other.price && (this.price == null || !this.price.equals(other.price))) {
             return false;
         }
-        if (this.amount != other.amount && (this.amount == null || !this.amount.equals(other.amount))) {
-            return false;
-        }
-        return true;
+        return this.amount == other.amount || (this.amount != null && this.amount.equals(other.amount));
     }
 
     @Override
@@ -183,8 +184,8 @@ public class Order implements Serializable {
      * @param index the index the order is executed
      * @return a BUY order
      */
-    public static Order buyAt(int index) {
-        return new Order(index, OrderType.BUY);
+    public static Order buyAt(int index, TimeSeries series) {
+        return new Order(index, series, OrderType.BUY);
     }
 
     /**
@@ -201,8 +202,8 @@ public class Order implements Serializable {
      * @param index the index the order is executed
      * @return a SELL order
      */
-    public static Order sellAt(int index) {
-        return new Order(index, OrderType.SELL);
+    public static Order sellAt(int index, TimeSeries series) {
+        return new Order(index, series, OrderType.SELL);
     }
 
     /**

@@ -34,7 +34,6 @@ import org.ta4j.core.Indicator;
  * Sell signal: When StopLossDistance becomes '0'
  *
  * Usage:
- *
  * // Buying rule
  * Rule buyingRule = new BooleanRule(true); // No real buying rule
  *
@@ -49,6 +48,7 @@ import org.ta4j.core.Indicator;
  *  - Constructor 1: No initialStopLimit is needed. It is taken from the first indicator value
  *  - Constructor 2: You can set an initialStopLimit
  * It may influence the trade signals of the strategy depending which constructor you choose.
+ * There is also a {@link org.ta4j.core.trading.rules.StopLossRule StopLosRule}
  *
  * @author Bastian Engelmann
  */
@@ -60,13 +60,15 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
 
     private final Decimal stopLossDistance;
 
+    private final boolean shouldReset;
+
     /**
      * Constructor.
      * @param indicator an indicator
      * @param stopLossDistance the stop-loss distance (absolute)
      */
     public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance) {
-        this(indicator, stopLossDistance, Decimal.NaN);
+        this(indicator, stopLossDistance, Decimal.NaN, true);
     }
 
     /**
@@ -76,10 +78,21 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
      * @param initialStopLossLimit the initial stop-loss limit
      */
     public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance, Decimal initialStopLossLimit) {
+        this(indicator, stopLossDistance, initialStopLossLimit, true);
+    }
+
+    /**
+     * Constructor.
+     * @param indicator an indicator
+     * @param stopLossDistance the stop-loss distance (absolute)
+     * @param initialStopLossLimit the initial stop-loss limit
+     */
+    public TrailingStopLossIndicator(Indicator<Decimal> indicator, Decimal stopLossDistance, Decimal initialStopLossLimit, boolean shouldReset) {
         super(indicator);
         this.indicator = indicator;
         this.stopLossDistance = stopLossDistance;
         this.stopLossLimit = initialStopLossLimit;
+        this.shouldReset = shouldReset;
     }
 
     /**
@@ -93,7 +106,7 @@ public class TrailingStopLossIndicator extends CachedIndicator<Decimal> {
     protected Decimal calculate(int index) {
         if (stopLossLimit.isNaN()) {
             // Case without initial stop-loss limit value
-            stopLossLimit = indicator.getValue(0).minus(stopLossDistance);
+            stopLossLimit = indicator.getValue(0).minus(stopLossDistance).max(Decimal.valueOf(0));
         }
         Decimal currentValue = indicator.getValue(index);
         Decimal referenceValue = stopLossLimit.plus(stopLossDistance);

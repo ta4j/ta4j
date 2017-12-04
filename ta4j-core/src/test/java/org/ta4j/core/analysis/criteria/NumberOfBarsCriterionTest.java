@@ -49,8 +49,8 @@ public class NumberOfBarsCriterionTest {
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0), Order.sellAt(2),
-                Order.buyAt(3), Order.sellAt(5));
+                Order.buyAt(0,series), Order.sellAt(2,series),
+                Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
         assertEquals(6, numberOfBars.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
@@ -59,7 +59,7 @@ public class NumberOfBarsCriterionTest {
     @Test
     public void calculateWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
-        Trade t = new Trade(Order.buyAt(2), Order.sellAt(5));
+        Trade t = new Trade(Order.buyAt(2,series), Order.sellAt(5,series));
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
         assertEquals(4, numberOfBars.calculate(series, t), TATestsUtils.TA_OFFSET);
     }

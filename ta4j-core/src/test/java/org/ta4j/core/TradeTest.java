@@ -57,7 +57,7 @@ public class TradeTest {
     @Test
     public void whenNewShouldCreateBuyOrderWhenEntering() {
         newTrade.operate(0);
-        assertEquals(Order.buyAt(0), newTrade.getEntry());
+        assertEquals(Order.buyAt(0,Decimal.NaN,Decimal.NaN), newTrade.getEntry());
     }
 
     @Test
@@ -69,7 +69,7 @@ public class TradeTest {
     public void whenOpenedShouldCreateSellOrderWhenExiting() {
         newTrade.operate(0);
         newTrade.operate(1);
-        assertEquals(Order.sellAt(1), newTrade.getExit());
+        assertEquals(Order.sellAt(1,Decimal.NaN,Decimal.NaN), newTrade.getExit());
     }
 
     @Test
@@ -101,20 +101,20 @@ public class TradeTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
-        Trade t = new Trade(Order.buyAt(0), Order.buyAt(1));
+        Trade t = new Trade(Order.buyAt(0,Decimal.NaN,Decimal.NaN), Order.buyAt(1,Decimal.NaN,Decimal.NaN));
     }
 
     @Test
     public void whenNewShouldCreateSellOrderWhenEnteringUncovered() {
         uncoveredTrade.operate(0);
-        assertEquals(Order.sellAt(0), uncoveredTrade.getEntry());
+        assertEquals(Order.sellAt(0,Decimal.NaN,Decimal.NaN), uncoveredTrade.getEntry());
     }
 
     @Test
     public void whenOpenedShouldCreateBuyOrderWhenExitingUncovered() {
         uncoveredTrade.operate(0);
         uncoveredTrade.operate(1);
-        assertEquals(Order.buyAt(1), uncoveredTrade.getExit());
+        assertEquals(Order.buyAt(1,Decimal.NaN,Decimal.NaN), uncoveredTrade.getExit());
     }
 
     @Test
