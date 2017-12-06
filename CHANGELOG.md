@@ -29,6 +29,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DecimalTransformIndicator**: new indicator to transforms any indicator by using common math operations.
 - **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
+- **PearsonCorrelationIndicator**: new statistic indicator with pearson correlation
 
 
 ## 0.10 (2017-10-23)
