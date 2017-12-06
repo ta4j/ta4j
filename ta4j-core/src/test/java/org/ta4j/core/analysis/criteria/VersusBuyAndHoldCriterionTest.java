@@ -30,6 +30,27 @@ import static org.junit.Assert.*;
 
 public class VersusBuyAndHoldCriterionTest {
 
+	@Test
+	public void calculateWithLimitedRange() {
+		MockTimeSeries series = new MockTimeSeries(100, 105, 110, 120, 140, 200);
+		TradingRecord tradingRecord = new BaseTradingRecord(
+				Order.buyAt(0), Order.sellAt(1));
+		
+		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+		assertEquals(
+				buyAndHold.calculate(series, tradingRecord),
+				((VersusBuyAndHoldCriterion)buyAndHold).calculate(series, tradingRecord, series.getBeginIndex(), series.getEndIndex()),
+				TATestsUtils.TA_OFFSET);
+		assertEquals(
+				1d,
+				((VersusBuyAndHoldCriterion)buyAndHold).calculate(series, tradingRecord, 0, 1),
+				TATestsUtils.TA_OFFSET);
+		assertEquals(
+				(105d / 100) / (200d / 100),
+				((VersusBuyAndHoldCriterion)buyAndHold).calculate(series, tradingRecord, 0, 5),
+				TATestsUtils.TA_OFFSET);
+	}
+
     @Test
     public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);

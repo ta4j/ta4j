@@ -30,7 +30,7 @@ import org.ta4j.core.*;
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the value of a {@link BuyAndHoldCriterion "buy and hold" criterion}.
  */
 public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
-	
+
     private AnalysisCriterion criterion;
 
     /**
