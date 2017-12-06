@@ -44,7 +44,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decima
 		Decimal Syy = Decimal.ZERO;
 		Decimal Sxy = Decimal.ZERO;
 		
-		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
+		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - timeFrame + 1); i <= index; i++) {
 
 			Decimal x = indicator1.getValue(i);
 			Decimal y = indicator2.getValue(i);
