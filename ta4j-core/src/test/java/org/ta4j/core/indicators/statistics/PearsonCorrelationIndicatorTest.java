@@ -27,7 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
-import org.ta4j.core.mocks.MockTick;
+import org.ta4j.core.mocks.MockBar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,28 +40,28 @@ public class PearsonCorrelationIndicatorTest {
     
     @Before
     public void setUp() {
-        List<Tick> ticks = new ArrayList<Tick>();
+        List<Bar> bars = new ArrayList<Bar>();
         // close, volume
-        ticks.add(new MockTick(6, 100));
-        ticks.add(new MockTick(7, 105));
-        ticks.add(new MockTick(9, 130));
-        ticks.add(new MockTick(12, 160));
-        ticks.add(new MockTick(11, 150));
-        ticks.add(new MockTick(10, 130));
-        ticks.add(new MockTick(11, 95));
-        ticks.add(new MockTick(13, 120));
-        ticks.add(new MockTick(15, 180));
-        ticks.add(new MockTick(12, 160));
-        ticks.add(new MockTick(8, 150));
-        ticks.add(new MockTick(4, 200));
-        ticks.add(new MockTick(3, 150));
-        ticks.add(new MockTick(4, 85));
-        ticks.add(new MockTick(3, 70));
-        ticks.add(new MockTick(5, 90));
-        ticks.add(new MockTick(8, 100));
-        ticks.add(new MockTick(9, 95));
-        ticks.add(new MockTick(11, 110));
-        ticks.add(new MockTick(10, 95));
+        bars.add(new MockTick(6, 100));
+        bars.add(new MockTick(7, 105));
+        bars.add(new MockTick(9, 130));
+        bars.add(new MockTick(12, 160));
+        bars.add(new MockTick(11, 150));
+        bars.add(new MockTick(10, 130));
+        bars.add(new MockTick(11, 95));
+        bars.add(new MockTick(13, 120));
+        bars.add(new MockTick(15, 180));
+        bars.add(new MockTick(12, 160));
+        bars.add(new MockTick(8, 150));
+        bars.add(new MockTick(4, 200));
+        bars.add(new MockTick(3, 150));
+        bars.add(new MockTick(4, 85));
+        bars.add(new MockTick(3, 70));
+        bars.add(new MockTick(5, 90));
+        bars.add(new MockTick(8, 100));
+        bars.add(new MockTick(9, 95));
+        bars.add(new MockTick(11, 110));
+        bars.add(new MockTick(10, 95));
 
         TimeSeries data = new BaseTimeSeries(ticks);
         close = new ClosePriceIndicator(data);
