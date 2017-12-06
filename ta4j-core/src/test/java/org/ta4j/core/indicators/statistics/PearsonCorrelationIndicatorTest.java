@@ -42,28 +42,28 @@ public class PearsonCorrelationIndicatorTest {
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // close, volume
-        bars.add(new MockTick(6, 100));
-        bars.add(new MockTick(7, 105));
-        bars.add(new MockTick(9, 130));
-        bars.add(new MockTick(12, 160));
-        bars.add(new MockTick(11, 150));
-        bars.add(new MockTick(10, 130));
-        bars.add(new MockTick(11, 95));
-        bars.add(new MockTick(13, 120));
-        bars.add(new MockTick(15, 180));
-        bars.add(new MockTick(12, 160));
-        bars.add(new MockTick(8, 150));
-        bars.add(new MockTick(4, 200));
-        bars.add(new MockTick(3, 150));
-        bars.add(new MockTick(4, 85));
-        bars.add(new MockTick(3, 70));
-        bars.add(new MockTick(5, 90));
-        bars.add(new MockTick(8, 100));
-        bars.add(new MockTick(9, 95));
-        bars.add(new MockTick(11, 110));
-        bars.add(new MockTick(10, 95));
+        bars.add(new MockBar(6, 100));
+        bars.add(new MockBar(7, 105));
+        bars.add(new MockBar(9, 130));
+        bars.add(new MockBar(12, 160));
+        bars.add(new MockBar(11, 150));
+        bars.add(new MockBar(10, 130));
+        bars.add(new MockBar(11, 95));
+        bars.add(new MockBar(13, 120));
+        bars.add(new MockBar(15, 180));
+        bars.add(new MockBar(12, 160));
+        bars.add(new MockBar(8, 150));
+        bars.add(new MockBar(4, 200));
+        bars.add(new MockBar(3, 150));
+        bars.add(new MockBar(4, 85));
+        bars.add(new MockBar(3, 70));
+        bars.add(new MockBar(5, 90));
+        bars.add(new MockBar(8, 100));
+        bars.add(new MockBar(9, 95));
+        bars.add(new MockBar(11, 110));
+        bars.add(new MockBar(10, 95));
 
-        TimeSeries data = new BaseTimeSeries(ticks);
+        TimeSeries data = new BaseTimeSeries(bars);
         close = new ClosePriceIndicator(data);
         volume = new VolumeIndicator(data, 2);
     }
