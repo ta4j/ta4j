@@ -21,7 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **AverageDirectionalMovementDownIndicator**: renamed to **ADXIndicator**
 -  **ADXIndicator**: added new two argument constructor
 - **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
-- **VersusBuyAndHoldCriterion**: added calculate(TimeSeries, TradingRecord, int, int) with ints for start and finish indices.  Limits buy and hold calculation to a subrange of a series for comparison to trading records generated with TimeSeriesManager#run(Strategy, int, int).
+- **AnalysisCriterion**: added calculate(TimeSeries, TradingRecord, int, int) with ints for start and finish indices.  Limits buy and hold calculation to a subrange of a series for comparison to trading records generated with TimeSeriesManager#run(Strategy, int, int).
 
 
 ## Added
