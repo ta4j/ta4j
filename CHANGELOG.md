@@ -29,6 +29,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DecimalTransformIndicator**: new indicator to transforms any indicator by using common math operations.
 - **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
+- **LagIndicator**: new helper indicator to return the value of a indicator with a lag
 
 
 ## 0.10 (2017-10-23)
