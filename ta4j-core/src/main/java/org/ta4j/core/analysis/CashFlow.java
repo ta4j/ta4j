@@ -62,9 +62,7 @@ public class CashFlow implements Indicator<Decimal> {
      * @param tradingRecord the trading record
      */
     public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
-        this.timeSeries = timeSeries;
-        calculate(tradingRecord, timeSeries.getBeginIndex(), timeSeries.getEndIndex());
-        fillToTheEnd();
+    	this(timeSeries, tradingRecord, timeSeries.getBeginIndex(), timeSeries.getEndIndex());
     }
 
     /**
