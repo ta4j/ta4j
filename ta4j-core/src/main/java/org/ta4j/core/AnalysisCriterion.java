@@ -45,9 +45,20 @@ public interface AnalysisCriterion {
     /**
      * @param series a time series
      * @param tradingRecord a trading record
-     * @return the criterion value for the trades
+     * @return the criterion value for the trades over the entire series
      */
-    double calculate(TimeSeries series, TradingRecord tradingRecord);
+    default double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    	return calculate(series, tradingRecord, series.getBeginIndex(), series.getEndIndex());
+    }
+
+    /**
+     * @param series a time series
+     * @param tradingRecord a trading record
+     * @param beginIndex beginning index for criterion calculation
+     * @param endIndex ending index for criterion calculation
+     * @return the criterion value for the trades over a subrange of the series
+     */
+    double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex);
 
     /**
      * @param manager the time series manager

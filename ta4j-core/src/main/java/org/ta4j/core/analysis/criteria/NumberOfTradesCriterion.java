@@ -32,8 +32,8 @@ import org.ta4j.core.TradingRecord;
 public class NumberOfTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTradeCount();
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+        return tradingRecord.getTradeCount(beginIndex, endIndex);
     }
 
     @Override

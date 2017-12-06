@@ -33,22 +33,13 @@ public class VersusBuyAndHoldCriterionTest {
 	@Test
 	public void calculateWithLimitedRange() {
 		MockTimeSeries series = new MockTimeSeries(100, 105, 110, 120, 140, 200);
-		TradingRecord tradingRecord = new BaseTradingRecord(
-				Order.buyAt(0), Order.sellAt(1));
-		
+		TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY, 2, 4);
+		tradingRecord.operate(2, series.getBar(2).getClosePrice(), Decimal.NaN);
+		tradingRecord.operate(4, series.getBar(4).getClosePrice(), Decimal.NaN);
+
 		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-		assertEquals(
-				buyAndHold.calculate(series, tradingRecord),
-				((VersusBuyAndHoldCriterion)buyAndHold).calculate(series, tradingRecord, series.getBeginIndex(), series.getEndIndex()),
-				TATestsUtils.TA_OFFSET);
-		assertEquals(
-				1d,
-				((VersusBuyAndHoldCriterion)buyAndHold).calculate(series, tradingRecord, 0, 1),
-				TATestsUtils.TA_OFFSET);
-		assertEquals(
-				(105d / 100) / (200d / 100),
-				((VersusBuyAndHoldCriterion)buyAndHold).calculate(series, tradingRecord, 0, 5),
-				TATestsUtils.TA_OFFSET);
+		assertEquals(1d, buyAndHold.calculate(series, tradingRecord, tradingRecord.getStartIndex(), tradingRecord.getFinishIndex()), TATestsUtils.TA_OFFSET);
+		assertEquals((140d / 110) / (200d / 100), buyAndHold.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 	}
 
     @Test

@@ -39,12 +39,12 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        double bars = numberOfBars.calculate(series, tradingRecord);
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+        double bars = numberOfBars.calculate(series, tradingRecord, beginIndex, endIndex);
         if (bars == 0) {
             return 1;
         }
-        return Math.pow(totalProfit.calculate(series, tradingRecord), 1d / bars);
+        return Math.pow(totalProfit.calculate(series, tradingRecord, beginIndex, endIndex), 1d / bars);
     }
 
     @Override

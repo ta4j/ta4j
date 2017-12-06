@@ -34,8 +34,8 @@ import org.ta4j.core.TradingRecord;
 public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return series.getBar(series.getEndIndex()).getClosePrice().dividedBy(series.getBar(series.getBeginIndex()).getClosePrice()).doubleValue();
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+    	return series.getBar(endIndex).getClosePrice().dividedBy(series.getBar(beginIndex).getClosePrice()).doubleValue();
     }
 
     @Override

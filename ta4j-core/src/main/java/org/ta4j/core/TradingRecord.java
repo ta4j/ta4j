@@ -109,10 +109,22 @@ public interface TradingRecord extends Serializable {
     List<Trade> getTrades();
     
     /**
+     * @return the recorded trades
+     */
+    List<Trade> getTrades(int beginIndex, int endIndex);
+    
+    /**
      * @return the number of recorded trades
      */
     default int getTradeCount() {
         return getTrades().size();
+    }
+    
+    /**
+     * @return the number of recorded trades
+     */
+    default int getTradeCount(int beginIndex, int endIndex) {
+        return getTrades(beginIndex, endIndex).size();
     }
     
     /**
@@ -146,4 +158,14 @@ public interface TradingRecord extends Serializable {
      * @return the last exit order recorded
      */
     Order getLastExit();
+    
+    /**
+     * @return the start index of the trading record
+     */
+    int getStartIndex();
+    
+    /**
+     * @return the finish index of the trading record
+     */
+    int getFinishIndex();
 }

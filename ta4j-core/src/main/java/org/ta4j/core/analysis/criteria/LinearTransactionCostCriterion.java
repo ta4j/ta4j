@@ -72,11 +72,14 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         double totalCosts = 0d;
         double tradedAmount = initialAmount;
         
         for (Trade trade : tradingRecord.getTrades()) {
+        	if (trade.getEntry().getIndex() < beginIndex || trade.getExit().getIndex() > endIndex) {
+        		continue;
+        	}
             double tradeCost = getTradeCost(series, trade, tradedAmount);
             totalCosts += tradeCost;
             // To calculate the new traded amount:
