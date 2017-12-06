@@ -34,9 +34,9 @@ import org.ta4j.core.indicators.CachedIndicator;
  */
 public class LagIndicator extends CachedIndicator<Decimal> {
 
-	private static final long serialVersionUID = -3110269420278184171L;
+    private static final long serialVersionUID = -3110269420278184171L;
 	
-	private Indicator<Decimal> ref;
+    private Indicator<Decimal> ref;
     private int lag;
     
     /**
@@ -53,7 +53,7 @@ public class LagIndicator extends CachedIndicator<Decimal> {
 
     @Override
     protected Decimal calculate(int index) {
-    		int pos = index - lag;
+        int pos = index - lag;
         return pos > 0 ? ref.getValue(pos) : ref.getValue(0);
     }
 }
