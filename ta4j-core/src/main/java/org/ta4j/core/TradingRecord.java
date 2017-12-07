@@ -131,7 +131,7 @@ public interface TradingRecord extends Serializable {
      * @return the last trade recorded
      */
     default Trade getLastTrade() {
-    	List<Trade> trades = getTrades();
+        List<Trade> trades = getTrades();
         if (!trades.isEmpty()) {
             return trades.get(trades.size() - 1);
         }

@@ -80,6 +80,8 @@ public class BaseTradingRecord implements TradingRecord {
         }
         this.startingType = entryOrderType;
         currentTrade = new Trade(entryOrderType);
+        this.startIndex = 0;
+        this.finishIndex = Integer.MAX_VALUE;
     }
 
     /**
@@ -141,7 +143,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public final boolean exit(int index, Decimal price, Decimal amount) {
+    public boolean exit(int index, Decimal price, Decimal amount) {
         if (currentTrade.isOpened()) {
             operate(index, price, amount);
             return true;
@@ -151,12 +153,7 @@ public class BaseTradingRecord implements TradingRecord {
     
     @Override
     public List<Trade> getTrades() {
-    	if (trades.size() == 0) {
-    		return trades;
-    	}
-        return getTrades(
-        		trades.get(0).getEntry().getIndex(),
-        		trades.get(trades.size()-1).getExit().getIndex());
+        return trades;
     }
     
     @Override

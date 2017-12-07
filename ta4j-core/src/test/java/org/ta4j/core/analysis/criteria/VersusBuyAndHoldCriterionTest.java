@@ -38,8 +38,15 @@ public class VersusBuyAndHoldCriterionTest {
 		tradingRecord.operate(4, series.getBar(4).getClosePrice(), Decimal.NaN);
 
 		AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+		// ratio of (value of one trade) to (buy and hold over range of the one trade) is always exactly 1
 		assertEquals(1d, buyAndHold.calculate(series, tradingRecord, tradingRecord.getStartIndex(), tradingRecord.getFinishIndex()), TATestsUtils.TA_OFFSET);
+		// ratio of (value of one trade) to (buy and hold over entire series) 
 		assertEquals((140d / 110) / (200d / 100), buyAndHold.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+		// ratio of (no trades in range, => 1) to (buy and hold over range)
+		assertEquals(1d / (105d / 100), buyAndHold.calculate(series, tradingRecord, 0, 1), TATestsUtils.TA_OFFSET);
+		// TODO: trade spans calculate index.  Fake trade exit at index 3.
+		//assertEquals((120d / 110) / (120d / 100), buyAndHold.calculate(series, tradingRecord, 0, 3), TATestsUtils.TA_OFFSET);
+		//assertNotEquals((140d / 110) / (120d / 100), buyAndHold.calculate(series, tradingRecord, 0, 3), TATestsUtils.TA_OFFSET);
 	}
 
     @Test

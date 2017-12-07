@@ -47,7 +47,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
         fakeRecord.enter(beginIndex);
         fakeRecord.exit(endIndex);
 
-        return criterion.calculate(series, tradingRecord) / criterion.calculate(series, fakeRecord);
+        return criterion.calculate(series, tradingRecord, beginIndex, endIndex) / criterion.calculate(series, fakeRecord, beginIndex, endIndex);
     }
 
     @Override
