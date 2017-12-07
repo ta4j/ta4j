@@ -21,6 +21,7 @@ In eclipse you can do this easily by selecting your sources and run "Organize im
 - **HighestValueIndicator and LowestValueIndicator:** ignore also NaN values if they are at the current index
 
 ## Added
+- **DonchianChannelIndicator**: New indicator calculating the upper and lower Donchian channel
 - **AroonOscillatorIndicator**: New indicator based on AroonUp/DownIndicator
 - **AroonUpIndicator** and **AroonDownIndicator**: New constructor with parameter for custom indicator for min price and max price calculation
 - **DirectionalMovementPlusIndicator**: New indicator for Directional Movement System (DMI+)
