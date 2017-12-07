@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 /**
  * Lower donchian channel indicator. 
  * <p>
- * Returns the biggest value of the time series within the tiemframe.
+ * Returns the highest value of the time series within the tiemframe.
  *
  */
 public class DonchianChannelUpper extends CachedIndicator<Decimal> {
