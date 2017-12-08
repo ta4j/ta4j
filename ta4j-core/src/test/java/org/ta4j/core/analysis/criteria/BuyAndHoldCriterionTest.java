@@ -69,7 +69,7 @@ public class BuyAndHoldCriterionTest {
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
         assertEquals(1d, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
     }
-    
+
     @Test
     public void calculateWithOpenTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
