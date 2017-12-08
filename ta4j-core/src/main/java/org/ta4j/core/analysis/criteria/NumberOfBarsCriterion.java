@@ -37,9 +37,9 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         int nBars = 0;
         for (Trade trade : tradingRecord.getTrades()) {
-        	if (trade.getEntry().getIndex() < beginIndex || trade.getExit().getIndex() > endIndex) {
-        		continue;
-        	}
+            if (trade.getEntry().getIndex() < beginIndex || trade.getExit().getIndex() > endIndex) {
+                continue;
+            }
             nBars += calculate(series, trade);
         }
         return nBars;

@@ -58,7 +58,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             int entryIndex = trade.getEntry().getIndex();
             int exitIndex = trade.getExit().getIndex();
             if (entryIndex < beginIndex || exitIndex > endIndex) {
-            	continue;
+                continue;
             }
 
             Decimal result;

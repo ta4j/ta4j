@@ -64,7 +64,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      * @return the maximum drawdown from a cash flow over a series
      */
     private Decimal calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
-        return calculateMaximumDrawdown(series, cashFlow, series.getBeginIndex(), series.getEndIndex());
+        return calculateMaximumDrawdown(series, cashFlow, 0, cashFlow.getSize()-1);
     }
     /**
      * Calculates the maximum drawdown from a cash flow over a series.

@@ -53,12 +53,6 @@ public class BaseTradingRecord implements TradingRecord {
 
     /** The entry type (BUY or SELL) in the trading session */
     private Order.OrderType startingType;
-
-    /** The starting index of the trading session */
-    private int startIndex;
-
-	/** The finishing index of the trading session */
-    private int finishIndex;
     
     /** The current non-closed trade (there's always one) */
     private Trade currentTrade;
@@ -80,20 +74,6 @@ public class BaseTradingRecord implements TradingRecord {
         }
         this.startingType = entryOrderType;
         currentTrade = new Trade(entryOrderType);
-        this.startIndex = 0;
-        this.finishIndex = Integer.MAX_VALUE;
-    }
-
-    /**
-     * Constructor.
-     * @param entryOrderType the {@link Order.OrderType order type} of entries in the trading session
-     * @param startIndex the starting index of the trading session
-     * @param finishIndex the finish index of the trading session
-     */
-    public BaseTradingRecord(Order.OrderType entryOrderType, int startIndex, int finishIndex) {
-    	this(entryOrderType);
-        this.startIndex = startIndex;
-        this.finishIndex = finishIndex;
     }
 
     /**
@@ -159,15 +139,15 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public List<Trade> getTrades(int beginIndex, int endIndex) {
         List<Trade> trades = new ArrayList<Trade>();
-    	for (Trade trade : this.trades) {
-    		if (trade.getEntry().getIndex() < beginIndex || trade.getExit().getIndex() > endIndex) {
-    			continue;
-    		}
-    		trades.add(trade);
-    	}
-    	return trades;
+        for (Trade trade : this.trades) {
+            if (trade.getEntry().getIndex() < beginIndex || trade.getExit().getIndex() > endIndex) {
+                continue;
+            }
+            trades.add(trade);
+        }
+        return trades;
     }
-    
+
     @Override
     public Order getLastOrder() {
         if (!orders.isEmpty()) {
@@ -240,13 +220,19 @@ public class BaseTradingRecord implements TradingRecord {
      * @return the starting index of the trading session
      */
     public int getStartIndex() {
-		return startIndex;
+        if (trades.size() == 0 || trades.get(0).getEntry() == null) {
+            return 0;
+        }
+        return trades.get(0).getEntry().getIndex();
 	}
 
     /**
      * @return the finishing index of the trading session
      */
 	public int getFinishIndex() {
-		return finishIndex;
+	    if (trades.size() == 0 || trades.get(trades.size()-1).getExit() == null) {
+	        return 0;
+	    }
+	    return trades.get(trades.size()-1).getExit().getIndex();
 	}
 }

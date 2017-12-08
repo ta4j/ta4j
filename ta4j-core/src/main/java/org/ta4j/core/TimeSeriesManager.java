@@ -144,7 +144,7 @@ public class TimeSeriesManager {
         int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());
 
         log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy, orderType);
-        TradingRecord tradingRecord = new BaseTradingRecord(orderType, runBeginIndex, runEndIndex);
+        TradingRecord tradingRecord = new BaseTradingRecord(orderType);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {

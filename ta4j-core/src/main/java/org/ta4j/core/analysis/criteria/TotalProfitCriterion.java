@@ -38,9 +38,9 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         double value = 1d;
         for (Trade trade : tradingRecord.getTrades()) {
-        	if (trade.getEntry().getIndex() < beginIndex || trade.getEntry().getIndex() > endIndex) {
-        		continue;
-        	}
+            if (trade.getEntry().getIndex() < beginIndex || trade.getEntry().getIndex() > endIndex) {
+                continue;
+            }
             value *= calculateProfit(series, trade);
         }
         return value;

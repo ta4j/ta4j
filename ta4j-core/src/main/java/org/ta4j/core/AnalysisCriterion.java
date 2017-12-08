@@ -48,7 +48,7 @@ public interface AnalysisCriterion {
      * @return the criterion value for the trades over the entire series
      */
     default double calculate(TimeSeries series, TradingRecord tradingRecord) {
-    	return calculate(series, tradingRecord, series.getBeginIndex(), series.getEndIndex());
+        return calculate(series, tradingRecord, tradingRecord.getStartIndex(), tradingRecord.getFinishIndex());
     }
 
     /**

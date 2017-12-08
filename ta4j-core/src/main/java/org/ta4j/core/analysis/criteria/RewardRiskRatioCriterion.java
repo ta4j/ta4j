@@ -41,7 +41,7 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         return totalProfit.calculate(series, tradingRecord, beginIndex, endIndex)
-        		/ maxDrawdown.calculate(series, tradingRecord, beginIndex, endIndex);
+                / maxDrawdown.calculate(series, tradingRecord, beginIndex, endIndex);
     }
 
     @Override
