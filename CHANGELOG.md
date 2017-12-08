@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **ATRIndicator**: fixed calculations
 - **PlusDI, MinusDI, ADX**: fixed calculations
+- **[Versus]BuyAndHoldCriterion**: limited calculate to range of trading record
 
 ### Changed
 - **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
