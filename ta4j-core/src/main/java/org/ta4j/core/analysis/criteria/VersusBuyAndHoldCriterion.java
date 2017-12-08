@@ -44,8 +44,13 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
         TradingRecord fakeRecord = new BaseTradingRecord();
-        fakeRecord.enter(series.getBeginIndex());
-        fakeRecord.exit(series.getEndIndex());
+        if (tradingRecord.getTradeCount() == 0) {
+            return 1d;
+        }
+        int firstEntryIndex = tradingRecord.getTrades().get(0).getEntry().getIndex();
+        int lastExitIndex = tradingRecord.getTrades().get(tradingRecord.getTradeCount()-1).getExit().getIndex();
+        fakeRecord.enter(firstEntryIndex);
+        fakeRecord.exit(lastExitIndex);
 
         return criterion.calculate(series, tradingRecord) / criterion.calculate(series, fakeRecord);
     }
