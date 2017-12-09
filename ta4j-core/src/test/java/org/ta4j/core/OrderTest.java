@@ -34,11 +34,11 @@ public class OrderTest {
 
     @Before
     public void setUp() {
-        opEquals1 = Order.buyAt(1);
-        opEquals2 = Order.buyAt(1);
+        opEquals1 = Order.buyAt(1, Decimal.NaN, Decimal.NaN);
+        opEquals2 = Order.buyAt(1, Decimal.NaN, Decimal.NaN);
 
-        opNotEquals1 = Order.sellAt(1);
-        opNotEquals2 = Order.buyAt(2);
+        opNotEquals1 = Order.sellAt(1, Decimal.NaN, Decimal.NaN);
+        opNotEquals2 = Order.buyAt(2, Decimal.NaN, Decimal.NaN);
     }
 
     @Test

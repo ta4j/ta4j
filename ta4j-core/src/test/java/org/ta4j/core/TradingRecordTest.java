@@ -34,10 +34,10 @@ public class TradingRecordTest {
     @Before
     public void setUp() {
         emptyRecord = new BaseTradingRecord();
-        openedRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(3),
-                Order.buyAt(7));
-        closedRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(3),
-                Order.buyAt(7), Order.sellAt(8));
+        openedRecord = new BaseTradingRecord(Order.buyAt(0, Decimal.NaN, Decimal.NaN), Order.sellAt(3, Decimal.NaN, Decimal.NaN),
+                Order.buyAt(7, Decimal.NaN, Decimal.NaN));
+        closedRecord = new BaseTradingRecord(Order.buyAt(0, Decimal.NaN, Decimal.NaN), Order.sellAt(3, Decimal.NaN, Decimal.NaN),
+                Order.buyAt(7, Decimal.NaN, Decimal.NaN), Order.sellAt(8, Decimal.NaN, Decimal.NaN));
     }
 
     @Test
@@ -55,31 +55,31 @@ public class TradingRecordTest {
         assertTrue(record.getCurrentTrade().isOpened());
         assertEquals(0, record.getTradeCount());
         assertNull(record.getLastTrade());
-        assertEquals(Order.buyAt(1), record.getLastOrder());
-        assertEquals(Order.buyAt(1), record.getLastOrder(Order.OrderType.BUY));
+        assertEquals(Order.buyAt(1, Decimal.NaN, Decimal.NaN), record.getLastOrder());
+        assertEquals(Order.buyAt(1, Decimal.NaN, Decimal.NaN), record.getLastOrder(Order.OrderType.BUY));
         assertNull(record.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.buyAt(1), record.getLastEntry());
+        assertEquals(Order.buyAt(1, Decimal.NaN, Decimal.NaN), record.getLastEntry());
         assertNull(record.getLastExit());
         
         record.operate(3);
         assertTrue(record.getCurrentTrade().isNew());
         assertEquals(1, record.getTradeCount());
-        assertEquals(new Trade(Order.buyAt(1), Order.sellAt(3)), record.getLastTrade());
-        assertEquals(Order.sellAt(3), record.getLastOrder());
-        assertEquals(Order.buyAt(1), record.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.sellAt(3), record.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.buyAt(1), record.getLastEntry());
-        assertEquals(Order.sellAt(3), record.getLastExit());
+        assertEquals(new Trade(Order.buyAt(1, Decimal.NaN, Decimal.NaN), Order.sellAt(3, Decimal.NaN, Decimal.NaN)), record.getLastTrade());
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), record.getLastOrder());
+        assertEquals(Order.buyAt(1, Decimal.NaN, Decimal.NaN), record.getLastOrder(Order.OrderType.BUY));
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), record.getLastOrder(Order.OrderType.SELL));
+        assertEquals(Order.buyAt(1, Decimal.NaN, Decimal.NaN), record.getLastEntry());
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), record.getLastExit());
         
         record.operate(5);
         assertTrue(record.getCurrentTrade().isOpened());
         assertEquals(1, record.getTradeCount());
-        assertEquals(new Trade(Order.buyAt(1), Order.sellAt(3)), record.getLastTrade());
-        assertEquals(Order.buyAt(5), record.getLastOrder());
-        assertEquals(Order.buyAt(5), record.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.sellAt(3), record.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.buyAt(5), record.getLastEntry());
-        assertEquals(Order.sellAt(3), record.getLastExit());
+        assertEquals(new Trade(Order.buyAt(1, Decimal.NaN, Decimal.NaN), Order.sellAt(3, Decimal.NaN, Decimal.NaN)), record.getLastTrade());
+        assertEquals(Order.buyAt(5, Decimal.NaN, Decimal.NaN), record.getLastOrder());
+        assertEquals(Order.buyAt(5, Decimal.NaN, Decimal.NaN), record.getLastOrder(Order.OrderType.BUY));
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), record.getLastOrder(Order.OrderType.SELL));
+        assertEquals(Order.buyAt(5, Decimal.NaN, Decimal.NaN), record.getLastEntry());
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), record.getLastExit());
     }
     
     @Test
@@ -99,35 +99,35 @@ public class TradingRecordTest {
     @Test
     public void getLastTrade() {
         assertNull(emptyRecord.getLastTrade());
-        assertEquals(new Trade(Order.buyAt(0), Order.sellAt(3)), openedRecord.getLastTrade());
-        assertEquals(new Trade(Order.buyAt(7), Order.sellAt(8)), closedRecord.getLastTrade());
+        assertEquals(new Trade(Order.buyAt(0, Decimal.NaN, Decimal.NaN), Order.sellAt(3, Decimal.NaN, Decimal.NaN)), openedRecord.getLastTrade());
+        assertEquals(new Trade(Order.buyAt(7, Decimal.NaN, Decimal.NaN), Order.sellAt(8, Decimal.NaN, Decimal.NaN)), closedRecord.getLastTrade());
     }
 
     @Test
     public void getLastOrder() {
         // Last order
         assertNull(emptyRecord.getLastOrder());
-        assertEquals(Order.buyAt(7), openedRecord.getLastOrder());
-        assertEquals(Order.sellAt(8), closedRecord.getLastOrder());
+        assertEquals(Order.buyAt(7, Decimal.NaN, Decimal.NaN), openedRecord.getLastOrder());
+        assertEquals(Order.sellAt(8, Decimal.NaN, Decimal.NaN), closedRecord.getLastOrder());
         // Last BUY order
         assertNull(emptyRecord.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.buyAt(7), openedRecord.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.buyAt(7), closedRecord.getLastOrder(Order.OrderType.BUY));
+        assertEquals(Order.buyAt(7, Decimal.NaN, Decimal.NaN), openedRecord.getLastOrder(Order.OrderType.BUY));
+        assertEquals(Order.buyAt(7, Decimal.NaN, Decimal.NaN), closedRecord.getLastOrder(Order.OrderType.BUY));
         // Last SELL order
         assertNull(emptyRecord.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.sellAt(3), openedRecord.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.sellAt(8), closedRecord.getLastOrder(Order.OrderType.SELL));
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), openedRecord.getLastOrder(Order.OrderType.SELL));
+        assertEquals(Order.sellAt(8, Decimal.NaN, Decimal.NaN), closedRecord.getLastOrder(Order.OrderType.SELL));
     }
 
     @Test
     public void getLastEntryExit() {
         // Last entry
         assertNull(emptyRecord.getLastEntry());
-        assertEquals(Order.buyAt(7), openedRecord.getLastEntry());
-        assertEquals(Order.buyAt(7), closedRecord.getLastEntry());
+        assertEquals(Order.buyAt(7, Decimal.NaN, Decimal.NaN), openedRecord.getLastEntry());
+        assertEquals(Order.buyAt(7, Decimal.NaN, Decimal.NaN), closedRecord.getLastEntry());
         // Last exit
         assertNull(emptyRecord.getLastExit());
-        assertEquals(Order.sellAt(3), openedRecord.getLastExit());
-        assertEquals(Order.sellAt(8), closedRecord.getLastExit());
+        assertEquals(Order.sellAt(3, Decimal.NaN, Decimal.NaN), openedRecord.getLastExit());
+        assertEquals(Order.sellAt(8, Decimal.NaN, Decimal.NaN), closedRecord.getLastExit());
     }
 }

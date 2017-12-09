@@ -40,12 +40,13 @@ public class RewardRiskRatioCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterion() {
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0), Order.sellAt(1),
-                Order.buyAt(2), Order.sellAt(4),
-                Order.buyAt(5), Order.sellAt(7));
-
         MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
+        TradingRecord tradingRecord = new BaseTradingRecord(
+                Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(4, series),
+                Order.buyAt(5, series), Order.sellAt(7, series));
+
+
 
         double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
         double peak = (105d / 100) * (100d / 95);
@@ -58,8 +59,8 @@ public class RewardRiskRatioCriterionTest {
     public void rewardRiskRatioCriterionOnlyWithGain() {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0), Order.sellAt(1),
-                Order.buyAt(2), Order.sellAt(5));
+                Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(5, series));
         assertTrue(Double.isInfinite(rrc.calculate(series, tradingRecord)));
     }
 
@@ -71,9 +72,10 @@ public class RewardRiskRatioCriterionTest {
     
     @Test
     public void withOneTrade() {
-        Trade trade = new Trade(Order.buyAt(0), Order.sellAt(1));
-
         MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
+        Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+
+
 
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
         assertEquals((95d/100) / ((1d - 0.95d)), TATestsUtils.TA_OFFSET, ratioCriterion.calculate(series, trade));

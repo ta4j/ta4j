@@ -36,7 +36,7 @@ public class LinearTransactionCostCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 150, 200, 100, 50, 100);
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
 
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(1));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
         assertEquals(12.861, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(2);
@@ -52,7 +52,7 @@ public class LinearTransactionCostCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 1.3d);
         
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0), Order.sellAt(1));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
         assertEquals(2.6d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
         
         tradingRecord.operate(2);

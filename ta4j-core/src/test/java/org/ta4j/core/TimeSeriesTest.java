@@ -65,10 +65,13 @@ public class TimeSeriesTest {
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
+
+
     }
 
     @Test
     public void getEndGetBeginGetBarCountIsEmpty() {
+
         // Default series
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(bars.size() - 1, defaultSeries.getEndIndex());

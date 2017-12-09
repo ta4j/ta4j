@@ -10,6 +10,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PlusDI, MinusDI, ADX**: fixed calculations
 
 ### Changed
+- **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`
+- **Order**: Now constructors and static `sell/buyAt(..)` functions need a price and amount parameter to satisfy correct be
+behaviour of criterions (entry/exit prices can differ from corresponding close prices in `Order`)
 - **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
@@ -30,6 +33,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
 
+## Removed
+- **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
 
 ## 0.10 (2017-10-23)
 
