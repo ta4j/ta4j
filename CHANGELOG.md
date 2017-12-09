@@ -32,6 +32,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **DecimalTransformIndicator**: new indicator to transforms any indicator by using common math operations.
 - **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
+- **PearsonCorrelationIndicator**: new statistic indicator with pearson correlation
 
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
