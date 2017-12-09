@@ -31,6 +31,17 @@ import static org.junit.Assert.*;
 public class VersusBuyAndHoldCriterionTest {
 
     @Test
+    public void calculateWithSubrange() {
+        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(
+                Order.buyAt(1), Order.sellAt(2),
+                Order.buyAt(3), Order.sellAt(4));
+
+        AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        assertEquals((110d / 105) * (95d / 100) / (95d / 105), buyAndHold.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+    }
+
+    @Test
     public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
@@ -64,9 +75,18 @@ public class VersusBuyAndHoldCriterionTest {
     @Test
     public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
-
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1));
+        assertEquals(1d, buyAndHold.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+    }
+
+    @Test
+    public void calculateWithOpenTrade() {
+        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1));
+        AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        assertEquals(1d, buyAndHold.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test
