@@ -35,9 +35,12 @@ import org.ta4j.core.TradingRecord;
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         double value = 1d;
         for (Trade trade : tradingRecord.getTrades()) {
+            if (trade.getEntry().getIndex() < beginIndex || trade.getEntry().getIndex() > endIndex) {
+                continue;
+            }
             value *= calculateProfit(series, trade);
         }
         return value;

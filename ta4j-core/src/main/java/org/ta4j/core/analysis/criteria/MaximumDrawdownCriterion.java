@@ -36,9 +36,9 @@ import org.ta4j.core.analysis.CashFlow;
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, beginIndex, endIndex);
+        Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow, beginIndex, endIndex);
         return maximumDrawdown.doubleValue();
     }
 
@@ -64,11 +64,20 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      * @return the maximum drawdown from a cash flow over a series
      */
     private Decimal calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
+        return calculateMaximumDrawdown(series, cashFlow, 0, cashFlow.getSize()-1);
+    }
+    /**
+     * Calculates the maximum drawdown from a cash flow over a series.
+     * @param series the time series
+     * @param cashFlow the cash flow
+     * @return the maximum drawdown from a cash flow over a series
+     */
+    private Decimal calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow, int beginIndex, int endIndex) {
         Decimal maximumDrawdown = Decimal.ZERO;
         Decimal maxPeak = Decimal.ZERO;
         if (!series.isEmpty()) {
         	// The series is not empty
-	        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+	        for (int i = beginIndex; i <= endIndex; i++) {
 	            Decimal value = cashFlow.getValue(i);
 	            if (value.isGreaterThan(maxPeak)) {
 	                maxPeak = value;

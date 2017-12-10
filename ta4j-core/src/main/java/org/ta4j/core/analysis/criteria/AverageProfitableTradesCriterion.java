@@ -52,11 +52,14 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
     }
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         int numberOfProfitable = 0;
         for (Trade trade : tradingRecord.getTrades()) {
             int entryIndex = trade.getEntry().getIndex();
             int exitIndex = trade.getExit().getIndex();
+            if (entryIndex < beginIndex || exitIndex > endIndex) {
+                continue;
+            }
 
             Decimal result;
             if (trade.getEntry().isBuy()) {

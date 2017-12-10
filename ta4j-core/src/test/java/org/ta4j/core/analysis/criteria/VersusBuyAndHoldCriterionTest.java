@@ -31,6 +31,29 @@ import static org.junit.Assert.*;
 public class VersusBuyAndHoldCriterionTest {
 
     @Test
+    public void calculateWithLimitedRange() {
+        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 120, 140, 200);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
+        tradingRecord.operate(2, series.getBar(2).getClosePrice(), Decimal.NaN);
+        tradingRecord.operate(4, series.getBar(4).getClosePrice(), Decimal.NaN);
+
+        AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        // ratio of (value of one trade) to (buy and hold over range of the one trade) is always exactly 1
+        assertEquals(1d, buyAndHold.calculate(
+                series, tradingRecord, tradingRecord.getStartIndex(), tradingRecord.getFinishIndex()), TATestsUtils.TA_OFFSET);
+        // ratio of (value of one trade) to (buy and hold over entire series)
+        assertEquals((140d / 110) / (200d / 100), buyAndHold.calculate(
+                series, tradingRecord, series.getBeginIndex(), series.getEndIndex()), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, buyAndHold.calculate(
+                series, tradingRecord), TATestsUtils.TA_OFFSET);
+        // ratio of (no trades in range, => 1) to (buy and hold over range)
+        assertEquals(1d / (105d / 100), buyAndHold.calculate(series, tradingRecord, 0, 1), TATestsUtils.TA_OFFSET);
+        // TODO: trade spans calculate index.  Fake trade exit at index 3.
+        //assertEquals((120d / 110) / (120d / 100), buyAndHold.calculate(series, tradingRecord, 0, 3), TATestsUtils.TA_OFFSET);
+        //assertNotEquals((140d / 110) / (120d / 100), buyAndHold.calculate(series, tradingRecord, 0, 3), TATestsUtils.TA_OFFSET);
+    }
+
+    @Test
     public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
@@ -66,6 +89,9 @@ public class VersusBuyAndHoldCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        // per the logic that strategies are only evaluated for closed trades, this should be 1d like so:
+        //assertEquals(1d, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        // for some reason, this evaluates a strategy with no closed trades against the bnh criteria:
         assertEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
     }
 

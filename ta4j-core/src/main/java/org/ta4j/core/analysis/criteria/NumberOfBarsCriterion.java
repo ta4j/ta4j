@@ -34,9 +34,12 @@ import org.ta4j.core.TradingRecord;
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public double calculate(TimeSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         int nBars = 0;
         for (Trade trade : tradingRecord.getTrades()) {
+            if (trade.getEntry().getIndex() < beginIndex || trade.getExit().getIndex() > endIndex) {
+                continue;
+            }
             nBars += calculate(series, trade);
         }
         return nBars;

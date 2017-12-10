@@ -24,6 +24,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **AverageDirectionalMovementDownIndicator**: renamed to **ADXIndicator**
 -  **ADXIndicator**: added new two argument constructor
 - **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
+- **AnalysisCriterion**: added calculate(TimeSeries, TradingRecord, int, int) with ints for start and finish indices.  Limits buy and hold calculation to a subrange of a series for comparison to trading records generated with TimeSeriesManager#run(Strategy, int, int).
 
 
 ## Added
