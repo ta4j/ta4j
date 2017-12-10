@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **ATRIndicator**: fixed calculations
 - **PlusDI, MinusDI, ADX**: fixed calculations
+- **LinearTransactionCost**: fixed calculations, fixed unit tests
 
 ### Changed
 - **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`
