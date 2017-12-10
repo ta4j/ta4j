@@ -34,17 +34,50 @@ public class LinearTransactionCostCriterionTest {
     @Test
     public void calculateLinearCost() {
         MockTimeSeries series = new MockTimeSeries(100, 150, 200, 100, 50, 100);
-        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
+        double amount = 1000d;
+        final double a = 0.005;
+        final double b = 0.2;
+        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(amount, a, b);
 
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
+
+        double entryCost = amount * a + b;
+        double profit = series.getBar(1).getClosePrice().dividedBy(series.getBar(0).getClosePrice()).doubleValue();
+        amount = (amount - entryCost) * profit;
+        double exitCost = amount * a + b;
+        amount = amount - exitCost;
+        double totalCost = entryCost + exitCost;
+        System.out.println(entryCost + " " + profit + " " + amount + " " + exitCost + " " + totalCost);
+
+        // bad form
         assertEquals(12.861, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        // good form
+        assertEquals(totalCost, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(2);
         tradingRecord.operate(3);
-        assertEquals(24.3473, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        
+        entryCost = amount * a + b;
+        profit = series.getBar(3).getClosePrice().dividedBy(series.getBar(2).getClosePrice()).doubleValue();
+        amount = (amount - entryCost) * profit;
+        exitCost = amount * a + b;
+        amount = amount - exitCost;
+        totalCost += entryCost + exitCost;
+
+        assertEquals(24.3759, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(totalCost, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(5);
-        assertEquals(28.2204, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        
+        entryCost = amount * a + b;
+        profit = 1d;
+        amount = (amount - entryCost) * profit;
+        exitCost = 0d;
+        amount = amount - exitCost;
+        totalCost += entryCost;
+        
+        assertEquals(28.2488, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(totalCost, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test

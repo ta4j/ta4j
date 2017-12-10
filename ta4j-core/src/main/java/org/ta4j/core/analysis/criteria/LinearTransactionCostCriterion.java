@@ -80,9 +80,11 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             double tradeCost = getTradeCost(series, trade, tradedAmount);
             totalCosts += tradeCost;
             // To calculate the new traded amount:
-            //    - Remove the cost of the first order
+            //    - Remove the cost of the *first* order
             //    - Multiply by the profit ratio
-            tradedAmount = (tradedAmount - tradeCost) * profit.calculate(series, trade);
+            //    - Remove the cost of the *second* order
+            tradedAmount = (tradedAmount - getOrderCost(trade.getEntry(), tradedAmount)) * profit.calculate(series, trade);
+            tradedAmount -= getOrderCost(trade.getExit(), tradedAmount);
         }
         
         // Special case: if the current trade is open
