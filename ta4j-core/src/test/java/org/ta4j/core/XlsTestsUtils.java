@@ -105,16 +105,14 @@ public class XlsTestsUtils {
         return values;
     }
 
-    public static void testXlsIndicator(Class testClass, String xlsFileName, Double param1Value, Double param2Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
+    //public static void testXlsIndicator(Class testClass, String xlsFileName, Double param1Value, Double param2Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
+    public static void testXlsIndicator(Class testClass, String xlsFileName, int valueColumnIdx, IndicatorFactory indicatorFactory, Double... params) throws Exception {
         // read time series from xls
         Sheet sheet = getDataSheet(testClass, xlsFileName);
         TimeSeries inputSeries = readTimeSeries(sheet);
         // compute and read expected values from xls
-        if (param1Value != null) {
-            setParamValue(sheet, 0, param1Value);
-        }
-        if (param2Value != null) {
-            setParamValue(sheet, 1, param2Value);
+        for (int i = 0; i < params.length; i++) {
+            setParamValue(sheet, i, params[i]);
         }
         List<Decimal> expectedValues = readValues(sheet, valueColumnIdx);
         // create indicator using time series
@@ -122,12 +120,11 @@ public class XlsTestsUtils {
         // compare values computed by indicator with values computed independently in excel
         TATestsUtils.assertValuesEquals(actualIndicator, expectedValues);
     }
-
-    public static void testXlsIndicator(Class testClass, String xlsFileName, int param1Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
-        testXlsIndicator(testClass, xlsFileName, new Double(param1Value), null, valueColumnIdx, indicatorFactory);
-    }
-
-    public static void testXlsIndicator(Class testClass, String xlsFileName, int param1Value, int param2Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
-        testXlsIndicator(testClass, xlsFileName, new Double(param1Value), new Double(param2Value), valueColumnIdx, indicatorFactory);
+    public static <T> void testXlsIndicator(Class testClass, String xlsFileName, int valueColumnIdx, IndicatorFactory indicatorFactory, T... params) throws Exception {
+        Double[] doubleParams = new Double[params.length];
+        for (int i = 0; i < params.length; i++) {
+            doubleParams[i] = Double.valueOf(params[i].toString());
+        }
+        testXlsIndicator(testClass, xlsFileName, valueColumnIdx, indicatorFactory, doubleParams);
     }
 }
