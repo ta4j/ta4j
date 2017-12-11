@@ -80,8 +80,8 @@ public class XlsTestsUtils {
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = readDataAfterHeader(sheet);
         for (Row row : rows) {
-            double d = evaluator.evaluate(row.getCell(columnIndex)).getNumberValue();
-            values.add(Decimal.valueOf(d));
+            String s = evaluator.evaluate(row.getCell(columnIndex)).formatAsString();
+            values.add(Decimal.valueOf(s));
         }
         return values;
     }
