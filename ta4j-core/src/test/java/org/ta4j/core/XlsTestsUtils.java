@@ -105,7 +105,6 @@ public class XlsTestsUtils {
         return values;
     }
 
-    //public static void testXlsIndicator(Class testClass, String xlsFileName, Double param1Value, Double param2Value, int valueColumnIdx, IndicatorFactory indicatorFactory) throws Exception {
     public static void testXlsIndicator(Class testClass, String xlsFileName, int valueColumnIdx, IndicatorFactory indicatorFactory, Double... params) throws Exception {
         // read time series from xls
         Sheet sheet = getDataSheet(testClass, xlsFileName);
