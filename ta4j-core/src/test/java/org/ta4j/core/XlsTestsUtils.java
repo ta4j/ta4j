@@ -57,9 +57,6 @@ public class XlsTestsUtils {
         Duration weekDuration = Duration.ofDays(7);
         List<Row> rows = readDataAfterHeader(sheet);
         for (Row row : rows) {
-            if (row == null) {
-                continue;
-            }
             // price data exists in first 6 columns (week date, open, high, low, close, volume)
             CellValue[] cellValues = new CellValue[6];
             for (int i = 0; i < 6; i++) {
@@ -83,9 +80,7 @@ public class XlsTestsUtils {
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = readDataAfterHeader(sheet);
         for (Row row : rows) {
-            Cell cell = row.getCell(columnIndex);
-            CellValue value = evaluator.evaluate(cell);
-            double d = value.getNumberValue();
+            double d = evaluator.evaluate(row.getCell(columnIndex)).getNumberValue();
             values.add(Decimal.valueOf(d));
         }
         return values;
