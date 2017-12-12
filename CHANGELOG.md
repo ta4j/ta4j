@@ -24,7 +24,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **AverageDirectionalMovementDownIndicator**: renamed to **ADXIndicator**
 -  **ADXIndicator**: added new two argument constructor
 - **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
-- **XlsTestsUtils**: changed testXlsIndicator() to take T... params and xls readers to allow space for arbitrary number of params in files.
+- **XlsTestsUtils**: changed testXlsIndicator() to take T... params, Param and Date header rows added to xls parsing.
 
 
 ## Added
