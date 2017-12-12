@@ -107,7 +107,9 @@ public class XlsTestsUtils {
         while (iterator.hasNext()) {
             Row row = iterator.next();
             if (noHeader == false) {
-                rows.add(row);
+                if (evaluator.evaluate(row.getCell(0)).formatAsString().compareTo("\"//\"") != 0) {
+                    rows.add(row);
+                }
             }
             if (noHeader && evaluator.evaluate(row.getCell(0)).formatAsString().contains("Date")) {
                 noHeader = false;
