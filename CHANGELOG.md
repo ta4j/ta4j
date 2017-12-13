@@ -25,6 +25,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 -  **ADXIndicator**: added new two argument constructor
 - **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
 - **XlsTestsUtils**: changed testXlsIndicator() to take T... params, Param and Date header rows added to xls parsing, data comments have "//" in first column
+- **XlsTestsUtils**: added testXlsCriterion()
 
 
 ## Added
