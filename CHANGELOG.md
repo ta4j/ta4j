@@ -1,7 +1,7 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 
-## unreleased (...)
+## unreleased (`develop` branch)
 
 - **BREAKING**: Tick has been renamed to **Bar**
 
@@ -37,7 +37,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
 
-## 0.10 (2017-10-23)
+## 0.10 (released October 30, 2017)
 
 ### VERY Important note!!!!
 
@@ -79,15 +79,135 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 - **IsLowestRule**: new rule that is satisfied if indicator is the lowest within the timeFrame.
 - **IsHighestRule**: new rule that is satisfied if indicator is the highest within the timeFrame.
 
+## 0.9 (released September 7, 2017)
+  - **BREAKING** drops Java 7 support
+  - use `java.time` instead of `java.util.Date`
+  * Added interfaces for some API basic objects
+  * Cleaned whole API
+  * Reordered indicators
+  * Added PreviousValueIndicator
+  * Fixed #162 - Added amount field into Tick constructor
+  * Fixed #183 - addTrade bad calculation
+  * Fixed #153, #170 - Updated StopGainRule and StopLossRule for short trades
+  * Removed dependency to Joda-time
+  * Dropped Java 6 and Java 7 compatibility
+  * Fixed #120 - ZLEMAIndicator StackOverflowError
+  * Added stochastic RSI indicator
+  * Added smoothed RSI indicator
+  * Fixed examples
+  * Fixed #81 - Tick uses Period of 24H when it possibly means 1 Day
+  * Fixed #80 - TimeSeries always iterates over all the data
+  * Removed the `timePeriod` field in time series
+  * Fixed #102 - RSIIndicator returns NaN when rsi == 100
+  * Added periodical growth rate indicator
+  * Fixed #105 - Strange calculation with Ichimoku Indicator
+  * Added Random Walk Index (high/low) indicators
+  * Improved performance for Williams %R indicator
+  * Moved mock indicators to regular scope (renamed in Fixed*Indicator)
 
-## 0.9 (2017-09-07)
+## 0.8 (released February 25, 2016)
 
-- **BREAKING** drops Java 7 support
-- use `java.time` instead of `java.util.Date`
+  * Fixed StackOverflowErrors on recursive indicators (see #60 and #68)
+  * Fixed #74 - Question on backtesting strategies with indicators calculated with enough ticks
+  * Added Chande Momentum Oscillator indicator
+  * Added cumulated losses/gains indicators
+  * Added Range Action Verification Index indicator
+  * Added MVWAP indicator
+  * Added VWAP indicator
+  * Added Chandelier exit indicators
+  * Improved Decimal performances
+  * Added Fisher indicator
+  * Added KAMA indicator
+  * Added Detrended Price Oscillator
+  * Added Ichimoku clouds indicators
+  * Added statistical indicators: Simple linear regression, Correlation coefficient, Variance, Covariance, Standard error
+  * Moved standard deviation
+  * Added Bollinger BandWidth and %B indicator
+  * Added Keltner channel indicators
+  * Added Ulcer Index and Mass Index indicators
+  * Added a trailing stop-loss indicator
+  * Added Coppock Curve indicator
+  * Added sum indicator
+  * Added candle indicators: Real body, Upper/Lower shadow, Doji, 3 black crows, 3 white soldiers, Bullish/Bearish Harami, Bullish/Bearish Engulfing
+  * Added absolute indicator
+  * Added Hull Moving Average indicator
+  * Updated Bollinger Bands (variable multiplier, see #53) 
+  * Fixed #39 - Possible update for TimeSeries.run()
+  * Added Chaikin Money Flow indicator
+  * Improved volume indicator
+  * Added Close Location Value indicator
+  * Added Positive Volume Index and Negative Volume Index indicators
+  * Added zero-lag EMA indicator
 
-## 0.8 (2016-02-25)
-## 0.7 (2015-05-21)
-## 0.6 (2015-02-05)
-## 0.5 (2014-10-22)
-## 0.4 (2014-05-28)
-## 0.3 (2014-03-11)
+## 0.7 (released May 21, 2015)
+
+  * Fixed #35 - Fix max drawdown criterion
+  * Improved documentation: user's guide & contributor's guidelines
+  * Fixed #37 - Update Tick.toString method
+  * Fixed #36 - Missing 'Period timePeriod' in full Tick constructor
+  * Updated examples
+  * Improved analysis criteria (to use actual entry/exit prices instead of close prices)
+  * Added price and amount to `Order`
+  * Added helpers for order creation
+  * Renamed `Operation` to `Order`
+  * Added a record/history of a trading session (`TradingRecord`)
+  * Moved the trading logic from strategies to rules
+  * Refactored trade operations
+  * Added a difference indicator
+  * Small other API changes
+
+## 0.6 (released February 5, 2015)
+
+  * Added `NaN` to Decimals
+  * Renamed `TADecimal` to `Decimal`
+  * Fixed #24 - Error in standard deviation calculation
+  * Added moving time series (& cache: #25)
+  * Refactored time series and ticks
+  * Added entry-pass filter and exit-pass filter strategies
+  * Replaced `JustBuyOnceStrategy` and `CombinedBuyAndSellStrategy` by `JustEnterOnceStrategy` and `CombinedEntryAndExitStrategy` respectively
+  * Added examples
+  * Added operation type helpers
+  * Added strategy execution traces through SLF4J
+  * Removed `.summarize(...)` methods and `Decision` (analysis)
+  * Improved performance of some indicators and strategies
+  * Generalized cache to all indicators (#20)
+  * Removed AssertJ dependency
+  * Fixed #16 - Division by zero in updated WalkForward example
+
+## 0.5 (released October 22, 2014)
+
+  * Switched doubles for TADecimals (BigDecimals) in indicators
+  * Semantic improvement for IndicatorOverIndicatorStrategy
+  * Fixed #11 - UnknownFormatConversionException when using toString() for 4 strategies 
+  * Added a maximum value starter strategy
+  * Added linear transaction cost (analysis criterion)
+  * Removed evaluators (replaced by `.chooseBest(...)` and `.betterThan(...)` methods)
+  * Added triple EMA indicator
+  * Added double EMA indicator
+  * Removed slicers (replaced by `.split(...)` methods)
+  * Removed runner (replaced by `.run(...)` methods)
+  * Added more tests
+  * Removed `ConstrainedTimeSeries` (replaced by `.subseries(...)` methods)
+  * Added/refactored examples (including walk-forward and candlestick chart)
+
+## 0.4 (released May 28, 2014)
+
+  * Fixed #2 - Tests failing in JDK8
+  * Added indicators: Mean deviation, Commodity channel index, Percentage price oscillator (tests)
+  * Added distance between indicator and constant
+  * Added opposite strategy
+  * Removed some runners
+  * Added strategy runs on whole series
+  * Refactored slicers
+  * Removed log4j dependency
+  * Added examples
+
+## 0.3 (released March 11, 2014)
+
+  * First public release
+  * 100% Pure Java - works on any Java Platform version 6 or later
+  * More than 40 technical indicators (Aroon, ATR, moving averages, parabolic SAR, RSI, etc.)
+  * A powerful engine for building custom trading strategies
+  * Utilities to run and compare strategies
+  * Minimal 3rd party dependencies
+  * MIT license
