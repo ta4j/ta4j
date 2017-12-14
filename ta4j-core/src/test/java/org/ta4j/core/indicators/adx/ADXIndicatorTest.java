@@ -30,9 +30,9 @@ public class ADXIndicatorTest {
     private void adxXls(int diTimeFrame, int adxTimeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(ADXIndicatorTest.class, "ADX.xls", diTimeFrame, adxTimeFrame, 15, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(ADXIndicatorTest.class, "ADX.xls", 15, (inputSeries) -> {
             return new ADXIndicator(inputSeries, diTimeFrame, adxTimeFrame);
-        });
+        }, diTimeFrame, adxTimeFrame);
     }
 
     @Test

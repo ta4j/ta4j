@@ -83,9 +83,9 @@ public class RSIIndicatorTest {
     private void rsiXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(RSIIndicatorTest.class, "RSI.xls", timeFrame, 10, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(RSIIndicatorTest.class, "RSI.xls", 10, (inputSeries) -> {
             return new RSIIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        });
+        }, timeFrame);
     }
 
     @Test
