@@ -71,9 +71,9 @@ public class SMAIndicatorTest {
     private void smaXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(SMAIndicatorTest.class, "SMA.xls", timeFrame, 6, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(SMAIndicatorTest.class, "SMA.xls", 6, (inputSeries) -> {
             return new SMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        });
+        }, timeFrame);
     }
 
     @Test

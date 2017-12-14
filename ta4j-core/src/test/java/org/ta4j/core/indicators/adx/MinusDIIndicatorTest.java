@@ -30,9 +30,9 @@ public class MinusDIIndicatorTest {
     private void minusDIXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(MinusDIIndicatorTest.class, "ADX.xls", timeFrame, 13, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(MinusDIIndicatorTest.class, "ADX.xls", 13, (inputSeries) -> {
             return new MinusDIIndicator(inputSeries, timeFrame);
-        });
+        }, timeFrame);
     }
 
     @Test

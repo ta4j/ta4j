@@ -56,9 +56,9 @@ public class ATRIndicatorTest {
     private void atrXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(ATRIndicatorTest.class, "ATR.xls", timeFrame, 7, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(ATRIndicatorTest.class, "ATR.xls", 7, (inputSeries) -> {
             return new ATRIndicator(inputSeries, timeFrame);
-        });
+        }, timeFrame);
     }
 
     @Test

@@ -79,9 +79,9 @@ public class EMAIndicatorTest {
     private void emaXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(EMAIndicatorTest.class, "EMA.xls", timeFrame, 6, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(EMAIndicatorTest.class, "EMA.xls", 6, (inputSeries) -> {
             return new EMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        });
+        }, timeFrame);
     }
 
     @Test
