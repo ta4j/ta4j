@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Stream;
 import java.util.zip.DataFormatException;
 
 import static junit.framework.TestCase.assertEquals;
@@ -57,10 +56,7 @@ public class XlsTestsUtils {
         while (iterator.hasNext()) {
             Row row = iterator.next();
             if (evaluator.evaluate(row.getCell(0)).formatAsString().contains("Param")) {
-                Arrays.asList(params)
-                    .stream()
-                    .mapToDouble(Decimal::doubleValue)
-                    .forEach(d -> iterator.next().getCell(1).setCellValue(d));
+                Arrays.stream(params).mapToDouble(Decimal::doubleValue).forEach(d -> iterator.next().getCell(1).setCellValue(d));
                 return;
             }
         }
@@ -143,10 +139,8 @@ public class XlsTestsUtils {
     }
 
     public static <T> void testXlsIndicator(Class testClass, String xlsFileName, int valueColumnIdx, IndicatorFactory indicatorFactory, T... params) throws Exception {
-        Decimal[] decimalParams = new Decimal[params.length];
-        for (int i = 0; i < params.length; i++) {
-            decimalParams[i] = Decimal.valueOf(params[i].toString());
-        }
+
+        Decimal[] decimalParams = Arrays.stream(params).map(p -> Decimal.valueOf(p.toString())).toArray(Decimal[]::new);
         testXlsIndicator(testClass, xlsFileName, valueColumnIdx, indicatorFactory, decimalParams);
     }
 
