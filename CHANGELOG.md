@@ -33,9 +33,14 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
 - **PearsonCorrelationIndicator**: new statistic indicator with pearson correlation
+- **TimeSeries**: new method `getSubSeries(int, int)` to create a sub series of the TimeSeries that stores bars exclusively between `startIndex` and `endIndex` parameters
 
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
+
+## Deprecated
+- **BaseTimeSeries**: Constructor: `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` use `getSubSeries(int, int)`
+- **Decimal**: Method `toDouble()` use `doubleValue()`
 
 ## 0.10 (released October 30, 2017)
 
