@@ -33,6 +33,7 @@ public class LinearTransactionCostCriterionTest {
 
     @Test
     public void calculateXLS() throws Exception {
+
         XlsTestsUtils.testXlsCriterion(LinearTransactionCostCriterion.class, "LTC.xls", 6, 16, // class, file, column
                 new LinearTransactionCostCriterion(1000, 0.005, 0.2), // criterion and params for actual
                                                    1000, 0.005, 0.2); // xls params for expected

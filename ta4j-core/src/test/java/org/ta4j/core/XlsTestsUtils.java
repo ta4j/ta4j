@@ -25,6 +25,7 @@ package org.ta4j.core;
 import org.apache.poi.hssf.usermodel.HSSFDateUtil;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.ta4j.core.mocks.MockTradingRecord;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -35,7 +36,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 import java.util.zip.DataFormatException;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class XlsTestsUtils {
 
@@ -106,6 +110,10 @@ public class XlsTestsUtils {
         List<Row> rows = new ArrayList<Row>();
         while (iterator.hasNext()) {
             Row row = iterator.next();
+
+            if(row.getCell(0)==null){
+                continue; // avoid NPE in line 122
+            }
             if (noHeader == false) {
                 if (evaluator.evaluate(row.getCell(0)).formatAsString().compareTo("\"//\"") != 0) {
                     rows.add(row);
@@ -133,11 +141,38 @@ public class XlsTestsUtils {
         // compare values computed by indicator with values computed independently in excel
         TATestsUtils.assertValuesEquals(actualIndicator, expectedValues);
     }
+
     public static <T> void testXlsIndicator(Class testClass, String xlsFileName, int valueColumnIdx, IndicatorFactory indicatorFactory, T... params) throws Exception {
         Decimal[] decimalParams = new Decimal[params.length];
         for (int i = 0; i < params.length; i++) {
             decimalParams[i] = Decimal.valueOf(params[i].toString());
         }
         testXlsIndicator(testClass, xlsFileName, valueColumnIdx, indicatorFactory, decimalParams);
+    }
+
+
+    public static void testXlsCriterion(Class testClass, String xlsFileName, int stateColumnIdx, int valueColumnIdx, AnalysisCriterion analysisCriterion, Decimal... params) throws Exception {
+        // read time series from xls
+        Sheet sheet = getDataSheet(testClass, xlsFileName);
+        TimeSeries inputSeries = readTimeSeries(sheet);
+        // compute and read expected values from xls
+        setParams(sheet, params);
+        List<Decimal> expectedValues = readValues(sheet, valueColumnIdx);
+        Decimal expectedValue = expectedValues.get(expectedValues.size() - 1);
+        // create trading record using states
+        List<Decimal> states = readValues(sheet, stateColumnIdx);
+        TradingRecord tradingRecord = new MockTradingRecord(states);
+        // calculate criterion using series and trading record
+        double actualValue = analysisCriterion.calculate(inputSeries, tradingRecord);
+        // compare value computed by criterion with value computed independently in excel
+        assertEquals(actualValue, expectedValue.doubleValue(), TATestsUtils.TA_OFFSET);
+    }
+
+    public static <T> void testXlsCriterion(Class testClass, String xlsFileName, int stateColumnIdx, int valueColumnIdx, AnalysisCriterion analysisCriterion, T... params) throws Exception {
+
+        Decimal[] decimalParams = Arrays.stream(params).map(p -> Decimal.valueOf(p.toString())).toArray(Decimal[]::new);
+
+
+        testXlsCriterion(testClass, xlsFileName, stateColumnIdx, valueColumnIdx, analysisCriterion, decimalParams);
     }
 }
