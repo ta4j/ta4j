@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **ATRIndicator**: fixed calculations
 - **PlusDI, MinusDI, ADX**: fixed calculations
+- **LinearTransactionCostCriterion**: fixed calculations, added xls file and unit tests
 
 ### Changed
 - **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`
@@ -24,6 +25,8 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **AverageDirectionalMovementDownIndicator**: renamed to **ADXIndicator**
 -  **ADXIndicator**: added new two argument constructor
 - **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
+- **XlsTestsUtils**: changed testXlsIndicator() to take T... params, Param and Date header rows added to xls parsing, data comments have "//" in first column
+- **XlsTestsUtils**: added testXlsCriterion()
 
 
 ## Added

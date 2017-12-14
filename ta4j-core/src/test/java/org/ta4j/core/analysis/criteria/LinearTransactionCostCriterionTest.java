@@ -32,6 +32,18 @@ import static org.junit.Assert.*;
 public class LinearTransactionCostCriterionTest {
 
     @Test
+    public void calculateXLS() throws Exception {
+        XlsTestsUtils.testXlsCriterion(LinearTransactionCostCriterion.class, "LTC.xls", 6, 16, // class, file, column
+                new LinearTransactionCostCriterion(1000, 0.005, 0.2), // criterion and params for actual
+                                                   1000, 0.005, 0.2); // xls params for expected
+                                                                      // 843.5493 expected (from manual xls inspection)
+        
+        XlsTestsUtils.testXlsCriterion(LinearTransactionCostCriterion.class, "LTC.xls", 6, 16,
+                new LinearTransactionCostCriterion(1000, 0.1, 1.0),
+                                                   1000, 0.1, 1.0); // 1122.4410
+    }
+
+    @Test
     public void calculateLinearCost() {
         MockTimeSeries series = new MockTimeSeries(100, 150, 200, 100, 50, 100);
         AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
@@ -41,10 +53,10 @@ public class LinearTransactionCostCriterionTest {
 
         tradingRecord.operate(2);
         tradingRecord.operate(3);
-        assertEquals(24.3473, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(24.3759, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(5);
-        assertEquals(28.2204, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(28.2488, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
     }
 
     @Test

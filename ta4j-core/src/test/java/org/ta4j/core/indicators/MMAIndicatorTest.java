@@ -79,9 +79,9 @@ public class MMAIndicatorTest {
     private void mmaXls(int timeFrame) throws Exception {
         // compare values computed by indicator
         // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(MMAIndicatorTest.class, "MMA.xls", timeFrame, 6, (inputSeries) -> {
+        XlsTestsUtils.testXlsIndicator(MMAIndicatorTest.class, "MMA.xls", 6, (inputSeries) -> {
             return new MMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        });
+        }, timeFrame);
     }
 
     @Test
