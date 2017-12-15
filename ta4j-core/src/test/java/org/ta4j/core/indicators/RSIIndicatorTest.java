@@ -25,6 +25,8 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.IndicatorTest;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -33,12 +35,16 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
-public class RSIIndicatorTest {
+public class RSIIndicatorTest extends IndicatorTest {
+    
+    public RSIIndicatorTest() throws Exception {
+        super(RSIIndicator.class, "RSI.xls", 10);
+    }
 
     private TimeSeries data;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         data = new MockTimeSeries(
                 50.45, 50.30, 50.20,
                 50.15, 50.05, 50.06,
@@ -52,54 +58,39 @@ public class RSIIndicatorTest {
     }
 
     @Test
-    public void rsiFirstValueShouldBeZero() {
-        RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(Decimal.ZERO, rsi.getValue(0));
+    public void firstValueShouldBeZero() throws Exception {
+        Indicator<Decimal> indicator = TestIndicator(data, 14);
+        assertEquals(Decimal.ZERO, indicator.getValue(0));
     }
 
     @Test
-    public void rsiHundredIfNoLoss() {
-        RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(Decimal.HUNDRED, rsi.getValue(14));
-        assertEquals(Decimal.HUNDRED, rsi.getValue(15));
+    public void rsiHundredIfNoLoss() throws Exception {
+        Indicator<Decimal> indicator = TestIndicator(data, 1);
+        assertEquals(Decimal.HUNDRED, indicator.getValue(14));
+        assertEquals(Decimal.HUNDRED, indicator.getValue(15));
     }
 
     @Test
-    public void rsiUsingTimeFrame14UsingClosePrice() {
-        RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(data), 14);
-        assertDecimalEquals(rsi.getValue(15), 68.4746);
-        assertDecimalEquals(rsi.getValue(16), 64.7836);
-        assertDecimalEquals(rsi.getValue(17), 72.0776);
-        assertDecimalEquals(rsi.getValue(18), 60.7800);
-        assertDecimalEquals(rsi.getValue(19), 63.6439);
-        assertDecimalEquals(rsi.getValue(20), 72.3433);
-        assertDecimalEquals(rsi.getValue(21), 67.3822);
-        assertDecimalEquals(rsi.getValue(22), 68.5438);
-        assertDecimalEquals(rsi.getValue(23), 76.2770);
-        assertDecimalEquals(rsi.getValue(24), 77.9908);
-        assertDecimalEquals(rsi.getValue(25), 67.4895);
-    }
-
-    private void rsiXls(int timeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(RSIIndicatorTest.class, "RSI.xls", 10, (inputSeries) -> {
-            return new RSIIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        }, timeFrame);
+    public void rsiUsingTimeFrame14UsingClosePrice() throws Exception {
+        Indicator<Decimal> indicator = TestIndicator(data, 14);
+        assertDecimalEquals(indicator.getValue(15), 68.4746);
+        assertDecimalEquals(indicator.getValue(16), 64.7836);
+        assertDecimalEquals(indicator.getValue(17), 72.0776);
+        assertDecimalEquals(indicator.getValue(18), 60.7800);
+        assertDecimalEquals(indicator.getValue(19), 63.6439);
+        assertDecimalEquals(indicator.getValue(20), 72.3433);
+        assertDecimalEquals(indicator.getValue(21), 67.3822);
+        assertDecimalEquals(indicator.getValue(22), 68.5438);
+        assertDecimalEquals(indicator.getValue(23), 76.2770);
+        assertDecimalEquals(indicator.getValue(24), 77.9908);
+        assertDecimalEquals(indicator.getValue(25), 67.4895);
     }
 
     @Test
-    public void rsiXls1() throws Exception {
-        rsiXls(1);
-    }
-
-    @Test
-    public void rsiXls3() throws Exception {
-        rsiXls(3);
-    }
-
-    @Test
-    public void rsiXls13() throws Exception {
-        rsiXls(13);
+    public void xlsTest() throws Exception {
+        TimeSeries xlsSeries = getXlsSeries();
+        assertIndicatorEquals(XlsIndicator(1), TestIndicator(xlsSeries, 1));
+        assertIndicatorEquals(XlsIndicator(3), TestIndicator(xlsSeries, 3));
+        assertIndicatorEquals(XlsIndicator(13), TestIndicator(xlsSeries, 13));
     }
 }

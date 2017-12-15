@@ -24,6 +24,8 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 
@@ -41,6 +43,10 @@ public class RSIIndicator extends CachedIndicator<Decimal> {
         super(indicator);
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), timeFrame);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), timeFrame);
+    }
+
+    public <T> RSIIndicator(TimeSeries series, T... params) {
+        this(new ClosePriceIndicator(series), Integer.valueOf(params[0].toString()));
     }
 
     @Override

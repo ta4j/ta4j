@@ -163,10 +163,28 @@ public class XlsTestsUtils {
     }
 
     public static <T> void testXlsCriterion(Class testClass, String xlsFileName, int stateColumnIdx, int valueColumnIdx, AnalysisCriterion analysisCriterion, T... params) throws Exception {
-
         Decimal[] decimalParams = Arrays.stream(params).map(p -> Decimal.valueOf(p.toString())).toArray(Decimal[]::new);
-
-
         testXlsCriterion(testClass, xlsFileName, stateColumnIdx, valueColumnIdx, analysisCriterion, decimalParams);
+    }
+
+    public static TimeSeries getXlsSeries(Class testClass, String xlsFileName) throws Exception {
+        Sheet sheet = getDataSheet(testClass, xlsFileName);
+        TimeSeries xslSeries = readTimeSeries(sheet);
+        return xslSeries;
+    }
+
+    public static List<Decimal> getXlsValues(Class testClass, String xlsFileName, int indicatorIdx, Decimal... params) throws Exception {
+        Sheet sheet = getDataSheet(testClass, xlsFileName);
+        setParams(sheet, params);
+        List<Decimal> xlsValues = readValues(sheet, indicatorIdx);
+        return xlsValues;
+    }
+
+    public static <T> List<Decimal> getXlsValues(Class testClass, String xlsFileName, int indicatorIdx, T... params) throws Exception {
+        Sheet sheet = getDataSheet(testClass, xlsFileName);
+        Decimal[] decimalParams = Arrays.stream(params)
+                .map(p -> Decimal.valueOf(p.toString()))
+                .toArray(Decimal[]::new);
+        return getXlsValues(testClass, xlsFileName, indicatorIdx, decimalParams);
     }
 }
