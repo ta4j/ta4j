@@ -23,30 +23,39 @@
 package org.ta4j.core.indicators.adx;
 
 import org.junit.Test;
-import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.IndicatorTest;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
 
-public class ADXIndicatorTest {
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
-    private void adxXls(int diTimeFrame, int adxTimeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(ADXIndicatorTest.class, "ADX.xls", 15, (inputSeries) -> {
-            return new ADXIndicator(inputSeries, diTimeFrame, adxTimeFrame);
-        }, diTimeFrame, adxTimeFrame);
+public class ADXIndicatorTest extends IndicatorTest {
+
+    public ADXIndicatorTest() throws Exception {
+        super((data, params) -> { return new ADXIndicator((TimeSeries) data, (int) params[0], (int) params[1]); },
+              "ADX.xls",
+              15);
     }
 
     @Test
-    public void adxXls1_1() throws Exception {
-        adxXls(1, 1);
+    public void testAgainstExternalData() throws Exception {
+        TimeSeries series = getSeries();
+        Indicator<Decimal> actualIndicator;
+
+        actualIndicator = testIndicator(series, 1, 1);
+        assertIndicatorEquals(getIndicator(1, 1), actualIndicator);
+        assertEquals(100.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(series, 3, 2);
+        assertIndicatorEquals(getIndicator(3, 2), actualIndicator);
+        assertEquals(12.1330, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(series, 13, 8);
+        assertIndicatorEquals(getIndicator(13, 8), actualIndicator);
+        assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
-    @Test
-    public void adxXls3_2() throws Exception {
-        adxXls(3, 2);
-    }
-
-    @Test
-    public void adxXls13_8() throws Exception {
-        adxXls(13, 8);
-    }
 }

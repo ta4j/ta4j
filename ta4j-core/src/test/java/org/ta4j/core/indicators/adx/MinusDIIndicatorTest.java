@@ -22,31 +22,40 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+
 import org.junit.Test;
-import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.IndicatorTest;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
 
-public class MinusDIIndicatorTest {
+public class MinusDIIndicatorTest extends IndicatorTest {
 
-    private void minusDIXls(int timeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(MinusDIIndicatorTest.class, "ADX.xls", 13, (inputSeries) -> {
-            return new MinusDIIndicator(inputSeries, timeFrame);
-        }, timeFrame);
+    public MinusDIIndicatorTest() throws Exception {
+        super((data, params) -> new MinusDIIndicator((TimeSeries) data, (int) params[0]),
+                "ADX.xls",
+                13);
     }
 
     @Test
-    public void minusDIXls1() throws Exception {
-        minusDIXls(1);
+    public void testAgainstExternalData() throws Exception {
+        TimeSeries series = getSeries();
+        Indicator<Decimal> actualIndicator;
+        
+        actualIndicator = testIndicator(series, 1);
+        assertIndicatorEquals(getIndicator(1), actualIndicator);
+        assertEquals(0.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(series, 3);
+        assertIndicatorEquals(getIndicator(3), actualIndicator);
+        assertEquals(21.0711, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(series, 13);
+        assertIndicatorEquals(getIndicator(13), actualIndicator);
+        assertEquals(20.9020, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
-    @Test
-    public void minusDIXls3() throws Exception {
-        minusDIXls(3);
-    }
-
-    @Test
-    public void minusDIXls13() throws Exception {
-        minusDIXls(13);
-    }
 }

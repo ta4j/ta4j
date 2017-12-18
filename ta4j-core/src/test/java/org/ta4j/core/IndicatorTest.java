@@ -1,72 +1,58 @@
 package org.ta4j.core;
 
-import java.lang.reflect.Constructor;
+import java.io.IOException;
 import java.util.List;
-import java.util.function.Function;
+import java.util.zip.DataFormatException;
 
-import org.ta4j.core.indicators.RSIIndicator;
-import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockIndicator;
 
 public abstract class IndicatorTest {
 
-    private Class<?> testClass;
-    Constructor<?> constructor;
-    private String xlsFileName;
-    private int xlsIndicatorIndex;
-    
+    IndicatorFactory indicatorFactory;
+    private int indicatorIndex;
+
+
     /**
-     * constructor
-     * @param indicatorClass the indicator class (used to locate the indicator constructor)
-     * @param xlsFileName the name of the xls file
-     * @param xlsIndicatorIndex the zero-based column number of the expected indicator values in the xls
-     * setupXlsTesting must be called @Before calling any of the xls methods
-     * @throws Exception
+     * Constructor sets up test object and initializes the xls utilities.
+     * @param indicatorFactory the indicator factory
+     * @param fileName the name of the data file
+     * @param xlsIndicatorIndex the zero-based column number of the expected indicator values in the data
+     * @throws IOException in init()
      */
-    public IndicatorTest(Class<RSIIndicator> indicatorClass, String xlsFileName, int xlsIndicatorIndex) throws Exception {
-        this.testClass = this.getClass();
-        // indicators extending this class must have a constructor that takes (TimeSeries series, T... params)
-        // or this will throw an exception
-        this.constructor = indicatorClass.getConstructor(TimeSeries.class, Object[].class);
-        this.xlsFileName = xlsFileName;
-        this.xlsIndicatorIndex = xlsIndicatorIndex;
+    public IndicatorTest(IndicatorFactory indicatorFactory, String fileName, int indicatorIndex) throws IOException {
+        this.indicatorFactory = indicatorFactory;
+        this.indicatorIndex = indicatorIndex;
+        XlsTestsUtils.init(this.getClass(), fileName);
     }
+
     /**
-     * 
-     * @param params array of indicator parameters
-     * @return indicator based on xls series and xls calculated values from params
-     * @throws Exception
+     * Generates an indicator based on parameters passed to a data source.
+     * @param params indicator parameters
+     * @return Indicator<Decimal> the indicator
+     * @throws DataFormatException in getValues()
      */
-    public <T> Indicator<Decimal> XlsIndicator(T... params) throws Exception {
-        List<Decimal> values = XlsTestsUtils.getXlsValues(testClass, xlsFileName, xlsIndicatorIndex, params);
-        return new MockIndicator(XlsTestsUtils.getXlsSeries(testClass, xlsFileName), values);
+    public <P> Indicator<Decimal> getIndicator(P... params) throws DataFormatException {
+        List<Decimal> values = XlsTestsUtils.getValues(indicatorIndex, params);
+        return new MockIndicator(XlsTestsUtils.getSeries(), values);
     }
+
     /**
-     * 
-     * @param params array of indicator parameters
-     * @return indicator based on xls series and indicator calculated values from params
-     * @throws Exception
+     * Gets a TimeSeries from the data section of a data source.
+     * @return TimeSeries from the data source
+     * @throws DataFormatException in getSeries()
      */
-    public TimeSeries getXlsSeries() throws Exception {
-        return XlsTestsUtils.getXlsSeries(testClass, xlsFileName);
+    public TimeSeries getSeries() throws DataFormatException {
+        return XlsTestsUtils.getSeries();
     }
-//    public <T> Indicator<Decimal> XlsIndicator(TimeSeries series, T... params) throws Exception {
-//        return (Indicator<Decimal>) constructor.newInstance(XlsTestsUtils.getXlsSeries(testClass, xlsFileName), params);
-//    }
-    public <T> Indicator<Decimal> TestIndicator(TimeSeries series, T... params) throws Exception {
-        return (Indicator<Decimal>) constructor.newInstance(series, params);
-    }
+
     /**
-     * 
-     * @param expected indicator of expected values (eg from getXlsIndicator)
-     * @param actual indicator of actual values (eg from indicator constructor)
+     * Generates an indicator from data and parameters.
+     * @param data the data for the indicator
+     * @param params a set of indicator parameters
+     * @return Indicator<Decimal> the new indicator
      */
-    public void assertIndicatorEquals(Indicator<Decimal> expected, Indicator<Decimal> actual) {
-        org.junit.Assert.assertEquals("Size does not match,",
-                expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
-        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-            org.junit.Assert.assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expected.getValue(i).doubleValue(), actual.getValue(i).doubleValue(), TATestsUtils.TA_OFFSET);
-        }
+    public <D,P> Indicator<Decimal> testIndicator(D data, P... params) {
+        return indicatorFactory.createIndicator(data, params);
     }
+
 }

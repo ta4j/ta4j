@@ -27,24 +27,26 @@ import org.junit.Test;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorTest;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.*;
 
 public class RSIIndicatorTest extends IndicatorTest {
     
     public RSIIndicatorTest() throws Exception {
-        super(RSIIndicator.class, "RSI.xls", 10);
+        super((data, params) -> { return new RSIIndicator((Indicator<Decimal>) data, (int) params[0]); },
+                "RSI.xls",
+                10);
     }
 
     private TimeSeries data;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         data = new MockTimeSeries(
                 50.45, 50.30, 50.20,
                 50.15, 50.05, 50.06,
@@ -58,39 +60,57 @@ public class RSIIndicatorTest extends IndicatorTest {
     }
 
     @Test
-    public void firstValueShouldBeZero() throws Exception {
-        Indicator<Decimal> indicator = TestIndicator(data, 14);
-        assertEquals(Decimal.ZERO, indicator.getValue(0));
+    public void firstValueShouldBeZero() {
+        Indicator<Decimal> actualIndicator = testIndicator(new ClosePriceIndicator(data), 14);
+        assertEquals(Decimal.ZERO, actualIndicator.getValue(0));
     }
 
     @Test
-    public void rsiHundredIfNoLoss() throws Exception {
-        Indicator<Decimal> indicator = TestIndicator(data, 1);
-        assertEquals(Decimal.HUNDRED, indicator.getValue(14));
-        assertEquals(Decimal.HUNDRED, indicator.getValue(15));
+    public void rsiHundredIfNoLoss() {
+        Indicator<Decimal> actualIndicator = testIndicator(new ClosePriceIndicator(data), 1);
+        assertEquals(Decimal.HUNDRED, actualIndicator.getValue(14));
+        assertEquals(Decimal.HUNDRED, actualIndicator.getValue(15));
     }
 
     @Test
-    public void rsiUsingTimeFrame14UsingClosePrice() throws Exception {
-        Indicator<Decimal> indicator = TestIndicator(data, 14);
-        assertDecimalEquals(indicator.getValue(15), 68.4746);
-        assertDecimalEquals(indicator.getValue(16), 64.7836);
-        assertDecimalEquals(indicator.getValue(17), 72.0776);
-        assertDecimalEquals(indicator.getValue(18), 60.7800);
-        assertDecimalEquals(indicator.getValue(19), 63.6439);
-        assertDecimalEquals(indicator.getValue(20), 72.3433);
-        assertDecimalEquals(indicator.getValue(21), 67.3822);
-        assertDecimalEquals(indicator.getValue(22), 68.5438);
-        assertDecimalEquals(indicator.getValue(23), 76.2770);
-        assertDecimalEquals(indicator.getValue(24), 77.9908);
-        assertDecimalEquals(indicator.getValue(25), 67.4895);
+    public void rsiZeroIfNoGain() {
+        Indicator<Decimal> actualIndicator = testIndicator(new ClosePriceIndicator(data), 1);
+        assertEquals(Decimal.ZERO, actualIndicator.getValue(1));
+        assertEquals(Decimal.ZERO, actualIndicator.getValue(2));
     }
 
     @Test
-    public void xlsTest() throws Exception {
-        TimeSeries xlsSeries = getXlsSeries();
-        assertIndicatorEquals(XlsIndicator(1), TestIndicator(xlsSeries, 1));
-        assertIndicatorEquals(XlsIndicator(3), TestIndicator(xlsSeries, 3));
-        assertIndicatorEquals(XlsIndicator(13), TestIndicator(xlsSeries, 13));
+    public void rsiUsingTimeFrame14UsingClosePrice() {
+        Indicator<Decimal> actualIndicator = testIndicator(new ClosePriceIndicator(data), 14);
+        assertEquals(68.4746, actualIndicator.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(64.7836, actualIndicator.getValue(16).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(72.0776, actualIndicator.getValue(17).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(60.7800, actualIndicator.getValue(18).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(63.6439, actualIndicator.getValue(19).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(72.3433, actualIndicator.getValue(20).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(67.3822, actualIndicator.getValue(21).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(68.5438, actualIndicator.getValue(22).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(76.2770, actualIndicator.getValue(23).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(77.9908, actualIndicator.getValue(24).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(67.4895, actualIndicator.getValue(25).doubleValue(), TATestsUtils.TA_OFFSET);
     }
+
+    @Test
+    public void testAgainstExternalData() throws Exception {
+        Indicator<Decimal> close = new ClosePriceIndicator(getSeries());
+        Indicator<Decimal> actualIndicator;
+
+        actualIndicator = testIndicator(close, 1);
+        assertIndicatorEquals(getIndicator(1), actualIndicator); 
+        assertEquals(100.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(close, 3);
+        assertIndicatorEquals(getIndicator(3), actualIndicator); 
+        assertEquals(67.0453, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(close, 13);
+        assertIndicatorEquals(getIndicator(13), actualIndicator); 
+        assertEquals(52.5876, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+    }
+
 }

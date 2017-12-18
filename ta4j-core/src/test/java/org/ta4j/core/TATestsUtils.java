@@ -91,4 +91,18 @@ public class TATestsUtils {
                     expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), TA_OFFSET);
         }
     }
+
+    /**
+     * Verifies that two indicators have the same size and values
+     * @param expected indicator of expected values
+     * @param actual indicator of actual values
+     */
+    public static void assertIndicatorEquals(Indicator<Decimal> expected, Indicator<Decimal> actual) {
+        org.junit.Assert.assertEquals("Size does not match,",
+                expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
+        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+            org.junit.Assert.assertEquals(String.format("Values at index <%d> does not match,", i),
+                    expected.getValue(i).doubleValue(), actual.getValue(i).doubleValue(), TATestsUtils.TA_OFFSET);
+        }
+    }
 }

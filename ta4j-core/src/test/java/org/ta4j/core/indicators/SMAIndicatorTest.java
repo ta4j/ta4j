@@ -24,15 +24,25 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.IndicatorTest;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
-public class SMAIndicatorTest {
+public class SMAIndicatorTest extends IndicatorTest {
+
+    public SMAIndicatorTest() throws Exception {
+        super((data, params) -> { return new SMAIndicator((Indicator<Decimal>) data, (int) params[0]); },
+              "SMA.xls",
+              6);
+    }
 
     private TimeSeries data;
 
@@ -68,26 +78,22 @@ public class SMAIndicatorTest {
         }
     }
 
-    private void smaXls(int timeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(SMAIndicatorTest.class, "SMA.xls", 6, (inputSeries) -> {
-            return new SMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        }, timeFrame);
+    @Test
+    public void testAgainstExternalData() throws Exception {
+        Indicator<Decimal> close = new ClosePriceIndicator(getSeries());
+        Indicator<Decimal> actualIndicator;
+
+        actualIndicator = testIndicator(close, 1);
+        assertIndicatorEquals(getIndicator(1), actualIndicator); 
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(close, 3);
+        assertIndicatorEquals(getIndicator(3), actualIndicator); 
+        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = testIndicator(close, 13);
+        assertIndicatorEquals(getIndicator(13), actualIndicator); 
+        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
-    @Test
-    public void smaXls1() throws Exception {
-        smaXls(1);
-    }
-
-    @Test
-    public void smaXls3() throws Exception {
-        smaXls(3);
-    }
-
-    @Test
-    public void smaXls13() throws Exception {
-        smaXls(13);
-    }
 }

@@ -7,7 +7,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 
 
-public class MockIndicator implements Indicator {
+public class MockIndicator implements Indicator<Decimal> {
     
     private TimeSeries series;
     private List<Decimal> values;
@@ -17,7 +17,7 @@ public class MockIndicator implements Indicator {
         this.values = values;
     }
     @Override
-    public Object getValue(int index) {
+    public Decimal getValue(int index) {
         return values.get(index);
     }
 
