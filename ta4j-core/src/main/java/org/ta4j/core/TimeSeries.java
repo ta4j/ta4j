@@ -144,12 +144,12 @@ public interface TimeSeries extends Serializable {
 
     /**
      * Returns a new TimeSeries implementation that is a subset of this TimeSeries implementation.
-     * It holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt><endIndex/tt> (exclusive)
+     * It holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
      * of this TimeSeries.
      * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
      * be index <tt>startIndex</tt> of this TimeSeries.
-     * If startIndex < this.seriesBeginIndex the new TimeSeries will start with the first available Bar of this TimeSeries.
-     * If beginIndex > this.seriesBeginIndex the new TimeSeries will end at the last available Bar of this TimeSeries
+     * If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries will start with the first available Bar of this TimeSeries.
+     * If <tt>endIndex</tt> > this.seriesEndIndex the new TimeSeries will end at the last available Bar of this TimeSeries
      * @param startIndex the startIndex
      * @param endIndex the endIndex
      * @return a new BaseTimeSeries with Bars from startIndex to endIndex-1
