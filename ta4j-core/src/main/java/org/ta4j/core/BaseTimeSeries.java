@@ -142,12 +142,12 @@ public class BaseTimeSeries implements TimeSeries {
 
     /**
      * Returns a new BaseTimeSeries that is a subset of this BaseTimeSeries.
-     * The new series holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt><endIndex/tt> (exclusive)
+     * The new series holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
      * of this TimeSeries.
      * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
      * be index <tt>startIndex</tt> of this TimeSeries.
      * If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries will start with the first available Bar of this TimeSeries.
-     * If <tt>beginIndex</tt> > this.seriesBeginIndex the new TimeSeries will end at the last available Bar of this TimeSeries
+     * If <tt>endIndex</tt> > this.seriesEndIndex+1 the new TimeSeries will end at the last available Bar of this TimeSeries
      * @param startIndex the startIndex
      * @param endIndex the endIndex (exclusive)
      * @return a new BaseTimeSeries with Bars from <tt>startIndex</tt> to <tt>endIndex</tt>-1
@@ -157,14 +157,14 @@ public class BaseTimeSeries implements TimeSeries {
     public TimeSeries getSubSeries(int startIndex, int endIndex){
         if(startIndex > endIndex){
             throw new IllegalArgumentException
-                    (String.format("the endIndex: %s must be bigger than startIndex %s", endIndex, startIndex));
+                    (String.format("the endIndex: %s must be bigger than startIndex: %s", endIndex, startIndex));
         }
         if(!bars.isEmpty()) {
             int start = Math.max(startIndex, this.seriesBeginIndex);
             int end = Math.min(endIndex, this.seriesEndIndex + 1);
             return new BaseTimeSeries(getName(), cut(bars, start, end));
         }
-        return new BaseTimeSeries(getName());
+        return new BaseTimeSeries(name);
 
     }
 
