@@ -25,6 +25,6 @@ package org.ta4j.core;
 @FunctionalInterface
 public interface CriterionFactory<T> {
 
-    public <P> AnalysisCriterion createCriterion(P... params);
+    public <P> AnalysisCriterion getCriterion(P... params);
 
 }

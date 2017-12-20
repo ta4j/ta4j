@@ -45,10 +45,6 @@ public class RSIIndicator extends CachedIndicator<Decimal> {
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), timeFrame);
     }
 
-    public <T> RSIIndicator(TimeSeries series, T... params) {
-        this(new ClosePriceIndicator(series), Integer.valueOf(params[0].toString()));
-    }
-
     @Override
     protected Decimal calculate(int index) {
         // compute relative strength
