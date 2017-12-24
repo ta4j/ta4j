@@ -136,7 +136,7 @@ public class TradingBotOnMovingTimeSeries {
             Thread.sleep(30); // I know...
             Bar newBar = generateRandomBar();
             System.out.println("------------------------------------------------------\n"
-                    + "Bar "+i+" added, close price = " + newBar.getClosePrice().toDouble());
+                    + "Bar "+i+" added, close price = " + newBar.getClosePrice().doubleValue());
             series.addBar(newBar);
 
             int endIndex = series.getEndIndex();
