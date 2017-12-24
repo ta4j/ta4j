@@ -182,7 +182,7 @@ public class BaseStrategy implements Strategy {
      */
     protected void traceShouldEnter(int index, boolean enter) {
         if ( log.isTraceEnabled() ) {
-            log.trace(">>> {}#shouldEnter({}): {}", getClass().getSimpleName(), index, enter);
+            log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
         }
     }
 
@@ -193,7 +193,7 @@ public class BaseStrategy implements Strategy {
      */
     protected void traceShouldExit(int index, boolean exit) {
         if ( log.isTraceEnabled() ) {
-            log.trace(">>> {}#shouldExit({}): {}", getClass().getSimpleName(), index, exit);
+            log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
         }
     }
 }
