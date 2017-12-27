@@ -60,7 +60,7 @@ public class TimeSeriesTest {
         defaultName = "Series Name";
 
         defaultSeries = new BaseTimeSeries(defaultName, bars);
-        constrainedSeries = new BaseTimeSeries(defaultSeries, 2, 4);
+        constrainedSeries = new BaseTimeSeries(defaultSeries,2, 4);
         emptySeries = new BaseTimeSeries();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
@@ -155,26 +155,25 @@ public class TimeSeriesTest {
     }
 
     @Test
-    public void constrainedSeriesWithIndexes() {
-        TimeSeries constrSeries = new BaseTimeSeries(defaultSeries, 2, 5);
-        assertEquals(defaultSeries.getName(), constrSeries.getName());
-        assertEquals(2, constrSeries.getBeginIndex());
-        assertNotEquals(defaultSeries.getBeginIndex(), constrSeries.getBeginIndex());
-        assertEquals(5, constrSeries.getEndIndex());
-        assertEquals(defaultSeries.getEndIndex(), constrSeries.getEndIndex());
-        assertEquals(4, constrSeries.getBarCount());
-    }
+    public void subSeriesCreation() {
+        TimeSeries subSeries = defaultSeries.getSubSeries(2, 5);
+        assertEquals(defaultSeries.getName(), subSeries.getName());
+        assertEquals(0, subSeries.getBeginIndex());
+        assertEquals(defaultSeries.getBeginIndex(), subSeries.getBeginIndex());
+        assertEquals(2, subSeries.getEndIndex());
+        assertNotEquals(defaultSeries.getEndIndex(), subSeries.getEndIndex());
+        assertEquals(3, subSeries.getBarCount());
 
-    @Test(expected = IllegalStateException.class)
-    public void constrainedSeriesOnSeriesWithMaximumBarCountShouldThrowException() {
-        defaultSeries.setMaximumBarCount(3);
-        new BaseTimeSeries(defaultSeries, 0, 1);
+        subSeries = defaultSeries.getSubSeries(-1000,1000);
+        assertEquals(0, subSeries.getBeginIndex());
+        assertEquals(defaultSeries.getEndIndex(),subSeries.getEndIndex());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void constrainedSeriesWithInvalidIndexesShouldThrowException() {
-        new BaseTimeSeries(defaultSeries, 4, 2);
+    public void SubseriesWithWrongArguments() {
+        defaultSeries.getSubSeries(10, 9);
     }
+
 
     @Test(expected = IllegalStateException.class)
     public void maximumBarCountOnConstrainedSeriesShouldThrowException() {
