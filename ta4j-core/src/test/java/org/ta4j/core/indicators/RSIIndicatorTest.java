@@ -30,12 +30,11 @@ import org.junit.Test;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.XlsTestsUtils;
-import org.ta4j.core.indicators.IndicatorTest;
 import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.GainIndicator;
+import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 public class RSIIndicatorTest extends IndicatorTest {
@@ -106,16 +105,63 @@ public class RSIIndicatorTest extends IndicatorTest {
         Indicator<Decimal> indicator;
 
         indicator = getIndicator(xlsClose, 1);
-        assertIndicatorEquals(xls.getIndicator(1), indicator); 
+        assertIndicatorEquals(xls.getIndicator(1), indicator);
         assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
 
         indicator = getIndicator(xlsClose, 3);
-        assertIndicatorEquals(xls.getIndicator(3), indicator); 
+        assertIndicatorEquals(xls.getIndicator(3), indicator);
         assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
 
         indicator = getIndicator(xlsClose, 13);
-        assertIndicatorEquals(xls.getIndicator(13), indicator); 
+        assertIndicatorEquals(xls.getIndicator(13), indicator);
         assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
+    @Test
+    public void onlineExampleTest() throws Exception {
+        // from http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Relative%20Strength%20Index%20(RSI).htm
+        // which uses a different calculation of RSI than ta4j
+        TimeSeries series = new MockTimeSeries(
+                46.1250,
+                47.1250, 46.4375, 46.9375, 44.9375, 44.2500, 44.6250, 45.7500,
+                47.8125, 47.5625, 47.0000, 44.5625, 46.3125, 47.6875, 46.6875,
+                45.6875, 43.0625, 43.5625, 44.8750, 43.6875);
+        // ta4j RSI uses MMA for average gain and loss
+        // then uses simple division of the two for RS
+        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(
+                series), 14);
+        Indicator<Decimal> close = new ClosePriceIndicator(series);
+        Indicator<Decimal> gain = new GainIndicator(close);
+        Indicator<Decimal> loss = new LossIndicator(close);
+        // this site uses SMA for average gain and loss
+        // then uses ratio of MMAs for RS (except for first calculation)
+        Indicator<Decimal> avgGain = new SMAIndicator(gain, 14);
+        Indicator<Decimal> avgLoss = new SMAIndicator(loss, 14);
+
+        // first online calculation is simple division
+        double onlineRs = avgGain.getValue(14).dividedBy(avgLoss.getValue(14)).doubleValue();
+        assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(1.0738, onlineRs, TATestsUtils.TA_OFFSET);
+        double onlineRsi = 100d - (100d / (1d + onlineRs));
+        // difference in RSI values:
+        assertEquals(51.779, onlineRsi, 0.001);
+        assertEquals(52.1304, indicator.getValue(14).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        // strange, online average gain and loss is not a simple moving average!
+        // but they only use them for the first RS calculation
+        // assertEquals(0.5430, avgGain.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
+        // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
+        // second online calculation uses MMAs
+        // MMA of average gain
+        double dividend = avgGain.getValue(14).multipliedBy(13d).plus(gain.getValue(15)).dividedBy(14d).doubleValue();
+        // MMA of average loss
+        double divisor = avgLoss.getValue(14).multipliedBy(13d).plus(loss.getValue(15)).dividedBy(14d).doubleValue();
+        onlineRs = dividend / divisor;
+        assertEquals(0.9409, onlineRs, TATestsUtils.TA_OFFSET);
+        onlineRsi = 100d - (100d / (1d + onlineRs));
+        // difference in RSI values:
+        assertEquals(48.477, onlineRsi, 0.001);
+        assertEquals(47.3710, indicator.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
+    }
 }

@@ -30,6 +30,10 @@ public class IndicatorTest {
 
     private final IndicatorFactory factory;
 
+    /**
+     * Constructor.
+     * @param factory the indicator factory
+     */
     public IndicatorTest(IndicatorFactory factory) {
         this.factory = factory;
     }
@@ -47,7 +51,7 @@ public class IndicatorTest {
      * @param data the data for the indicator
      * @param params a set of indicator parameters
      * @return Indicator<Decimal> the indicator
-     * @throws Exception 
+     * @throws Exception
      */
     public <D,P> Indicator<Decimal> getIndicator(D data, P... params) throws Exception {
         return factory.getIndicator(data, params);
