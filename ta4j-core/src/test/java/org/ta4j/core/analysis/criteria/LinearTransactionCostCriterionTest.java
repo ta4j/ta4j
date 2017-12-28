@@ -29,7 +29,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import static org.junit.Assert.*;
 
 public class LinearTransactionCostCriterionTest extends CriterionTest {
-    
+
     private ExternalCriterionTest xls;
 
     public LinearTransactionCostCriterionTest() throws Exception {

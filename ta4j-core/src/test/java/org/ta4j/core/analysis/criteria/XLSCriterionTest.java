@@ -22,13 +22,11 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.ExternalCriterionTest;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.XlsTestsUtils;
-import org.ta4j.core.mocks.MockTradingRecord;
 
 public class XLSCriterionTest implements ExternalCriterionTest {
 

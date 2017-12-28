@@ -26,7 +26,7 @@ public interface ExternalIndicatorTest {
 
     /**
      * Gets the complete series of price data from the external data source.
-     * 
+     *
      * @return TimeSeries the series
      * @throws Exception
      */
@@ -35,7 +35,7 @@ public interface ExternalIndicatorTest {
     /**
      * Provides parameters to the external data source and returns the new
      * indicator.
-     * 
+     *
      * @param params the indicator parameters
      * @return Indicator<Decimal> the indicator
      * @throws Exception

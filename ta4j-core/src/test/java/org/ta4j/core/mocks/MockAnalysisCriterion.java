@@ -9,7 +9,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 
 public class MockAnalysisCriterion implements AnalysisCriterion {
-    
+
     TimeSeries series;
     List<Decimal> values;
 

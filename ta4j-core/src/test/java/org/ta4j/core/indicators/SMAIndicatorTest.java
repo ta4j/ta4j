@@ -85,15 +85,15 @@ public class SMAIndicatorTest extends IndicatorTest {
         Indicator<Decimal> actualIndicator;
 
         actualIndicator = getIndicator(xlsClose, 1);
-        assertIndicatorEquals(xls.getIndicator(1), actualIndicator); 
+        assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
         assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 3);
-        assertIndicatorEquals(xls.getIndicator(3), actualIndicator); 
+        assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
         assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 13);
-        assertIndicatorEquals(xls.getIndicator(13), actualIndicator); 
+        assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
         assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 

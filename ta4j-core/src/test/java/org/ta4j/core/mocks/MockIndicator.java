@@ -8,7 +8,7 @@ import org.ta4j.core.TimeSeries;
 
 
 public class MockIndicator implements Indicator<Decimal> {
-    
+
     private TimeSeries series;
     private List<Decimal> values;
 

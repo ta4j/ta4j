@@ -47,7 +47,7 @@ public class MinusDIIndicatorTest extends IndicatorTest {
     public void xlsTest() throws Exception {
         TimeSeries xlsSeries = xls.getSeries();
         Indicator<Decimal> indicator;
-        
+
         indicator = getIndicator(xlsSeries, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
         assertEquals(0.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);

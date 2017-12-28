@@ -34,14 +34,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.zip.DataFormatException;
 
-import org.apache.poi.hssf.usermodel.HSSFDateUtil;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.CellValue;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.mocks.MockAnalysisCriterion;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockTradingRecord;
 
@@ -57,7 +55,7 @@ public class XlsTestsUtils {
     /**
      * Writes the parameters into the second column of the parameters section following the parameters section header.
      * There must be at least params.size() rows between the parameters section header and the data section header
-     * or part of the data section will be overwritten. 
+     * or part of the data section will be overwritten.
      * @param params the parameters to write
      * @throws DataFormatException if the parameters section header is not found
      */
@@ -66,7 +64,7 @@ public class XlsTestsUtils {
         Iterator<Row> iterator = sheet.rowIterator();
         while (iterator.hasNext()) {
             Row row = iterator.next();
-            if (row.getCell(0) == null) { 
+            if (row.getCell(0) == null) {
                 continue;
             }
             // parameters section header
@@ -104,7 +102,7 @@ public class XlsTestsUtils {
                 }
                 cellValues[i] = evaluator.evaluate(row.getCell(i));
             }
-            Date weekEndDate = HSSFDateUtil.getJavaDate(cellValues[0].getNumberValue());
+            Date weekEndDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
             ZonedDateTime weekEndDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(weekEndDate.getTime()), ZoneId.systemDefault());
             Bar bar = new BaseBar(weekDuration, weekEndDateTime,
                     Decimal.valueOf(cellValues[1].formatAsString()),
@@ -204,7 +202,6 @@ public class XlsTestsUtils {
 
     public static <P> Decimal getFinalCriterionValue(Class clazz, String fileName, int column, P... params) throws Exception {
         Sheet sheet = getSheet(clazz, fileName);
-//        return new MockAnalysisCriterion(getSeries(sheet), getValues(sheet, column, params));
         List<Decimal> values = getValues(sheet, column, params);
         return values.get(values.size() - 1);
     }

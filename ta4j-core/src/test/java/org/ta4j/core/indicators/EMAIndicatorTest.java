@@ -91,7 +91,7 @@ public class EMAIndicatorTest extends IndicatorTest {
         TimeSeries xlsSeries = xls.getSeries();
         Indicator<Decimal> closePrice = new ClosePriceIndicator(xlsSeries);
         Indicator<Decimal> indicator;
-        
+
         indicator = getIndicator(closePrice, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
         assertEquals(329.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
