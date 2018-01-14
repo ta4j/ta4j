@@ -62,7 +62,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decima
 		
 		if (toSqrt.isGreaterThan(Decimal.ZERO)) {
 			// pearson = (n * Sxy - Sx * Sy) / sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy))
-			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(Decimal.valueOf(Math.sqrt(toSqrt.toDouble())));
+			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(Decimal.valueOf(Math.sqrt(toSqrt.doubleValue())));
 		}
 
 		return Decimal.NaN;

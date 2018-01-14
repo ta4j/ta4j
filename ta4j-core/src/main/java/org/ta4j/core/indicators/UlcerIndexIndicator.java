@@ -66,7 +66,7 @@ public class UlcerIndexIndicator extends CachedIndicator<Decimal> {
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
         squaredAverage = squaredAverage.dividedBy(Decimal.valueOf(numberOfObservations));
-        return Decimal.valueOf(Math.sqrt(squaredAverage.toDouble()));
+        return Decimal.valueOf(Math.sqrt(squaredAverage.doubleValue()));
     }
 
     @Override

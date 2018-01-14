@@ -68,11 +68,11 @@ public class CandlestickChart {
         for (int i = 0; i < nbBars; i++) {
             Bar bar = series.getBar(i);
             dates[i] = new Date(bar.getEndTime().toEpochSecond() * 1000);
-            opens[i] = bar.getOpenPrice().toDouble();
-            highs[i] = bar.getMaxPrice().toDouble();
-            lows[i] = bar.getMinPrice().toDouble();
-            closes[i] = bar.getClosePrice().toDouble();
-            volumes[i] = bar.getVolume().toDouble();
+            opens[i] = bar.getOpenPrice().doubleValue();
+            highs[i] = bar.getMaxPrice().doubleValue();
+            lows[i] = bar.getMinPrice().doubleValue();
+            closes[i] = bar.getClosePrice().doubleValue();
+            volumes[i] = bar.getVolume().doubleValue();
         }
 
         OHLCDataset dataset = new DefaultHighLowDataset("btc", dates, highs, lows, opens, closes, volumes);
@@ -91,7 +91,7 @@ public class CandlestickChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
         for (int i = 0; i < series.getBarCount(); i++) {
             Bar bar = series.getBar(i);
-            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).toDouble());
+            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).doubleValue());
         }
         dataset.addSeries(chartTimeSeries);
         return dataset;

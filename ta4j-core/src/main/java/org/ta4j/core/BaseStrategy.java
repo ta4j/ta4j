@@ -181,7 +181,9 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
+        if ( log.isTraceEnabled() ) {
+            log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
+        }
     }
 
     /**
@@ -190,6 +192,8 @@ public class BaseStrategy implements Strategy {
      * @param exit true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
+        if ( log.isTraceEnabled() ) {
+            log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
+        }
     }
 }
