@@ -25,10 +25,7 @@ package org.ta4j.core.indicators.volume;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
-import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.helpers.*;
 
 /**
  * Intraday Intensity Index
@@ -38,7 +35,7 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 public class IIIIndicator extends CachedIndicator<Decimal> {
 
 
-    private CloseLocationValueIndicator clvIndicator;
+    private ClosePriceIndicator closePriceIndicator;
 
     private MaxPriceIndicator maxPriceIndicator;
 
@@ -48,7 +45,7 @@ public class IIIIndicator extends CachedIndicator<Decimal> {
 
     public IIIIndicator(TimeSeries series) {
         super(series);
-        clvIndicator = new CloseLocationValueIndicator(series);
+        closePriceIndicator = new ClosePriceIndicator(series);
         maxPriceIndicator = new MaxPriceIndicator(series);
         minPriceIndicator = new MinPriceIndicator(series);
         volumeIndicator = new VolumeIndicator(series);
@@ -56,11 +53,10 @@ public class IIIIndicator extends CachedIndicator<Decimal> {
     @Override
     protected Decimal calculate(int index) {
 
-        if (index == 0) {
+        if (index == getTimeSeries().getBeginIndex()) {
             return Decimal.ZERO;
         }
-
-        Decimal doubleClosePrice =  Decimal.valueOf(2).multipliedBy(clvIndicator.getValue(index));
+        Decimal doubleClosePrice =  Decimal.valueOf(2).multipliedBy(closePriceIndicator.getValue(index));
         Decimal highmlow = maxPriceIndicator.getValue(index).minus(minPriceIndicator.getValue(index));
         Decimal highplow = maxPriceIndicator.getValue(index).plus(minPriceIndicator.getValue(index));
 
