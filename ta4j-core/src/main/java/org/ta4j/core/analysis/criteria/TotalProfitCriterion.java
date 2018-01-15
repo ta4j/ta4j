@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.analysis.criteria;
 
@@ -29,7 +29,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Total profit criterion.
- * <p>
+ * <p></p>
  * The total profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
  */
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
@@ -62,8 +62,13 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
     private double calculateProfit(TimeSeries series, Trade trade) {
         Decimal profit = Decimal.ONE;
         if (trade.isClosed()) {
-            Decimal exitClosePrice = series.getTick(trade.getExit().getIndex()).getClosePrice();
-            Decimal entryClosePrice = series.getTick(trade.getEntry().getIndex()).getClosePrice();
+            // use price of entry/exit order, if NaN use close price of underlying time series
+            Decimal exitClosePrice = trade.getExit().getPrice().isNaN() ?
+                    series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
+            Decimal entryClosePrice = trade.getEntry().getPrice().isNaN() ?
+                    series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
+
+
 
             if (trade.getEntry().isBuy()) {
                 profit = exitClosePrice.dividedBy(entryClosePrice);
@@ -71,6 +76,6 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
                 profit = entryClosePrice.dividedBy(exitClosePrice);
             }
         }
-        return profit.toDouble();
+        return profit.doubleValue();
     }
 }

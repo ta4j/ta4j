@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators;
 
@@ -43,15 +43,14 @@ public class StochasticRSIIndicatorTest {
     @Test
     public void stochasticRSI() {
         StochasticRSIIndicator srsi = new StochasticRSIIndicator(data, 14);
-
         TATestsUtils.assertDecimalEquals(srsi.getValue(15), 1);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(16), 1);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(16), 0.9460);
         TATestsUtils.assertDecimalEquals(srsi.getValue(17), 1);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(18), 0.9546);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(19), 0.9711);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(18), 0.8365);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(19), 0.8610);
         TATestsUtils.assertDecimalEquals(srsi.getValue(20), 1);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(21), 0.9543);
-        TATestsUtils.assertDecimalEquals(srsi.getValue(22), 1);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(21), 0.9186);
+        TATestsUtils.assertDecimalEquals(srsi.getValue(22), 0.9305);
         TATestsUtils.assertDecimalEquals(srsi.getValue(23), 1);
         TATestsUtils.assertDecimalEquals(srsi.getValue(24), 1);
     }

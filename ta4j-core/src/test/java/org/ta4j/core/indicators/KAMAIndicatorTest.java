@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators;
 
@@ -34,14 +34,15 @@ import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 /**
  * The Class KAMAIndicatorTest.
- * 
- * @see http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls
+ *
+ * @see <a href="http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls>
+ *     http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls</a>
  */
 public class KAMAIndicatorTest {
 
     private TimeSeries data;
-    
-    
+
+
     @Before
     public void setUp() {
 
@@ -56,15 +57,15 @@ public class KAMAIndicatorTest {
                 113.59, 113.98, 113.91, 112.62, 112.20,
                 111.10, 110.18, 111.13, 111.55, 112.08,
                 111.95, 111.60, 111.39, 112.25
-            
+
         );
     }
-    
+
     @Test
     public void kama() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         KAMAIndicator kama = new KAMAIndicator(closePrice, 10, 2, 30);
-        
+
         assertDecimalEquals(kama.getValue(9), 109.2400);
         assertDecimalEquals(kama.getValue(10), 109.2449);
         assertDecimalEquals(kama.getValue(11), 109.2165);
@@ -110,8 +111,8 @@ public class KAMAIndicatorTest {
     @Test
     public void getValueOnDeepIndicesShouldNotCauseStackOverflow() {
         TimeSeries series = new MockTimeSeries();
-        series.setMaximumTickCount(5000);
-        assertEquals(5000, series.getTickCount());
+        series.setMaximumBarCount(5000);
+        assertEquals(5000, series.getBarCount());
 
         KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(series), 10, 2, 30);
         try {

@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators.statistics;
 
@@ -28,26 +28,50 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Simple linear regression indicator.
- * <p>
+ * <p></p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
  * y = slope * x + intercept
  * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 
-    private Indicator<Decimal> indicator;
-    
-    private int timeFrame;
-    
-    private Decimal slope;
-    
-    private Decimal intercept;
-    
-    public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator);
-        this.indicator = indicator;
-        this.timeFrame = timeFrame;
-    }
+	 /**
+	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
+	 */
+	public enum SimpleLinearRegressionType {
+		y, slope, intercept;
+	}
+
+	private Indicator<Decimal> indicator;
+	private int timeFrame;
+	private Decimal slope;
+	private Decimal intercept;
+	private SimpleLinearRegressionType type;
+
+	/**
+	 * Constructor for the y-values of the formula (y = slope * x + intercept).
+	 * 
+	 * @param indicator the indicator for the x-values of the formula.
+	 * @param timeFrame
+	 */
+	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
+		this(indicator, timeFrame, SimpleLinearRegressionType.y);
+	}
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param indicator the indicator for the x-values of the formula.
+	 * @param timeFrame
+	 * @param type the type of the outcome value (y, slope, intercept)
+	 */
+	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame,
+			SimpleLinearRegressionType type) {
+		super(indicator);
+		this.indicator = indicator;
+		this.timeFrame = timeFrame;
+		this.type = type;
+	}
 
     @Override
     protected Decimal calculate(int index) {
@@ -58,6 +82,15 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
             return Decimal.NaN;
         }
         calculateRegressionLine(startIndex, endIndex);
+        
+        if (type == SimpleLinearRegressionType.slope) {
+            return slope;
+        }
+
+        if (type == SimpleLinearRegressionType.intercept) {
+            return intercept;
+        }
+      
         return slope.multipliedBy(Decimal.valueOf(index)).plus(intercept);
     }
     

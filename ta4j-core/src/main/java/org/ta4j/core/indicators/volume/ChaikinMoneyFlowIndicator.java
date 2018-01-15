@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators.volume;
 
@@ -31,18 +31,20 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
  * Chaikin Money Flow (CMF) indicator.
- * <p>
- * @see http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf
- * @see http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm
+ * <p></p>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf">
+ *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf"</a>
+ * @see <a href="http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm">
+ *     http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm</a>
  */
 public class ChaikinMoneyFlowIndicator extends CachedIndicator<Decimal> {
 
     private TimeSeries series;
-    
+
     private CloseLocationValueIndicator clvIndicator;
-    
+
     private VolumeIndicator volumeIndicator;
-    
+
     private int timeFrame;
 
     public ChaikinMoneyFlowIndicator(TimeSeries series, int timeFrame) {
@@ -61,18 +63,18 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Decimal> {
             sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
         }
         Decimal sumOfVolume = volumeIndicator.getValue(index);
-        
+
         return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
     }
-    
+
     /**
-     * @param index the tick index
-     * @return the money flow volume for the i-th period/tick
+     * @param index the bar index
+     * @return the money flow volume for the i-th period/bar
      */
     private Decimal getMoneyFlowVolume(int index) {
-        return clvIndicator.getValue(index).multipliedBy(series.getTick(index).getVolume());
+        return clvIndicator.getValue(index).multipliedBy(series.getBar(index).getVolume());
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " timeFrame: " + timeFrame;

@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
@@ -26,15 +26,35 @@ import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 
 /**
- * Moving average convergence divergence (MACDIndicator) indicator.
- * <p>
+ * Moving average convergence divergence (MACDIndicator) indicator. <br/>
+ * Aka. MACD Absolute Price Oscillator (APO).
+ * </p>
+ * see
+ * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd
  */
 public class MACDIndicator extends CachedIndicator<Decimal> {
 
+    private static final long serialVersionUID = -6899062131135971403L;
+    
     private final EMAIndicator shortTermEma;
-
     private final EMAIndicator longTermEma;
 
+    /**
+     * Constructor with shortTimeFrame "12" and longTimeFrame "26".
+     * 
+     * @param indicator the indicator
+     */
+    public MACDIndicator(Indicator<Decimal> indicator) {
+       this(indicator, 12, 26);
+    }
+    
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param shortTimeFrame the short time frame (normally 12)
+     * @param longTimeFrame the long time frame (normally 26)
+     */
     public MACDIndicator(Indicator<Decimal> indicator, int shortTimeFrame, int longTimeFrame) {
         super(indicator);
         if (shortTimeFrame > longTimeFrame) {

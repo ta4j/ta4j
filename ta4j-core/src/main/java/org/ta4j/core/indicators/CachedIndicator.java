@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators;
 
@@ -31,7 +31,7 @@ import java.util.List;
 
 /**
  * Cached {@link Indicator indicator}.
- * <p>
+ * <p></p>
  * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
@@ -44,7 +44,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * I.E. the last calculated result.
      */
     protected int highestResultIndex = -1;
-    
+
     /**
      * Constructor.
      * @param series the related time series
@@ -72,20 +72,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         // Series is not null
-        
-        final int removedTicksCount = series.getRemovedTicksCount();
-        final int maximumResultCount = series.getMaximumTickCount();
-        
+
+        final int removedBarsCount = series.getRemovedBarsCount();
+        final int maximumResultCount = series.getMaximumBarCount();
+
         T result;
-        if (index < removedTicksCount) {
+        if (index < removedBarsCount) {
             // Result already removed from cache
-            log.trace("{}: result from tick {} already removed from cache, use {}-th instead",
-                    getClass().getSimpleName(), index, removedTicksCount);
-            increaseLengthTo(removedTicksCount, maximumResultCount);
-            highestResultIndex = removedTicksCount;
+            log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+                    getClass().getSimpleName(), index, removedBarsCount);
+            increaseLengthTo(removedBarsCount, maximumResultCount);
+            highestResultIndex = removedBarsCount;
             result = results.get(0);
             if (result == null) {
-                // It should be "result = calculate(removedTicksCount);".
+                // It should be "result = calculate(removedBarsCount);".
                 // We use "result = calculate(0);" as a workaround
                 // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
                 result = calculate(0);
@@ -112,7 +112,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * @param index the tick index
+     * @param index the bar index
      * @return the value of the indicator
      */
     protected abstract T calculate(int index);
@@ -140,7 +140,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Removes the N first results which exceed the maximum tick count.
+     * Removes the N first results which exceed the maximum bar count.
      * (i.e. keeps only the last maximumResultCount results)
      * @param maximumResultCount the number of results to keep
      */

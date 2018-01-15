@@ -1,4 +1,4 @@
-/**
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
@@ -26,15 +26,33 @@ import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 
 /**
- * Percentage price oscillator (PPO) indicator.
- * <p>
+ * Percentage price oscillator (PPO) indicator. <br/>
+ * Aka. MACD Percentage Price Oscillator (MACD-PPO).
+ * </p>
  */
 public class PPOIndicator extends CachedIndicator<Decimal> {
 
+    private static final long serialVersionUID = -4337731034816094765L;
+    
     private final EMAIndicator shortTermEma;
-
     private final EMAIndicator longTermEma;
 
+    /**
+     * Constructor with shortTimeFrame "12" and longTimeFrame "26".
+     * 
+     * @param indicator the indicator
+     */
+    public PPOIndicator(Indicator<Decimal> indicator) {
+        this(indicator, 12, 26);
+    }
+    
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param shortTimeFrame the short time frame
+     * @param longTimeFrame the long time frame
+     */
     public PPOIndicator(Indicator<Decimal> indicator, int shortTimeFrame, int longTimeFrame) {
         super(indicator);
         if (shortTimeFrame > longTimeFrame) {

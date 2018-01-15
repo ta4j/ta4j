@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.10</version>
+    <version>0.11-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
@@ -49,7 +49,7 @@
         <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
         <developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
         <url>http://github.com/ta4j/ta4j</url>
-        <tag>0.10</tag>
+        <tag>0.11-SNAPSHOT</tag>
     </scm>
 
     <modules>
@@ -62,7 +62,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
-
+    
     <profiles>
 
         <!-- Only when performing a release (i.e. not for snapshots) -->
@@ -137,7 +137,7 @@
 
     <build>
         <plugins>
-            
+
             <!-- Build source and target -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

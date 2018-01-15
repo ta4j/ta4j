@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core;
 
@@ -37,11 +37,13 @@ import java.util.Objects;
  * @see MathContext
  * @see RoundingMode
  */
-public final class Decimal implements Comparable<Decimal>, Serializable {
+public final class Decimal
+        extends Number
+        implements Comparable<Number>, Serializable {
 
-	private static final long serialVersionUID = 2225130444465033658L;
+    private static final long serialVersionUID = 2225130444465033658L;
 
-	public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
+    public static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     /** Not-a-Number instance (infinite error) */
     public static final Decimal NaN = new Decimal();
@@ -72,24 +74,36 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
-    /**
-     * Constructor.
-     * @param val the double value
-     */
-    private Decimal(double val) {
+    private Decimal(short val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
     private Decimal(int val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private Decimal(long val) {
+        delegate = BigDecimal.valueOf(val);
+    }
+
+    private Decimal(float val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
+    private Decimal(double val) {
+        delegate = BigDecimal.valueOf(val);
+    }
+
     private Decimal(BigDecimal val) {
-        delegate = val;
+        delegate = Objects.requireNonNull(val);
+    }
+
+    /**
+     * Returns the underlying {@link BigDecimal} delegate
+     * @return BigDecimal delegate instance of this instance
+     */
+    public BigDecimal getDelegate(){
+        return delegate;
     }
 
     /**
@@ -99,11 +113,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @return {@code this + augend}, rounded as necessary
      * @see BigDecimal#add(java.math.BigDecimal, java.math.MathContext)
      */
-    public Decimal plus(Decimal augend) {
+    public Decimal plus(Number augend) {
         if ((this == NaN) || (augend == NaN)) {
             return NaN;
         }
-        return new Decimal(delegate.add(augend.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.add(Decimal.valueOf(augend).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -113,11 +127,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @return {@code this - subtrahend}, rounded as necessary
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
-    public Decimal minus(Decimal subtrahend) {
+    public Decimal minus(Number subtrahend) {
         if ((this == NaN) || (subtrahend == NaN)) {
             return NaN;
         }
-        return new Decimal(delegate.subtract(subtrahend.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.subtract(Decimal.valueOf(subtrahend).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -127,11 +141,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @return {@code this * multiplicand}, rounded as necessary
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
-    public Decimal multipliedBy(Decimal multiplicand) {
+    public Decimal multipliedBy(Number multiplicand) {
         if ((this == NaN) || (multiplicand == NaN)) {
             return NaN;
         }
-        return new Decimal(delegate.multiply(multiplicand.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.multiply(Decimal.valueOf(multiplicand).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -141,11 +155,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @return {@code this / divisor}, rounded as necessary
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
-    public Decimal dividedBy(Decimal divisor) {
-        if ((this == NaN) || (divisor == NaN) || divisor.isZero()) {
+    public Decimal dividedBy(Number divisor) {
+        if ((this == NaN) || (divisor == NaN) || Decimal.valueOf(divisor).isZero()) {
             return NaN;
         }
-        return new Decimal(delegate.divide(divisor.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.divide(Decimal.valueOf(divisor).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -155,13 +169,34 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @return {@code this % divisor}, rounded as necessary.
      * @see BigDecimal#remainder(java.math.BigDecimal, java.math.MathContext)
      */
-    public Decimal remainder(Decimal divisor) {
-        if ((this == NaN) || (divisor == NaN) || divisor.isZero()) {
+    public Decimal remainder(Number divisor) {
+        if ((this == NaN) || (divisor == NaN) || Decimal.valueOf(divisor).isZero()) {
             return NaN;
         }
-        return new Decimal(delegate.remainder(divisor.delegate, MATH_CONTEXT));
+        return new Decimal(delegate.remainder(Decimal.valueOf(divisor).delegate, MATH_CONTEXT));
     }
 
+    /**
+     * Returns a {@code Decimal} whose value is rounded down to the nearest whole number.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    public Decimal floor() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(delegate.setScale(0, RoundingMode.FLOOR));
+    }
+
+    /**
+     * Returns a {@code Decimal} whose value is rounded up to the nearest whole number.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    public Decimal ceil() {
+        if (this == NaN) {
+            return NaN;
+        }
+        return new Decimal(delegate.setScale(0, RoundingMode.CEILING));
+    }
 
     /**
      * Returns a {@code Decimal} whose value is <tt>(this<sup>n</sup>)</tt>.
@@ -174,19 +209,6 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
             return NaN;
         }
         return new Decimal(delegate.pow(n, MATH_CONTEXT));
-    }
-    
-    /**
-     * Returns the correctly rounded natural logarithm (base e) of the <code>double</code> value of this {@code Decimal}.
-     * /!\ Warning! Uses the {@code StrictMath#log(double)} method under the hood.
-     * @return the natural logarithm (base e) of {@code this}
-     * @see StrictMath#log(double)
-     */
-    public Decimal log() {
-        if (this == NaN) {
-            return NaN;
-        }
-        return new Decimal(StrictMath.log(delegate.doubleValue()));
     }
 
     /**
@@ -282,11 +304,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
-    public boolean isEqual(Decimal other) {
+    public boolean isEqual(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
-        return compareTo(other) == 0;
+        return compareTo(Decimal.valueOf(other)) == 0;
     }
 
     /**
@@ -294,11 +316,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
-    public boolean isGreaterThan(Decimal other) {
+    public boolean isGreaterThan(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
-        return compareTo(other) > 0;
+        return compareTo(Decimal.valueOf(other)) > 0;
     }
 
     /**
@@ -306,11 +328,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param other the other value, not null
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
-    public boolean isGreaterThanOrEqual(Decimal other) {
+    public boolean isGreaterThanOrEqual(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
-        return compareTo(other) > -1;
+        return compareTo(Decimal.valueOf(other)) > -1;
     }
 
     /**
@@ -318,11 +340,11 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param other the other value, not null
      * @return true is this is less than the specified value, false otherwise
      */
-    public boolean isLessThan(Decimal other) {
+    public boolean isLessThan(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
-        return compareTo(other) < 0;
+        return compareTo(Decimal.valueOf(other)) < 0;
     }
 
     /**
@@ -330,19 +352,19 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param other the other value, not null
      * @return true is this is less than or equal to the specified value, false otherwise
      */
-    public boolean isLessThanOrEqual(Decimal other) {
+    public boolean isLessThanOrEqual(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return false;
         }
-        return compareTo(other) < 1;
+        return compareTo(Decimal.valueOf(other)) < 1;
     }
 
     @Override
-    public int compareTo(Decimal other) {
+    public int compareTo(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return 0;
         }
-        return delegate.compareTo(other.delegate);
+        return delegate.compareTo(Decimal.valueOf(other).delegate);
     }
 
     /**
@@ -350,14 +372,14 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param other value with which the minimum is to be computed
      * @return the {@code Decimal} whose value is the lesser of this
      *         {@code Decimal} and {@code other}.  If they are equal,
-     *         as defined by the {@link #compareTo(Decimal) compareTo}
+     *         as defined by the {@link #compareTo(Number) compareTo}
      *         method, {@code this} is returned.
      */
-    public Decimal min(Decimal other) {
+    public Decimal min(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return NaN;
         }
-        return (compareTo(other) <= 0 ? this : other);
+        return (compareTo(other) <= 0 ? this : Decimal.valueOf(other));
     }
 
     /**
@@ -365,14 +387,62 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @param  other value with which the maximum is to be computed
      * @return the {@code Decimal} whose value is the greater of this
      *         {@code Decimal} and {@code other}.  If they are equal,
-     *         as defined by the {@link #compareTo(Decimal) compareTo}
+     *         as defined by the {@link #compareTo(Number) compareTo}
      *         method, {@code this} is returned.
      */
-    public Decimal max(Decimal other) {
+    public Decimal max(Number other) {
         if ((this == NaN) || (other == NaN)) {
             return NaN;
         }
-        return (compareTo(other) >= 0 ? this : other);
+        return (compareTo(other) >= 0 ? this : Decimal.valueOf(other));
+    }
+
+    /**
+     * Converts this {@code Decimal} to a {@code short}.
+     * @return this {@code Decimal} converted to a {@code short}
+     * @see BigDecimal#shortValue()
+     */
+    public short shortValue() {
+        if (this == NaN) {
+            return 0;
+        }
+        return delegate.shortValue();
+    }
+
+    /**
+     * Converts this {@code Decimal} to a {@code int}.
+     * @return this {@code Decimal} converted to a {@code int}
+     * @see BigDecimal#intValue()
+     */
+    public int intValue() {
+        if (this == NaN) {
+            return 0;
+        }
+        return delegate.intValue();
+    }
+
+    /**
+     * Converts this {@code Decimal} to a {@code long}.
+     * @return this {@code Decimal} converted to a {@code long}
+     * @see BigDecimal#longValue()
+     */
+    public long longValue() {
+        if (this == NaN) {
+            return 0;
+        }
+        return delegate.longValue();
+    }
+
+    /**
+     * Converts this {@code Decimal} to a {@code float}.
+     * @return this {@code Decimal} converted to a {@code float}
+     * @see BigDecimal#floatValue()
+     */
+    public float floatValue() {
+        if (this == NaN) {
+            return Float.NaN;
+        }
+        return delegate.floatValue();
     }
 
     /**
@@ -380,11 +450,19 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
      * @return this {@code Decimal} converted to a {@code double}
      * @see BigDecimal#doubleValue()
      */
-    public double toDouble() {
+    public double doubleValue() {
         if (this == NaN) {
             return Double.NaN;
         }
         return delegate.doubleValue();
+    }
+
+    /**
+     * @see Decimal#doubleValue()
+     */
+    @Deprecated
+    public double toDouble() {
+        return doubleValue();
     }
 
     @Override
@@ -420,25 +498,88 @@ public final class Decimal implements Comparable<Decimal>, Serializable {
         return true;
     }
 
+    /**
+     * Returns a {@code Decimal} version of the given {@code String}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
     public static Decimal valueOf(String val) {
-        if ("NaN".equals(val)) {
-            return NaN;
-        }
+        return val.equals("NaN")
+                ? Decimal.NaN
+                : new Decimal(val);
+    }
+
+    /**
+     * Returns a {@code Decimal} version of the given {@code short}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
+    public static Decimal valueOf(short val) {
         return new Decimal(val);
     }
 
-    public static Decimal valueOf(double val) {
-        if (Double.isNaN(val)) {
-            return NaN;
-        }
-        return new Decimal(val);
-    }
-
+    /**
+     * Returns a {@code Decimal} version of the given {@code int}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
     public static Decimal valueOf(int val) {
         return new Decimal(val);
     }
 
+    /**
+     * Returns a {@code Decimal} version of the given {@code long}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
     public static Decimal valueOf(long val) {
         return new Decimal(val);
+    }
+
+    /**
+     * Returns a {@code Decimal} version of the given {@code float}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
+    public static Decimal valueOf(float val) {
+        if (val == Float.NaN) {
+            return Decimal.NaN;
+        }
+        return new Decimal(val);
+    }
+
+    public static Decimal valueOf(BigDecimal val){
+                return new Decimal(val);
+    }
+
+    /**
+     * Returns a {@code Decimal} version of the given {@code double}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
+    public static Decimal valueOf(double val) {
+        if (val == Double.NaN) {
+            return Decimal.NaN;
+        }
+        return new Decimal(val);
+    }
+
+    /**
+     * Returns a {@code Decimal} version of the given {@code Decimal}.
+     * @param val the number
+     * @return the {@code Decimal}
+     */
+    public static Decimal valueOf(Decimal val) {
+        return val;
+    }
+
+    /**
+     * Returns a {@code Decimal} version of the given {@code Number}.
+     * Warning: This method turns the number into a string first
+     * @param val the number
+     * @return the {@code Decimal}
+     */
+    public static Decimal valueOf(Number val) {
+        return new Decimal(val.toString());
     }
 }

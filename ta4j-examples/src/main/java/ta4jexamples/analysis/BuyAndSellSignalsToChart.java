@@ -1,24 +1,24 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package ta4jexamples.analysis;
 
@@ -50,16 +50,16 @@ public class BuyAndSellSignalsToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * @param tickSeries the ta4j time series
+     * @param barseries the ta4j time series
      * @param indicator the indicator
      * @param name the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries tickSeries, Indicator<Decimal> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Decimal> indicator, String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < tickSeries.getTickCount(); i++) {
-            Tick tick = tickSeries.getTick(i);
-            chartTimeSeries.add(new Minute(Date.from(tick.getEndTime().toInstant())), indicator.getValue(i).toDouble());
+        for (int i = 0; i < barseries.getBarCount(); i++) {
+            Bar bar = barseries.getBar(i);
+            chartTimeSeries.add(new Minute(Date.from(bar.getEndTime().toInstant())), indicator.getValue(i).toDouble());
         }
         return chartTimeSeries;
     }
@@ -78,14 +78,14 @@ public class BuyAndSellSignalsToChart {
         // Adding markers to plot
         for (Trade trade : trades) {
             // Buy signal
-            double buySignalTickTime = new Minute(Date.from(series.getTick(trade.getEntry().getIndex()).getEndTime().toInstant())).getFirstMillisecond();
-            Marker buyMarker = new ValueMarker(buySignalTickTime);
+            double buySignalBarTime = new Minute(Date.from(series.getBar(trade.getEntry().getIndex()).getEndTime().toInstant())).getFirstMillisecond();
+            Marker buyMarker = new ValueMarker(buySignalBarTime);
             buyMarker.setPaint(Color.GREEN);
             buyMarker.setLabel("B");
             plot.addDomainMarker(buyMarker);
             // Sell signal
-            double sellSignalTickTime = new Minute(Date.from(series.getTick(trade.getExit().getIndex()).getEndTime().toInstant())).getFirstMillisecond();
-            Marker sellMarker = new ValueMarker(sellSignalTickTime);
+            double sellSignalBarTime = new Minute(Date.from(series.getBar(trade.getExit().getIndex()).getEndTime().toInstant())).getFirstMillisecond();
+            Marker sellMarker = new ValueMarker(sellSignalBarTime);
             sellMarker.setPaint(Color.RED);
             sellMarker.setLabel("S");
             plot.addDomainMarker(sellMarker);
@@ -117,14 +117,14 @@ public class BuyAndSellSignalsToChart {
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
 
-        /**
-         * Building chart datasets
+        /*
+          Building chart datasets
          */
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         dataset.addSeries(buildChartTimeSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
 
-        /**
-         * Creating the chart
+        /*
+          Creating the chart
          */
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
                 "Bitstamp BTC", // title
@@ -139,13 +139,13 @@ public class BuyAndSellSignalsToChart {
         DateAxis axis = (DateAxis) plot.getDomainAxis();
         axis.setDateFormatOverride(new SimpleDateFormat("MM-dd HH:mm"));
 
-        /**
-         * Running the strategy and adding the buy and sell signals to plot
+        /*
+          Running the strategy and adding the buy and sell signals to plot
          */
         addBuySellSignals(series, strategy, plot);
 
-        /**
-         * Displaying the chart
+        /*
+          Displaying the chart
          */
         displayChart(chart);
     }
