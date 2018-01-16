@@ -38,6 +38,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
 - **PearsonCorrelationIndicator**: new statistic indicator with pearson correlation
 - **TimeSeries**: new method `getSubSeries(int, int)` to create a sub series of the TimeSeries that stores bars exclusively between `startIndex` and `endIndex` parameters
+- **IIIIndicator**: Intraday Intensity Index
 
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
