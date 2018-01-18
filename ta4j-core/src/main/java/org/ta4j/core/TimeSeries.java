@@ -28,7 +28,7 @@ import java.util.List;
 
 /**
  * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
- * <p></p>
+ * </p>
  * Notably, a {@link TimeSeries time series} can be:
  * <ul>
  *     <li>the base of {@link Indicator indicator} calculations
@@ -141,4 +141,19 @@ public interface TimeSeries extends Serializable {
      * @see TimeSeries#setMaximumBarCount(int)
      */
     void addBar(Bar bar);
+
+    /**
+     * Returns a new TimeSeries implementation that is a subset of this TimeSeries implementation.
+     * It holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
+     * of this TimeSeries.
+     * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
+     * be index <tt>startIndex</tt> of this TimeSeries.
+     * If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries will start with the first available Bar of this TimeSeries.
+     * If <tt>endIndex</tt> > this.seriesEndIndex the new TimeSeries will end at the last available Bar of this TimeSeries
+     * @param startIndex the startIndex
+     * @param endIndex the endIndex
+     * @return a new BaseTimeSeries with Bars from startIndex to endIndex-1
+     * @throws IllegalArgumentException e.g. if endIndex < startIndex
+     */
+    TimeSeries getSubSeries(int startIndex, int endIndex);
 }

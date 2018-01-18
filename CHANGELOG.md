@@ -9,6 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ATRIndicator**: fixed calculations
 - **PlusDI, MinusDI, ADX**: fixed calculations
 - **LinearTransactionCostCriterion**: fixed calculations, added xls file and unit tests
+- **FisherIndicator**: fixed calculations
 
 ### Changed
 - **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`
@@ -37,6 +38,8 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **Decimal**: added functions `Decimal valueOf(BigDecimal)` and `BigDecimal getDelegate()`
 - **AbstractEMAIndicator**: new abstract indicator for ema based indicators like MMAIndicator
 - **PearsonCorrelationIndicator**: new statistic indicator with pearson correlation
+- **TimeSeries**: new method `getSubSeries(int, int)` to create a sub series of the TimeSeries that stores bars exclusively between `startIndex` and `endIndex` parameters
+- **IIIIndicator**: Intraday Intensity Index
 - **CriterionFactory**: new functional interface to support CriterionTest
 - **IndicatorTest**: new class for storing an indicator factory, allows for generic calls like getIndicator(D data, P... params) after the factory is set once in the constructor call.  Facilitates standardization across unit tests.
 - **CriterionTest**: new class for storing a criterion factory, allows for generic calls like getCriterion(P... params) after the factory is set once in the constructor call.  Facilitates standardization across unit tests.
@@ -47,6 +50,10 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
+
+## Deprecated
+- **BaseTimeSeries**: Constructor: `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` use `getSubSeries(int, int)`
+- **Decimal**: Method `toDouble()` use `doubleValue()`
 
 ## 0.10 (released October 30, 2017)
 

@@ -24,6 +24,7 @@ package org.ta4j.core;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -94,7 +95,11 @@ public class BaseTimeSeries implements TimeSeries {
      * @param defaultSeries the original time series to construct a constrained series from
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex the end index (inclusive) of the time series
+     *
+     * @deprecated use {@link #getSubSeries(int, int) getSubSeries(startIndex, endIndex)} to satisfy correct behaviour of
+     * the new sub series in further calculations
      */
+    @Deprecated
     public BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex) {
         this(defaultSeries.getName(), defaultSeries.getBarData(), seriesBeginIndex, seriesEndIndex, true);
         if (defaultSeries.getBarData() == null || defaultSeries.getBarData().isEmpty()) {
@@ -133,6 +138,34 @@ public class BaseTimeSeries implements TimeSeries {
         this.seriesBeginIndex = seriesBeginIndex;
         this.seriesEndIndex = seriesEndIndex;
         this.constrained = constrained;
+    }
+
+    /**
+     * Returns a new BaseTimeSeries that is a subset of this BaseTimeSeries.
+     * The new series holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
+     * of this TimeSeries.
+     * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
+     * be index <tt>startIndex</tt> of this TimeSeries.
+     * If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries will start with the first available Bar of this TimeSeries.
+     * If <tt>endIndex</tt> > this.seriesEndIndex+1 the new TimeSeries will end at the last available Bar of this TimeSeries
+     * @param startIndex the startIndex
+     * @param endIndex the endIndex (exclusive)
+     * @return a new BaseTimeSeries with Bars from <tt>startIndex</tt> to <tt>endIndex</tt>-1
+     * @throws IllegalArgumentException if <tt>endIndex</tt> < <tt>startIndex</tt>
+     */
+    @Override
+    public TimeSeries getSubSeries(int startIndex, int endIndex){
+        if(startIndex > endIndex){
+            throw new IllegalArgumentException
+                    (String.format("the endIndex: %s must be bigger than startIndex: %s", endIndex, startIndex));
+        }
+        if(!bars.isEmpty()) {
+            int start = Math.max(startIndex, this.seriesBeginIndex);
+            int end = Math.min(endIndex, this.seriesEndIndex + 1);
+            return new BaseTimeSeries(getName(), cut(bars, start, end));
+        }
+        return new BaseTimeSeries(name);
+
     }
 
     @Override
@@ -243,6 +276,17 @@ public class BaseTimeSeries implements TimeSeries {
             // Updating removed bars count
             removedBarsCount += nbBarsToRemove;
         }
+    }
+
+    /**
+     * Cuts a list of bars into a new list of bars that is a subset of it
+     * @param bars the list of {@link Bar bars}
+     * @param startIndex start index of the subset
+     * @param endIndex end index of the subset
+     * @return a new list of bars with tick from startIndex (inclusive) to endIndex (exclusive)
+     */
+    private static List<Bar> cut(List<Bar> bars, final int startIndex, final int endIndex){
+        return new ArrayList<>(bars.subList(startIndex, endIndex));
     }
 
     /**
