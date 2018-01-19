@@ -30,7 +30,7 @@ public interface ExternalIndicatorTest {
      * @return TimeSeries the series
      * @throws Exception
      */
-    public TimeSeries getSeries() throws Exception;
+    TimeSeries getSeries() throws Exception;
 
     /**
      * Provides parameters to the external data source and returns the new
@@ -40,6 +40,6 @@ public interface ExternalIndicatorTest {
      * @return Indicator<Decimal> the indicator
      * @throws Exception
      */
-    public Indicator<Decimal> getIndicator(Object... params) throws Exception;
+    Indicator<Decimal> getIndicator(Object... params) throws Exception;
 
 }

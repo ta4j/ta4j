@@ -24,10 +24,10 @@ package org.ta4j.core;
 
 public interface ExternalCriterionTest {
 
-    public TimeSeries getSeries() throws Exception;
+    TimeSeries getSeries() throws Exception;
 
-    public Decimal getFinalCriterionValue(Object... params) throws Exception;
+    Decimal getFinalCriterionValue(Object... params) throws Exception;
 
-    public TradingRecord getTradingRecord() throws Exception;
+    TradingRecord getTradingRecord() throws Exception;
 
 }
