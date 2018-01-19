@@ -40,6 +40,6 @@ public interface ExternalIndicatorTest {
      * @return Indicator<Decimal> the indicator
      * @throws Exception
      */
-    public <P> Indicator<Decimal> getIndicator(P... params) throws Exception;
+    public Indicator<Decimal> getIndicator(Object... params) throws Exception;
 
 }

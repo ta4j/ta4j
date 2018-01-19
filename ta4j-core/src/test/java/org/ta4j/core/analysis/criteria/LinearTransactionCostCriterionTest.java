@@ -22,18 +22,26 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockTimeSeries;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import static org.junit.Assert.*;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExternalCriterionTest;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockTimeSeries;
 
 public class LinearTransactionCostCriterionTest extends CriterionTest {
 
     private ExternalCriterionTest xls;
 
     public LinearTransactionCostCriterionTest() throws Exception {
-        super((params) -> { return new LinearTransactionCostCriterion((double) params[0], (double) params[1], (double) params[2]); });
+        super((params) -> new LinearTransactionCostCriterion((double) params[0], (double) params[1], (double) params[2]));
         xls = new XLSCriterionTest(this.getClass(), "LTC.xls", 16, 6);
     }
 

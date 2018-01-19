@@ -30,13 +30,13 @@ import org.ta4j.core.XlsTestsUtils;
 
 public class XLSCriterionTest implements ExternalCriterionTest {
 
-    private Class clazz;
+    private Class<?> clazz;
     private String fileName;
     private int criterionColumn;
     private int statesColumn;
     private TimeSeries cachedSeries = null;
 
-    public XLSCriterionTest(Class clazz, String fileName, int criterionColumn, int statesColumn) throws Exception {
+    public XLSCriterionTest(Class<?> clazz, String fileName, int criterionColumn, int statesColumn) throws Exception {
         this.clazz = clazz;
         this.fileName = fileName;
         this.criterionColumn = criterionColumn;
@@ -51,7 +51,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
         return cachedSeries;
     }
 
-    public <P> Decimal getFinalCriterionValue(P... params) throws Exception {
+    public Decimal getFinalCriterionValue(Object... params) throws Exception {
         return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, params);
     }
 

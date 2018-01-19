@@ -37,14 +37,14 @@ import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class RSIIndicatorTest extends IndicatorTest {
+public class RSIIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
     private TimeSeries data;
     private ExternalIndicatorTest xls;
     //private ExternalIndicatorTest sql;
 
     public RSIIndicatorTest() {
-        super((data, params) -> { return new RSIIndicator((Indicator<Decimal>) data, (int) params[0]); });
+        super((data, params) -> new RSIIndicator((Indicator<Decimal>) data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "RSI.xls", 10);
         //sql = new SQLIndicatorTest(this.getClass(), "RSI.db", username, pass, table, column);
     }

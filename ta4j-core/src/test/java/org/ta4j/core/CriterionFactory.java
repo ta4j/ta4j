@@ -23,8 +23,8 @@
 package org.ta4j.core;
 
 @FunctionalInterface
-public interface CriterionFactory<T> {
+public interface CriterionFactory {
 
-    public <P> AnalysisCriterion getCriterion(P... params);
+    public AnalysisCriterion getCriterion(Object... params);
 
 }

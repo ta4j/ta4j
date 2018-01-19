@@ -37,7 +37,7 @@ public class CriterionTest {
         return factory;
     }
 
-    public <P> AnalysisCriterion getCriterion(P... params) {
+    public AnalysisCriterion getCriterion(Object... params) {
         return factory.getCriterion(params);
     }
 

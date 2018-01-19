@@ -22,28 +22,19 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
 
-public class IndicatorTest {
+public class IndicatorTest<D, I> {
 
-    private final IndicatorFactory factory;
+    private final IndicatorFactory<D, I> factory;
 
     /**
      * Constructor.
      * @param factory the indicator factory
      */
-    public IndicatorTest(IndicatorFactory factory) {
+    public IndicatorTest(IndicatorFactory<D, I> factory) {
         this.factory = factory;
-    }
-
-    /**
-     * Getter for the indicator factory.
-     * @return IndicatorFactory the factory
-     */
-    public IndicatorFactory getFactory() {
-        return factory;
     }
 
     /**
@@ -53,7 +44,7 @@ public class IndicatorTest {
      * @return Indicator<Decimal> the indicator
      * @throws Exception
      */
-    public <D,P> Indicator<Decimal> getIndicator(D data, P... params) throws Exception {
+    public Indicator<I> getIndicator(D data, Object... params) throws Exception {
         return factory.getIndicator(data, params);
     }
 
