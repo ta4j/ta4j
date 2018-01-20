@@ -40,12 +40,12 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class MMAIndicatorTest extends IndicatorTest {
+public class MMAIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public MMAIndicatorTest() throws Exception {
-        super((data, params) -> { return new MMAIndicator((Indicator<Decimal>) data, (int) params[0]); });
+        super((data, params) -> new MMAIndicator((Indicator<Decimal>) data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "MMA.xls", 6);
     }
 

@@ -34,7 +34,7 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.IndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 
-public class MinusDIIndicatorTest extends IndicatorTest {
+public class MinusDIIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
 
     private ExternalIndicatorTest xls;
 

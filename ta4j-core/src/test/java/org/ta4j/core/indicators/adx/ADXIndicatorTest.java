@@ -34,12 +34,12 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.IndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 
-public class ADXIndicatorTest extends IndicatorTest {
+public class ADXIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public ADXIndicatorTest() throws Exception {
-        super((data, params) -> { return new ADXIndicator((TimeSeries) data, (int) params[0], (int) params[1]); });
+        super((data, params) -> new ADXIndicator((TimeSeries) data, (int) params[0], (int) params[1]));
         xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15);
     }
 

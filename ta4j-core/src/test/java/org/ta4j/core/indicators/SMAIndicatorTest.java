@@ -36,12 +36,12 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class SMAIndicatorTest extends IndicatorTest {
+public class SMAIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public SMAIndicatorTest() throws Exception {
-        super((data, params) -> { return new SMAIndicator((Indicator<Decimal>) data, (int) params[0]); });
+        super((data, params) -> new SMAIndicator((Indicator<Decimal>) data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6);
     }
 

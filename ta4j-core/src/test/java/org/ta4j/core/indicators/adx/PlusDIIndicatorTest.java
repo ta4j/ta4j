@@ -29,17 +29,17 @@ import org.junit.Test;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.IndicatorTest;
-import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.IndicatorTest;
+import org.ta4j.core.indicators.XLSIndicatorTest;
 
-public class PlusDIIndicatorTest extends IndicatorTest {
+public class PlusDIIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public PlusDIIndicatorTest() throws Exception {
-        super((data, params) -> { return new PlusDIIndicator((TimeSeries) data, (int) params[0]); });
+        super((data, params) -> new PlusDIIndicator((TimeSeries) data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 12);
     }
 

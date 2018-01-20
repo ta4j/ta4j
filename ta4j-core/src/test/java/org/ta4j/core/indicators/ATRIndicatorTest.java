@@ -38,12 +38,12 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class ATRIndicatorTest extends IndicatorTest {
+public class ATRIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public ATRIndicatorTest() throws Exception {
-        super((data, params) -> { return new ATRIndicator((TimeSeries) data, (int) params[0]); });
+        super((data, params) -> new ATRIndicator((TimeSeries) data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7);
     }
 
