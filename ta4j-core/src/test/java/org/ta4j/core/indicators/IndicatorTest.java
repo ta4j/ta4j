@@ -31,20 +31,22 @@ public class IndicatorTest<D, I> {
 
     /**
      * Constructor.
-     * @param factory the indicator factory
+     * 
+     * @param factory IndicatorFactory for building an Indicator given data and
+     *            parameters.
      */
     public IndicatorTest(IndicatorFactory<D, I> factory) {
         this.factory = factory;
     }
 
     /**
-     * Creates an indicator from data and parameters.
-     * @param data the data for the indicator
-     * @param params a set of indicator parameters
-     * @return Indicator<Decimal> the indicator
-     * @throws Exception
+     * Generates an Indicator from data and parameters.
+     * 
+     * @param data indicator data
+     * @param params indicator parameters
+     * @return Indicator<I> from data given parameters
      */
-    public Indicator<I> getIndicator(D data, Object... params) throws Exception {
+    public Indicator<I> getIndicator(D data, Object... params) {
         return factory.getIndicator(data, params);
     }
 

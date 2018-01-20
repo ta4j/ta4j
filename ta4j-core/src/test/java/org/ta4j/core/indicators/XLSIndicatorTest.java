@@ -35,13 +35,25 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     private int column;
     private TimeSeries cachedSeries = null;
 
+    /**
+     * Constructor.
+     * 
+     * @param clazz class containing the file resources
+     * @param fileName file name of the file containing the workbook
+     * @param column column number containing the calculated indicator values
+     */
     public XLSIndicatorTest(Class<?> clazz, String fileName, int column) {
         this.clazz = clazz;
         this.fileName = fileName;
         this.column = column;
     }
 
-    @Override
+    /**
+     * Gets the TimeSeries from the XLS file.
+     * 
+     * @return TimeSeries from the file
+     * @throws Exception if getSeries throws IOException or DataFormatException
+     */
     public TimeSeries getSeries() throws Exception {
         if (cachedSeries == null) {
             cachedSeries = XlsTestsUtils.getSeries(clazz, fileName);
@@ -49,7 +61,14 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
         return cachedSeries;
     }
 
-    @Override
+    /**
+     * Gets the Indicator from the XLS file given the parameters.
+     * 
+     * @param params indicator parameters
+     * @return Indicator from the file given the parameters
+     * @throws Exception if getIndicator throws IOException or
+     *             DataFormatException
+     */
     public Indicator<Decimal> getIndicator(Object... params) throws Exception {
         return XlsTestsUtils.getIndicator(clazz, fileName, column, params);
     }

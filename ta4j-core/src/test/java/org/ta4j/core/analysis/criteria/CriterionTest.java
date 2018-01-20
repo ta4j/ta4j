@@ -29,14 +29,22 @@ public class CriterionTest {
 
     private final CriterionFactory factory;
 
+    /**
+     * Constructor.
+     * 
+     * @param factory CriterionFactory for building an AnalysisCriterion given
+     *            parameters
+     */
     public CriterionTest(CriterionFactory factory) {
         this.factory = factory;
     }
 
-    public CriterionFactory getFactory() {
-        return factory;
-    }
-
+    /**
+     * Generates an AnalysisCriterion given criterion parameters.
+     * 
+     * @param params criterion parameters
+     * @return AnalysisCriterion given parameters
+     */
     public AnalysisCriterion getCriterion(Object... params) {
         return factory.getCriterion(params);
     }
