@@ -84,7 +84,7 @@ public class XlsTestsUtils {
      * @return a TimeSeries of the data
      * @throws DataFormatException
      */
-    public static TimeSeries getSeries(Class clazz, String fileName) throws Exception {
+    public static TimeSeries getSeries(Class<?> clazz, String fileName) throws Exception {
         Sheet sheet = getSheet(clazz, fileName);
         return getSeries(sheet);
     }
@@ -123,7 +123,7 @@ public class XlsTestsUtils {
      * @throws DataFormatException in getValues()
      */
 
-    private static <T> List<Decimal> getValues(Sheet sheet, int column, T... params) throws Exception {
+    private static List<Decimal> getValues(Sheet sheet, int column, Object... params) throws Exception {
         Decimal[] decimalParams = Arrays.stream(params)
                 .map(p -> Decimal.valueOf(p.toString()))
                 .toArray(Decimal[]::new);
@@ -195,20 +195,20 @@ public class XlsTestsUtils {
         return values;
     }
 
-    public static <P> Indicator<Decimal> getIndicator(Class clazz, String fileName, int column, P... params) throws Exception {
+    public static Indicator<Decimal> getIndicator(Class<?> clazz, String fileName, int column, Object... params) throws Exception {
         Sheet sheet = getSheet(clazz, fileName);
         return new MockIndicator(getSeries(sheet), getValues(sheet, column, params));
     }
 
-    public static <P> Decimal getFinalCriterionValue(Class clazz, String fileName, int column, P... params) throws Exception {
+    public static Decimal getFinalCriterionValue(Class<?> clazz, String fileName, int column, Object... params) throws Exception {
         Sheet sheet = getSheet(clazz, fileName);
         List<Decimal> values = getValues(sheet, column, params);
         return values.get(values.size() - 1);
     }
 
-    public static <P> TradingRecord getTradingRecord(Class clazz, String fileName, int column, P... params) throws Exception {
+    public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column) throws Exception {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockTradingRecord(getValues(sheet, column, params));
+        return new MockTradingRecord(getValues(sheet, column));
     }
 
 }
