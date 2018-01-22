@@ -23,16 +23,15 @@
 package org.ta4j.core;
 
 @FunctionalInterface
-public interface IndicatorFactory<D, I> {
+public interface CriterionFactory {
 
     /**
-     * Applies parameters and data to an IndicatorFactory and returns the
-     * Indicator.
+     * Applies parameters to a CriterionFactory and returns the
+     * AnalysisCriterion.
      * 
-     * @param data source data for building the indicator
-     * @param params indicator parameters
-     * @return Indicator<I> with the indicator parameters applied
+     * @param params criteria parameters
+     * @return AnalysisCriterion with the parameters applied
      */
-    Indicator<I> getIndicator(D data, Object... params);
+    AnalysisCriterion getCriterion(Object... params);
 
 }

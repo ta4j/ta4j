@@ -22,57 +22,68 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.XlsTestsUtils;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockTimeSeries;
 
-public class ATRIndicatorTest {
+public class ATRIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
+
+    private ExternalIndicatorTest xls;
+
+    public ATRIndicatorTest() throws Exception {
+        super((data, params) -> new ATRIndicator((TimeSeries) data, (int) params[0]));
+        xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7);
+    }
 
     @Test
-    public void getValue() {
+    public void testDummy() throws Exception {
         List<Bar> bars = new ArrayList<Bar>();
         bars.add(new MockBar(0, 12, 15, 8));
         bars.add(new MockBar(0, 8, 11, 6));
         bars.add(new MockBar(0, 15, 17, 14));
         bars.add(new MockBar(0, 15, 17, 14));
         bars.add(new MockBar(0, 0, 0, 2));
-        ATRIndicator atr = new ATRIndicator(new MockTimeSeries(bars), 3);
+        Indicator<Decimal> indicator = getIndicator(new MockTimeSeries(bars), 3);
 
-
-        assertDecimalEquals(atr.getValue(0), 7d);
-        assertDecimalEquals(atr.getValue(1), 6d / 3 + (1 - 1d / 3) * atr.getValue(0).doubleValue());
-        assertDecimalEquals(atr.getValue(2), 9d / 3 + (1 - 1d / 3) * atr.getValue(1).doubleValue());
-        assertDecimalEquals(atr.getValue(3), 3d / 3 + (1 - 1d / 3) * atr.getValue(2).doubleValue());
-        assertDecimalEquals(atr.getValue(4), 15d / 3 + (1 - 1d / 3) * atr.getValue(3).doubleValue());
-    }
-
-    private void atrXls(int timeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(ATRIndicatorTest.class, "ATR.xls", 7, (inputSeries) -> {
-            return new ATRIndicator(inputSeries, timeFrame);
-        }, timeFrame);
+        assertEquals(7d, indicator.getValue(0).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(6d / 3 + (1 - 1d / 3) * indicator.getValue(0).doubleValue(),
+                indicator.getValue(1).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(9d / 3 + (1 - 1d / 3) * indicator.getValue(1).doubleValue(),
+                indicator.getValue(2).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(3d / 3 + (1 - 1d / 3) * indicator.getValue(2).doubleValue(),
+                indicator.getValue(3).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(15d / 3 + (1 - 1d / 3) * indicator.getValue(3).doubleValue(),
+                indicator.getValue(4).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
     @Test
-    public void atrXls1() throws Exception {
-        atrXls(1);
+    public void testXls() throws Exception {
+        TimeSeries xlsSeries = xls.getSeries();
+        Indicator<Decimal> indicator;
+
+        indicator = getIndicator(xlsSeries, 1);
+        assertIndicatorEquals(xls.getIndicator(1), indicator);
+        assertEquals(4.8, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        indicator = getIndicator(xlsSeries, 3);
+        assertIndicatorEquals(xls.getIndicator(3), indicator);
+        assertEquals(7.4225, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        indicator = getIndicator(xlsSeries, 13);
+        assertIndicatorEquals(xls.getIndicator(13), indicator);
+        assertEquals(8.8082, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
-    @Test
-    public void atrXls3() throws Exception {
-        atrXls(3);
-    }
-
-    @Test
-    public void atrXls13() throws Exception {
-        atrXls(13);
-    }
 }

@@ -22,31 +22,43 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+
 import org.junit.Test;
-import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.IndicatorTest;
+import org.ta4j.core.indicators.XLSIndicatorTest;
 
-public class ADXIndicatorTest {
+public class ADXIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
 
-    private void adxXls(int diTimeFrame, int adxTimeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(ADXIndicatorTest.class, "ADX.xls", 15, (inputSeries) -> {
-            return new ADXIndicator(inputSeries, diTimeFrame, adxTimeFrame);
-        }, diTimeFrame, adxTimeFrame);
+    private ExternalIndicatorTest xls;
+
+    public ADXIndicatorTest() throws Exception {
+        super((data, params) -> new ADXIndicator((TimeSeries) data, (int) params[0], (int) params[1]));
+        xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 15);
     }
 
     @Test
-    public void adxXls1_1() throws Exception {
-        adxXls(1, 1);
+    public void externalData() throws Exception {
+        TimeSeries series = xls.getSeries();
+        Indicator<Decimal> actualIndicator;
+
+        actualIndicator = getIndicator(series, 1, 1);
+        assertIndicatorEquals(xls.getIndicator(1, 1), actualIndicator);
+        assertEquals(100.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = getIndicator(series, 3, 2);
+        assertIndicatorEquals(xls.getIndicator(3, 2), actualIndicator);
+        assertEquals(12.1330, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = getIndicator(series, 13, 8);
+        assertIndicatorEquals(xls.getIndicator(13, 8), actualIndicator);
+        assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
-    @Test
-    public void adxXls3_2() throws Exception {
-        adxXls(3, 2);
-    }
-
-    @Test
-    public void adxXls13_8() throws Exception {
-        adxXls(13, 8);
-    }
 }

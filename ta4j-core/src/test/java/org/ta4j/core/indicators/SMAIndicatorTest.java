@@ -22,17 +22,28 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Decimal;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+public class SMAIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
-public class SMAIndicatorTest {
+    private ExternalIndicatorTest xls;
+
+    public SMAIndicatorTest() throws Exception {
+        super((data, params) -> new SMAIndicator((Indicator<Decimal>) data, (int) params[0]));
+        xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6);
+    }
 
     private TimeSeries data;
 
@@ -42,52 +53,48 @@ public class SMAIndicatorTest {
     }
 
     @Test
-    public void SMAUsingTimeFrame3UsingClosePrice() {
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+    public void usingTimeFrame3UsingClosePrice() throws Exception {
+        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
-        assertDecimalEquals(sma.getValue(0), 1);
-        assertDecimalEquals(sma.getValue(1), 1.5);
-        assertDecimalEquals(sma.getValue(2), 2);
-        assertDecimalEquals(sma.getValue(3), 3);
-        assertDecimalEquals(sma.getValue(4), 10d / 3);
-        assertDecimalEquals(sma.getValue(5), 11d / 3);
-        assertDecimalEquals(sma.getValue(6), 4);
-        assertDecimalEquals(sma.getValue(7), 13d / 3);
-        assertDecimalEquals(sma.getValue(8), 4);
-        assertDecimalEquals(sma.getValue(9), 10d / 3);
-        assertDecimalEquals(sma.getValue(10), 10d / 3);
-        assertDecimalEquals(sma.getValue(11), 10d / 3);
-        assertDecimalEquals(sma.getValue(12), 3);
+        assertDecimalEquals(indicator.getValue(0), 1);
+        assertDecimalEquals(indicator.getValue(1), 1.5);
+        assertDecimalEquals(indicator.getValue(2), 2);
+        assertDecimalEquals(indicator.getValue(3), 3);
+        assertDecimalEquals(indicator.getValue(4), 10d / 3);
+        assertDecimalEquals(indicator.getValue(5), 11d / 3);
+        assertDecimalEquals(indicator.getValue(6), 4);
+        assertDecimalEquals(indicator.getValue(7), 13d / 3);
+        assertDecimalEquals(indicator.getValue(8), 4);
+        assertDecimalEquals(indicator.getValue(9), 10d / 3);
+        assertDecimalEquals(indicator.getValue(10), 10d / 3);
+        assertDecimalEquals(indicator.getValue(11), 10d / 3);
+        assertDecimalEquals(indicator.getValue(12), 3);
     }
 
     @Test
-    public void SMAWhenTimeFrameIs1ResultShouldBeIndicatorValue() {
-        SMAIndicator quoteSMA = new SMAIndicator(new ClosePriceIndicator(data), 1);
+    public void whenTimeFrameIs1ResultShouldBeIndicatorValue() throws Exception {
+        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getBarCount(); i++) {
-            assertEquals(data.getBar(i).getClosePrice(), quoteSMA.getValue(i));
+            assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));
         }
     }
 
-    private void smaXls(int timeFrame) throws Exception {
-        // compare values computed by indicator
-        // with values computed independently in excel
-        XlsTestsUtils.testXlsIndicator(SMAIndicatorTest.class, "SMA.xls", 6, (inputSeries) -> {
-            return new SMAIndicator(new ClosePriceIndicator(inputSeries), timeFrame);
-        }, timeFrame);
+    @Test
+    public void externalData() throws Exception {
+        Indicator<Decimal> xlsClose = new ClosePriceIndicator(xls.getSeries());
+        Indicator<Decimal> actualIndicator;
+
+        actualIndicator = getIndicator(xlsClose, 1);
+        assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = getIndicator(xlsClose, 3);
+        assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
+        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+
+        actualIndicator = getIndicator(xlsClose, 13);
+        assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
+        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
     }
 
-    @Test
-    public void smaXls1() throws Exception {
-        smaXls(1);
-    }
-
-    @Test
-    public void smaXls3() throws Exception {
-        smaXls(3);
-    }
-
-    @Test
-    public void smaXls13() throws Exception {
-        smaXls(13);
-    }
 }

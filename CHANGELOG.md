@@ -26,9 +26,10 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **AverageDirectionalMovementDownIndicator**: renamed to **ADXIndicator**
 -  **ADXIndicator**: added new two argument constructor
 - **DirectionalMovementPlusIndicator** and **DirectionalMovementPlusIndicator**: renamed to **PlusDIIndicator** and **MinusDIIndicator**
-- **XlsTestsUtils**: changed testXlsIndicator() to take T... params, Param and Date header rows added to xls parsing, data comments have "//" in first column
-- **XlsTestsUtils**: added testXlsCriterion()
-
+- **XlsTestsUtils**: rewritten to provide getSeries(), getIndicator(), getFinalCriterionValue(), and getTradingRecord() in support of XLSCriterionTest and XLSIndicatorTest.
+- **IndicatorFactory**: made generic and renamed createIndicator() to getIndicator()
+- **RSIIndicatorTest**: example showing usage of new generic unit testing of indicators
+- **LinearTransactionCostCriterionTest**: example showing usage of new generic unit testing of criteria
 
 ## Added
 - **ConvergenceDivergenceIndicator**: new Indicator for positive/negative convergence and divergence.
@@ -39,6 +40,13 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **PearsonCorrelationIndicator**: new statistic indicator with pearson correlation
 - **TimeSeries**: new method `getSubSeries(int, int)` to create a sub series of the TimeSeries that stores bars exclusively between `startIndex` and `endIndex` parameters
 - **IIIIndicator**: Intraday Intensity Index
+- **CriterionFactory**: new functional interface to support CriterionTest
+- **IndicatorTest**: new class for storing an indicator factory, allows for generic calls like getIndicator(D data, P... params) after the factory is set once in the constructor call.  Facilitates standardization across unit tests.
+- **CriterionTest**: new class for storing a criterion factory, allows for generic calls like getCriterion(P... params) after the factory is set once in the constructor call.  Facilitates standardization across unit tests.
+- **ExternalIndicatorTest**: new interface for fetching indicators and time series from external sources
+- **ExternalCriterionTest**: new interface for fetching criteria, trading records, and time series from external sources
+- **XLSIndicatorTest**: new class implementing ExternalIndicatorTest for XLS files, for use in XLS unit tests
+- **XLSCriterionTest**: new class implementing ExternalCriterionTest for XLS files, for use in XLS unit tests
 
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`

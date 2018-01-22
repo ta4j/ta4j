@@ -22,76 +22,102 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExternalCriterionTest;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.*;
+public class LinearTransactionCostCriterionTest extends CriterionTest {
 
+    private ExternalCriterionTest xls;
 
-public class LinearTransactionCostCriterionTest {
-
-    @Test
-    public void calculateXLS() throws Exception {
-
-        XlsTestsUtils.testXlsCriterion(LinearTransactionCostCriterion.class, "LTC.xls", 6, 16, // class, file, column
-                new LinearTransactionCostCriterion(1000, 0.005, 0.2), // criterion and params for actual
-                                                   1000, 0.005, 0.2); // xls params for expected
-                                                                      // 843.5493 expected (from manual xls inspection)
-        
-        XlsTestsUtils.testXlsCriterion(LinearTransactionCostCriterion.class, "LTC.xls", 6, 16,
-                new LinearTransactionCostCriterion(1000, 0.1, 1.0),
-                                                   1000, 0.1, 1.0); // 1122.4410
+    public LinearTransactionCostCriterionTest() throws Exception {
+        super((params) -> new LinearTransactionCostCriterion((double) params[0], (double) params[1], (double) params[2]));
+        xls = new XLSCriterionTest(this.getClass(), "LTC.xls", 16, 6);
     }
 
     @Test
-    public void calculateLinearCost() {
+    public void externalData() throws Exception {
+        TimeSeries xlsSeries = xls.getSeries();
+        TradingRecord xlsTradingRecord = xls.getTradingRecord();
+        double value;
+
+        value = getCriterion(1000d, 0.005, 0.2).calculate(xlsSeries, xlsTradingRecord);
+        assertEquals(xls.getFinalCriterionValue(1000d, 0.005, 0.2).doubleValue(), value, TATestsUtils.TA_OFFSET);
+        assertEquals(843.5492, value, TATestsUtils.TA_OFFSET);
+
+        value = getCriterion(1000d, 0.1, 1.0).calculate(xlsSeries, xlsTradingRecord);
+        assertEquals(xls.getFinalCriterionValue(1000d, 0.1, 1.0).doubleValue(), value, TATestsUtils.TA_OFFSET);
+        assertEquals(1122.4410, value, TATestsUtils.TA_OFFSET);
+    }
+
+    @Test
+    public void dummyData() {
         MockTimeSeries series = new MockTimeSeries(100, 150, 200, 100, 50, 100);
-        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0.005, 0.2);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        double criterion;
 
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
-        assertEquals(12.861, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        tradingRecord.operate(0);  tradingRecord.operate(1);
+        criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
+        assertEquals(12.861, criterion, TATestsUtils.TA_OFFSET);
 
-        tradingRecord.operate(2);
-        tradingRecord.operate(3);
-        assertEquals(24.3759, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        tradingRecord.operate(2);  tradingRecord.operate(3);
+        criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
+        assertEquals(24.3759, criterion, TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(5);
-        assertEquals(28.2488, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
+        assertEquals(28.2488, criterion, TATestsUtils.TA_OFFSET);
     }
 
     @Test
-    public void calculateFixedCost() {
+    public void fixedCost() {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
-        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 1.3d);
-        
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
-        assertEquals(2.6d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
-        
-        tradingRecord.operate(2);
-        tradingRecord.operate(3);
-        assertEquals(5.2d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        double criterion;
+
+        tradingRecord.operate(0);  tradingRecord.operate(1);
+        criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
+        assertEquals(2.6d, criterion, TATestsUtils.TA_OFFSET);
+
+        tradingRecord.operate(2);  tradingRecord.operate(3);
+        criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
+        assertEquals(5.2d, criterion, TATestsUtils.TA_OFFSET);
 
         tradingRecord.operate(0);
-        assertEquals(6.5d, transactionCost.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
+        assertEquals(6.5d, criterion, TATestsUtils.TA_OFFSET);
     }
 
     @Test
-    public void calculateFixedCostWithOneTrade() {
+    public void fixedCostWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade trade = new Trade();
-        AnalysisCriterion transactionCost = new LinearTransactionCostCriterion(1000, 0, 0.75d);
+        double criterion;
 
-        assertEquals(0, (int) transactionCost.calculate(series, trade));
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        assertEquals(0d, criterion, TATestsUtils.TA_OFFSET);
 
         trade.operate(1);
-        assertEquals(0.75d, transactionCost.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        assertEquals(0.75d, criterion, TATestsUtils.TA_OFFSET);
 
         trade.operate(3);
-        assertEquals(1.5d, transactionCost.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        assertEquals(1.5d, criterion, TATestsUtils.TA_OFFSET);
 
         trade.operate(4);
-        assertEquals(1.5d, transactionCost.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        assertEquals(1.5d, criterion, TATestsUtils.TA_OFFSET);
     }
 
     @Test
