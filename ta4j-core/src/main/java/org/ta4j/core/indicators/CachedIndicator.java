@@ -92,24 +92,27 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 results.set(0, result);
             }
         } else {
-            increaseLengthTo(index, maximumResultCount);
-            if (index > highestResultIndex) {
-                // Result not calculated yet
-                highestResultIndex = index;
+            if (index == series.getEndIndex()) {
+                // Don't cache result if last bar
                 result = calculate(index);
-                if(index != series.getEndIndex()) {
-                    // Only cache results before last bar
-                    results.set(results.size()-1, result);
-                }
             } else {
-                // Result covered by current cache
-                int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
-                result = results.get(resultInnerIndex);
-                if (result == null) {
+                increaseLengthTo(index, maximumResultCount);
+                if (index > highestResultIndex) {
+                    // Result not calculated yet
+                    highestResultIndex = index;
                     result = calculate(index);
-                    results.set(resultInnerIndex, result);
+                    results.set(results.size()-1, result);
+                } else {
+                    // Result covered by current cache
+                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
+                    result = results.get(resultInnerIndex);
+                    if (result == null) {
+                        result = calculate(index);
+                        results.set(resultInnerIndex, result);
+                    }
                 }
             }
+
         }
         return result;
     }

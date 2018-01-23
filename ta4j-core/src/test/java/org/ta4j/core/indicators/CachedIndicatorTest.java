@@ -24,16 +24,16 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
@@ -166,14 +166,18 @@ public class CachedIndicatorTest {
         assertEquals(3, closePrice.getValue(2).doubleValue(),0.001);
         timeSeries.getLastBar().addTrade(10, 5);
         assertEquals(5, closePrice.getValue(2).doubleValue(),0.001);
+
     }
 
     @Test
     public void leaveBarsBeforeLastBarCached() {
         TimeSeries timeSeries = new MockTimeSeries(1,2,3);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
+
+        // Add a forgotten trade, should be ignored in the cached indicator
         assertEquals(2, closePrice.getValue(1).doubleValue(),0.001);
         timeSeries.getBar(1).addTrade(10, 5);
         assertEquals(2, closePrice.getValue(1).doubleValue(),0.001);
     }
+
 }
