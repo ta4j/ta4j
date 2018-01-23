@@ -158,4 +158,22 @@ public class CachedIndicatorTest {
             fail(t.getMessage());
         }
     }
+
+    @Test
+    public void leaveLastBarUncached() {
+        TimeSeries timeSeries = new MockTimeSeries(1,2,3);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
+        assertEquals(3, closePrice.getValue(2).doubleValue(),0.001);
+        timeSeries.getLastBar().addTrade(10, 5);
+        assertEquals(5, closePrice.getValue(2).doubleValue(),0.001);
+    }
+
+    @Test
+    public void leaveBarsBeforeLastBarCached() {
+        TimeSeries timeSeries = new MockTimeSeries(1,2,3);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
+        assertEquals(2, closePrice.getValue(1).doubleValue(),0.001);
+        timeSeries.getBar(1).addTrade(10, 5);
+        assertEquals(2, closePrice.getValue(1).doubleValue(),0.001);
+    }
 }

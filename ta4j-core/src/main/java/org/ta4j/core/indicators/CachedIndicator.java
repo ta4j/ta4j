@@ -97,7 +97,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // Result not calculated yet
                 highestResultIndex = index;
                 result = calculate(index);
-                results.set(results.size()-1, result);
+                if(index != series.getEndIndex()) {
+                    // Only cache results before last bar
+                    results.set(results.size()-1, result);
+                }
             } else {
                 // Result covered by current cache
                 int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
