@@ -33,4 +33,4 @@ Each pull request is highly appreciated! Here are some tips to get it merged:
 
   1. Finally, push the commits to your fork and submit a [pull request](https://help.github.com/articles/creating-a-pull-request).
 
-Looking for something to work on? Take a look at [our open issues](https://github.com/ta4j/ta4j/issues?q=is%3Aissue+is%3Aopen).
+Looking for something to work on? Take a look at [the roadmap](https://github.com/ta4j/ta4j/wiki/Roadmap) or [our open issues](https://github.com/ta4j/ta4j/issues?q=is%3Aissue+is%3Aopen).
