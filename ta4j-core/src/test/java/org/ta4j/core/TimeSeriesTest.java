@@ -47,6 +47,7 @@ public class TimeSeriesTest {
 
     private String defaultName;
 
+    @SuppressWarnings("deprecation") // it is purposed to test the deprecated sub series creation
     @Before
     public void setUp() {
         bars = new LinkedList<>();
@@ -60,6 +61,7 @@ public class TimeSeriesTest {
         defaultName = "Series Name";
 
         defaultSeries = new BaseTimeSeries(defaultName, bars);
+
         constrainedSeries = new BaseTimeSeries(defaultSeries,2, 4);
         emptySeries = new BaseTimeSeries();
 

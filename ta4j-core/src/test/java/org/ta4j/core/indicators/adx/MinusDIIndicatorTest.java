@@ -22,24 +22,20 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
-
 import org.junit.Test;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.IndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
+
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
 public class MinusDIIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public MinusDIIndicatorTest() {
-        super((data, params) -> new MinusDIIndicator((TimeSeries) data, (int) params[0]));
+        super((data, params) -> new MinusDIIndicator(data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13);
     }
 

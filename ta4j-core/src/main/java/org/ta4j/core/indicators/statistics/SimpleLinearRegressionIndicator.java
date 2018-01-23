@@ -39,7 +39,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
 	 */
 	public enum SimpleLinearRegressionType {
-		y, slope, intercept;
+		y, slope, intercept
 	}
 
 	private Indicator<Decimal> indicator;
@@ -52,7 +52,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	 * Constructor for the y-values of the formula (y = slope * x + intercept).
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param timeFrame
+	 * @param timeFrame the time frame
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
 		this(indicator, timeFrame, SimpleLinearRegressionType.y);
@@ -62,7 +62,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	 * Constructor.
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param timeFrame
+	 * @param timeFrame the time frame
 	 * @param type the type of the outcome value (y, slope, intercept)
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame,
@@ -76,12 +76,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
     @Override
     protected Decimal calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
-        final int endIndex = index;
-        if (endIndex - startIndex + 1 < 2) {
+        if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
             return Decimal.NaN;
         }
-        calculateRegressionLine(startIndex, endIndex);
+        calculateRegressionLine(startIndex, index);
         
         if (type == SimpleLinearRegressionType.slope) {
             return slope;

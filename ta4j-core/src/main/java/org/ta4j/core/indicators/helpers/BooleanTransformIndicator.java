@@ -69,7 +69,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 		 * Transforms the decimal indicator to a boolean indicator by
 		 * indicator.isLessThanOrEqual(coefficient).
 		 */
-		isLessThanOrEqual;
+		isLessThanOrEqual
 	}
 
 	/**
@@ -110,7 +110,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 		 * Transforms the decimal indicator to a boolean indicator by
 		 * indicator.isZero().
 		 */
-		isZero;
+		isZero
 	}
 
 	private Indicator<Decimal> indicator;

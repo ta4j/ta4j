@@ -22,23 +22,14 @@
  */
 package ta4jexamples.bots;
 
-import java.time.ZonedDateTime;
-
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.Order;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
-
 import ta4jexamples.loaders.CsvTradesLoader;
+
+import java.time.ZonedDateTime;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
@@ -79,11 +70,10 @@ public class TradingBotOnMovingTimeSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        Strategy buySellSignals = new BaseStrategy(
+        return new BaseStrategy(
                 new OverIndicatorRule(sma, closePrice),
                 new UnderIndicatorRule(sma, closePrice)
         );
-        return buySellSignals;
     }
 
     /**
@@ -136,7 +126,7 @@ public class TradingBotOnMovingTimeSeries {
             Thread.sleep(30); // I know...
             Bar newBar = generateRandomBar();
             System.out.println("------------------------------------------------------\n"
-                    + "Bar "+i+" added, close price = " + newBar.getClosePrice().toDouble());
+                    + "Bar "+i+" added, close price = " + newBar.getClosePrice().doubleValue());
             series.addBar(newBar);
 
             int endIndex = series.getEndIndex();

@@ -22,26 +22,18 @@
  */
 package org.ta4j.core;
 
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.mocks.MockTradingRecord;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.zip.DataFormatException;
-
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.CellValue;
-import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.mocks.MockTradingRecord;
 
 public class XlsTestsUtils {
 
@@ -232,7 +224,7 @@ public class XlsTestsUtils {
             }
             // after the data section header is found, add all rows that don't
             // have "//" in the first cell
-            if (noHeader == false) {
+            if (!noHeader) {
                 if (evaluator.evaluate(row.getCell(0)).formatAsString().compareTo("\"//\"") != 0) {
                     rows.add(row);
                 }

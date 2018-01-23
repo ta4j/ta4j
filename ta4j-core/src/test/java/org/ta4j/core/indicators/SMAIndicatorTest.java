@@ -22,26 +22,22 @@
  */
 package org.ta4j.core.indicators;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockTimeSeries;
+
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
 
 public class SMAIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public SMAIndicatorTest() throws Exception {
-        super((data, params) -> new SMAIndicator((Indicator<Decimal>) data, (int) params[0]));
+        super((data, params) -> new SMAIndicator(data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6);
     }
 

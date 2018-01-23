@@ -40,6 +40,7 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
      * Constructor.
      * @param values the values to be returned by this indicator
      */
+    @SuppressWarnings("unchecked") // the only way to insert elements of type T is via the constructor
     public FixedIndicator(T... values) {
         super(null);
         this.values.addAll(Arrays.asList(values));

@@ -491,11 +491,8 @@ public final class Decimal
             return false;
         }
         final Decimal other = (Decimal) obj;
-        if (this.delegate != other.delegate
-                && (this.delegate == null || (this.delegate.compareTo(other.delegate) != 0))) {
-            return false;
-        }
-        return true;
+        return this.delegate == other.delegate
+                || (this.delegate != null && (this.delegate.compareTo(other.delegate) == 0));
     }
 
     /**

@@ -22,13 +22,13 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
+import com.sun.istack.internal.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Base implementation of a {@link TimeSeries}.
@@ -118,9 +118,9 @@ public class BaseTimeSeries implements TimeSeries {
      * @param seriesEndIndex the end index (inclusive) of the time series
      * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
      */
-    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+    private BaseTimeSeries(String name, @NotNull List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
         this.name = name;
-        this.bars = bars == null ? new ArrayList<>() : bars;
+        this.bars = bars;
         if (bars.isEmpty()) {
         	// Bar list empty
             this.seriesBeginIndex = -1;
