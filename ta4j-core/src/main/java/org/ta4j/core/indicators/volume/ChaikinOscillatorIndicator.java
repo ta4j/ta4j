@@ -40,7 +40,7 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Decimal> {
 	/**
 	 * Constructor.
 	 * 
-	 * @param series
+	 * @param series the {@link TimeSeries}
 	 * @param shortTimeFrame (usually 3)
 	 * @param longTimeFrame (usually 10)
 	 */
@@ -53,7 +53,7 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Decimal> {
 	/**
 	 * Constructor.
 	 * 
-	 * @param series
+	 * @param series the {@link TimeSeries}
 	 */
 	public ChaikinOscillatorIndicator(TimeSeries series) {
 		this(series, 3, 10);

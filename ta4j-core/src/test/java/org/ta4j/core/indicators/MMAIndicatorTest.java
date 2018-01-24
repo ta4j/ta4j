@@ -22,30 +22,25 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
 public class MMAIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public MMAIndicatorTest() throws Exception {
-        super((data, params) -> new MMAIndicator((Indicator<Decimal>) data, (int) params[0]));
+        super((data, params) -> new MMAIndicator(data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "MMA.xls", 6);
     }
 

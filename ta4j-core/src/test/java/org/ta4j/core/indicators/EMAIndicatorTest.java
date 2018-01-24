@@ -22,31 +22,26 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
 public class EMAIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
     private ExternalIndicatorTest xls;
 
     public EMAIndicatorTest() throws Exception {
-        super((data, params) -> new EMAIndicator((Indicator<Decimal>) data, (int) params[0]));
+        super((data, params) -> new EMAIndicator(data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "EMA.xls", 6);
     }
     private TimeSeries data;

@@ -23,7 +23,10 @@
 package org.ta4j.core.analysis;
 
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
@@ -203,7 +206,7 @@ public class CashFlowTest {
     @Test
     public void reallyLongCashFlow() {
         int size = 1000000;
-        TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, (Bar) new MockBar(10)));
+        TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, new MockBar(10)));
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleTimeSeries), Order.sellAt(size - 1, sampleTimeSeries));
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
         assertDecimalEquals(cashFlow.getValue(size - 1), 1);

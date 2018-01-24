@@ -22,20 +22,16 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
 public class RSIIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
 
@@ -44,7 +40,7 @@ public class RSIIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal>
     //private ExternalIndicatorTest sql;
 
     public RSIIndicatorTest() {
-        super((data, params) -> new RSIIndicator((Indicator<Decimal>) data, (int) params[0]));
+        super((data, params) -> new RSIIndicator(data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "RSI.xls", 10);
         //sql = new SQLIndicatorTest(this.getClass(), "RSI.db", username, pass, table, column);
     }

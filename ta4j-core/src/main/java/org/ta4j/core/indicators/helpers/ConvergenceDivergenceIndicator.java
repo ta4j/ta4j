@@ -72,7 +72,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * other-{@link Indicator indicator} increase within a timeFrame. In
 		 * short: "other" makes higher highs while "ref" makes lower lows.
 		 */
-		negativeDivergent;
+		negativeDivergent
 	}
 	
 	/**
@@ -112,7 +112,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * consecutively within a timeFrame. In short: "other" makes strict
 		 * lower lows and "ref" makes strict higher highs.
 		 */
-		negativeDivergentStrict;
+		negativeDivergentStrict
 	}
 
 
@@ -202,7 +202,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param ref the indicator
 	 * @param other the other indicator
 	 * @param timeFrame the time frame
-	 * @param type of strict convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
 			ConvergenceDivergenceStrictType strictType) {

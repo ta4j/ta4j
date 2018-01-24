@@ -80,7 +80,7 @@ public class IsRisingRule extends AbstractRule {
 
 		double ratio = count / (double) timeFrame;
 		
-		final boolean satisfied = ratio >= minStrenght ? true : false;
+		final boolean satisfied = ratio >= minStrenght;
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
 	}

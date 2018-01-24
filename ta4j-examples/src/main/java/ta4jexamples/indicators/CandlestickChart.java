@@ -22,9 +22,6 @@
  */
 package ta4jexamples.indicators;
 
-import java.awt.*;
-import java.util.Date;
-
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -42,8 +39,10 @@ import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-
 import ta4jexamples.loaders.CsvTradesLoader;
+
+import java.awt.*;
+import java.util.Date;
 
 /**
  * This class builds a traditional candlestick chart.
@@ -68,16 +67,14 @@ public class CandlestickChart {
         for (int i = 0; i < nbBars; i++) {
             Bar bar = series.getBar(i);
             dates[i] = new Date(bar.getEndTime().toEpochSecond() * 1000);
-            opens[i] = bar.getOpenPrice().toDouble();
-            highs[i] = bar.getMaxPrice().toDouble();
-            lows[i] = bar.getMinPrice().toDouble();
-            closes[i] = bar.getClosePrice().toDouble();
-            volumes[i] = bar.getVolume().toDouble();
+            opens[i] = bar.getOpenPrice().doubleValue();
+            highs[i] = bar.getMaxPrice().doubleValue();
+            lows[i] = bar.getMinPrice().doubleValue();
+            closes[i] = bar.getClosePrice().doubleValue();
+            volumes[i] = bar.getVolume().doubleValue();
         }
 
-        OHLCDataset dataset = new DefaultHighLowDataset("btc", dates, highs, lows, opens, closes, volumes);
-
-        return dataset;
+        return new DefaultHighLowDataset("btc", dates, highs, lows, opens, closes, volumes);
     }
 
     /**
