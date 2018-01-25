@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,21 +22,23 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import static org.ta4j.core.Num.AbstractNum.NaN;
 
 /**
  * Pivot Point indicator.
  * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school: pivotpoints</a>
  */
-public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
+public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel ;
 
@@ -62,23 +64,23 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return calcPivotPoint(getBarsOfPreviousPeriod(index));
     }
 
 
-	private Decimal calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
+	private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
-            return Decimal.NaN;
+            return NaN;
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-		Decimal close = bar.getClosePrice();
-		Decimal high =  bar.getMaxPrice();
-		Decimal low = bar.getMinPrice();
+		Num close = bar.getClosePrice();
+		Num high =  bar.getMaxPrice();
+		Num low = bar.getMinPrice();
 		for(int i: barsOfPreviousPeriod){
 			high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
 			low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
 		}
-		return (high.plus(low).plus(close)).dividedBy(Decimal.THREE);
+		return (high.plus(low).plus(close)).dividedBy(valueOf(3));
 	}
 
     /**

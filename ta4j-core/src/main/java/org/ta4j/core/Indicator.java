@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -21,6 +21,8 @@
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core;
+
+import org.ta4j.core.Num.Num;
 
 import java.io.Serializable;
 
@@ -45,21 +47,26 @@ public interface Indicator<T> extends Serializable {
 	TimeSeries getTimeSeries();
 
 	/**
+	 * @return  the {@link Num Num extending class} for the given {@link Number}
+	 */
+	Num valueOf(Number number);
+
+	 /**
 	 * Returns all values from an {@link Indicator} as a Array of Doubles. The
 	 * returned doubles could have a minor loss of precise, if {@link Indicator}
-	 * was based on {@link Decimal Decimal}.
+	 * was based on {@link Num Num}.
 	 *
 	 * @param ref the indicator
 	 * @param index the index
 	 * @param timeFrame the timeFrame
 	 * @return array of double within the timeFrame
 	 */
-	static Double[] toDouble(Indicator<Decimal> ref, int index, int timeFrame) {
+	static Double[] toDouble(Indicator<Num> ref, int index, int timeFrame) {
 
 		Double[] all = new Double[timeFrame];
 
 		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
-			Decimal number = ref.getValue(index);
+			Num number = ref.getValue(index);
 			all[i] = number.doubleValue();
 		}
 

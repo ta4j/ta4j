@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,12 +22,14 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+
+import static org.ta4j.core.Num.AbstractNum.NaN;
 
 
 /**
@@ -35,12 +37,13 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
  * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
-public class AroonDownIndicator extends CachedIndicator<Decimal> {
+public class AroonDownIndicator extends CachedIndicator<Num> {
 
     private final int timeFrame;
 
     private final LowestValueIndicator lowestMinPriceIndicator;
-    private final Indicator<Decimal> minValueIndicator;
+    private final Indicator<Num> minValueIndicator;
+    private final Num hundred;
 
     /**
      * Constructor.
@@ -49,11 +52,11 @@ public class AroonDownIndicator extends CachedIndicator<Decimal> {
      * @param minValueIndicator the indicator for the maximum price (default {@link MaxPriceIndicator})
      * @param timeFrame the time frame
      */
-    public AroonDownIndicator(TimeSeries series, Indicator<Decimal> minValueIndicator, int timeFrame) {
+    public AroonDownIndicator(TimeSeries series, Indicator<Num> minValueIndicator, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
         this.minValueIndicator = minValueIndicator;
-
+        this.hundred = valueOf(100);
         // + 1 needed for last possible iteration in loop
         lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, timeFrame+1);
     }
@@ -69,9 +72,9 @@ public class AroonDownIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (getTimeSeries().getBar(index).getMinPrice().isNaN())
-            return Decimal.NaN;
+            return NaN;
 
         // Getting the number of bars since the lowest close price
         int endIndex = Math.max(0,index - timeFrame);
@@ -83,7 +86,7 @@ public class AroonDownIndicator extends CachedIndicator<Decimal> {
             nbBars++;
         }
 
-        return Decimal.valueOf(timeFrame - nbBars).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
+        return valueOf(timeFrame - nbBars).dividedBy(valueOf(timeFrame)).multipliedBy(hundred);
     }
 
     @Override

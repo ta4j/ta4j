@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  * True range indicator.
  * <p/>
  */
-public class TRIndicator extends CachedIndicator<Decimal> {
+public class TRIndicator extends CachedIndicator<Num> {
 
     private final TimeSeries series;
 
@@ -40,10 +40,10 @@ public class TRIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal ts = series.getBar(index).getMaxPrice().minus(series.getBar(index).getMinPrice());
-        Decimal ys = index == 0 ? Decimal.ZERO : series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getClosePrice());
-        Decimal yst = index == 0 ? Decimal.ZERO : series.getBar(index - 1).getClosePrice().minus(series.getBar(index).getMinPrice());
+    protected Num calculate(int index) {
+        Num ts = series.getBar(index).getMaxPrice().minus(series.getBar(index).getMinPrice());
+        Num ys = index == 0 ? valueOf(0) : series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getClosePrice());
+        Num yst = index == 0 ? valueOf(0) : series.getBar(index - 1).getClosePrice().minus(series.getBar(index).getMinPrice());
         return ts.abs().max(ys.abs()).max(yst.abs());
     }
 }

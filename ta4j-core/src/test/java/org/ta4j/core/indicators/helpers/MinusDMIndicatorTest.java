@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,13 +24,12 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class MinusDMIndicatorTest {
 
@@ -43,7 +42,7 @@ public class MinusDMIndicatorTest {
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
-        assertDecimalEquals(down.getValue(1), 0);
+        TATestsUtils.assertNumEquals(down.getValue(1), 0);
     }
 
     @Test
@@ -55,7 +54,7 @@ public class MinusDMIndicatorTest {
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
-        assertDecimalEquals(down.getValue(1), 0);
+        TATestsUtils.assertNumEquals(down.getValue(1), 0);
     }
 
     @Test
@@ -67,7 +66,7 @@ public class MinusDMIndicatorTest {
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
-        assertDecimalEquals(down.getValue(1), 0);
+        TATestsUtils.assertNumEquals(down.getValue(1), 0);
     }
 
     @Test
@@ -79,6 +78,6 @@ public class MinusDMIndicatorTest {
         bars.add(todayBar);
         MockTimeSeries series = new MockTimeSeries(bars);
         MinusDMIndicator down = new MinusDMIndicator(series);
-        assertDecimalEquals(down.getValue(1), 16);
+        TATestsUtils.assertNumEquals(down.getValue(1), 16);
     }
 }

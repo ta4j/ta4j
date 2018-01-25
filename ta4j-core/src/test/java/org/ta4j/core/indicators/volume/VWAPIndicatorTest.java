@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -32,7 +32,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class VWAPIndicatorTest {
 
@@ -70,19 +70,19 @@ public class VWAPIndicatorTest {
     public void vwap() {
         VWAPIndicator vwap = new VWAPIndicator(data, 5);
 
-        assertDecimalEquals(vwap.getValue(5), 45.1453);
-        assertDecimalEquals(vwap.getValue(6), 45.1513);
-        assertDecimalEquals(vwap.getValue(7), 45.1413);
-        assertDecimalEquals(vwap.getValue(8), 45.1547);
-        assertDecimalEquals(vwap.getValue(9), 45.1967);
-        assertDecimalEquals(vwap.getValue(10), 45.2560);
-        assertDecimalEquals(vwap.getValue(11), 45.3340);
-        assertDecimalEquals(vwap.getValue(12), 45.4060);
-        assertDecimalEquals(vwap.getValue(13), 45.3880);
-        assertDecimalEquals(vwap.getValue(14), 45.2120);
-        assertDecimalEquals(vwap.getValue(15), 44.9267);
-        assertDecimalEquals(vwap.getValue(16), 44.5033);
-        assertDecimalEquals(vwap.getValue(17), 44.0840);
-        assertDecimalEquals(vwap.getValue(18), 43.8247);
+        assertNumEquals(vwap.getValue(5), 45.1453);
+        assertNumEquals(vwap.getValue(6), 45.1513);
+        assertNumEquals(vwap.getValue(7), 45.1413);
+        assertNumEquals(vwap.getValue(8), 45.1547);
+        assertNumEquals(vwap.getValue(9), 45.1967);
+        assertNumEquals(vwap.getValue(10), 45.2560);
+        assertNumEquals(vwap.getValue(11), 45.3340);
+        assertNumEquals(vwap.getValue(12), 45.4060);
+        assertNumEquals(vwap.getValue(13), 45.3880);
+        assertNumEquals(vwap.getValue(14), 45.2120);
+        assertNumEquals(vwap.getValue(15), 44.9267);
+        assertNumEquals(vwap.getValue(16), 44.5033);
+        assertNumEquals(vwap.getValue(17), 44.0840);
+        assertNumEquals(vwap.getValue(18), 43.8247);
     }
 }

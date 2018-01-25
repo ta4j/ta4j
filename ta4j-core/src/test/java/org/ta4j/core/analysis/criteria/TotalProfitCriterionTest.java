@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -38,7 +38,7 @@ public class TotalProfitCriterionTest {
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(1.10 * 1.05, profit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(1.10 * 1.05, profit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -49,7 +49,7 @@ public class TotalProfitCriterionTest {
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(0.95 * 0.7, profit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(0.95 * 0.7, profit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -60,7 +60,7 @@ public class TotalProfitCriterionTest {
                 Order.sellAt(2,series), Order.buyAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -68,7 +68,7 @@ public class TotalProfitCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(1d, profit.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, profit.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -76,9 +76,9 @@ public class TotalProfitCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         AnalysisCriterion profit = new TotalProfitCriterion();
         Trade trade = new Trade();
-        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
         trade.operate(0);
-        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

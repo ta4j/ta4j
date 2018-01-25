@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public class IchimokuChikouSpanIndicator extends CachedIndicator<Decimal> {
+public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
     /** The close price */
     private final ClosePriceIndicator closePriceIndicator;
@@ -61,7 +61,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return closePriceIndicator.getValue(Math.max(0, index - timeDelay));
     }
 

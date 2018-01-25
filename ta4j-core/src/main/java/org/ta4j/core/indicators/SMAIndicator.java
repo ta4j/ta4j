@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,34 +22,35 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Simple moving average (SMA) indicator.
  * <p></p>
  */
-public class SMAIndicator extends CachedIndicator<Decimal> {
+public class SMAIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Decimal> indicator;
+    private static final long serialVersionUID = 653601631245729997L;
+    private final Indicator<Num> indicator;
 
     private final int timeFrame;
 
-    public SMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public SMAIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal sum = Decimal.ZERO;
+    protected Num calculate(int index) {
+        Num sum = getTimeSeries().valueOf(0);
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
         final int realTimeFrame = Math.min(timeFrame, index + 1);
-        return sum.dividedBy(Decimal.valueOf(realTimeFrame));
+        return sum.dividedBy(getTimeSeries().valueOf(realTimeFrame));
     }
 
     @Override

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,11 +24,12 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class StandardDeviationIndicatorTest {
     private TimeSeries data;
@@ -42,23 +43,23 @@ public class StandardDeviationIndicatorTest {
     public void standardDeviationUsingTimeFrame4UsingClosePrice() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
 
-        assertDecimalEquals(sdv.getValue(0), 0);
-        assertDecimalEquals(sdv.getValue(1), Math.sqrt(0.25));
-        assertDecimalEquals(sdv.getValue(2), Math.sqrt(2.0/3));
-        assertDecimalEquals(sdv.getValue(3), Math.sqrt(1.25));
-        assertDecimalEquals(sdv.getValue(4), Math.sqrt(0.5));
-        assertDecimalEquals(sdv.getValue(5), Math.sqrt(0.25));
-        assertDecimalEquals(sdv.getValue(6), Math.sqrt(0.5));
-        assertDecimalEquals(sdv.getValue(7), Math.sqrt(0.5));
-        assertDecimalEquals(sdv.getValue(8), Math.sqrt(0.5));
-        assertDecimalEquals(sdv.getValue(9), Math.sqrt(3.5));
-        assertDecimalEquals(sdv.getValue(10), Math.sqrt(10.5));
+        TATestsUtils.assertNumEquals(sdv.getValue(0), 0);
+        assertNumEquals(sdv.getValue(1), Math.sqrt(0.25));
+        assertNumEquals(sdv.getValue(2), Math.sqrt(2.0/3));
+        assertNumEquals(sdv.getValue(3), Math.sqrt(1.25));
+        assertNumEquals(sdv.getValue(4), Math.sqrt(0.5));
+        assertNumEquals(sdv.getValue(5), Math.sqrt(0.25));
+        assertNumEquals(sdv.getValue(6), Math.sqrt(0.5));
+        assertNumEquals(sdv.getValue(7), Math.sqrt(0.5));
+        assertNumEquals(sdv.getValue(8), Math.sqrt(0.5));
+        assertNumEquals(sdv.getValue(9), Math.sqrt(3.5));
+        assertNumEquals(sdv.getValue(10), Math.sqrt(10.5));
     }
 
     @Test
     public void standardDeviationShouldBeZeroWhenTimeFrameIs1() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
-        assertDecimalEquals(sdv.getValue(3), 0);
-        assertDecimalEquals(sdv.getValue(8), 0);
+        TATestsUtils.assertNumEquals(sdv.getValue(3), 0);
+        TATestsUtils.assertNumEquals(sdv.getValue(8), 0);
     }
 }

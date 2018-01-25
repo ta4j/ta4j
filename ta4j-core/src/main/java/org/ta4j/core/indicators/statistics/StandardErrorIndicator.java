@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,15 +22,15 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Standard error indicator.
  * <p></p>
  */
-public class StandardErrorIndicator extends CachedIndicator<Decimal> {
+public class StandardErrorIndicator extends CachedIndicator<Num> {
 
     private int timeFrame;
     
@@ -41,16 +41,16 @@ public class StandardErrorIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public StandardErrorIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public StandardErrorIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         sdev = new StandardDeviationIndicator(indicator, timeFrame);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int numberOfObservations = index - startIndex + 1;
-        return sdev.getValue(index).dividedBy(Decimal.valueOf(Math.sqrt(numberOfObservations)));
+        return sdev.getValue(index).dividedBy(valueOf(Math.sqrt(numberOfObservations)));
     }
 }

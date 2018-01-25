@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -32,7 +32,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 /**
  * The Class RandomWalkIndexHighIndicatorTest.
@@ -74,18 +74,18 @@ public class RandomWalkIndexHighIndicatorTest {
         RandomWalkIndexHighIndicator rwih = new RandomWalkIndexHighIndicator(data, 5);
 
 
-        assertDecimalEquals(rwih.getValue(6), 0.5006);
-        assertDecimalEquals(rwih.getValue(7), 0.3381);
-        assertDecimalEquals(rwih.getValue(8), 0.7223);
-        assertDecimalEquals(rwih.getValue(9), 0.9549);
-        assertDecimalEquals(rwih.getValue(10), 1.1681);
-        assertDecimalEquals(rwih.getValue(11), 1.3740);
-        assertDecimalEquals(rwih.getValue(12), 1.2531);
-        assertDecimalEquals(rwih.getValue(13), 0.6202);
-        assertDecimalEquals(rwih.getValue(14), -0.1743);
-        assertDecimalEquals(rwih.getValue(15), -1.1591);
-        assertDecimalEquals(rwih.getValue(16), -1.1662);
-        assertDecimalEquals(rwih.getValue(17), -1.4539);
-        assertDecimalEquals(rwih.getValue(18), -0.6963);
+        assertNumEquals(rwih.getValue(6), 0.5006);
+        assertNumEquals(rwih.getValue(7), 0.3381);
+        assertNumEquals(rwih.getValue(8), 0.7223);
+        assertNumEquals(rwih.getValue(9), 0.9549);
+        assertNumEquals(rwih.getValue(10), 1.1681);
+        assertNumEquals(rwih.getValue(11), 1.3740);
+        assertNumEquals(rwih.getValue(12), 1.2531);
+        assertNumEquals(rwih.getValue(13), 0.6202);
+        assertNumEquals(rwih.getValue(14), -0.1743);
+        assertNumEquals(rwih.getValue(15), -1.1591);
+        assertNumEquals(rwih.getValue(16), -1.1662);
+        assertNumEquals(rwih.getValue(17), -1.4539);
+        assertNumEquals(rwih.getValue(18), -0.6963);
     }
 }

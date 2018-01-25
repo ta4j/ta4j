@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -56,11 +56,11 @@ public class GlobalExtremaStrategy {
         LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the min price
-        MultiplierIndicator downWeek = new MultiplierIndicator(weekMinPrice, Decimal.valueOf("1.004"));
+        MultiplierIndicator downWeek = new MultiplierIndicator(weekMinPrice, 1.004);
         Rule buyingRule = new UnderIndicatorRule(closePrices, downWeek);
 
         // Going short if the close price goes above the max price
-        MultiplierIndicator upWeek = new MultiplierIndicator(weekMaxPrice, Decimal.valueOf("0.996"));
+        MultiplierIndicator upWeek = new MultiplierIndicator(weekMaxPrice, 0.996);
         Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
         return new BaseStrategy(buyingRule, sellingRule);

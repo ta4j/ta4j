@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -28,7 +28,7 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class HMAIndicatorTest {
 
@@ -51,17 +51,17 @@ public class HMAIndicatorTest {
     public void hmaUsingTimeFrame9UsingClosePrice() {
         // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
         HMAIndicator hma = new HMAIndicator(new ClosePriceIndicator(data), 9);
-        assertDecimalEquals(hma.getValue(10), 86.3204);
-        assertDecimalEquals(hma.getValue(11), 85.3705);
-        assertDecimalEquals(hma.getValue(12), 84.1044);
-        assertDecimalEquals(hma.getValue(13), 83.0197);
-        assertDecimalEquals(hma.getValue(14), 81.3913);
-        assertDecimalEquals(hma.getValue(15), 79.6511);
-        assertDecimalEquals(hma.getValue(16), 78.0443);
-        assertDecimalEquals(hma.getValue(17), 76.8832);
-        assertDecimalEquals(hma.getValue(18), 75.5363);
-        assertDecimalEquals(hma.getValue(19), 75.1713);
-        assertDecimalEquals(hma.getValue(20), 75.3597);
+        assertNumEquals(hma.getValue(10), 86.3204);
+        assertNumEquals(hma.getValue(11), 85.3705);
+        assertNumEquals(hma.getValue(12), 84.1044);
+        assertNumEquals(hma.getValue(13), 83.0197);
+        assertNumEquals(hma.getValue(14), 81.3913);
+        assertNumEquals(hma.getValue(15), 79.6511);
+        assertNumEquals(hma.getValue(16), 78.0443);
+        assertNumEquals(hma.getValue(17), 76.8832);
+        assertNumEquals(hma.getValue(18), 75.5363);
+        assertNumEquals(hma.getValue(19), 75.1713);
+        assertNumEquals(hma.getValue(20), 75.3597);
     }
 
 }

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,18 +22,17 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
-
 /**
  * Correlation coefficient indicator.
  * <p/>
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Decimal Decimal/BigDecimal} to double
+ * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal/BigDecimal} to double
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
  * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */
-public class CorrelationCoefficientIndicator extends CachedIndicator<Decimal> {
+public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
     private VarianceIndicator variance1;
     
@@ -47,7 +46,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Decimal> {
      * @param indicator2 the second indicator
      * @param timeFrame the time frame
      */
-    public CorrelationCoefficientIndicator(Indicator<Decimal> indicator1, Indicator<Decimal> indicator2, int timeFrame) {
+    public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int timeFrame) {
         super(indicator1);
         variance1 = new VarianceIndicator(indicator1, timeFrame);
         variance2 = new VarianceIndicator(indicator2, timeFrame);
@@ -55,11 +54,11 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal cov = covariance.getValue(index);
-        Decimal var1 = variance1.getValue(index);
-        Decimal var2 = variance2.getValue(index);
-        Decimal var1_2_sqrt = Decimal.valueOf(Math.sqrt(var1.multipliedBy(var2).doubleValue()));
+    protected Num calculate(int index) {
+        Num cov = covariance.getValue(index);
+        Num var1 = variance1.getValue(index);
+        Num var2 = variance2.getValue(index);
+        Num var1_2_sqrt = valueOf(Math.sqrt(var1.multipliedBy(var2).doubleValue()));
         return cov.dividedBy(var1_2_sqrt);
 
 

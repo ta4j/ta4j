@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,6 +22,10 @@
  */
 package ta4jexamples.loaders;
 
+import com.opencsv.CSVReader;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,17 +34,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
-
-import com.opencsv.CSVReader;
 
 /**
  * This class build a Ta4j time series from a CSV file containing bars.
@@ -56,7 +51,7 @@ public class CsvBarsLoader {
 
         InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_bars_from_20130101_usd.csv");
 
-        List<Bar> bars = new ArrayList<>();
+        TimeSeries series =  new BaseTimeSeries("apple_bars");
 
         CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1);
         try {
@@ -69,7 +64,7 @@ public class CsvBarsLoader {
                 double close = Double.parseDouble(line[4]);
                 double volume = Double.parseDouble(line[5]);
 
-                bars.add(new BaseBar(date, open, high, low, close, volume));
+                series.addBar(date, open, high, low, close, volume);
             }
         } catch (IOException ioe) {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
@@ -77,7 +72,7 @@ public class CsvBarsLoader {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
 
-        return new BaseTimeSeries("apple_bars", bars);
+        return series;
     }
 
     public static void main(String[] args) {

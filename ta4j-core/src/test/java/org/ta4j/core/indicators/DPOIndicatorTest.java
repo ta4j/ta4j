@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class DPOIndicatorTest {
 
@@ -66,10 +66,10 @@ public class DPOIndicatorTest {
             assertEquals(dpo.getValue(i), cp.getValue(i).minus(sma.getValue(i-timeShift)));
         }
 
-        assertDecimalEquals(dpo.getValue(9), 0.111999);
-        assertDecimalEquals(dpo.getValue(10), -0.02);
-        assertDecimalEquals(dpo.getValue(11), 0.21142857142);
-        assertDecimalEquals(dpo.getValue(12), 0.169999999999999);
+        assertNumEquals(dpo.getValue(9), 0.111999);
+        assertNumEquals(dpo.getValue(10), -0.02);
+        assertNumEquals(dpo.getValue(11), 0.21142857142);
+        assertNumEquals(dpo.getValue(12), 0.169999999999999);
     }
 
 

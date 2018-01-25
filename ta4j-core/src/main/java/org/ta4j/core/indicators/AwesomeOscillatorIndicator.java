@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 
@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
  * <p/>
  * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
-public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
+public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     private final SMAIndicator sma5;
 
@@ -45,7 +45,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
      * @param timeFrameSma1 (normally 5)
      * @param timeFrameSma2 (normally 34)
      */
-    public AwesomeOscillatorIndicator(Indicator<Decimal> indicator, int timeFrameSma1, int timeFrameSma2) {
+    public AwesomeOscillatorIndicator(Indicator<Num> indicator, int timeFrameSma1, int timeFrameSma2) {
         super(indicator);
         this.sma5 = new SMAIndicator(indicator, timeFrameSma1);
         this.sma34 = new SMAIndicator(indicator, timeFrameSma2);
@@ -56,7 +56,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
      * 
      * @param indicator (normally {@link MedianPriceIndicator})
      */
-    public AwesomeOscillatorIndicator(Indicator<Decimal> indicator) {
+    public AwesomeOscillatorIndicator(Indicator<Num> indicator) {
         this(indicator, 5, 34);
     }
     
@@ -70,7 +70,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return sma5.getValue(index).minus(sma34.getValue(index));
     }
 }

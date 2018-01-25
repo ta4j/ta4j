@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,8 +24,10 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
 
 import static org.junit.Assert.assertFalse;
@@ -37,7 +39,8 @@ public class IsFallingRuleTest {
 
 	@Before
 	public void setUp() {
-        Indicator<Decimal> indicator = new FixedDecimalIndicator(6, 5, 4, 3, 2, 1, 0, -1, 2, 3);
+        TimeSeries series = new BaseTimeSeries();
+		Indicator<Num> indicator = new FixedDecimalIndicator(series, 6, 5, 4, 3, 2, 1, 0, -1, 2, 3);
 		rule = new IsFallingRule(indicator, 3);
 	}
 

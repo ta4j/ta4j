@@ -1,20 +1,22 @@
 package org.ta4j.core.mocks;
 
-import java.util.List;
-
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
+
+import java.util.List;
 
 public class MockTradingRecord extends BaseTradingRecord {
 
+    private static final long serialVersionUID = 6220278197931451635L;
+
     /*
-     * Constructor. Builds a TradingRecord from a list of states. Initial state
-     * value is zero. Then at each index where the state value changes, the
-     * TradingRecord operates at that index.
-     * 
-     * @param states List<Decimal> of state values
-     */
-    public MockTradingRecord(List<Decimal> states) {
+         * Constructor. Builds a TradingRecord from a list of states. Initial state
+         * value is zero. Then at each index where the state value changes, the
+         * TradingRecord operates at that index.
+         *
+         * @param states List<Num> of state values
+         */
+    public MockTradingRecord(List<Num> states) {
         super();
         double lastState = 0d;
         for (int i = 0; i < states.size(); i++) {

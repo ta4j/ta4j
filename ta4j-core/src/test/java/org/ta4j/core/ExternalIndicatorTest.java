@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,6 +22,8 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Num.Num;
+
 public interface ExternalIndicatorTest {
 
     /**
@@ -37,9 +39,9 @@ public interface ExternalIndicatorTest {
      * returns the externally calculated indicator.
      *
      * @param params indicator parameters
-     * @return Indicator<Decimal> from the external indicator calculator
+     * @return Indicator<Num> from the external indicator calculator
      * @throws Exception if the external calculator throws an Exception
      */
-    Indicator<Decimal> getIndicator(Object... params) throws Exception;
+    Indicator<Num> getIndicator(Object... params) throws Exception;
 
 }

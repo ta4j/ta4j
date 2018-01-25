@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -39,7 +39,7 @@ public class AverageProfitableTradesCriterionTest {
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
-        assertEquals(2d/3, average.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(2d/3, average.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -48,10 +48,10 @@ public class AverageProfitableTradesCriterionTest {
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
             
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
-        assertEquals(0d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, average.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
         
         trade = new Trade(Order.buyAt(1, series), Order.sellAt(2, series));
-        assertEquals(1d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, average.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

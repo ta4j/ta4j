@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,18 +22,17 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
-
 /**
  * Variance indicator.
  * <p></p>
  */
-public class VarianceIndicator extends CachedIndicator<Decimal> {
+public class VarianceIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Decimal> indicator;
+    private Indicator<Num> indicator;
 
     private int timeFrame;
 
@@ -44,7 +43,7 @@ public class VarianceIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public VarianceIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public VarianceIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
@@ -52,16 +51,16 @@ public class VarianceIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Decimal variance = Decimal.ZERO;
-        Decimal average = sma.getValue(index);
+        Num variance = valueOf(0);
+        Num average = sma.getValue(index);
         for (int i = startIndex; i <= index; i++) {
-            Decimal pow = indicator.getValue(i).minus(average).pow(2);
+            Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(Decimal.valueOf(numberOfObservations));
+        variance = variance.dividedBy(valueOf(numberOfObservations));
         return variance;
     }
 

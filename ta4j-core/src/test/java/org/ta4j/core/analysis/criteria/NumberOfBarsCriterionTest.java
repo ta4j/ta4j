@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,18 +22,11 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import static org.junit.Assert.*;
 
 public class NumberOfBarsCriterionTest {
 
@@ -53,7 +46,7 @@ public class NumberOfBarsCriterionTest {
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -61,7 +54,7 @@ public class NumberOfBarsCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         Trade t = new Trade(Order.buyAt(2,series), Order.sellAt(5,series));
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(4, numberOfBars.calculate(series, t), TATestsUtils.TA_OFFSET);
+        assertEquals(4, numberOfBars.calculate(series, t), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

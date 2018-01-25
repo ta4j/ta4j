@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
@@ -30,8 +30,9 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
  * On-balance volume indicator.
  * <p></p>
  */
-public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Decimal> {
+public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
 
+    private static final long serialVersionUID = -5870953997596403170L;
     private final TimeSeries series;
 
     public OnBalanceVolumeIndicator(TimeSeries series) {
@@ -40,12 +41,12 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Decimal> 
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index == 0) {
-            return Decimal.ZERO;
+            return valueOf(0);
         }
-        Decimal yesterdayClose = series.getBar(index - 1).getClosePrice();
-        Decimal todayClose = series.getBar(index).getClosePrice();
+        Num yesterdayClose = series.getBar(index - 1).getClosePrice();
+        Num todayClose = series.getBar(index).getClosePrice();
 
         if (yesterdayClose.isGreaterThan(todayClose)) {
             return getValue(index - 1).minus(series.getBar(index).getVolume());

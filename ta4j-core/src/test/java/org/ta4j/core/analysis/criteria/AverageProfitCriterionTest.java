@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -38,7 +38,7 @@ public class AverageProfitCriterionTest {
                 Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1.0243, TATestsUtils.TA_OFFSET, averageProfit.calculate(series, tradingRecord));
+        assertEquals(1.0243, TATestsUtils.BIG_DECIMAL_OFFSET, averageProfit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -46,7 +46,7 @@ public class AverageProfitCriterionTest {
         series = new MockTimeSeries(100d, 105d, 110d, 100d, 95d, 105d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0,series), Order.sellAt(2,series));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -56,14 +56,14 @@ public class AverageProfitCriterionTest {
                 Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithNoBarsShouldReturn1() {
         series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1d, averageProfit.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, averageProfit.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -71,7 +71,7 @@ public class AverageProfitCriterionTest {
         series = new MockTimeSeries(100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion average = new AverageProfitCriterion();
-        assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

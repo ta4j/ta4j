@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,34 +22,35 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Base class for Exponential Moving Average implementations.
  * <p/>
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Decimal> {
+public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final Indicator<Decimal> indicator;
+    private static final long serialVersionUID = -7312565662007443461L;
+    private final Indicator<Num> indicator;
 
     private final int timeFrame;
 
-    private final Decimal multiplier;
+    private final Num multiplier;
 
-    public AbstractEMAIndicator(Indicator<Decimal> indicator, int timeFrame, Decimal multiplier) {
+    public AbstractEMAIndicator(Indicator<Num> indicator, int timeFrame, double multiplier) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
-        this.multiplier = multiplier;
+        this.multiplier = valueOf(multiplier);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index == 0) {
             return indicator.getValue(0);
         }
-        Decimal prevValue = getValue(index - 1);
+        Num prevValue = getValue(index - 1);
         return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
     }
 

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,14 +22,16 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import static org.ta4j.core.Num.AbstractNum.NaN;
 
 /**
  * DeMark Pivot Point indicator.
@@ -37,7 +39,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
+public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
 
@@ -63,38 +65,38 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return calcPivotPoint(getBarsOfPreviousPeriod(index));
     }
 
 
-	private Decimal calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
+	private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
-            return Decimal.NaN;
+            return NaN;
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-		Decimal open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size()-1)).getOpenPrice();
-        Decimal close = bar.getClosePrice();
-		Decimal high =  bar.getMaxPrice();
-		Decimal low = bar.getMinPrice();
+		Num open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size()-1)).getOpenPrice();
+        Num close = bar.getClosePrice();
+		Num high =  bar.getMaxPrice();
+		Num low = bar.getMinPrice();
 
         for(int i: barsOfPreviousPeriod){
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
         }
 
-		Decimal x;
-
+		Num x;
+        Num TWO = valueOf(2);
 		if (close.isLessThan(open)){
-		    x = high.plus(Decimal.TWO.multipliedBy(low)).plus(close);
+		    x = high.plus(TWO.multipliedBy(low)).plus(close);
         }
         else if (close.isGreaterThan(open)) {
-            x = Decimal.TWO.multipliedBy(high).plus(low).plus(close);
+            x = TWO.multipliedBy(high).plus(low).plus(close);
         }
         else{
-		    x = high.plus(low).plus(Decimal.TWO.multipliedBy(close));
+		    x = high.plus(low).plus(TWO.multipliedBy(close));
         }
 
-		return x.dividedBy(Decimal.valueOf(4));
+		return x.dividedBy(valueOf(4));
 	}
 
     /**

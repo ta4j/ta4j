@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.helpers.SumIndicator;
 
 /**
@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.SumIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>
  */
-public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
+public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     private final WMAIndicator wma;
     
@@ -44,7 +44,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
       * 
       * @param indicator the indicator
     */
-    public CoppockCurveIndicator(Indicator<Decimal> indicator) {
+    public CoppockCurveIndicator(Indicator<Num> indicator) {
         this(indicator, 14, 11, 10);
     }
     
@@ -55,7 +55,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
      * @param shortRoCTimeFrame the time frame for short term RoC
      * @param wmaTimeFrame the time frame (for WMA)
      */
-    public CoppockCurveIndicator(Indicator<Decimal> indicator, int longRoCTimeFrame, int shortRoCTimeFrame, int wmaTimeFrame) {
+    public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCTimeFrame, int shortRoCTimeFrame, int wmaTimeFrame) {
         super(indicator);
         SumIndicator sum = new SumIndicator(
                 new ROCIndicator(indicator, longRoCTimeFrame),
@@ -65,7 +65,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return wma.getValue(index);
     }
 }

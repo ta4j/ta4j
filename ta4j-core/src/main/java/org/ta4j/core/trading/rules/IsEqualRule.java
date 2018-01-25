@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 
@@ -35,17 +35,17 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 public class IsEqualRule extends AbstractRule {
 
       /** The first indicator */
-    private Indicator<Decimal> first;
+    private Indicator<Num> first;
     /** The second indicator */
-    private Indicator<Decimal> second;
+    private Indicator<Num> second;
     
     /**
      * Constructor.
      * @param indicator the indicator
      * @param value the value to check
      */
-    public IsEqualRule(Indicator<Decimal> indicator, Decimal value) {
-    	this(indicator, new ConstantIndicator<Decimal>(value));
+    public IsEqualRule(Indicator<Num> indicator, Num value) {
+    	this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), value));
     }
     
     /**
@@ -53,7 +53,7 @@ public class IsEqualRule extends AbstractRule {
      * @param first the first indicator
      * @param second the second indicator
      */
-    public IsEqualRule(Indicator<Decimal> first, Indicator<Decimal> second) {
+    public IsEqualRule(Indicator<Num> first, Indicator<Num> second) {
         this.first = first;
         this.second = second;
     }

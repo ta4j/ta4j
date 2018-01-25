@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,16 +23,18 @@
 package org.ta4j.core.mocks;
 
 import org.ta4j.core.BaseBar;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 
 import java.time.ZonedDateTime;
+
+import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
 
 /**
  * A mock bar with sample data.
  */
 public class MockBar extends BaseBar {
 
-    private Decimal amount = Decimal.ZERO;
+    private Num amount = CURENCT_NUM_FUNCTION.apply(0);
 
     private int trades = 0;
 
@@ -41,29 +43,33 @@ public class MockBar extends BaseBar {
     }
 
     public MockBar(double closePrice, double volume) {
-        super(ZonedDateTime.now(), 0, 0, 0, closePrice, volume);
+        super(ZonedDateTime.now(), 0, 0, 0, closePrice, volume, CURENCT_NUM_FUNCTION);
     }
 
     public MockBar(ZonedDateTime endTime, double closePrice) {
-        super(endTime, 0, 0, 0, closePrice, 0);
+        super(endTime, 0, 0, 0, closePrice, 0, CURENCT_NUM_FUNCTION);
+    }
+
+    public MockBar(ZonedDateTime endTime, double closePrice, double volume) {
+        super(endTime, 0, 0, 0, closePrice, volume, CURENCT_NUM_FUNCTION);
     }
 
     public MockBar(double openPrice, double closePrice, double maxPrice, double minPrice) {
-        super(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, 1);
+        super(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, 1,CURENCT_NUM_FUNCTION);
     }
 
     public MockBar(double openPrice, double closePrice, double maxPrice, double minPrice, double volume) {
-        super(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, volume);
+        super(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, volume,CURENCT_NUM_FUNCTION);
     }
 
     public MockBar(ZonedDateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades) {
-        super(endTime, openPrice, maxPrice, minPrice, closePrice, volume);
-        this.amount = Decimal.valueOf(amount);
+        super(endTime, openPrice, maxPrice, minPrice, closePrice, volume,CURENCT_NUM_FUNCTION);
+        this.amount = CURENCT_NUM_FUNCTION.apply(amount);
         this.trades = trades;
     }
 
     @Override
-    public Decimal getAmount() {
+    public Num getAmount() {
         return amount;
     }
 

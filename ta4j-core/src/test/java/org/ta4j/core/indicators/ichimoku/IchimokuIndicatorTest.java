@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -32,7 +32,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class IchimokuIndicatorTest {
 
@@ -73,50 +73,50 @@ public class IchimokuIndicatorTest {
         IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9);
         IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data, 5);
 
-        assertDecimalEquals(tenkanSen.getValue(3), 45.155);
-        assertDecimalEquals(tenkanSen.getValue(4), 45.18);
-        assertDecimalEquals(tenkanSen.getValue(5), 45.145);
-        assertDecimalEquals(tenkanSen.getValue(6), 45.135);
-        assertDecimalEquals(tenkanSen.getValue(7), 45.145);
-        assertDecimalEquals(tenkanSen.getValue(8), 45.17);
-        assertDecimalEquals(tenkanSen.getValue(16), 44.06);
-        assertDecimalEquals(tenkanSen.getValue(17), 43.675);
-        assertDecimalEquals(tenkanSen.getValue(18), 43.525);
+        assertNumEquals(tenkanSen.getValue(3), 45.155);
+        assertNumEquals(tenkanSen.getValue(4), 45.18);
+        assertNumEquals(tenkanSen.getValue(5), 45.145);
+        assertNumEquals(tenkanSen.getValue(6), 45.135);
+        assertNumEquals(tenkanSen.getValue(7), 45.145);
+        assertNumEquals(tenkanSen.getValue(8), 45.17);
+        assertNumEquals(tenkanSen.getValue(16), 44.06);
+        assertNumEquals(tenkanSen.getValue(17), 43.675);
+        assertNumEquals(tenkanSen.getValue(18), 43.525);
 
-        assertDecimalEquals(kijunSen.getValue(3), 45.14);
-        assertDecimalEquals(kijunSen.getValue(4), 45.14);
-        assertDecimalEquals(kijunSen.getValue(5), 45.155);
-        assertDecimalEquals(kijunSen.getValue(6), 45.18);
-        assertDecimalEquals(kijunSen.getValue(7), 45.145);
-        assertDecimalEquals(kijunSen.getValue(8), 45.17);
-        assertDecimalEquals(kijunSen.getValue(16), 44.345);
-        assertDecimalEquals(kijunSen.getValue(17), 44.305);
-        assertDecimalEquals(kijunSen.getValue(18), 44.05);
+        assertNumEquals(kijunSen.getValue(3), 45.14);
+        assertNumEquals(kijunSen.getValue(4), 45.14);
+        assertNumEquals(kijunSen.getValue(5), 45.155);
+        assertNumEquals(kijunSen.getValue(6), 45.18);
+        assertNumEquals(kijunSen.getValue(7), 45.145);
+        assertNumEquals(kijunSen.getValue(8), 45.17);
+        assertNumEquals(kijunSen.getValue(16), 44.345);
+        assertNumEquals(kijunSen.getValue(17), 44.305);
+        assertNumEquals(kijunSen.getValue(18), 44.05);
 
-        assertDecimalEquals(senkouSpanA.getValue(3), 45.1475);
-        assertDecimalEquals(senkouSpanA.getValue(4), 45.16);
-        assertDecimalEquals(senkouSpanA.getValue(5), 45.15);
-        assertDecimalEquals(senkouSpanA.getValue(6), 45.1575);
-        assertDecimalEquals(senkouSpanA.getValue(7), 45.145);
-        assertDecimalEquals(senkouSpanA.getValue(8), 45.17);
-        assertDecimalEquals(senkouSpanA.getValue(16), 44.2025);
-        assertDecimalEquals(senkouSpanA.getValue(17), 43.99);
-        assertDecimalEquals(senkouSpanA.getValue(18), 43.7875);
+        assertNumEquals(senkouSpanA.getValue(3), 45.1475);
+        assertNumEquals(senkouSpanA.getValue(4), 45.16);
+        assertNumEquals(senkouSpanA.getValue(5), 45.15);
+        assertNumEquals(senkouSpanA.getValue(6), 45.1575);
+        assertNumEquals(senkouSpanA.getValue(7), 45.145);
+        assertNumEquals(senkouSpanA.getValue(8), 45.17);
+        assertNumEquals(senkouSpanA.getValue(16), 44.2025);
+        assertNumEquals(senkouSpanA.getValue(17), 43.99);
+        assertNumEquals(senkouSpanA.getValue(18), 43.7875);
 
-        assertDecimalEquals(senkouSpanB.getValue(3), 45.14);
-        assertDecimalEquals(senkouSpanB.getValue(4), 45.14);
-        assertDecimalEquals(senkouSpanB.getValue(5), 45.14);
-        assertDecimalEquals(senkouSpanB.getValue(6), 45.14);
-        assertDecimalEquals(senkouSpanB.getValue(7), 45.14);
-        assertDecimalEquals(senkouSpanB.getValue(8), 45.14);
-        assertDecimalEquals(senkouSpanB.getValue(16), 44.345);
-        assertDecimalEquals(senkouSpanB.getValue(17), 44.335);
-        assertDecimalEquals(senkouSpanB.getValue(18), 44.335);
+        assertNumEquals(senkouSpanB.getValue(3), 45.14);
+        assertNumEquals(senkouSpanB.getValue(4), 45.14);
+        assertNumEquals(senkouSpanB.getValue(5), 45.14);
+        assertNumEquals(senkouSpanB.getValue(6), 45.14);
+        assertNumEquals(senkouSpanB.getValue(7), 45.14);
+        assertNumEquals(senkouSpanB.getValue(8), 45.14);
+        assertNumEquals(senkouSpanB.getValue(16), 44.345);
+        assertNumEquals(senkouSpanB.getValue(17), 44.335);
+        assertNumEquals(senkouSpanB.getValue(18), 44.335);
 
-        assertDecimalEquals(chikouSpan.getValue(5), 45.05);
-        assertDecimalEquals(chikouSpan.getValue(6), 45.10);
-        assertDecimalEquals(chikouSpan.getValue(7), 45.19);
-        assertDecimalEquals(chikouSpan.getValue(8), 45.14);
-        assertDecimalEquals(chikouSpan.getValue(19), 44.23);
+        assertNumEquals(chikouSpan.getValue(5), 45.05);
+        assertNumEquals(chikouSpan.getValue(6), 45.10);
+        assertNumEquals(chikouSpan.getValue(7), 45.19);
+        assertNumEquals(chikouSpan.getValue(8), 45.14);
+        assertNumEquals(chikouSpan.getValue(19), 44.23);
     }
 }

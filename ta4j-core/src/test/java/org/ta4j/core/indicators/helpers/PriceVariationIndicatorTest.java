@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,14 +22,14 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class PriceVariationIndicatorTest {
 
@@ -45,10 +45,10 @@ public class PriceVariationIndicatorTest {
 
     @Test
     public void indicatorShouldRetrieveBarVariation() {
-        assertDecimalEquals(variationIndicator.getValue(0), 1);
+        TATestsUtils.assertNumEquals(variationIndicator.getValue(0), 1);
         for (int i = 1; i < 10; i++) {
-            Decimal previousBarClosePrice = timeSeries.getBar(i - 1).getClosePrice();
-            Decimal currentBarClosePrice = timeSeries.getBar(i).getClosePrice();
+            Num previousBarClosePrice = timeSeries.getBar(i - 1).getClosePrice();
+            Num currentBarClosePrice = timeSeries.getBar(i).getClosePrice();
             assertEquals(variationIndicator.getValue(i), currentBarClosePrice.dividedBy(previousBarClosePrice));
         }
     }

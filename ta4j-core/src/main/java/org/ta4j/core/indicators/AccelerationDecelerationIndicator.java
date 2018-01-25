@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 
@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
  * Acceleration-deceleration indicator.
  * <p></p>
  */
-public class AccelerationDecelerationIndicator extends CachedIndicator<Decimal> {
+public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
     
     private AwesomeOscillatorIndicator awesome;
     
@@ -47,7 +47,7 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Decimal> 
     }
     
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return awesome.getValue(index).minus(sma5.getValue(index));
     }
 }

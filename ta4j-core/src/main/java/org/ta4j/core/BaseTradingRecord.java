@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -21,6 +21,8 @@
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core;
+
+import org.ta4j.core.Num.Num;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,7 +105,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public void operate(int index, Decimal price, Decimal amount) {
+    public void operate(int index, Num price, Num amount) {
         if (currentTrade.isClosed()) {
             // Current trade closed, should not occur
             throw new IllegalStateException("Current trade should not be closed");
@@ -114,7 +116,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public boolean enter(int index, Decimal price, Decimal amount) {
+    public boolean enter(int index, Num price, Num amount) {
         if (currentTrade.isNew()) {
             operate(index, price, amount);
             return true;
@@ -123,7 +125,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public final boolean exit(int index, Decimal price, Decimal amount) {
+    public final boolean exit(int index, Num price, Num amount) {
         if (currentTrade.isOpened()) {
             operate(index, price, amount);
             return true;

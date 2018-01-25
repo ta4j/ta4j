@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
@@ -31,7 +31,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width
  *     </a>
  */
-public class BollingerBandWidthIndicator extends CachedIndicator<Decimal> {
+public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
 
     private final BollingerBandsUpperIndicator bbu;
     
@@ -47,8 +47,8 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return bbu.getValue(index).minus(bbl.getValue(index))
-                .dividedBy(bbm.getValue(index)).multipliedBy(Decimal.HUNDRED);
+                .dividedBy(bbm.getValue(index)).multipliedBy(valueOf(100));
     }
 }

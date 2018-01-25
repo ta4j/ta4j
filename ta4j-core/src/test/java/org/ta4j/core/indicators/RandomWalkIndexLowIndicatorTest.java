@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -32,7 +32,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 /**
  * The Class RandomWalkIndexLowIndicatorTest.
@@ -72,18 +72,18 @@ public class RandomWalkIndexLowIndicatorTest {
     public void randomWalkIndexLow() {
         RandomWalkIndexLowIndicator rwil = new RandomWalkIndexLowIndicator(data, 5);
 
-        assertDecimalEquals(rwil.getValue(6), 0.2355);
-        assertDecimalEquals(rwil.getValue(7), 0.6762);
-        assertDecimalEquals(rwil.getValue(8), 0.3454);
-        assertDecimalEquals(rwil.getValue(9), 0.0000);
-        assertDecimalEquals(rwil.getValue(10), -0.5548);
-        assertDecimalEquals(rwil.getValue(11), -0.4925);
-        assertDecimalEquals(rwil.getValue(12), -0.4177);
-        assertDecimalEquals(rwil.getValue(13), 0.7110);
-        assertDecimalEquals(rwil.getValue(14), 1.3945);
-        assertDecimalEquals(rwil.getValue(15), 1.7809);
-        assertDecimalEquals(rwil.getValue(16), 2.1609);
-        assertDecimalEquals(rwil.getValue(17), 2.1307);
-        assertDecimalEquals(rwil.getValue(18), 1.7366);
+        assertNumEquals(rwil.getValue(6), 0.2355);
+        assertNumEquals(rwil.getValue(7), 0.6762);
+        assertNumEquals(rwil.getValue(8), 0.3454);
+        assertNumEquals(rwil.getValue(9), 0.0000);
+        assertNumEquals(rwil.getValue(10), -0.5548);
+        assertNumEquals(rwil.getValue(11), -0.4925);
+        assertNumEquals(rwil.getValue(12), -0.4177);
+        assertNumEquals(rwil.getValue(13), 0.7110);
+        assertNumEquals(rwil.getValue(14), 1.3945);
+        assertNumEquals(rwil.getValue(15), 1.7809);
+        assertNumEquals(rwil.getValue(16), 2.1609);
+        assertNumEquals(rwil.getValue(17), 2.1307);
+        assertNumEquals(rwil.getValue(18), 1.7366);
     }
 }

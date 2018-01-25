@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,15 +24,15 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Bar;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class MassIndexIndicatorTest {
 
@@ -70,12 +70,12 @@ public class MassIndexIndicatorTest {
     public void massIndexUsing3And8TimeFrames() {
         MassIndexIndicator massIndex = new MassIndexIndicator(data, 3, 8);
 
-        assertDecimalEquals(massIndex.getValue(0), 1);
-        assertDecimalEquals(massIndex.getValue(14), 9.1158);
-        assertDecimalEquals(massIndex.getValue(15), 9.2462);
-        assertDecimalEquals(massIndex.getValue(16), 9.4026);
-        assertDecimalEquals(massIndex.getValue(17), 9.2129);
-        assertDecimalEquals(massIndex.getValue(18), 9.1576);
-        assertDecimalEquals(massIndex.getValue(19), 9.0184);
+        assertNumEquals(massIndex.getValue(0), 1);
+        assertNumEquals(massIndex.getValue(14), 9.1158);
+        assertNumEquals(massIndex.getValue(15), 9.2462);
+        assertNumEquals(massIndex.getValue(16), 9.4026);
+        assertNumEquals(massIndex.getValue(17), 9.2129);
+        assertNumEquals(massIndex.getValue(18), 9.1576);
+        assertNumEquals(massIndex.getValue(19), 9.0184);
     }
 }

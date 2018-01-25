@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -52,7 +52,7 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
-        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -78,7 +78,7 @@ public class RewardRiskRatioCriterionTest {
 
 
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
-        assertEquals((95d/100) / ((1d - 0.95d)), TATestsUtils.TA_OFFSET, ratioCriterion.calculate(series, trade));
+        assertEquals((95d/100) / ((1d - 0.95d)), TATestsUtils.BIG_DECIMAL_OFFSET, ratioCriterion.calculate(series, trade));
     }
 
     @Test

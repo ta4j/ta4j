@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  * -DM indicator.
  * <p/>
  */
-public class MinusDMIndicator extends CachedIndicator<Decimal> {
+public class MinusDMIndicator extends CachedIndicator<Num> {
 
     private final TimeSeries series;
 
@@ -40,16 +40,16 @@ public class MinusDMIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index == 0) {
-            return Decimal.ZERO;
+            return valueOf(0);
         }
-        Decimal upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
-        Decimal downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
-        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(Decimal.ZERO)) {
+        Num upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
+        Num downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(valueOf(0))) {
             return downMove;
         } else {
-            return Decimal.ZERO;
+            return valueOf(0);
         }
     }
 }

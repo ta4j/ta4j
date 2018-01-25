@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,8 +24,10 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
 
 import static org.junit.Assert.assertFalse;
@@ -38,9 +40,10 @@ public class InSlopeRuleTest {
     
     @Before
     public void setUp() {
-        Indicator<Decimal> indicator = new FixedDecimalIndicator(50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
-        rulePositiveSlope = new InSlopeRule(indicator, Decimal.valueOf(20), Decimal.valueOf(30));
-        ruleNegativeSlope = new InSlopeRule(indicator, Decimal.valueOf(-40), Decimal.valueOf(-20));
+        TimeSeries series = new BaseTimeSeries();
+        Indicator<Num> indicator = new FixedDecimalIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
+        rulePositiveSlope = new InSlopeRule(indicator, series.valueOf(20), series.valueOf(30));
+        ruleNegativeSlope = new InSlopeRule(indicator, series.valueOf(-40), series.valueOf(-20));
     }
     
     @Test

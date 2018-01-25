@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,28 +22,28 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Simple multiplier indicator.
  * <p></p>
  */
-public class MultiplierIndicator extends CachedIndicator<Decimal> {
+public class MultiplierIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Decimal> indicator;
+    private Indicator<Num> indicator;
     
-    private Decimal coefficient;
+    private Num coefficient;
     
-    public MultiplierIndicator(Indicator<Decimal> indicator, Decimal coefficient) {
+    public MultiplierIndicator(Indicator<Num> indicator, double coefficient) {
         super(indicator);
         this.indicator = indicator;
-        this.coefficient = coefficient;
+        this.coefficient = valueOf(coefficient);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return indicator.getValue(index).multipliedBy(coefficient);
     }
 

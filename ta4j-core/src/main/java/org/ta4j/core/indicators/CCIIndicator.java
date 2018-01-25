@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
@@ -33,9 +33,9 @@ import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
-public class CCIIndicator extends CachedIndicator<Decimal> {
+public class CCIIndicator extends CachedIndicator<Num> {
 
-    public static final Decimal FACTOR = Decimal.valueOf("0.015");
+    public final Num FACTOR;
 
     private TypicalPriceIndicator typicalPriceInd;
 
@@ -52,6 +52,7 @@ public class CCIIndicator extends CachedIndicator<Decimal> {
      */
     public CCIIndicator(TimeSeries series, int timeFrame) {
         super(series);
+        FACTOR = valueOf(0.015);
         typicalPriceInd = new TypicalPriceIndicator(series);
         smaInd = new SMAIndicator(typicalPriceInd, timeFrame);
         meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, timeFrame);
@@ -59,12 +60,12 @@ public class CCIIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        final Decimal typicalPrice = typicalPriceInd.getValue(index);
-        final Decimal typicalPriceAvg = smaInd.getValue(index);
-        final Decimal meanDeviation = meanDeviationInd.getValue(index);
+    protected Num calculate(int index) {
+        final Num typicalPrice = typicalPriceInd.getValue(index);
+        final Num typicalPriceAvg = smaInd.getValue(index);
+        final Num meanDeviation = meanDeviationInd.getValue(index);
         if (meanDeviation.isZero()) {
-            return Decimal.ZERO;
+            return valueOf(0);
         }
         return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(FACTOR));
     }

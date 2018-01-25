@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 
@@ -32,11 +32,11 @@ import org.ta4j.core.indicators.SMAIndicator;
  * <p/>
  * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
-public class SigmaIndicator extends CachedIndicator<Decimal> {
+public class SigmaIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 6283425887025798038L;
     
-    private Indicator<Decimal> ref;
+    private Indicator<Num> ref;
     private int timeFrame;
 
     private SMAIndicator mean;
@@ -47,7 +47,7 @@ public class SigmaIndicator extends CachedIndicator<Decimal> {
      * @param ref the indicator
      * @param timeFrame the time frame
      */
-    public SigmaIndicator(Indicator<Decimal> ref, int timeFrame) {
+    public SigmaIndicator(Indicator<Num> ref, int timeFrame) {
         super(ref);
         this.ref = ref;
         this.timeFrame = timeFrame;
@@ -56,7 +56,7 @@ public class SigmaIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         // z-score = (ref - mean) / sd
         return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
     }

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -25,14 +25,13 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class UpperShadowIndicatorTest {
 
@@ -53,10 +52,10 @@ public class UpperShadowIndicatorTest {
     @Test
     public void getValue() {
         UpperShadowIndicator upperShadow = new UpperShadowIndicator(series);
-        assertDecimalEquals(upperShadow.getValue(0), 2);
-        assertDecimalEquals(upperShadow.getValue(1), 1);
-        assertDecimalEquals(upperShadow.getValue(2), 1);
-        assertDecimalEquals(upperShadow.getValue(3), 0);
-        assertDecimalEquals(upperShadow.getValue(4), 0);
+        TATestsUtils.assertNumEquals(upperShadow.getValue(0), 2);
+        TATestsUtils.assertNumEquals(upperShadow.getValue(1), 1);
+        TATestsUtils.assertNumEquals(upperShadow.getValue(2), 1);
+        TATestsUtils.assertNumEquals(upperShadow.getValue(3), 0);
+        TATestsUtils.assertNumEquals(upperShadow.getValue(4), 0);
     }
 }

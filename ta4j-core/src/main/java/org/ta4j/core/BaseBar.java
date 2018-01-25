@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,9 +22,13 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Num.Num;
+
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 /**
  * Base implementation of a {@link Bar}.
@@ -40,30 +44,33 @@ public class BaseBar implements Bar {
     /** Begin time of the bar */
     private ZonedDateTime beginTime;
     /** Open price of the period */
-    private Decimal openPrice = null;
+    private Num openPrice = null;
     /** Close price of the period */
-    private Decimal closePrice = null;
+    private Num closePrice = null;
     /** Max price of the period */
-    private Decimal maxPrice = null;
+    private Num maxPrice = null;
     /** Min price of the period */
-    private Decimal minPrice = null;
+    private Num minPrice = null;
     /** Traded amount during the period */
-    private Decimal amount = Decimal.ZERO;
+    private Num amount;
     /** Volume of the period */
-    private Decimal volume = Decimal.ZERO;
+    private Num volume;
     /** Trade count */
     private int trades = 0;
+
 
     /**
      * Constructor.
      * @param timePeriod the time period
      * @param endTime the end time of the bar period
      */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Function<Number, Num> numFunction) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
+        this.volume = numFunction.apply(0);
+        this.amount = numFunction.apply(0);
     }
 
     /**
@@ -75,12 +82,12 @@ public class BaseBar implements Bar {
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
      */
-    public BaseBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
-        this(endTime, Decimal.valueOf(openPrice),
-                Decimal.valueOf(highPrice),
-                Decimal.valueOf(lowPrice),
-                Decimal.valueOf(closePrice),
-                Decimal.valueOf(volume));
+    public BaseBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, Function<Number, Num> numFunction) {
+        this(endTime, numFunction.apply(openPrice),
+                numFunction.apply(highPrice),
+                numFunction.apply(lowPrice),
+                numFunction.apply(closePrice),
+                numFunction.apply(volume),numFunction.apply(0));
     }
 
     /**
@@ -92,12 +99,12 @@ public class BaseBar implements Bar {
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
      */
-    public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
-        this(endTime, Decimal.valueOf(openPrice),
-                Decimal.valueOf(highPrice),
-                Decimal.valueOf(lowPrice),
-                Decimal.valueOf(closePrice),
-                Decimal.valueOf(volume));
+    public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, Function<Number, Num> numFunction) {
+        this(endTime, numFunction.apply(new BigDecimal(openPrice)),
+                numFunction.apply(new BigDecimal(highPrice)),
+                numFunction.apply(new BigDecimal(lowPrice)),
+                numFunction.apply(new BigDecimal(closePrice)),
+                numFunction.apply(new BigDecimal(volume)),numFunction.apply(0));
     }
 
     /**
@@ -109,23 +116,10 @@ public class BaseBar implements Bar {
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
      */
-    public BaseBar(ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
-        this(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume);
+    public BaseBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
+        this(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount);
     }
 
-    /**
-     * Constructor.
-     * @param timePeriod the time period
-     * @param endTime the end time of the bar period
-     * @param openPrice the open price of the bar period
-     * @param highPrice the highest price of the bar period
-     * @param lowPrice the lowest price of the bar period
-     * @param closePrice the close price of the bar period
-     * @param volume the volume of the bar period
-     */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, Decimal.ZERO);
-    }
 
     /**
      * Constructor.
@@ -138,7 +132,7 @@ public class BaseBar implements Bar {
      * @param volume the volume of the bar period
      * @param amount the amount of the bar period
      */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Decimal openPrice, Decimal highPrice, Decimal lowPrice, Decimal closePrice, Decimal volume, Decimal amount) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -154,35 +148,35 @@ public class BaseBar implements Bar {
     /**
      * @return the open price of the period
      */
-    public Decimal getOpenPrice() {
+    public Num getOpenPrice() {
         return openPrice;
     }
 
     /**
      * @return the min price of the period
      */
-    public Decimal getMinPrice() {
+    public Num getMinPrice() {
         return minPrice;
     }
 
     /**
      * @return the max price of the period
      */
-    public Decimal getMaxPrice() {
+    public Num getMaxPrice() {
         return maxPrice;
     }
 
     /**
      * @return the close price of the period
      */
-    public Decimal getClosePrice() {
+    public Num getClosePrice() {
         return closePrice;
     }
 
     /**
      * @return the whole traded volume in the period
      */
-    public Decimal getVolume() {
+    public Num getVolume() {
         return volume;
     }
 
@@ -196,7 +190,7 @@ public class BaseBar implements Bar {
     /**
      * @return the whole traded amount of the period
      */
-    public Decimal getAmount() {
+    public Num getAmount() {
         return amount;
     }
 
@@ -226,7 +220,7 @@ public class BaseBar implements Bar {
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
-    public void addTrade(Decimal tradeVolume, Decimal tradePrice) {
+    public void addTrade(Num tradeVolume, Num tradePrice) {
         if (openPrice == null) {
             openPrice = tradePrice;
         }
@@ -242,6 +236,7 @@ public class BaseBar implements Bar {
         } else {
             minPrice = minPrice.isGreaterThan(tradePrice) ? tradePrice : minPrice;
         }
+
         volume = volume.plus(tradeVolume);
         amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
         trades++;
@@ -258,7 +253,7 @@ public class BaseBar implements Bar {
      * @param endTime the end time of the bar
      * @throws IllegalArgumentException if one of the arguments is null
      */
-    private void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {
+    private static void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {
         if (timePeriod == null) {
             throw new IllegalArgumentException("Time period cannot be null");
         }

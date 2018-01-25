@@ -133,7 +133,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
   * Added MVWAP indicator
   * Added VWAP indicator
   * Added Chandelier exit indicators
-  * Improved Decimal performances
+  * Improved Num performances
   * Added Fisher indicator
   * Added KAMA indicator
   * Added Detrended Price Oscillator

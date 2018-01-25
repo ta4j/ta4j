@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,28 +22,28 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * The cash flow.
  * <p></p>
  * This class allows to follow the money cash flow involved by a list of trades over a time series.
  */
-public class CashFlow implements Indicator<Decimal> {
+public class CashFlow implements Indicator<Num> {
 
     /** The time series */
     private final TimeSeries timeSeries;
 
     /** The cash flow values */
-    private List<Decimal> values = new ArrayList<>(Collections.singletonList(Decimal.ONE));
+    private List<Num> values;
 
     /**
      * Constructor.
@@ -52,6 +52,7 @@ public class CashFlow implements Indicator<Decimal> {
      */
     public CashFlow(TimeSeries timeSeries, Trade trade) {
         this.timeSeries = timeSeries;
+        values = new ArrayList<>(Collections.singletonList(valueOf(1)));
         calculate(trade);
         fillToTheEnd();
     }
@@ -63,7 +64,9 @@ public class CashFlow implements Indicator<Decimal> {
      */
     public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
         this.timeSeries = timeSeries;
+        values = new ArrayList<>(Collections.singletonList(valueOf(1)));
         calculate(tradingRecord);
+
         fillToTheEnd();
     }
 
@@ -72,13 +75,18 @@ public class CashFlow implements Indicator<Decimal> {
      * @return the cash flow value at the index-th position
      */
     @Override
-    public Decimal getValue(int index) {
+    public Num getValue(int index) {
         return values.get(index);
     }
 
     @Override
     public TimeSeries getTimeSeries() {
         return timeSeries;
+    }
+
+    @Override
+    public Num valueOf(Number number) {
+        return timeSeries.valueOf(number);
     }
 
     /**
@@ -96,12 +104,12 @@ public class CashFlow implements Indicator<Decimal> {
         final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            Decimal lastValue = values.get(values.size() - 1);
+            Num lastValue = values.get(values.size() - 1);
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
         int end = trade.getExit().getIndex();
         for (int i = Math.max(begin, 1); i <= end; i++) {
-            Decimal ratio;
+            Num ratio;
             if (trade.getEntry().isBuy()) {
                 ratio = timeSeries.getBar(i).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
             } else {
@@ -127,7 +135,7 @@ public class CashFlow implements Indicator<Decimal> {
      */
     private void fillToTheEnd() {
         if (timeSeries.getEndIndex() >= values.size()) {
-            Decimal lastValue = values.get(values.size() - 1);
+            Num lastValue = values.get(values.size() - 1);
             values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, lastValue));
         }
     }

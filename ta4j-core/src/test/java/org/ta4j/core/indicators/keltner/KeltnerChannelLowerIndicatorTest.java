@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.keltner;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
@@ -34,7 +33,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class KeltnerChannelLowerIndicatorTest {
 
@@ -84,24 +83,24 @@ public class KeltnerChannelLowerIndicatorTest {
     @Test
     public void keltnerChannelLowerIndicatorTest() {
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
-        KeltnerChannelLowerIndicator kl = new KeltnerChannelLowerIndicator(km, Decimal.valueOf(2), 14);
+        KeltnerChannelLowerIndicator kl = new KeltnerChannelLowerIndicator(km, 2, 14);
 
-        assertDecimalEquals(kl.getValue(13), 11556.5468);
-        assertDecimalEquals(kl.getValue(14), 11583.7971);
-        assertDecimalEquals(kl.getValue(15), 11610.8331);
-        assertDecimalEquals(kl.getValue(16), 11639.5955);
-        assertDecimalEquals(kl.getValue(17), 11667.0877);
-        assertDecimalEquals(kl.getValue(18), 11660.5619);
-        assertDecimalEquals(kl.getValue(19), 11675.8782);
-        assertDecimalEquals(kl.getValue(20), 11705.9497);
-        assertDecimalEquals(kl.getValue(21), 11726.7208);
-        assertDecimalEquals(kl.getValue(22), 11753.4154);
-        assertDecimalEquals(kl.getValue(23), 11781.8375);
-        assertDecimalEquals(kl.getValue(24), 11817.1476);
-        assertDecimalEquals(kl.getValue(25), 11851.9771);
-        assertDecimalEquals(kl.getValue(26), 11878.6139);
-        assertDecimalEquals(kl.getValue(27), 11904.4570);
-        assertDecimalEquals(kl.getValue(28), 11935.3907);
-        assertDecimalEquals(kl.getValue(29), 11952.2012);
+        assertNumEquals(kl.getValue(13), 11556.5468);
+        assertNumEquals(kl.getValue(14), 11583.7971);
+        assertNumEquals(kl.getValue(15), 11610.8331);
+        assertNumEquals(kl.getValue(16), 11639.5955);
+        assertNumEquals(kl.getValue(17), 11667.0877);
+        assertNumEquals(kl.getValue(18), 11660.5619);
+        assertNumEquals(kl.getValue(19), 11675.8782);
+        assertNumEquals(kl.getValue(20), 11705.9497);
+        assertNumEquals(kl.getValue(21), 11726.7208);
+        assertNumEquals(kl.getValue(22), 11753.4154);
+        assertNumEquals(kl.getValue(23), 11781.8375);
+        assertNumEquals(kl.getValue(24), 11817.1476);
+        assertNumEquals(kl.getValue(25), 11851.9771);
+        assertNumEquals(kl.getValue(26), 11878.6139);
+        assertNumEquals(kl.getValue(27), 11904.4570);
+        assertNumEquals(kl.getValue(28), 11935.3907);
+        assertNumEquals(kl.getValue(29), 11952.2012);
     }
 }

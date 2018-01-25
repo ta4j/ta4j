@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,8 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -38,16 +39,17 @@ public class StopLossRule extends AbstractRule {
     private ClosePriceIndicator closePrice;
     
     /** The loss ratio threshold (e.g. 0.97 for 3%) */
-    private Decimal lossRatioThreshold;
+    private Num lossRatioThreshold;
 
     /**
      * Constructor.
      * @param closePrice the close price indicator
      * @param lossPercentage the loss percentage
      */
-    public StopLossRule(ClosePriceIndicator closePrice, Decimal lossPercentage) {
+    public StopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
         this.closePrice = closePrice;
-        this.lossRatioThreshold = Decimal.HUNDRED.minus(lossPercentage).dividedBy(Decimal.HUNDRED);
+        TimeSeries series = closePrice.getTimeSeries();
+        this.lossRatioThreshold = series.valueOf(100).minus(lossPercentage).dividedBy(series.valueOf(100));
     }
 
     @Override
@@ -57,9 +59,9 @@ public class StopLossRule extends AbstractRule {
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if (currentTrade.isOpened()) {
-                Decimal entryPrice = currentTrade.getEntry().getPrice();
-                Decimal currentPrice = closePrice.getValue(index);
-                Decimal threshold = entryPrice.multipliedBy(lossRatioThreshold);
+                Num entryPrice = currentTrade.getEntry().getPrice();
+                Num currentPrice = closePrice.getValue(index);
+                Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
                 if (currentTrade.getEntry().isBuy()) {
                     satisfied = currentPrice.isLessThanOrEqual(threshold);
                 } else {

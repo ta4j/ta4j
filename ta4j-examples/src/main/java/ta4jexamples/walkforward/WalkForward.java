@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,26 +22,20 @@
  */
 package ta4jexamples.walkforward;
 
+import org.ta4j.core.*;
+import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.strategies.CCICorrectionStrategy;
+import ta4jexamples.strategies.GlobalExtremaStrategy;
+import ta4jexamples.strategies.MovingMomentumStrategy;
+import ta4jexamples.strategies.RSI2Strategy;
+
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.TimeSeriesManager;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
-
-import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.strategies.CCICorrectionStrategy;
-import ta4jexamples.strategies.GlobalExtremaStrategy;
-import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.strategies.RSI2Strategy;
 
 /**
  * Walk-forward optimization example.

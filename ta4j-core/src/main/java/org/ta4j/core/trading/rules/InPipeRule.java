@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 
@@ -35,11 +35,11 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 public class InPipeRule extends AbstractRule {
 
     /** The upper indicator */
-    private Indicator<Decimal> upper;
+    private Indicator<Num> upper;
     /** The lower indicator */
-    private Indicator<Decimal> lower;
+    private Indicator<Num> lower;
     /** The evaluated indicator */
-    private Indicator<Decimal> ref;
+    private Indicator<Num> ref;
 
     /**
      * Constructor.
@@ -47,8 +47,8 @@ public class InPipeRule extends AbstractRule {
      * @param upper the upper threshold
      * @param lower the lower threshold
      */
-    public InPipeRule(Indicator<Decimal> ref, Decimal upper, Decimal lower) {
-        this(ref, new ConstantIndicator<Decimal>(upper), new ConstantIndicator<Decimal>(lower));
+    public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
+        this(ref, new ConstantIndicator<Num>(ref.getTimeSeries(), upper), new ConstantIndicator<Num>(ref.getTimeSeries(), lower));
     }
 
     /**
@@ -57,7 +57,7 @@ public class InPipeRule extends AbstractRule {
      * @param upper the upper indicator
      * @param lower the lower indicator
      */
-    public InPipeRule(Indicator<Decimal> ref, Indicator<Decimal> upper, Indicator<Decimal> lower) {
+    public InPipeRule(Indicator<Num> ref, Indicator<Num> upper, Indicator<Num> lower) {
         this.upper = upper;
         this.lower = lower;
         this.ref = ref;

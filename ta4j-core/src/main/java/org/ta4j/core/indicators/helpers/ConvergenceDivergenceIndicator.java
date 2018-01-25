@@ -1,36 +1,35 @@
-/**
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/*
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.trading.rules.IsFallingRule;
 import org.ta4j.core.trading.rules.IsRisingRule;
-
 /**
  * Indicator-convergence-divergence.
  */
@@ -72,7 +71,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * other-{@link Indicator indicator} increase within a timeFrame. In
 		 * short: "other" makes higher highs while "ref" makes lower lows.
 		 */
-		negativeDivergent;
+		negativeDivergent
 	}
 	
 	/**
@@ -112,15 +111,15 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * consecutively within a timeFrame. In short: "other" makes strict
 		 * lower lows and "ref" makes strict higher highs.
 		 */
-		negativeDivergentStrict;
+		negativeDivergentStrict
 	}
 
 
 	/** The actual indicator. */
-	private final Indicator<Decimal> ref;
+	private final Indicator<Num> ref;
 
 	/** The other indicator. */
-	private final Indicator<Decimal> other;
+	private final Indicator<Num> other;
 
 	/** The timeFrame. */
 	private final int timeFrame;
@@ -132,10 +131,10 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private final ConvergenceDivergenceStrictType strictType;
 	
 	/** The minimum strenght for convergence or divergence. **/
-	private Decimal minStrenght;
+	private Num minStrenght;
 	
 	/** The minimum slope for convergence or divergence. **/
-	private Decimal minSlope;
+	private Num minSlope;
     
 	/**
 	 * Constructor. <br/>
@@ -164,7 +163,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param minStrenght the minimum required strenght for convergence or divergence
 	 * @param minSlope the minimum required slope for convergence or divergence
 	 */
-	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int timeFrame,
 			ConvergenceDivergenceType type, double minStrenght, double minSlope) {
 		super(ref);
 		this.ref = ref;
@@ -172,8 +171,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.timeFrame = timeFrame;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = Decimal.valueOf(minStrenght).abs();
-		this.minSlope = Decimal.valueOf(minSlope);
+		this.minStrenght = valueOf(minStrenght).abs();
+		this.minSlope = valueOf(minSlope);
 	}
 	
 	/**
@@ -184,7 +183,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param timeFrame the time frame
 	 * @param type of convergence or divergence
 	 */
-	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int timeFrame,
 			ConvergenceDivergenceType type) {
 		super(ref);
 		this.ref = ref;
@@ -192,8 +191,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.timeFrame = timeFrame;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = Decimal.valueOf(0.8).abs();
-		this.minSlope = Decimal.valueOf(0.3);
+		this.minStrenght = valueOf(0.8).abs();
+		this.minSlope = valueOf(0.3);
 	}
 	
 	/**
@@ -202,9 +201,9 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param ref the indicator
 	 * @param other the other indicator
 	 * @param timeFrame the time frame
-	 * @param type of strict convergence or divergence
+	 * @param strictType of strict convergence or divergence
 	 */
-	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int timeFrame,
 			ConvergenceDivergenceStrictType strictType) {
 		super(ref);
 		this.ref = ref;
@@ -223,8 +222,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 			return false;
 		}
 
-		if (minStrenght.isGreaterThan(Decimal.ONE)) {
-			minStrenght = Decimal.ONE;
+		if (minStrenght.isGreaterThan(valueOf(1))) {
+			minStrenght = valueOf(1);
 		}
 
 		if (type != null) {
@@ -312,7 +311,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
 		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 
-		Decimal slope = calculateSlopeRel(index);
+		Num slope = calculateSlopeRel(index);
 		boolean isPositive = slope.isGreaterThanOrEqual(minSlope.abs());
 
 		return isConvergent && isPositive;
@@ -327,8 +326,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
     		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 		
-    		Decimal slope = calculateSlopeRel(index);
-    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(Decimal.valueOf(-1)));
+    		Num slope = calculateSlopeRel(index);
+    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(valueOf(-1)));
 		
 		return isConvergent && isNegative;
     }
@@ -340,11 +339,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculatePositiveDivergence(int index) {
 		
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(valueOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
-			Decimal slope = calculateSlopeRel(index);
+			Num slope = calculateSlopeRel(index);
 			return slope.isGreaterThanOrEqual(minSlope.abs());
 		}
 
@@ -359,12 +358,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculateNegativeDivergence(int index) {
 		
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(valueOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
-			Decimal slope = calculateSlopeRel(index);
-			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(Decimal.valueOf(-1)));
+			Num slope = calculateSlopeRel(index);
+			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(valueOf(-1)));
 		}
 
 		return false;
@@ -374,18 +373,18 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param index the actual index
 	 * @return the absolute slope
 	 */
-	private Decimal calculateSlopeAbs(int index) {
+	private Num calculateSlopeAbs(int index) {
 		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
 		int firstIndex = Math.max(0, index - timeFrame + 1);
 		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
-				.dividedBy(Decimal.valueOf(timeFrame).minus(Decimal.valueOf(firstIndex)));
+				.dividedBy(valueOf(timeFrame).minus(valueOf(firstIndex)));
 	}
 	
 	/**
 	 * @param index the actual index
 	 * @return the relative slope
 	 */
-	private Decimal calculateSlopeRel(int index) {
+	private Num calculateSlopeRel(int index) {
 		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
 		int firstIndex = Math.max(0, index - timeFrame + 1);
 		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))

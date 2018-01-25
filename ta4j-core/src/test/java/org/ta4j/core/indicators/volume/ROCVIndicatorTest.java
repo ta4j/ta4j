@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -29,9 +29,10 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class ROCVIndicatorTest {
 
@@ -57,15 +58,15 @@ public class ROCVIndicatorTest {
     public void test() {
         ROCVIndicator roc = new ROCVIndicator(series, 3);
 
-        assertDecimalEquals(roc.getValue(0), 0);
-        assertDecimalEquals(roc.getValue(1), 200);
-        assertDecimalEquals(roc.getValue(2), 250);
-        assertDecimalEquals(roc.getValue(3), 120);
-        assertDecimalEquals(roc.getValue(4), -23.333333333333332);
-        assertDecimalEquals(roc.getValue(5), -94.28571428571429);
-        assertDecimalEquals(roc.getValue(6), 22.727272727272727);
-        assertDecimalEquals(roc.getValue(7), 117.3913043478261);
-        assertDecimalEquals(roc.getValue(8), 400);
-        assertDecimalEquals(roc.getValue(9), -7.407407407407407);
+        assertNumEquals(roc.getValue(0), 0);
+        assertNumEquals(roc.getValue(1), 200);
+        assertNumEquals(roc.getValue(2), 250);
+        assertNumEquals(roc.getValue(3), 120);
+        assertNumEquals(roc.getValue(4), -23.333333333333332);
+        assertNumEquals(roc.getValue(5), -94.28571428571429);
+        assertNumEquals(roc.getValue(6), 22.727272727272727);
+        assertNumEquals(roc.getValue(7), 117.3913043478261);
+        assertNumEquals(roc.getValue(8), 400);
+        assertNumEquals(roc.getValue(9), -7.407407407407407);
     }
 }

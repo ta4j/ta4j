@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
@@ -38,13 +38,15 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
  * @see <a href="https://en.wikipedia.org/wiki/Volume-weighted_average_price">
  *     https://en.wikipedia.org/wiki/Volume-weighted_average_price</a>
  */
-public class VWAPIndicator extends CachedIndicator<Decimal> {
+public class VWAPIndicator extends CachedIndicator<Num> {
 
     private final int timeFrame;
     
-    private final Indicator<Decimal> typicalPrice;
+    private final Indicator<Num> typicalPrice;
     
-    private final Indicator<Decimal> volume;
+    private final Indicator<Num> volume;
+
+    private final Num ZERO;
     
     /**
      * Constructor.
@@ -56,18 +58,19 @@ public class VWAPIndicator extends CachedIndicator<Decimal> {
         this.timeFrame = timeFrame;
         typicalPrice = new TypicalPriceIndicator(series);
         volume = new VolumeIndicator(series);
+        this.ZERO = valueOf(0);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index <= 0) {
             return typicalPrice.getValue(index);
         }
         int startIndex = Math.max(0, index - timeFrame + 1);
-        Decimal cumulativeTPV = Decimal.ZERO;
-        Decimal cumulativeVolume = Decimal.ZERO;
+        Num cumulativeTPV = ZERO;
+        Num cumulativeVolume = ZERO;
         for (int i = startIndex; i <= index; i++) {
-            Decimal currentVolume = volume.getValue(i);
+            Num currentVolume = volume.getValue(i);
             cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multipliedBy(currentVolume));
             cumulativeVolume = cumulativeVolume.plus(currentVolume);
         }

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -26,7 +26,6 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BaseTimeSeries;
 
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,7 +57,8 @@ public class MockTimeSeries extends BaseTimeSeries {
     private static List<Bar> doublesToBars(double... data) {
         ArrayList<Bar> bars = new ArrayList<>();
         for (int i = 0; i < data.length; i++) {
-            bars.add(new MockBar(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, i), data[i]));
+            //bars.add(new MockBar(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, i), data[i]));
+            bars.add(new MockBar(ZonedDateTime.now().minusSeconds((data.length+1-i)), data[i]));
         }
         return bars;
     }
@@ -86,7 +86,7 @@ public class MockTimeSeries extends BaseTimeSeries {
     private static List<Bar> arbitraryBars() {
         ArrayList<Bar> bars = new ArrayList<>();
         for (double i = 0d; i < 5000; i++) {
-            bars.add(new MockBar(ZonedDateTime.now(), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
+            bars.add(new MockBar(ZonedDateTime.now().minusMinutes((long)(5001-i)), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6)));
         }
         return bars;
     }

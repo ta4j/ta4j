@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +33,7 @@ import java.util.List;
  * A fixed indicator.
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
-public class FixedIndicator<T> extends AbstractIndicator<T> {
+public class FixedIndicator<T> extends CachedIndicator<T> {
 
     private final List<T> values = new ArrayList<T>();
 
@@ -40,8 +41,8 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
      * Constructor.
      * @param values the values to be returned by this indicator
      */
-    public FixedIndicator(T... values) {
-        super(null);
+    public FixedIndicator(TimeSeries series, T... values) {
+        super(series);
         this.values.addAll(Arrays.asList(values));
     }
     
@@ -51,6 +52,11 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
 
     @Override
     public T getValue(int index) {
+        return values.get(index);
+    }
+
+    @Override
+    protected T calculate(int index) {
         return values.get(index);
     }
 }

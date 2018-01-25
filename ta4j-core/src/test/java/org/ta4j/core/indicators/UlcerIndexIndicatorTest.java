@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,11 +24,12 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class UlcerIndexIndicatorTest {
     
@@ -53,25 +54,25 @@ public class UlcerIndexIndicatorTest {
     public void ulcerIndexUsingTimeFrame14UsingIBMData() {
         UlcerIndexIndicator ulcer = new UlcerIndexIndicator(new ClosePriceIndicator(ibmData), 14);
 
-        assertDecimalEquals(ulcer.getValue(0), 0);
+        TATestsUtils.assertNumEquals(ulcer.getValue(0), 0);
         
         // From: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index
-        assertDecimalEquals(ulcer.getValue(26), 1.3047);
-        assertDecimalEquals(ulcer.getValue(27), 1.3022);
-        assertDecimalEquals(ulcer.getValue(28), 1.2156);
-        assertDecimalEquals(ulcer.getValue(29), 0.9967);
-        assertDecimalEquals(ulcer.getValue(30), 0.7257);
-        assertDecimalEquals(ulcer.getValue(31), 0.453);
-        assertDecimalEquals(ulcer.getValue(32), 0.4284);
-        assertDecimalEquals(ulcer.getValue(33), 0.4284);
-        assertDecimalEquals(ulcer.getValue(34), 0.4284);
-        assertDecimalEquals(ulcer.getValue(35), 0.4287);
-        assertDecimalEquals(ulcer.getValue(36), 0.5089);
-        assertDecimalEquals(ulcer.getValue(37), 0.6673);
-        assertDecimalEquals(ulcer.getValue(38), 0.9914);
-        assertDecimalEquals(ulcer.getValue(39), 1.0921);
-        assertDecimalEquals(ulcer.getValue(40), 1.3161);
-        assertDecimalEquals(ulcer.getValue(41), 1.5632);
-        assertDecimalEquals(ulcer.getValue(42), 1.7609);
+        assertNumEquals(ulcer.getValue(26), 1.3047);
+        assertNumEquals(ulcer.getValue(27), 1.3022);
+        assertNumEquals(ulcer.getValue(28), 1.2156);
+        assertNumEquals(ulcer.getValue(29), 0.9967);
+        assertNumEquals(ulcer.getValue(30), 0.7257);
+        assertNumEquals(ulcer.getValue(31), 0.453);
+        assertNumEquals(ulcer.getValue(32), 0.4284);
+        assertNumEquals(ulcer.getValue(33), 0.4284);
+        assertNumEquals(ulcer.getValue(34), 0.4284);
+        assertNumEquals(ulcer.getValue(35), 0.4287);
+        assertNumEquals(ulcer.getValue(36), 0.5089);
+        assertNumEquals(ulcer.getValue(37), 0.6673);
+        assertNumEquals(ulcer.getValue(38), 0.9914);
+        assertNumEquals(ulcer.getValue(39), 1.0921);
+        assertNumEquals(ulcer.getValue(40), 1.3161);
+        assertNumEquals(ulcer.getValue(41), 1.5632);
+        assertNumEquals(ulcer.getValue(42), 1.7609);
     }
 }

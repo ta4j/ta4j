@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,9 +22,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
+
+import static org.ta4j.core.Num.AbstractNum.NaN;
 
 /**
  * Simple linear regression indicator.
@@ -33,7 +35,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  * y = slope * x + intercept
  * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
-public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
+public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
 	 /**
 	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
@@ -42,10 +44,10 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 		y, slope, intercept;
 	}
 
-	private Indicator<Decimal> indicator;
+	private Indicator<Num> indicator;
 	private int timeFrame;
-	private Decimal slope;
-	private Decimal intercept;
+	private Num slope;
+	private Num intercept;
 	private SimpleLinearRegressionType type;
 
 	/**
@@ -54,7 +56,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	 * @param indicator the indicator for the x-values of the formula.
 	 * @param timeFrame
 	 */
-	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
+	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int timeFrame) {
 		this(indicator, timeFrame, SimpleLinearRegressionType.y);
 	}
 
@@ -65,7 +67,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	 * @param timeFrame
 	 * @param type the type of the outcome value (y, slope, intercept)
 	 */
-	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame,
+	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int timeFrame,
 			SimpleLinearRegressionType type) {
 		super(indicator);
 		this.indicator = indicator;
@@ -74,12 +76,12 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 	}
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int endIndex = index;
         if (endIndex - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
-            return Decimal.NaN;
+            return NaN;
         }
         calculateRegressionLine(startIndex, endIndex);
         
@@ -91,7 +93,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
             return intercept;
         }
       
-        return slope.multipliedBy(Decimal.valueOf(index)).plus(intercept);
+        return slope.multipliedBy(valueOf(index)).plus(intercept);
     }
     
     /**
@@ -101,22 +103,22 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar
-        Decimal sumX = Decimal.ZERO;
-        Decimal sumY = Decimal.ZERO;
+        Num sumX = valueOf(0);
+        Num sumY = valueOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
-            sumX = sumX.plus(Decimal.valueOf(i));
+            sumX = sumX.plus(valueOf(i));
             sumY = sumY.plus(indicator.getValue(i));
         }
-        Decimal nbObservations = Decimal.valueOf(endIndex - startIndex + 1);
-        Decimal xBar = sumX.dividedBy(nbObservations);
-        Decimal yBar = sumY.dividedBy(nbObservations);
+        Num nbObservations = valueOf(endIndex - startIndex + 1);
+        Num xBar = sumX.dividedBy(nbObservations);
+        Num yBar = sumY.dividedBy(nbObservations);
         
         // Second pass: compute slope and intercept
-        Decimal xxBar = Decimal.ZERO;
-        Decimal xyBar = Decimal.ZERO;
+        Num xxBar = valueOf(0);
+        Num xyBar = valueOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
-            Decimal dX = Decimal.valueOf(i).minus(xBar);
-            Decimal dY = indicator.getValue(i).minus(yBar);
+            Num dX = valueOf(i).minus(xBar);
+            Num dY = indicator.getValue(i).minus(yBar);
             xxBar = xxBar.plus(dX.multipliedBy(dX));
             xyBar = xyBar.plus(dX.multipliedBy(dY));
         }

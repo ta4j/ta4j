@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -25,6 +25,7 @@ package org.ta4j.core.indicators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 
 /**
@@ -51,8 +52,17 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         return series;
     }
 
+
+
     @Override
     public String toString() {
         return getClass().getSimpleName();
     }
+
+    @Override
+    public Num valueOf(Number number){
+        return series.valueOf(number);
+    }
+
+
 }

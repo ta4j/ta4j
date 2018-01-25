@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -55,16 +54,16 @@ public class DojiIndicatorTest {
 
     @Test
     public void getValueAtIndex0() {
-        DojiIndicator doji = new DojiIndicator(new MockTimeSeries(0d), 10, Decimal.valueOf("0.03"));
+        DojiIndicator doji = new DojiIndicator(new MockTimeSeries(0d), 10, 0.03);
         assertTrue(doji.getValue(0));
 
-        doji = new DojiIndicator(new MockTimeSeries(1d), 10, Decimal.valueOf("0.03"));
+        doji = new DojiIndicator(new MockTimeSeries(1d), 10, 0.03);
         assertFalse(doji.getValue(0));
     }
 
     @Test
     public void getValue() {
-        DojiIndicator doji = new DojiIndicator(series, 3, Decimal.valueOf("0.1"));
+        DojiIndicator doji = new DojiIndicator(series, 3, 0.1);
         assertTrue(doji.getValue(0));
         assertFalse(doji.getValue(1));
         assertFalse(doji.getValue(2));

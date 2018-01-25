@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,9 +22,14 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Num.Num;
+
 import java.io.Serializable;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15 minutes, 1 day, etc.)
@@ -139,8 +144,21 @@ public interface TimeSeries extends Serializable {
      * Exceeding bars are removed.
      * @param bar the bar to be added
      * @see TimeSeries#setMaximumBarCount(int)
+     * @deprecated use the {@link #addBar(Duration, ZonedDateTime)}  other addBar functions} to add and convert data directly
      */
     void addBar(Bar bar);
+
+    void addBar(Duration timePeriod, ZonedDateTime endTime);
+    void addBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume);
+    void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume);
+    void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume);
+    void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume);
+    void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount);
+
+    void addTrade(double price, double amount);
+    void addTrade(String price, String amount);
+    void addTrade(Num tradeVolume, Num tradePrice);
+
 
     /**
      * Returns a new TimeSeries implementation that is a subset of this TimeSeries implementation.
@@ -156,4 +174,18 @@ public interface TimeSeries extends Serializable {
      * @throws IllegalArgumentException e.g. if endIndex < startIndex
      */
     TimeSeries getSubSeries(int startIndex, int endIndex);
+
+    /**
+     * Transforms a {@link Number} into the {@link Num implementation} used by this time series
+     * @param number a {@link Number} implementing object.
+     * @return the corresponding value as a Num implementing object
+     */
+    Num valueOf(Number number);
+
+    /**
+     * Returns the underlying function to transform a Number into the Num implementation used by this time series
+     * @return a function Number -> Num
+     */
+    Function<Number, Num> getNumFunction();
+
 }

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.Order.OrderType;
 
 import static org.junit.Assert.*;
+import static org.ta4j.core.Num.AbstractNum.NaN;
 
 public class OrderTest {
 
@@ -34,11 +35,11 @@ public class OrderTest {
 
     @Before
     public void setUp() {
-        opEquals1 = Order.buyAt(1, Decimal.NaN, Decimal.NaN);
-        opEquals2 = Order.buyAt(1, Decimal.NaN, Decimal.NaN);
+        opEquals1 = Order.buyAt(1, NaN, NaN);
+        opEquals2 = Order.buyAt(1, NaN, NaN);
 
-        opNotEquals1 = Order.sellAt(1, Decimal.NaN, Decimal.NaN);
-        opNotEquals2 = Order.buyAt(2, Decimal.NaN, Decimal.NaN);
+        opNotEquals1 = Order.sellAt(1, NaN, NaN);
+        opNotEquals2 = Order.buyAt(2, NaN, NaN);
     }
 
     @Test

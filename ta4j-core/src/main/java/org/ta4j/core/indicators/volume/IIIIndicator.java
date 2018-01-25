@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,17 +22,20 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
+import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
  * Intraday Intensity Index
  * @see <a https://www.investopedia.com/terms/i/intradayintensityindex.asp>
  *     https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
  */
-public class IIIIndicator extends CachedIndicator<Decimal> {
+public class IIIIndicator extends CachedIndicator<Num> {
 
 
     private ClosePriceIndicator closePriceIndicator;
@@ -51,14 +54,14 @@ public class IIIIndicator extends CachedIndicator<Decimal> {
         volumeIndicator = new VolumeIndicator(series);
     }
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
 
         if (index == getTimeSeries().getBeginIndex()) {
-            return Decimal.ZERO;
+            return valueOf(0);
         }
-        Decimal doubleClosePrice =  Decimal.valueOf(2).multipliedBy(closePriceIndicator.getValue(index));
-        Decimal highmlow = maxPriceIndicator.getValue(index).minus(minPriceIndicator.getValue(index));
-        Decimal highplow = maxPriceIndicator.getValue(index).plus(minPriceIndicator.getValue(index));
+        Num doubleClosePrice =  valueOf(2).multipliedBy(closePriceIndicator.getValue(index));
+        Num highmlow = maxPriceIndicator.getValue(index).minus(minPriceIndicator.getValue(index));
+        Num highplow = maxPriceIndicator.getValue(index).plus(minPriceIndicator.getValue(index));
 
         return (doubleClosePrice.minus(highplow)).dividedBy(highmlow.multipliedBy(volumeIndicator.getValue(index)));
 

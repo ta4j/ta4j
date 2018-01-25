@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,14 +22,11 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -37,14 +34,17 @@ import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class RSIIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal> {
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+
+public class RSIIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
     private ExternalIndicatorTest xls;
     //private ExternalIndicatorTest sql;
 
     public RSIIndicatorTest() {
-        super((data, params) -> new RSIIndicator((Indicator<Decimal>) data, (int) params[0]));
+        super((data, params) -> new RSIIndicator((Indicator<Num>) data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "RSI.xls", 10);
         //sql = new SQLIndicatorTest(this.getClass(), "RSI.db", username, pass, table, column);
     }
@@ -65,56 +65,56 @@ public class RSIIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal>
 
     @Test
     public void firstValueShouldBeZero() throws Exception {
-        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(Decimal.ZERO, indicator.getValue(0));
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
+        assertEquals(data.valueOf(0), indicator.getValue(0));
     }
 
     @Test
     public void hundredIfNoLoss() throws Exception {
-        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(Decimal.HUNDRED, indicator.getValue(14));
-        assertEquals(Decimal.HUNDRED, indicator.getValue(15));
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        assertEquals(data.valueOf(100), indicator.getValue(14));
+        assertEquals(data.valueOf(100), indicator.getValue(15));
     }
 
     @Test
     public void zeroIfNoGain() throws Exception {
-        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(Decimal.ZERO, indicator.getValue(1));
-        assertEquals(Decimal.ZERO, indicator.getValue(2));
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
+        assertEquals(data.valueOf(0), indicator.getValue(1));
+        assertEquals(data.valueOf(0), indicator.getValue(2));
     }
 
     @Test
     public void usingTimeFrame14UsingClosePrice() throws Exception {
-        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(68.4746, indicator.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(64.7836, indicator.getValue(16).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(72.0776, indicator.getValue(17).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(60.7800, indicator.getValue(18).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(63.6439, indicator.getValue(19).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(72.3433, indicator.getValue(20).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(67.3822, indicator.getValue(21).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(68.5438, indicator.getValue(22).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(76.2770, indicator.getValue(23).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(77.9908, indicator.getValue(24).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(67.4895, indicator.getValue(25).doubleValue(), TATestsUtils.TA_OFFSET);
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
+        assertEquals(68.4746, indicator.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(64.7836, indicator.getValue(16).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(72.0776, indicator.getValue(17).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(60.7800, indicator.getValue(18).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(63.6439, indicator.getValue(19).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(72.3433, indicator.getValue(20).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(67.3822, indicator.getValue(21).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(68.5438, indicator.getValue(22).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(76.2770, indicator.getValue(23).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(77.9908, indicator.getValue(24).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(67.4895, indicator.getValue(25).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void xlsTest() throws Exception {
-        Indicator<Decimal> xlsClose = new ClosePriceIndicator(xls.getSeries());
-        Indicator<Decimal> indicator;
+        Indicator<Num> xlsClose = new ClosePriceIndicator(xls.getSeries());
+        Indicator<Num> indicator;
 
         indicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -128,40 +128,40 @@ public class RSIIndicatorTest extends IndicatorTest<Indicator<Decimal>, Decimal>
                 45.6875, 43.0625, 43.5625, 44.8750, 43.6875);
         // ta4j RSI uses MMA for average gain and loss
         // then uses simple division of the two for RS
-        Indicator<Decimal> indicator = getIndicator(new ClosePriceIndicator(
+        Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(
                 series), 14);
-        Indicator<Decimal> close = new ClosePriceIndicator(series);
-        Indicator<Decimal> gain = new GainIndicator(close);
-        Indicator<Decimal> loss = new LossIndicator(close);
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        Indicator<Num> gain = new GainIndicator(close);
+        Indicator<Num> loss = new LossIndicator(close);
         // this site uses SMA for average gain and loss
         // then uses ratio of MMAs for RS (except for first calculation)
-        Indicator<Decimal> avgGain = new SMAIndicator(gain, 14);
-        Indicator<Decimal> avgLoss = new SMAIndicator(loss, 14);
+        Indicator<Num> avgGain = new SMAIndicator(gain, 14);
+        Indicator<Num> avgLoss = new SMAIndicator(loss, 14);
 
         // first online calculation is simple division
         double onlineRs = avgGain.getValue(14).dividedBy(avgLoss.getValue(14)).doubleValue();
-        assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TATestsUtils.TA_OFFSET);
-        assertEquals(1.0738, onlineRs, TATestsUtils.TA_OFFSET);
+        assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.0738, onlineRs, TATestsUtils.BIG_DECIMAL_OFFSET);
         double onlineRsi = 100d - (100d / (1d + onlineRs));
         // difference in RSI values:
         assertEquals(51.779, onlineRsi, 0.001);
-        assertEquals(52.1304, indicator.getValue(14).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(52.1304, indicator.getValue(14).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
 
         // strange, online average gain and loss is not a simple moving average!
         // but they only use them for the first RS calculation
-        // assertEquals(0.5430, avgGain.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
-        // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
+        // assertEquals(0.5430, avgGain.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
         // second online calculation uses MMAs
         // MMA of average gain
-        double dividend = avgGain.getValue(14).multipliedBy(13d).plus(gain.getValue(15)).dividedBy(14d).doubleValue();
+        double dividend = avgGain.getValue(14).multipliedBy(series.valueOf(13)).plus(gain.getValue(15)).dividedBy(series.valueOf(14)).doubleValue();
         // MMA of average loss
-        double divisor = avgLoss.getValue(14).multipliedBy(13d).plus(loss.getValue(15)).dividedBy(14d).doubleValue();
+        double divisor = avgLoss.getValue(14).multipliedBy(series.valueOf(13)).plus(loss.getValue(15)).dividedBy(series.valueOf(14)).doubleValue();
         onlineRs = dividend / divisor;
-        assertEquals(0.9409, onlineRs, TATestsUtils.TA_OFFSET);
+        assertEquals(0.9409, onlineRs, TATestsUtils.BIG_DECIMAL_OFFSET);
         onlineRsi = 100d - (100d / (1d + onlineRs));
         // difference in RSI values:
         assertEquals(48.477, onlineRsi, 0.001);
-        assertEquals(47.3710, indicator.getValue(15).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(47.3710, indicator.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 }

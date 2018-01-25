@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,13 +22,19 @@
  */
 package org.ta4j.core;
 
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Num.AbstractNum;
+import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Num.DoubleNum;
+import org.ta4j.core.Num.Num;
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 
 /**
  * Base implementation of a {@link TimeSeries}.
@@ -55,6 +61,8 @@ public class BaseTimeSeries implements TimeSeries {
     private int removedBarsCount = 0;
     /** True if the current series is constrained (i.e. its indexes cannot change), false otherwise */
     private boolean constrained = false;
+
+    private final Function<Number, Num> numFunction;
 
     /**
      * Constructor of an unnamed series.
@@ -95,13 +103,12 @@ public class BaseTimeSeries implements TimeSeries {
      * @param defaultSeries the original time series to construct a constrained series from
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex the end index (inclusive) of the time series
-     *
      * @deprecated use {@link #getSubSeries(int, int) getSubSeries(startIndex, endIndex)} to satisfy correct behaviour of
      * the new sub series in further calculations
      */
     @Deprecated
     public BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex) {
-        this(defaultSeries.getName(), defaultSeries.getBarData(), seriesBeginIndex, seriesEndIndex, true);
+        this(defaultSeries.getName(), defaultSeries.getBarData(), seriesBeginIndex, seriesEndIndex, true, defaultSeries.getNumFunction());
         if (defaultSeries.getBarData() == null || defaultSeries.getBarData().isEmpty()) {
             throw new IllegalArgumentException("Cannot create a constrained series from a time series with a null/empty list of bars");
         }
@@ -111,22 +118,44 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
+     * Constructor.<p/>
+     * Creates a BaseTimeSeries with default {@link BigDecimalNum BigDecimal} as type for the data and all operations on it
+     * @param name the name of the series
+     * @param bars the list of bars of the series
+     * @param seriesBeginIndex the begin index (inclusive) of the time series
+     * @param seriesEndIndex the end index (inclusive) of the time series
+     * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
+     *
+     *
+     */
+    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, BigDecimalNum::valueOf);
+    }
+
+    /**
      * Constructor.
      * @param name the name of the series
      * @param bars the list of bars of the series
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex the end index (inclusive) of the time series
      * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
+     * @param numFunction a {@link Function} to convert a {@link Number} to a {@link Num Num implementation}
      */
-    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Function<Number, Num> numFunction) {
         this.name = name;
-        this.bars = bars == null ? new ArrayList<>() : bars;
+        this.numFunction = numFunction;
+        this.bars = bars;
         if (bars.isEmpty()) {
         	// Bar list empty
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
             return;
+        }
+
+        // Bar list not empty: checking num types
+        if(!checkBars(bars)){
+            throw new IllegalArgumentException("The Num implementation of bars does not match to the Num implementation of time series");
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
@@ -166,6 +195,46 @@ public class BaseTimeSeries implements TimeSeries {
         }
         return new BaseTimeSeries(name);
 
+    }
+
+    @Override
+    public Num valueOf(Number number){
+        return this.numFunction.apply(number);
+    }
+
+    @Override
+    public Function<Number, Num> getNumFunction() {
+        return numFunction;
+    }
+
+    /**
+     * Checks if all {@link Bar bars} of a list fits to the {@link Num NumFunction} used by this time series.
+     * @param bars a List of Bar objects.
+     * @return false if a Num implementation of at least one Bar does not fit.
+     */
+    private boolean checkBars(List<Bar> bars){
+        for(Bar bar: bars){
+            if(!checkBar(bar)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks if the {@link Num} implementation of a {@link Bar} fits to the NumFunction used by time series.
+     * @param bar a Bar object.
+     * @return false if another Num implementation is used than by this time series.
+     * @see Num
+     * @see Bar
+     * @see #addBar(Duration, ZonedDateTime)
+     */
+    private boolean checkBar(Bar bar){
+        if(bar.getClosePrice()==null){
+            return true; // bar has not been initialized with data (deprecated constructor)
+        }
+        // all other constructors initialize at least the close price
+        return numFunction.apply(1).getClass() == bar.getClosePrice().getClass();
     }
 
     @Override
@@ -239,7 +308,12 @@ public class BaseTimeSeries implements TimeSeries {
         return removedBarsCount;
     }
 
+    /**
+     * @deprecated will be private in next release. Use other {@link #addBar(Duration, ZonedDateTime) addBar function}
+     * @param bar the bar to be added
+     */
     @Override
+    @Deprecated
     public void addBar(Bar bar) {
         if (bar == null) {
             throw new IllegalArgumentException("Cannot add null bar");
@@ -249,7 +323,10 @@ public class BaseTimeSeries implements TimeSeries {
             final int lastBarIndex = bars.size() - 1;
             ZonedDateTime seriesEndTime = bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
-                throw new IllegalArgumentException("Cannot add a bar with end time <= to series end time");
+                throw new IllegalArgumentException(
+                        String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
+                                bar.getEndTime(),
+                                seriesEndTime));
             }
         }
 
@@ -260,6 +337,60 @@ public class BaseTimeSeries implements TimeSeries {
         }
         seriesEndIndex++;
         removeExceedingBars();
+    }
+
+    @Override
+    @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
+    public void addBar(Duration timePeriod, ZonedDateTime endTime) {
+        this.addBar(new BaseBar(timePeriod,endTime, getNumFunction()));
+    }
+
+    @Override
+    @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
+    public void addBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
+        this.addBar(new BaseBar(endTime, valueOf(openPrice), valueOf(highPrice), valueOf(lowPrice), valueOf(closePrice),
+                valueOf(volume), valueOf(0)));
+    }
+
+    @Override
+    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
+    public void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
+        this.addBar(new BaseBar(endTime, valueOf(new BigDecimal(openPrice)), valueOf(new BigDecimal(highPrice)),
+                valueOf(new BigDecimal(lowPrice)), valueOf(new BigDecimal(closePrice)), valueOf(new BigDecimal(volume)),
+                valueOf(0)));
+    }
+
+    @Override
+    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
+    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
+        this.addBar(new BaseBar(endTime, openPrice,highPrice,lowPrice,closePrice,volume, valueOf(0)));
+    }
+
+    @Override
+    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
+        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, valueOf(0)));
+    }
+
+    @Override
+    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
+        this.addBar(new BaseBar(timePeriod, endTime, openPrice,highPrice,lowPrice,closePrice,volume, amount));
+    }
+
+    @Override
+    public void addTrade(double price, double amount) {
+        addTrade(valueOf(price), valueOf(amount));
+    }
+
+    @Override
+    public void addTrade(String price, String amount) {
+        addTrade(valueOf(new BigDecimal(price)), valueOf(new BigDecimal(amount)));
+    }
+
+    @Override
+    public void addTrade(Num tradeVolume, Num tradePrice) {
+        getLastBar().addTrade(tradeVolume,tradePrice);
     }
 
     /**
@@ -297,5 +428,83 @@ public class BaseTimeSeries implements TimeSeries {
     private static String buildOutOfBoundsMessage(BaseTimeSeries series, int index) {
         return "Size of series: " + series.bars.size() + " bars, "
                 + series.removedBarsCount + " bars removed, index = " + index;
+    }
+
+    public static class SeriesBuilder implements TimeSeriesBuilder {
+
+        private static final long serialVersionUID = 111164611841087550L;
+
+        private List<Bar> bars;
+        private String name;
+        private Function<Number, Num> numFunction;
+
+        private boolean isConstrained;
+        private int beginIndex;
+        private int endIndex;
+        private int maxBarCount;
+
+        public SeriesBuilder(){
+            initValues();
+        }
+
+        private void initValues() {
+            bars = new ArrayList<>();
+            name = "unnamed_series";
+            numFunction = BigDecimalNum::valueOf;
+            isConstrained = false;
+            beginIndex = -1;
+            endIndex = -1;
+            maxBarCount = Integer.MAX_VALUE;
+        }
+
+        @Override
+        public TimeSeries build() {
+            TimeSeries series = new BaseTimeSeries(name,bars,beginIndex,endIndex,isConstrained,numFunction);
+            series.setMaximumBarCount(maxBarCount);
+            initValues();
+            return series;
+        }
+
+        public SeriesBuilder setConstrained(boolean isConstrained){
+            this.isConstrained = true;
+            return this;
+        }
+
+        public SeriesBuilder withName(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public SeriesBuilder withBars(List<Bar> bars) {
+            this.bars = bars;
+            return this;
+        }
+
+        public SeriesBuilder withMaxBarCount(int maxBarCount){
+            this.maxBarCount = maxBarCount;
+            return this;
+        }
+
+        public SeriesBuilder withNumTypeOf(AbstractNum type) {
+            numFunction = type.getNumFunction();
+            return this;
+        }
+
+        public SeriesBuilder withNumTypeOf(Function<Number, Num> function) {
+            numFunction = function;
+            return this;
+        }
+
+        public SeriesBuilder withNumTypeOf(Class<? extends AbstractNum> abstractNumClass) {
+            if(abstractNumClass==BigDecimalNum.class){
+                numFunction = BigDecimalNum::valueOf;
+                return this;
+            } else if(abstractNumClass== DoubleNum.class){
+                numFunction = DoubleNum::valueOf;
+                return this;
+            }
+            numFunction = BigDecimalNum::valueOf;
+            return this;
+        }
     }
 }

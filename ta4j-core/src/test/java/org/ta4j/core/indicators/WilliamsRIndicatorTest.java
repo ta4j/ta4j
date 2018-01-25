@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -35,7 +35,7 @@ import org.ta4j.core.mocks.MockBar;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class WilliamsRIndicatorTest {
     private TimeSeries data;
@@ -67,13 +67,13 @@ public class WilliamsRIndicatorTest {
                 new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertDecimalEquals(wr.getValue(4), -47.2222);
-        assertDecimalEquals(wr.getValue(5), -54.5454);
-        assertDecimalEquals(wr.getValue(6), -78.5714);
-        assertDecimalEquals(wr.getValue(7), -47.6190);
-        assertDecimalEquals(wr.getValue(8), -25d);
-        assertDecimalEquals(wr.getValue(9), -5.2632);
-        assertDecimalEquals(wr.getValue(10), -13.9535);
+        assertNumEquals(wr.getValue(4), -47.2222);
+        assertNumEquals(wr.getValue(5), -54.5454);
+        assertNumEquals(wr.getValue(6), -78.5714);
+        assertNumEquals(wr.getValue(7), -47.6190);
+        assertNumEquals(wr.getValue(8), -25d);
+        assertNumEquals(wr.getValue(9), -5.2632);
+        assertNumEquals(wr.getValue(10), -13.9535);
 
     }
 
@@ -82,10 +82,10 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertDecimalEquals(wr.getValue(9), -4.0816);
-        assertDecimalEquals(wr.getValue(10), -11.7647);
-        assertDecimalEquals(wr.getValue(11), -8.9286);
-        assertDecimalEquals(wr.getValue(12), -10.5263);
+        assertNumEquals(wr.getValue(9), -4.0816);
+        assertNumEquals(wr.getValue(10), -11.7647);
+        assertNumEquals(wr.getValue(11), -8.9286);
+        assertNumEquals(wr.getValue(12), -10.5263);
 
     }
 
@@ -94,9 +94,9 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertDecimalEquals(wr.getValue(0), -100d * (0.12 / 0.21));
-        assertDecimalEquals(wr.getValue(1), -100d * (0.07 / 0.21));
-        assertDecimalEquals(wr.getValue(2), -100d * (0.13 / 0.36));
-        assertDecimalEquals(wr.getValue(3), -100d * (0.18 / 0.36));
+        assertNumEquals(wr.getValue(0), -100d * (0.12 / 0.21));
+        assertNumEquals(wr.getValue(1), -100d * (0.07 / 0.21));
+        assertNumEquals(wr.getValue(2), -100d * (0.13 / 0.36));
+        assertNumEquals(wr.getValue(3), -100d * (0.18 / 0.36));
     }
 }

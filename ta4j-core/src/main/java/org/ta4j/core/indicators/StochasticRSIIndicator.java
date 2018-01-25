@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
@@ -34,7 +34,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
  * 
  * Stoch RSI = (RSI - MinimumRSIn) / (MaximumRSIn - MinimumRSIn)
  */
-public class StochasticRSIIndicator extends CachedIndicator<Decimal> {
+public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     private final RSIIndicator rsi;
     private final LowestValueIndicator minRsi;
@@ -54,7 +54,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public StochasticRSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public StochasticRSIIndicator(Indicator<Num> indicator, int timeFrame) {
         this(new RSIIndicator(indicator, timeFrame), timeFrame);
     }
 
@@ -71,8 +71,8 @@ public class StochasticRSIIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal minRsiValue = minRsi.getValue(index);
+    protected Num calculate(int index) {
+        Num minRsiValue = minRsi.getValue(index);
         return rsi.getValue(index).minus(minRsiValue)
                 .dividedBy(maxRsi.getValue(index).minus(minRsiValue));
     }

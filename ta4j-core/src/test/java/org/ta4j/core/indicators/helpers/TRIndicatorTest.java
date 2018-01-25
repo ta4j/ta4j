@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,13 +24,12 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class TRIndicatorTest {
 
@@ -44,10 +43,10 @@ public class TRIndicatorTest {
         bars.add(new MockBar(0, 0, 0, 2));
         TRIndicator tr = new TRIndicator(new MockTimeSeries(bars));
 
-        assertDecimalEquals(tr.getValue(0), 7);
-        assertDecimalEquals(tr.getValue(1), 6);
-        assertDecimalEquals(tr.getValue(2), 9);
-        assertDecimalEquals(tr.getValue(3), 3);
-        assertDecimalEquals(tr.getValue(4), 15);
+        TATestsUtils.assertNumEquals(tr.getValue(0), 7);
+        TATestsUtils.assertNumEquals(tr.getValue(1), 6);
+        TATestsUtils.assertNumEquals(tr.getValue(2), 9);
+        TATestsUtils.assertNumEquals(tr.getValue(3), 3);
+        TATestsUtils.assertNumEquals(tr.getValue(4), 15);
     }
 }

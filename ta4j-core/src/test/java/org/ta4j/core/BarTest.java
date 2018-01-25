@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -30,7 +30,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import static org.junit.Assert.*;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
 
 public class BarTest {
 
@@ -44,23 +44,23 @@ public class BarTest {
     public void setUp() {
         beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
-        bar = new BaseBar(Duration.ofHours(1), endTime);
+        bar = new BaseBar(Duration.ofHours(1), endTime, CURENCT_NUM_FUNCTION);
     }
 
     @Test
     public void addTrades() {
 
-        bar.addTrade(3.0, 200.0);
-        bar.addTrade(4.0, 201.0);
-        bar.addTrade(2.0, 198.0);
+        bar.addTrade(3.0, 200.0, CURENCT_NUM_FUNCTION);
+        bar.addTrade(4.0, 201.0, CURENCT_NUM_FUNCTION);
+        bar.addTrade(2.0, 198.0, CURENCT_NUM_FUNCTION);
 
         assertEquals(3, bar.getTrades());
-        assertDecimalEquals(bar.getAmount(), 3 * 200 + 4 * 201 + 2 * 198);
-        assertDecimalEquals(bar.getOpenPrice(), 200);
-        assertDecimalEquals(bar.getClosePrice(), 198);
-        assertDecimalEquals(bar.getMinPrice(), 198);
-        assertDecimalEquals(bar.getMaxPrice(), 201);
-        assertDecimalEquals(bar.getVolume(), 9);
+        TATestsUtils.assertNumEquals(bar.getAmount(), 3 * 200 + 4 * 201 + 2 * 198);
+        TATestsUtils.assertNumEquals(bar.getOpenPrice(), 200);
+        TATestsUtils.assertNumEquals(bar.getClosePrice(), 198);
+        TATestsUtils.assertNumEquals(bar.getMinPrice(), 198);
+        TATestsUtils.assertNumEquals(bar.getMaxPrice(), 201);
+        TATestsUtils.assertNumEquals(bar.getVolume(), 9);
     }
 
     @Test

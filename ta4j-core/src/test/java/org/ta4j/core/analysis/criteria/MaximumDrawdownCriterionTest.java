@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -35,7 +35,7 @@ public class MaximumDrawdownCriterionTest {
         MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 5, 20, 3);
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
 
-        assertEquals(0d, mdd.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -46,7 +46,7 @@ public class MaximumDrawdownCriterionTest {
                 Order.buyAt(0,series), Order.sellAt(1,series),
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
-        assertEquals(0d, mdd.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -58,7 +58,7 @@ public class MaximumDrawdownCriterionTest {
                 Order.buyAt(3,series), Order.sellAt(4,series),
                 Order.buyAt(5,series), Order.sellAt(6,series));
 
-        assertEquals(.875d, mdd.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(.875d, mdd.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
 
     }
 
@@ -66,7 +66,7 @@ public class MaximumDrawdownCriterionTest {
     public void calculateWithNullSeriesSizeShouldReturn0() {
         MockTimeSeries series = new MockTimeSeries(new double[] {});
         MaximumDrawdownCriterion mdd = new MaximumDrawdownCriterion();
-        assertEquals(0d, mdd.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, mdd.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -77,7 +77,7 @@ public class MaximumDrawdownCriterionTest {
                 Order.buyAt(0,series), Order.sellAt(1,series),
                 Order.buyAt(3,series), Order.sellAt(4,series),
                 Order.sellAt(5,series), Order.buyAt(6,series));
-        assertEquals(.91, mdd.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(.91, mdd.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -89,7 +89,7 @@ public class MaximumDrawdownCriterionTest {
                 Order.buyAt(1,series), Order.sellAt(2,series),
                 Order.buyAt(2,series), Order.sellAt(3,series),
                 Order.buyAt(3,series), Order.sellAt(4,series));
-        assertEquals(.9d, mdd.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(.9d, mdd.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

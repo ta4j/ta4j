@@ -1,8 +1,10 @@
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+
+import static org.ta4j.core.Num.AbstractNum.NaN;
 
 /**
  * Indicator-Pearson-Correlation
@@ -10,12 +12,12 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
  * see
  * http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/
  */
-public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decimal> {
+public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
 	private static final long serialVersionUID = 6317147143504055664L;
 	
-	private final Indicator<Decimal> indicator1;
-	private final Indicator<Decimal> indicator2;
+	private final Indicator<Num> indicator1;
+	private final Indicator<Num> indicator2;
 	private final int timeFrame;
 
 	/**
@@ -25,7 +27,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decima
 	 * @param indicator2 the second indicator
 	 * @param timeFrame the time frame
 	 */
-	public PearsonCorrelationIndicator(Indicator<Decimal> indicator1, Indicator<Decimal> indicator2, int timeFrame) {
+	public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int timeFrame) {
 		super(indicator1);
 		this.indicator1 = indicator1;
 		this.indicator2 = indicator2;
@@ -34,20 +36,20 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decima
 	
 
 	@Override
-	protected Decimal calculate(int index) {
+	protected Num calculate(int index) {
 
-		Decimal n = Decimal.valueOf(timeFrame);
+		Num n = valueOf(timeFrame);
 
-		Decimal Sx = Decimal.ZERO;
-		Decimal Sy = Decimal.ZERO;
-		Decimal Sxx = Decimal.ZERO;
-		Decimal Syy = Decimal.ZERO;
-		Decimal Sxy = Decimal.ZERO;
+		Num Sx = valueOf(0);
+		Num Sy = valueOf(0);
+		Num Sxx = valueOf(0);
+		Num Syy = valueOf(0);
+		Num Sxy = valueOf(0);
 		
 		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - timeFrame + 1); i <= index; i++) {
 
-			Decimal x = indicator1.getValue(i);
-			Decimal y = indicator2.getValue(i);
+			Num x = indicator1.getValue(i);
+			Num y = indicator2.getValue(i);
 
 			Sx = Sx.plus(x);
 			Sy = Sy.plus(y);
@@ -57,14 +59,14 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decima
 		}
 
 		// (n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy)
-		Decimal toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
+		Num toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
 				.multipliedBy(n.multipliedBy(Syy).minus(Sy.multipliedBy(Sy)));
 		
-		if (toSqrt.isGreaterThan(Decimal.ZERO)) {
+		if (toSqrt.isGreaterThan(valueOf(0))) {
 			// pearson = (n * Sxy - Sx * Sy) / sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy))
-			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(Decimal.valueOf(Math.sqrt(toSqrt.toDouble())));
+			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(valueOf(Math.sqrt(toSqrt.doubleValue())));
 		}
 
-		return Decimal.NaN;
+		return NaN;
 	}
 }

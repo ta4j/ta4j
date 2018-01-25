@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,14 +24,13 @@ package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
 
 public class OnBalanceVolumeIndicatorTest {
 
@@ -47,12 +46,12 @@ public class OnBalanceVolumeIndicatorTest {
         bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0));
 
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockTimeSeries(bars));
-        assertDecimalEquals(obv.getValue(0), 0);
-        assertDecimalEquals(obv.getValue(1), -2);
-        assertDecimalEquals(obv.getValue(2), 1);
-        assertDecimalEquals(obv.getValue(3), 9);
-        assertDecimalEquals(obv.getValue(4), 9);
-        assertDecimalEquals(obv.getValue(5), -1);
+        TATestsUtils.assertNumEquals(obv.getValue(0), 0);
+        TATestsUtils.assertNumEquals(obv.getValue(1), -2);
+        TATestsUtils.assertNumEquals(obv.getValue(2), 1);
+        TATestsUtils.assertNumEquals(obv.getValue(3), 9);
+        TATestsUtils.assertNumEquals(obv.getValue(4), 9);
+        TATestsUtils.assertNumEquals(obv.getValue(5), -1);
     }
 
     @Test
@@ -65,6 +64,6 @@ public class OnBalanceVolumeIndicatorTest {
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);
         // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.
-        assertDecimalEquals(obv.getValue(9999), 0);
+        TATestsUtils.assertNumEquals(obv.getValue(9999), 0);
     }
 }

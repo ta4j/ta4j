@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -35,7 +35,7 @@ import org.ta4j.core.TradingRecord;
 public class IsFallingRule extends AbstractRule {
 
 	/** The actual indicator */
-	private Indicator<Decimal> ref;
+	private Indicator<Num> ref;
 	/** The timeFrame */
 	private int timeFrame;
 	/** The minimum required strenght of the falling */
@@ -47,7 +47,7 @@ public class IsFallingRule extends AbstractRule {
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
 	 */
-	public IsFallingRule(Indicator<Decimal> ref, int timeFrame) {
+	public IsFallingRule(Indicator<Num> ref, int timeFrame) {
 		this(ref, timeFrame, 1.0);
 	}
 	
@@ -58,7 +58,7 @@ public class IsFallingRule extends AbstractRule {
 	 * @param timeFrame the time frame
 	 * @param minStrenght the minimum required falling strength (between '0' and '1', e.g. '1' for strict falling)
 	 */
-	public IsFallingRule(Indicator<Decimal> ref, int timeFrame, double minStrenght) {
+	public IsFallingRule(Indicator<Num> ref, int timeFrame, double minStrenght) {
 		this.ref = ref;
 		this.timeFrame = timeFrame;
 		this.minStrenght = minStrenght;

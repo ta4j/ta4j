@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,14 +24,15 @@ package org.ta4j.core.indicators.bollinger;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class BollingerBandsLowerIndicatorTest {
 
@@ -56,26 +57,26 @@ public class BollingerBandsLowerIndicatorTest {
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
-        assertDecimalEquals(bblSMA.getK(), 2);
+        TATestsUtils.assertNumEquals(bblSMA.getK(), 2);
 
-        assertDecimalEquals(bblSMA.getValue(0), 1);
-        assertDecimalEquals(bblSMA.getValue(1), 0.5);
-        assertDecimalEquals(bblSMA.getValue(2), 0.367);
-        assertDecimalEquals(bblSMA.getValue(3), 1.367);
-        assertDecimalEquals(bblSMA.getValue(4), 2.3905);
-        assertDecimalEquals(bblSMA.getValue(5), 2.7239);
-        assertDecimalEquals(bblSMA.getValue(6), 2.367);
+        TATestsUtils.assertNumEquals(bblSMA.getValue(0), 1);
+        assertNumEquals(bblSMA.getValue(1), 0.5);
+        assertNumEquals(bblSMA.getValue(2), 0.367);
+        assertNumEquals(bblSMA.getValue(3), 1.367);
+        assertNumEquals(bblSMA.getValue(4), 2.3905);
+        assertNumEquals(bblSMA.getValue(5), 2.7239);
+        assertNumEquals(bblSMA.getValue(6), 2.367);
 
-        BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation, Decimal.valueOf("1.5"));
+        BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation, CURENCT_NUM_FUNCTION.apply(1.5));
 
-        assertDecimalEquals(bblSMAwithK.getK(), 1.5);
+        assertNumEquals(bblSMAwithK.getK(), 1.5);
 
-        assertDecimalEquals(bblSMAwithK.getValue(0), 1);
-        assertDecimalEquals(bblSMAwithK.getValue(1), 0.75);
-        assertDecimalEquals(bblSMAwithK.getValue(2), 0.7752);
-        assertDecimalEquals(bblSMAwithK.getValue(3), 1.7752);
-        assertDecimalEquals(bblSMAwithK.getValue(4), 2.6262);
-        assertDecimalEquals(bblSMAwithK.getValue(5), 2.9595);
-        assertDecimalEquals(bblSMAwithK.getValue(6), 2.7752);
+        TATestsUtils.assertNumEquals(bblSMAwithK.getValue(0), 1);
+        assertNumEquals(bblSMAwithK.getValue(1), 0.75);
+        assertNumEquals(bblSMAwithK.getValue(2), 0.7752);
+        assertNumEquals(bblSMAwithK.getValue(3), 1.7752);
+        assertNumEquals(bblSMAwithK.getValue(4), 2.6262);
+        assertNumEquals(bblSMAwithK.getValue(5), 2.9595);
+        assertNumEquals(bblSMAwithK.getValue(6), 2.7752);
     }
 }

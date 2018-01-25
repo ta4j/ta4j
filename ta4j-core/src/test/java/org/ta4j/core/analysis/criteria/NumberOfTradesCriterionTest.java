@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -35,7 +35,7 @@ public class NumberOfTradesCriterionTest {
         MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(0d, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -46,7 +46,7 @@ public class NumberOfTradesCriterionTest {
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(2d, buyAndHold.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(2d, buyAndHold.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -54,7 +54,7 @@ public class NumberOfTradesCriterionTest {
         Trade trade = new Trade();
         NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
 
-        assertEquals(1d, tradesCriterion.calculate(null, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, tradesCriterion.calculate(null, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

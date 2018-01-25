@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,68 +22,63 @@
  */
 package org.ta4j.core.indicators;
 
+import org.junit.Test;
+import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.mocks.MockBar;
+
+import java.time.ZonedDateTime;
+
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TATestsUtils;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
-
-public class ATRIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
+public class ATRIndicatorTest extends IndicatorTest<TimeSeries, Num> {
 
     private ExternalIndicatorTest xls;
 
     public ATRIndicatorTest() throws Exception {
-        super((data, params) -> new ATRIndicator((TimeSeries) data, (int) params[0]));
+        super((data, params) -> new ATRIndicator( data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7);
     }
 
     @Test
     public void testDummy() throws Exception {
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 12, 15, 8));
-        bars.add(new MockBar(0, 8, 11, 6));
-        bars.add(new MockBar(0, 15, 17, 14));
-        bars.add(new MockBar(0, 15, 17, 14));
-        bars.add(new MockBar(0, 0, 0, 2));
-        Indicator<Decimal> indicator = getIndicator(new MockTimeSeries(bars), 3);
+        TimeSeries series = new BaseTimeSeries();
+        Bar a = (new MockBar(0, 12, 15, 8));
+        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(5), 0, 12, 15, 8, 0, 0, 0));
+        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(4), 0, 8, 11, 6, 0, 0, 0));
+        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(3), 0, 15, 17, 14, 0, 0, 0));
+        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(2), 0, 15, 17, 14, 0, 0, 0));
+        series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(1), 0, 0, 0, 2, 0, 0, 0));
+        Indicator<Num> indicator = getIndicator(series, 3);
 
-        assertEquals(7d, indicator.getValue(0).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(7d, indicator.getValue(0).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
         assertEquals(6d / 3 + (1 - 1d / 3) * indicator.getValue(0).doubleValue(),
-                indicator.getValue(1).doubleValue(), TATestsUtils.TA_OFFSET);
+                indicator.getValue(1).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
         assertEquals(9d / 3 + (1 - 1d / 3) * indicator.getValue(1).doubleValue(),
-                indicator.getValue(2).doubleValue(), TATestsUtils.TA_OFFSET);
+                indicator.getValue(2).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
         assertEquals(3d / 3 + (1 - 1d / 3) * indicator.getValue(2).doubleValue(),
-                indicator.getValue(3).doubleValue(), TATestsUtils.TA_OFFSET);
+                indicator.getValue(3).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
         assertEquals(15d / 3 + (1 - 1d / 3) * indicator.getValue(3).doubleValue(),
-                indicator.getValue(4).doubleValue(), TATestsUtils.TA_OFFSET);
+                indicator.getValue(4).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void testXls() throws Exception {
         TimeSeries xlsSeries = xls.getSeries();
-        Indicator<Decimal> indicator;
+        Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(4.8, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(4.8, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(7.4225, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(7.4225, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(8.8082, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(8.8082, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
     }
 
 }

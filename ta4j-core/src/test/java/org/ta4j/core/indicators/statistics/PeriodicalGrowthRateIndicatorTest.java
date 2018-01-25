@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -31,7 +31,8 @@ import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 
 public class PeriodicalGrowthRateIndicatorTest {
@@ -64,15 +65,15 @@ public class PeriodicalGrowthRateIndicatorTest {
     public void testCalculation() { 
         PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice,5);
         
-        assertEquals(gri.getValue(0), Decimal.NaN);
-        assertEquals(gri.getValue(4), Decimal.NaN);
-        assertDecimalEquals(gri.getValue(5), -0.0268);
-        assertDecimalEquals(gri.getValue(6), 0.0541);
-        assertDecimalEquals(gri.getValue(10), -0.0495);
-        assertDecimalEquals(gri.getValue(21), 0.2009);
-        assertDecimalEquals(gri.getValue(24), 0.0220);
-        assertEquals(gri.getValue(25), Decimal.NaN);
-        assertEquals(gri.getValue(26), Decimal.NaN);
+        assertEquals(gri.getValue(0),NaN);
+        assertEquals(gri.getValue(4), NaN);
+        assertNumEquals(gri.getValue(5), -0.0268);
+        assertNumEquals(gri.getValue(6), 0.0541);
+        assertNumEquals(gri.getValue(10), -0.0495);
+        assertNumEquals(gri.getValue(21), 0.2009);
+        assertNumEquals(gri.getValue(24), 0.0220);
+        assertEquals(gri.getValue(25), NaN);
+        assertEquals(gri.getValue(26), NaN);
     }
     
     @Test
@@ -81,8 +82,8 @@ public class PeriodicalGrowthRateIndicatorTest {
         PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice,5);
 
         // Rules
-        Rule buyingRule = new CrossedUpIndicatorRule(gri, Decimal.ZERO); 
-        Rule sellingRule = new CrossedDownIndicatorRule(gri, Decimal.ZERO);     
+        Rule buyingRule = new CrossedUpIndicatorRule(gri, 0);
+        Rule sellingRule = new CrossedDownIndicatorRule(gri, 0);
         
         Strategy strategy = new BaseStrategy(buyingRule, sellingRule);
                 

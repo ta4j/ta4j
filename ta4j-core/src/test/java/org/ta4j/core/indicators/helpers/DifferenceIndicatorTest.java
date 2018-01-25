@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,9 +24,13 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
 public class DifferenceIndicatorTest {
 
@@ -34,27 +38,30 @@ public class DifferenceIndicatorTest {
     
     @Before
     public void setUp() {
-        ConstantIndicator<Decimal> constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(6));
-        FixedIndicator<Decimal> mockIndicator = new FixedIndicator<Decimal>(
-                Decimal.valueOf("-2.0"),
-                Decimal.valueOf("0.00"),
-                Decimal.valueOf("1.00"),
-                Decimal.valueOf("2.53"),
-                Decimal.valueOf("5.87"),
-                Decimal.valueOf("6.00"),
-                Decimal.valueOf("10.0")
+        Function<Number, Num> numFunction = BigDecimalNum::valueOf;
+
+        TimeSeries series = new BaseTimeSeries();
+        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
+                numFunction.apply(-2.0),
+                numFunction.apply(0.00),
+                numFunction.apply(1.00),
+                numFunction.apply(2.53),
+                numFunction.apply(5.87),
+                numFunction.apply(6.00),
+                numFunction.apply(10.0)
         );
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
         differenceIndicator = new DifferenceIndicator(constantIndicator, mockIndicator);
     }
 
     @Test
     public void getValue() {
-        assertDecimalEquals(differenceIndicator.getValue(0), "8");
-        assertDecimalEquals(differenceIndicator.getValue(1), "6");
-        assertDecimalEquals(differenceIndicator.getValue(2), "5");
-        assertDecimalEquals(differenceIndicator.getValue(3), "3.47");
-        assertDecimalEquals(differenceIndicator.getValue(4), "0.13");
-        assertDecimalEquals(differenceIndicator.getValue(5), "0");
-        assertDecimalEquals(differenceIndicator.getValue(6), "-4");
+        TATestsUtils.assertNumEquals("8", differenceIndicator.getValue(0));
+        TATestsUtils.assertNumEquals("6", differenceIndicator.getValue(1));
+        TATestsUtils.assertNumEquals("5", differenceIndicator.getValue(2));
+        TATestsUtils.assertNumEquals("3.47", differenceIndicator.getValue(3));
+        TATestsUtils.assertNumEquals("0.13", differenceIndicator.getValue(4));
+        TATestsUtils.assertNumEquals("0", differenceIndicator.getValue(5));
+        TATestsUtils.assertNumEquals("-4", differenceIndicator.getValue(6));
     }
 }

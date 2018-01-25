@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 
@@ -35,7 +35,7 @@ import org.ta4j.core.indicators.helpers.LossIndicator;
  * @see <a href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp">
  *     href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp"</a>
  */
-public class CMOIndicator extends CachedIndicator<Decimal> {
+public class CMOIndicator extends CachedIndicator<Num> {
 
     private final GainIndicator gainIndicator;
 
@@ -49,7 +49,7 @@ public class CMOIndicator extends CachedIndicator<Decimal> {
      * @param indicator a price indicator
      * @param timeFrame the time frame
      */
-    public CMOIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public CMOIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.gainIndicator = new GainIndicator(indicator);
         this.lossIndicator = new LossIndicator(indicator);
@@ -57,17 +57,17 @@ public class CMOIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal sumOfGains = Decimal.ZERO;
+    protected Num calculate(int index) {
+        Num sumOfGains = valueOf(0);
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
             sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
         }
-        Decimal sumOfLosses = Decimal.ZERO;
+        Num sumOfLosses = valueOf(0);
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }
         return sumOfGains.minus(sumOfLosses)
                 .dividedBy(sumOfGains.plus(sumOfLosses))
-                .multipliedBy(Decimal.HUNDRED);
+                .multipliedBy(valueOf(100));
     }
 }

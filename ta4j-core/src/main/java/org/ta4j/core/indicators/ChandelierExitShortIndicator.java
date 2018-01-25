@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
@@ -32,20 +32,20 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
  */
-public class ChandelierExitShortIndicator extends CachedIndicator<Decimal> {
+public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
     private final LowestValueIndicator low;
     
     private final ATRIndicator atr;
     
-    private final Decimal k;
+    private final double k;
 
     /**
      * Constructor.
      * @param series the time series
      */
     public ChandelierExitShortIndicator(TimeSeries series) {
-        this(series, 22, Decimal.THREE);
+        this(series, 22, 3d);
     }
     
     /**
@@ -54,7 +54,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Decimal> {
      * @param timeFrame the time frame (usually 22)
      * @param k the K multiplier for ATR (usually 3.0)
      */
-    public ChandelierExitShortIndicator(TimeSeries series, int timeFrame, Decimal k) {
+    public ChandelierExitShortIndicator(TimeSeries series, int timeFrame, double k) {
         super(series);
         low = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
         atr = new ATRIndicator(series, timeFrame);
@@ -62,7 +62,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        return low.getValue(index).plus(atr.getValue(index).multipliedBy(k));
+    protected Num calculate(int index) {
+        return low.getValue(index).plus(atr.getValue(index).multipliedBy(valueOf(k)));
     }
 }

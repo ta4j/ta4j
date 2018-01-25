@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -25,13 +25,14 @@ package org.ta4j.core.trading.rules;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
 
 public class StopGainRuleTest {
 
@@ -48,16 +49,16 @@ public class StopGainRuleTest {
     
     @Test
     public void isSatisfied() {
-        final Decimal tradedAmount = Decimal.ONE;
+        final Num tradedAmount = CURENCT_NUM_FUNCTION.apply(0);
         
         // 30% stop-gain
-        StopGainRule rule = new StopGainRule(closePrice, Decimal.valueOf("30"));
+        StopGainRule rule = new StopGainRule(closePrice, CURENCT_NUM_FUNCTION.apply(30));
         
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
         
         // Enter at 108
-        tradingRecord.enter(2, Decimal.valueOf("108"), tradedAmount);
+        tradingRecord.enter(2, CURENCT_NUM_FUNCTION.apply(108), tradedAmount);
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertFalse(rule.isSatisfied(3, tradingRecord));
         assertTrue(rule.isSatisfied(4, tradingRecord));
@@ -65,7 +66,7 @@ public class StopGainRuleTest {
         tradingRecord.exit(5);
         
         // Enter at 118
-        tradingRecord.enter(5, Decimal.valueOf("118"), tradedAmount);
+        tradingRecord.enter(5, CURENCT_NUM_FUNCTION.apply(118), tradedAmount);
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
         assertTrue(rule.isSatisfied(7, tradingRecord));

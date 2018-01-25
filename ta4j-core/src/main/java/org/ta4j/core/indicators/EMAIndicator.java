@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Exponential moving average indicator.
@@ -31,13 +31,15 @@ import org.ta4j.core.Indicator;
  */
 public class EMAIndicator extends AbstractEMAIndicator {
 
+    private static final long serialVersionUID = -3739171856534680816L;
+
     /**
      * Constructor.
      *
      * @param indicator an indicator
      * @param timeFrame the EMA time frame
      */
-    public EMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
-        super(indicator, timeFrame, Decimal.TWO.dividedBy(Decimal.valueOf(timeFrame + 1)));
+    public EMAIndicator(Indicator<Num> indicator, int timeFrame) {
+        super(indicator, timeFrame, (2.0/(timeFrame+1)));
     }
 }

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -32,12 +32,14 @@ import org.ta4j.core.indicators.CachedIndicator;
  * <p></p>
  * The ROCVIndicator calculation compares the current volume with the volume "n" periods ago.
  */
-public class ROCVIndicator extends CachedIndicator<Decimal> {
+public class ROCVIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 6366365574748347534L;
 
     private final TimeSeries series;
     private final int timeFrame;
+
+    private final Num HUNDRED;
 
     /**
      * Constructor.
@@ -49,16 +51,17 @@ public class ROCVIndicator extends CachedIndicator<Decimal> {
         super(series);
         this.series = series;
         this.timeFrame = timeFrame;
+        this.HUNDRED = valueOf(100);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         int nIndex = Math.max(index - timeFrame, 0);
-        Decimal nPeriodsAgoValue = series.getBar(nIndex).getVolume();
-        Decimal currentValue = series.getBar(index).getVolume();
+        Num nPeriodsAgoValue = series.getBar(nIndex).getVolume();
+        Num currentValue = series.getBar(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)
-                .multipliedBy(Decimal.HUNDRED);
+                .multipliedBy(HUNDRED);
     }
 
     @Override

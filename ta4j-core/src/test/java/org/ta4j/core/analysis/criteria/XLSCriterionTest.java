@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.ExternalCriterionTest;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.XlsTestsUtils;
@@ -70,12 +70,12 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * Gets the final criterion value from the XLS file given the parameters.
      * 
      * @param params criterion parameters
-     * @return Decimal final criterion value
+     * @return Num final criterion value
      * @throws Exception if getFinalCriterionValue throws IOException or
      *             DataFormatException
      */
-    public Decimal getFinalCriterionValue(Object... params) throws Exception {
-        return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, params);
+    public Num getFinalCriterionValue(Object... params) throws Exception {
+        return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().getNumFunction(), params);
     }
 
     /**
@@ -84,7 +84,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @return TradingRecord from the file
      */
     public TradingRecord getTradingRecord() throws Exception {
-        return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn);
+        return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().getNumFunction());
     }
 
 }

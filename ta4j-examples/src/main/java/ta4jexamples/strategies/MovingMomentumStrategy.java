@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -65,12 +65,12 @@ public class MovingMomentumStrategy {
         
         // Entry rule
         Rule entryRule = new OverIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedDownIndicatorRule(stochasticOscillK, Decimal.valueOf(20))) // Signal 1
+                .and(new CrossedDownIndicatorRule(stochasticOscillK, 20)) // Signal 1
                 .and(new OverIndicatorRule(macd, emaMacd)); // Signal 2
         
         // Exit rule
         Rule exitRule = new UnderIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedUpIndicatorRule(stochasticOscillK, Decimal.valueOf(80))) // Signal 1
+                .and(new CrossedUpIndicatorRule(stochasticOscillK,20)) // Signal 1
                 .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2
         
         return new BaseStrategy(entryRule, exitRule);
