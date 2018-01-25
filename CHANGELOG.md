@@ -1,7 +1,7 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 
-## unreleased (`develop` branch)
+## 0.10 (released January 25, 2017)
 
 - **BREAKING**: Tick has been renamed to **Bar**
 
