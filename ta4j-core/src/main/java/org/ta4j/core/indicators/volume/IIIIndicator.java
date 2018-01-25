@@ -32,8 +32,8 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
  * Intraday Intensity Index
- * @see <a https://www.investopedia.com/terms/i/intradayintensityindex.asp>
- *     https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
+ * see https://www.investopedia.com/terms/i/intradayintensityindex.asp
+ *     https://www.investopedia.com/terms/i/intradayintensityindex.asp
  */
 public class IIIIndicator extends CachedIndicator<Num> {
 

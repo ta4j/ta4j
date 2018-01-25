@@ -66,8 +66,6 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder(super.toString());
-        sb.append(" (").append(criterion).append(')');
-        return sb.toString();
+        return super.toString() + " (" + criterion + ')';
     }
 }

@@ -225,7 +225,7 @@ public class XlsTestsUtils {
             }
             // after the data section header is found, add all rows that don't
             // have "//" in the first cell
-            if (noHeader == false) {
+            if (!noHeader) {
                 if (evaluator.evaluate(row.getCell(0)).formatAsString().compareTo("\"//\"") != 0) {
                     rows.add(row);
                 }

@@ -66,6 +66,7 @@ public class CsvTradesLoader {
                 try {
                     csvReader.close();
                 } catch (IOException ioe) {
+                    ioe.printStackTrace();
                 }
             }
         }

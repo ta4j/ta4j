@@ -127,15 +127,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             int newResultsCount = Math.min(index-highestResultIndex, maxLength);
             if (newResultsCount == maxLength) {
                 results.clear();
-                results.addAll(Collections.<T> nCopies(maxLength, null));
+                results.addAll(Collections.nCopies(maxLength, null));
             } else if (newResultsCount > 0) {
-                results.addAll(Collections.<T> nCopies(newResultsCount, null));
+                results.addAll(Collections.nCopies(newResultsCount, null));
                 removeExceedingResults(maxLength);
             }
         } else {
             // First use of cache
             assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.<T> nCopies(Math.min(index+1, maxLength), null));
+            results.addAll(Collections.nCopies(Math.min(index+1, maxLength), null));
         }
     }
 

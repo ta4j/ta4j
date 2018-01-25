@@ -66,7 +66,7 @@ public class BaseStrategy implements Strategy {
      * Constructor.
      * @param entryRule the entry rule
      * @param exitRule the exit rule
-     * @param unstablePeriod unstablePeriod of
+     * @param unstablePeriod strategy will ignore possible signals at <code>index</code> < <code>unstablePeriod</code>
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
         this(null, entryRule, exitRule, unstablePeriod);
@@ -87,7 +87,7 @@ public class BaseStrategy implements Strategy {
      * @param name the name of the strategy
      * @param entryRule the entry rule
      * @param exitRule the exit rule
-     * @param unstablePeriod
+     * @param unstablePeriod strategy will ignore possible signals at <code>index</code> < <code>unstablePeriod</code>
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {

@@ -35,22 +35,22 @@ import org.ta4j.core.Num.Num;
 public class MACDIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -6899062131135971403L;
-    
+
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 
     /**
      * Constructor with shortTimeFrame "12" and longTimeFrame "26".
-     * 
+     *
      * @param indicator the indicator
      */
     public MACDIndicator(Indicator<Num> indicator) {
        this(indicator, 12, 26);
     }
-    
+
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
      * @param shortTimeFrame the short time frame (normally 12)
      * @param longTimeFrame the long time frame (normally 26)

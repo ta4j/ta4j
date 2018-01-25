@@ -39,7 +39,7 @@ public class MinusDIIndicatorTest extends IndicatorTest<TimeSeries, Num> {
     private ExternalIndicatorTest xls;
 
     public MinusDIIndicatorTest() {
-        super((data, params) -> new MinusDIIndicator((TimeSeries) data, (int) params[0]));
+        super((data, params) -> new MinusDIIndicator(data, (int) params[0]));
         xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13);
     }
 

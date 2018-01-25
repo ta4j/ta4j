@@ -116,7 +116,7 @@ public class WalkForward {
             subseriesNbBars++;
         }
 
-        return new BaseTimeSeries(series, beginIndex, beginIndex + subseriesNbBars - 1);
+        return series.getSubSeries(beginIndex, beginIndex + subseriesNbBars);
     }
 
     /**

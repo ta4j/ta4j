@@ -75,7 +75,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 		 * Transforms the input indicator 
 		 * by indicator.min(coefficient).
 		 */
-		min;
+		min
 	}
 
 	/**
@@ -98,7 +98,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 		 * Transforms the input indicator 
 		 * by indicator.log().
 		 */
-		log;
+		log
 	}
 
 	private Indicator<Num> indicator;

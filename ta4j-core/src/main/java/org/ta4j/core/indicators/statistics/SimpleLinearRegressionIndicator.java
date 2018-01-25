@@ -41,7 +41,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
 	 */
 	public enum SimpleLinearRegressionType {
-		y, slope, intercept;
+		y, slope, intercept
 	}
 
 	private Indicator<Num> indicator;
@@ -54,7 +54,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 	 * Constructor for the y-values of the formula (y = slope * x + intercept).
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param timeFrame
+	 * @param timeFrame the time frame
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int timeFrame) {
 		this(indicator, timeFrame, SimpleLinearRegressionType.y);
@@ -64,7 +64,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 	 * Constructor.
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param timeFrame
+	 * @param timeFrame the time frame
 	 * @param type the type of the outcome value (y, slope, intercept)
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int timeFrame,
@@ -78,12 +78,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
-        final int endIndex = index;
-        if (endIndex - startIndex + 1 < 2) {
+        if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
             return NaN;
         }
-        calculateRegressionLine(startIndex, endIndex);
+        calculateRegressionLine(startIndex, index);
         
         if (type == SimpleLinearRegressionType.slope) {
             return slope;

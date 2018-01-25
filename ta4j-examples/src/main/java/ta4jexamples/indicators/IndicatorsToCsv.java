@@ -117,6 +117,7 @@ public class IndicatorsToCsv {
                     writer.close();
                 }
             } catch (IOException ioe) {
+                ioe.printStackTrace();
             }
         }
 
