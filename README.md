@@ -8,15 +8,6 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
 
 ---
 
-**Important note:** _Ta4j was initially developed by Marc de Verdelhan [mdeverdelhan](https://github.com/mdeverdelhan). He decided to give up the project, since lack of time. See [#192](https://github.com/mdeverdelhan/ta4j/issues/192). Many, many thanks for this great work and he made it possible with his work and his time to provide us such a great solution ta4j.
-So there was a decision to fork the project and to pull it below the top level organisation ta4j. Also the corresponding domain was registered and will be contributed to the ta4j organisation, which hopefully will evolve from the contributors._
-
-* The new corresponding webpage http://ta4j.org will also be initialized in the near future.<br>
-
-* **The maintenance of ta4j will be continued in this repository**
-
----
-
 ### Features
 
  * [x] 100% Pure Java - works on any Java Platform version 8 or later
@@ -33,9 +24,9 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%2
 
 ```xml
 <dependency>
-    <groupId>org.ta4j</groupId>
-    <artifactId>ta4j-core</artifactId>
-    <version>0.10</version>
+  <groupId>org.ta4j</groupId>
+  <artifactId>ta4j-core</artifactId>
+  <version>0.11</version>
 </dependency>
 ```
 
@@ -46,12 +37,12 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current snapshot version is `0.11-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
+The current snapshot version is `0.12-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.11-SNAPSHOT</version>
+  <version>0.12-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -62,9 +53,8 @@ Of course you can ask anything [via Twitter](http://twitter.com/MarcdeVerdelhan)
 ### Contributing to ta4j
 
 Here are some ways for you to contribute to ta4j:
-
-  * [Create tickets for bugs and new features](http://github.com/mdeverdelhan/ta4j/issues) and comment on the ones that you are interested in.
+  * Take a look at the [Roadmap items](https://github.com/ta4j/ta4j/wiki/Roadmap)
   * [Fork this repository](http://help.github.com/forking/) and submit pull requests.
   * Take a look at [How to contribute](https://github.com/ta4j/ta4j/wiki/How-to-contribute)
 
-See also: the [contribution policy](.github/CONTRIBUTING.md).
+See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Cunduct](CODE_OF_CONDUCT.md)
