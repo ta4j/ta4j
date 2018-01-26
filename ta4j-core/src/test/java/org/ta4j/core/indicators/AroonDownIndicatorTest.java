@@ -30,7 +30,7 @@ import org.ta4j.core.Num.Num;
 import java.time.ZonedDateTime;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class AroonDownIndicatorTest {
@@ -102,12 +102,12 @@ public class AroonDownIndicatorTest {
     public void naNValuesInIntervall(){
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
         for (long i = 10; i >= 0; i--){ // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
-            Num minPrice = i % 2 == 0 ? series.valueOf(i): NaN;
+            Num minPrice = i % 2 == 0 ? series.numOf(i): NaN;
             Bar bar = new BaseBar(ZonedDateTime.now().plusDays(10-i),NaN, NaN, minPrice, NaN, NaN,NaN);
             series.addBar(bar);
 
         }
-        series.addBar(ZonedDateTime.now().plusDays(11), NaN, NaN, series.valueOf(10), NaN, NaN);
+        series.addBar(ZonedDateTime.now().plusDays(11), NaN, NaN, series.numOf(10), NaN, NaN);
 
         AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(series, 5);
 
@@ -115,9 +115,9 @@ public class AroonDownIndicatorTest {
             if (i % 2 != 0 && i<11){
                 assertEquals(NaN.toString(), aroonDownIndicator.getValue(i).toString());
             } else if (i < 11)
-                assertNumEquals(aroonDownIndicator.getValue(i), series.valueOf(100).toString());
+                assertNumEquals(aroonDownIndicator.getValue(i), series.numOf(100).toString());
             else
-                assertNumEquals(aroonDownIndicator.getValue(i),series.valueOf(80).toString());
+                assertNumEquals(aroonDownIndicator.getValue(i),series.numOf(80).toString());
         }
     }
 }

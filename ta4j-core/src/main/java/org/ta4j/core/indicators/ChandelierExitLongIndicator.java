@@ -58,7 +58,7 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
         super(series);
         high = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
         atr = new ATRIndicator(series, timeFrame);
-        this.k = valueOf(k);
+        this.k = numOf(k);
     }
 
     @Override

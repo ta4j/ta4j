@@ -24,7 +24,6 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.Num.AbstractNum;
 import org.ta4j.core.Num.BigDecimalNum;
 import org.ta4j.core.Num.DoubleNum;
 import org.ta4j.core.Num.Num;
@@ -108,7 +107,7 @@ public class BaseTimeSeries implements TimeSeries {
      */
     @Deprecated
     public BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex) {
-        this(defaultSeries.getName(), defaultSeries.getBarData(), seriesBeginIndex, seriesEndIndex, true, defaultSeries.getNumFunction());
+        this(defaultSeries.getName(), defaultSeries.getBarData(), seriesBeginIndex, seriesEndIndex, true, defaultSeries.function());
         if (defaultSeries.getBarData() == null || defaultSeries.getBarData().isEmpty()) {
             throw new IllegalArgumentException("Cannot create a constrained series from a time series with a null/empty list of bars");
         }
@@ -198,12 +197,12 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     @Override
-    public Num valueOf(Number number){
+    public Num numOf(Number number){
         return this.numFunction.apply(number);
     }
 
     @Override
-    public Function<Number, Num> getNumFunction() {
+    public Function<Number, Num> function() {
         return numFunction;
     }
 
@@ -342,34 +341,44 @@ public class BaseTimeSeries implements TimeSeries {
     @Override
     @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
     public void addBar(Duration timePeriod, ZonedDateTime endTime) {
-        this.addBar(new BaseBar(timePeriod,endTime, getNumFunction()));
+        this.addBar(new BaseBar(timePeriod,endTime, function()));
     }
 
     @Override
     @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
     public void addBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume) {
-        this.addBar(new BaseBar(endTime, valueOf(openPrice), valueOf(highPrice), valueOf(lowPrice), valueOf(closePrice),
-                valueOf(volume), valueOf(0)));
+        this.addBar(new BaseBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
+                numOf(volume), numOf(0)));
+    }
+
+    @Override
+    public void addBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice) {
+        this.addBar(endTime,openPrice,highPrice,lowPrice,closePrice,0);
     }
 
     @Override
     @SuppressWarnings( "deprecation" ) // will also work with private addBar function
     public void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume) {
-        this.addBar(new BaseBar(endTime, valueOf(new BigDecimal(openPrice)), valueOf(new BigDecimal(highPrice)),
-                valueOf(new BigDecimal(lowPrice)), valueOf(new BigDecimal(closePrice)), valueOf(new BigDecimal(volume)),
-                valueOf(0)));
+        this.addBar(new BaseBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
+                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
+                numOf(0)));
+    }
+
+    @Override
+    public void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice) {
+
     }
 
     @Override
     @SuppressWarnings( "deprecation" ) // will also work with private addBar function
     public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(new BaseBar(endTime, openPrice,highPrice,lowPrice,closePrice,volume, valueOf(0)));
+        this.addBar(new BaseBar(endTime, openPrice,highPrice,lowPrice,closePrice,volume, numOf(0)));
     }
 
     @Override
     @SuppressWarnings( "deprecation" ) // will also work with private addBar function
     public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, valueOf(0)));
+        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
     }
 
     @Override
@@ -380,12 +389,12 @@ public class BaseTimeSeries implements TimeSeries {
 
     @Override
     public void addTrade(double price, double amount) {
-        addTrade(valueOf(price), valueOf(amount));
+        addTrade(numOf(price), numOf(amount));
     }
 
     @Override
     public void addTrade(String price, String amount) {
-        addTrade(valueOf(new BigDecimal(price)), valueOf(new BigDecimal(amount)));
+        addTrade(numOf(new BigDecimal(price)), numOf(new BigDecimal(amount)));
     }
 
     @Override
@@ -485,8 +494,8 @@ public class BaseTimeSeries implements TimeSeries {
             return this;
         }
 
-        public SeriesBuilder withNumTypeOf(AbstractNum type) {
-            numFunction = type.getNumFunction();
+        public SeriesBuilder withNumTypeOf(Num type) {
+            numFunction = type.function();
             return this;
         }
 
@@ -495,7 +504,7 @@ public class BaseTimeSeries implements TimeSeries {
             return this;
         }
 
-        public SeriesBuilder withNumTypeOf(Class<? extends AbstractNum> abstractNumClass) {
+        public SeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
             if(abstractNumClass==BigDecimalNum.class){
                 numFunction = BigDecimalNum::valueOf;
                 return this;

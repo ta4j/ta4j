@@ -55,7 +55,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
         super(series);
         bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
         averageBodyHeightInd = new SMAIndicator(bodyHeightInd, timeFrame);
-        factor = valueOf(bodyFactor);
+        factor = numOf(bodyFactor);
     }
 
     @Override

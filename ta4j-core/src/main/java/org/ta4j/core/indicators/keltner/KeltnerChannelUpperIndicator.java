@@ -41,7 +41,7 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, double ratio, int timeFrameATR) {
         super(keltnerMiddleIndicator);
-        this.ratio = valueOf(ratio);
+        this.ratio = numOf(ratio);
         this.keltnerMiddleIndicator = keltnerMiddleIndicator;
         averageTrueRangeIndicator = new ATRIndicator(keltnerMiddleIndicator.getTimeSeries(), timeFrameATR);
     }

@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.Num.Num;
 import org.ta4j.core.Order.OrderType;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * A manager for {@link TimeSeries} objects.

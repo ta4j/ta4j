@@ -171,8 +171,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.timeFrame = timeFrame;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = valueOf(minStrenght).abs();
-		this.minSlope = valueOf(minSlope);
+		this.minStrenght = numOf(minStrenght).abs();
+		this.minSlope = numOf(minSlope);
 	}
 	
 	/**
@@ -191,8 +191,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.timeFrame = timeFrame;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = valueOf(0.8).abs();
-		this.minSlope = valueOf(0.3);
+		this.minStrenght = numOf(0.8).abs();
+		this.minSlope = numOf(0.3);
 	}
 	
 	/**
@@ -222,8 +222,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 			return false;
 		}
 
-		if (minStrenght.isGreaterThan(valueOf(1))) {
-			minStrenght = valueOf(1);
+		if (minStrenght.isGreaterThan(numOf(1))) {
+			minStrenght = numOf(1);
 		}
 
 		if (type != null) {
@@ -327,7 +327,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 		
     		Num slope = calculateSlopeRel(index);
-    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(valueOf(-1)));
+    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
 		
 		return isConvergent && isNegative;
     }
@@ -339,7 +339,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculatePositiveDivergence(int index) {
 		
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(valueOf(-1)));
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(numOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
@@ -358,12 +358,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculateNegativeDivergence(int index) {
 		
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(valueOf(-1)));
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(numOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
 			Num slope = calculateSlopeRel(index);
-			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(valueOf(-1)));
+			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
 		}
 
 		return false;
@@ -377,7 +377,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
 		int firstIndex = Math.max(0, index - timeFrame + 1);
 		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
-				.dividedBy(valueOf(timeFrame).minus(valueOf(firstIndex)));
+				.dividedBy(numOf(timeFrame).minus(numOf(firstIndex)));
 	}
 	
 	/**

@@ -41,7 +41,7 @@ import static org.junit.Assert.assertTrue;
     public void setUp() {
         TimeSeries series = new BaseTimeSeries("I am empty");
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 50d, 70d, 80d, 90d, 99d, 60d, 30d, 20d, 10d, 0d);
-        rule = new InPipeRule(indicator, series.valueOf(80), series.valueOf(20));
+        rule = new InPipeRule(indicator, series.numOf(80), series.numOf(20));
     }
     
     @Test

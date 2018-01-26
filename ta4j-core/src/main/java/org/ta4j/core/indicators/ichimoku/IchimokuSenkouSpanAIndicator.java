@@ -72,6 +72,6 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return conversionLine.getValue(index).plus(baseLine.getValue(index)).dividedBy(valueOf(2));
+        return conversionLine.getValue(index).plus(baseLine.getValue(index)).dividedBy(numOf(2));
     }
 }

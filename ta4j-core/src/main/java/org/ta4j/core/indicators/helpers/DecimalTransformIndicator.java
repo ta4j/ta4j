@@ -116,7 +116,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 	public DecimalTransformIndicator(Indicator<Num> indicator, double coefficient, DecimalTransformType type) {
 		super(indicator);
 		this.indicator = indicator;
-		this.coefficient = valueOf(coefficient);
+		this.coefficient = numOf(coefficient);
 		this.type = type;
 	}
 
@@ -159,11 +159,11 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 		else if (simpleType != null) {
 			switch (simpleType) {
 			case sqrt:
-				return valueOf(Math.sqrt(val.doubleValue()));
+				return numOf(Math.sqrt(val.doubleValue()));
 			case abs:
 				return val.abs();
 			case log:
-				return valueOf(Math.log(val.doubleValue()));
+				return numOf(Math.log(val.doubleValue()));
 			default:
 				break;
 			}

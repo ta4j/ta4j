@@ -45,7 +45,7 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
-        k = valueOf(2).dividedBy(valueOf(timeFrame + 1));
+        k = numOf(2).dividedBy(numOf(timeFrame + 1));
         lag = (timeFrame - 1) / 2;
     }
 
@@ -60,8 +60,8 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
             return indicator.getValue(0);
         }
         Num zlemaPrev = getValue(index - 1);
-        return k.multipliedBy(valueOf(2).multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index-lag)))
-                .plus(valueOf(1).minus(k).multipliedBy(zlemaPrev));
+        return k.multipliedBy(numOf(2).multipliedBy(indicator.getValue(index)).minus(indicator.getValue(index-lag)))
+                .plus(numOf(1).minus(k).multipliedBy(zlemaPrev));
     }
     
     @Override

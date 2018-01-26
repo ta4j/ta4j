@@ -60,8 +60,8 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     }
 
     @Override
-    public Num valueOf(Number number){
-        return series.valueOf(number);
+    public Num numOf(Number number){
+        return series.numOf(number);
     }
 
 

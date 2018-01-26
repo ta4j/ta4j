@@ -22,11 +22,15 @@
  */
 package org.ta4j.core.Num;
 
+import java.util.function.Function;
+
+import static org.ta4j.core.Num.NaN.NaN;
+
 /**
  * Representation of Double. High performance, lower precision.
  * @apiNote the delegate should never become a NaN value. No self NaN checks provided
  */
-public class DoubleNum extends AbstractNum {
+public class DoubleNum implements Num {
 
     private static final long serialVersionUID = -2611177221813615070L;
 
@@ -34,8 +38,12 @@ public class DoubleNum extends AbstractNum {
 
     private final static double EPS = 0.00001; // precision
 
+    @Override
+    public Function<Number, Num> function() {
+        return DoubleNum::valueOf;
+    }
+
     public DoubleNum(double val){
-        super(DoubleNum::valueOf);
         delegate = val;
     }
 
@@ -65,7 +73,7 @@ public class DoubleNum extends AbstractNum {
     @Override
     public Num minus(Num subtrahend) {
         if (subtrahend == NaN){
-            return AbstractNum.NaN;
+            return NaN;
         }
         if (!(subtrahend instanceof DoubleNum)){
             throw new IllegalArgumentException(String.format(
@@ -79,7 +87,7 @@ public class DoubleNum extends AbstractNum {
     @Override
     public Num multipliedBy(Num multiplicand) {
         if (multiplicand == NaN){
-            return AbstractNum.NaN;
+            return NaN;
         }
         if (!(multiplicand instanceof DoubleNum)){
             throw new IllegalArgumentException(String.format(
@@ -207,7 +215,7 @@ public class DoubleNum extends AbstractNum {
      * @return true is this is less than or equal to the specified value, false otherwise
      */
     public boolean isLessThanOrEqual(Number other) {
-        return (other != NaN) && compareTo(getNumFunction().apply(other)) < 1;
+        return (other != NaN) && compareTo(function().apply(other)) < 1;
     }
 
     @Override
@@ -250,6 +258,7 @@ public class DoubleNum extends AbstractNum {
     @Override
     public String toString() {
         return Double.toString(delegate);
+
     }
 
     @Override
@@ -304,26 +313,5 @@ public class DoubleNum extends AbstractNum {
 
     public static Num valueOf(Number i) {
         return new DoubleNum(Double.parseDouble(i.toString()));
-    }
-
-
-    @Override
-    public int intValue() {
-        return (int)delegate;
-    }
-
-    @Override
-    public long longValue() {
-        return (long) delegate;
-    }
-
-    @Override
-    public float floatValue() {
-        return (float) delegate;
-    }
-
-    @Override
-    public double doubleValue() {
-        return delegate;
     }
 }

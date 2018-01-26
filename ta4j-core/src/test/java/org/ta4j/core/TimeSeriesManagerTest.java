@@ -36,7 +36,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
 
 public class TimeSeriesManagerTest {

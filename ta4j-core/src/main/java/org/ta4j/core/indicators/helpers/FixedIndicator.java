@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +33,7 @@ import java.util.List;
  * A fixed indicator.
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
-public class FixedIndicator<T> extends CachedIndicator<T> {
+public class FixedIndicator<T> extends AbstractIndicator<T> {
 
     private final List<T> values = new ArrayList<T>();
 
@@ -55,8 +55,4 @@ public class FixedIndicator<T> extends CachedIndicator<T> {
         return values.get(index);
     }
 
-    @Override
-    protected T calculate(int index) {
-        return values.get(index);
-    }
 }

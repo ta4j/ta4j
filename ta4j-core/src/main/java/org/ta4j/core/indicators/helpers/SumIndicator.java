@@ -49,7 +49,7 @@ public class SumIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = valueOf(0);
+        Num sum = numOf(0);
         for (int i = 0; i < operands.length; i++) {
             sum = sum.plus(operands[i].getValue(index));
         }

@@ -137,7 +137,7 @@ public class XlsTestsUtils {
                     (cellValues[2].formatAsString()),
                     (cellValues[3].formatAsString()),
                     (cellValues[4].formatAsString()),
-                    (cellValues[5].formatAsString()), series.getNumFunction());
+                    (cellValues[5].formatAsString()), series.function());
             series.addBar(bar);
         }
         return series;

@@ -55,7 +55,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
         this.timeFrame = timeFrame;
         this.maxPriceIndicator = maxPriceIndicator;
         this.minPriceIndicator = minPriceIndicator;
-        this.multiplier = valueOf(-100);
+        this.multiplier = numOf(-100);
     }
 
     @Override

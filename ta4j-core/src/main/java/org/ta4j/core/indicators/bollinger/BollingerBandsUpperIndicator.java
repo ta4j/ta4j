@@ -39,7 +39,7 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
     private final Num k;
 
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator) {
-        this(bbm, indicator, bbm.getTimeSeries().valueOf(2));
+        this(bbm, indicator, bbm.getTimeSeries().numOf(2));
     }
 
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator, Num k) {

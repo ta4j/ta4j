@@ -91,7 +91,7 @@ public class Order implements Serializable {
     protected Order(int index, TimeSeries series, OrderType type) {
         this.type = type;
         this.index = index;
-        this.amount = series.valueOf(1);
+        this.amount = series.numOf(1);
         this.price = series.getBar(index).getClosePrice();
     }
 

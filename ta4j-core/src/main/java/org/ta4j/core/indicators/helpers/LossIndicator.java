@@ -42,12 +42,12 @@ public class LossIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return valueOf(0);
+            return numOf(0);
         }
         if (indicator.getValue(index).isLessThan(indicator.getValue(index - 1))) {
             return indicator.getValue(index - 1).minus(indicator.getValue(index));
         } else {
-            return valueOf(0);
+            return numOf(0);
         }
     }
 }

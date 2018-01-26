@@ -36,24 +36,24 @@ public class SumIndicatorTest {
     @Before
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, series.valueOf(6));
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, series.numOf(6));
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
-                series.valueOf(-2.0),
-                series.valueOf(0.00),
-                series.valueOf(1.00),
-                series.valueOf(2.53),
-                series.valueOf(5.87),
-                series.valueOf(6.00),
-                series.valueOf(10.0)
+                series.numOf(-2.0),
+                series.numOf(0.00),
+                series.numOf(1.00),
+                series.numOf(2.53),
+                series.numOf(5.87),
+                series.numOf(6.00),
+                series.numOf(10.0)
         );
         FixedIndicator<Num> mockIndicator2 = new FixedIndicator<Num>(series,
-                series.valueOf(0),
-                series.valueOf(1),
-                series.valueOf(2),
-                series.valueOf(3),
-                series.valueOf(10),
-                series.valueOf(-42),
-                series.valueOf(-1337)
+                series.numOf(0),
+                series.numOf(1),
+                series.numOf(2),
+                series.numOf(3),
+                series.numOf(10),
+                series.numOf(-42),
+                series.numOf(-1337)
         );
         sumIndicator = new SumIndicator(constantIndicator, mockIndicator, mockIndicator2);
     }

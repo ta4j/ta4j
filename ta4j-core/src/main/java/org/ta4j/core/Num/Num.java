@@ -28,8 +28,8 @@ import java.util.function.Function;
 /**
  * Ta4js definition of operations that must be fulfilled by an object that
  * should be used as base for calculations
- * @see AbstractNum
- * @see AbstractNum#getNumFunction()
+ * @see Num
+ * @see Num#function()
  * @see DoubleNum
  * @see BigDecimalNum
 
@@ -41,6 +41,10 @@ public interface Num extends Comparable<Num>, Serializable {
      */
     Number getDelegate();
 
+    /**
+     * Returns the name/description of this Num implementation
+     * @return the name/description
+     */
     String getName();
 
     /**
@@ -175,18 +179,52 @@ public interface Num extends Comparable<Num>, Serializable {
      */
     Num max(Num other);
 
-    Function<Number, Num> getNumFunction();
+    /**
+     * Retruns the {@link Function} to convert a number instance to
+     * the corresponding Num instance
+     * @return
+     */
+    Function<Number, Num> function();
 
-    boolean isNaN();
+    /**
+     * Transforms a {@link Number} into a new Num instance of this
+     * <code>Num</code> implementation
+     * @param value the Number to transform
+     * @return the corresponding Num implementation of the <code>value</code>
+     */
+    default Num numOf(Number value){
+        return function().apply(value);
+    }
+
+    /**
+     * Only for NaN this should be true
+     * @return false if this implementation is not NaN
+     */
+    default boolean isNaN(){
+        return false;
+    }
+
+
 
     /**
      * Converts this {@code num} to a {@code double}.
      * @return this {@code num} converted to a {@code double}
      */
-    double doubleValue();
-    int intValue();
-    long longValue();
-    float floatValue();
+    default double doubleValue(){
+        return getDelegate().doubleValue();
+    }
+
+    default int intValue(){
+        return getDelegate().intValue();
+    }
+
+    default long longValue(){
+        return getDelegate().longValue();
+    }
+
+    default float floatValue(){
+        return getDelegate().floatValue();
+    }
 
 
     @Override

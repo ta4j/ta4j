@@ -49,7 +49,7 @@ public class VolumeIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int startIndex = Math.max(0, index - timeFrame + 1);
-        Num sumOfVolume = valueOf(0);
+        Num sumOfVolume = numOf(0);
         for (int i = startIndex; i <= index; i++) {
             sumOfVolume = sumOfVolume.plus(series.getBar(i).getVolume());
         }

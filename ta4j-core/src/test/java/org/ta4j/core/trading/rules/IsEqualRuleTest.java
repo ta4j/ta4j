@@ -41,7 +41,7 @@ public class IsEqualRuleTest {
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 10, 0, -20);
-        rule = new IsEqualRule(indicator, series.valueOf(20));
+        rule = new IsEqualRule(indicator, series.numOf(20));
     }
     
     @Test
