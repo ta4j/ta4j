@@ -20,7 +20,7 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
 
 ### Maven configuration
 
-Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%22ta4j%22). You just have to add the following dependency in your `pom.xml` file.
+Ta4j is available on [Maven Central](http://search.maven.org/#search). You just have to add the following dependency in your `pom.xml` file.
 
 ```xml
 <dependency>
