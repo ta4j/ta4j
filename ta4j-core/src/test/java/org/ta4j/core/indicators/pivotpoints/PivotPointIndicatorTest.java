@@ -33,7 +33,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TATestsUtils.assertNumEquals;
 import static org.ta4j.core.indicators.pivotpoints.PivotLevel.*;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.*;
@@ -1368,14 +1368,14 @@ public class PivotPointIndicatorTest {
         assertEquals(fibS3.getValue(6), NaN);
 
         assertEquals(fibR3.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex())
-                .plus(series_1_hours.valueOf(1)
-                        .multipliedBy(series_1_hours.valueOf(171.66)
-                                .minus(series_1_hours.valueOf(161.56)))) );
-        assertEquals(fibR2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(series_1_hours.valueOf(0.618).multipliedBy(series_1_hours.valueOf(171.66).minus(series_1_hours.valueOf(161.56)))) );
-        assertEquals(fibR1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(series_1_hours.valueOf(0.382).multipliedBy(series_1_hours.valueOf(171.66).minus(series_1_hours.valueOf(161.56)))) );
-        assertEquals(fibS1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(series_1_hours.valueOf(0.382).multipliedBy(series_1_hours.valueOf(171.66).minus(series_1_hours.valueOf(161.56)))) );
-        assertEquals(fibS2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(series_1_hours.valueOf(0.618).multipliedBy(series_1_hours.valueOf(171.66).minus(series_1_hours.valueOf(161.56)))) );
-        assertEquals(fibS3.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(series_1_hours.valueOf(1).multipliedBy(series_1_hours.valueOf(171.66).minus(series_1_hours.valueOf(161.56)))) );
+                .plus(series_1_hours.numOf(1)
+                        .multipliedBy(series_1_hours.numOf(171.66)
+                                .minus(series_1_hours.numOf(161.56)))) );
+        assertEquals(fibR2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(series_1_hours.numOf(0.618).multipliedBy(series_1_hours.numOf(171.66).minus(series_1_hours.numOf(161.56)))) );
+        assertEquals(fibR1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).plus(series_1_hours.numOf(0.382).multipliedBy(series_1_hours.numOf(171.66).minus(series_1_hours.numOf(161.56)))) );
+        assertEquals(fibS1.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(series_1_hours.numOf(0.382).multipliedBy(series_1_hours.numOf(171.66).minus(series_1_hours.numOf(161.56)))) );
+        assertEquals(fibS2.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(series_1_hours.numOf(0.618).multipliedBy(series_1_hours.numOf(171.66).minus(series_1_hours.numOf(161.56)))) );
+        assertEquals(fibS3.getValue(series_1_hours.getEndIndex()), pp.getValue(series_1_hours.getEndIndex()).minus(series_1_hours.numOf(1).multipliedBy(series_1_hours.numOf(171.66).minus(series_1_hours.numOf(161.56)))) );
 
         DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_1_hours, WEEK);
         DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);

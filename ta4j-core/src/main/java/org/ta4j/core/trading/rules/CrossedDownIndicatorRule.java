@@ -44,7 +44,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public CrossedDownIndicatorRule(Indicator<Num> indicator, double threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(),indicator.valueOf(threshold)));
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(),indicator.numOf(threshold)));
     }
 
     /**

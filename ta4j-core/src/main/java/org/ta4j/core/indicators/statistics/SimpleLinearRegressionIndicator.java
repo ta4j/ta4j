@@ -26,7 +26,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Simple linear regression indicator.
@@ -92,7 +92,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
             return intercept;
         }
       
-        return slope.multipliedBy(valueOf(index)).plus(intercept);
+        return slope.multipliedBy(numOf(index)).plus(intercept);
     }
     
     /**
@@ -102,21 +102,21 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar
-        Num sumX = valueOf(0);
-        Num sumY = valueOf(0);
+        Num sumX = numOf(0);
+        Num sumY = numOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
-            sumX = sumX.plus(valueOf(i));
+            sumX = sumX.plus(numOf(i));
             sumY = sumY.plus(indicator.getValue(i));
         }
-        Num nbObservations = valueOf(endIndex - startIndex + 1);
+        Num nbObservations = numOf(endIndex - startIndex + 1);
         Num xBar = sumX.dividedBy(nbObservations);
         Num yBar = sumY.dividedBy(nbObservations);
         
         // Second pass: compute slope and intercept
-        Num xxBar = valueOf(0);
-        Num xyBar = valueOf(0);
+        Num xxBar = numOf(0);
+        Num xyBar = numOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
-            Num dX = valueOf(i).minus(xBar);
+            Num dX = numOf(i).minus(xBar);
             Num dY = indicator.getValue(i).minus(yBar);
             xxBar = xxBar.plus(dX.multipliedBy(dX));
             xyBar = xyBar.plus(dX.multipliedBy(dY));

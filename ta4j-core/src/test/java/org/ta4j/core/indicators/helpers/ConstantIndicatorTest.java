@@ -36,7 +36,7 @@ public class ConstantIndicatorTest {
     @Before
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
-        constantIndicator = new ConstantIndicator<Num>(series, series.valueOf(30.33));
+        constantIndicator = new ConstantIndicator<Num>(series, series.numOf(30.33));
     }
 
     @Test

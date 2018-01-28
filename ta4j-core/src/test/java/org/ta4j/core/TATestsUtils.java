@@ -22,7 +22,6 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Num.AbstractNum;
 import org.ta4j.core.Num.BigDecimalNum;
 import org.ta4j.core.Num.Num;
 
@@ -50,7 +49,7 @@ public class TATestsUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
      */
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(expected, actual.getNumFunction().apply(new BigDecimal(expected)).toString());
+        assertEquals(expected, actual.numOf(new BigDecimal(expected)).toString());
     }
 
     public static void assertNumEquals(Num expected, Num actual){
@@ -64,7 +63,7 @@ public class TATestsUtils {
      * @param expected the given {@code Integer} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
      */
-    public static void assertNumEquals(int expected, AbstractNum actual) {
+    public static void assertNumEquals(int expected, Num actual) {
         assertEquals(expected, actual.intValue());
     }
 

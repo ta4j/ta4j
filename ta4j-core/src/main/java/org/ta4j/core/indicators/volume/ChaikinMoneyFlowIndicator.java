@@ -58,7 +58,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int startIndex = Math.max(0, index - timeFrame + 1);
-        Num sumOfMoneyFlowVolume = valueOf(0);
+        Num sumOfMoneyFlowVolume = numOf(0);
         for (int i = startIndex; i <= index; i++) {
             sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
         }

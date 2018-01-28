@@ -115,7 +115,7 @@ public class XlsTestsUtils {
      *             the data contains empty cells
      */
     private static TimeSeries getSeries(Sheet sheet) throws DataFormatException {
-        TimeSeries series = new BaseTimeSeries();
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         // parse the rows from the data section
@@ -131,14 +131,13 @@ public class XlsTestsUtils {
             // build a bar from the row and add it to the series
             Date weekEndDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
             ZonedDateTime weekEndDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(weekEndDate.getTime()), ZoneId.systemDefault());
-            Bar bar = new BaseBar(weekEndDateTime,
+            series.addBar(weekEndDateTime,
                     // open, high, low, close, volume
                     (cellValues[1].formatAsString()),
                     (cellValues[2].formatAsString()),
                     (cellValues[3].formatAsString()),
                     (cellValues[4].formatAsString()),
-                    (cellValues[5].formatAsString()), series.getNumFunction());
-            series.addBar(bar);
+                    (cellValues[5].formatAsString()));
         }
         return series;
     }

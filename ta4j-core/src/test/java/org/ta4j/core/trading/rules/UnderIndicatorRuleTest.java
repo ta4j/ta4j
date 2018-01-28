@@ -41,7 +41,7 @@ public class UnderIndicatorRuleTest {
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
-        rule = new UnderIndicatorRule(indicator, series.valueOf(5));
+        rule = new UnderIndicatorRule(indicator, series.numOf(5));
     }
     
     @Test

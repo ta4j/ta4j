@@ -56,7 +56,7 @@ public class ThreeWhiteSoldiersIndicatorTest {
 
     @Test
     public void getValue() {
-        ThreeWhiteSoldiersIndicator tws = new ThreeWhiteSoldiersIndicator(series, 3, series.valueOf(0.1));
+        ThreeWhiteSoldiersIndicator tws = new ThreeWhiteSoldiersIndicator(series, 3, series.numOf(0.1));
         assertFalse(tws.getValue(0));
         assertFalse(tws.getValue(1));
         assertFalse(tws.getValue(2));

@@ -24,13 +24,15 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Num.Num;
+import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TimeSeries;
 
 import java.time.ZonedDateTime;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 public class AroonDownIndicatorTest {
@@ -39,7 +41,10 @@ public class AroonDownIndicatorTest {
 
     @Before
     public void init() {
-        data = new BaseTimeSeries();
+        data = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withName("Aroon data")
+                .build();
         data.addBar(ZonedDateTime.now().plusDays(1),168.28, 169.87, 167.15, 169.64, 0);
         data.addBar(ZonedDateTime.now().plusDays(2),168.84, 169.36, 168.2, 168.71, 0);
         data.addBar(ZonedDateTime.now().plusDays(3),168.88, 169.29, 166.41, 167.74, 0);
@@ -86,7 +91,10 @@ public class AroonDownIndicatorTest {
 
     @Test
     public void onlyNaNValues(){
-        BaseTimeSeries series = new BaseTimeSeries("NaN test");
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withName("NaN test")
+                .build();
         for (long i = 0; i<= 1000; i++){
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
@@ -100,14 +108,15 @@ public class AroonDownIndicatorTest {
 
     @Test
     public void naNValuesInIntervall(){
-        BaseTimeSeries series = new BaseTimeSeries("NaN test");
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withName("NaN test")
+                .build();
         for (long i = 10; i >= 0; i--){ // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
-            Num minPrice = i % 2 == 0 ? series.valueOf(i): NaN;
-            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(10-i),NaN, NaN, minPrice, NaN, NaN,NaN);
-            series.addBar(bar);
-
+            Num minPrice = i % 2 == 0 ? series.numOf(i): NaN;
+            series.addBar(ZonedDateTime.now().plusDays(10-i),NaN, NaN, minPrice, NaN, NaN);
         }
-        series.addBar(ZonedDateTime.now().plusDays(11), NaN, NaN, series.valueOf(10), NaN, NaN);
+        series.addBar(ZonedDateTime.now().plusDays(11), NaN, NaN, series.numOf(10), NaN, NaN);
 
         AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(series, 5);
 
@@ -115,9 +124,9 @@ public class AroonDownIndicatorTest {
             if (i % 2 != 0 && i<11){
                 assertEquals(NaN.toString(), aroonDownIndicator.getValue(i).toString());
             } else if (i < 11)
-                assertNumEquals(aroonDownIndicator.getValue(i), series.valueOf(100).toString());
+                assertNumEquals(aroonDownIndicator.getValue(i), series.numOf(100).toString());
             else
-                assertNumEquals(aroonDownIndicator.getValue(i),series.valueOf(80).toString());
+                assertNumEquals(aroonDownIndicator.getValue(i),series.numOf(80).toString());
         }
     }
 }

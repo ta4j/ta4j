@@ -51,7 +51,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
         super(series);
         this.series = series;
         this.timeFrame = timeFrame;
-        this.HUNDRED = valueOf(100);
+        this.HUNDRED = numOf(100);
     }
 
     @Override

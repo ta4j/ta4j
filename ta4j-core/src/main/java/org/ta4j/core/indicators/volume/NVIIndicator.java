@@ -49,7 +49,7 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return valueOf(1000);
+            return numOf(1000);
         }
 
         Bar currentBar = series.getBar(index);

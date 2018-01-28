@@ -47,21 +47,21 @@ public class WMAIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return indicator.getValue(0);
         }
-        Num value = valueOf(0);
+        Num value = numOf(0);
         if(index - timeFrame < 0) {
             
             for(int i = index + 1; i > 0; i--) {
-                value = value.plus(valueOf(i).multipliedBy(indicator.getValue(i-1)));
+                value = value.plus(numOf(i).multipliedBy(indicator.getValue(i-1)));
             }
-            return value.dividedBy(valueOf(((index + 1) * (index + 2)) / 2));
+            return value.dividedBy(numOf(((index + 1) * (index + 2)) / 2));
         }
         
         int actualIndex = index;
         for(int i = timeFrame; i > 0; i--) {
-            value = value.plus(valueOf(i).multipliedBy(indicator.getValue(actualIndex)));
+            value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
-        return value.dividedBy(valueOf((timeFrame * (timeFrame + 1)) / 2));
+        return value.dividedBy(numOf((timeFrame * (timeFrame + 1)) / 2));
     }
 
     @Override

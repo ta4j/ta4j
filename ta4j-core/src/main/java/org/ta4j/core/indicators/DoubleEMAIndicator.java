@@ -53,7 +53,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return ema.getValue(index).multipliedBy(valueOf(2))
+        return ema.getValue(index).multipliedBy(numOf(2))
                 .minus(emaEma.getValue(index));
     }
     

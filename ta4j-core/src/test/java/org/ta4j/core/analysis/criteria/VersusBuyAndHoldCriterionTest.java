@@ -27,7 +27,7 @@ import org.ta4j.core.*;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import static org.junit.Assert.*;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 public class VersusBuyAndHoldCriterionTest {
 

@@ -28,7 +28,7 @@ import org.ta4j.core.Order.OrderType;
 import java.io.Serializable;
 import java.util.Objects;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Pair of two {@link Order orders}.

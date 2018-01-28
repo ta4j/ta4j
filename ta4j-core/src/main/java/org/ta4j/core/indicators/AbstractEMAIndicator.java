@@ -42,7 +42,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
-        this.multiplier = valueOf(multiplier);
+        this.multiplier = numOf(multiplier);
     }
 
     @Override

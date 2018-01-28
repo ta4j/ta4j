@@ -26,7 +26,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 
 /**
@@ -76,7 +76,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
-        ONE = valueOf(1);
+        ONE = numOf(1);
     }
 
     /**
@@ -88,7 +88,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      */
     public double getTotalReturn() {
 
-        Num totalProduct = valueOf(1);
+        Num totalProduct = numOf(1);
         int completeTimeframes = (getTimeSeries().getBarCount() / timeFrame);
 
         for (int i = 1; i <= completeTimeframes; i++) {
@@ -127,7 +127,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
             double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.doubleValue()), (1 / partialTimeframeHeld)) - 1;
-            timeframedReturn = valueOf(timeframedReturn_double);
+            timeframedReturn = numOf(timeframedReturn_double);
         }
 
         return timeframedReturn;

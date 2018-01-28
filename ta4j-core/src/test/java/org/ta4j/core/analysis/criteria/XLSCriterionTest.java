@@ -75,7 +75,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      *             DataFormatException
      */
     public Num getFinalCriterionValue(Object... params) throws Exception {
-        return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().getNumFunction(), params);
+        return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().function(), params);
     }
 
     /**
@@ -84,7 +84,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @return TradingRecord from the file
      */
     public TradingRecord getTradingRecord() throws Exception {
-        return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().getNumFunction());
+        return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().function());
     }
 
 }

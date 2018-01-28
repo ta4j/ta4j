@@ -53,8 +53,8 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         super(price);
         this.price = price;
         this.timeFrameEffectiveRatio = timeFrameEffectiveRatio;
-        fastest = valueOf(2).dividedBy(valueOf(timeFrameFast + 1));
-        slowest = valueOf(2).dividedBy(valueOf(timeFrameSlow + 1));
+        fastest = numOf(2).dividedBy(numOf(timeFrameFast + 1));
+        slowest = numOf(2).dividedBy(numOf(timeFrameSlow + 1));
     }
 
     @Override
@@ -72,7 +72,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
          */
         int startChangeIndex = Math.max(0, index - timeFrameEffectiveRatio);
         Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
-        Num volatility = valueOf(0);
+        Num volatility = numOf(0);
         for (int i = startChangeIndex; i < index; i++) {
             volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
         }

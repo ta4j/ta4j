@@ -82,8 +82,8 @@ public class Quickstart {
         //  - or if if the price looses more than 3%
         //  - or if the price earns more than 2%
         Rule sellingRule = new CrossedDownIndicatorRule(shortSma, longSma)
-                .or(new StopLossRule(closePrice, series.valueOf(3)))
-                .or(new StopGainRule(closePrice, series.valueOf(2)));
+                .or(new StopLossRule(closePrice, series.numOf(3)))
+                .or(new StopGainRule(closePrice, series.numOf(2)));
 
         // Running our juicy trading strategy...
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);

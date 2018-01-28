@@ -145,12 +145,12 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                            final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
         super(ref);
         this.ref = ref;
-        this.gamma = valueOf(gammaD);
-        this.delta = valueOf(deltaD);
-        this.densityFactor = valueOf(densityFactorD);
+        this.gamma = numOf(gammaD);
+        this.delta = numOf(deltaD);
+        this.densityFactor = numOf(densityFactorD);
 
-        Num alpha = valueOf(alphaD);
-        Num beta = valueOf(betaD);
+        Num alpha = numOf(alphaD);
+        Num beta = numOf(betaD);
         final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new MaxPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
         final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new MinPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
 
@@ -160,15 +160,15 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
             @Override
             protected Num calculate(int index) {
                 if (index <= 0) {
-                    return valueOf(0);
+                    return numOf(0);
                 }
 
                 // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta * priorValue) / densityFactor
                 Num currentRef = FisherIndicator.this.ref.getValue(index);
                 Num minL = periodLow.getValue(index);
                 Num maxH = periodHigh.getValue(index);
-                Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(valueOf(ZERO_DOT_FIVE));
-                Num term2 = alpha.multipliedBy(valueOf(2)).multipliedBy(term1);
+                Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(numOf(ZERO_DOT_FIVE));
+                Num term2 = alpha.multipliedBy(numOf(2)).multipliedBy(term1);
                 Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
                 return term3.dividedBy(FisherIndicator.this.densityFactor);
             }
@@ -178,19 +178,19 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index <= 0) {
-            return valueOf(0);
+            return numOf(0);
         }
 
         Num value = intermediateValue.getValue(index);
 
-        if (value.isGreaterThan(valueOf(VALUE_MAX))) {
-            value = valueOf(VALUE_MAX);
-        } else if (value.isLessThan(valueOf(VALUE_MIN))) {
-            value = valueOf(VALUE_MIN);
+        if (value.isGreaterThan(numOf(VALUE_MAX))) {
+            value = numOf(VALUE_MAX);
+        } else if (value.isLessThan(numOf(VALUE_MIN))) {
+            value = numOf(VALUE_MIN);
         }
 
         // Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
-        Num term1 = valueOf((Math.log(valueOf(1).plus(value).dividedBy(valueOf(1).minus(value)).doubleValue())));
+        Num term1 = numOf((Math.log(numOf(1).plus(value).dividedBy(numOf(1).minus(value)).doubleValue())));
         Num term2 = getValue(index - 1);
         return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
     }

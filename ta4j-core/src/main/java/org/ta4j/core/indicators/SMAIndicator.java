@@ -44,13 +44,13 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = getTimeSeries().valueOf(0);
+        Num sum = getTimeSeries().numOf(0);
         for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
         final int realTimeFrame = Math.min(timeFrame, index + 1);
-        return sum.dividedBy(getTimeSeries().valueOf(realTimeFrame));
+        return sum.dividedBy(getTimeSeries().numOf(realTimeFrame));
     }
 
     @Override

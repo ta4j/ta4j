@@ -26,7 +26,9 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Objects;
+import java.util.function.Function;
 
+import static org.ta4j.core.Num.NaN.NaN;
 /**
  * Representation of BigDecimal. High precision, low performance.
  * A {@code Num} consists of a {@code BigDecimal} with arbitrary {@link MathContext} (precision and rounding mode).
@@ -35,10 +37,10 @@ import java.util.Objects;
  * @see MathContext
  * @see RoundingMode
  * @see Num
- * @apiNote the delegate should never become a NaN value. No self NaN checks provided
+ * @apiNote the delegate should never become a NaN.NaN value. No self NaN.NaN checks provided
  *
  */
-public final class BigDecimalNum extends AbstractNum {
+public final class BigDecimalNum implements Num {
 
     private static final long serialVersionUID = 785564782721079992L;
 
@@ -46,42 +48,41 @@ public final class BigDecimalNum extends AbstractNum {
 
     private final BigDecimal delegate;
 
+
+    @Override
+    public Function<Number, Num> function() {
+        return BigDecimalNum::valueOf;
+    }
+
     /**
      * Constructor.
      * @param val the string representation of the Num value
      */
     private BigDecimalNum(String val) {
-        super(BigDecimalNum::valueOf);
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
     private BigDecimalNum(short val) {
-        super(BigDecimalNum::valueOf);
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
     private BigDecimalNum(int val) {
-        super(BigDecimalNum::valueOf);
         delegate = BigDecimal.valueOf(val);
     }
 
     private BigDecimalNum(long val) {
-        super(BigDecimalNum::valueOf);
         delegate = BigDecimal.valueOf(val);
     }
 
     private BigDecimalNum(float val) {
-        super(BigDecimalNum::valueOf);
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
     private BigDecimalNum(double val) {
-        super(BigDecimalNum::valueOf);
         delegate = BigDecimal.valueOf(val);
     }
 
     private BigDecimalNum(BigDecimal val) {
-        super(BigDecimalNum::valueOf);
         delegate = Objects.requireNonNull(val);
     }
 
@@ -237,19 +238,11 @@ public final class BigDecimalNum extends AbstractNum {
     }
 
     /**
-     * Checks if the value is Not-a-Number.
-     * @return true if the value is Not-a-Number (NaN), false otherwise
-     */
-    public boolean isNaN() {
-        return this == NaN; //TODO always false because of own NaN class
-    }
-
-    /**
      * Checks if the value is less than zero.
      * @return true if the value is less than zero, false otherwise
      */
     public boolean isNegative() {
-        return compareTo(getNumFunction().apply(0)) < 0;
+        return compareTo(function().apply(0)) < 0;
     }
 
     /**
@@ -307,7 +300,7 @@ public final class BigDecimalNum extends AbstractNum {
      * @return true is this is less than or equal to the specified value, false otherwise
      */
     public boolean isLessThanOrEqual(Number other) {
-        return (other != NaN) && compareTo(getNumFunction().apply(other)) < 1;
+        return (other != NaN) && compareTo(function().apply(other)) < 1;
     }
 
     public int compareTo(Num other) {
@@ -348,74 +341,6 @@ public final class BigDecimalNum extends AbstractNum {
         return (compareTo(other) >= 0 ? this : other);
     }
 
-    /**
-     * Converts this {@code Num} to a {@code short}.
-     * @return this {@code Num} converted to a {@code short}
-     * @see BigDecimal#shortValue()
-     */
-    public short shortValue() {
-        if (this == NaN) {
-            return 0;
-        }
-        return delegate.shortValue();
-    }
-
-    /**
-     * Converts this {@code Num} to a {@code int}.
-     * @return this {@code Num} converted to a {@code int}
-     * @see BigDecimal#intValue()
-     */
-    public int intValue() {
-        if (this == NaN) {
-            throw new IllegalArgumentException("Cannot transform 'NaN' to primitive int");
-        }
-        return delegate.intValue();
-    }
-
-    /**
-     * Converts this {@code Num} to a {@code long}.
-     * @return this {@code Num} converted to a {@code long}
-     * @see BigDecimal#longValue()
-     */
-    public long longValue() {
-        if (this == NaN) {
-            throw new IllegalArgumentException("Cannot transform 'NaN' to primitive int");
-        }
-        return delegate.longValue();
-    }
-
-    /**
-     * Converts this {@code Num} to a {@code float}.
-     * @return this {@code Num} converted to a {@code float}
-     * @see BigDecimal#floatValue()
-     */
-    public float floatValue() {
-        if (this == NaN) {
-            return Float.NaN;
-        }
-        return delegate.floatValue();
-    }
-
-    /**
-     * Converts this {@code Num} to a {@code double}.
-     * @return this {@code Num} converted to a {@code double}
-     * @see BigDecimal#doubleValue()
-     */
-    public double doubleValue() {
-        if (this.equals(NaN)) {
-            return Double.NaN;
-        }
-        return delegate.doubleValue();
-    }
-
-    @Override
-    public String toString() {
-        if (this == NaN) {
-            return "NaN";
-        }
-        return delegate.toString();
-    }
-
     @Override
     public int hashCode() {
         return Objects.hash(delegate);
@@ -423,14 +348,14 @@ public final class BigDecimalNum extends AbstractNum {
 
     /**
      * {@inheritDoc}
-     * Warning: This method returns true if `this` and `obj` are both NaN.
+     * Warning: This method returns true if `this` and `obj` are both NaN.NaN.
      */
     @Override
     public boolean equals(Object obj) {
         if (obj == null || delegate==null) {
             return false;
         }
-        if (this == NaN && obj == NaN){
+        if (obj == NaN){
             return true;
         }
         if (!(obj instanceof BigDecimalNum)) {
@@ -446,7 +371,7 @@ public final class BigDecimalNum extends AbstractNum {
      * @return the {@code Num}
      */
     public static Num valueOf(String val) {
-        return val.equals("NaN")
+        return val.equals("NaN.NaN")
                 ? NaN
                 : new BigDecimalNum(val);
     }
@@ -501,7 +426,7 @@ public final class BigDecimalNum extends AbstractNum {
      */
     public static Num valueOf(double val) {
         if (val == Double.NaN) {
-            return BigDecimalNum.NaN;
+            return NaN;
         }
         return new BigDecimalNum(val);
     }
@@ -523,5 +448,10 @@ public final class BigDecimalNum extends AbstractNum {
      */
     public static BigDecimalNum valueOf(Number val) {
         return new BigDecimalNum(val.toString());
+    }
+
+    @Override
+    public String toString(){
+        return delegate.toString();
     }
 }

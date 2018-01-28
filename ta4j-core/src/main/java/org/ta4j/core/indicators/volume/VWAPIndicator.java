@@ -58,7 +58,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         this.timeFrame = timeFrame;
         typicalPrice = new TypicalPriceIndicator(series);
         volume = new VolumeIndicator(series);
-        this.ZERO = valueOf(0);
+        this.ZERO = numOf(0);
     }
 
     @Override
