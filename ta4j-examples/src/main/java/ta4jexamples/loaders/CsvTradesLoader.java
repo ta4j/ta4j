@@ -110,7 +110,7 @@ public class CsvTradesLoader {
     	do {
     		// build a bar
     		barEndTime = barEndTime.plus(barDuration);
-    		Bar bar = new BaseBar(barDuration, barEndTime, series.getNumFunction());
+    		Bar bar = new BaseBar(barDuration, barEndTime, series.function());
     		do {
     			// get a trade
     			String[] tradeLine = lines.get(i);
@@ -120,7 +120,7 @@ public class CsvTradesLoader {
     				// add the trade to the bar
     				double tradePrice = Double.parseDouble(tradeLine[1]);
     				double tradeAmount = Double.parseDouble(tradeLine[2]);
-    				bar.addTrade(tradeAmount, tradePrice, series.getNumFunction());
+    				bar.addTrade(tradeAmount, tradePrice, series.function());
     			} else {
     				// the trade happened after the end of the bar
     				// go to the next bar but stay with the same trade (don't increment i)

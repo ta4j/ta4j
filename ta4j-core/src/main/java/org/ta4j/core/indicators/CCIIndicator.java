@@ -52,7 +52,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
      */
     public CCIIndicator(TimeSeries series, int timeFrame) {
         super(series);
-        FACTOR = valueOf(0.015);
+        FACTOR = numOf(0.015);
         typicalPriceInd = new TypicalPriceIndicator(series);
         smaInd = new SMAIndicator(typicalPriceInd, timeFrame);
         meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, timeFrame);
@@ -65,7 +65,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
         final Num typicalPriceAvg = smaInd.getValue(index);
         final Num meanDeviation = meanDeviationInd.getValue(index);
         if (meanDeviation.isZero()) {
-            return valueOf(0);
+            return numOf(0);
         }
         return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(FACTOR));
     }

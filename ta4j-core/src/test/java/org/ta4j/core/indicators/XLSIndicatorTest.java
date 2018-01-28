@@ -70,7 +70,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      *             DataFormatException
      */
     public Indicator<Num> getIndicator(Object... params) throws Exception {
-        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().getNumFunction(), params);
+        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
     }
 
 }

@@ -31,7 +31,7 @@ import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 

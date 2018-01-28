@@ -31,7 +31,7 @@ import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Pivot Point indicator.
@@ -80,7 +80,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 			high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
 			low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
 		}
-		return (high.plus(low).plus(close)).dividedBy(valueOf(3));
+		return (high.plus(low).plus(close)).dividedBy(numOf(3));
 	}
 
     /**

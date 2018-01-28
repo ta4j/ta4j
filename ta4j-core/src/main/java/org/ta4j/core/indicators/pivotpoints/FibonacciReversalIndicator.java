@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 import java.util.List;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Fibonacci Reversal Indicator.
@@ -78,7 +78,7 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
     public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, double fibonacciFactor, FibReversalTyp fibReversalTyp) {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
-        this.fibonacciFactor = valueOf(fibonacciFactor);
+        this.fibonacciFactor = numOf(fibonacciFactor);
         this.fibReversalTyp = fibReversalTyp;
     }
 

@@ -58,7 +58,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         this.series = series;
         lowerShadowInd = new LowerShadowIndicator(series);
         averageLowerShadowInd = new SMAIndicator(lowerShadowInd, timeFrame);
-        this.factor = valueOf(factor);
+        this.factor = numOf(factor);
     }
 
     @Override

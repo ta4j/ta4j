@@ -47,7 +47,7 @@ public class StopGainRule extends AbstractRule {
      */
     public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
         this.closePrice = closePrice;
-        Num HUNDRED = closePrice.valueOf(100);
+        Num HUNDRED = closePrice.numOf(100);
         this.gainRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
     }
 

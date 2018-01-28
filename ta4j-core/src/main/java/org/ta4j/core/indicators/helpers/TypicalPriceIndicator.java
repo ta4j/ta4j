@@ -44,6 +44,6 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
         Num maxPrice = series.getBar(index).getMaxPrice();
         Num minPrice = series.getBar(index).getMinPrice();
         Num closePrice = series.getBar(index).getClosePrice();
-        return maxPrice.plus(minPrice).plus(closePrice).dividedBy(valueOf(3));
+        return maxPrice.plus(minPrice).plus(closePrice).dividedBy(numOf(3));
     }
 }

@@ -53,6 +53,6 @@ public class RAVIIndicator extends CachedIndicator<Num> {
         Num longMA = longSma.getValue(index);
         return shortMA.minus(longMA)
                 .dividedBy(longMA)
-                .multipliedBy(valueOf(100));
+                .multipliedBy(numOf(100));
     }
 }

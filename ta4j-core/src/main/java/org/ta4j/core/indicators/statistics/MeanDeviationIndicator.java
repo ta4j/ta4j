@@ -55,7 +55,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num absoluteDeviations = valueOf(0);
+        Num absoluteDeviations = numOf(0);
 
         final Num average = sma.getValue(index);
         final int startIndex = Math.max(0, index - timeFrame + 1);
@@ -65,7 +65,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations.dividedBy(valueOf(nbValues));
+        return absoluteDeviations.dividedBy(numOf(nbValues));
     }
 
     @Override

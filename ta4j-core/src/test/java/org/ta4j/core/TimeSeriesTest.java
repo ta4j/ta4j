@@ -60,7 +60,11 @@ public class TimeSeriesTest {
 
         defaultName = "Series Name";
 
-        defaultSeries = new BaseTimeSeries(defaultName, bars);
+        defaultSeries = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withName(defaultName)
+                .withBars(bars)
+                .build();
 
         constrainedSeries = new BaseTimeSeries(defaultSeries,2, 4);
         emptySeries = new BaseTimeSeries();

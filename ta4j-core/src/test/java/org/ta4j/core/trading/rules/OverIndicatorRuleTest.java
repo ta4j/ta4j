@@ -41,7 +41,7 @@ public class OverIndicatorRuleTest {
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
-        rule = new OverIndicatorRule(indicator, series.valueOf(5));
+        rule = new OverIndicatorRule(indicator, series.numOf(5));
     }
     
     @Test

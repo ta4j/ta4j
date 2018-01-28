@@ -58,6 +58,6 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
 
     @Override
     protected Num calculate(int index) {
-        return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(valueOf(2));
+        return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
     }
 }

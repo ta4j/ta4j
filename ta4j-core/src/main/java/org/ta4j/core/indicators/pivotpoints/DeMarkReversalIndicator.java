@@ -28,7 +28,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
 import java.util.List;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * DeMark Reversal Indicator.
@@ -58,12 +58,12 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
         this.level =level;
-        TWO = valueOf(2);
+        TWO = numOf(2);
     }
 
     @Override
     protected Num calculate(int index) {
-        Num x = pivotPointIndicator.getValue(index).multipliedBy(valueOf(4));
+        Num x = pivotPointIndicator.getValue(index).multipliedBy(numOf(4));
         Num result;
 
         if(level == DeMarkPivotLevel.SUPPORT){

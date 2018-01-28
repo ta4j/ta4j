@@ -33,7 +33,7 @@ import org.ta4j.core.TimeSeries;
 import java.time.ZonedDateTime;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TATestsUtils.assertNumEquals;
 
 
@@ -107,7 +107,7 @@ public class AroonUpIndicatorTest {
     public void naNValuesInIntervall(){
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
         for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
-            Num maxPrice = i % 2 == 0 ? series.valueOf(i): NaN;
+            Num maxPrice = i % 2 == 0 ? series.numOf(i): NaN;
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, maxPrice,NaN, NaN, NaN);
         }
         
@@ -116,7 +116,7 @@ public class AroonUpIndicatorTest {
             if (i % 2 != 0){
                 assertEquals(NaN.toString(), aroonUpIndicator.getValue(i).toString());
             } else {
-                assertNumEquals(series.valueOf(100), aroonUpIndicator.getValue(i).toString());
+                assertNumEquals(series.numOf(100), aroonUpIndicator.getValue(i).toString());
             }
         }
     }
