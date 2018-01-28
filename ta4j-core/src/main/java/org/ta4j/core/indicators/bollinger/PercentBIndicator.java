@@ -52,8 +52,8 @@ public class PercentBIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
         BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, timeFrame));
         StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, timeFrame);
-        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, valueOf(k));
-        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, valueOf(k));
+        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, numOf(k));
+        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, numOf(k));
     }
 
     @Override

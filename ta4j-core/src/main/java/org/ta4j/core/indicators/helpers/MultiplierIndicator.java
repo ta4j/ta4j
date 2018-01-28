@@ -39,7 +39,7 @@ public class MultiplierIndicator extends CachedIndicator<Num> {
     public MultiplierIndicator(Indicator<Num> indicator, double coefficient) {
         super(indicator);
         this.indicator = indicator;
-        this.coefficient = valueOf(coefficient);
+        this.coefficient = numOf(coefficient);
     }
 
     @Override

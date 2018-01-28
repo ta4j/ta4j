@@ -58,16 +58,16 @@ public class CMOIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sumOfGains = valueOf(0);
+        Num sumOfGains = numOf(0);
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
             sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
         }
-        Num sumOfLosses = valueOf(0);
+        Num sumOfLosses = numOf(0);
         for (int i = Math.max(1, index - timeFrame + 1); i <= index; i++) {
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }
         return sumOfGains.minus(sumOfLosses)
                 .dividedBy(sumOfGains.plus(sumOfLosses))
-                .multipliedBy(valueOf(100));
+                .multipliedBy(numOf(100));
     }
 }

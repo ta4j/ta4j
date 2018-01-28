@@ -28,7 +28,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Indicator-in-slope rule.

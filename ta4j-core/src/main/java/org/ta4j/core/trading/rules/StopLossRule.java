@@ -49,7 +49,7 @@ public class StopLossRule extends AbstractRule {
     public StopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
         this.closePrice = closePrice;
         TimeSeries series = closePrice.getTimeSeries();
-        this.lossRatioThreshold = series.valueOf(100).minus(lossPercentage).dividedBy(series.valueOf(100));
+        this.lossRatioThreshold = series.numOf(100).minus(lossPercentage).dividedBy(series.numOf(100));
     }
 
     @Override

@@ -60,7 +60,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @return the profit of the trade
      */
     private double calculateProfit(TimeSeries series, Trade trade) {
-        Num profit = series.valueOf(1);
+        Num profit = series.numOf(1);
         if (trade.isClosed()) {
             // use price of entry/exit order, if NaN use close price of underlying time series
             Num exitClosePrice = trade.getExit().getPrice().isNaN() ?

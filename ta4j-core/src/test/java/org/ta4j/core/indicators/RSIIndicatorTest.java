@@ -66,21 +66,21 @@ public class RSIIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
     @Test
     public void firstValueShouldBeZero() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(data.valueOf(0), indicator.getValue(0));
+        assertEquals(data.numOf(0), indicator.getValue(0));
     }
 
     @Test
     public void hundredIfNoLoss() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(data.valueOf(100), indicator.getValue(14));
-        assertEquals(data.valueOf(100), indicator.getValue(15));
+        assertEquals(data.numOf(100), indicator.getValue(14));
+        assertEquals(data.numOf(100), indicator.getValue(15));
     }
 
     @Test
     public void zeroIfNoGain() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(data.valueOf(0), indicator.getValue(1));
-        assertEquals(data.valueOf(0), indicator.getValue(2));
+        assertEquals(data.numOf(0), indicator.getValue(1));
+        assertEquals(data.numOf(0), indicator.getValue(2));
     }
 
     @Test
@@ -154,9 +154,9 @@ public class RSIIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
         // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
         // second online calculation uses MMAs
         // MMA of average gain
-        double dividend = avgGain.getValue(14).multipliedBy(series.valueOf(13)).plus(gain.getValue(15)).dividedBy(series.valueOf(14)).doubleValue();
+        double dividend = avgGain.getValue(14).multipliedBy(series.numOf(13)).plus(gain.getValue(15)).dividedBy(series.numOf(14)).doubleValue();
         // MMA of average loss
-        double divisor = avgLoss.getValue(14).multipliedBy(series.valueOf(13)).plus(loss.getValue(15)).dividedBy(series.valueOf(14)).doubleValue();
+        double divisor = avgLoss.getValue(14).multipliedBy(series.numOf(13)).plus(loss.getValue(15)).dividedBy(series.numOf(14)).doubleValue();
         onlineRs = dividend / divisor;
         assertEquals(0.9409, onlineRs, TATestsUtils.BIG_DECIMAL_OFFSET);
         onlineRsi = 100d - (100d / (1d + onlineRs));

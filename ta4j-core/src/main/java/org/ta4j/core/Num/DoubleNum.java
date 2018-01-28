@@ -22,11 +22,15 @@
  */
 package org.ta4j.core.Num;
 
+import java.util.function.Function;
+
+import static org.ta4j.core.Num.NaN.NaN;
+
 /**
  * Representation of Double. High performance, lower precision.
  * @apiNote the delegate should never become a NaN value. No self NaN checks provided
  */
-public class DoubleNum extends AbstractNum {
+public class DoubleNum implements Num {
 
     private static final long serialVersionUID = -2611177221813615070L;
 
@@ -34,8 +38,12 @@ public class DoubleNum extends AbstractNum {
 
     private final static double EPS = 0.00001; // precision
 
+    @Override
+    public Function<Number, Num> function() {
+        return DoubleNum::valueOf;
+    }
+
     public DoubleNum(double val){
-        super(DoubleNum::valueOf);
         delegate = val;
     }
 
@@ -55,55 +63,31 @@ public class DoubleNum extends AbstractNum {
         if (augend == NaN){
             return NaN;
         }
-        if (!(augend instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format("The underlying data types '%s' and '%s' are not the same",this.getClass(), augend.getClass()));
-        }
-
         return new DoubleNum(delegate+((DoubleNum) augend).delegate);
     }
 
     @Override
     public Num minus(Num subtrahend) {
         if (subtrahend == NaN){
-            return AbstractNum.NaN;
+            return NaN;
         }
-        if (!(subtrahend instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), subtrahend.getClass()));
-        }
-
-        return new DoubleNum(delegate-((DoubleNum) subtrahend).delegate);
+        return new DoubleNum(delegate-((DoubleNum)subtrahend).delegate);
     }
 
     @Override
     public Num multipliedBy(Num multiplicand) {
         if (multiplicand == NaN){
-            return AbstractNum.NaN;
+            return NaN;
         }
-        if (!(multiplicand instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), multiplicand.getClass()));
-        }
-
         return new DoubleNum(delegate*((DoubleNum) multiplicand).delegate);
     }
 
     @Override
     public Num dividedBy(Num divisor) {
-        if (divisor == NaN){
+        if (divisor == NaN || divisor.isZero()){
             return NaN;
-        }
-        if (!(divisor instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), divisor.getClass()));
         }
         DoubleNum divisorD = (DoubleNum) divisor;
-        if(((DoubleNum) divisor).delegate==0){
-            return NaN;
-        }
         return new DoubleNum(delegate/divisorD.delegate);
     }
 
@@ -112,12 +96,6 @@ public class DoubleNum extends AbstractNum {
         if (divisor == NaN){
             return NaN;
         }
-        if (!(divisor instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), divisor.getClass()));
-        }
-
         return new DoubleNum(delegate%((DoubleNum) divisor).delegate);
     }
 
@@ -161,11 +139,6 @@ public class DoubleNum extends AbstractNum {
         if (other == NaN){
             return true;
         }
-        if (!(other instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), other.getClass()));
-        }
         return delegate == ((DoubleNum) other).delegate;
     }
 
@@ -201,24 +174,10 @@ public class DoubleNum extends AbstractNum {
         return (other != NaN) && compareTo(other) < 1;
     }
 
-    /**
-     * Checks if this value is less than or equal to another.
-     * @param other the other value, not null
-     * @return true is this is less than or equal to the specified value, false otherwise
-     */
-    public boolean isLessThanOrEqual(Number other) {
-        return (other != NaN) && compareTo(getNumFunction().apply(other)) < 1;
-    }
-
     @Override
     public Num min(Num other) {
         if (other == NaN){
             return NaN;
-        }
-        if (!(other instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), other.getClass()));
         }
         return new DoubleNum(Math.min(delegate,((DoubleNum) other).delegate));
     }
@@ -228,17 +187,7 @@ public class DoubleNum extends AbstractNum {
         if (other == NaN){
             return NaN;
         }
-        if (!(other instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), other.getClass()));
-        }
         return new DoubleNum(Math.max(delegate,((DoubleNum)other).delegate));
-    }
-
-    @Override
-    public boolean isNaN() {
-        return this.equals(NaN);
     }
 
 
@@ -254,17 +203,13 @@ public class DoubleNum extends AbstractNum {
 
     @Override
     public boolean equals(Object obj) {
-        if(obj==null){
+        if(!(obj instanceof Num)){
             return false;
         }
-        if (this == NaN && obj == NaN){
-            return true;
-        }
-        if(!(obj instanceof DoubleNum)) {
+        if(obj == NaN){
             return false;
         }
         DoubleNum doubleNumObj = (DoubleNum) obj;
-
         return Math.abs(delegate - doubleNumObj.delegate) < EPS;
     }
 
@@ -272,11 +217,6 @@ public class DoubleNum extends AbstractNum {
     public int compareTo(Num o) {
         if (this == NaN || o == NaN){
             return 0;
-        }
-        if (!(o instanceof DoubleNum)){
-            throw new IllegalArgumentException(String.format(
-                    "The underlying data types '%s' and '%s' are not the same"
-                    ,this.getClass(), o.getClass()));
         }
         DoubleNum doubleNumO = (DoubleNum)o;
         return Double.compare(delegate, doubleNumO.delegate);
@@ -304,26 +244,5 @@ public class DoubleNum extends AbstractNum {
 
     public static Num valueOf(Number i) {
         return new DoubleNum(Double.parseDouble(i.toString()));
-    }
-
-
-    @Override
-    public int intValue() {
-        return (int)delegate;
-    }
-
-    @Override
-    public long longValue() {
-        return (long) delegate;
-    }
-
-    @Override
-    public float floatValue() {
-        return (float) delegate;
-    }
-
-    @Override
-    public double doubleValue() {
-        return delegate;
     }
 }

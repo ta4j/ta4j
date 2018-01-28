@@ -31,7 +31,7 @@ import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * DeMark Pivot Point indicator.
@@ -85,7 +85,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         }
 
 		Num x;
-        Num TWO = valueOf(2);
+        Num TWO = numOf(2);
 		if (close.isLessThan(open)){
 		    x = high.plus(TWO.multipliedBy(low)).plus(close);
         }
@@ -96,7 +96,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 		    x = high.plus(low).plus(TWO.multipliedBy(close));
         }
 
-		return x.dividedBy(valueOf(4));
+		return x.dividedBy(numOf(4));
 	}
 
     /**

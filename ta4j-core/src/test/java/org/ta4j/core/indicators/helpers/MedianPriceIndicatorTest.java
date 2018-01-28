@@ -65,7 +65,7 @@ public class MedianPriceIndicatorTest {
         Num result;
         for (int i = 0; i < 10; i++) {
             result = timeSeries.getBar(i).getMaxPrice().plus(timeSeries.getBar(i).getMinPrice())
-                    .dividedBy(timeSeries.valueOf(2));
+                    .dividedBy(timeSeries.numOf(2));
             assertEquals(average.getValue(i), result);
         }
     }

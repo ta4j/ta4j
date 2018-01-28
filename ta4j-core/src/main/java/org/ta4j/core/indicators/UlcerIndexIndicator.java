@@ -57,15 +57,15 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num squaredAverage = valueOf(0);
+        Num squaredAverage = numOf(0);
         for (int i = startIndex; i <= index; i++) {
             Num currentValue = indicator.getValue(i);
             Num highestValue = highestValueInd.getValue(i);
-            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(valueOf(100));
+            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(numOf(100));
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
-        squaredAverage = squaredAverage.dividedBy(valueOf(numberOfObservations));
-        return valueOf(Math.sqrt(squaredAverage.doubleValue()));
+        squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
+        return numOf(Math.sqrt(squaredAverage.doubleValue()));
     }
 
     @Override

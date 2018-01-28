@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 
 /**
@@ -56,7 +56,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         super(series);
         this.timeFrame = timeFrame;
         this.minValueIndicator = minValueIndicator;
-        this.hundred = valueOf(100);
+        this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
         lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, timeFrame+1);
     }
@@ -86,7 +86,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return valueOf(timeFrame - nbBars).dividedBy(valueOf(timeFrame)).multipliedBy(hundred);
+        return numOf(timeFrame - nbBars).dividedBy(numOf(timeFrame)).multipliedBy(hundred);
     }
 
     @Override

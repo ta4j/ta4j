@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Parabolic SAR indicator.
@@ -58,7 +58,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      * @param series the time series for this indicator
      */
     public ParabolicSarIndicator(TimeSeries series){
-        this(series,series.valueOf(0.02), series.valueOf(0.2), series.valueOf(0.02));
+        this(series,series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
 
     }
 
@@ -69,7 +69,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      * @param maxA maximum acceleration
      */
     public ParabolicSarIndicator(TimeSeries series, Num aF,Num maxA) {
-        this(series, aF, maxA, series.valueOf(0.02));
+        this(series, aF, maxA, series.numOf(0.02));
     }
 
     /**

@@ -63,8 +63,8 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      * @return the maximum drawdown from a cash flow over a series
      */
     private Num calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
-        Num maximumDrawdown = series.valueOf(0);
-        Num maxPeak = series.valueOf(0);
+        Num maximumDrawdown = series.numOf(0);
+        Num maxPeak = series.numOf(0);
         if (!series.isEmpty()) {
         	// The series is not empty
 	        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {

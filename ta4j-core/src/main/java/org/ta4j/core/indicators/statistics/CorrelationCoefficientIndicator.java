@@ -58,7 +58,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
         Num cov = covariance.getValue(index);
         Num var1 = variance1.getValue(index);
         Num var2 = variance2.getValue(index);
-        Num var1_2_sqrt = valueOf(Math.sqrt(var1.multipliedBy(var2).doubleValue()));
+        Num var1_2_sqrt = numOf(Math.sqrt(var1.multipliedBy(var2).doubleValue()));
         return cov.dividedBy(var1_2_sqrt);
 
 

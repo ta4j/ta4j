@@ -149,13 +149,19 @@ public interface TimeSeries extends Serializable {
     void addBar(Bar bar);
 
     void addBar(Duration timePeriod, ZonedDateTime endTime);
-    void addBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume);
+    void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice);
+    void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice, Number volume);
+    void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice, Number volume, Number amount);
+
+    void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice);
     void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume);
+    void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, String amount);
+
     void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume);
     void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume);
     void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount);
 
-    void addTrade(double price, double amount);
+    void addTrade(Number price, Number amount);
     void addTrade(String price, String amount);
     void addTrade(Num tradeVolume, Num tradePrice);
 
@@ -180,12 +186,12 @@ public interface TimeSeries extends Serializable {
      * @param number a {@link Number} implementing object.
      * @return the corresponding value as a Num implementing object
      */
-    Num valueOf(Number number);
+    Num numOf(Number number);
 
     /**
      * Returns the underlying function to transform a Number into the Num implementation used by this time series
      * @return a function Number -> Num
      */
-    Function<Number, Num> getNumFunction();
+    Function<Number, Num> function();
 
 }

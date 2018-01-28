@@ -43,7 +43,7 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return valueOf(0);
+            return numOf(0);
         }
         Num yesterdayClose = series.getBar(index - 1).getClosePrice();
         Num todayClose = series.getBar(index).getClosePrice();

@@ -40,7 +40,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
     public FixedDecimalIndicator(TimeSeries series, double... values) {
         super(series);
         for (double value : values) {
-            addValue(valueOf(value));
+            addValue(numOf(value));
         }
     }
     
@@ -51,7 +51,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
     public FixedDecimalIndicator(TimeSeries series, String... values) {
         super(series);
         for (String value : values) {
-            addValue(valueOf(new BigDecimal(value)));
+            addValue(numOf(new BigDecimal(value)));
         }
     }
 }

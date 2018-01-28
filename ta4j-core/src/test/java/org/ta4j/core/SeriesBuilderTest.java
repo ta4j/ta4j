@@ -38,15 +38,15 @@ public class SeriesBuilderTest {
     public void testNumFunctions(){
 
         TimeSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
-        assertNumEquals(series.valueOf(12), DoubleNum.valueOf(12));
+        assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
 
         TimeSeries seriesB = seriesBuilder.withNumTypeOf(BigDecimalNum.class).build();
-        assertNumEquals(seriesB.valueOf(12), BigDecimalNum.valueOf(12));
+        assertNumEquals(seriesB.numOf(12), BigDecimalNum.valueOf(12));
     }
 
-    @Test(expected = AssertionError.class) //TODO
+    @Test(expected = ClassCastException.class)
     public void testWrongNumType(){
         TimeSeries series = seriesBuilder.withNumTypeOf(BigDecimalNum.class).build();
-        assertNumEquals(series.valueOf(12), DoubleNum.valueOf(12));
+        assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
     }
 }

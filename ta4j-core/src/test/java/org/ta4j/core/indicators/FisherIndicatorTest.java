@@ -25,6 +25,7 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TATestsUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 
@@ -39,7 +40,10 @@ protected TimeSeries series;
     @Before
     public void setUp() {
 
-        series = new BaseTimeSeries();
+        series = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withName("NaN test")
+                .build();
         int i = 20;
         // open, close, max, min
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),44.98, 45.05, 45.17, 44.96,0,1,0));

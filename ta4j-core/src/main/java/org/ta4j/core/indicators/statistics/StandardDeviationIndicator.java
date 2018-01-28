@@ -48,6 +48,6 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return valueOf(Math.sqrt(variance.getValue(index).doubleValue()));
+        return numOf(Math.sqrt(variance.getValue(index).doubleValue()));
     }
 }

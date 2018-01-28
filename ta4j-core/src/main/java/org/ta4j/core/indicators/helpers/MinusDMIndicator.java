@@ -42,14 +42,14 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return valueOf(0);
+            return numOf(0);
         }
         Num upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
         Num downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
-        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(valueOf(0))) {
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(numOf(0))) {
             return downMove;
         } else {
-            return valueOf(0);
+            return numOf(0);
         }
     }
 }

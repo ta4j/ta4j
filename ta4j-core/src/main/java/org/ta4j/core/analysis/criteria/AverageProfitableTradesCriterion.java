@@ -48,7 +48,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
         }
 
-        return (result.isGreaterThan(series.valueOf(1))) ? 1d : 0d;
+        return (result.isGreaterThan(series.numOf(1))) ? 1d : 0d;
     }
 
     @Override
@@ -66,7 +66,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
                 // sell-then-buy trade
                 result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
             }
-            if (result.isGreaterThan(series.valueOf(1))) {
+            if (result.isGreaterThan(series.numOf(1))) {
                 numberOfProfitable++;
             }
         }

@@ -28,7 +28,7 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 
 /**
@@ -55,7 +55,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         super(series);
         this.timeFrame = timeFrame;
         this.maxValueIndicator = maxValueIndicator;
-        this.hundred = valueOf(100);
+        this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
         highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, timeFrame+1);
     }
@@ -85,7 +85,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return valueOf(timeFrame - nbBars).dividedBy(valueOf(timeFrame)).multipliedBy(hundred);
+        return numOf(timeFrame - nbBars).dividedBy(numOf(timeFrame)).multipliedBy(hundred);
     }
 
     @Override

@@ -33,7 +33,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import java.time.ZonedDateTime;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 public class HighestValueIndicatorTest {
 
@@ -89,7 +89,7 @@ public class HighestValueIndicatorTest {
     public void naNValuesInIntervall(){
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
         for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
-            Num closePrice = i % 2 == 0 ? series.valueOf(i): NaN;
+            Num closePrice = i % 2 == 0 ? series.numOf(i): NaN;
             series.addBar(ZonedDateTime.now().plusDays(i),NaN, NaN,NaN, closePrice, NaN);
         }
 

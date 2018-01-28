@@ -24,6 +24,8 @@ package org.ta4j.core;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Num.DoubleNum;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.trading.rules.FixedRule;
 
@@ -39,7 +41,7 @@ public class TimeSeriesTest {
 
     private TimeSeries defaultSeries;
 
-    private TimeSeries constrainedSeries;
+    private TimeSeries subseries;
 
     private TimeSeries emptySeries;
 
@@ -60,9 +62,13 @@ public class TimeSeriesTest {
 
         defaultName = "Series Name";
 
-        defaultSeries = new BaseTimeSeries(defaultName, bars);
+        defaultSeries = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withName(defaultName)
+                .withBars(bars)
+                .build();
 
-        constrainedSeries = new BaseTimeSeries(defaultSeries,2, 4);
+        subseries = defaultSeries.getSubSeries(2,5);
         emptySeries = new BaseTimeSeries();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
@@ -80,10 +86,10 @@ public class TimeSeriesTest {
         assertEquals(bars.size(), defaultSeries.getBarCount());
         assertFalse(defaultSeries.isEmpty());
         // Constrained series
-        assertEquals(2, constrainedSeries.getBeginIndex());
-        assertEquals(4, constrainedSeries.getEndIndex());
-        assertEquals(3, constrainedSeries.getBarCount());
-        assertFalse(constrainedSeries.isEmpty());
+        assertEquals(0, subseries.getBeginIndex());
+        assertEquals(2, subseries.getEndIndex());
+        assertEquals(3, subseries.getBarCount());
+        assertFalse(subseries.isEmpty());
         // Empty series
         assertEquals(-1, emptySeries.getBeginIndex());
         assertEquals(-1, emptySeries.getEndIndex());
@@ -96,7 +102,7 @@ public class TimeSeriesTest {
         // Default series
         assertEquals(bars, defaultSeries.getBarData());
         // Constrained series
-        assertEquals(bars, constrainedSeries.getBarData());
+        assertNotEquals(bars, subseries.getBarData());
         // Empty series
         assertEquals(0, emptySeries.getBarData().size());
     }
@@ -107,8 +113,8 @@ public class TimeSeriesTest {
         assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(bars.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
-        assertTrue(constrainedSeries.getSeriesPeriodDescription().endsWith(bars.get(constrainedSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(constrainedSeries.getSeriesPeriodDescription().startsWith(bars.get(constrainedSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subseries.getSeriesPeriodDescription().endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subseries.getSeriesPeriodDescription().startsWith(bars.get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
@@ -116,7 +122,7 @@ public class TimeSeriesTest {
     @Test
     public void getName() {
         assertEquals(defaultName, defaultSeries.getName());
-        assertEquals(defaultName, constrainedSeries.getName());
+        assertEquals(defaultName, subseries.getName());
     }
 
     @Test
@@ -176,10 +182,8 @@ public class TimeSeriesTest {
         defaultSeries.getSubSeries(10, 9);
     }
 
-
-    @Test(expected = IllegalStateException.class)
-    public void maximumBarCountOnConstrainedSeriesShouldThrowException() {
-        constrainedSeries.setMaximumBarCount(10);
+    public void maximumBarCountOnConstrainedSeriesShouldNotThrowException() {
+        subseries.setMaximumBarCount(10);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -202,7 +206,7 @@ public class TimeSeriesTest {
         assertEquals(3, defaultSeries.getBarCount());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void addNullBarshouldThrowException() {
         defaultSeries.addBar(null);
     }
@@ -231,5 +235,11 @@ public class TimeSeriesTest {
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void wrongBarType(){
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
+        series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, BigDecimalNum::valueOf));
     }
 }

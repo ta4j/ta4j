@@ -49,7 +49,7 @@ public interface Indicator<T> extends Serializable {
 	/**
 	 * @return  the {@link Num Num extending class} for the given {@link Number}
 	 */
-	Num valueOf(Number number);
+	Num numOf(Number number);
 
 	 /**
 	 * Returns all values from an {@link Indicator} as a Array of Doubles. The

@@ -4,7 +4,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
-import static org.ta4j.core.Num.AbstractNum.NaN;
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Indicator-Pearson-Correlation
@@ -38,13 +38,13 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 	@Override
 	protected Num calculate(int index) {
 
-		Num n = valueOf(timeFrame);
+		Num n = numOf(timeFrame);
 
-		Num Sx = valueOf(0);
-		Num Sy = valueOf(0);
-		Num Sxx = valueOf(0);
-		Num Syy = valueOf(0);
-		Num Sxy = valueOf(0);
+		Num Sx = numOf(0);
+		Num Sy = numOf(0);
+		Num Sxx = numOf(0);
+		Num Syy = numOf(0);
+		Num Sxy = numOf(0);
 		
 		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - timeFrame + 1); i <= index; i++) {
 
@@ -62,9 +62,9 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 		Num toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
 				.multipliedBy(n.multipliedBy(Syy).minus(Sy.multipliedBy(Sy)));
 		
-		if (toSqrt.isGreaterThan(valueOf(0))) {
+		if (toSqrt.isGreaterThan(numOf(0))) {
 			// pearson = (n * Sxy - Sx * Sy) / sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy))
-			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(valueOf(Math.sqrt(toSqrt.doubleValue())));
+			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(numOf(Math.sqrt(toSqrt.doubleValue())));
 		}
 
 		return NaN;

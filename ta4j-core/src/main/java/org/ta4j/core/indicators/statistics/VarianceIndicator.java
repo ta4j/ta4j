@@ -54,13 +54,13 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num variance = valueOf(0);
+        Num variance = numOf(0);
         Num average = sma.getValue(index);
         for (int i = startIndex; i <= index; i++) {
             Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(valueOf(numberOfObservations));
+        variance = variance.dividedBy(numOf(numberOfObservations));
         return variance;
     }
 
