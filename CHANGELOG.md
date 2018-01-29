@@ -47,6 +47,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **ExternalCriterionTest**: new interface for fetching criteria, trading records, and time series from external sources
 - **XLSIndicatorTest**: new class implementing ExternalIndicatorTest for XLS files, for use in XLS unit tests
 - **XLSCriterionTest**: new class implementing ExternalCriterionTest for XLS files, for use in XLS unit tests
+- **Over/UnderIndicatorWindowRules**: new rules extending Over/UnderIndicatorRules with windows and percentages
 
 ## Removed
 - **TraillingStopLossIndicator**: no need for this as indicator. No further calculations possible after price falls below stop loss. Use `StopLossRule` or `DifferenceIndicator`
