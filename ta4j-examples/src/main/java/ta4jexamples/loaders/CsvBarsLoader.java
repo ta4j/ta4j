@@ -53,8 +53,17 @@ public class CsvBarsLoader {
      * @return a time series from Apple Inc. bars.
      */
     public static TimeSeries loadAppleIncSeries() {
+        return loadCsvSeries("appleinc_ticks_from_20130101_usd.csv");
+    }
 
-        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_bars_from_20130101_usd.csv");
+    public static TimeSeries loadCsvSeries(String filename) {
+
+        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
+        if (stream == null) {
+            Exception ex = new Exception();
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load stream from " + filename, ex);
+            return null;
+        }
 
         List<Bar> bars = new ArrayList<>();
 
@@ -76,8 +85,14 @@ public class CsvBarsLoader {
         } catch (NumberFormatException nfe) {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
+        try {
+            csvReader.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
-        return new BaseTimeSeries("apple_bars", bars);
+        return new BaseTimeSeries(filename, bars);
     }
 
     public static void main(String[] args) {
@@ -87,7 +102,7 @@ public class CsvBarsLoader {
         System.out.println("Number of bars: " + series.getBarCount());
         System.out.println("First bar: \n"
                 + "\tVolume: " + series.getBar(0).getVolume() + "\n"
-                + "\tOpen price: " + series.getBar(0).getOpenPrice()+ "\n"
+                + "\tOpen price: " + series.getBar(0).getOpenPrice() + "\n"
                 + "\tClose price: " + series.getBar(0).getClosePrice());
     }
 }
