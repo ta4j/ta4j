@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
+import static org.ta4j.core.Num.NaN.NaN;
+
 /**
  * Base implementation of a {@link TimeSeries}.
  * <p></p>
@@ -62,7 +64,7 @@ public class BaseTimeSeries implements TimeSeries {
     /** True if the current series is constrained (i.e. its indexes cannot change), false otherwise */
     private boolean constrained = false;
 
-    private final Function<Number, Num> numFunction;
+    protected final Function<Number, Num> numFunction;
 
     /**
      * Constructor of an unnamed series.
@@ -97,6 +99,23 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
+     * Constructor.
+     * @param name the name of the series
+     */
+    public BaseTimeSeries(String name, Function<Number, Num> numFunction) {
+        this(name,new ArrayList<>(),numFunction);
+    }
+
+    /**
+     * Constructor.
+     * @param name the name of the series
+     * @param bars the list of bars of the series
+     */
+    public BaseTimeSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
+        this(name, bars, 0, bars.size() - 1, false, numFunction);
+    }
+
+    /**
      * Constructor.<p/>
      * Creates a BaseTimeSeries with default {@link BigDecimalNum BigDecimal} as type for the data and all operations on it
      * @param name the name of the series
@@ -111,6 +130,7 @@ public class BaseTimeSeries implements TimeSeries {
         this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, BigDecimalNum::valueOf);
     }
 
+
     /**
      * Constructor.
      * @param name the name of the series
@@ -122,19 +142,24 @@ public class BaseTimeSeries implements TimeSeries {
      */
     private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Function<Number, Num> numFunction) {
         this.name = name;
-        this.numFunction = numFunction;
+
         this.bars = bars;
         if (bars.isEmpty()) {
         	// Bar list empty
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
+            this.numFunction = numFunction;
             return;
         }
-
+        // Bar list not empty: take Function of first bar
+        this.numFunction = bars.get(0).getClosePrice().function();
         // Bar list not empty: checking num types
         if(!checkBars(bars)){
-            throw new IllegalArgumentException("The Num implementation of bars does not match to the Num implementation of time series");
+            throw new IllegalArgumentException(
+                    String.format("Num implementation of bars: %s" +
+                            " does not match to Num implementation of time series: %s",
+                            bars.get(0).getClosePrice().getClass(),numFunction));
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
@@ -170,9 +195,9 @@ public class BaseTimeSeries implements TimeSeries {
         if(!bars.isEmpty()) {
             int start = Math.max(startIndex, this.seriesBeginIndex);
             int end = Math.min(endIndex, this.seriesEndIndex + 1);
-            return new BaseTimeSeries(getName(), cut(bars, start, end));
+            return new BaseTimeSeries(getName(), cut(bars, start, end), numFunction);
         }
-        return new BaseTimeSeries(name);
+        return new BaseTimeSeries(name,numFunction);
 
     }
 
@@ -212,8 +237,9 @@ public class BaseTimeSeries implements TimeSeries {
         if(bar.getClosePrice()==null){
             return true; // bar has not been initialized with data (uses deprecated constructor)
         }
-        // all other constructors initialize at least the close price check if Num implementation fits to numFunction
-        return numOf(1).getClass() == bar.getClosePrice().getClass();
+        // all other constructors initialize at least the close price, check if Num implementation fits to numFunction
+        Class<? extends Num> f = numOf(1).getClass();
+        return f == bar.getClosePrice().getClass() || bar.getClosePrice().equals(NaN);
     }
 
     @Override

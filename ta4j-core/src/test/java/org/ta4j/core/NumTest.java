@@ -4,38 +4,43 @@ import org.junit.Test;
 import org.ta4j.core.Num.BigDecimalNum;
 import org.ta4j.core.Num.DoubleNum;
 import org.ta4j.core.Num.Num;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 
 import java.math.BigDecimal;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.Num.NaN.NaN;
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 
-public class NumTest {
+public class NumTest extends AbstractIndicatorTest {
+
+    public NumTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void testValueOf() {
-        assertNumEquals(0.33333333333333333332, TATestsUtils.CURENCT_NUM_FUNCTION.apply(0.33333333333333333332));
-        assertNumEquals(1, TATestsUtils.CURENCT_NUM_FUNCTION.apply(1d));
-        assertNumEquals(2.54, TATestsUtils.CURENCT_NUM_FUNCTION.apply(new BigDecimal("2.54")));
+        assertNumEquals(0.33333333333333333332, numOf(0.33333333333333333332));
+        assertNumEquals(1, numOf(1d));
+        assertNumEquals(2.54, numOf(new BigDecimal("2.54")));
 
-        assertNumEquals(0.33, CURENCT_NUM_FUNCTION.apply(0.33));
-        assertNumEquals(1, CURENCT_NUM_FUNCTION.apply(1));
-        assertNumEquals(2.54, CURENCT_NUM_FUNCTION.apply(new BigDecimal(2.54)));
+        assertNumEquals(0.33, numOf(0.33));
+        assertNumEquals(1, numOf(1));
+        assertNumEquals(2.54, numOf(new BigDecimal(2.54)));
     }
 
     @Test
     public void testMultiplicationSymmetrically(){
-        Num decimalFromString = TATestsUtils.CURENCT_NUM_FUNCTION.apply(new BigDecimal("0.33"));
-        Num decimalFromDouble = TATestsUtils.CURENCT_NUM_FUNCTION.apply(45.33);
+        Num decimalFromString = numOf(new BigDecimal("0.33"));
+        Num decimalFromDouble = numOf(45.33);
         assertEquals(decimalFromString.multipliedBy(decimalFromDouble), decimalFromDouble.multipliedBy(decimalFromString));
 
-        Num doubleNumFromString = TATestsUtils.CURENCT_NUM_FUNCTION.apply(new BigDecimal("0.33"));
-        Num doubleNumFromDouble = TATestsUtils.CURENCT_NUM_FUNCTION.apply(10.33);
+        Num doubleNumFromString = numOf(new BigDecimal("0.33"));
+        Num doubleNumFromDouble = numOf(10.33);
         assertNumEquals(doubleNumFromString.multipliedBy(doubleNumFromDouble), doubleNumFromDouble.multipliedBy(doubleNumFromString));
     }
 
@@ -102,8 +107,8 @@ public class NumTest {
 
     @Test
     public void testArithmetic(){
-        Num ten = CURENCT_NUM_FUNCTION.apply(10);
-        Num million = CURENCT_NUM_FUNCTION.apply(1000000);
+        Num ten = numOf(10);
+        Num million = numOf(1000000);
         assertNumEquals(10, ten);
         assertNumEquals("1000000.0", million);
 

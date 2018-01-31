@@ -28,12 +28,15 @@ import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.XlsTestsUtils;
 
+import java.util.function.Function;
+
 public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     private Class<?> clazz;
     private String fileName;
     private int column;
     private TimeSeries cachedSeries = null;
+    private final Function<Number, Num> numFunction;
 
     /**
      * Constructor.
@@ -42,10 +45,11 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @param fileName file name of the file containing the workbook
      * @param column column number containing the calculated indicator values
      */
-    public XLSIndicatorTest(Class<?> clazz, String fileName, int column) {
+    public XLSIndicatorTest(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) {
         this.clazz = clazz;
         this.fileName = fileName;
         this.column = column;
+        this.numFunction = numFunction;
     }
 
     /**
@@ -56,7 +60,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      */
     public TimeSeries getSeries() throws Exception {
         if (cachedSeries == null) {
-            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName);
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName,numFunction);
         }
         return cachedSeries;
     }

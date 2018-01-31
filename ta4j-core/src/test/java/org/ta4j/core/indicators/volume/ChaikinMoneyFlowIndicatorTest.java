@@ -28,7 +28,7 @@ import org.ta4j.core.TimeSeries;
 
 import java.time.ZonedDateTime;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ChaikinMoneyFlowIndicatorTest {
 

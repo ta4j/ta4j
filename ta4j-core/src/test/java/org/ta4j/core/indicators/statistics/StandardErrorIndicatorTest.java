@@ -24,18 +24,27 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class StandardErrorIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private TimeSeries data;
+
+    public StandardErrorIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(10, 20, 30, 40, 50, 40, 40, 50, 40, 30, 20, 10);
+        data = new MockTimeSeries(numFunction, 10, 20, 30, 40, 50, 40, 40, 50, 40, 30, 20, 10);
     }
 
     @Test

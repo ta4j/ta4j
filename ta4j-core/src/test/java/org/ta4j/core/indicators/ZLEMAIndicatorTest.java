@@ -24,20 +24,28 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class ZLEMAIndicatorTest {
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
 
     private TimeSeries data;
 
+    public ZLEMAIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(
+        data = new MockTimeSeries(numFunction,
                 10, 15, 20,
                 18, 17, 18,
                 15, 12, 10,

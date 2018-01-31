@@ -24,19 +24,28 @@ package org.ta4j.core.indicators.bollinger;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
+import java.util.function.Function;
+
 import static junit.framework.TestCase.assertEquals;
 
-public class BollingerBandsMiddleIndicatorTest {
+public class BollingerBandsMiddleIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private TimeSeries data;
+
+    public BollingerBandsMiddleIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test

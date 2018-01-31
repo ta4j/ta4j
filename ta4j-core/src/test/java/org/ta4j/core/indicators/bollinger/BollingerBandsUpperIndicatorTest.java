@@ -24,17 +24,21 @@ package org.ta4j.core.indicators.bollinger;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class BollingerBandsUpperIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private int timeFrame;
 
@@ -42,9 +46,13 @@ public class BollingerBandsUpperIndicatorTest {
 
     private SMAIndicator sma;
 
+    public BollingerBandsUpperIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        TimeSeries data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
         timeFrame = 3;
         closePrice = new ClosePriceIndicator(data);
         sma = new SMAIndicator(closePrice, timeFrame);
@@ -57,9 +65,9 @@ public class BollingerBandsUpperIndicatorTest {
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
-        TATestsUtils.assertNumEquals(2, bbuSMA.getK());
+        TestUtils.assertNumEquals(2, bbuSMA.getK());
 
-        TATestsUtils.assertNumEquals(1, bbuSMA.getValue(0));
+        TestUtils.assertNumEquals(1, bbuSMA.getValue(0));
         assertNumEquals(2.5, bbuSMA.getValue(1));
         assertNumEquals(3.633, bbuSMA.getValue(2));
         assertNumEquals(4.633, bbuSMA.getValue(3));
@@ -70,11 +78,11 @@ public class BollingerBandsUpperIndicatorTest {
         assertNumEquals(bbuSMA.getValue(8), 5.633);
         assertNumEquals(bbuSMA.getValue(9), 4.2761);
 
-        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, CURENCT_NUM_FUNCTION.apply(1.5));
+        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, numFunction.apply(1.5));
 
         assertNumEquals(bbuSMAwithK.getK(), 1.5);
 
-        TATestsUtils.assertNumEquals(bbuSMAwithK.getValue(0), 1);
+        TestUtils.assertNumEquals(bbuSMAwithK.getValue(0), 1);
         assertNumEquals(2.25, bbuSMAwithK.getValue(1));
         assertNumEquals(3.2247, bbuSMAwithK.getValue(2));
         assertNumEquals(4.2247, bbuSMAwithK.getValue(3));

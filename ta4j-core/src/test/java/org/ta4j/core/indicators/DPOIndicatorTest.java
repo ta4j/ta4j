@@ -24,20 +24,28 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class DPOIndicatorTest {
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
 
     private TimeSeries series;
 
+    public DPOIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        series = new MockTimeSeries(
+        series = new MockTimeSeries(numFunction,
                 22.27, 22.19, 22.08, 22.17, 22.18, 22.13,
                 22.23, 22.43, 22.24, 22.29, 22.15, 22.39,
                 22.38, 22.61, 23.36, 24.05, 23.75, 23.83,

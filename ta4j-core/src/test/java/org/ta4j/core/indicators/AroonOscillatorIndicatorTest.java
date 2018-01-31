@@ -26,7 +26,7 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 
 import java.time.LocalDate;
@@ -35,7 +35,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 
 public class AroonOscillatorIndicatorTest {
@@ -223,10 +223,10 @@ public class AroonOscillatorIndicatorTest {
     @Test
     public void test(){
         AroonOscillatorIndicator aroonOscillator = new AroonOscillatorIndicator(data, 25);
-        TATestsUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()), 0);
-        TATestsUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+25), 84);
-        TATestsUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+26), 80);
-        TATestsUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+27), 76);
+        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()), 0);
+        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+25), 84);
+        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+26), 80);
+        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+27), 76);
 
         assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-5), 56d);
         assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-4), 52d);

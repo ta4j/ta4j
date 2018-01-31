@@ -25,10 +25,10 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Assert;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class FixedIndicatorTest {
 
@@ -37,13 +37,13 @@ public class FixedIndicatorTest {
         TimeSeries series = new BaseTimeSeries();
         FixedDecimalIndicator fixedDecimalIndicator = new FixedDecimalIndicator(series,13.37, 42, -17);
         assertNumEquals(fixedDecimalIndicator.getValue(0), 13.37);
-        TATestsUtils.assertNumEquals(fixedDecimalIndicator.getValue(1), 42);
-        TATestsUtils.assertNumEquals(fixedDecimalIndicator.getValue(2), -17);
+        TestUtils.assertNumEquals(fixedDecimalIndicator.getValue(1), 42);
+        TestUtils.assertNumEquals(fixedDecimalIndicator.getValue(2), -17);
         
         fixedDecimalIndicator = new FixedDecimalIndicator(series, "3.0", "-123.456", "0.0");
-        TATestsUtils.assertNumEquals(fixedDecimalIndicator.getValue(0), "3.0");
-        TATestsUtils.assertNumEquals(fixedDecimalIndicator.getValue(1), "-123.456");
-        TATestsUtils.assertNumEquals(fixedDecimalIndicator.getValue(2), "0.0");
+        TestUtils.assertNumEquals(fixedDecimalIndicator.getValue(0), "3.0");
+        TestUtils.assertNumEquals(fixedDecimalIndicator.getValue(1), "-123.456");
+        TestUtils.assertNumEquals(fixedDecimalIndicator.getValue(2), "0.0");
         
     }
 

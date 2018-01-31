@@ -27,29 +27,31 @@ import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class SMAIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ExternalIndicatorTest xls;
 
-    public SMAIndicatorTest() throws Exception {
-        super((data, params) -> new SMAIndicator((Indicator<Num>) data, (int) params[0]));
-        xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6);
+    public SMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
+        super((data, params) -> new SMAIndicator((Indicator<Num>) data, (int) params[0]),numFunction);
+        xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFunction);
     }
 
     private TimeSeries data;
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
@@ -86,15 +88,15 @@ public class SMAIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
 
         actualIndicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
-        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
-        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
-        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
 }

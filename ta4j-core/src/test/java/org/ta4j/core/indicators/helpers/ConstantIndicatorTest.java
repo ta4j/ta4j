@@ -28,7 +28,7 @@ import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ConstantIndicatorTest {
     private ConstantIndicator<Num> constantIndicator;

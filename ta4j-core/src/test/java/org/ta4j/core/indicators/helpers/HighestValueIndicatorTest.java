@@ -25,50 +25,57 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.Num.NaN.NaN;
 
-public class HighestValueIndicatorTest {
+public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
+    public HighestValueIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
     public void highestValueUsingTimeFrame5UsingClosePrice() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
-        TATestsUtils.assertNumEquals(highestValue.getValue(4), "4.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(5), "4.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(6), "5.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(7), "6.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(8), "6.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(9), "6.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(10), "6.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(11), "6.0");
-        TATestsUtils.assertNumEquals(highestValue.getValue(12), "4.0");
+        TestUtils.assertNumEquals(highestValue.getValue(4), "4.0");
+        TestUtils.assertNumEquals(highestValue.getValue(5), "4.0");
+        TestUtils.assertNumEquals(highestValue.getValue(6), "5.0");
+        TestUtils.assertNumEquals(highestValue.getValue(7), "6.0");
+        TestUtils.assertNumEquals(highestValue.getValue(8), "6.0");
+        TestUtils.assertNumEquals(highestValue.getValue(9), "6.0");
+        TestUtils.assertNumEquals(highestValue.getValue(10), "6.0");
+        TestUtils.assertNumEquals(highestValue.getValue(11), "6.0");
+        TestUtils.assertNumEquals(highestValue.getValue(12), "4.0");
     }
 
     @Test
     public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        TATestsUtils.assertNumEquals(highestValue.getValue(0), "1.0");
+        TestUtils.assertNumEquals(highestValue.getValue(0), "1.0");
     }
 
     @Test
     public void highestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
-        TATestsUtils.assertNumEquals(highestValue.getValue(12), "6.0");
+        TestUtils.assertNumEquals(highestValue.getValue(12), "6.0");
     }
 
     @Test

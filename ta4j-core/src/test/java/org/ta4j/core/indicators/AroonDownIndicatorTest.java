@@ -26,23 +26,28 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.Num.NaN.NaN;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AroonDownIndicatorTest {
+public class AroonDownIndicatorTest extends AbstractIndicatorTest{
 
     private TimeSeries data;
+
+    public AroonDownIndicatorTest(Function<Number, Num> numFunction) {
+        super(null,numFunction);
+    }
 
     @Before
     public void init() {
         data = new BaseTimeSeries.SeriesBuilder()
-                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withNumTypeOf(numFunction)
                 .withName("Aroon data")
                 .build();
         data.addBar(ZonedDateTime.now().plusDays(1),168.28, 169.87, 167.15, 169.64, 0);
@@ -71,28 +76,28 @@ public class AroonDownIndicatorTest {
     @Test
     public void upDownAndHigh(){
         AroonDownIndicator arronDownIndicator = new AroonDownIndicator(data, 5);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(19),80);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(18),100);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(17),100);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(16),0);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(15),0);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(14),0);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(13),20);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(12),40);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(11),0);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(10),0);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(9),20);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(8),40);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(7),60);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(6),80);
-        TATestsUtils.assertNumEquals(arronDownIndicator.getValue(5),100);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(19),80);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(18),100);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(17),100);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(16),0);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(15),0);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(14),0);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(13),20);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(12),40);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(11),0);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(10),0);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(9),20);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(8),40);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(7),60);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(6),80);
+        TestUtils.assertNumEquals(arronDownIndicator.getValue(5),100);
     }
 
 
     @Test
     public void onlyNaNValues(){
         TimeSeries series = new BaseTimeSeries.SeriesBuilder()
-                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withNumTypeOf(numFunction)
                 .withName("NaN test")
                 .build();
         for (long i = 0; i<= 1000; i++){
@@ -109,7 +114,7 @@ public class AroonDownIndicatorTest {
     @Test
     public void naNValuesInIntervall(){
         TimeSeries series = new BaseTimeSeries.SeriesBuilder()
-                .withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION)
+                .withNumTypeOf(numFunction)
                 .withName("NaN test")
                 .build();
         for (long i = 10; i >= 0; i--){ // (10, NaN, 9, NaN, 8, NaN, 7, NaN)

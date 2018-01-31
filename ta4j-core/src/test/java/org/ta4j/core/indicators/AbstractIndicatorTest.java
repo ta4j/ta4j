@@ -22,28 +22,75 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.IndicatorFactory;
+import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Num.DoubleNum;
+import org.ta4j.core.Num.Num;
 
-import static junit.framework.TestCase.assertEquals;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 
-public class AbstractIndicatorTest {
+/**
+ * Abstract test class to extend TimeSeries, Indicator an other test cases.
+ * The extending class will be called twice. First time with {@link BigDecimalNum#valueOf},
+ * second time with {@link DoubleNum#valueOf} as <code>Function<Number, Num></></code> parameter.
+ * This should ensure that the defined test case is valid for both data types.
+ *
+ * @param <D> Data source of test object, needed for Excel-Sheet validation
+ *           (could be <code>Indicator<Num></code> or <code>TimeSeries</code>, ...)
+ * @param <I> The generic class of the test indicator (could be <code>Num</code>, <code>Boolean</code>, ...)
+ */
+@RunWith(Parameterized.class)
+public abstract class AbstractIndicatorTest<D, I> {
 
-    private TimeSeries series;
+        public final Function<Number, Num> numFunction;
 
-    @Before
-    public void setUp() {
-        series = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        @Parameterized.Parameters(name = "Test Case: {index} (0=BigDecimalNum, 1=DoubleNum)")
+        public static List<Function<Number, Num>> function(){
+            return Arrays.asList(BigDecimalNum::valueOf, DoubleNum::valueOf);
+        }
+
+    private final IndicatorFactory<D, I> factory;
+
+    /**
+     * Constructor.
+     * 
+     * @param factory IndicatorFactory for building an Indicator given data and
+     *            parameters.
+     * @param numFunction the function to convert a Number into a Num implementation (automatically insertet by Junit)
+     */
+    public AbstractIndicatorTest(IndicatorFactory<D, I> factory, Function<Number, Num> numFunction) {
+        this.numFunction = numFunction;
+        this.factory = factory;
     }
 
-    @Test
-    public void getTimeSeries() {
-        ClosePriceIndicator cp = new ClosePriceIndicator(series);
-        assertEquals(series, cp.getTimeSeries());
-        SMAIndicator sma = new SMAIndicator(cp, 3);
-        assertEquals(series, sma.getTimeSeries());
+    /**
+     * Constructor<p/>
+     *
+     * @param numFunction the function to convert a Number into a Num implementation (automatically insertet by Junit)
+     */
+    public AbstractIndicatorTest(Function<Number, Num> numFunction){
+        this.numFunction = numFunction;
+        this.factory = null;
     }
+
+    /**
+     * Generates an Indicator from data and parameters.
+     * 
+     * @param data indicator data
+     * @param params indicator parameters
+     * @return Indicator<I> from data given parameters
+     */
+    public Indicator<I> getIndicator(D data, Object... params) {
+        return factory.getIndicator(data, params);
+    }
+
+    protected Num numOf(Number n){
+        return numFunction.apply(n);
+    }
+
 }

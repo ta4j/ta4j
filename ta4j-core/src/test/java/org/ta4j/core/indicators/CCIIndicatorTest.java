@@ -25,15 +25,18 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
+import java.util.function.Function;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class CCIIndicatorTest {
+public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private double[] typicalPrices = new double[] {
         23.98, 23.92, 23.79, 23.67, 23.54,
@@ -46,11 +49,19 @@ public class CCIIndicatorTest {
 
     private MockTimeSeries series;
 
+    /**
+     * Constructor.
+     * @param function
+     */
+    public CCIIndicatorTest(Function function) {
+        super(function);
+    }
+
     @Before
     public void setUp() {
         ArrayList<Bar> bars = new ArrayList<Bar>();
         for (Double price : typicalPrices) {
-            bars.add(new MockBar(price, price, price, price));
+            bars.add(new MockBar(price, price, price, price,numFunction));
         }
         series = new MockTimeSeries(bars);
     }
@@ -60,7 +71,7 @@ public class CCIIndicatorTest {
         CCIIndicator cci = new CCIIndicator(series, 20);
 
         // Incomplete time frame
-        TATestsUtils.assertNumEquals(cci.getValue(0), 0);
+        TestUtils.assertNumEquals(cci.getValue(0), 0);
         assertNumEquals(cci.getValue(1), -66.6667);
         assertNumEquals(cci.getValue(2), -100d);
         assertNumEquals(cci.getValue(10), 14.365);

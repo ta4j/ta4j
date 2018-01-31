@@ -25,27 +25,35 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
+import java.util.function.Function;
 
-public class MultiplierIndicatorTest {
+
+public class MultiplierIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
     private MultiplierIndicator multiplierIndicator;
+
+    public MultiplierIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, CURENCT_NUM_FUNCTION.apply(6));
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
         multiplierIndicator = new MultiplierIndicator(constantIndicator, 0.75);
     }
 
     @Test
     public void constantIndicator() {
-        TATestsUtils.assertNumEquals(multiplierIndicator.getValue(10), "4.5");
-        TATestsUtils.assertNumEquals(multiplierIndicator.getValue(1), "4.5");
-        TATestsUtils.assertNumEquals(multiplierIndicator.getValue(0), "4.5");
-        TATestsUtils.assertNumEquals(multiplierIndicator.getValue(30), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(10), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(1), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(0), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(30), "4.5");
     }
 }

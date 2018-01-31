@@ -26,6 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Num.Num;
 import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.trading.rules.FixedRule;
 
@@ -33,13 +34,14 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.Num.NaN.NaN;
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
 
-public class TimeSeriesManagerTest {
+
+public class TimeSeriesManagerTest extends AbstractIndicatorTest {
 
     private TimeSeries seriesForRun;
 
@@ -47,12 +49,17 @@ public class TimeSeriesManagerTest {
 
     private Strategy strategy;
 
-    private final static Num HUNDRED = CURENCT_NUM_FUNCTION.apply(100);
+    private final Num HUNDRED = numOf(100);
+
+    public TimeSeriesManagerTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
 
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
-        seriesForRun = new MockTimeSeries(
+        seriesForRun = new MockTimeSeries(numFunction,
                 new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
                 new ZonedDateTime[] {
                     ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
@@ -73,7 +80,7 @@ public class TimeSeriesManagerTest {
 
     @Test
     public void runOnWholeSeries() {
-        TimeSeries series = new MockTimeSeries(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
         manager.setTimeSeries(series);
         List<Trade> allTrades = manager.run(strategy).getTrades();
         assertEquals(2, allTrades.size());
@@ -81,7 +88,7 @@ public class TimeSeriesManagerTest {
 
     @Test
     public void runOnWholeSeriesWithAmount() {
-        TimeSeries series = new MockTimeSeries(20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
         manager.setTimeSeries(series);
         List<Trade> allTrades = manager.run(strategy, OrderType.BUY, HUNDRED).getTrades();
 
@@ -143,7 +150,7 @@ public class TimeSeriesManagerTest {
     @Test
     public void runOnSeriesSlices(){
         ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
-        TimeSeries series = new MockTimeSeries(new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
+        TimeSeries series = new MockTimeSeries(numFunction, new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
                     new ZonedDateTime[]{dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001), dateTime.withYear(2001), dateTime.withYear(2002),
                     dateTime.withYear(2002), dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004), dateTime.withYear(2005)});
         manager.setTimeSeries(series);

@@ -3,18 +3,27 @@ package org.ta4j.core;
 import org.junit.Test;
 import org.ta4j.core.Num.BigDecimalNum;
 import org.ta4j.core.Num.DoubleNum;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class SeriesBuilderTest {
+public class SeriesBuilderTest extends AbstractIndicatorTest {
 
-    private final BaseTimeSeries.SeriesBuilder seriesBuilder = new BaseTimeSeries.SeriesBuilder();
+    public SeriesBuilderTest(Function<Number, Num> numFunction){
+        super(numFunction);
+        System.out.println(numFunction.getClass());
+    }
+
+    private final BaseTimeSeries.SeriesBuilder seriesBuilder = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction);
 
     @Test
     public void testBuilder(){
+
         TimeSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed time series using BigDecimal as delegate
         TimeSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty unnamed time series using BigDecimal as delegate
         TimeSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class).withName("useDouble").build();

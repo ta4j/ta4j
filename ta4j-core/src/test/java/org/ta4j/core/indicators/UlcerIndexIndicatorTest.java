@@ -24,20 +24,28 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class UlcerIndexIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class UlcerIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
     
     private TimeSeries ibmData;
 
+    public UlcerIndexIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        ibmData = new MockTimeSeries(
+        ibmData = new MockTimeSeries(numFunction,
                 194.75, 195.00, 195.10, 194.46, 190.60,
                 188.86, 185.47, 184.46, 182.31, 185.22,
                 184.00, 182.87, 187.45, 194.51, 191.63,
@@ -54,7 +62,7 @@ public class UlcerIndexIndicatorTest {
     public void ulcerIndexUsingTimeFrame14UsingIBMData() {
         UlcerIndexIndicator ulcer = new UlcerIndexIndicator(new ClosePriceIndicator(ibmData), 14);
 
-        TATestsUtils.assertNumEquals(ulcer.getValue(0), 0);
+        TestUtils.assertNumEquals(ulcer.getValue(0), 0);
         
         // From: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index
         assertNumEquals(ulcer.getValue(26), 1.3047);

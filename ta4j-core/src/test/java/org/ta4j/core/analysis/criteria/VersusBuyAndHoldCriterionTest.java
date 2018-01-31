@@ -24,74 +24,81 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
 import static org.ta4j.core.Num.NaN.NaN;
 
-public class VersusBuyAndHoldCriterionTest {
+public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
+
+    public VersusBuyAndHoldCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculateOnlyWithGainTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(2,series),
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateOnlyWithLossTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithOnlyOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade trade = new Trade(Order.buyAt(0,series), Order.sellAt(1,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithAverageProfit() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 130);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 130);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0, NaN, NaN), Order.sellAt(1, NaN, NaN),
                 Order.buyAt(2, NaN, NaN), Order.sellAt(5, NaN, NaN));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new AverageProfitCriterion());
 
-        assertEquals(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6), buyAndHold.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6), buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithNumberOfBars() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 130);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 130);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new NumberOfBarsCriterion());
 
-        assertEquals(6d/6d, buyAndHold.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(6d/6d, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

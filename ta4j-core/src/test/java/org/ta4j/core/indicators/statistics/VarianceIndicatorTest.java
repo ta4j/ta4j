@@ -24,26 +24,35 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class VarianceIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private TimeSeries data;
+
+    public VarianceIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
     }
 
     @Test
     public void varianceUsingTimeFrame4UsingClosePrice() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
 
-        TATestsUtils.assertNumEquals(var.getValue(0), 0);
+        TestUtils.assertNumEquals(var.getValue(0), 0);
         assertNumEquals(var.getValue(1), 0.25);
         assertNumEquals(var.getValue(2), 2.0/3);
         assertNumEquals(var.getValue(3), 1.25);
@@ -59,21 +68,21 @@ public class VarianceIndicatorTest {
     @Test
     public void firstValueShouldBeZero() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
-        TATestsUtils.assertNumEquals(var.getValue(0), 0);
+        TestUtils.assertNumEquals(var.getValue(0), 0);
     }
 
     @Test
     public void varianceShouldBeZeroWhenTimeFrameIs1() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
-        TATestsUtils.assertNumEquals(var.getValue(3), 0);
-        TATestsUtils.assertNumEquals(var.getValue(8), 0);
+        TestUtils.assertNumEquals(var.getValue(3), 0);
+        TestUtils.assertNumEquals(var.getValue(8), 0);
     }
 
     @Test
     public void varianceUsingTimeFrame2UsingClosePrice() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
 
-        TATestsUtils.assertNumEquals(var.getValue(0), 0);
+        TestUtils.assertNumEquals(var.getValue(0), 0);
         assertNumEquals(var.getValue(1), 0.25);
         assertNumEquals(var.getValue(2), 0.25);
         assertNumEquals(var.getValue(3), 0.25);

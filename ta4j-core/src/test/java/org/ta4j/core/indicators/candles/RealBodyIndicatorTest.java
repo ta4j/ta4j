@@ -25,37 +25,44 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-public class RealBodyIndicatorTest {
+public class RealBodyIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>{
 
     private TimeSeries series;
+
+    public RealBodyIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
-        bars.add(new MockBar(10, 18, 20, 10));
-        bars.add(new MockBar(17, 20, 21, 17));
-        bars.add(new MockBar(15, 15, 16, 14));
-        bars.add(new MockBar(15, 11, 15, 8));
-        bars.add(new MockBar(11, 12, 12, 10));
+        bars.add(new MockBar(10, 18, 20, 10,numFunction));
+        bars.add(new MockBar(17, 20, 21, 17,numFunction));
+        bars.add(new MockBar(15, 15, 16, 14,numFunction));
+        bars.add(new MockBar(15, 11, 15, 8, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10,numFunction));
         series = new MockTimeSeries(bars);
     }
 
     @Test
     public void getValue() {
         RealBodyIndicator body = new RealBodyIndicator(series);
-        TATestsUtils.assertNumEquals(body.getValue(0), 8);
-        TATestsUtils.assertNumEquals(body.getValue(1), 3);
-        TATestsUtils.assertNumEquals(body.getValue(2), 0);
-        TATestsUtils.assertNumEquals(body.getValue(3), -4);
-        TATestsUtils.assertNumEquals(body.getValue(4), 1);
+        TestUtils.assertNumEquals(body.getValue(0), 8);
+        TestUtils.assertNumEquals(body.getValue(1), 3);
+        TestUtils.assertNumEquals(body.getValue(2), 0);
+        TestUtils.assertNumEquals(body.getValue(3), -4);
+        TestUtils.assertNumEquals(body.getValue(4), 1);
     }
 }

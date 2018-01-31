@@ -32,24 +32,25 @@ import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class EMAIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
+public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ExternalIndicatorTest xls;
 
-    public EMAIndicatorTest() throws Exception {
-        super((data, params) -> new EMAIndicator((Indicator<Num>) data, (int) params[0]));
-        xls = new XLSIndicatorTest(this.getClass(), "EMA.xls", 6);
+    public EMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
+        super((data, params) -> new EMAIndicator((Indicator<Num>) data, (int) params[0]), numFunction);
+        xls = new XLSIndicatorTest(this.getClass(), "EMA.xls", 6, numFunction);
     }
     private TimeSeries data;
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(
+        data = new MockTimeSeries(numFunction,
                 64.75, 63.79, 63.73,
                 63.73, 63.55, 63.19,
                 63.91, 63.85, 62.95,
@@ -74,7 +75,7 @@ public class EMAIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
     public void stackOverflowError() throws Exception {
         List<Bar> bigListOfBars = new ArrayList<Bar>();
         for (int i = 0; i < 10000; i++) {
-            bigListOfBars.add(new MockBar(i));
+            bigListOfBars.add(new MockBar(i,numFunction));
         }
         MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
@@ -90,15 +91,15 @@ public class EMAIndicatorTest extends IndicatorTest<Indicator<Num>, Num> {
 
         indicator = getIndicator(closePrice, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(329.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(329.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
 
         indicator = getIndicator(closePrice, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(327.7748, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(327.7748, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
 
         indicator = getIndicator(closePrice, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(327.4076, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(327.4076, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
 }

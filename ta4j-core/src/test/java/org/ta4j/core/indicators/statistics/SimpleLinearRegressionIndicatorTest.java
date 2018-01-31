@@ -27,21 +27,28 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class SimpleLinearRegressionIndicatorTest {
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private Indicator<Num> closePrice;
-    
+
+    public SimpleLinearRegressionIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
         double[] data = new double[]{10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80};
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(data));
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, data));
     }
 
     @Test
@@ -76,11 +83,11 @@ public class SimpleLinearRegressionIndicatorTest {
     public void calculateLinearRegressionOn4Observations() {
 
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 4);
-        TATestsUtils.assertNumEquals(reg.getValue(1), 20);
-        TATestsUtils.assertNumEquals(reg.getValue(2), 30);
+        TestUtils.assertNumEquals(reg.getValue(1), 20);
+        TestUtils.assertNumEquals(reg.getValue(2), 30);
         
         SimpleRegression origReg = buildSimpleRegression(10, 20, 30, 40);
-        TATestsUtils.assertNumEquals(reg.getValue(3), 40);
+        TestUtils.assertNumEquals(reg.getValue(3), 40);
         assertNumEquals(reg.getValue(3), origReg.predict(3));
         
         origReg = buildSimpleRegression(30, 40, 30, 40);
@@ -93,7 +100,7 @@ public class SimpleLinearRegressionIndicatorTest {
     @Test
     public void calculateLinearRegression() {
         double[] values = new double[] { 1, 2, 1.3, 3.75, 2.25 };
-        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(values));
+        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(numFunction, values));
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
         
         SimpleRegression origReg = buildSimpleRegression(values);

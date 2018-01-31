@@ -24,34 +24,43 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class GainIndicatorTest {
+import java.util.function.Function;
+
+public class GainIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
+    public GainIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 7, 4, 3, 3, 5, 3, 2);
     }
 
     @Test
     public void gainUsingClosePrice() {
         GainIndicator gain = new GainIndicator(new ClosePriceIndicator(data));
-        TATestsUtils.assertNumEquals(gain.getValue(0), 0);
-        TATestsUtils.assertNumEquals(gain.getValue(1), 1);
-        TATestsUtils.assertNumEquals(gain.getValue(2), 1);
-        TATestsUtils.assertNumEquals(gain.getValue(3), 1);
-        TATestsUtils.assertNumEquals(gain.getValue(4), 0);
-        TATestsUtils.assertNumEquals(gain.getValue(5), 1);
-        TATestsUtils.assertNumEquals(gain.getValue(6), 3);
-        TATestsUtils.assertNumEquals(gain.getValue(7), 0);
-        TATestsUtils.assertNumEquals(gain.getValue(8), 0);
-        TATestsUtils.assertNumEquals(gain.getValue(9), 0);
-        TATestsUtils.assertNumEquals(gain.getValue(10), 2);
-        TATestsUtils.assertNumEquals(gain.getValue(11), 0);
-        TATestsUtils.assertNumEquals(gain.getValue(12), 0);
+        TestUtils.assertNumEquals(gain.getValue(0), 0);
+        TestUtils.assertNumEquals(gain.getValue(1), 1);
+        TestUtils.assertNumEquals(gain.getValue(2), 1);
+        TestUtils.assertNumEquals(gain.getValue(3), 1);
+        TestUtils.assertNumEquals(gain.getValue(4), 0);
+        TestUtils.assertNumEquals(gain.getValue(5), 1);
+        TestUtils.assertNumEquals(gain.getValue(6), 3);
+        TestUtils.assertNumEquals(gain.getValue(7), 0);
+        TestUtils.assertNumEquals(gain.getValue(8), 0);
+        TestUtils.assertNumEquals(gain.getValue(9), 0);
+        TestUtils.assertNumEquals(gain.getValue(10), 2);
+        TestUtils.assertNumEquals(gain.getValue(11), 0);
+        TestUtils.assertNumEquals(gain.getValue(12), 0);
     }
 }

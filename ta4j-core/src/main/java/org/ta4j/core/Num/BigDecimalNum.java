@@ -351,13 +351,11 @@ public final class BigDecimalNum implements Num {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) {
+        if (!(obj instanceof Num)) {
             return false;
         }
-        if (obj == NaN){
-            return true;
-        }
-        return this.delegate.compareTo(((BigDecimalNum)obj).delegate) == 0;
+        // `this` cannot be NaN
+        return obj != NaN && this.delegate.compareTo(((BigDecimalNum) obj).delegate) == 0;
     }
 
     /**

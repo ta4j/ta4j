@@ -28,6 +28,8 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.XlsTestsUtils;
 
+import java.util.function.Function;
+
 public class XLSCriterionTest implements ExternalCriterionTest {
 
     private Class<?> clazz;
@@ -35,6 +37,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     private int criterionColumn;
     private int statesColumn;
     private TimeSeries cachedSeries = null;
+    private final Function<Number, Num> numFunction;
 
     /**
      * Constructor.
@@ -45,11 +48,12 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      *            values
      * @param statesColumn column number containing the trading record states
      */
-    public XLSCriterionTest(Class<?> clazz, String fileName, int criterionColumn, int statesColumn) {
+    public XLSCriterionTest(Class<?> clazz, String fileName, int criterionColumn, int statesColumn,Function<Number, Num> numFunction) {
         this.clazz = clazz;
         this.fileName = fileName;
         this.criterionColumn = criterionColumn;
         this.statesColumn = statesColumn;
+        this.numFunction = numFunction;
     }
 
     /**
@@ -61,7 +65,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      */
     public TimeSeries getSeries() throws Exception {
         if (cachedSeries == null) {
-            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName);
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName,numFunction);
         }
         return cachedSeries;
     }

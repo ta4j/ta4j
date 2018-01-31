@@ -24,24 +24,31 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class AbsoluteIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class AbsoluteIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public AbsoluteIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void constantIndicators() {
         TimeSeries series = new BaseTimeSeries();
-        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, CURENCT_NUM_FUNCTION.apply(1337)));
-        AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, CURENCT_NUM_FUNCTION.apply(0)));
-        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, CURENCT_NUM_FUNCTION.apply(-42.42)));
+        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(1337)));
+        AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)));
+        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(-42.42)));
         for (int i = 0; i < 10; i++) {
-            TATestsUtils.assertNumEquals(positiveInd.getValue(i), 1337);
-            TATestsUtils.assertNumEquals(zeroInd.getValue(i), 0);
+            TestUtils.assertNumEquals(positiveInd.getValue(i), 1337);
+            TestUtils.assertNumEquals(zeroInd.getValue(i), 0);
             assertNumEquals(negativeInd.getValue(i), 42.42);
         }
     }

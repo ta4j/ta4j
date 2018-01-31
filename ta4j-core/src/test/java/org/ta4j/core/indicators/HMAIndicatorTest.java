@@ -24,19 +24,27 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class HMAIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class HMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
+    public HMAIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(
+        data = new MockTimeSeries(numFunction,
                 84.53, 87.39, 84.55,
                 82.83, 82.58, 83.74,
                 83.33, 84.57, 86.98,

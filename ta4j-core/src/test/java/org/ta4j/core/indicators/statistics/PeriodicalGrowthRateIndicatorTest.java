@@ -25,25 +25,33 @@ package org.ta4j.core.indicators.statistics;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
 
+import java.util.function.Function;
+
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.Num.NaN.NaN;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 
-public class PeriodicalGrowthRateIndicatorTest {
+public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeriesManager seriesManager;
     
     private ClosePriceIndicator closePrice;
-    
+
+    public PeriodicalGrowthRateIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        TimeSeries mockSeries = new MockTimeSeries(
+        TimeSeries mockSeries = new MockTimeSeries(numFunction,
                 29.49, 28.30, 27.74, 27.65, 27.60, 28.70, 28.60,
                 28.19, 27.40, 27.20, 27.28, 27.00, 27.59, 26.20,
                 25.75, 24.75, 23.33, 24.45, 24.25, 25.02, 23.60,

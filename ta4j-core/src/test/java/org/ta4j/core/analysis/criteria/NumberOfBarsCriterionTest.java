@@ -24,15 +24,22 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class NumberOfBarsCriterionTest {
+public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
+
+    public NumberOfBarsCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
         assertEquals(0, (int) numberOfBars.calculate(series, new BaseTradingRecord()));
@@ -40,21 +47,21 @@ public class NumberOfBarsCriterionTest {
 
     @Test
     public void calculateWithTwoTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(2,series),
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade t = new Trade(Order.buyAt(2,series), Order.sellAt(5,series));
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(4, numberOfBars.calculate(series, t), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(4, numberOfBars.calculate(series, t), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

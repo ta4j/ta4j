@@ -24,61 +24,68 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class TotalProfitCriterionTest {
+public class TotalProfitCriterionTest extends AbstractCriterionTest{
+
+    public TotalProfitCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculateOnlyWithGainTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(2,series),
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(1.10 * 1.05, profit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.10 * 1.05, profit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateOnlyWithLossTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(0.95 * 0.7, profit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.95 * 0.7, profit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateProfitWithTradesThatStartSelling() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.sellAt(0,series), Order.buyAt(1,series),
                 Order.sellAt(2,series), Order.buyAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithNoTradesShouldReturn1() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(1d, profit.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, profit.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithOpenedTradeShouldReturn1() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion profit = new TotalProfitCriterion();
         Trade trade = new Trade();
-        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, profit.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
         trade.operate(0);
-        assertEquals(1d, profit.calculate(series, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, profit.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

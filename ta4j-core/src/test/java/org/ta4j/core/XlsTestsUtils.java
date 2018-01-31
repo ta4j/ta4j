@@ -99,9 +99,9 @@ public class XlsTestsUtils {
      * @throws IOException if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static TimeSeries getSeries(Class<?> clazz, String fileName) throws IOException, DataFormatException {
+    public static TimeSeries getSeries(Class<?> clazz, String fileName,Function<Number, Num> numFunction) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return getSeries(sheet);
+        return getSeries(sheet, numFunction);
     }
 
     /**
@@ -114,8 +114,8 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getData throws DataFormatException or if
      *             the data contains empty cells
      */
-    private static TimeSeries getSeries(Sheet sheet) throws DataFormatException {
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(TATestsUtils.CURENCT_NUM_FUNCTION).build();
+    private static TimeSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         // parse the rows from the data section
@@ -255,9 +255,9 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getSeries or getValues throws
      *             DataFormatException
      */
-    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column,Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockIndicator(getSeries(sheet), getValues(sheet, column, numFunction, params));
+        return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
     }
 
     /**

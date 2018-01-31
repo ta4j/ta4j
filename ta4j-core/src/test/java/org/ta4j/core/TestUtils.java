@@ -22,12 +22,10 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Num.BigDecimalNum;
 import org.ta4j.core.Num.Num;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -35,12 +33,11 @@ import static org.junit.Assert.assertNotEquals;
 /**
  * Utility class for {@code Decimal} tests.
  */
-public class TATestsUtils {
+public class TestUtils {
 
     /** Offset for double equality checking */
     public static final double BIG_DECIMAL_OFFSET = 0.0001;
 
-    public static Function<Number, Num> CURENCT_NUM_FUNCTION = BigDecimalNum::valueOf;
     /**
      * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
      *

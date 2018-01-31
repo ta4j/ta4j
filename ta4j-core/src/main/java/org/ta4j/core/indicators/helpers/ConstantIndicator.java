@@ -23,13 +23,13 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
  * <p></p>
  */
-public class ConstantIndicator<T> extends CachedIndicator<T> {
+public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     private static final long serialVersionUID = -186917236870375024L;
     private T value;
@@ -41,11 +41,6 @@ public class ConstantIndicator<T> extends CachedIndicator<T> {
 
     @Override
     public T getValue(int index) {
-        return value;
-    }
-
-    @Override
-    protected T calculate(int index) {
         return value;
     }
 

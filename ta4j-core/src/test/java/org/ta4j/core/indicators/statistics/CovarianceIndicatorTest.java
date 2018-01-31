@@ -27,45 +27,51 @@ import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBar;
 
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class CovarianceIndicatorTest {
+public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private Indicator<Num> close, volume;
 
+    public CovarianceIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        TimeSeries data = new BaseTimeSeries();
+        TimeSeries data = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         int i = 20;
         // close, volume
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),6,100));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),7,105));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9,130));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11,150));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),10, 130));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 95));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),13,120));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),15,180));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 150));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 200));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 150));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 85));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 70));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),5, 90));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 100));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9, 95));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 110));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i),10, 95));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),6,100,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),7,105,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9,130,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11,150,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),10, 130,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 95,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),13,120,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),15,180,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 150,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 200,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 150,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 85,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 70,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),5, 90,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 100,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9, 95,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 110,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i),10, 95,numFunction));
         close = new ClosePriceIndicator(data);
         volume = new VolumeIndicator(data, 2);
     }
@@ -74,15 +80,15 @@ public class CovarianceIndicatorTest {
     public void usingTimeFrame5UsingClosePriceAndVolume() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 5);
 
-		TATestsUtils.assertNumEquals(covar.getValue(0), 0);
+		TestUtils.assertNumEquals(covar.getValue(0), 0);
 		assertNumEquals(covar.getValue(1), 26.25);
 		assertNumEquals(covar.getValue(2), 63.3333);
 		assertNumEquals(covar.getValue(3), 143.75);
-		TATestsUtils.assertNumEquals(covar.getValue(4), 156);
+		TestUtils.assertNumEquals(covar.getValue(4), 156);
 		assertNumEquals(covar.getValue(5), 60.8);
 		assertNumEquals(covar.getValue(6), 15.2);
 		assertNumEquals(covar.getValue(7), -17.6);
-		TATestsUtils.assertNumEquals(covar.getValue(8), 4);
+		TestUtils.assertNumEquals(covar.getValue(8), 4);
 		assertNumEquals(covar.getValue(9), 11.6);
 		assertNumEquals(covar.getValue(10), -14.4);
 		assertNumEquals(covar.getValue(11), -100.2);
@@ -99,13 +105,13 @@ public class CovarianceIndicatorTest {
     @Test
     public void firstValueShouldBeZero() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 5);
-        TATestsUtils.assertNumEquals(covar.getValue(0), 0);
+        TestUtils.assertNumEquals(covar.getValue(0), 0);
     }
 
     @Test
     public void shouldBeZeroWhenTimeFrameIs1() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 1);
-        TATestsUtils.assertNumEquals(covar.getValue(3), 0);
-        TATestsUtils.assertNumEquals(covar.getValue(8), 0);
+        TestUtils.assertNumEquals(covar.getValue(3), 0);
+        TestUtils.assertNumEquals(covar.getValue(8), 0);
     }
 }

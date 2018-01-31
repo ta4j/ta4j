@@ -24,46 +24,54 @@ package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-public class OnBalanceVolumeIndicatorTest {
+public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public OnBalanceVolumeIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void getValue() {
         ZonedDateTime now = ZonedDateTime.now();
         List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(now, 0, 10, 0, 0, 0, 4, 0));
-        bars.add(new MockBar(now, 0, 5, 0, 0, 0, 2, 0));
-        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 3, 0));
-        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 8, 0));
-        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 6, 0));
-        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0));
+        bars.add(new MockBar(now, 0, 10, 0, 0, 0, 4, 0,numFunction));
+        bars.add(new MockBar(now, 0, 5, 0, 0, 0, 2, 0,numFunction));
+        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 3, 0,numFunction));
+        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 8, 0,numFunction));
+        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 6, 0,numFunction));
+        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0,numFunction));
 
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockTimeSeries(bars));
-        TATestsUtils.assertNumEquals(obv.getValue(0), 0);
-        TATestsUtils.assertNumEquals(obv.getValue(1), -2);
-        TATestsUtils.assertNumEquals(obv.getValue(2), 1);
-        TATestsUtils.assertNumEquals(obv.getValue(3), 9);
-        TATestsUtils.assertNumEquals(obv.getValue(4), 9);
-        TATestsUtils.assertNumEquals(obv.getValue(5), -1);
+        TestUtils.assertNumEquals(obv.getValue(0), 0);
+        TestUtils.assertNumEquals(obv.getValue(1), -2);
+        TestUtils.assertNumEquals(obv.getValue(2), 1);
+        TestUtils.assertNumEquals(obv.getValue(3), 9);
+        TestUtils.assertNumEquals(obv.getValue(4), 9);
+        TestUtils.assertNumEquals(obv.getValue(5), -1);
     }
 
     @Test
     public void stackOverflowError() {
         List<Bar> bigListOfBars = new ArrayList<Bar>();
         for (int i = 0; i < 10000; i++) {
-            bigListOfBars.add(new MockBar(i));
+            bigListOfBars.add(new MockBar(i,numFunction));
         }
         MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);
         // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.
-        TATestsUtils.assertNumEquals(obv.getValue(9999), 0);
+        TestUtils.assertNumEquals(obv.getValue(9999), 0);
     }
 }

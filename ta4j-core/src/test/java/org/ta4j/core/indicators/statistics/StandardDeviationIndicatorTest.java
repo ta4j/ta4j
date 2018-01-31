@@ -24,26 +24,35 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class StandardDeviationIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private TimeSeries data;
+
+    public StandardDeviationIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
     }
 
     @Test
     public void standardDeviationUsingTimeFrame4UsingClosePrice() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
 
-        TATestsUtils.assertNumEquals(sdv.getValue(0), 0);
+        TestUtils.assertNumEquals(sdv.getValue(0), 0);
         assertNumEquals(sdv.getValue(1), Math.sqrt(0.25));
         assertNumEquals(sdv.getValue(2), Math.sqrt(2.0/3));
         assertNumEquals(sdv.getValue(3), Math.sqrt(1.25));
@@ -59,7 +68,7 @@ public class StandardDeviationIndicatorTest {
     @Test
     public void standardDeviationShouldBeZeroWhenTimeFrameIs1() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
-        TATestsUtils.assertNumEquals(sdv.getValue(3), 0);
-        TATestsUtils.assertNumEquals(sdv.getValue(8), 0);
+        TestUtils.assertNumEquals(sdv.getValue(3), 0);
+        TestUtils.assertNumEquals(sdv.getValue(8), 0);
     }
 }

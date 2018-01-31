@@ -27,14 +27,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 
 import java.time.ZonedDateTime;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.Num.NaN.NaN;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 
 public class AroonUpIndicatorTest {
@@ -70,21 +70,21 @@ public class AroonUpIndicatorTest {
     @Test
     public void upAndSlowDown(){
         AroonUpIndicator arronUp = new AroonUpIndicator(data, 5);
-        TATestsUtils.assertNumEquals(arronUp.getValue(19),0);
-        TATestsUtils.assertNumEquals(arronUp.getValue(18),20);
-        TATestsUtils.assertNumEquals(arronUp.getValue(17),40);
-        TATestsUtils.assertNumEquals(arronUp.getValue(16),60);
-        TATestsUtils.assertNumEquals(arronUp.getValue(15),80);
-        TATestsUtils.assertNumEquals(arronUp.getValue(14),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(13),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(12),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(11),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(10),60);
-        TATestsUtils.assertNumEquals(arronUp.getValue(9),80);
-        TATestsUtils.assertNumEquals(arronUp.getValue(8),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(7),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(6),100);
-        TATestsUtils.assertNumEquals(arronUp.getValue(5),0);
+        TestUtils.assertNumEquals(arronUp.getValue(19),0);
+        TestUtils.assertNumEquals(arronUp.getValue(18),20);
+        TestUtils.assertNumEquals(arronUp.getValue(17),40);
+        TestUtils.assertNumEquals(arronUp.getValue(16),60);
+        TestUtils.assertNumEquals(arronUp.getValue(15),80);
+        TestUtils.assertNumEquals(arronUp.getValue(14),100);
+        TestUtils.assertNumEquals(arronUp.getValue(13),100);
+        TestUtils.assertNumEquals(arronUp.getValue(12),100);
+        TestUtils.assertNumEquals(arronUp.getValue(11),100);
+        TestUtils.assertNumEquals(arronUp.getValue(10),60);
+        TestUtils.assertNumEquals(arronUp.getValue(9),80);
+        TestUtils.assertNumEquals(arronUp.getValue(8),100);
+        TestUtils.assertNumEquals(arronUp.getValue(7),100);
+        TestUtils.assertNumEquals(arronUp.getValue(6),100);
+        TestUtils.assertNumEquals(arronUp.getValue(5),0);
 
     }
 

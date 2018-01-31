@@ -24,29 +24,36 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class NumberOfTradesCriterionTest {
+public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
+
+    public NumberOfTradesCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(0d, buyAndHold.calculate(series, new BaseTradingRecord()), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0d, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void calculateWithTwoTrades() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(2d, buyAndHold.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(2d, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
@@ -54,7 +61,7 @@ public class NumberOfTradesCriterionTest {
         Trade trade = new Trade();
         NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
 
-        assertEquals(1d, tradesCriterion.calculate(null, trade), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, tradesCriterion.calculate(null, trade), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test

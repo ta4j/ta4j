@@ -27,7 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Num.BigDecimalNum;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 
 import java.util.function.Function;
@@ -56,12 +56,12 @@ public class DifferenceIndicatorTest {
 
     @Test
     public void getValue() {
-        TATestsUtils.assertNumEquals("8", differenceIndicator.getValue(0));
-        TATestsUtils.assertNumEquals("6", differenceIndicator.getValue(1));
-        TATestsUtils.assertNumEquals("5", differenceIndicator.getValue(2));
-        TATestsUtils.assertNumEquals("3.47", differenceIndicator.getValue(3));
-        TATestsUtils.assertNumEquals("0.13", differenceIndicator.getValue(4));
-        TATestsUtils.assertNumEquals("0", differenceIndicator.getValue(5));
-        TATestsUtils.assertNumEquals("-4", differenceIndicator.getValue(6));
+        TestUtils.assertNumEquals("8", differenceIndicator.getValue(0));
+        TestUtils.assertNumEquals("6", differenceIndicator.getValue(1));
+        TestUtils.assertNumEquals("5", differenceIndicator.getValue(2));
+        TestUtils.assertNumEquals("3.47", differenceIndicator.getValue(3));
+        TestUtils.assertNumEquals("0.13", differenceIndicator.getValue(4));
+        TestUtils.assertNumEquals("0", differenceIndicator.getValue(5));
+        TestUtils.assertNumEquals("-4", differenceIndicator.getValue(6));
     }
 }

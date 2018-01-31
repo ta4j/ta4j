@@ -29,13 +29,19 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class WMAIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+
+    public WMAIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculate() {
-        MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
 
@@ -49,7 +55,7 @@ public class WMAIndicatorTest {
     
     @Test
     public void wmaWithTimeFrameGreaterThanSeriesSize() {
-        MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
 
@@ -64,7 +70,7 @@ public class WMAIndicatorTest {
     @Test
     public void wmaUsingTimeFrame9UsingClosePrice() {
         // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        TimeSeries data = new MockTimeSeries(
+        TimeSeries data = new MockTimeSeries(numFunction,
                 84.53, 87.39, 84.55,
                 82.83, 82.58, 83.74,
                 83.33, 84.57, 86.98,

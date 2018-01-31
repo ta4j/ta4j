@@ -26,52 +26,58 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.Num.NaN.NaN;
 
-public class LowestValueIndicatorTest {
+public class LowestValueIndicatorTest extends AbstractIndicatorTest{
 
     private TimeSeries data;
 
+    public LowestValueIndicatorTest(Function function) {
+        super(function);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1);
+        data = new MockTimeSeries(numFunction,1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1);
     }
 
     @Test
     public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        TATestsUtils.assertNumEquals(lowestValue.getValue(1), "1.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(2), "1.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(3), "1.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(4), "1.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(5), "2.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(6), "3.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(7), "3.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(8), "3.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(9), "3.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(10), "2.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(11), "2.0");
-        TATestsUtils.assertNumEquals(lowestValue.getValue(12), "2.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(1), "1.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(2), "1.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(3), "1.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(4), "1.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(5), "2.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(6), "3.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(7), "3.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(8), "3.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(9), "3.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(10), "2.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(11), "2.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(12), "2.0");
 
     }
 
     @Test
     public void lowestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
-        TATestsUtils.assertNumEquals(lowestValue.getValue(0), "1.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(0), "1.0");
     }
 
     @Test
     public void lowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
-        TATestsUtils.assertNumEquals(lowestValue.getValue(12), "1.0");
+        TestUtils.assertNumEquals(lowestValue.getValue(12), "1.0");
     }
 
     @Test

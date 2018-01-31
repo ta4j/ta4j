@@ -33,18 +33,22 @@ import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class CachedIndicatorTest {
+public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num>{
 
     private TimeSeries series;
 
+    public CachedIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        series = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        series = new MockTimeSeries(numFunction,1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
@@ -58,14 +62,16 @@ public class CachedIndicatorTest {
     @Test //should be not null
     public void getValueWithNullTimeSeries() {
 
-        ConstantIndicator<Num> constant = new ConstantIndicator<>(new BaseTimeSeries(), CURENCT_NUM_FUNCTION.apply(10));
-        assertEquals(CURENCT_NUM_FUNCTION.apply(10), constant.getValue(0));
-        assertEquals(CURENCT_NUM_FUNCTION.apply(10), constant.getValue(100));
+        ConstantIndicator<Num> constant =
+                new ConstantIndicator<>(new BaseTimeSeries.SeriesBuilder()
+                        .withNumTypeOf(numFunction).build(),numFunction.apply(10));
+        assertEquals(numFunction.apply(10), constant.getValue(0));
+        assertEquals(numFunction.apply(10), constant.getValue(100));
         assertNotNull(constant.getTimeSeries());
 
         SMAIndicator sma = new SMAIndicator(constant, 10);
-        assertEquals(CURENCT_NUM_FUNCTION.apply(10), sma.getValue(0));
-        assertEquals(CURENCT_NUM_FUNCTION.apply(10), sma.getValue(100));
+        assertEquals(numFunction.apply(10), sma.getValue(0));
+        assertEquals(numFunction.apply(10), sma.getValue(100));
         assertNotNull(sma.getTimeSeries());
     }
 
@@ -73,33 +79,33 @@ public class CachedIndicatorTest {
     public void getValueWithCacheLengthIncrease() {
         double[] data = new double[200];
         Arrays.fill(data, 10);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(data)), 100);
-        TATestsUtils.assertNumEquals(sma.getValue(105), 10);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(numFunction,data)), 100);
+        TestUtils.assertNumEquals(sma.getValue(105), 10);
     }
 
     @Test
     public void getValueWithOldResultsRemoval() {
         double[] data = new double[20];
         Arrays.fill(data, 1);
-        TimeSeries timeSeries = new MockTimeSeries(data);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction,data);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
-        TATestsUtils.assertNumEquals(sma.getValue(5), 1);
-        TATestsUtils.assertNumEquals(sma.getValue(10), 1);
+        TestUtils.assertNumEquals(sma.getValue(5), 1);
+        TestUtils.assertNumEquals(sma.getValue(10), 1);
         timeSeries.setMaximumBarCount(12);
-        TATestsUtils.assertNumEquals(sma.getValue(19), 1);
+        TestUtils.assertNumEquals(sma.getValue(19), 1);
     }
 
     @Test
     public void strategyExecutionOnCachedIndicatorAndLimitedTimeSeries() {
-        TimeSeries timeSeries = new MockTimeSeries(0, 1, 2, 3, 4, 5, 6, 7);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction,0, 1, 2, 3, 4, 5, 6, 7);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
         timeSeries.setMaximumBarCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
 
         Strategy strategy = new BaseStrategy(
-                new OverIndicatorRule(sma, CURENCT_NUM_FUNCTION.apply(3)),
-                new UnderIndicatorRule(sma, CURENCT_NUM_FUNCTION.apply(3))
+                new OverIndicatorRule(sma, sma.numOf(3)),
+                new UnderIndicatorRule(sma, sma.numOf(3))
         );
         // Theoretical shouldEnter results: false, false, false, false, true, true, true, true
         // Theoretical shouldExit results: false, false, true, true, false, false, false, false
@@ -132,13 +138,13 @@ public class CachedIndicatorTest {
 
     @Test
     public void getValueOnResultsCalculatedFromRemovedBarsShouldReturnFirstRemainingResult() {
-        TimeSeries timeSeries = new MockTimeSeries(1, 1, 1, 1, 1);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction,1, 1, 1, 1, 1);
         timeSeries.setMaximumBarCount(3);
         assertEquals(2, timeSeries.getRemovedBarsCount());
 
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         for (int i = 0; i < 5; i++) {
-            TATestsUtils.assertNumEquals(sma.getValue(i), 1);
+            TestUtils.assertNumEquals(sma.getValue(i), 1);
         }
     }
 
@@ -146,7 +152,7 @@ public class CachedIndicatorTest {
     public void recursiveCachedIndicatorOnMovingTimeSeriesShouldNotCauseStackOverflow() {
         // Added to check issue #120: https://github.com/mdeverdelhan/ta4j/issues/120
         // See also: CachedIndicator#getValue(int index)
-        series = new MockTimeSeries();
+        series = new MockTimeSeries(numFunction);
         series.setMaximumBarCount(5);
         assertEquals(5, series.getBarCount());
 

@@ -25,16 +25,18 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Num.Num;
-import org.ta4j.core.TATestsUtils;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformSimpleType;
 import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformType;
 
-import static org.ta4j.core.TATestsUtils.CURENCT_NUM_FUNCTION;
+import java.util.function.Function;
 
-public class DecimalTransformIndicatorTest {
+
+public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num> {
 
     private DecimalTransformIndicator transPlus;
     private DecimalTransformIndicator transMinus;
@@ -46,11 +48,15 @@ public class DecimalTransformIndicatorTest {
     private DecimalTransformIndicator transAbs;
     private DecimalTransformIndicator transSqrt;
     private DecimalTransformIndicator transLog;
-    
+
+    public DecimalTransformIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, CURENCT_NUM_FUNCTION.apply(4));
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
 
         transPlus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.plus);
         transMinus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.minus);
@@ -59,22 +65,22 @@ public class DecimalTransformIndicatorTest {
         transMax = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.max);
         transMin = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.min);
         
-        transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, BigDecimalNum.valueOf(-4)), DecimalTransformSimpleType.abs);
+        transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)), DecimalTransformSimpleType.abs);
         transSqrt = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.sqrt);
         transLog = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.log);
     }
 
     @Test
     public void getValue() {
-        TATestsUtils.assertNumEquals(transPlus.getValue(0), 14);
-        TATestsUtils.assertNumEquals(transMinus.getValue(0), -6);
-        TATestsUtils.assertNumEquals(transMultiply.getValue(0), 40);
-        TATestsUtils.assertNumEquals(transDivide.getValue(0), 0.4);
-        TATestsUtils.assertNumEquals(transMax.getValue(0), 10);
-        TATestsUtils.assertNumEquals(transMin.getValue(0), 4);
+        TestUtils.assertNumEquals(transPlus.getValue(0), 14);
+        TestUtils.assertNumEquals(transMinus.getValue(0), -6);
+        TestUtils.assertNumEquals(transMultiply.getValue(0), 40);
+        TestUtils.assertNumEquals(transDivide.getValue(0), 0.4);
+        TestUtils.assertNumEquals(transMax.getValue(0), 10);
+        TestUtils.assertNumEquals(transMin.getValue(0), 4);
         
-        TATestsUtils.assertNumEquals(transAbs.getValue(0), 4);
-        TATestsUtils.assertNumEquals(transSqrt.getValue(0), 2);
-        TATestsUtils.assertNumEquals(transLog.getValue(0), 1.3862943611198906);
+        TestUtils.assertNumEquals(transAbs.getValue(0), 4);
+        TestUtils.assertNumEquals(transSqrt.getValue(0), 2);
+        TestUtils.assertNumEquals(transLog.getValue(0), 1.3862943611198906);
     }
 }

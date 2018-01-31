@@ -24,20 +24,29 @@ package org.ta4j.core.indicators.bollinger;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TATestsUtils.assertNumEquals;
+import java.util.function.Function;
 
-public class PercentBIndicatorTest {
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class PercentBIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
 
     private ClosePriceIndicator closePrice;
 
+    public PercentBIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(
+        TimeSeries data = new MockTimeSeries(numFunction,
                 10, 12, 15, 14, 17,
                 20, 21, 20, 20, 19,
                 20, 17, 12, 12, 9,

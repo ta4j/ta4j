@@ -25,13 +25,20 @@ package org.ta4j.core.analysis.criteria;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockTimeSeries;
+
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class RewardRiskRatioCriterionTest {
+public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
 
     private RewardRiskRatioCriterion rrc;
+
+    public RewardRiskRatioCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
@@ -40,7 +47,7 @@ public class RewardRiskRatioCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterion() {
-        MockTimeSeries series = new MockTimeSeries(100, 105, 95, 100, 90, 95, 80, 120);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(4, series),
@@ -52,12 +59,12 @@ public class RewardRiskRatioCriterionTest {
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
-        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TATestsUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
     }
 
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
-        MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -66,19 +73,19 @@ public class RewardRiskRatioCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterionWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(1, 2, 3, 6, 8, 20, 3);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         assertTrue(Double.isInfinite(rrc.calculate(series, new BaseTradingRecord())));
     }
     
     @Test
     public void withOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(100, 95, 95, 100, 90, 95, 80, 120);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
 
 
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
-        assertEquals((95d/100) / ((1d - 0.95d)), TATestsUtils.BIG_DECIMAL_OFFSET, ratioCriterion.calculate(series, trade));
+        assertEquals((95d/100) / ((1d - 0.95d)), TestUtils.BIG_DECIMAL_OFFSET, ratioCriterion.calculate(series, trade));
     }
 
     @Test
