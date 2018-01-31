@@ -37,7 +37,6 @@ import static org.ta4j.core.Num.NaN.NaN;
  * @see MathContext
  * @see RoundingMode
  * @see Num
- * @apiNote the delegate should never become a NaN.NaN value. No self NaN.NaN checks provided
  *
  */
 public final class BigDecimalNum implements Num {
@@ -101,11 +100,7 @@ public final class BigDecimalNum implements Num {
 
 
     public Num plus(Num augend) {
-        if (augend == NaN) {
-            return NaN;
-        }
-        BigDecimal bigDecimal = ((BigDecimalNum)augend).delegate;
-        return new BigDecimalNum(delegate.add(bigDecimal, MATH_CONTEXT));
+        return augend.isNaN() ? NaN : new BigDecimalNum(delegate.add(((BigDecimalNum)augend).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -116,11 +111,7 @@ public final class BigDecimalNum implements Num {
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
     public Num minus(Num subtrahend) {
-        if (subtrahend == NaN) {
-            return NaN;
-        }
-        BigDecimal bigDecimal = ((BigDecimalNum)subtrahend).delegate;
-        return new BigDecimalNum(delegate.subtract(bigDecimal, MATH_CONTEXT));
+        return subtrahend.isNaN() ? NaN : new BigDecimalNum(delegate.subtract(((BigDecimalNum)subtrahend).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -131,11 +122,7 @@ public final class BigDecimalNum implements Num {
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     public Num multipliedBy(Num multiplicand) {
-        if ((multiplicand == NaN)) {
-            return NaN;
-        }
-        BigDecimal bigDecimal = ((BigDecimalNum)multiplicand).delegate;
-        return new BigDecimalNum(delegate.multiply(bigDecimal, MATH_CONTEXT));
+        return multiplicand.isNaN() ? NaN : new BigDecimalNum(delegate.multiply(((BigDecimalNum)multiplicand).delegate, MATH_CONTEXT));
     }
 
     /**
@@ -146,7 +133,7 @@ public final class BigDecimalNum implements Num {
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
     public Num dividedBy(Num divisor) {
-        if ((divisor == NaN) || divisor.isZero()) {
+        if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }
         BigDecimal bigDecimal = ((BigDecimalNum)divisor).delegate;
@@ -162,7 +149,7 @@ public final class BigDecimalNum implements Num {
      */
     @Override
     public Num remainder(Num divisor) {
-        if ( (divisor == NaN) || divisor.isZero()) {
+        if ( divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }
         return new BigDecimalNum(delegate.remainder(((BigDecimalNum)divisor).delegate, MATH_CONTEXT));
@@ -259,7 +246,7 @@ public final class BigDecimalNum implements Num {
      * @return true is this is greater than the specified value, false otherwise
      */
     public boolean isEqual(Num other) {
-        return (other != NaN) && compareTo(other) == 0;
+        return !other.isNaN() && compareTo(other) == 0;
     }
 
     /**
@@ -268,7 +255,7 @@ public final class BigDecimalNum implements Num {
      * @return true is this is greater than the specified value, false otherwise
      */
     public boolean isGreaterThan(Num other) {
-        return (other != NaN) && compareTo(other) > 0;
+        return !other.isNaN() && compareTo(other) > 0;
     }
 
     /**
@@ -277,7 +264,7 @@ public final class BigDecimalNum implements Num {
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
     public boolean isGreaterThanOrEqual(Num other) {
-        return (other != NaN) && compareTo(other) > -1;
+        return !other.isNaN() && compareTo(other) > -1;
     }
 
     /**
@@ -286,28 +273,16 @@ public final class BigDecimalNum implements Num {
      * @return true is this is less than the specified value, false otherwise
      */
     public boolean isLessThan(Num other) {
-        return (other != NaN) && compareTo(other) < 0;
+        return !other.isNaN() && compareTo(other) < 0;
     }
 
     @Override
     public boolean isLessThanOrEqual(Num other) {
-        return (other != NaN) && delegate.compareTo(((BigDecimalNum) other).delegate) < 1;
-    }
-
-    /**
-     * Checks if this value is less than or equal to another.
-     * @param other the other value, not null
-     * @return true is this is less than or equal to the specified value, false otherwise
-     */
-    public boolean isLessThanOrEqual(Number other) {
-        return (other != NaN) && compareTo(function().apply(other)) < 1;
+        return !other.isNaN() && delegate.compareTo(((BigDecimalNum) other).delegate) < 1;
     }
 
     public int compareTo(Num other) {
-        if ((other == NaN)) {
-            return 0;
-        }
-        return delegate.compareTo(((BigDecimalNum) other).delegate);
+        return other.isNaN() ? 0 : delegate.compareTo(((BigDecimalNum) other).delegate);
     }
 
     /**
@@ -319,10 +294,7 @@ public final class BigDecimalNum implements Num {
      *         method, {@code this} is returned.
      */
     public Num min(Num other) {
-        if (other == NaN) {
-            return NaN;
-        }
-        return (compareTo(other) <= 0 ? this : other);
+        return other.isNaN() ? NaN : (compareTo(other) <= 0 ? this : other);
     }
 
     /**
@@ -334,10 +306,7 @@ public final class BigDecimalNum implements Num {
      *         method, {@code this} is returned.
      */
     public Num max(Num other) {
-        if (other == NaN) {
-            return NaN;
-        }
-        return (compareTo(other) >= 0 ? this : other);
+        return other.isNaN() ? NaN : (compareTo(other) >= 0 ? this : other);
     }
 
     @Override
@@ -354,8 +323,7 @@ public final class BigDecimalNum implements Num {
         if (!(obj instanceof Num)) {
             return false;
         }
-        // `this` cannot be NaN
-        return obj != NaN && this.delegate.compareTo(((BigDecimalNum) obj).delegate) == 0;
+        return !((Num) obj).isNaN() && this.delegate.compareTo(((BigDecimalNum) obj).delegate) == 0;
     }
 
     /**

@@ -43,10 +43,9 @@ public class DoubleNum implements Num {
         return DoubleNum::valueOf;
     }
 
-    public DoubleNum(double val){
+    private DoubleNum(double val){
         delegate = val;
     }
-
 
     @Override
     public Double getDelegate() {
@@ -60,31 +59,22 @@ public class DoubleNum implements Num {
 
     @Override
     public Num plus(Num augend) {
-        if (augend == NaN){
-            return NaN;
-        }
-        return new DoubleNum(delegate+((DoubleNum) augend).delegate);
+        return augend.isNaN() ? NaN : new DoubleNum(delegate+((DoubleNum) augend).delegate);
     }
 
     @Override
     public Num minus(Num subtrahend) {
-        if (subtrahend == NaN){
-            return NaN;
-        }
-        return new DoubleNum(delegate-((DoubleNum)subtrahend).delegate);
+        return subtrahend.isNaN() ? NaN : new DoubleNum(delegate-((DoubleNum)subtrahend).delegate);
     }
 
     @Override
     public Num multipliedBy(Num multiplicand) {
-        if (multiplicand == NaN){
-            return NaN;
-        }
-        return new DoubleNum(delegate*((DoubleNum) multiplicand).delegate);
+        return multiplicand.isNaN() ? NaN : new DoubleNum(delegate*((DoubleNum) multiplicand).delegate);
     }
 
     @Override
     public Num dividedBy(Num divisor) {
-        if (divisor == NaN || divisor.isZero()){
+        if (divisor.isNaN()|| divisor.isZero()){
             return NaN;
         }
         DoubleNum divisorD = (DoubleNum) divisor;
@@ -93,10 +83,7 @@ public class DoubleNum implements Num {
 
     @Override
     public Num remainder(Num divisor) {
-        if (divisor == NaN){
-            return NaN;
-        }
-        return new DoubleNum(delegate%((DoubleNum) divisor).delegate);
+        return divisor.isNaN() ? NaN : new DoubleNum(delegate%((DoubleNum) divisor).delegate);
     }
 
     @Override
@@ -136,10 +123,7 @@ public class DoubleNum implements Num {
 
     @Override
     public boolean isEqual(Num other) {
-        if (other == NaN){
-            return true;
-        }
-        return delegate == ((DoubleNum) other).delegate;
+        return !other.isNaN() && delegate == ((DoubleNum) other).delegate;
     }
 
     /**
@@ -148,7 +132,7 @@ public class DoubleNum implements Num {
      * @return true is this is greater than the specified value, false otherwise
      */
     public boolean isGreaterThan(Num other) {
-        return (other != NaN) && compareTo(other) > 0;
+        return !other.isNaN() && compareTo(other) > 0;
     }
 
     /**
@@ -157,7 +141,7 @@ public class DoubleNum implements Num {
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
     public boolean isGreaterThanOrEqual(Num other) {
-        return (other != NaN) && compareTo(other) > -1;
+        return !other.isNaN() && compareTo(other) > -1;
     }
 
     /**
@@ -166,28 +150,22 @@ public class DoubleNum implements Num {
      * @return true is this is less than the specified value, false otherwise
      */
     public boolean isLessThan(Num other) {
-        return (other != NaN) && compareTo(other) < 0;
+        return !other.isNaN() && compareTo(other) < 0;
     }
 
     @Override
     public boolean isLessThanOrEqual(Num other) {
-        return (other != NaN) && compareTo(other) < 1;
+        return !other.isNaN() && compareTo(other) < 1;
     }
 
     @Override
     public Num min(Num other) {
-        if (other == NaN){
-            return NaN;
-        }
-        return new DoubleNum(Math.min(delegate,((DoubleNum) other).delegate));
+        return other.isNaN() ? NaN : new DoubleNum(Math.min(delegate,((DoubleNum) other).delegate));
     }
 
     @Override
     public Num max(Num other) {
-        if (other == NaN){
-            return NaN;
-        }
-        return new DoubleNum(Math.max(delegate,((DoubleNum)other).delegate));
+        return other.isNaN() ? NaN : new DoubleNum(Math.max(delegate,((DoubleNum)other).delegate));
     }
 
 
