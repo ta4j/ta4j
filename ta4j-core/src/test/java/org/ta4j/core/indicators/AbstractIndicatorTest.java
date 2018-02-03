@@ -86,11 +86,11 @@ public abstract class AbstractIndicatorTest<D, I> {
      * @return Indicator<I> from data given parameters
      */
     public Indicator<I> getIndicator(D data, Object... params) {
+        assert factory != null;
         return factory.getIndicator(data, params);
     }
 
     protected Num numOf(Number n){
         return numFunction.apply(n);
     }
-
 }
