@@ -43,7 +43,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     private ExternalIndicatorTest xls;
 
     public EMAIndicatorTest(Function<Number, Num> numFunction) throws Exception {
-        super((data, params) -> new EMAIndicator((Indicator<Num>) data, (int) params[0]), numFunction);
+        super((data, params) -> new EMAIndicator(data, (int) params[0]), numFunction);
         xls = new XLSIndicatorTest(this.getClass(), "EMA.xls", 6, numFunction);
     }
     private TimeSeries data;
