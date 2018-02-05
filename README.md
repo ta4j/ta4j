@@ -47,8 +47,7 @@ The current snapshot version is `0.12-SNAPSHOT` from the [develop](https://githu
 ```
 
 ### Getting Help
-
-Of course you can ask anything [via Twitter](http://twitter.com/MarcdeVerdelhan). For more detailed questions, please use the [issues tracker](http://github.com/mdeverdelhan/ta4j/issues).
+The wiki is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
 
 ### Contributing to ta4j
 
