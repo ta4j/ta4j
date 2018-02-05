@@ -20,7 +20,7 @@ Ta4j is an open source Java library for [technical analysis](http://en.wikipedia
 
 ### Maven configuration
 
-Ta4j is available on [Maven Central](http://search.maven.org/#search|ga|1|a%3A%22ta4j%22). You just have to add the following dependency in your `pom.xml` file.
+Ta4j is available on [Maven Central](http://search.maven.org/#search). You just have to add the following dependency in your `pom.xml` file.
 
 ```xml
 <dependency>
@@ -47,8 +47,7 @@ The current snapshot version is `0.12-SNAPSHOT` from the [develop](https://githu
 ```
 
 ### Getting Help
-
-Of course you can ask anything [via Twitter](http://twitter.com/MarcdeVerdelhan). For more detailed questions, please use the [issues tracker](http://github.com/mdeverdelhan/ta4j/issues).
+The wiki is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
 
 ### Contributing to ta4j
 
@@ -58,3 +57,5 @@ Here are some ways for you to contribute to ta4j:
   * Take a look at [How to contribute](https://github.com/ta4j/ta4j/wiki/How-to-contribute)
 
 See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Cunduct](CODE_OF_CONDUCT.md)
+<br/><br/><br/>
+<IMG SRC="https://www.yourkit.com/images/yklogo.png" ALIGN="right" />YourKit supports the Ta4j project with its full-featured Java Profiler. YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/">YourKit Java Profiler</a> and <a href="https://www.yourkit.com/.net/profiler/">YourKit .NET Profiler</a>, innovative and intelligent tools for profiling Java and .NET applications. 
