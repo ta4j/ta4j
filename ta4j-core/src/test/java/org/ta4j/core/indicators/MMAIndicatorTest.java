@@ -60,15 +60,15 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void firstValueShouldBeEqualsToFirstDataValue() throws Exception {
         Indicator<Num> actualIndicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(64.75, actualIndicator.getValue(0).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(64.75, actualIndicator.getValue(0).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
     public void mmaUsingTimeFrame10UsingClosePrice() throws Exception {
         Indicator<Num> actualIndicator = getIndicator(new ClosePriceIndicator(data), 10);
-        assertEquals(63.9983, actualIndicator.getValue(9).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(63.7315, actualIndicator.getValue(10).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(63.5093, actualIndicator.getValue(11).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(63.9983, actualIndicator.getValue(9).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(63.7315, actualIndicator.getValue(10).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(63.5093, actualIndicator.getValue(11).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -81,7 +81,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
         Indicator<Num> actualIndicator = getIndicator(closePrice, 10);
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
-        assertEquals(9990.0, actualIndicator.getValue(9999).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(9990.0, actualIndicator.getValue(9999).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -91,15 +91,15 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         actualIndicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
-        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
-        assertEquals(327.2900, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(327.2900, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
-        assertEquals(326.9696, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(326.9696, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

@@ -52,15 +52,15 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
         actualIndicator = getIndicator(series, 1, 1);
         assertIndicatorEquals(xls.getIndicator(1, 1), actualIndicator);
-        assertEquals(100.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(100.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(series, 3, 2);
         assertIndicatorEquals(xls.getIndicator(3, 2), actualIndicator);
-        assertEquals(12.1330, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(12.1330, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(series, 13, 8);
         assertIndicatorEquals(xls.getIndicator(13, 8), actualIndicator);
-        assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

@@ -45,7 +45,7 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1.0243, TestUtils.BIG_DECIMAL_OFFSET, averageProfit.calculate(series, tradingRecord));
+        assertEquals(1.0243, TestUtils.GENERAL_OFFSET, averageProfit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -53,7 +53,7 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
         series = new MockTimeSeries(numFunction,100d, 105d, 110d, 100d, 95d, 105d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0,series), Order.sellAt(2,series));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(Math.pow(110d/100, 1d/3), averageProfit.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -63,14 +63,14 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(Math.pow(95d/100 * 70d/100, 1d / 6), averageProfit.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
     public void calculateWithNoBarsShouldReturn1() {
         series = new MockTimeSeries(numFunction,100, 95, 100, 80, 85, 70);
         AnalysisCriterion averageProfit = new AverageProfitCriterion();
-        assertEquals(1d, averageProfit.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, averageProfit.calculate(series, new BaseTradingRecord()), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -78,7 +78,7 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
         series = new MockTimeSeries(numFunction,100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion average = new AverageProfitCriterion();
-        assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(Math.pow(105d / 100, 1d/2), average.calculate(series, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

@@ -46,7 +46,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -57,7 +57,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -66,7 +66,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
         Trade trade = new Trade(Order.buyAt(0,series), Order.sellAt(1,series));
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -74,7 +74,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
-        assertEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -86,7 +86,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new AverageProfitCriterion());
 
-        assertEquals(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6), buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(Math.pow(95d/100 * 130d/100, 1d/6) / Math.pow(130d / 100, 1d/6), buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -98,7 +98,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
 
         AnalysisCriterion buyAndHold = new VersusBuyAndHoldCriterion(new NumberOfBarsCriterion());
 
-        assertEquals(6d/6d, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(6d/6d, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

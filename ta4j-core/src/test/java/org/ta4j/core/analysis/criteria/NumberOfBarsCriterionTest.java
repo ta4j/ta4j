@@ -53,7 +53,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -61,7 +61,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade t = new Trade(Order.buyAt(2,series), Order.sellAt(5,series));
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(4, numberOfBars.calculate(series, t), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(4, numberOfBars.calculate(series, t), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

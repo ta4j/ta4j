@@ -36,7 +36,7 @@ import static org.junit.Assert.assertNotEquals;
 public class TestUtils {
 
     /** Offset for double equality checking */
-    public static final double BIG_DECIMAL_OFFSET = 0.0001;
+    public static final double GENERAL_OFFSET = 0.0001;
 
     /**
      * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
@@ -72,7 +72,7 @@ public class TestUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
      */
     public static void assertNumEquals(double expected, Num actual) {
-        assertEquals(expected, actual.doubleValue(), BIG_DECIMAL_OFFSET);
+        assertEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
@@ -96,7 +96,7 @@ public class TestUtils {
         assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getBarCount());
         for (int i = 0; i < expectedValues.size(); i++) {
             assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), BIG_DECIMAL_OFFSET);
+                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
     }
 
@@ -111,7 +111,7 @@ public class TestUtils {
         for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
             assertEquals(String.format("Failed at index %s: %s",i,actual.toString()),
                     expected.getValue(i).doubleValue(),
-                    actual.getValue(i).doubleValue(), BIG_DECIMAL_OFFSET);
+                    actual.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
     }
 

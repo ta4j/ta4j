@@ -45,7 +45,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(1.10 * 1.05, profit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.10 * 1.05, profit.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -56,7 +56,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(2,series), Order.sellAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(0.95 * 0.7, profit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.95 * 0.7, profit.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -67,7 +67,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest{
                 Order.sellAt(2,series), Order.buyAt(5,series));
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion profit = new TotalProfitCriterion();
-        assertEquals(1d, profit.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, profit.calculate(series, new BaseTradingRecord()), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -83,9 +83,9 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion profit = new TotalProfitCriterion();
         Trade trade = new Trade();
-        assertEquals(1d, profit.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, profit.calculate(series, trade), TestUtils.GENERAL_OFFSET);
         trade.operate(0);
-        assertEquals(1d, profit.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, profit.calculate(series, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

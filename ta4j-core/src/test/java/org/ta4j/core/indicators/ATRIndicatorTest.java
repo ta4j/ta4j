@@ -53,15 +53,15 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(1), 0, 0, 0, 2, 0, 0, 0,numFunction));
         Indicator<Num> indicator = getIndicator(series, 3);
 
-        assertEquals(7d, indicator.getValue(0).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(7d, indicator.getValue(0).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(6d / 3 + (1 - 1d / 3) * indicator.getValue(0).doubleValue(),
-                indicator.getValue(1).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+                indicator.getValue(1).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(9d / 3 + (1 - 1d / 3) * indicator.getValue(1).doubleValue(),
-                indicator.getValue(2).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+                indicator.getValue(2).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(3d / 3 + (1 - 1d / 3) * indicator.getValue(2).doubleValue(),
-                indicator.getValue(3).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+                indicator.getValue(3).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(15d / 3 + (1 - 1d / 3) * indicator.getValue(3).doubleValue(),
-                indicator.getValue(4).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+                indicator.getValue(4).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -71,15 +71,15 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
         indicator = getIndicator(xlsSeries, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(4.8, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(4.8, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(7.4225, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(7.4225, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(8.8082, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(8.8082, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

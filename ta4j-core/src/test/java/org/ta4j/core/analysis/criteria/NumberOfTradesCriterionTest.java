@@ -42,7 +42,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(0d, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0d, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -53,7 +53,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
-        assertEquals(2d, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(2d, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -61,7 +61,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
         Trade trade = new Trade();
         NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
 
-        assertEquals(1d, tradesCriterion.calculate(null, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, tradesCriterion.calculate(null, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

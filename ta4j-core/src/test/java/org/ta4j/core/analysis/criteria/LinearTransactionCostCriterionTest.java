@@ -47,12 +47,12 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
         double value;
 
         value = getCriterion(1000d, 0.005, 0.2).calculate(xlsSeries, xlsTradingRecord);
-        assertEquals(xls.getFinalCriterionValue(1000d, 0.005, 0.2).doubleValue(), value, TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(843.5492, value, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(xls.getFinalCriterionValue(1000d, 0.005, 0.2).doubleValue(), value, TestUtils.GENERAL_OFFSET);
+        assertEquals(843.5492, value, TestUtils.GENERAL_OFFSET);
 
         value = getCriterion(1000d, 0.1, 1.0).calculate(xlsSeries, xlsTradingRecord);
-        assertEquals(xls.getFinalCriterionValue(1000d, 0.1, 1.0).doubleValue(), value, TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(1122.4410, value, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(xls.getFinalCriterionValue(1000d, 0.1, 1.0).doubleValue(), value, TestUtils.GENERAL_OFFSET);
+        assertEquals(1122.4410, value, TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -63,15 +63,15 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
         tradingRecord.operate(0);  tradingRecord.operate(1);
         criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
-        assertEquals(12.861, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(12.861, criterion, TestUtils.GENERAL_OFFSET);
 
         tradingRecord.operate(2);  tradingRecord.operate(3);
         criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
-        assertEquals(24.3759, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(24.3759, criterion, TestUtils.GENERAL_OFFSET);
 
         tradingRecord.operate(5);
         criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
-        assertEquals(28.2488, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(28.2488, criterion, TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -82,15 +82,15 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
         tradingRecord.operate(0);  tradingRecord.operate(1);
         criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
-        assertEquals(2.6d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(2.6d, criterion, TestUtils.GENERAL_OFFSET);
 
         tradingRecord.operate(2);  tradingRecord.operate(3);
         criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
-        assertEquals(5.2d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(5.2d, criterion, TestUtils.GENERAL_OFFSET);
 
         tradingRecord.operate(0);
         criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
-        assertEquals(6.5d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(6.5d, criterion, TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -100,19 +100,19 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
         double criterion;
 
         criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
-        assertEquals(0d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0d, criterion, TestUtils.GENERAL_OFFSET);
 
         trade.operate(1);
         criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
-        assertEquals(0.75d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.75d, criterion, TestUtils.GENERAL_OFFSET);
 
         trade.operate(3);
         criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
-        assertEquals(1.5d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.5d, criterion, TestUtils.GENERAL_OFFSET);
 
         trade.operate(4);
         criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
-        assertEquals(1.5d, criterion, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.5d, criterion, TestUtils.GENERAL_OFFSET);
     }
 
     @Test

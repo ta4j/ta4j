@@ -59,7 +59,7 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
         double peak = (105d / 100) * (100d / 95);
         double low = (105d / 100) * (90d / 95) * (80d / 95);
 
-        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(totalProfit / ((peak - low) / peak), rrc.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -85,7 +85,7 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
 
 
         RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
-        assertEquals((95d/100) / ((1d - 0.95d)), TestUtils.BIG_DECIMAL_OFFSET, ratioCriterion.calculate(series, trade));
+        assertEquals((95d/100) / ((1d - 0.95d)), TestUtils.GENERAL_OFFSET, ratioCriterion.calculate(series, trade));
     }
 
     @Test

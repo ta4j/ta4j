@@ -91,15 +91,15 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         indicator = getIndicator(closePrice, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(329.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(329.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(closePrice, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(327.7748, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(327.7748, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(closePrice, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(327.4076, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(327.4076, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

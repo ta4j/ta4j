@@ -45,7 +45,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(1.05, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1.05, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -56,7 +56,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(0.7, buyAndHold.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.7, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -64,7 +64,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.GENERAL_OFFSET);
     }
     
     @Test
@@ -72,7 +72,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(105d/100, buyAndHold.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(105d/100, buyAndHold.calculate(series, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

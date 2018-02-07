@@ -46,7 +46,7 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
-        assertEquals(2d/3, average.calculate(series, tradingRecord), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(2d/3, average.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -55,10 +55,10 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
             
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
-        assertEquals(0d, average.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0d, average.calculate(series, trade), TestUtils.GENERAL_OFFSET);
         
         trade = new Trade(Order.buyAt(1, series), Order.sellAt(2, series));
-        assertEquals(1d, average.calculate(series, trade), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(1d, average.calculate(series, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

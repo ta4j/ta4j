@@ -88,17 +88,17 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void usingTimeFrame14UsingClosePrice() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(68.4746, indicator.getValue(15).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(64.7836, indicator.getValue(16).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(72.0776, indicator.getValue(17).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(60.7800, indicator.getValue(18).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(63.6439, indicator.getValue(19).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(72.3433, indicator.getValue(20).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(67.3822, indicator.getValue(21).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(68.5438, indicator.getValue(22).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(76.2770, indicator.getValue(23).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(77.9908, indicator.getValue(24).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(67.4895, indicator.getValue(25).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(68.4746, indicator.getValue(15).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(64.7836, indicator.getValue(16).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(72.0776, indicator.getValue(17).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(60.7800, indicator.getValue(18).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(63.6439, indicator.getValue(19).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(72.3433, indicator.getValue(20).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(67.3822, indicator.getValue(21).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(68.5438, indicator.getValue(22).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(76.2770, indicator.getValue(23).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(77.9908, indicator.getValue(24).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(67.4895, indicator.getValue(25).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -108,15 +108,15 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         indicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
@@ -142,28 +142,28 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         // first online calculation is simple division
         double onlineRs = avgGain.getValue(14).dividedBy(avgLoss.getValue(14)).doubleValue();
-        assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
-        assertEquals(1.0738, onlineRs, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(1.0738, onlineRs, TestUtils.GENERAL_OFFSET);
         double onlineRsi = 100d - (100d / (1d + onlineRs));
         // difference in RSI values:
         assertEquals(51.779, onlineRsi, 0.001);
-        assertEquals(52.1304, indicator.getValue(14).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(52.1304, indicator.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         // strange, online average gain and loss is not a simple moving average!
         // but they only use them for the first RS calculation
-        // assertEquals(0.5430, avgGain.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
-        // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.BIG_DECIMAL_OFFSET);
+        // assertEquals(0.5430, avgGain.getValue(15).doubleValue(), TATestsUtils.GENERAL_OFFSET);
+        // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.GENERAL_OFFSET);
         // second online calculation uses MMAs
         // MMA of average gain
         double dividend = avgGain.getValue(14).multipliedBy(series.numOf(13)).plus(gain.getValue(15)).dividedBy(series.numOf(14)).doubleValue();
         // MMA of average loss
         double divisor = avgLoss.getValue(14).multipliedBy(series.numOf(13)).plus(loss.getValue(15)).dividedBy(series.numOf(14)).doubleValue();
         onlineRs = dividend / divisor;
-        assertEquals(0.9409, onlineRs, TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(0.9409, onlineRs, TestUtils.GENERAL_OFFSET);
         onlineRsi = 100d - (100d / (1d + onlineRs));
         // difference in RSI values:
         assertEquals(48.477, onlineRsi, 0.001);
-        assertEquals(47.3710, indicator.getValue(15).doubleValue(), TestUtils.BIG_DECIMAL_OFFSET);
+        assertEquals(47.3710, indicator.getValue(15).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 }
