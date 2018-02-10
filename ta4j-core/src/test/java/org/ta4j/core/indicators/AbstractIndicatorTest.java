@@ -26,9 +26,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
-import org.ta4j.core.Num.BigDecimalNum;
-import org.ta4j.core.Num.DoubleNum;
-import org.ta4j.core.Num.Num;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 import java.util.Arrays;
 import java.util.List;

@@ -25,8 +25,8 @@ package org.ta4j.core.indicators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.num.Num;
 
 /**
  * Abstract {@link Indicator indicator}.

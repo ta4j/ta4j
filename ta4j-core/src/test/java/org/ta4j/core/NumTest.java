@@ -1,10 +1,10 @@
 package org.ta4j.core;
 
 import org.junit.Test;
-import org.ta4j.core.Num.BigDecimalNum;
-import org.ta4j.core.Num.DoubleNum;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
 import java.util.function.Function;
@@ -12,8 +12,8 @@ import java.util.function.Function;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 
 public class NumTest extends AbstractIndicatorTest {

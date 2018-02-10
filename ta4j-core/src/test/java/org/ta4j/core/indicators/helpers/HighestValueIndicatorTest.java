@@ -26,17 +26,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.NaN.NaN;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

@@ -22,9 +22,9 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Rate of change of volume (ROCVIndicator) indicator.

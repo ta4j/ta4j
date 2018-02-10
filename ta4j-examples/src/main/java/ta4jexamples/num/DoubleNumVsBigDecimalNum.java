@@ -1,8 +1,6 @@
 package ta4jexamples.num;
 
 import org.ta4j.core.*;
-import org.ta4j.core.Num.BigDecimalNum;
-import org.ta4j.core.Num.DoubleNum;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
@@ -11,6 +9,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.trading.rules.IsEqualRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 

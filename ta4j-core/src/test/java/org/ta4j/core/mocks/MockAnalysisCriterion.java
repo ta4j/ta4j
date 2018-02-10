@@ -1,10 +1,10 @@
 package org.ta4j.core.mocks;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 
 import java.util.List;
 

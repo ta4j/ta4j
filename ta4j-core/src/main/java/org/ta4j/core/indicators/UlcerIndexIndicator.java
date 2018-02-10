@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.num.Num;
 /**
  * Ulcer index indicator.
  * <p/>

@@ -23,8 +23,8 @@
 package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 
 /**
  * Indicator-rising-indicator rule.

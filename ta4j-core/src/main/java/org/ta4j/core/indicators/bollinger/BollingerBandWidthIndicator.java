@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Bollinger BandWidth indicator.

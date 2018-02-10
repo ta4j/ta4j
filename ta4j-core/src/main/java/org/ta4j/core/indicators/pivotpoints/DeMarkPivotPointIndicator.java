@@ -23,15 +23,15 @@
 package org.ta4j.core.indicators.pivotpoints;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
 
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.ta4j.core.Num.NaN.NaN;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * DeMark Pivot Point indicator.

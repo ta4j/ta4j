@@ -23,8 +23,8 @@
 package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Buy - Occurs when the price line cross from down to up de Bollinger Band Low.

@@ -24,10 +24,10 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.Num.NaN.NaN;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * A manager for {@link TimeSeries} objects.

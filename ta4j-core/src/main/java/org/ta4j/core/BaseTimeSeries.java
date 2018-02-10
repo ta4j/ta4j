@@ -24,9 +24,9 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.Num.BigDecimalNum;
-import org.ta4j.core.Num.DoubleNum;
-import org.ta4j.core.Num.Num;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static org.ta4j.core.Num.NaN.NaN;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Base implementation of a {@link TimeSeries}.

@@ -22,13 +22,13 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
 import java.util.List;
 
-import static org.ta4j.core.Num.NaN.NaN;
+import static org.ta4j.core.num.NaN.NaN;
 
 
 /**

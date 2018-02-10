@@ -22,7 +22,7 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Num.Num;
+import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
 import java.util.Objects;

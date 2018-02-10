@@ -22,10 +22,10 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * The Chandelier Exit (short) Indicator.

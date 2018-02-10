@@ -25,10 +25,10 @@ package org.ta4j.core.analysis.criteria;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TimeSeriesManager;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.BooleanRule;
 import org.ta4j.core.trading.rules.FixedRule;
 

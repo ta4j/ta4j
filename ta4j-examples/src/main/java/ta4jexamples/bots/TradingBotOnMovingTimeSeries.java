@@ -23,10 +23,10 @@
 package ta4jexamples.bots;
 
 import org.ta4j.core.*;
-import org.ta4j.core.Num.BigDecimalNum;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;

@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
+import org.ta4j.core.num.Num;
 
 /**
  * Modified moving average indicator.

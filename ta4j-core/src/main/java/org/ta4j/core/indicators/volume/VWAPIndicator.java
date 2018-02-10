@@ -23,11 +23,11 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * The volume-weighted average price (VWAP) Indicator.

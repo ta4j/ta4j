@@ -22,10 +22,10 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * A stop-gain rule.

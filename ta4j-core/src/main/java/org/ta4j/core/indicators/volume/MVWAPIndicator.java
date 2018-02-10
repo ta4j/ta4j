@@ -23,9 +23,9 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * The Moving volume weighted average price (MVWAP) Indicator.

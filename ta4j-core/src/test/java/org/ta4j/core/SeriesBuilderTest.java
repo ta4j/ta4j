@@ -23,10 +23,10 @@
 package org.ta4j.core;
 
 import org.junit.Test;
-import org.ta4j.core.Num.BigDecimalNum;
-import org.ta4j.core.Num.DoubleNum;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
 import java.util.function.Function;

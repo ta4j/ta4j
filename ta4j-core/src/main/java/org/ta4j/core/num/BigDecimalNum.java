@@ -20,7 +20,7 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.Num;
+package org.ta4j.core.num;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -28,7 +28,7 @@ import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static org.ta4j.core.Num.NaN.NaN;
+import static org.ta4j.core.num.NaN.NaN;
 /**
  * Representation of BigDecimal. High precision, low performance.
  * A {@code Num} consists of a {@code BigDecimal} with arbitrary {@link MathContext} (precision and rounding mode).

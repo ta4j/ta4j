@@ -25,18 +25,18 @@ package org.ta4j.core.indicators.statistics;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
 
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
 
 
 public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {

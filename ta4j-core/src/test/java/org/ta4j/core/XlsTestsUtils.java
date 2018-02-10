@@ -24,9 +24,9 @@ package org.ta4j.core;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockTradingRecord;
+import org.ta4j.core.num.Num;
 
 import java.io.IOException;
 import java.math.BigDecimal;

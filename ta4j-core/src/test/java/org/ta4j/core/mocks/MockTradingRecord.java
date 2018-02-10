@@ -1,7 +1,7 @@
 package org.ta4j.core.mocks;
 
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Num.Num;
+import org.ta4j.core.num.Num;
 
 import java.util.List;
 

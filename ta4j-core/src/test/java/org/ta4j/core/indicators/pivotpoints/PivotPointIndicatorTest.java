@@ -33,10 +33,10 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.Num.NaN.NaN;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.pivotpoints.PivotLevel.*;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.*;
+import static org.ta4j.core.num.NaN.NaN;
 
 public class PivotPointIndicatorTest {
 

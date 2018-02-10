@@ -22,9 +22,9 @@
  */
 package org.ta4j.core.indicators.keltner;
 
-import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Keltner Channel (upper line) indicator
