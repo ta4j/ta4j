@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,6 +22,8 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Num.Num;
+
 public interface ExternalCriterionTest {
 
     /**
@@ -37,10 +39,10 @@ public interface ExternalCriterionTest {
      * returns the final value of the externally calculated criterion.
      * 
      * @param params criterion parameters
-     * @return Decimal final criterion value
+     * @return Num final criterion value
      * @throws Exception if the external calculator throws an Exception
      */
-    Decimal getFinalCriterionValue(Object... params) throws Exception;
+    Num getFinalCriterionValue(Object... params) throws Exception;
 
     /**
      * Gets the trading record used by an external criterion calculator.

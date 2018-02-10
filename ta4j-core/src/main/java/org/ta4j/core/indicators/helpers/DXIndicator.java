@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.adx.MinusDIIndicator;
@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.adx.PlusDIIndicator;
  * <p>
  * </p>
  */
-public class DXIndicator extends CachedIndicator<Decimal> {
+public class DXIndicator extends CachedIndicator<Num> {
 
     private final int timeFrame;
     private final PlusDIIndicator plusDIIndicator;
@@ -47,13 +47,13 @@ public class DXIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal pdiValue = plusDIIndicator.getValue(index);
-        Decimal mdiValue = minusDIIndicator.getValue(index);
-        if (pdiValue.plus(mdiValue).equals(Decimal.ZERO)) {
-            return Decimal.ZERO;
+    protected Num calculate(int index) {
+        Num pdiValue = plusDIIndicator.getValue(index);
+        Num mdiValue = minusDIIndicator.getValue(index);
+        if (pdiValue.plus(mdiValue).equals(numOf(0))) {
+            return numOf(0);
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(Decimal.HUNDRED);
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
     }
 
     @Override

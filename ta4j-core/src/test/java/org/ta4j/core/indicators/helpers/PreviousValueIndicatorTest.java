@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,15 +24,11 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -53,17 +49,16 @@ public class PreviousValueIndicatorTest {
     @Before
     public void setUp() {
         Random r = new Random();
-        List<Bar> bars = new ArrayList<>();
+        this.series = new BaseTimeSeries("test");
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
             double max = Math.max(close+r.nextDouble(), open+r.nextDouble());
             double min = Math.min(0, Math.min(close-r.nextDouble(), open-r.nextDouble()));
-            ZonedDateTime dateTime = ZonedDateTime.now();
-            Bar bar = new BaseBar(dateTime, open, close, max, min, i);
-            bars.add(bar);
+            ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001-i);
+            series.addBar(dateTime, open, close, max, min, i);
         }
-        this.series = new BaseTimeSeries("test", bars);
+
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
         this.minPriceIndicator = new MinPriceIndicator(this.series);

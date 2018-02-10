@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,6 +23,7 @@
 package ta4jexamples;
 
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.criteria.AverageProfitableTradesCriterion;
 import org.ta4j.core.analysis.criteria.RewardRiskRatioCriterion;
@@ -50,7 +51,7 @@ public class Quickstart {
 
 
         // Getting the close price of the bars
-        Decimal firstClosePrice = series.getBar(0).getClosePrice();
+        Num firstClosePrice = series.getBar(0).getClosePrice();
         System.out.println("First close price: " + firstClosePrice.doubleValue());
         // Or within an indicator:
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
@@ -73,7 +74,7 @@ public class Quickstart {
         //  - if the 5-bars SMA crosses over 30-bars SMA
         //  - or if the price goes below a defined price (e.g $800.00)
         Rule buyingRule = new CrossedUpIndicatorRule(shortSma, longSma)
-                .or(new CrossedDownIndicatorRule(closePrice, Decimal.valueOf("800")));
+                .or(new CrossedDownIndicatorRule(closePrice, 800));
 
         // Selling rules
         // We want to sell:
@@ -81,8 +82,8 @@ public class Quickstart {
         //  - or if if the price looses more than 3%
         //  - or if the price earns more than 2%
         Rule sellingRule = new CrossedDownIndicatorRule(shortSma, longSma)
-                .or(new StopLossRule(closePrice, Decimal.valueOf("3")))
-                .or(new StopGainRule(closePrice, Decimal.valueOf("2")));
+                .or(new StopLossRule(closePrice, series.numOf(3)))
+                .or(new StopGainRule(closePrice, series.numOf(2)));
 
         // Running our juicy trading strategy...
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);

@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Moving average convergence divergence (MACDIndicator) indicator. <br/>
@@ -32,7 +32,7 @@ import org.ta4j.core.Indicator;
  * see
  * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd
  */
-public class MACDIndicator extends CachedIndicator<Decimal> {
+public class MACDIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -6899062131135971403L;
 
@@ -44,7 +44,7 @@ public class MACDIndicator extends CachedIndicator<Decimal> {
      *
      * @param indicator the indicator
      */
-    public MACDIndicator(Indicator<Decimal> indicator) {
+    public MACDIndicator(Indicator<Num> indicator) {
        this(indicator, 12, 26);
     }
 
@@ -55,7 +55,7 @@ public class MACDIndicator extends CachedIndicator<Decimal> {
      * @param shortTimeFrame the short time frame (normally 12)
      * @param longTimeFrame the long time frame (normally 26)
      */
-    public MACDIndicator(Indicator<Decimal> indicator, int shortTimeFrame, int longTimeFrame) {
+    public MACDIndicator(Indicator<Num> indicator, int shortTimeFrame, int longTimeFrame) {
         super(indicator);
         if (shortTimeFrame > longTimeFrame) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
@@ -65,7 +65,7 @@ public class MACDIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
 }

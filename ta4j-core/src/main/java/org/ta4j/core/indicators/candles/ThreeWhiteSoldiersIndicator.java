@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -43,7 +43,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
     /** Average upper shadow */
     private final SMAIndicator averageUpperShadowInd;
     /** Factor used when checking if a candle has a very short upper shadow */
-    private final Decimal factor;
+    private final Num factor;
 
     private int blackCandleIndex = -1;
 
@@ -53,7 +53,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      * @param timeFrame the number of bars used to calculate the average upper shadow
      * @param factor the factor used when checking if a candle has a very short upper shadow
      */
-    public ThreeWhiteSoldiersIndicator(TimeSeries series, int timeFrame, Decimal factor) {
+    public ThreeWhiteSoldiersIndicator(TimeSeries series, int timeFrame, Num factor) {
         super(series);
         this.series = series;
         upperShadowInd = new UpperShadowIndicator(series);
@@ -79,9 +79,9 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      * @return true if the bar/candle has a very short upper shadow, false otherwise
      */
     private boolean hasVeryShortUpperShadow(int index) {
-        Decimal currentUpperShadow = upperShadowInd.getValue(index);
+        Num currentUpperShadow = upperShadowInd.getValue(index);
         // We use the black candle index to remove to bias of the previous soldiers
-        Decimal averageUpperShadow = averageUpperShadowInd.getValue(blackCandleIndex);
+        Num averageUpperShadow = averageUpperShadowInd.getValue(blackCandleIndex);
 
         return currentUpperShadow.isLessThan(averageUpperShadow.multipliedBy(factor));
     }
@@ -93,10 +93,10 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
     private boolean isGrowing(int index) {
         Bar prevBar = series.getBar(index-1);
         Bar currBar = series.getBar(index);
-        final Decimal prevOpenPrice = prevBar.getOpenPrice();
-        final Decimal prevClosePrice = prevBar.getClosePrice();
-        final Decimal currOpenPrice = currBar.getOpenPrice();
-        final Decimal currClosePrice = currBar.getClosePrice();
+        final Num prevOpenPrice = prevBar.getOpenPrice();
+        final Num prevClosePrice = prevBar.getClosePrice();
+        final Num currOpenPrice = currBar.getOpenPrice();
+        final Num currClosePrice = currBar.getClosePrice();
 
         // Opens within the body of the previous candle
         return currOpenPrice.isGreaterThan(prevOpenPrice) && currOpenPrice.isLessThan(prevClosePrice)

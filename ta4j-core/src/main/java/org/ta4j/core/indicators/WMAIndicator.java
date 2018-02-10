@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,45 +22,46 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * WMA indicator.
  * <p></p>
  */
-public class WMAIndicator extends CachedIndicator<Decimal> {
+public class WMAIndicator extends CachedIndicator<Num> {
 
+    private static final long serialVersionUID = -1610206345404758687L;
     private int timeFrame;
 
-    private Indicator<Decimal> indicator;
+    private Indicator<Num> indicator;
 
-    public WMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public WMAIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index == 0) {
             return indicator.getValue(0);
         }
-        Decimal value = Decimal.ZERO;
+        Num value = numOf(0);
         if(index - timeFrame < 0) {
             
             for(int i = index + 1; i > 0; i--) {
-                value = value.plus(Decimal.valueOf(i).multipliedBy(indicator.getValue(i-1)));
+                value = value.plus(numOf(i).multipliedBy(indicator.getValue(i-1)));
             }
-            return value.dividedBy(Decimal.valueOf(((index + 1) * (index + 2)) / 2));
+            return value.dividedBy(numOf(((index + 1) * (index + 2)) / 2));
         }
         
         int actualIndex = index;
         for(int i = timeFrame; i > 0; i--) {
-            value = value.plus(Decimal.valueOf(i).multipliedBy(indicator.getValue(actualIndex)));
+            value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
-        return value.dividedBy(Decimal.valueOf((timeFrame * (timeFrame + 1)) / 2));
+        return value.dividedBy(numOf((timeFrame * (timeFrame + 1)) / 2));
     }
 
     @Override

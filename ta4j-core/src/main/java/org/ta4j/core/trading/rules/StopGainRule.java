@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -38,16 +38,17 @@ public class StopGainRule extends AbstractRule {
     private ClosePriceIndicator closePrice;
     
     /** The gain ratio threshold (e.g. 1.03 for 3%) */
-    private Decimal gainRatioThreshold;
+    private Num gainRatioThreshold;
 
     /**
      * Constructor.
      * @param closePrice the close price indicator
      * @param gainPercentage the gain percentage
      */
-    public StopGainRule(ClosePriceIndicator closePrice, Decimal gainPercentage) {
+    public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
         this.closePrice = closePrice;
-        this.gainRatioThreshold = Decimal.HUNDRED.plus(gainPercentage).dividedBy(Decimal.HUNDRED);
+        Num HUNDRED = closePrice.numOf(100);
+        this.gainRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
     }
 
     @Override
@@ -57,9 +58,9 @@ public class StopGainRule extends AbstractRule {
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if (currentTrade.isOpened()) {
-                Decimal entryPrice = currentTrade.getEntry().getPrice();
-                Decimal currentPrice = closePrice.getValue(index);
-                Decimal threshold = entryPrice.multipliedBy(gainRatioThreshold);
+                Num entryPrice = currentTrade.getEntry().getPrice();
+                Num currentPrice = closePrice.getValue(index);
+                Num threshold = entryPrice.multipliedBy(gainRatioThreshold);
                 if (currentTrade.getEntry().isBuy()) {
                     satisfied = currentPrice.isGreaterThanOrEqual(threshold);
                 } else {

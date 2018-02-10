@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Rate of change (ROCIndicator) indicator.
@@ -31,11 +31,11 @@ import org.ta4j.core.Indicator;
  * <p></p>
  * The ROCIndicator calculation compares the current value with the value "n" periods ago.
  */
-public class ROCIndicator extends CachedIndicator<Decimal> {
+public class ROCIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 7983097470035346856L;
 	
-    private final Indicator<Decimal> indicator;
+    private final Indicator<Num> indicator;
     private final int timeFrame;
 
     /**
@@ -44,20 +44,20 @@ public class ROCIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public ROCIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public ROCIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         int nIndex = Math.max(index - timeFrame, 0);
-        Decimal nPeriodsAgoValue = indicator.getValue(nIndex);
-        Decimal currentValue = indicator.getValue(index);
+        Num nPeriodsAgoValue = indicator.getValue(nIndex);
+        Num currentValue = indicator.getValue(index);
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)
-                .multipliedBy(Decimal.HUNDRED);
+                .multipliedBy(numOf(100));
     }
     
     @Override

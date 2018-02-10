@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.Order.OrderType;
 
 import static org.junit.Assert.*;
+import static org.ta4j.core.Num.NaN.NaN;
 
 public class TradeTest {
 
@@ -57,7 +58,7 @@ public class TradeTest {
     @Test
     public void whenNewShouldCreateBuyOrderWhenEntering() {
         newTrade.operate(0);
-        assertEquals(Order.buyAt(0,Decimal.NaN,Decimal.NaN), newTrade.getEntry());
+        assertEquals(Order.buyAt(0, NaN, NaN), newTrade.getEntry());
     }
 
     @Test
@@ -69,7 +70,7 @@ public class TradeTest {
     public void whenOpenedShouldCreateSellOrderWhenExiting() {
         newTrade.operate(0);
         newTrade.operate(1);
-        assertEquals(Order.sellAt(1,Decimal.NaN,Decimal.NaN), newTrade.getExit());
+        assertEquals(Order.sellAt(1, NaN, NaN), newTrade.getExit());
     }
 
     @Test
@@ -101,20 +102,20 @@ public class TradeTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
-        Trade t = new Trade(Order.buyAt(0,Decimal.NaN,Decimal.NaN), Order.buyAt(1,Decimal.NaN,Decimal.NaN));
+        Trade t = new Trade(Order.buyAt(0,NaN,NaN), Order.buyAt(1,NaN,NaN));
     }
 
     @Test
     public void whenNewShouldCreateSellOrderWhenEnteringUncovered() {
         uncoveredTrade.operate(0);
-        assertEquals(Order.sellAt(0,Decimal.NaN,Decimal.NaN), uncoveredTrade.getEntry());
+        assertEquals(Order.sellAt(0,NaN,NaN), uncoveredTrade.getEntry());
     }
 
     @Test
     public void whenOpenedShouldCreateBuyOrderWhenExitingUncovered() {
         uncoveredTrade.operate(0);
         uncoveredTrade.operate(1);
-        assertEquals(Order.buyAt(1,Decimal.NaN,Decimal.NaN), uncoveredTrade.getExit());
+        assertEquals(Order.buyAt(1,NaN,NaN), uncoveredTrade.getExit());
     }
 
     @Test

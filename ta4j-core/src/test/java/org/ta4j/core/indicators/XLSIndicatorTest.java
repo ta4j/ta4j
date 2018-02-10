@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,11 +22,13 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.XlsTestsUtils;
+
+import java.util.function.Function;
 
 public class XLSIndicatorTest implements ExternalIndicatorTest {
 
@@ -34,6 +36,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     private String fileName;
     private int column;
     private TimeSeries cachedSeries = null;
+    private final Function<Number, Num> numFunction;
 
     /**
      * Constructor.
@@ -42,10 +45,11 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @param fileName file name of the file containing the workbook
      * @param column column number containing the calculated indicator values
      */
-    public XLSIndicatorTest(Class<?> clazz, String fileName, int column) {
+    public XLSIndicatorTest(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) {
         this.clazz = clazz;
         this.fileName = fileName;
         this.column = column;
+        this.numFunction = numFunction;
     }
 
     /**
@@ -56,7 +60,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      */
     public TimeSeries getSeries() throws Exception {
         if (cachedSeries == null) {
-            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName);
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName,numFunction);
         }
         return cachedSeries;
     }
@@ -69,8 +73,8 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @throws Exception if getIndicator throws IOException or
      *             DataFormatException
      */
-    public Indicator<Decimal> getIndicator(Object... params) throws Exception {
-        return XlsTestsUtils.getIndicator(clazz, fileName, column, params);
+    public Indicator<Num> getIndicator(Object... params) throws Exception {
+        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
     }
 
 }

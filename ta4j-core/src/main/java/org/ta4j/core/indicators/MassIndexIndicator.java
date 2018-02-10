@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
@@ -35,7 +35,7 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index</a>
  */
-public class MassIndexIndicator extends CachedIndicator<Decimal> {
+public class MassIndexIndicator extends CachedIndicator<Num> {
 
     private EMAIndicator singleEma;
     
@@ -51,7 +51,7 @@ public class MassIndexIndicator extends CachedIndicator<Decimal> {
      */
     public MassIndexIndicator(TimeSeries series, int emaTimeFrame, int timeFrame) {
         super(series);
-        Indicator<Decimal> highLowDifferential = new DifferenceIndicator(
+        Indicator<Num> highLowDifferential = new DifferenceIndicator(
                 new MaxPriceIndicator(series),
                 new MinPriceIndicator(series)
         );
@@ -61,11 +61,11 @@ public class MassIndexIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
-        Decimal massIndex = Decimal.ZERO;
+        Num massIndex = numOf(0);
         for (int i = startIndex; i <= index; i++) {
-            Decimal emaRatio = singleEma.getValue(i).dividedBy(doubleEma.getValue(i));
+            Num emaRatio = singleEma.getValue(i).dividedBy(doubleEma.getValue(i));
             massIndex = massIndex.plus(emaRatio);
         }
         return massIndex;

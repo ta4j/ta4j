@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 
@@ -32,31 +32,31 @@ import org.ta4j.core.indicators.helpers.LossIndicator;
  * <p>
  * Computed using original Welles Wilder formula.
  */
-public class RSIIndicator extends CachedIndicator<Decimal> {
+public class RSIIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator averageGainIndicator;
     private final MMAIndicator averageLossIndicator;
 
-    public RSIIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public RSIIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), timeFrame);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), timeFrame);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         // compute relative strength
-        Decimal averageGain = averageGainIndicator.getValue(index);
-        Decimal averageLoss = averageLossIndicator.getValue(index);
+        Num averageGain = averageGainIndicator.getValue(index);
+        Num averageLoss = averageLossIndicator.getValue(index);
         if (averageLoss.isZero()) {
             if (averageGain.isZero()) {
-                return Decimal.ZERO;
+                return numOf(0);
             } else {
-                return Decimal.HUNDRED;
+                return numOf(100);
             }
         }
-        Decimal relativeStrength = averageGain.dividedBy(averageLoss);
+        Num relativeStrength = averageGain.dividedBy(averageLoss);
         // compute relative strength index
-        return Decimal.HUNDRED.minus(Decimal.HUNDRED.dividedBy(Decimal.ONE.plus(relativeStrength)));
+        return numOf(100).minus(numOf(100).dividedBy(numOf(1).plus(relativeStrength)));
     }
 }

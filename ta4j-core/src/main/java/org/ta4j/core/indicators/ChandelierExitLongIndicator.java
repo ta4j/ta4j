@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
@@ -32,20 +32,20 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
  */
-public class ChandelierExitLongIndicator extends CachedIndicator<Decimal> {
+public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
 
     private final HighestValueIndicator high;
     
     private final ATRIndicator atr;
     
-    private final Decimal k;
+    private final Num k;
 
     /**
      * Constructor.
      * @param series the time series
      */
     public ChandelierExitLongIndicator(TimeSeries series) {
-        this(series, 22, Decimal.THREE);
+        this(series, 22, 3);
     }
     
     /**
@@ -54,15 +54,15 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Decimal> {
      * @param timeFrame the time frame (usually 22)
      * @param k the K multiplier for ATR (usually 3.0)
      */
-    public ChandelierExitLongIndicator(TimeSeries series, int timeFrame, Decimal k) {
+    public ChandelierExitLongIndicator(TimeSeries series, int timeFrame, double k) {
         super(series);
         high = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
         atr = new ATRIndicator(series, timeFrame);
-        this.k = k;
+        this.k = numOf(k);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return high.getValue(index).minus(atr.getValue(index).multipliedBy(k));
     }
 }

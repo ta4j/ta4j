@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,9 +24,10 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
-
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TimeSeries;
 
 public class SumIndicatorTest {
 
@@ -34,36 +35,37 @@ public class SumIndicatorTest {
     
     @Before
     public void setUp() {
-        ConstantIndicator<Decimal> constantIndicator = new ConstantIndicator<>(Decimal.valueOf(6));
-        FixedIndicator<Decimal> mockIndicator = new FixedIndicator<>(
-                Decimal.valueOf("-2.0"),
-                Decimal.valueOf("0.00"),
-                Decimal.valueOf("1.00"),
-                Decimal.valueOf("2.53"),
-                Decimal.valueOf("5.87"),
-                Decimal.valueOf("6.00"),
-                Decimal.valueOf("10.0")
+        TimeSeries series = new BaseTimeSeries();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, series.numOf(6));
+        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
+                series.numOf(-2.0),
+                series.numOf(0.00),
+                series.numOf(1.00),
+                series.numOf(2.53),
+                series.numOf(5.87),
+                series.numOf(6.00),
+                series.numOf(10.0)
         );
-        FixedIndicator<Decimal> mockIndicator2 = new FixedIndicator<>(
-                Decimal.ZERO,
-                Decimal.ONE,
-                Decimal.TWO,
-                Decimal.THREE,
-                Decimal.TEN,
-                Decimal.valueOf("-42"),
-                Decimal.valueOf("-1337")
+        FixedIndicator<Num> mockIndicator2 = new FixedIndicator<Num>(series,
+                series.numOf(0),
+                series.numOf(1),
+                series.numOf(2),
+                series.numOf(3),
+                series.numOf(10),
+                series.numOf(-42),
+                series.numOf(-1337)
         );
         sumIndicator = new SumIndicator(constantIndicator, mockIndicator, mockIndicator2);
     }
 
     @Test
     public void getValue() {
-        assertDecimalEquals(sumIndicator.getValue(0), "4");
-        assertDecimalEquals(sumIndicator.getValue(1), "7");
-        assertDecimalEquals(sumIndicator.getValue(2), "9");
-        assertDecimalEquals(sumIndicator.getValue(3), "11.53");
-        assertDecimalEquals(sumIndicator.getValue(4), "21.87");
-        assertDecimalEquals(sumIndicator.getValue(5), "-30");
-        assertDecimalEquals(sumIndicator.getValue(6), "-1321");
+        TestUtils.assertNumEquals(sumIndicator.getValue(0), "4.0");
+        TestUtils.assertNumEquals(sumIndicator.getValue(1), "7.0");
+        TestUtils.assertNumEquals(sumIndicator.getValue(2), "9.0");
+        TestUtils.assertNumEquals(sumIndicator.getValue(3), "11.53");
+        TestUtils.assertNumEquals(sumIndicator.getValue(4), "21.87");
+        TestUtils.assertNumEquals(sumIndicator.getValue(5), "-30.0");
+        TestUtils.assertNumEquals(sumIndicator.getValue(6), "-1321.0");
     }
 }

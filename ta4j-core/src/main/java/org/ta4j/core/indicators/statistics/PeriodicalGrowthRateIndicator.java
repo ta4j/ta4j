@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,9 +22,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
+
+import static org.ta4j.core.Num.NaN.NaN;
 
 
 /**
@@ -56,11 +58,12 @@ import org.ta4j.core.indicators.CachedIndicator;
  * http://www.fool.com/knowledge-center/2015/11/03/annualized-return-vs-cumulative-return.aspx
  *
  */
-public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
+public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Decimal> indicator;
+    private final Indicator<Num> indicator;
 
     private final int timeFrame;
+    private final Num ONE;
 
     /**
      * Constructor.
@@ -69,10 +72,11 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public PeriodicalGrowthRateIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public PeriodicalGrowthRateIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
+        ONE = numOf(1);
     }
 
     /**
@@ -84,16 +88,16 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
      */
     public double getTotalReturn() {
 
-        Decimal totalProduct = Decimal.ONE;
+        Num totalProduct = numOf(1);
         int completeTimeframes = (getTimeSeries().getBarCount() / timeFrame);
 
         for (int i = 1; i <= completeTimeframes; i++) {
             int index = i * timeFrame;
-            Decimal currentReturn = getValue(index);
+            Num currentReturn = getValue(index);
 
             // Skip NaN at the end of a series
-            if (currentReturn != Decimal.NaN) {
-                currentReturn = currentReturn.plus(Decimal.ONE);
+            if (currentReturn != NaN) {
+                currentReturn = currentReturn.plus(ONE);
                 totalProduct = totalProduct.multipliedBy(currentReturn);
             }
         }
@@ -102,9 +106,9 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
 
-        Decimal currentValue = indicator.getValue(index);
+        Num currentValue = indicator.getValue(index);
 
         int helpPartialTimeframe = index % timeFrame;
         double helpFullTimeframes = Math.floor((double) indicator.getTimeSeries().getBarCount() / (double) timeFrame);
@@ -117,13 +121,13 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
         // a.) if index number is below timeframe
         // e.g. timeframe = 365, index = 5 => no calculation
         // b.) if at the end of a series incomplete timeframes would remain
-        Decimal timeframedReturn = Decimal.NaN;
+        Num timeframedReturn = NaN;
         if ((index >= timeFrame) /*(a)*/ && (helpIndexTimeframes < helpFullTimeframes) /*(b)*/) {
-            Decimal movingValue = indicator.getValue(index - timeFrame);
-            Decimal movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+            Num movingValue = indicator.getValue(index - timeFrame);
+            Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
             double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.doubleValue()), (1 / partialTimeframeHeld)) - 1;
-            timeframedReturn = Decimal.valueOf(timeframedReturn_double);
+            timeframedReturn = numOf(timeframedReturn_double);
         }
 
         return timeframedReturn;

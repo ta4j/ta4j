@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators.volume;
 
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
  * Accumulation-distribution indicator.
  * <p></p>
  */
-public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Decimal> {
+public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
     private TimeSeries series;
 
@@ -45,16 +45,16 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index == 0) {
-            return Decimal.ZERO;
+            return numOf(0);
         }
 
         // Calculating the money flow multiplier
-        Decimal moneyFlowMultiplier = clvIndicator.getValue(index);
+        Num moneyFlowMultiplier = clvIndicator.getValue(index);
 
         // Calculating the money flow volume
-        Decimal moneyFlowVolume = moneyFlowMultiplier.multipliedBy(series.getBar(index).getVolume());
+        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(series.getBar(index).getVolume());
 
         return moneyFlowVolume.plus(getValue(index - 1));
     }

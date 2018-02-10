@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,38 +23,44 @@
 package org.ta4j.core.indicators.adx;
 
 import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.indicators.IndicatorTest;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertIndicatorEquals;
+import java.util.function.Function;
 
-public class MinusDIIndicatorTest extends IndicatorTest<TimeSeries, Decimal> {
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+
+public class MinusDIIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private ExternalIndicatorTest xls;
 
-    public MinusDIIndicatorTest() {
-        super((data, params) -> new MinusDIIndicator(data, (int) params[0]));
-        xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13);
+    public MinusDIIndicatorTest(Function<Number, Num> nf) {
+        super((data, params) -> new MinusDIIndicator(data, (int) params[0]),nf);
+        xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13, numFunction);
     }
 
     @Test
     public void xlsTest() throws Exception {
         TimeSeries xlsSeries = xls.getSeries();
-        Indicator<Decimal> indicator;
+        Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(0.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(0.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(21.0711, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(21.0711, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(20.9020, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TATestsUtils.TA_OFFSET);
+        assertEquals(20.9020, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

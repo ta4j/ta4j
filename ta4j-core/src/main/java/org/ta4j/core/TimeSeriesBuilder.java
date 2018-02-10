@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -20,33 +20,18 @@
   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core;
 
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.CriterionFactory;
 
-public class CriterionTest {
+import java.io.Serializable;
 
-    private final CriterionFactory factory;
-
+/**
+ * Interface to build a time series
+ */
+public interface TimeSeriesBuilder extends Serializable {
     /**
-     * Constructor.
-     * 
-     * @param factory CriterionFactory for building an AnalysisCriterion given
-     *            parameters
+     * Builds the time series with corresponding parameters
+     * @return
      */
-    public CriterionTest(CriterionFactory factory) {
-        this.factory = factory;
-    }
-
-    /**
-     * Generates an AnalysisCriterion given criterion parameters.
-     * 
-     * @param params criterion parameters
-     * @return AnalysisCriterion given parameters
-     */
-    public AnalysisCriterion getCriterion(Object... params) {
-        return factory.getCriterion(params);
-    }
-
+    TimeSeries build();
 }

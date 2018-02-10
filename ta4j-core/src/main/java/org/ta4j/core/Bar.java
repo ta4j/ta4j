@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,10 +23,14 @@
 package org.ta4j.core;
 
 
+import org.ta4j.core.Num.Num;
+
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Function;
 
 /**
  * End bar of a time period.
@@ -34,31 +38,30 @@ import java.time.format.DateTimeFormatter;
  * Bar object is aggregated open/high/low/close/volume/etc. data over a time period.
  */
 public interface Bar extends Serializable {
-
     /**
      * @return the open price of the period
      */
-    Decimal getOpenPrice();
+    Num getOpenPrice();
 
     /**
      * @return the min price of the period
      */
-    Decimal getMinPrice();
+    Num getMinPrice();
 
     /**
      * @return the max price of the period
      */
-    Decimal getMaxPrice();
+    Num getMaxPrice();
 
     /**
      * @return the close price of the period
      */
-    Decimal getClosePrice();
+    Num getClosePrice();
 
     /**
-     * @return the whole traded volume in the period
+     * @return the whole tradeNum volume in the period
      */
-    Decimal getVolume();
+    Num getVolume();
 
     /**
      * @return the number of trades in the period
@@ -68,7 +71,7 @@ public interface Bar extends Serializable {
     /**
      * @return the whole traded amount of the period
      */
-    Decimal getAmount();
+    Num getAmount();
 
     /**
      * @return the time period of the bar
@@ -113,8 +116,8 @@ public interface Bar extends Serializable {
      * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
-    	Decimal openPrice = getOpenPrice();
-    	Decimal closePrice = getClosePrice();
+        Num openPrice = getOpenPrice();
+        Num closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
     }
 
@@ -122,8 +125,8 @@ public interface Bar extends Serializable {
      * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
-    	Decimal openPrice = getOpenPrice();
-    	Decimal closePrice = getClosePrice();
+    	Num openPrice = getOpenPrice();
+        Num closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
     }
 
@@ -131,9 +134,22 @@ public interface Bar extends Serializable {
      * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
+     * @deprecated use corresponding function of TimeSeries
      */
-    default void addTrade(double tradeVolume, double tradePrice) {
-        addTrade(Decimal.valueOf(tradeVolume), Decimal.valueOf(tradePrice));
+    @Deprecated
+    default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
+        addTrade(numFunction.apply(tradeVolume),numFunction.apply(tradePrice));
+    }
+
+    /**
+     * Adds a trade at the end of bar period.
+     * @param tradeVolume the traded volume
+     * @param tradePrice the price
+     * @deprecated use corresponding function of TimeSeries
+     */
+    @Deprecated
+    default void addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction) {
+        addTrade(numFunction.apply(new BigDecimal(tradeVolume)), numFunction.apply(new BigDecimal(tradePrice)));
     }
 
     /**
@@ -141,14 +157,5 @@ public interface Bar extends Serializable {
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
-    default void addTrade(String tradeVolume, String tradePrice) {
-        addTrade(Decimal.valueOf(tradeVolume), Decimal.valueOf(tradePrice));
-    }
-
-    /**
-     * Adds a trade at the end of bar period.
-     * @param tradeVolume the traded volume
-     * @param tradePrice the price
-     */
-    void addTrade(Decimal tradeVolume, Decimal tradePrice);
+    void addTrade(Num tradeVolume, Num tradePrice);
 }

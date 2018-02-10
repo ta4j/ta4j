@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,10 +22,13 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.Order.OrderType;
 
 import java.io.Serializable;
 import java.util.Objects;
+
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * Pair of two {@link Order orders}.
@@ -114,7 +117,7 @@ public class Trade implements Serializable {
      * @return the order
      */
     public Order operate(int index) {
-        return operate(index, Decimal.NaN, Decimal.NaN);
+        return operate(index, NaN, NaN);
     }
 
     /**
@@ -124,7 +127,7 @@ public class Trade implements Serializable {
      * @param amount the amount
      * @return the order
      */
-    public Order operate(int index, Decimal price, Decimal amount) {
+    public Order operate(int index, Num price, Num amount) {
         Order order = null;
         if (isNew()) {
             order = new Order(index, startingType, price, amount);

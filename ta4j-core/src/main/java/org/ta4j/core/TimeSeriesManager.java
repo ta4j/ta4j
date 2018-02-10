@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,7 +24,10 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.Order.OrderType;
+
+import static org.ta4j.core.Num.NaN.NaN;
 
 /**
  * A manager for {@link TimeSeries} objects.
@@ -87,7 +90,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, OrderType.BUY, Decimal.NaN, startIndex, finishIndex);
+        return run(strategy, OrderType.BUY, NaN, startIndex, finishIndex);
     }
 
     /**
@@ -99,7 +102,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType) {
-        return run(strategy, orderType, Decimal.NaN);
+        return run(strategy, orderType, NaN);
     }
 
     /**
@@ -113,7 +116,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, int startIndex, int finishIndex) {
-        return run(strategy, orderType, Decimal.NaN, startIndex, finishIndex);
+        return run(strategy, orderType, NaN, startIndex, finishIndex);
     }
 
     /**
@@ -124,7 +127,7 @@ public class TimeSeriesManager {
      * @param amount the amount used to open/close the trades
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount) {
+    public TradingRecord run(Strategy strategy, OrderType orderType, Num amount) {
         return run(strategy, orderType, amount, timeSeries.getBeginIndex(), timeSeries.getEndIndex());
     }
 
@@ -138,7 +141,7 @@ public class TimeSeriesManager {
      * @param finishIndex the finish index for the run (included)
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Decimal amount, int startIndex, int finishIndex) {
+    public TradingRecord run(Strategy strategy, OrderType orderType, Num amount, int startIndex, int finishIndex) {
 
         int runBeginIndex = Math.max(startIndex, timeSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());

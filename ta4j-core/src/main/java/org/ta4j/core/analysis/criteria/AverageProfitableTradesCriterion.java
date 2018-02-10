@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -39,7 +39,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
 
-        Decimal result;
+        Num result;
         if (trade.getEntry().isBuy()) {
             // buy-then-sell trade
             result = series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
@@ -48,7 +48,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
         }
 
-        return (result.isGreaterThan(Decimal.ONE)) ? 1d : 0d;
+        return (result.isGreaterThan(series.numOf(1))) ? 1d : 0d;
     }
 
     @Override
@@ -58,7 +58,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             int entryIndex = trade.getEntry().getIndex();
             int exitIndex = trade.getExit().getIndex();
 
-            Decimal result;
+            Num result;
             if (trade.getEntry().isBuy()) {
                 // buy-then-sell trade
                 result = series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
@@ -66,7 +66,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
                 // sell-then-buy trade
                 result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
             }
-            if (result.isGreaterThan(Decimal.ONE)) {
+            if (result.isGreaterThan(series.numOf(1))) {
                 numberOfProfitable++;
             }
         }

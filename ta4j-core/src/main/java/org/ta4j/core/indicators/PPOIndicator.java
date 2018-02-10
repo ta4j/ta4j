@@ -22,15 +22,15 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Percentage price oscillator (PPO) indicator. <br/>
  * Aka. MACD Percentage Price Oscillator (MACD-PPO).
  * </p>
  */
-public class PPOIndicator extends CachedIndicator<Decimal> {
+public class PPOIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -4337731034816094765L;
     
@@ -42,7 +42,7 @@ public class PPOIndicator extends CachedIndicator<Decimal> {
      * 
      * @param indicator the indicator
      */
-    public PPOIndicator(Indicator<Decimal> indicator) {
+    public PPOIndicator(Indicator<Num> indicator) {
         this(indicator, 12, 26);
     }
     
@@ -53,7 +53,7 @@ public class PPOIndicator extends CachedIndicator<Decimal> {
      * @param shortTimeFrame the short time frame
      * @param longTimeFrame the long time frame
      */
-    public PPOIndicator(Indicator<Decimal> indicator, int shortTimeFrame, int longTimeFrame) {
+    public PPOIndicator(Indicator<Num> indicator, int shortTimeFrame, int longTimeFrame) {
         super(indicator);
         if (shortTimeFrame > longTimeFrame) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
@@ -63,11 +63,11 @@ public class PPOIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal shortEmaValue = shortTermEma.getValue(index);
-        Decimal longEmaValue = longTermEma.getValue(index);
+    protected Num calculate(int index) {
+        Num shortEmaValue = shortTermEma.getValue(index);
+        Num longEmaValue = longTermEma.getValue(index);
         return shortEmaValue.minus(longEmaValue)
                 .dividedBy(longEmaValue)
-                .multipliedBy(Decimal.HUNDRED);
+                .multipliedBy(numOf(100));
     }
 }

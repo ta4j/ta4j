@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,20 +22,19 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
-
 /**
  * Covariance indicator.
  * <p></p>
  */
-public class CovarianceIndicator extends CachedIndicator<Decimal> {
+public class CovarianceIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Decimal> indicator1;
+    private Indicator<Num> indicator1;
     
-    private Indicator<Decimal> indicator2;
+    private Indicator<Num> indicator2;
 
     private int timeFrame;
 
@@ -49,7 +48,7 @@ public class CovarianceIndicator extends CachedIndicator<Decimal> {
      * @param indicator2 the second indicator
      * @param timeFrame the time frame
      */
-    public CovarianceIndicator(Indicator<Decimal> indicator1, Indicator<Decimal> indicator2, int timeFrame) {
+    public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int timeFrame) {
         super(indicator1);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
@@ -59,17 +58,17 @@ public class CovarianceIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Decimal covariance = Decimal.ZERO;
-        Decimal average1 = sma1.getValue(index);
-        Decimal average2 = sma2.getValue(index);
+        Num covariance = numOf(0);
+        Num average1 = sma1.getValue(index);
+        Num average2 = sma2.getValue(index);
         for (int i = startIndex; i <= index; i++) {
-            Decimal mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
+            Num mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
             covariance = covariance.plus(mul);
         }
-        covariance = covariance.dividedBy(Decimal.valueOf(numberOfObservations));
+        covariance = covariance.dividedBy(numOf(numberOfObservations));
         return covariance;
     }
 

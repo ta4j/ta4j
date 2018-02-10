@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -60,12 +60,12 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @return the profit of the trade
      */
     private double calculateProfit(TimeSeries series, Trade trade) {
-        Decimal profit = Decimal.ONE;
+        Num profit = series.numOf(1);
         if (trade.isClosed()) {
             // use price of entry/exit order, if NaN use close price of underlying time series
-            Decimal exitClosePrice = trade.getExit().getPrice().isNaN() ?
+            Num exitClosePrice = trade.getExit().getPrice().isNaN() ?
                     series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
-            Decimal entryClosePrice = trade.getEntry().getPrice().isNaN() ?
+            Num entryClosePrice = trade.getEntry().getPrice().isNaN() ?
                     series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
 
 

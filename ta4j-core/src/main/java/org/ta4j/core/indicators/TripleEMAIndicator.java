@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,9 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-
+import org.ta4j.core.Num.Num;
 /**
  * Triple exponential moving average indicator.
  * </p>
@@ -35,7 +34,7 @@ import org.ta4j.core.Indicator;
  * </p>
  * see https://en.wikipedia.org/wiki/Triple_exponential_moving_average
  */
-public class TripleEMAIndicator extends CachedIndicator<Decimal> {
+public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -3091675249185831978L;
 
@@ -50,7 +49,7 @@ public class TripleEMAIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public TripleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public TripleEMAIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
@@ -59,10 +58,10 @@ public class TripleEMAIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
     	
     		// trix = 3 * ema - 3 * emaEma + emaEmaEma 
-        return Decimal.THREE.multipliedBy(
+        return numOf(3).multipliedBy(
         		ema.getValue(index)
         			.minus(emaEma.getValue(index)))
         			.plus(emaEmaEma.getValue(index));

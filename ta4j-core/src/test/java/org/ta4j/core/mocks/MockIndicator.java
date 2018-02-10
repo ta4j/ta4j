@@ -1,16 +1,17 @@
 package org.ta4j.core.mocks;
 
-import java.util.List;
-
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 
+import java.util.List;
 
-public class MockIndicator implements Indicator<Decimal> {
 
+public class MockIndicator implements Indicator<Num> {
+
+    private static final long serialVersionUID = -1083818948051189894L;
     private TimeSeries series;
-    private List<Decimal> values;
+    private List<Num> values;
 
     /**
      * Constructor.
@@ -18,7 +19,7 @@ public class MockIndicator implements Indicator<Decimal> {
      * @param series TimeSeries of the Indicator
      * @param values Indicator values
      */
-    public MockIndicator(TimeSeries series, List<Decimal> values) {
+    public MockIndicator(TimeSeries series, List<Num> values) {
         this.series = series;
         this.values = values;
     }
@@ -27,9 +28,9 @@ public class MockIndicator implements Indicator<Decimal> {
      * Gets a value from the Indicator
      * 
      * @param index Indicator value to get
-     * @return Decimal Indicator value at index
+     * @return Num Indicator value at index
      */
-    public Decimal getValue(int index) {
+    public Num getValue(int index) {
         return values.get(index);
     }
 
@@ -40,6 +41,11 @@ public class MockIndicator implements Indicator<Decimal> {
      */
     public TimeSeries getTimeSeries() {
         return series;
+    }
+
+    @Override
+    public Num numOf(Number number) {
+        return series.numOf(number);
     }
 
 }

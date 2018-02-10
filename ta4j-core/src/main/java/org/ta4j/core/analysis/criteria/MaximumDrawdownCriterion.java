@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,12 +22,11 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-
 /**
  * Maximum drawdown criterion.
  * <p></p>
@@ -38,7 +37,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     @Override
     public double calculate(TimeSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
+        Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
         return maximumDrawdown.doubleValue();
     }
 
@@ -46,7 +45,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     public double calculate(TimeSeries series, Trade trade) {
         if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
             CashFlow cashFlow = new CashFlow(series, trade);
-            Decimal maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
+            Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
             return maximumDrawdown.doubleValue();
         }
         return 0;
@@ -63,18 +62,18 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      * @param cashFlow the cash flow
      * @return the maximum drawdown from a cash flow over a series
      */
-    private Decimal calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
-        Decimal maximumDrawdown = Decimal.ZERO;
-        Decimal maxPeak = Decimal.ZERO;
+    private Num calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
+        Num maximumDrawdown = series.numOf(0);
+        Num maxPeak = series.numOf(0);
         if (!series.isEmpty()) {
         	// The series is not empty
 	        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-	            Decimal value = cashFlow.getValue(i);
+	            Num value = cashFlow.getValue(i);
 	            if (value.isGreaterThan(maxPeak)) {
 	                maxPeak = value;
 	            }
 	
-	            Decimal drawdown = maxPeak.minus(value).dividedBy(maxPeak);
+	            Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
 	            if (drawdown.isGreaterThan(maximumDrawdown)) {
 	                maximumDrawdown = drawdown;
 	            }

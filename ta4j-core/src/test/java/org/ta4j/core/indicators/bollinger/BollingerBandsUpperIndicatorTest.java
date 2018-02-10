@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,16 +24,21 @@ package org.ta4j.core.indicators.bollinger;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
-public class BollingerBandsUpperIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private int timeFrame;
 
@@ -41,9 +46,13 @@ public class BollingerBandsUpperIndicatorTest {
 
     private SMAIndicator sma;
 
+    public BollingerBandsUpperIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        TimeSeries data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
         timeFrame = 3;
         closePrice = new ClosePriceIndicator(data);
         sma = new SMAIndicator(closePrice, timeFrame);
@@ -56,32 +65,32 @@ public class BollingerBandsUpperIndicatorTest {
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
-        assertDecimalEquals(bbuSMA.getK(), 2);
+        TestUtils.assertNumEquals(2, bbuSMA.getK());
 
-        assertDecimalEquals(bbuSMA.getValue(0), 1);
-        assertDecimalEquals(bbuSMA.getValue(1), 2.5);
-        assertDecimalEquals(bbuSMA.getValue(2), 3.633);
-        assertDecimalEquals(bbuSMA.getValue(3), 4.633);
-        assertDecimalEquals(bbuSMA.getValue(4), 4.2761);
-        assertDecimalEquals(bbuSMA.getValue(5), 4.6094);
-        assertDecimalEquals(bbuSMA.getValue(6), 5.633);
-        assertDecimalEquals(bbuSMA.getValue(7), 5.2761);
-        assertDecimalEquals(bbuSMA.getValue(8), 5.633);
-        assertDecimalEquals(bbuSMA.getValue(9), 4.2761);
+        TestUtils.assertNumEquals(1, bbuSMA.getValue(0));
+        assertNumEquals(2.5, bbuSMA.getValue(1));
+        assertNumEquals(3.633, bbuSMA.getValue(2));
+        assertNumEquals(4.633, bbuSMA.getValue(3));
+        assertNumEquals(bbuSMA.getValue(4), 4.2761);
+        assertNumEquals(bbuSMA.getValue(5), 4.6094);
+        assertNumEquals(bbuSMA.getValue(6), 5.633);
+        assertNumEquals(bbuSMA.getValue(7), 5.2761);
+        assertNumEquals(bbuSMA.getValue(8), 5.633);
+        assertNumEquals(bbuSMA.getValue(9), 4.2761);
 
-        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, Decimal.valueOf("1.5"));
+        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, numFunction.apply(1.5));
 
-        assertDecimalEquals(bbuSMAwithK.getK(), 1.5);
+        assertNumEquals(bbuSMAwithK.getK(), 1.5);
 
-        assertDecimalEquals(bbuSMAwithK.getValue(0), 1);
-        assertDecimalEquals(bbuSMAwithK.getValue(1), 2.25);
-        assertDecimalEquals(bbuSMAwithK.getValue(2), 3.2247);
-        assertDecimalEquals(bbuSMAwithK.getValue(3), 4.2247);
-        assertDecimalEquals(bbuSMAwithK.getValue(4), 4.0404);
-        assertDecimalEquals(bbuSMAwithK.getValue(5), 4.3737);
-        assertDecimalEquals(bbuSMAwithK.getValue(6), 5.2247);
-        assertDecimalEquals(bbuSMAwithK.getValue(7), 5.0404);
-        assertDecimalEquals(bbuSMAwithK.getValue(8), 5.2247);
-        assertDecimalEquals(bbuSMAwithK.getValue(9), 4.0404);
+        TestUtils.assertNumEquals(bbuSMAwithK.getValue(0), 1);
+        assertNumEquals(2.25, bbuSMAwithK.getValue(1));
+        assertNumEquals(3.2247, bbuSMAwithK.getValue(2));
+        assertNumEquals(4.2247, bbuSMAwithK.getValue(3));
+        assertNumEquals(4.0404, bbuSMAwithK.getValue(4));
+        assertNumEquals(4.3737, bbuSMAwithK.getValue(5));
+        assertNumEquals(5.2247, bbuSMAwithK.getValue(6));
+        assertNumEquals(5.0404, bbuSMAwithK.getValue(7));
+        assertNumEquals(5.2247, bbuSMAwithK.getValue(8));
+        assertNumEquals(4.0404, bbuSMAwithK.getValue(9));
     }
 }

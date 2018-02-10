@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
@@ -31,11 +31,11 @@ import org.ta4j.core.indicators.CachedIndicator;
  * <p></p>
  * I.e.: first - second
  */
-public class DifferenceIndicator extends CachedIndicator<Decimal> {
+public class DifferenceIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Decimal> first;
+    private Indicator<Num> first;
     
-    private Indicator<Decimal> second;
+    private Indicator<Num> second;
     
     /**
      * Constructor.
@@ -43,7 +43,7 @@ public class DifferenceIndicator extends CachedIndicator<Decimal> {
      * @param first the first indicator
      * @param second the second indicator
      */
-    public DifferenceIndicator(Indicator<Decimal> first, Indicator<Decimal> second) {
+    public DifferenceIndicator(Indicator<Num> first, Indicator<Num> second) {
         // TODO: check if first series is equal to second one
         super(first);
         this.first = first;
@@ -51,7 +51,7 @@ public class DifferenceIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return first.getValue(index).minus(second.getValue(index));
     }
 }

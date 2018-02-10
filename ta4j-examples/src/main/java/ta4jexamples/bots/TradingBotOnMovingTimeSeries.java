@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,6 +23,8 @@
 package ta4jexamples.bots;
 
 import org.ta4j.core.*;
+import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
@@ -38,7 +40,7 @@ import java.time.ZonedDateTime;
 public class TradingBotOnMovingTimeSeries {
 
     /** Close price of the last bar */
-    private static Decimal LAST_BAR_CLOSE_PRICE;
+    private static Num LAST_BAR_CLOSE_PRICE;
 
     /**
      * Builds a moving time series (i.e. keeping only the maxBarCount last bars)
@@ -70,10 +72,11 @@ public class TradingBotOnMovingTimeSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        return new BaseStrategy(
+        Strategy buySellSignals = new BaseStrategy(
                 new OverIndicatorRule(sma, closePrice),
                 new UnderIndicatorRule(sma, closePrice)
         );
+        return buySellSignals;
     }
 
     /**
@@ -82,10 +85,10 @@ public class TradingBotOnMovingTimeSeries {
      * @param max the maximum bound
      * @return a random decimal number between min and max
      */
-    private static Decimal randDecimal(Decimal min, Decimal max) {
-        Decimal randomDecimal = null;
+    private static Num randDecimal(Num min, Num max) {
+        Num randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
-            randomDecimal = max.minus(min).multipliedBy(Decimal.valueOf(Math.random())).plus(min);
+            randomDecimal = max.minus(min).multipliedBy((BigDecimalNum.valueOf(Math.random())).plus(min));
         }
         return randomDecimal;
     }
@@ -95,13 +98,13 @@ public class TradingBotOnMovingTimeSeries {
      * @return a random bar
      */
     private static Bar generateRandomBar() {
-        final Decimal maxRange = Decimal.valueOf("0.03"); // 3.0%
-        Decimal openPrice = LAST_BAR_CLOSE_PRICE;
-        Decimal minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(Decimal.valueOf(Math.random()))));
-        Decimal maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(Decimal.valueOf(Math.random()))));
-        Decimal closePrice = randDecimal(minPrice, maxPrice);
+        final Num maxRange = BigDecimalNum.valueOf("0.03"); // 3.0%
+        Num openPrice = LAST_BAR_CLOSE_PRICE;
+        Num minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
+        Num maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
+        Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, Decimal.ONE);
+        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, BigDecimalNum.valueOf(1),BigDecimalNum.valueOf(1));
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -133,7 +136,7 @@ public class TradingBotOnMovingTimeSeries {
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);
-                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), Decimal.TEN);
+                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), BigDecimalNum.valueOf(10));
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex()
@@ -143,7 +146,7 @@ public class TradingBotOnMovingTimeSeries {
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
                 System.out.println("Strategy should EXIT on " + endIndex);
-                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), Decimal.TEN);
+                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), BigDecimalNum.valueOf(10));
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex()

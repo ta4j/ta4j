@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  * Volume indicator.
  * <p></p>
  */
-public class VolumeIndicator extends CachedIndicator<Decimal> {
+public class VolumeIndicator extends CachedIndicator<Num> {
 
     private TimeSeries series;
 
@@ -47,9 +47,9 @@ public class VolumeIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         int startIndex = Math.max(0, index - timeFrame + 1);
-        Decimal sumOfVolume = Decimal.ZERO;
+        Num sumOfVolume = numOf(0);
         for (int i = startIndex; i <= index; i++) {
             sumOfVolume = sumOfVolume.plus(series.getBar(i).getVolume());
         }

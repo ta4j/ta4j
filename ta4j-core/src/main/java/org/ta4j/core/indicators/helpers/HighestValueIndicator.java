@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,32 +22,32 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Highest value indicator.
  * <p/>
  */
-public class HighestValueIndicator extends CachedIndicator<Decimal> {
+public class HighestValueIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Decimal> indicator;
+    private final Indicator<Num> indicator;
 
     private final int timeFrame;
 
-    public HighestValueIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public HighestValueIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (indicator.getValue(index).isNaN() && timeFrame != 1)
             return new HighestValueIndicator(indicator,timeFrame-1).getValue(index-1);
         int end = Math.max(0, index - timeFrame + 1);
-        Decimal highest = indicator.getValue(index);
+        Num highest = indicator.getValue(index);
         for (int i = index - 1; i >= end; i--) {
             if (highest.isLessThan(indicator.getValue(i))) {
                 highest = indicator.getValue(i);

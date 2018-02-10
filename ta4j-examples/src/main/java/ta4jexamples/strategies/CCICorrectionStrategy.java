@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,6 +23,7 @@
 package ta4jexamples.strategies;
 
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.CCIIndicator;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
@@ -48,8 +49,8 @@ public class CCICorrectionStrategy {
 
         CCIIndicator longCci = new CCIIndicator(series, 200);
         CCIIndicator shortCci = new CCIIndicator(series, 5);
-        Decimal plus100 = Decimal.HUNDRED;
-        Decimal minus100 = Decimal.valueOf(-100);
+        Num plus100 = series.numOf(100);
+        Num minus100 = series.numOf(-100);
         
         Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
                 .and(new UnderIndicatorRule(shortCci, minus100)); // Signal

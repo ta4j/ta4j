@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,6 +24,10 @@ package org.ta4j.core;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Num.BigDecimalNum;
+import org.ta4j.core.Num.DoubleNum;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.trading.rules.FixedRule;
 
@@ -32,14 +36,16 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class TimeSeriesTest {
+
+public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     private TimeSeries defaultSeries;
 
-    private TimeSeries constrainedSeries;
+    private TimeSeries subseries;
 
     private TimeSeries emptySeries;
 
@@ -47,23 +53,31 @@ public class TimeSeriesTest {
 
     private String defaultName;
 
+    public TimeSeriesTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @SuppressWarnings("deprecation") // it is purposed to test the deprecated sub series creation
     @Before
     public void setUp() {
         bars = new LinkedList<>();
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d));
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d));
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 15, 0, 0, 0, 0, ZoneId.systemDefault()), 3d));
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 20, 0, 0, 0, 0, ZoneId.systemDefault()), 4d));
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()), 5d));
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 30, 0, 0, 0, 0, ZoneId.systemDefault()), 6d));
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d,numFunction));
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d,numFunction));
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 15, 0, 0, 0, 0, ZoneId.systemDefault()), 3d,numFunction));
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 20, 0, 0, 0, 0, ZoneId.systemDefault()), 4d,numFunction));
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()), 5d,numFunction));
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 30, 0, 0, 0, 0, ZoneId.systemDefault()), 6d,numFunction));
 
         defaultName = "Series Name";
 
-        defaultSeries = new BaseTimeSeries(defaultName, bars);
+        defaultSeries = new BaseTimeSeries.SeriesBuilder()
+                .withNumTypeOf(numFunction)
+                .withName(defaultName)
+                .withBars(bars)
+                .build();
 
-        constrainedSeries = new BaseTimeSeries(defaultSeries,2, 4);
-        emptySeries = new BaseTimeSeries();
+        subseries = defaultSeries.getSubSeries(2,5);
+        emptySeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -80,10 +94,10 @@ public class TimeSeriesTest {
         assertEquals(bars.size(), defaultSeries.getBarCount());
         assertFalse(defaultSeries.isEmpty());
         // Constrained series
-        assertEquals(2, constrainedSeries.getBeginIndex());
-        assertEquals(4, constrainedSeries.getEndIndex());
-        assertEquals(3, constrainedSeries.getBarCount());
-        assertFalse(constrainedSeries.isEmpty());
+        assertEquals(0, subseries.getBeginIndex());
+        assertEquals(2, subseries.getEndIndex());
+        assertEquals(3, subseries.getBarCount());
+        assertFalse(subseries.isEmpty());
         // Empty series
         assertEquals(-1, emptySeries.getBeginIndex());
         assertEquals(-1, emptySeries.getEndIndex());
@@ -96,7 +110,7 @@ public class TimeSeriesTest {
         // Default series
         assertEquals(bars, defaultSeries.getBarData());
         // Constrained series
-        assertEquals(bars, constrainedSeries.getBarData());
+        assertNotEquals(bars, subseries.getBarData());
         // Empty series
         assertEquals(0, emptySeries.getBarData().size());
     }
@@ -107,8 +121,8 @@ public class TimeSeriesTest {
         assertTrue(defaultSeries.getSeriesPeriodDescription().endsWith(bars.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
-        assertTrue(constrainedSeries.getSeriesPeriodDescription().endsWith(bars.get(constrainedSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(constrainedSeries.getSeriesPeriodDescription().startsWith(bars.get(constrainedSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subseries.getSeriesPeriodDescription().endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(subseries.getSeriesPeriodDescription().startsWith(bars.get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
@@ -116,7 +130,7 @@ public class TimeSeriesTest {
     @Test
     public void getName() {
         assertEquals(defaultName, defaultSeries.getName());
-        assertEquals(defaultName, constrainedSeries.getName());
+        assertEquals(defaultName, subseries.getName());
     }
 
     @Test
@@ -176,10 +190,8 @@ public class TimeSeriesTest {
         defaultSeries.getSubSeries(10, 9);
     }
 
-
-    @Test(expected = IllegalStateException.class)
-    public void maximumBarCountOnConstrainedSeriesShouldThrowException() {
-        constrainedSeries.setMaximumBarCount(10);
+    public void maximumBarCountOnConstrainedSeriesShouldNotThrowException() {
+        subseries.setMaximumBarCount(10);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -202,21 +214,21 @@ public class TimeSeriesTest {
         assertEquals(3, defaultSeries.getBarCount());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void addNullBarshouldThrowException() {
         defaultSeries.addBar(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void addBarWithEndTimePriorToSeriesEndTimeShouldThrowException() {
-        defaultSeries.addBar(new MockBar(ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault()), 99d));
+        defaultSeries.addBar(new MockBar(ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault()), 99d,numFunction));
     }
 
     @Test
     public void addBar() {
-        defaultSeries = new BaseTimeSeries();
-        Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d);
-        Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d);
+        defaultSeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d,numFunction);
+        Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d,numFunction);
 
         assertEquals(0, defaultSeries.getBarCount());
         assertEquals(-1, defaultSeries.getBeginIndex());
@@ -231,5 +243,17 @@ public class TimeSeriesTest {
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void wrongBarTypeDouble(){
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
+        series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, BigDecimalNum::valueOf));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void wrongBarTypeBigDecimal(){
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(BigDecimalNum::valueOf).build();
+        series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, DoubleNum::valueOf));
     }
 }

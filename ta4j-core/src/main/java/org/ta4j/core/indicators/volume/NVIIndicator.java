@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,7 +23,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 
@@ -37,7 +37,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
  * @see <a href="http://www.investopedia.com/terms/n/nvi.asp">
  *     http://www.investopedia.com/terms/n/nvi.asp</a>
  */
-public class NVIIndicator extends RecursiveCachedIndicator<Decimal> {
+public class NVIIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeSeries series;
 
@@ -47,19 +47,19 @@ public class NVIIndicator extends RecursiveCachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (index == 0) {
-            return Decimal.THOUSAND;
+            return numOf(1000);
         }
 
         Bar currentBar = series.getBar(index);
         Bar previousBar = series.getBar(index - 1);
-        Decimal previousValue = getValue(index - 1);
+        Num previousValue = getValue(index - 1);
 
         if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
-            Decimal currentPrice = currentBar.getClosePrice();
-            Decimal previousPrice = previousBar.getClosePrice();
-            Decimal priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+            Num currentPrice = currentBar.getClosePrice();
+            Num previousPrice = previousBar.getClosePrice();
+            Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
             return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
         }
         return previousValue;

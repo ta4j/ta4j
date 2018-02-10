@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 
@@ -36,7 +36,7 @@ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 public class IsHighestRule extends AbstractRule {
 
 	/** The actual indicator */
-	private Indicator<Decimal> ref;
+	private Indicator<Num> ref;
 	/** The timeFrame */
 	private int timeFrame;
 
@@ -46,7 +46,7 @@ public class IsHighestRule extends AbstractRule {
 	 * @param ref the indicator
 	 * @param timeFrame the time frame
 	 */
-	public IsHighestRule(Indicator<Decimal> ref, int timeFrame) {
+	public IsHighestRule(Indicator<Num> ref, int timeFrame) {
 		this.ref = ref;
 		this.timeFrame = timeFrame;
 	}
@@ -54,8 +54,8 @@ public class IsHighestRule extends AbstractRule {
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		HighestValueIndicator highest = new HighestValueIndicator(ref, timeFrame);
-		Decimal highestVal = highest.getValue(index);
-		Decimal refVal = ref.getValue(index);
+		Num highestVal = highest.getValue(index);
+		Num refVal = ref.getValue(index);
 		
 		final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
 		traceIsSatisfied(index, satisfied);

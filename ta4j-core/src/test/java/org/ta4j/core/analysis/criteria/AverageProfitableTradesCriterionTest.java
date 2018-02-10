@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,14 +24,21 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockTimeSeries;
 
+import java.util.function.Function;
+
 import static org.junit.Assert.*;
-public class AverageProfitableTradesCriterionTest {
+public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest {
+
+    public AverageProfitableTradesCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculate() {
-        TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
+        TimeSeries series = new MockTimeSeries(numFunction,100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(3, series),
@@ -39,19 +46,19 @@ public class AverageProfitableTradesCriterionTest {
         
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
         
-        assertEquals(2d/3, average.calculate(series, tradingRecord), TATestsUtils.TA_OFFSET);
+        assertEquals(2d/3, average.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
     }
 
     @Test
     public void calculateWithOneTrade() {
-        TimeSeries series = new MockTimeSeries(100d, 95d, 102d, 105d, 97d, 113d);
+        TimeSeries series = new MockTimeSeries(numFunction,100d, 95d, 102d, 105d, 97d, 113d);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
             
         AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
-        assertEquals(0d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(0d, average.calculate(series, trade), TestUtils.GENERAL_OFFSET);
         
         trade = new Trade(Order.buyAt(1, series), Order.sellAt(2, series));
-        assertEquals(1d, average.calculate(series, trade), TATestsUtils.TA_OFFSET);
+        assertEquals(1d, average.calculate(series, trade), TestUtils.GENERAL_OFFSET);
     }
 
     @Test

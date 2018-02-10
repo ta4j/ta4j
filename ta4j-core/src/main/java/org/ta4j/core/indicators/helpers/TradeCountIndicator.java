@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -31,6 +31,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  */
 public class TradeCountIndicator extends CachedIndicator<Integer> {
 
+    private static final long serialVersionUID = -925772914642803594L;
     private TimeSeries series;
 
     public TradeCountIndicator(TimeSeries series) {

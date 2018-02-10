@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -39,11 +39,11 @@ import org.ta4j.core.indicators.helpers.AbsoluteIndicator;
 public class DojiIndicator extends CachedIndicator<Boolean> {
 
     /** Body height */
-    private final Indicator<Decimal> bodyHeightInd;
+    private final Indicator<Num> bodyHeightInd;
     /** Average body height */
     private final SMAIndicator averageBodyHeightInd;
 
-    private final Decimal factor;
+    private final Num factor;
 
     /**
      * Constructor.
@@ -51,11 +51,11 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      * @param timeFrame the number of bars used to calculate the average body height
      * @param bodyFactor the factor used when checking if a candle is Doji
      */
-    public DojiIndicator(TimeSeries series, int timeFrame, Decimal bodyFactor) {
+    public DojiIndicator(TimeSeries series, int timeFrame, double bodyFactor) {
         super(series);
         bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
         averageBodyHeightInd = new SMAIndicator(bodyHeightInd, timeFrame);
-        factor = bodyFactor;
+        factor = numOf(bodyFactor);
     }
 
     @Override
@@ -64,8 +64,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
             return bodyHeightInd.getValue(index).isZero();
         }
 
-        Decimal averageBodyHeight = averageBodyHeightInd.getValue(index-1);
-        Decimal currentBodyHeight = bodyHeightInd.getValue(index);
+        Num averageBodyHeight = averageBodyHeightInd.getValue(index-1);
+        Num currentBodyHeight = bodyHeightInd.getValue(index);
 
         return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));
     }

@@ -1,17 +1,17 @@
 package org.ta4j.core.mocks;
 
-import java.util.List;
-
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 
+import java.util.List;
+
 public class MockAnalysisCriterion implements AnalysisCriterion {
 
     TimeSeries series;
-    List<Decimal> values;
+    List<Num> values;
 
     /**
      * Constructor.
@@ -19,7 +19,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param series TimeSeries of the AnalysisCriterion
      * @param values AnalysisCriterion values
      */
-    public MockAnalysisCriterion(TimeSeries series, List<Decimal> values) {
+    public MockAnalysisCriterion(TimeSeries series, List<Num> values) {
         this.series = series;
         this.values = values;
     }

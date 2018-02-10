@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,15 +22,15 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Chande's Range Action Verification Index (RAVI) indicator.
  * 
  * To preserve trend direction, default calculation does not use absolute value.
  */
-public class RAVIIndicator extends CachedIndicator<Decimal> {
+public class RAVIIndicator extends CachedIndicator<Num> {
 
     private final SMAIndicator shortSma;
     private final SMAIndicator longSma;
@@ -41,18 +41,18 @@ public class RAVIIndicator extends CachedIndicator<Decimal> {
      * @param shortSmaTimeFrame the time frame for the short SMA (usually 7)
      * @param longSmaTimeFrame the time frame for the long SMA (usually 65)
      */
-    public RAVIIndicator(Indicator<Decimal> price, int shortSmaTimeFrame, int longSmaTimeFrame) {
+    public RAVIIndicator(Indicator<Num> price, int shortSmaTimeFrame, int longSmaTimeFrame) {
         super(price);
         shortSma = new SMAIndicator(price, shortSmaTimeFrame);
         longSma = new SMAIndicator(price, longSmaTimeFrame);
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal shortMA = shortSma.getValue(index);
-        Decimal longMA = longSma.getValue(index);
+    protected Num calculate(int index) {
+        Num shortMA = shortSma.getValue(index);
+        Num longMA = longSma.getValue(index);
         return shortMA.minus(longMA)
                 .dividedBy(longMA)
-                .multipliedBy(Decimal.HUNDRED);
+                .multipliedBy(numOf(100));
     }
 }

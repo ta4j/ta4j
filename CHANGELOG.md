@@ -1,7 +1,9 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ##(unreleased, `0.12-SNAPSHOT`)
-- **Breaking**: `Decimal` class has been. `**Num**` interface allows using **Double** and custom data types for calculations. Big changes in `TimeSeries` and `BaseTimeSeries` 
+### Breaking: 
+   - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
+   - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries` 
 
 ### Fixed
 ### Changed
@@ -16,7 +18,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
-## (released January 25, 2018)
+- **BaseTimeSeries**: _Consturctor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
+##0.11 (released January 25, 2018)
 
 - **BREAKING**: Tick has been renamed to **Bar**
 

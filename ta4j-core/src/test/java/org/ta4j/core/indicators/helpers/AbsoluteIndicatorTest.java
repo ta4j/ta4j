@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,21 +23,33 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
-public class AbsoluteIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class AbsoluteIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public AbsoluteIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void constantIndicators() {
-        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Decimal>(Decimal.valueOf(1337)));
-        AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Decimal>(Decimal.ZERO));
-        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Decimal>(Decimal.valueOf(-42.42)));
+        TimeSeries series = new BaseTimeSeries();
+        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(1337)));
+        AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)));
+        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(-42.42)));
         for (int i = 0; i < 10; i++) {
-            assertDecimalEquals(positiveInd.getValue(i), 1337);
-            assertDecimalEquals(zeroInd.getValue(i), 0);
-            assertDecimalEquals(negativeInd.getValue(i), 42.42);
+            TestUtils.assertNumEquals(positiveInd.getValue(i), 1337);
+            TestUtils.assertNumEquals(zeroInd.getValue(i), 0);
+            assertNumEquals(negativeInd.getValue(i), 42.42);
         }
     }
 }

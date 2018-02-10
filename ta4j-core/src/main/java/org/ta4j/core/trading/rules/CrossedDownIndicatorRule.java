@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
@@ -43,8 +43,8 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold a threshold
      */
-    public CrossedDownIndicatorRule(Indicator<Decimal> indicator, Decimal threshold) {
-        this(indicator, new ConstantIndicator<Decimal>(threshold));
+    public CrossedDownIndicatorRule(Indicator<Num> indicator, double threshold) {
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(),indicator.numOf(threshold)));
     }
 
     /**
@@ -52,7 +52,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param first the first indicator
      * @param second the second indicator
      */
-    public CrossedDownIndicatorRule(Indicator<Decimal> first, Indicator<Decimal> second) {
+    public CrossedDownIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
         this.cross = new CrossIndicator(first, second);
     }
 

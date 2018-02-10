@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -25,6 +25,7 @@ package org.ta4j.core.analysis.criteria;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TimeSeriesManager;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -33,16 +34,21 @@ import org.ta4j.core.trading.rules.FixedRule;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 
-public class AbstractAnalysisCriterionTest {
+public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
     private Strategy alwaysStrategy;
 
     private Strategy buyAndHoldStrategy;
 
     private List<Strategy> strategies;
+
+    public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
@@ -55,7 +61,7 @@ public class AbstractAnalysisCriterionTest {
 
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
-        MockTimeSeries series = new MockTimeSeries(6.0, 9.0, 6.0, 6.0);
+        MockTimeSeries series = new MockTimeSeries(numFunction,6.0, 9.0, 6.0, 6.0);
         TimeSeriesManager manager = new TimeSeriesManager(series);
         Strategy bestStrategy = new TotalProfitCriterion().chooseBest(manager, strategies);
         assertEquals(alwaysStrategy, bestStrategy);
@@ -63,7 +69,7 @@ public class AbstractAnalysisCriterionTest {
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
-        MockTimeSeries series = new MockTimeSeries(6.0, 3.0, 6.0, 6.0);
+        MockTimeSeries series = new MockTimeSeries(numFunction,6.0, 3.0, 6.0, 6.0);
         TimeSeriesManager manager = new TimeSeriesManager(series);
         Strategy bestStrategy = new TotalProfitCriterion().chooseBest(manager, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);

@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -21,21 +21,26 @@
   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core.indicators.helpers;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TimeSeries;
 
-import org.ta4j.core.Decimal;
+import java.math.BigDecimal;
 
 /**
  * A fixed decimal indicator.
  */
-public class FixedDecimalIndicator extends FixedIndicator<Decimal> {
+public class FixedDecimalIndicator extends FixedIndicator<Num> {
+
+    private static final long serialVersionUID = 139320494945326149L;
 
     /**
      * Constructor.
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(double... values) {
+    public FixedDecimalIndicator(TimeSeries series, double... values) {
+        super(series);
         for (double value : values) {
-            addValue(Decimal.valueOf(value));
+            addValue(numOf(value));
         }
     }
     
@@ -43,9 +48,10 @@ public class FixedDecimalIndicator extends FixedIndicator<Decimal> {
      * Constructor.
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(String... values) {
+    public FixedDecimalIndicator(TimeSeries series, String... values) {
+        super(series);
         for (String value : values) {
-            addValue(Decimal.valueOf(value));
+            addValue(numOf(new BigDecimal(value)));
         }
     }
 }

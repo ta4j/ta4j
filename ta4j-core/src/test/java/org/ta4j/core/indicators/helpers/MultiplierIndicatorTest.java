@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,24 +24,36 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
-public class MultiplierIndicatorTest {
+
+public class MultiplierIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
     private MultiplierIndicator multiplierIndicator;
+
+    public MultiplierIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
-        ConstantIndicator<Decimal> constantIndicator = new ConstantIndicator<Decimal>(Decimal.valueOf(6));
-        multiplierIndicator = new MultiplierIndicator(constantIndicator, Decimal.valueOf("0.75"));
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
+        multiplierIndicator = new MultiplierIndicator(constantIndicator, 0.75);
     }
 
     @Test
     public void constantIndicator() {
-        assertDecimalEquals(multiplierIndicator.getValue(10), "4.5");
-        assertDecimalEquals(multiplierIndicator.getValue(1), "4.5");
-        assertDecimalEquals(multiplierIndicator.getValue(0), "4.5");
-        assertDecimalEquals(multiplierIndicator.getValue(30), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(10), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(1), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(0), "4.5");
+        TestUtils.assertNumEquals(multiplierIndicator.getValue(30), "4.5");
     }
 }

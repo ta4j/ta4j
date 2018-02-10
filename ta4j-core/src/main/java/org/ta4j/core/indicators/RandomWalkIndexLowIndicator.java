@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
@@ -30,7 +30,7 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 /**
  * The Class RandomWalkIndexLowIndicator.
  */
-public class RandomWalkIndexLowIndicator extends CachedIndicator<Decimal>{
+public class RandomWalkIndexLowIndicator extends CachedIndicator<Num>{
 
 private final MaxPriceIndicator maxPrice;
     
@@ -38,7 +38,7 @@ private final MaxPriceIndicator maxPrice;
     
     private final ATRIndicator averageTrueRange;
     
-    private final Decimal sqrtTimeFrame;
+    private final Num sqrtTimeFrame;
     
     private final int timeFrame;
     
@@ -54,11 +54,11 @@ private final MaxPriceIndicator maxPrice;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
         averageTrueRange = new ATRIndicator(series, timeFrame);
-        sqrtTimeFrame = Decimal.valueOf(Math.sqrt(timeFrame));
+        sqrtTimeFrame = series.numOf(Math.sqrt(timeFrame));
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return maxPrice.getValue(Math.max(0, index - timeFrame)).minus(minPrice.getValue(index))
                 .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
     }

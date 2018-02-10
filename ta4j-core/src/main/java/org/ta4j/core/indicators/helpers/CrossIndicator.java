@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,9 +22,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
+
 
 /**
  * Cross indicator.
@@ -34,16 +35,16 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class CrossIndicator extends CachedIndicator<Boolean> {
 
     /** Upper indicator */
-    private final Indicator<Decimal> up;
+    private final Indicator<Num> up;
     /** Lower indicator */
-    private final Indicator<Decimal> low;
+    private final Indicator<Num> low;
 
     /**
      * Constructor.
      * @param up the upper indicator
      * @param low the lower indicator
      */
-    public CrossIndicator(Indicator<Decimal> up, Indicator<Decimal> low) {
+    public CrossIndicator(Indicator<Num> up, Indicator<Num> low) {
         // TODO: check if up series is equal to low series
         super(up);
         this.up = up;
@@ -73,14 +74,14 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
     /**
      * @return the initial lower indicator
      */
-    public Indicator<Decimal> getLow() {
+    public Indicator<Num> getLow() {
         return low;
     }
 
     /**
      * @return the initial upper indicator
      */
-    public Indicator<Decimal> getUp() {
+    public Indicator<Num> getUp() {
         return up;
     }
 

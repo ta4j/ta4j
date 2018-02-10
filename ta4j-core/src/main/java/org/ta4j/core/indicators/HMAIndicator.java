@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.MultiplierIndicator;
 
@@ -33,25 +33,25 @@ import org.ta4j.core.indicators.helpers.MultiplierIndicator;
  * @see <a href="http://alanhull.com/hull-moving-average">
  *     http://alanhull.com/hull-moving-average</a>
  */
-public class HMAIndicator extends CachedIndicator<Decimal> {
+public class HMAIndicator extends CachedIndicator<Num> {
 
     private final int timeFrame;
 
     private final WMAIndicator sqrtWma;
     
-    public HMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public HMAIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         
         WMAIndicator halfWma = new WMAIndicator(indicator, timeFrame / 2);
         WMAIndicator origWma = new WMAIndicator(indicator, timeFrame);
         
-        Indicator<Decimal> indicatorForSqrtWma = new DifferenceIndicator(new MultiplierIndicator(halfWma, Decimal.TWO), origWma);
+        Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(new MultiplierIndicator(halfWma, 2), origWma);
         sqrtWma = new WMAIndicator(indicatorForSqrtWma, (int) Math.sqrt(timeFrame));
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return sqrtWma.getValue(index);
     }
 

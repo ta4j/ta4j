@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 
@@ -33,9 +33,9 @@ import org.ta4j.core.indicators.SMAIndicator;
  * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
  *     http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
-public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
+public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Decimal> indicator;
+    private Indicator<Num> indicator;
 
     private int timeFrame;
 
@@ -46,7 +46,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public MeanDeviationIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public MeanDeviationIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
@@ -54,10 +54,10 @@ public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        Decimal absoluteDeviations = Decimal.ZERO;
+    protected Num calculate(int index) {
+        Num absoluteDeviations = numOf(0);
 
-        final Decimal average = sma.getValue(index);
+        final Num average = sma.getValue(index);
         final int startIndex = Math.max(0, index - timeFrame + 1);
         final int nbValues = index - startIndex + 1;
 
@@ -65,7 +65,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Decimal> {
             // For each period...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
-        return absoluteDeviations.dividedBy(Decimal.valueOf(nbValues));
+        return absoluteDeviations.dividedBy(numOf(nbValues));
     }
 
     @Override

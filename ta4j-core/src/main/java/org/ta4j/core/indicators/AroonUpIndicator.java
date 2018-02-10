@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,11 +22,13 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
+
+import static org.ta4j.core.Num.NaN.NaN;
 
 
 /**
@@ -34,12 +36,13 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
  * <p></p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
-public class AroonUpIndicator extends CachedIndicator<Decimal> {
+public class AroonUpIndicator extends CachedIndicator<Num> {
 
     private final int timeFrame;
 
     private final HighestValueIndicator highestMaxPriceIndicator;
-    private final Indicator<Decimal> maxValueIndicator;
+    private final Indicator<Num> maxValueIndicator;
+    private final Num hundred;
 
     /**
      * Constructor.
@@ -48,11 +51,11 @@ public class AroonUpIndicator extends CachedIndicator<Decimal> {
      * @param maxValueIndicator the indicator for the maximum price (default {@link MaxPriceIndicator})
      * @param timeFrame the time frame
      */
-    public AroonUpIndicator(TimeSeries series, Indicator<Decimal> maxValueIndicator, int timeFrame) {
+    public AroonUpIndicator(TimeSeries series, Indicator<Num> maxValueIndicator, int timeFrame) {
         super(series);
         this.timeFrame = timeFrame;
         this.maxValueIndicator = maxValueIndicator;
-
+        this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
         highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, timeFrame+1);
     }
@@ -68,9 +71,9 @@ public class AroonUpIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         if (getTimeSeries().getBar(index).getMaxPrice().isNaN())
-            return Decimal.NaN;
+            return NaN;
 
         // Getting the number of bars since the highest close price
         int endIndex = Math.max(0,index - timeFrame);
@@ -82,7 +85,7 @@ public class AroonUpIndicator extends CachedIndicator<Decimal> {
             nbBars++;
         }
 
-        return Decimal.valueOf(timeFrame - nbBars).dividedBy(Decimal.valueOf(timeFrame)).multipliedBy(Decimal.HUNDRED);
+        return numOf(timeFrame - nbBars).dividedBy(numOf(timeFrame)).multipliedBy(hundred);
     }
 
     @Override

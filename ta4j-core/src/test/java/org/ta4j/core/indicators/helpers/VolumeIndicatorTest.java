@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,23 +22,31 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-public class VolumeIndicatorTest {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import static junit.framework.TestCase.assertEquals;
+
+public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public VolumeIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void indicatorShouldRetrieveBarVolume() {
-        TimeSeries series = new MockTimeSeries();
+        TimeSeries series = new MockTimeSeries(numFunction);
         VolumeIndicator volumeIndicator = new VolumeIndicator(series);
         for (int i = 0; i < 10; i++) {
             assertEquals(volumeIndicator.getValue(i), series.getBar(i).getVolume());
@@ -48,21 +56,21 @@ public class VolumeIndicatorTest {
     @Test
     public void sumOfVolume() {
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 10));
-        bars.add(new MockBar(0, 11));
-        bars.add(new MockBar(0, 12));
-        bars.add(new MockBar(0, 13));
-        bars.add(new MockBar(0, 150));
-        bars.add(new MockBar(0, 155));
-        bars.add(new MockBar(0, 160));
+        bars.add(new MockBar(0, 10,numFunction));
+        bars.add(new MockBar(0, 11,numFunction));
+        bars.add(new MockBar(0, 12,numFunction));
+        bars.add(new MockBar(0, 13,numFunction));
+        bars.add(new MockBar(0, 150,numFunction));
+        bars.add(new MockBar(0, 155,numFunction));
+        bars.add(new MockBar(0, 160,numFunction));
         VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(bars), 3);
 
-        assertDecimalEquals(volumeIndicator.getValue(0), 10);
-        assertDecimalEquals(volumeIndicator.getValue(1), 21);
-        assertDecimalEquals(volumeIndicator.getValue(2), 33);
-        assertDecimalEquals(volumeIndicator.getValue(3), 36);
-        assertDecimalEquals(volumeIndicator.getValue(4), 175);
-        assertDecimalEquals(volumeIndicator.getValue(5), 318);
-        assertDecimalEquals(volumeIndicator.getValue(6), 465);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(0), 10);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(1), 21);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(2), 33);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(3), 36);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(4), 175);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(5), 318);
+        TestUtils.assertNumEquals(volumeIndicator.getValue(6), 465);
     }
 }

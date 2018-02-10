@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,15 +22,15 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 
 /**
  * Double exponential moving average indicator.
  * </p/>
  * see https://en.wikipedia.org/wiki/Double_exponential_moving_average
  */
-public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
+public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 502597792760330884L;
 	
@@ -44,7 +44,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
      * @param indicator the indicator
      * @param timeFrame the time frame
      */
-    public DoubleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public DoubleEMAIndicator(Indicator<Num> indicator, int timeFrame) {
         super(indicator);
         this.timeFrame = timeFrame;
         this.ema = new EMAIndicator(indicator, timeFrame);
@@ -52,8 +52,8 @@ public class DoubleEMAIndicator extends CachedIndicator<Decimal> {
     }
 
     @Override
-    protected Decimal calculate(int index) {
-        return ema.getValue(index).multipliedBy(Decimal.TWO)
+    protected Num calculate(int index) {
+        return ema.getValue(index).multipliedBy(numOf(2))
                 .minus(emaEma.getValue(index));
     }
     

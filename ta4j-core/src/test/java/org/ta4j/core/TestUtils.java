@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,17 +22,21 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Num.Num;
+
+import java.math.BigDecimal;
 import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 /**
  * Utility class for {@code Decimal} tests.
  */
-public class TATestsUtils {
+public class TestUtils {
 
     /** Offset for double equality checking */
-    public static final double TA_OFFSET = 0.0001;
+    public static final double GENERAL_OFFSET = 0.0001;
 
     /**
      * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
@@ -41,8 +45,12 @@ public class TATestsUtils {
      * @param expected the given {@code String} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
      */
-    public static void assertDecimalEquals(Decimal actual, String expected) {
-        assertEquals(Decimal.valueOf(expected), actual);
+    public static void assertNumEquals(String expected, Num actual) {
+        assertEquals(expected, actual.numOf(new BigDecimal(expected)).toString());
+    }
+
+    public static void assertNumEquals(Num expected, Num actual){
+        assertEquals(expected,actual);
     }
 
     /**
@@ -52,8 +60,8 @@ public class TATestsUtils {
      * @param expected the given {@code Integer} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
      */
-    public static void assertDecimalEquals(Decimal actual, int expected) {
-        assertEquals(Decimal.valueOf(expected), actual);
+    public static void assertNumEquals(int expected, Num actual) {
+        assertEquals(expected, actual.intValue());
     }
 
     /**
@@ -63,8 +71,8 @@ public class TATestsUtils {
      * @param expected the given {@code Double} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
      */
-    public static void assertDecimalEquals(Decimal actual, double expected) {
-        assertEquals(expected, actual.doubleValue(), TA_OFFSET);
+    public static void assertNumEquals(double expected, Num actual) {
+        assertEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
@@ -74,8 +82,8 @@ public class TATestsUtils {
      * @param unexpected the given {@code Integer} representation to compare the actual value to
      * @throws AssertionError if the actual value is equal to the given {@code Integer} representation
      */
-    public static void assertDecimalNotEquals(Decimal actual, int unexpected) {
-        assertNotEquals(Decimal.valueOf(unexpected), actual);
+    public static void assertDecimalNotEquals(int unexpected,Num actual) {
+        assertNotEquals(unexpected, actual.intValue());
     }
 
     /**
@@ -84,11 +92,11 @@ public class TATestsUtils {
      * @param expectedValues expected list of values
      * @param actualIndicator indicator to compare
      */
-    public static void assertValuesEquals(Indicator<Decimal> actualIndicator, List<Decimal> expectedValues) {
+    public static void assertValuesEquals(Indicator<Num> actualIndicator, List<Num> expectedValues) {
         assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getBarCount());
         for (int i = 0; i < expectedValues.size(); i++) {
             assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), TA_OFFSET);
+                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
     }
 
@@ -97,12 +105,24 @@ public class TATestsUtils {
      * @param expected indicator of expected values
      * @param actual indicator of actual values
      */
-    public static void assertIndicatorEquals(Indicator<Decimal> expected, Indicator<Decimal> actual) {
+    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
         org.junit.Assert.assertEquals("Size does not match,",
                 expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
         for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-            org.junit.Assert.assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expected.getValue(i).doubleValue(), actual.getValue(i).doubleValue(), TATestsUtils.TA_OFFSET);
+            assertEquals(String.format("Failed at index %s: %s",i,actual.toString()),
+                    expected.getValue(i).doubleValue(),
+                    actual.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
+    }
+
+    /**swapping TODO: remove this asserts if all parameters of test calls are permuted*/
+    public static void assertNumEquals(Num value, int i) {
+        assertNumEquals(i,value);
+    }
+    public static void assertNumEquals(Num value, String i) {
+        assertNumEquals(i,value);
+    }
+    public static void assertNumEquals(Num value, double i) {
+        assertNumEquals(i,value);
     }
 }

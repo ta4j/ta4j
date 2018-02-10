@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -23,48 +23,54 @@
 package org.ta4j.core.indicators;
 
 import org.junit.Test;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
-public class WMAIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+
+    public WMAIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void calculate() {
-        MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<Decimal> close = new ClosePriceIndicator(series);
-        Indicator<Decimal> wmaIndicator = new WMAIndicator(close, 3);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
 
-        assertDecimalEquals(wmaIndicator.getValue(0), 1);
-        assertDecimalEquals(wmaIndicator.getValue(1), 1.6667);
-        assertDecimalEquals(wmaIndicator.getValue(2), 2.3333);
-        assertDecimalEquals(wmaIndicator.getValue(3), 3.3333);
-        assertDecimalEquals(wmaIndicator.getValue(4), 4.3333);
-        assertDecimalEquals(wmaIndicator.getValue(5), 5.3333);
+        assertNumEquals(wmaIndicator.getValue(0), 1);
+        assertNumEquals(wmaIndicator.getValue(1), 1.6667);
+        assertNumEquals(wmaIndicator.getValue(2), 2.3333);
+        assertNumEquals(wmaIndicator.getValue(3), 3.3333);
+        assertNumEquals(wmaIndicator.getValue(4), 4.3333);
+        assertNumEquals(wmaIndicator.getValue(5), 5.3333);
     }
     
     @Test
     public void wmaWithTimeFrameGreaterThanSeriesSize() {
-        MockTimeSeries series = new MockTimeSeries(1d, 2d, 3d, 4d, 5d, 6d);
-        Indicator<Decimal> close = new ClosePriceIndicator(series);
-        Indicator<Decimal> wmaIndicator = new WMAIndicator(close, 55);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
 
-        assertDecimalEquals(wmaIndicator.getValue(0), 1);
-        assertDecimalEquals(wmaIndicator.getValue(1), 1.6667);
-        assertDecimalEquals(wmaIndicator.getValue(2), 2.3333);
-        assertDecimalEquals(wmaIndicator.getValue(3), 3);
-        assertDecimalEquals(wmaIndicator.getValue(4), 3.6666);
-        assertDecimalEquals(wmaIndicator.getValue(5), 4.3333);
+        assertNumEquals(wmaIndicator.getValue(0), 1);
+        assertNumEquals(wmaIndicator.getValue(1), 1.6667);
+        assertNumEquals(wmaIndicator.getValue(2), 2.3333);
+        assertNumEquals(wmaIndicator.getValue(3), 3);
+        assertNumEquals(wmaIndicator.getValue(4), 3.6666);
+        assertNumEquals(wmaIndicator.getValue(5), 4.3333);
     }
 
     @Test
     public void wmaUsingTimeFrame9UsingClosePrice() {
         // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        TimeSeries data = new MockTimeSeries(
+        TimeSeries data = new MockTimeSeries(numFunction,
                 84.53, 87.39, 84.55,
                 82.83, 82.58, 83.74,
                 83.33, 84.57, 86.98,
@@ -75,18 +81,18 @@ public class WMAIndicatorTest {
         );
         
         WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
-        assertDecimalEquals(wma.getValue(8), 84.4958);
-        assertDecimalEquals(wma.getValue(9), 85.0158);
-        assertDecimalEquals(wma.getValue(10), 84.6807);
-        assertDecimalEquals(wma.getValue(11), 84.5387);
-        assertDecimalEquals(wma.getValue(12), 84.4298);
-        assertDecimalEquals(wma.getValue(13), 84.1224);
-        assertDecimalEquals(wma.getValue(14), 83.1031);
-        assertDecimalEquals(wma.getValue(15), 82.1462);
-        assertDecimalEquals(wma.getValue(16), 81.1149);
-        assertDecimalEquals(wma.getValue(17), 80.0736);
-        assertDecimalEquals(wma.getValue(18), 78.6907);
-        assertDecimalEquals(wma.getValue(19), 78.1504);
-        assertDecimalEquals(wma.getValue(20), 77.6133);
+        assertNumEquals(wma.getValue(8), 84.4958);
+        assertNumEquals(wma.getValue(9), 85.0158);
+        assertNumEquals(wma.getValue(10), 84.6807);
+        assertNumEquals(wma.getValue(11), 84.5387);
+        assertNumEquals(wma.getValue(12), 84.4298);
+        assertNumEquals(wma.getValue(13), 84.1224);
+        assertNumEquals(wma.getValue(14), 83.1031);
+        assertNumEquals(wma.getValue(15), 82.1462);
+        assertNumEquals(wma.getValue(16), 81.1149);
+        assertNumEquals(wma.getValue(17), 80.0736);
+        assertNumEquals(wma.getValue(18), 78.6907);
+        assertNumEquals(wma.getValue(19), 78.1504);
+        assertNumEquals(wma.getValue(20), 77.6133);
     }
 }

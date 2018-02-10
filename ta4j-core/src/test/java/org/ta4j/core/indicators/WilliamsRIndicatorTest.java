@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -26,6 +26,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
@@ -34,29 +36,34 @@ import org.ta4j.core.mocks.MockBar;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class WilliamsRIndicatorTest {
+public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
     private TimeSeries data;
+
+    public WilliamsRIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
 
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96));
-        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99));
-        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11));
-        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04));
-        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10));
-        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10));
-        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07));
-        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10));
-        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14));
-        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20));
-        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39));
-        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35));
-        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39));
+        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96,numFunction));
+        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99,numFunction));
+        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11,numFunction));
+        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04,numFunction));
+        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10,numFunction));
+        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10,numFunction));
+        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07,numFunction));
+        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10,numFunction));
+        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14,numFunction));
+        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20,numFunction));
+        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39,numFunction));
+        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35,numFunction));
+        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39,numFunction));
 
         data = new BaseTimeSeries(bars);
     }
@@ -67,13 +74,13 @@ public class WilliamsRIndicatorTest {
                 new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertDecimalEquals(wr.getValue(4), -47.2222);
-        assertDecimalEquals(wr.getValue(5), -54.5454);
-        assertDecimalEquals(wr.getValue(6), -78.5714);
-        assertDecimalEquals(wr.getValue(7), -47.6190);
-        assertDecimalEquals(wr.getValue(8), -25d);
-        assertDecimalEquals(wr.getValue(9), -5.2632);
-        assertDecimalEquals(wr.getValue(10), -13.9535);
+        assertNumEquals(wr.getValue(4), -47.2222);
+        assertNumEquals(wr.getValue(5), -54.5454);
+        assertNumEquals(wr.getValue(6), -78.5714);
+        assertNumEquals(wr.getValue(7), -47.6190);
+        assertNumEquals(wr.getValue(8), -25d);
+        assertNumEquals(wr.getValue(9), -5.2632);
+        assertNumEquals(wr.getValue(10), -13.9535);
 
     }
 
@@ -82,10 +89,10 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertDecimalEquals(wr.getValue(9), -4.0816);
-        assertDecimalEquals(wr.getValue(10), -11.7647);
-        assertDecimalEquals(wr.getValue(11), -8.9286);
-        assertDecimalEquals(wr.getValue(12), -10.5263);
+        assertNumEquals(wr.getValue(9), -4.0816);
+        assertNumEquals(wr.getValue(10), -11.7647);
+        assertNumEquals(wr.getValue(11), -8.9286);
+        assertNumEquals(wr.getValue(12), -10.5263);
 
     }
 
@@ -94,9 +101,9 @@ public class WilliamsRIndicatorTest {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
-        assertDecimalEquals(wr.getValue(0), -100d * (0.12 / 0.21));
-        assertDecimalEquals(wr.getValue(1), -100d * (0.07 / 0.21));
-        assertDecimalEquals(wr.getValue(2), -100d * (0.13 / 0.36));
-        assertDecimalEquals(wr.getValue(3), -100d * (0.18 / 0.36));
+        assertNumEquals(wr.getValue(0), -100d * (0.12 / 0.21));
+        assertNumEquals(wr.getValue(1), -100d * (0.07 / 0.21));
+        assertNumEquals(wr.getValue(2), -100d * (0.13 / 0.36));
+        assertNumEquals(wr.getValue(3), -100d * (0.18 / 0.36));
     }
 }

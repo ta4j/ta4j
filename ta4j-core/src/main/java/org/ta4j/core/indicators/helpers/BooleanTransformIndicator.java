@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.indicators.CachedIndicator;
 
 /**
@@ -113,8 +113,8 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 		isZero
 	}
 
-	private Indicator<Decimal> indicator;
-	private Decimal coefficient;
+	private Indicator<Num> indicator;
+	private Num coefficient;
 	private BooleanTransformType type;
 	private BooleanTransformSimpleType simpleType;
 
@@ -125,7 +125,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 	 * @param coefficient the value for transformation
 	 * @param type the type of the transformation
 	 */
-	public BooleanTransformIndicator(Indicator<Decimal> indicator, Decimal coefficient, BooleanTransformType type) {
+	public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
 		super(indicator);
 		this.indicator = indicator;
 		this.coefficient = coefficient;
@@ -138,7 +138,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 	 * @param indicator the indicator
 	 * @param type the type of the transformation
 	 */
-	public BooleanTransformIndicator(Indicator<Decimal> indicator, BooleanTransformSimpleType type) {
+	public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
 		super(indicator);
 		this.indicator = indicator;
 		this.simpleType = type;
@@ -147,7 +147,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 	@Override
 	protected Boolean calculate(int index) {
 
-		Decimal val = indicator.getValue(index);
+		Num val = indicator.getValue(index);
 
 		if (type != null) {
 			switch (type) {

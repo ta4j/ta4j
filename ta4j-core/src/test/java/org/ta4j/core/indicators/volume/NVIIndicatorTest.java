@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,43 +24,52 @@ package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class NVIIndicatorTest {
+public class NVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public NVIIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Test
     public void getValue() {
 
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(1355.69, 2739.55));
-        bars.add(new MockBar(1325.51, 3119.46));
-        bars.add(new MockBar(1335.02, 3466.88));
-        bars.add(new MockBar(1313.72, 2577.12));
-        bars.add(new MockBar(1319.99, 2480.45));
-        bars.add(new MockBar(1331.85, 2329.79));
-        bars.add(new MockBar(1329.04, 2793.07));
-        bars.add(new MockBar(1362.16, 3378.78));
-        bars.add(new MockBar(1365.51, 2417.59));
-        bars.add(new MockBar(1374.02, 1442.81));
+        bars.add(new MockBar(1355.69, 2739.55,numFunction));
+        bars.add(new MockBar(1325.51, 3119.46,numFunction));
+        bars.add(new MockBar(1335.02, 3466.88,numFunction));
+        bars.add(new MockBar(1313.72, 2577.12,numFunction));
+        bars.add(new MockBar(1319.99, 2480.45,numFunction));
+        bars.add(new MockBar(1331.85, 2329.79,numFunction));
+        bars.add(new MockBar(1329.04, 2793.07,numFunction));
+        bars.add(new MockBar(1362.16, 3378.78,numFunction));
+        bars.add(new MockBar(1365.51, 2417.59,numFunction));
+        bars.add(new MockBar(1374.02, 1442.81,numFunction));
         TimeSeries series = new MockTimeSeries(bars);
 
         NVIIndicator nvi = new NVIIndicator(series);
-        assertDecimalEquals(nvi.getValue(0), 1000);
-        assertDecimalEquals(nvi.getValue(1), 1000);
-        assertDecimalEquals(nvi.getValue(2), 1000);
-        assertDecimalEquals(nvi.getValue(3), 984.0452);
-        assertDecimalEquals(nvi.getValue(4), 988.7417);
-        assertDecimalEquals(nvi.getValue(5), 997.6255);
-        assertDecimalEquals(nvi.getValue(6), 997.6255);
-        assertDecimalEquals(nvi.getValue(7), 997.6255);
-        assertDecimalEquals(nvi.getValue(8), 1000.079);
-        assertDecimalEquals(nvi.getValue(9), 1006.3116);
+        TestUtils.assertNumEquals(nvi.getValue(0), 1000);
+        TestUtils.assertNumEquals(nvi.getValue(1), 1000);
+        TestUtils.assertNumEquals(nvi.getValue(2), 1000);
+        assertNumEquals(nvi.getValue(3), 984.0452);
+        assertNumEquals(nvi.getValue(4), 988.7417);
+        assertNumEquals(nvi.getValue(5), 997.6255);
+        assertNumEquals(nvi.getValue(6), 997.6255);
+        assertNumEquals(nvi.getValue(7), 997.6255);
+        assertNumEquals(nvi.getValue(8), 1000.079);
+        assertNumEquals(nvi.getValue(9), 1006.3116);
     }
 }

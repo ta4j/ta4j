@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -24,19 +24,27 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
-public class CMOIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class CMOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
 
     private TimeSeries series;
 
+    public CMOIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        series = new MockTimeSeries(
+        series = new MockTimeSeries(numFunction,
                 21.27, 22.19, 22.08, 22.47, 22.48, 22.53,
                 22.23, 21.43, 21.24, 21.29, 22.15, 22.39,
                 22.38, 22.61, 23.36, 24.05, 24.75, 24.83,
@@ -49,16 +57,16 @@ public class CMOIndicatorTest {
     public void dpo() {
         CMOIndicator cmo = new CMOIndicator(new ClosePriceIndicator(series), 9);
 
-        assertDecimalEquals(cmo.getValue(5), 85.1351);
-        assertDecimalEquals(cmo.getValue(6), 53.9326);
-        assertDecimalEquals(cmo.getValue(7), 6.2016);
-        assertDecimalEquals(cmo.getValue(8), -1.083);
-        assertDecimalEquals(cmo.getValue(9), 0.7092);
-        assertDecimalEquals(cmo.getValue(10), -1.4493);
-        assertDecimalEquals(cmo.getValue(11), 10.7266);
-        assertDecimalEquals(cmo.getValue(12), -3.5857);
-        assertDecimalEquals(cmo.getValue(13), 4.7619);
-        assertDecimalEquals(cmo.getValue(14), 24.1983);
-        assertDecimalEquals(cmo.getValue(15), 47.644);
+        assertNumEquals(cmo.getValue(5), 85.1351);
+        assertNumEquals(cmo.getValue(6), 53.9326);
+        assertNumEquals(cmo.getValue(7), 6.2016);
+        assertNumEquals(cmo.getValue(8), -1.083);
+        assertNumEquals(cmo.getValue(9), 0.7092);
+        assertNumEquals(cmo.getValue(10), -1.4493);
+        assertNumEquals(cmo.getValue(11), 10.7266);
+        assertNumEquals(cmo.getValue(12), -3.5857);
+        assertNumEquals(cmo.getValue(13), 4.7619);
+        assertNumEquals(cmo.getValue(14), 24.1983);
+        assertNumEquals(cmo.getValue(15), 47.644);
     }
 }

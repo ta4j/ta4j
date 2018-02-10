@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,8 +22,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.*;
 
@@ -31,9 +31,9 @@ import org.ta4j.core.indicators.helpers.*;
  * William's R indicator.
  * <p></p>
  */
-public class WilliamsRIndicator extends CachedIndicator<Decimal> {
+public class WilliamsRIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Decimal> indicator;
+    private final Indicator<Num> indicator;
 
     private final int timeFrame;
 
@@ -41,29 +41,30 @@ public class WilliamsRIndicator extends CachedIndicator<Decimal> {
 
     private MinPriceIndicator minPriceIndicator;
     
-    private final static Decimal multiplier = Decimal.valueOf("-100");
+    private final Num multiplier;
 
     public WilliamsRIndicator(TimeSeries timeSeries, int timeFrame) {
         this(new ClosePriceIndicator(timeSeries), timeFrame, new MaxPriceIndicator(timeSeries), new MinPriceIndicator(
                 timeSeries));
     }
 
-    public WilliamsRIndicator(Indicator<Decimal> indicator, int timeFrame,
+    public WilliamsRIndicator(Indicator<Num> indicator, int timeFrame,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
         this.timeFrame = timeFrame;
         this.maxPriceIndicator = maxPriceIndicator;
         this.minPriceIndicator = minPriceIndicator;
+        this.multiplier = numOf(-100);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
         LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
 
-        Decimal highestHighPrice = highestHigh.getValue(index);
-        Decimal lowestLowPrice = lowestMin.getValue(index);
+        Num highestHighPrice = highestHigh.getValue(index);
+        Num lowestLowPrice = lowestMin.getValue(index);
 
         return ((highestHighPrice.minus(indicator.getValue(index)))
                 .dividedBy(highestHighPrice.minus(lowestLowPrice)))

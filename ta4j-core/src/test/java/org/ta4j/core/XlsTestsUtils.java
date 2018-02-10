@@ -1,38 +1,40 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  The MIT License (MIT)
+
+  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of
+  this software and associated documentation files (the "Software"), to deal in
+  the Software without restriction, including without limitation the rights to
+  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+  the Software, and to permit persons to whom the Software is furnished to do so,
+  subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package org.ta4j.core;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.ta4j.core.Num.Num;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockTradingRecord;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.zip.DataFormatException;
 
 public class XlsTestsUtils {
@@ -65,7 +67,7 @@ public class XlsTestsUtils {
      * @param params parameters to write
      * @throws DataFormatException if the parameters section header is not found
      */
-    private static void setParams(Sheet sheet, Decimal... params) throws DataFormatException {
+    private static void setParams(Sheet sheet, Num... params) throws DataFormatException {
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         Iterator<Row> iterator = sheet.rowIterator();
         while (iterator.hasNext()) {
@@ -79,7 +81,7 @@ public class XlsTestsUtils {
                 // stream parameters into the second column of subsequent rows
                 // overwrites data section if there is not a large enough gap
                 Arrays.stream(params)
-                .mapToDouble(Decimal::doubleValue)
+                .mapToDouble(Num::doubleValue)
                 .forEach(d -> iterator.next().getCell(1).setCellValue(d));
                 return;
             }
@@ -97,9 +99,9 @@ public class XlsTestsUtils {
      * @throws IOException if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static TimeSeries getSeries(Class<?> clazz, String fileName) throws IOException, DataFormatException {
+    public static TimeSeries getSeries(Class<?> clazz, String fileName,Function<Number, Num> numFunction) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return getSeries(sheet);
+        return getSeries(sheet, numFunction);
     }
 
     /**
@@ -112,10 +114,9 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getData throws DataFormatException or if
      *             the data contains empty cells
      */
-    private static TimeSeries getSeries(Sheet sheet) throws DataFormatException {
-        TimeSeries series = new BaseTimeSeries();
+    private static TimeSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-        Duration weekDuration = Duration.ofDays(7);
         List<Row> rows = getData(sheet);
         // parse the rows from the data section
         for (Row row : rows) {
@@ -130,33 +131,32 @@ public class XlsTestsUtils {
             // build a bar from the row and add it to the series
             Date weekEndDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
             ZonedDateTime weekEndDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(weekEndDate.getTime()), ZoneId.systemDefault());
-            Bar bar = new BaseBar(weekDuration, weekEndDateTime,
+            series.addBar(weekEndDateTime,
                     // open, high, low, close, volume
-                    Decimal.valueOf(cellValues[1].formatAsString()),
-                    Decimal.valueOf(cellValues[2].formatAsString()),
-                    Decimal.valueOf(cellValues[3].formatAsString()),
-                    Decimal.valueOf(cellValues[4].formatAsString()),
-                    Decimal.valueOf(cellValues[5].formatAsString()));
-            series.addBar(bar);
+                    (cellValues[1].formatAsString()),
+                    (cellValues[2].formatAsString()),
+                    (cellValues[3].formatAsString()),
+                    (cellValues[4].formatAsString()),
+                    (cellValues[5].formatAsString()));
         }
         return series;
     }
 
     /**
-     * Converts Object parameters into Decimal parameters and calls getValues on
+     * Converts Object parameters into Num parameters and calls getValues on
      * a column of a mutable sheet.
      * 
      * @param sheet mutable Sheet
      * @param column column number of the values to get
-     * @param params Object parameters to convert to Decimal
-     * @return List<Decimal> of values from the column
+     * @param params Object parameters to convert to Num
+     * @return List<Num> of values from the column
      * @throws DataFormatException if getValues returns DataFormatException
      */
-    private static List<Decimal> getValues(Sheet sheet, int column, Object... params) throws DataFormatException {
-        Decimal[] decimalParams = Arrays.stream(params)
-                .map(p -> Decimal.valueOf(p.toString()))
-                .toArray(Decimal[]::new);
-        return getValues(sheet, column, decimalParams);
+    private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction, Object... params) throws DataFormatException {
+        Num[] NumParams = Arrays.stream(params)
+                .map(p -> numFunction.apply(new BigDecimal(p.toString())))
+                .toArray(Num[]::new);
+        return getValues(sheet, column, numFunction, NumParams);
     }
 
     /**
@@ -165,15 +165,15 @@ public class XlsTestsUtils {
      * 
      * @param sheet mutable Sheet
      * @param column column number of the values to get
-     * @param params Decimal parameters to write to the Sheet
-     * @return List<Decimal> of values from the column after the parameters have
+     * @param params Num parameters to write to the Sheet
+     * @return List<Num> of values from the column after the parameters have
      *         been written
      * @throws DataFormatException if setParams or getValues throws
      *             DataFormatException
      */
-    private static List<Decimal> getValues(Sheet sheet, int column, Decimal... params) throws DataFormatException {
+    private static List<Num> getValues(Sheet sheet, int column,Function<Number, Num> numFunction, Num... params) throws DataFormatException {
         setParams(sheet, params);
-        return getValues(sheet, column);
+        return getValues(sheet, column, numFunction);
     }
 
     /**
@@ -182,11 +182,11 @@ public class XlsTestsUtils {
      * 
      * @param sheet mutable Sheet
      * @param column column number of the values to get
-     * @return List<Decimal> of values from the column
+     * @return List<Num> of values from the column
      * @throws DataFormatException if getData throws DataFormatException
      */
-    private static List<Decimal> getValues(Sheet sheet, int column) throws DataFormatException {
-        List<Decimal> values = new ArrayList<>();
+    private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction) throws DataFormatException {
+        List<Num> values = new ArrayList<>();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         // get all of the data from the data section of the sheet
         List<Row> rows = getData(sheet);
@@ -196,7 +196,7 @@ public class XlsTestsUtils {
                 continue;
             }
             String s = evaluator.evaluate(row.getCell(column)).formatAsString();
-            values.add(Decimal.valueOf(s));
+            values.add(numFunction.apply(new BigDecimal(s)));
         }
         return values;
     }
@@ -249,15 +249,15 @@ public class XlsTestsUtils {
      * @param fileName file name of the file resource
      * @param column column number of the indicator values
      * @param params indicator parameters
-     * @return Indicator<Decimal> as calculated by the XLS file given the
+     * @return Indicator<Num> as calculated by the XLS file given the
      *         parameters
      * @throws IOException if getSheet throws IOException
      * @throws DataFormatException if getSeries or getValues throws
      *             DataFormatException
      */
-    public static Indicator<Decimal> getIndicator(Class<?> clazz, String fileName, int column, Object... params) throws IOException, DataFormatException {
+    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockIndicator(getSeries(sheet), getValues(sheet, column, params));
+        return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
     }
 
     /**
@@ -268,14 +268,14 @@ public class XlsTestsUtils {
      * @param fileName file name of the file resource
      * @param column column number of the calculated criterion values
      * @param params criterion parameters
-     * @return Decimal final criterion value as calculated by the XLS file given
+     * @return Num final criterion value as calculated by the XLS file given
      *         the parameters
      * @throws IOException if getSheet throws IOException
      * @throws DataFormatException if getValues throws DataFormatException
      */
-    public static Decimal getFinalCriterionValue(Class<?> clazz, String fileName, int column, Object... params) throws IOException, DataFormatException {
+    public static Num getFinalCriterionValue(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        List<Decimal> values = getValues(sheet, column, params);
+        List<Num> values = getValues(sheet, column,numFunction, params);
         return values.get(values.size() - 1);
     }
 
@@ -289,9 +289,9 @@ public class XlsTestsUtils {
      * @throws IOException if getSheet throws IOException
      * @throws DataFormatException if getValues throws DataFormatException
      */
-    public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column) throws IOException, DataFormatException {
+    public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockTradingRecord(getValues(sheet, column));
+        return new MockTradingRecord(getValues(sheet, column,numFunction));
     }
 
 }
