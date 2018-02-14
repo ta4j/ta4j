@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.volume;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -61,15 +60,15 @@ public class PVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         TimeSeries series = new MockTimeSeries(bars);
 
         PVIIndicator pvi = new PVIIndicator(series);
-        TestUtils.assertNumEquals(pvi.getValue(0), 1000);
-        assertNumEquals(pvi.getValue(1), 977.7383);
-        assertNumEquals(pvi.getValue(2), 984.7532);
-        assertNumEquals(pvi.getValue(3), 984.7532);
-        assertNumEquals(pvi.getValue(4), 984.7532);
-        assertNumEquals(pvi.getValue(5), 984.7532);
-        assertNumEquals(pvi.getValue(6), 982.6755);
-        assertNumEquals(pvi.getValue(7), 1007.164);
-        assertNumEquals(pvi.getValue(8), 1007.164);
-        assertNumEquals(pvi.getValue(9), 1007.164);
+        assertNumEquals(1000, pvi.getValue(0));
+        assertNumEquals(977.7383, pvi.getValue(1));
+        assertNumEquals(984.7532, pvi.getValue(2));
+        assertNumEquals(984.7532, pvi.getValue(3));
+        assertNumEquals(984.7532, pvi.getValue(4));
+        assertNumEquals(984.7532, pvi.getValue(5));
+        assertNumEquals(982.6755, pvi.getValue(6));
+        assertNumEquals(1007.164, pvi.getValue(7));
+        assertNumEquals(1007.164, pvi.getValue(8));
+        assertNumEquals(1007.164, pvi.getValue(9));
     }
 }

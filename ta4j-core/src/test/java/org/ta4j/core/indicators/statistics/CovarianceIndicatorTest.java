@@ -26,7 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -80,38 +79,38 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void usingTimeFrame5UsingClosePriceAndVolume() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 5);
 
-		TestUtils.assertNumEquals(covar.getValue(0), 0);
-		assertNumEquals(covar.getValue(1), 26.25);
-		assertNumEquals(covar.getValue(2), 63.3333);
-		assertNumEquals(covar.getValue(3), 143.75);
-		TestUtils.assertNumEquals(covar.getValue(4), 156);
-		assertNumEquals(covar.getValue(5), 60.8);
-		assertNumEquals(covar.getValue(6), 15.2);
-		assertNumEquals(covar.getValue(7), -17.6);
-		TestUtils.assertNumEquals(covar.getValue(8), 4);
-		assertNumEquals(covar.getValue(9), 11.6);
-		assertNumEquals(covar.getValue(10), -14.4);
-		assertNumEquals(covar.getValue(11), -100.2);
-		assertNumEquals(covar.getValue(12), -70.0);
-		assertNumEquals(covar.getValue(13), 24.6);
-		assertNumEquals(covar.getValue(14), 35.0);
-		assertNumEquals(covar.getValue(15), -19.0);
-		assertNumEquals(covar.getValue(16), -47.8);
-		assertNumEquals(covar.getValue(17), 11.4);
-		assertNumEquals(covar.getValue(18), 55.8);
-		assertNumEquals(covar.getValue(19), 33.4);
+        assertNumEquals(0, covar.getValue(0));
+		assertNumEquals(26.25, covar.getValue(1));
+		assertNumEquals(63.3333, covar.getValue(2));
+		assertNumEquals(143.75, covar.getValue(3));
+        assertNumEquals(156, covar.getValue(4));
+		assertNumEquals(60.8, covar.getValue(5));
+		assertNumEquals(15.2, covar.getValue(6));
+		assertNumEquals(-17.6, covar.getValue(7));
+        assertNumEquals(4, covar.getValue(8));
+		assertNumEquals(11.6, covar.getValue(9));
+		assertNumEquals(-14.4, covar.getValue(10));
+		assertNumEquals(-100.2, covar.getValue(11));
+		assertNumEquals(-70.0, covar.getValue(12));
+		assertNumEquals(24.6, covar.getValue(13));
+		assertNumEquals(35.0, covar.getValue(14));
+		assertNumEquals(-19.0, covar.getValue(15));
+		assertNumEquals(-47.8, covar.getValue(16));
+		assertNumEquals(11.4, covar.getValue(17));
+		assertNumEquals(55.8, covar.getValue(18));
+		assertNumEquals(33.4, covar.getValue(19));
     }
 
     @Test
     public void firstValueShouldBeZero() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 5);
-        TestUtils.assertNumEquals(covar.getValue(0), 0);
+        assertNumEquals(0, covar.getValue(0));
     }
 
     @Test
     public void shouldBeZeroWhenTimeFrameIs1() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 1);
-        TestUtils.assertNumEquals(covar.getValue(3), 0);
-        TestUtils.assertNumEquals(covar.getValue(8), 0);
+        assertNumEquals(0, covar.getValue(3));
+        assertNumEquals(0, covar.getValue(8));
     }
 }

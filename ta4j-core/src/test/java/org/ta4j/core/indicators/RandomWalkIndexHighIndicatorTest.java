@@ -81,18 +81,18 @@ public class RandomWalkIndexHighIndicatorTest extends AbstractIndicatorTest<Indi
         RandomWalkIndexHighIndicator rwih = new RandomWalkIndexHighIndicator(data, 5);
 
 
-        assertNumEquals(rwih.getValue(6), 0.5006);
-        assertNumEquals(rwih.getValue(7), 0.3381);
-        assertNumEquals(rwih.getValue(8), 0.7223);
-        assertNumEquals(rwih.getValue(9), 0.9549);
-        assertNumEquals(rwih.getValue(10), 1.1681);
-        assertNumEquals(rwih.getValue(11), 1.3740);
-        assertNumEquals(rwih.getValue(12), 1.2531);
-        assertNumEquals(rwih.getValue(13), 0.6202);
-        assertNumEquals(rwih.getValue(14), -0.1743);
-        assertNumEquals(rwih.getValue(15), -1.1591);
-        assertNumEquals(rwih.getValue(16), -1.1662);
-        assertNumEquals(rwih.getValue(17), -1.4539);
-        assertNumEquals(rwih.getValue(18), -0.6963);
+        assertNumEquals(0.5006, rwih.getValue(6));
+        assertNumEquals(0.3381, rwih.getValue(7));
+        assertNumEquals(0.7223, rwih.getValue(8));
+        assertNumEquals(0.9549, rwih.getValue(9));
+        assertNumEquals(1.1681, rwih.getValue(10));
+        assertNumEquals(1.3740, rwih.getValue(11));
+        assertNumEquals(1.2531, rwih.getValue(12));
+        assertNumEquals(0.6202, rwih.getValue(13));
+        assertNumEquals(-0.1743, rwih.getValue(14));
+        assertNumEquals(-1.1591, rwih.getValue(15));
+        assertNumEquals(-1.1662, rwih.getValue(16));
+        assertNumEquals(-1.4539, rwih.getValue(17));
+        assertNumEquals(-0.6963, rwih.getValue(18));
     }
 }

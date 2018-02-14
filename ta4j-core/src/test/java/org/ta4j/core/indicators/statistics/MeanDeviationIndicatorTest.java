@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.statistics;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -53,23 +52,23 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
     public void meanDeviationUsingTimeFrame5UsingClosePrice() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
 
-        assertNumEquals(meanDeviation.getValue(2), 2.44444444444444);
-        assertNumEquals(meanDeviation.getValue(3), 2.5);
-        assertNumEquals(meanDeviation.getValue(7), 2.16);
-        assertNumEquals(meanDeviation.getValue(8), 2.32);
-        assertNumEquals(meanDeviation.getValue(9), 2.72);
+        assertNumEquals(2.44444444444444, meanDeviation.getValue(2));
+        assertNumEquals(2.5, meanDeviation.getValue(3));
+        assertNumEquals(2.16, meanDeviation.getValue(7));
+        assertNumEquals(2.32, meanDeviation.getValue(8));
+        assertNumEquals(2.72, meanDeviation.getValue(9));
     }
 
     @Test
     public void firstValueShouldBeZero() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
-        TestUtils.assertNumEquals(meanDeviation.getValue(0), 0);
+        assertNumEquals(0, meanDeviation.getValue(0));
     }
 
     @Test
     public void meanDeviationShouldBeZeroWhenTimeFrameIs1() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
-        TestUtils.assertNumEquals(meanDeviation.getValue(2), 0);
-        TestUtils.assertNumEquals(meanDeviation.getValue(7), 0);
+        assertNumEquals(0, meanDeviation.getValue(2));
+        assertNumEquals(0, meanDeviation.getValue(7));
     }
 }

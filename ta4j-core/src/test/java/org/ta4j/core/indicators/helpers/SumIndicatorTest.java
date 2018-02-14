@@ -25,9 +25,10 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class SumIndicatorTest {
 
@@ -60,12 +61,12 @@ public class SumIndicatorTest {
 
     @Test
     public void getValue() {
-        TestUtils.assertNumEquals(sumIndicator.getValue(0), "4.0");
-        TestUtils.assertNumEquals(sumIndicator.getValue(1), "7.0");
-        TestUtils.assertNumEquals(sumIndicator.getValue(2), "9.0");
-        TestUtils.assertNumEquals(sumIndicator.getValue(3), "11.53");
-        TestUtils.assertNumEquals(sumIndicator.getValue(4), "21.87");
-        TestUtils.assertNumEquals(sumIndicator.getValue(5), "-30.0");
-        TestUtils.assertNumEquals(sumIndicator.getValue(6), "-1321.0");
+        assertNumEquals("4.0", sumIndicator.getValue(0));
+        assertNumEquals("7.0", sumIndicator.getValue(1));
+        assertNumEquals("9.0", sumIndicator.getValue(2));
+        assertNumEquals("11.53", sumIndicator.getValue(3));
+        assertNumEquals("21.87", sumIndicator.getValue(4));
+        assertNumEquals("-30.0", sumIndicator.getValue(5));
+        assertNumEquals("-1321.0", sumIndicator.getValue(6));
     }
 }

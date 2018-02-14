@@ -77,12 +77,12 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void massIndexUsing3And8TimeFrames() {
         MassIndexIndicator massIndex = new MassIndexIndicator(data, 3, 8);
 
-        assertNumEquals(massIndex.getValue(0), 1);
-        assertNumEquals(massIndex.getValue(14), 9.1158);
-        assertNumEquals(massIndex.getValue(15), 9.2462);
-        assertNumEquals(massIndex.getValue(16), 9.4026);
-        assertNumEquals(massIndex.getValue(17), 9.2129);
-        assertNumEquals(massIndex.getValue(18), 9.1576);
-        assertNumEquals(massIndex.getValue(19), 9.0184);
+        assertNumEquals(1, massIndex.getValue(0));
+        assertNumEquals(9.1158, massIndex.getValue(14));
+        assertNumEquals(9.2462, massIndex.getValue(15));
+        assertNumEquals(9.4026, massIndex.getValue(16));
+        assertNumEquals(9.2129, massIndex.getValue(17));
+        assertNumEquals(9.1576, massIndex.getValue(18));
+        assertNumEquals(9.0184, massIndex.getValue(19));
     }
 }

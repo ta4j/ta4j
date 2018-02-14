@@ -80,24 +80,24 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     public void test() {
     PearsonCorrelationIndicator coef = new PearsonCorrelationIndicator(close, volume, 5);
        
-		assertNumEquals(coef.getValue(1), 0.94947469058476818628408908843839);
-		assertNumEquals(coef.getValue(2), 0.9640797490298872);
-		assertNumEquals(coef.getValue(3), 0.9666189661412724);
-		assertNumEquals(coef.getValue(4), 0.9219);
-		assertNumEquals(coef.getValue(5), 0.9205);
-		assertNumEquals(coef.getValue(6), 0.4565);
-		assertNumEquals(coef.getValue(7), -0.4622);
-		assertNumEquals(coef.getValue(8), 0.05747);
-		assertNumEquals(coef.getValue(9), 0.1442);
-		assertNumEquals(coef.getValue(10), -0.1263);
-		assertNumEquals(coef.getValue(11), -0.5345);
-		assertNumEquals(coef.getValue(12), -0.7275);
-		assertNumEquals(coef.getValue(13), 0.1676);
-		assertNumEquals(coef.getValue(14), 0.2506);
-		assertNumEquals(coef.getValue(15), -0.2938);
-		assertNumEquals(coef.getValue(16), -0.3586);
-		assertNumEquals(coef.getValue(17), 0.1713);
-		assertNumEquals(coef.getValue(18), 0.9841);
-		assertNumEquals(coef.getValue(19), 0.9799);
+		assertNumEquals(0.94947469058476818628408908843839, coef.getValue(1));
+		assertNumEquals(0.9640797490298872, coef.getValue(2));
+		assertNumEquals(0.9666189661412724, coef.getValue(3));
+		assertNumEquals(0.9219, coef.getValue(4));
+		assertNumEquals(0.9205, coef.getValue(5));
+		assertNumEquals(0.4565, coef.getValue(6));
+		assertNumEquals(-0.4622, coef.getValue(7));
+		assertNumEquals(0.05747, coef.getValue(8));
+		assertNumEquals(0.1442, coef.getValue(9));
+		assertNumEquals(-0.1263, coef.getValue(10));
+		assertNumEquals(-0.5345, coef.getValue(11));
+		assertNumEquals(-0.7275, coef.getValue(12));
+		assertNumEquals(0.1676, coef.getValue(13));
+		assertNumEquals(0.2506, coef.getValue(14));
+		assertNumEquals(-0.2938, coef.getValue(15));
+		assertNumEquals(-0.3586, coef.getValue(16));
+		assertNumEquals(0.1713, coef.getValue(17));
+		assertNumEquals(0.9841, coef.getValue(18));
+		assertNumEquals(0.9799, coef.getValue(19));
     }
 }

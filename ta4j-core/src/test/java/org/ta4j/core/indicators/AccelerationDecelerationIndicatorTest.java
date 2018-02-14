@@ -26,7 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -64,32 +63,32 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
     public void calculateWithSma2AndSma3() {
         AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 2, 3);
 
-        TestUtils.assertNumEquals(acceleration.getValue(0), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(1), 0);
-        assertNumEquals(acceleration.getValue(2), 0.08333333333);
-        assertNumEquals(acceleration.getValue(3), 0.41666666666);
-        TestUtils.assertNumEquals(acceleration.getValue(4), -2);
+        assertNumEquals(0, acceleration.getValue(0));
+        assertNumEquals(0, acceleration.getValue(1));
+        assertNumEquals(0.08333333333, acceleration.getValue(2));
+        assertNumEquals(0.41666666666, acceleration.getValue(3));
+        assertNumEquals(-2, acceleration.getValue(4));
     }
 
     @Test
     public void withSma1AndSma2() {
         AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series, 1, 2);
 
-        TestUtils.assertNumEquals(acceleration.getValue(0), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(1), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(2), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(3), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(4), 0);
+        assertNumEquals(0, acceleration.getValue(0));
+        assertNumEquals(0, acceleration.getValue(1));
+        assertNumEquals(0, acceleration.getValue(2));
+        assertNumEquals(0, acceleration.getValue(3));
+        assertNumEquals(0, acceleration.getValue(4));
     }
 
     @Test
     public void withSmaDefault() {
         AccelerationDecelerationIndicator acceleration = new AccelerationDecelerationIndicator(series);
 
-        TestUtils.assertNumEquals(acceleration.getValue(0), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(1), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(2), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(3), 0);
-        TestUtils.assertNumEquals(acceleration.getValue(4), 0);
+        assertNumEquals(0, acceleration.getValue(0));
+        assertNumEquals(0, acceleration.getValue(1));
+        assertNumEquals(0, acceleration.getValue(2));
+        assertNumEquals(0, acceleration.getValue(3));
+        assertNumEquals(0, acceleration.getValue(4));
     }
 }

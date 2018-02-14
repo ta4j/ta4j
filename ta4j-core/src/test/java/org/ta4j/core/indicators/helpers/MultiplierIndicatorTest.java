@@ -26,13 +26,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class MultiplierIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -51,9 +51,9 @@ public class MultiplierIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void constantIndicator() {
-        TestUtils.assertNumEquals(multiplierIndicator.getValue(10), "4.5");
-        TestUtils.assertNumEquals(multiplierIndicator.getValue(1), "4.5");
-        TestUtils.assertNumEquals(multiplierIndicator.getValue(0), "4.5");
-        TestUtils.assertNumEquals(multiplierIndicator.getValue(30), "4.5");
+        assertNumEquals("4.5", multiplierIndicator.getValue(10));
+        assertNumEquals("4.5", multiplierIndicator.getValue(1));
+        assertNumEquals("4.5", multiplierIndicator.getValue(0));
+        assertNumEquals("4.5", multiplierIndicator.getValue(30));
     }
 }

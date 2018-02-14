@@ -74,10 +74,10 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             assertEquals(dpo.getValue(i), cp.getValue(i).minus(sma.getValue(i-timeShift)));
         }
 
-        assertNumEquals(dpo.getValue(9), 0.111999);
-        assertNumEquals(dpo.getValue(10), -0.02);
-        assertNumEquals(dpo.getValue(11), 0.21142857142);
-        assertNumEquals(dpo.getValue(12), 0.169999999999999);
+        assertNumEquals(0.111999, dpo.getValue(9));
+        assertNumEquals(-0.02, dpo.getValue(10));
+        assertNumEquals(0.21142857142, dpo.getValue(11));
+        assertNumEquals(0.169999999999999, dpo.getValue(12));
     }
 
 

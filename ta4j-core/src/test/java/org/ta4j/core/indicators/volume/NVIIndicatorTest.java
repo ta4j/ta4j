@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.volume;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -61,15 +60,15 @@ public class NVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         TimeSeries series = new MockTimeSeries(bars);
 
         NVIIndicator nvi = new NVIIndicator(series);
-        TestUtils.assertNumEquals(nvi.getValue(0), 1000);
-        TestUtils.assertNumEquals(nvi.getValue(1), 1000);
-        TestUtils.assertNumEquals(nvi.getValue(2), 1000);
-        assertNumEquals(nvi.getValue(3), 984.0452);
-        assertNumEquals(nvi.getValue(4), 988.7417);
-        assertNumEquals(nvi.getValue(5), 997.6255);
-        assertNumEquals(nvi.getValue(6), 997.6255);
-        assertNumEquals(nvi.getValue(7), 997.6255);
-        assertNumEquals(nvi.getValue(8), 1000.079);
-        assertNumEquals(nvi.getValue(9), 1006.3116);
+        assertNumEquals(1000, nvi.getValue(0));
+        assertNumEquals(1000, nvi.getValue(1));
+        assertNumEquals(1000, nvi.getValue(2));
+        assertNumEquals(984.0452, nvi.getValue(3));
+        assertNumEquals(988.7417, nvi.getValue(4));
+        assertNumEquals(997.6255, nvi.getValue(5));
+        assertNumEquals(997.6255, nvi.getValue(6));
+        assertNumEquals(997.6255, nvi.getValue(7));
+        assertNumEquals(1000.079, nvi.getValue(8));
+        assertNumEquals(1006.3116, nvi.getValue(9));
     }
 }

@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.bollinger;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -66,26 +65,26 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
-        TestUtils.assertNumEquals(bblSMA.getK(), 2);
+        assertNumEquals(2, bblSMA.getK());
 
-        TestUtils.assertNumEquals(bblSMA.getValue(0), 1);
-        assertNumEquals(bblSMA.getValue(1), 0.5);
-        assertNumEquals(bblSMA.getValue(2), 0.367);
-        assertNumEquals(bblSMA.getValue(3), 1.367);
-        assertNumEquals(bblSMA.getValue(4), 2.3905);
-        assertNumEquals(bblSMA.getValue(5), 2.7239);
-        assertNumEquals(bblSMA.getValue(6), 2.367);
+        assertNumEquals(1, bblSMA.getValue(0));
+        assertNumEquals(0.5, bblSMA.getValue(1));
+        assertNumEquals(0.367, bblSMA.getValue(2));
+        assertNumEquals(1.367, bblSMA.getValue(3));
+        assertNumEquals(2.3905, bblSMA.getValue(4));
+        assertNumEquals(2.7239, bblSMA.getValue(5));
+        assertNumEquals(2.367, bblSMA.getValue(6));
 
         BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation, numFunction.apply(1.5));
 
-        assertNumEquals(bblSMAwithK.getK(), 1.5);
+        assertNumEquals(1.5, bblSMAwithK.getK());
 
-        TestUtils.assertNumEquals(bblSMAwithK.getValue(0), 1);
-        assertNumEquals(bblSMAwithK.getValue(1), 0.75);
-        assertNumEquals(bblSMAwithK.getValue(2), 0.7752);
-        assertNumEquals(bblSMAwithK.getValue(3), 1.7752);
-        assertNumEquals(bblSMAwithK.getValue(4), 2.6262);
-        assertNumEquals(bblSMAwithK.getValue(5), 2.9595);
-        assertNumEquals(bblSMAwithK.getValue(6), 2.7752);
+        assertNumEquals(1, bblSMAwithK.getValue(0));
+        assertNumEquals(0.75, bblSMAwithK.getValue(1));
+        assertNumEquals(0.7752, bblSMAwithK.getValue(2));
+        assertNumEquals(1.7752, bblSMAwithK.getValue(3));
+        assertNumEquals(2.6262, bblSMAwithK.getValue(4));
+        assertNumEquals(2.9595, bblSMAwithK.getValue(5));
+        assertNumEquals(2.7752, bblSMAwithK.getValue(6));
     }
 }

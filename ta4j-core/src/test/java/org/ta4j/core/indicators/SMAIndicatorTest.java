@@ -58,19 +58,19 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void usingTimeFrame3UsingClosePrice() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
-        assertNumEquals(indicator.getValue(0), 1);
-        assertNumEquals(indicator.getValue(1), 1.5);
-        assertNumEquals(indicator.getValue(2), 2);
-        assertNumEquals(indicator.getValue(3), 3);
-        assertNumEquals(indicator.getValue(4), 10d / 3);
-        assertNumEquals(indicator.getValue(5), 11d / 3);
-        assertNumEquals(indicator.getValue(6), 4);
-        assertNumEquals(indicator.getValue(7), 13d / 3);
-        assertNumEquals(indicator.getValue(8), 4);
-        assertNumEquals(indicator.getValue(9), 10d / 3);
-        assertNumEquals(indicator.getValue(10), 10d / 3);
-        assertNumEquals(indicator.getValue(11), 10d / 3);
-        assertNumEquals(indicator.getValue(12), 3);
+        assertNumEquals(1, indicator.getValue(0));
+        assertNumEquals(1.5, indicator.getValue(1));
+        assertNumEquals(2, indicator.getValue(2));
+        assertNumEquals(3, indicator.getValue(3));
+        assertNumEquals(10d / 3, indicator.getValue(4));
+        assertNumEquals(11d / 3, indicator.getValue(5));
+        assertNumEquals(4, indicator.getValue(6));
+        assertNumEquals(13d / 3, indicator.getValue(7));
+        assertNumEquals(4, indicator.getValue(8));
+        assertNumEquals(10d / 3, indicator.getValue(9));
+        assertNumEquals(10d / 3, indicator.getValue(10));
+        assertNumEquals(10d / 3, indicator.getValue(11));
+        assertNumEquals(3, indicator.getValue(12));
     }
 
     @Test

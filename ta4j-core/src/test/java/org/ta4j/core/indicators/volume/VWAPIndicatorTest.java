@@ -78,19 +78,19 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void vwap() {
         VWAPIndicator vwap = new VWAPIndicator(data, 5);
 
-        assertNumEquals(vwap.getValue(5), 45.1453);
-        assertNumEquals(vwap.getValue(6), 45.1513);
-        assertNumEquals(vwap.getValue(7), 45.1413);
-        assertNumEquals(vwap.getValue(8), 45.1547);
-        assertNumEquals(vwap.getValue(9), 45.1967);
-        assertNumEquals(vwap.getValue(10), 45.2560);
-        assertNumEquals(vwap.getValue(11), 45.3340);
-        assertNumEquals(vwap.getValue(12), 45.4060);
-        assertNumEquals(vwap.getValue(13), 45.3880);
-        assertNumEquals(vwap.getValue(14), 45.2120);
-        assertNumEquals(vwap.getValue(15), 44.9267);
-        assertNumEquals(vwap.getValue(16), 44.5033);
-        assertNumEquals(vwap.getValue(17), 44.0840);
-        assertNumEquals(vwap.getValue(18), 43.8247);
+        assertNumEquals(45.1453, vwap.getValue(5));
+        assertNumEquals(45.1513, vwap.getValue(6));
+        assertNumEquals(45.1413, vwap.getValue(7));
+        assertNumEquals(45.1547, vwap.getValue(8));
+        assertNumEquals(45.1967, vwap.getValue(9));
+        assertNumEquals(45.2560, vwap.getValue(10));
+        assertNumEquals(45.3340, vwap.getValue(11));
+        assertNumEquals(45.4060, vwap.getValue(12));
+        assertNumEquals(45.3880, vwap.getValue(13));
+        assertNumEquals(45.2120, vwap.getValue(14));
+        assertNumEquals(44.9267, vwap.getValue(15));
+        assertNumEquals(44.5033, vwap.getValue(16));
+        assertNumEquals(44.0840, vwap.getValue(17));
+        assertNumEquals(43.8247, vwap.getValue(18));
     }
 }

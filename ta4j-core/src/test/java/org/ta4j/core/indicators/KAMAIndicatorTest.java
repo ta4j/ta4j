@@ -74,46 +74,46 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         KAMAIndicator kama = new KAMAIndicator(closePrice, 10, 2, 30);
 
-        assertNumEquals(kama.getValue(9), 109.2400);
-        assertNumEquals(kama.getValue(10), 109.2449);
-        assertNumEquals(kama.getValue(11), 109.2165);
-        assertNumEquals(kama.getValue(12), 109.1173);
-        assertNumEquals(kama.getValue(13), 109.0981);
-        assertNumEquals(kama.getValue(14), 109.0894);
-        assertNumEquals(kama.getValue(15), 109.1240);
-        assertNumEquals(kama.getValue(16), 109.1376);
-        assertNumEquals(kama.getValue(17), 109.2769);
-        assertNumEquals(kama.getValue(18), 109.4365);
-        assertNumEquals(kama.getValue(19), 109.4569);
-        assertNumEquals(kama.getValue(20), 109.4651);
-        assertNumEquals(kama.getValue(21), 109.4612);
-        assertNumEquals(kama.getValue(22), 109.3904);
-        assertNumEquals(kama.getValue(23), 109.3165);
-        assertNumEquals(kama.getValue(24), 109.2924);
-        assertNumEquals(kama.getValue(25), 109.1836);
-        assertNumEquals(kama.getValue(26), 109.0778);
-        assertNumEquals(kama.getValue(27), 108.9498);
-        assertNumEquals(kama.getValue(28), 108.4230);
-        assertNumEquals(kama.getValue(29), 108.0157);
-        assertNumEquals(kama.getValue(30), 107.9967);
-        assertNumEquals(kama.getValue(31), 108.0069);
-        assertNumEquals(kama.getValue(32), 108.2596);
-        assertNumEquals(kama.getValue(33), 108.4818);
-        assertNumEquals(kama.getValue(34), 108.9119);
-        assertNumEquals(kama.getValue(35), 109.6734);
-        assertNumEquals(kama.getValue(36), 110.4947);
-        assertNumEquals(kama.getValue(37), 111.1077);
-        assertNumEquals(kama.getValue(38), 111.4622);
-        assertNumEquals(kama.getValue(39), 111.6092);
-        assertNumEquals(kama.getValue(40), 111.5663);
-        assertNumEquals(kama.getValue(41), 111.5491);
-        assertNumEquals(kama.getValue(42), 111.5425);
-        assertNumEquals(kama.getValue(43), 111.5426);
-        assertNumEquals(kama.getValue(44), 111.5457);
-        assertNumEquals(kama.getValue(45), 111.5658);
-        assertNumEquals(kama.getValue(46), 111.5688);
-        assertNumEquals(kama.getValue(47), 111.5522);
-        assertNumEquals(kama.getValue(48), 111.5595);
+        assertNumEquals(109.2400, kama.getValue(9));
+        assertNumEquals(109.2449, kama.getValue(10));
+        assertNumEquals(109.2165, kama.getValue(11));
+        assertNumEquals(109.1173, kama.getValue(12));
+        assertNumEquals(109.0981, kama.getValue(13));
+        assertNumEquals(109.0894, kama.getValue(14));
+        assertNumEquals(109.1240, kama.getValue(15));
+        assertNumEquals(109.1376, kama.getValue(16));
+        assertNumEquals(109.2769, kama.getValue(17));
+        assertNumEquals(109.4365, kama.getValue(18));
+        assertNumEquals(109.4569, kama.getValue(19));
+        assertNumEquals(109.4651, kama.getValue(20));
+        assertNumEquals(109.4612, kama.getValue(21));
+        assertNumEquals(109.3904, kama.getValue(22));
+        assertNumEquals(109.3165, kama.getValue(23));
+        assertNumEquals(109.2924, kama.getValue(24));
+        assertNumEquals(109.1836, kama.getValue(25));
+        assertNumEquals(109.0778, kama.getValue(26));
+        assertNumEquals(108.9498, kama.getValue(27));
+        assertNumEquals(108.4230, kama.getValue(28));
+        assertNumEquals(108.0157, kama.getValue(29));
+        assertNumEquals(107.9967, kama.getValue(30));
+        assertNumEquals(108.0069, kama.getValue(31));
+        assertNumEquals(108.2596, kama.getValue(32));
+        assertNumEquals(108.4818, kama.getValue(33));
+        assertNumEquals(108.9119, kama.getValue(34));
+        assertNumEquals(109.6734, kama.getValue(35));
+        assertNumEquals(110.4947, kama.getValue(36));
+        assertNumEquals(111.1077, kama.getValue(37));
+        assertNumEquals(111.4622, kama.getValue(38));
+        assertNumEquals(111.6092, kama.getValue(39));
+        assertNumEquals(111.5663, kama.getValue(40));
+        assertNumEquals(111.5491, kama.getValue(41));
+        assertNumEquals(111.5425, kama.getValue(42));
+        assertNumEquals(111.5426, kama.getValue(43));
+        assertNumEquals(111.5457, kama.getValue(44));
+        assertNumEquals(111.5658, kama.getValue(45));
+        assertNumEquals(111.5688, kama.getValue(46));
+        assertNumEquals(111.5522, kama.getValue(47));
+        assertNumEquals(111.5595, kama.getValue(48));
     }
 
     @Test
@@ -124,7 +124,7 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(series), 10, 2, 30);
         try {
-            assertNumEquals(kama.getValue(3000), "2999.75");
+            assertNumEquals("2999.75", kama.getValue(3000));
         } catch (Throwable t) {
             fail(t.getMessage());
         }

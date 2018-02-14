@@ -56,16 +56,16 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void tripleEMAUsingTimeFrame5UsingClosePrice() {
         TripleEMAIndicator tripleEma = new TripleEMAIndicator(closePrice, 5);
 
-        assertNumEquals(tripleEma.getValue(0), 0.73);
-        assertNumEquals(tripleEma.getValue(1), 0.7229);
-        assertNumEquals(tripleEma.getValue(2), 0.8185);
+        assertNumEquals(0.73, tripleEma.getValue(0));
+        assertNumEquals(0.7229, tripleEma.getValue(1));
+        assertNumEquals(0.8185, tripleEma.getValue(2));
 
-        assertNumEquals(tripleEma.getValue(6), 0.8027);
-        assertNumEquals(tripleEma.getValue(7), 0.7328);
-        assertNumEquals(tripleEma.getValue(8), 0.6725);
+        assertNumEquals(0.8027, tripleEma.getValue(6));
+        assertNumEquals(0.7328, tripleEma.getValue(7));
+        assertNumEquals(0.6725, tripleEma.getValue(8));
 
-        assertNumEquals(tripleEma.getValue(12), 0.7386);
-        assertNumEquals(tripleEma.getValue(13), 0.6994);
-        assertNumEquals(tripleEma.getValue(14), 0.6876);
+        assertNumEquals(0.7386, tripleEma.getValue(12));
+        assertNumEquals(0.6994, tripleEma.getValue(13));
+        assertNumEquals(0.6876, tripleEma.getValue(14));
     }
 }

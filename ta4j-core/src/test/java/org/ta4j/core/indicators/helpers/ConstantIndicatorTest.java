@@ -41,9 +41,9 @@ public class ConstantIndicatorTest {
 
     @Test
     public void constantIndicator() {
-        assertNumEquals(constantIndicator.getValue(0), "30.33");
-        assertNumEquals(constantIndicator.getValue(1), "30.33");
-        assertNumEquals(constantIndicator.getValue(10), "30.33");
-        assertNumEquals(constantIndicator.getValue(30), "30.33");
+        assertNumEquals("30.33", constantIndicator.getValue(0));
+        assertNumEquals("30.33", constantIndicator.getValue(1));
+        assertNumEquals("30.33", constantIndicator.getValue(10));
+        assertNumEquals("30.33", constantIndicator.getValue(30));
     }
 }

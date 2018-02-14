@@ -72,15 +72,15 @@ public class ChandelierExitLongIndicatorTest extends AbstractIndicatorTest<Indic
     public void massIndexUsing3And8TimeFrames() {
         ChandelierExitLongIndicator cel = new ChandelierExitLongIndicator(data, 5, 2);
 
-        assertNumEquals(cel.getValue(5), 44.9853);
-        assertNumEquals(cel.getValue(6), 45.0162);
-        assertNumEquals(cel.getValue(7), 44.9590);
-        assertNumEquals(cel.getValue(8), 44.9852);
-        assertNumEquals(cel.getValue(9), 45.1221);
-        assertNumEquals(cel.getValue(10), 45.1937);
-        assertNumEquals(cel.getValue(11), 45.2549);
-        assertNumEquals(cel.getValue(12), 45.2459);
-        assertNumEquals(cel.getValue(13), 45.0187);
-        assertNumEquals(cel.getValue(14), 44.7890);
+        assertNumEquals(44.9853, cel.getValue(5));
+        assertNumEquals(45.0162, cel.getValue(6));
+        assertNumEquals(44.9590, cel.getValue(7));
+        assertNumEquals(44.9852, cel.getValue(8));
+        assertNumEquals(45.1221, cel.getValue(9));
+        assertNumEquals(45.1937, cel.getValue(10));
+        assertNumEquals(45.2549, cel.getValue(11));
+        assertNumEquals(45.2459, cel.getValue(12));
+        assertNumEquals(45.0187, cel.getValue(13));
+        assertNumEquals(44.7890, cel.getValue(14));
     }
 }
