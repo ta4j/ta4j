@@ -28,6 +28,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PlusDI, MinusDI, ADX**: fixed calculations
 - **LinearTransactionCostCriterion**: fixed calculations, added xls file and unit tests
 - **FisherIndicator**: fixed calculations
+- **ConvergenceDivergenceIndicator**: fixed NPE of optional "minStrenght"-property
 
 ### Changed
 - **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`
