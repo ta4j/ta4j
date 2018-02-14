@@ -1,7 +1,7 @@
 /*
   The MIT License (MIT)
 
-  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
+  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of
   this software and associated documentation files (the "Software"), to deal in
@@ -22,27 +22,44 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTimeSeries;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
+
+public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
+    private ExternalIndicatorTest xls;
 
     public StochasticRSIIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+        super((data, params) -> new StochasticRSIIndicator(data, (int) params[0]), numFunction);
+        xls = new XLSIndicatorTest(this.getClass(), "AAPL_StochRSI.xls", 15, numFunction);
+    }
+
+    @Test
+    public void xlsTest() throws Exception {
+        TimeSeries xlsSeries = xls.getSeries();
+        Indicator<Num> xlsClose = new ClosePriceIndicator(xlsSeries);
+        Indicator<Num> actualIndicator;
+
+        actualIndicator = getIndicator(xlsClose, 14);
+        assertIndicatorEquals(xls.getIndicator(14), actualIndicator);
+        assertNumEquals(0.5223, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex() - 1));
     }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,50.45, 50.30, 50.20, 50.15, 50.05, 50.06,
+        data = new MockTimeSeries(numFunction, 50.45, 50.30, 50.20, 50.15, 50.05, 50.06,
                 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22, 50.43, 50.50,
                 50.56, 50.52, 50.70, 50.55, 50.62, 50.90, 50.82, 50.86, 51.20,
                 51.30, 51.10);
@@ -51,15 +68,15 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
     @Test
     public void stochasticRSI() {
         StochasticRSIIndicator srsi = new StochasticRSIIndicator(data, 14);
-        TestUtils.assertNumEquals(srsi.getValue(15), 1);
-        TestUtils.assertNumEquals(srsi.getValue(16), 0.9460);
-        TestUtils.assertNumEquals(srsi.getValue(17), 1);
-        TestUtils.assertNumEquals(srsi.getValue(18), 0.8365);
-        TestUtils.assertNumEquals(srsi.getValue(19), 0.8610);
-        TestUtils.assertNumEquals(srsi.getValue(20), 1);
-        TestUtils.assertNumEquals(srsi.getValue(21), 0.9186);
-        TestUtils.assertNumEquals(srsi.getValue(22), 0.9305);
-        TestUtils.assertNumEquals(srsi.getValue(23), 1);
-        TestUtils.assertNumEquals(srsi.getValue(24), 1);
+        assertNumEquals(srsi.getValue(15), 1);
+        assertNumEquals(srsi.getValue(16), 0.9460);
+        assertNumEquals(srsi.getValue(17), 1);
+        assertNumEquals(srsi.getValue(18), 0.8365);
+        assertNumEquals(srsi.getValue(19), 0.8610);
+        assertNumEquals(srsi.getValue(20), 1);
+        assertNumEquals(srsi.getValue(21), 0.9186);
+        assertNumEquals(srsi.getValue(22), 0.9305);
+        assertNumEquals(srsi.getValue(23), 1);
+        assertNumEquals(srsi.getValue(24), 1);
     }
 }
