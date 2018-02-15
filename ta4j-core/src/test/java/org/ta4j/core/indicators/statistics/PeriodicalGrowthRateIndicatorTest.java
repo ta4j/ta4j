@@ -75,11 +75,11 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         
         assertEquals(gri.getValue(0),NaN);
         assertEquals(gri.getValue(4), NaN);
-        assertNumEquals(gri.getValue(5), -0.0268);
-        assertNumEquals(gri.getValue(6), 0.0541);
-        assertNumEquals(gri.getValue(10), -0.0495);
-        assertNumEquals(gri.getValue(21), 0.2009);
-        assertNumEquals(gri.getValue(24), 0.0220);
+        assertNumEquals(-0.0268, gri.getValue(5));
+        assertNumEquals(0.0541, gri.getValue(6));
+        assertNumEquals(-0.0495, gri.getValue(10));
+        assertNumEquals(0.2009, gri.getValue(21));
+        assertNumEquals(0.0220, gri.getValue(24));
         assertEquals(gri.getValue(25), NaN);
         assertEquals(gri.getValue(26), NaN);
     }

@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -37,6 +36,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -65,12 +65,12 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         bars.add(new MockBar(0, 160,numFunction));
         VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(bars), 3);
 
-        TestUtils.assertNumEquals(volumeIndicator.getValue(0), 10);
-        TestUtils.assertNumEquals(volumeIndicator.getValue(1), 21);
-        TestUtils.assertNumEquals(volumeIndicator.getValue(2), 33);
-        TestUtils.assertNumEquals(volumeIndicator.getValue(3), 36);
-        TestUtils.assertNumEquals(volumeIndicator.getValue(4), 175);
-        TestUtils.assertNumEquals(volumeIndicator.getValue(5), 318);
-        TestUtils.assertNumEquals(volumeIndicator.getValue(6), 465);
+        assertNumEquals(10, volumeIndicator.getValue(0));
+        assertNumEquals(21, volumeIndicator.getValue(1));
+        assertNumEquals(33, volumeIndicator.getValue(2));
+        assertNumEquals(36, volumeIndicator.getValue(3));
+        assertNumEquals(175, volumeIndicator.getValue(4));
+        assertNumEquals(318, volumeIndicator.getValue(5));
+        assertNumEquals(465, volumeIndicator.getValue(6));
     }
 }

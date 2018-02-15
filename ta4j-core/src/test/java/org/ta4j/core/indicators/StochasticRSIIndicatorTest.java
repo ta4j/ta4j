@@ -36,8 +36,11 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
-public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+import java.util.function.Function;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
     private TimeSeries data;
     private ExternalIndicatorTest xls;
 
@@ -68,15 +71,15 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
     @Test
     public void stochasticRSI() {
         StochasticRSIIndicator srsi = new StochasticRSIIndicator(data, 14);
-        assertNumEquals(srsi.getValue(15), 1);
-        assertNumEquals(srsi.getValue(16), 0.9460);
-        assertNumEquals(srsi.getValue(17), 1);
-        assertNumEquals(srsi.getValue(18), 0.8365);
-        assertNumEquals(srsi.getValue(19), 0.8610);
-        assertNumEquals(srsi.getValue(20), 1);
-        assertNumEquals(srsi.getValue(21), 0.9186);
-        assertNumEquals(srsi.getValue(22), 0.9305);
-        assertNumEquals(srsi.getValue(23), 1);
-        assertNumEquals(srsi.getValue(24), 1);
+        assertNumEquals(1, srsi.getValue(15));
+        assertNumEquals(0.9460, srsi.getValue(16));
+        assertNumEquals(1, srsi.getValue(17));
+        assertNumEquals(0.8365, srsi.getValue(18));
+        assertNumEquals(0.8610, srsi.getValue(19));
+        assertNumEquals(1, srsi.getValue(20));
+        assertNumEquals(0.9186, srsi.getValue(21));
+        assertNumEquals(0.9305, srsi.getValue(22));
+        assertNumEquals(1, srsi.getValue(23));
+        assertNumEquals(1, srsi.getValue(24));
     }
 }

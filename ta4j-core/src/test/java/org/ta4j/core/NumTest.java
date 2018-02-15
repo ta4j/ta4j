@@ -122,14 +122,14 @@ public class NumTest extends AbstractIndicatorTest {
         assertNumEquals(100000000,hundredMillion);
 
         assertNumEquals(hundredMillion.dividedBy(hundred),million);
-        assertNumEquals(hundredMillion.remainder(hundred),0);
+        assertNumEquals(0,hundredMillion.remainder(hundred));
 
         Num five = ten.numOf(5); // generate new value with NumFunction
         Num zeroDotTwo = ten.numOf(0.2); // generate new value with NumFunction
         Num fiveHundred54 = ten.numOf(554); // generate new value with NumFunction
-        assertNumEquals(hundredMillion.remainder(five),0);
+        assertNumEquals(0,hundredMillion.remainder(five));
 
-        assertNumEquals(zeroDotTwo.pow(5), 0.00032);
+        assertNumEquals(0.00032, zeroDotTwo.pow(5));
         assertNumEquals(554,fiveHundred54.max(five));
         assertNumEquals(5,fiveHundred54.min(five));
         assertTrue(fiveHundred54.isGreaterThan(five));

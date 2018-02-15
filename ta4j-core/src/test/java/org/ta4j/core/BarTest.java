@@ -33,6 +33,7 @@ import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class BarTest extends AbstractIndicatorTest {
 
@@ -61,12 +62,12 @@ public class BarTest extends AbstractIndicatorTest {
         bar.addTrade(2.0, 198.0, numFunction);
 
         assertEquals(3, bar.getTrades());
-        TestUtils.assertNumEquals(bar.getAmount(), 3 * 200 + 4 * 201 + 2 * 198);
-        TestUtils.assertNumEquals(bar.getOpenPrice(), 200);
-        TestUtils.assertNumEquals(bar.getClosePrice(), 198);
-        TestUtils.assertNumEquals(bar.getMinPrice(), 198);
-        TestUtils.assertNumEquals(bar.getMaxPrice(), 201);
-        TestUtils.assertNumEquals(bar.getVolume(), 9);
+        assertNumEquals(3 * 200 + 4 * 201 + 2 * 198, bar.getAmount());
+        assertNumEquals(200, bar.getOpenPrice());
+        assertNumEquals(198, bar.getClosePrice());
+        assertNumEquals(198, bar.getMinPrice());
+        assertNumEquals(201, bar.getMaxPrice());
+        assertNumEquals(9, bar.getVolume());
     }
 
     @Test

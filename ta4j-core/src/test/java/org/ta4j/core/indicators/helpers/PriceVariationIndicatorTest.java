@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -34,6 +33,7 @@ import org.ta4j.core.num.Num;
 import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class PriceVariationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -53,7 +53,7 @@ public class PriceVariationIndicatorTest extends AbstractIndicatorTest<Indicator
 
     @Test
     public void indicatorShouldRetrieveBarVariation() {
-        TestUtils.assertNumEquals(variationIndicator.getValue(0), 1);
+        assertNumEquals(1, variationIndicator.getValue(0));
         for (int i = 1; i < 10; i++) {
             Num previousBarClosePrice = timeSeries.getBar(i - 1).getClosePrice();
             Num currentBarClosePrice = timeSeries.getBar(i).getClosePrice();

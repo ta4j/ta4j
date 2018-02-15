@@ -218,11 +218,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	@Override
 	protected Boolean calculate(int index) {
 
-		if (minStrenght.isZero()) {
+		if (minStrenght != null && minStrenght.isZero()) {
 			return false;
 		}
 
-		if (minStrenght.isGreaterThan(numOf(1))) {
+		if (minStrenght != null && minStrenght.isGreaterThan(numOf(1))) {
 			minStrenght = numOf(1);
 		}
 

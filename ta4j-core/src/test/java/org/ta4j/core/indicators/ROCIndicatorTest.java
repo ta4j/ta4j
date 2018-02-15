@@ -25,7 +25,6 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
@@ -60,15 +59,15 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         ROCIndicator roc = new ROCIndicator(closePrice, 12);
 
         // Incomplete time frame
-        TestUtils.assertNumEquals(roc.getValue(0), 0);
-        assertNumEquals(roc.getValue(1), 1.105);
-        assertNumEquals(roc.getValue(2), -0.3319);
-        assertNumEquals(roc.getValue(3), 0.9648);
+        assertNumEquals(0, roc.getValue(0));
+        assertNumEquals(1.105, roc.getValue(1));
+        assertNumEquals(-0.3319, roc.getValue(2));
+        assertNumEquals(0.9648, roc.getValue(3));
 
         // Complete time frame
         double[] results13to20 = new double[] { -3.8488, -4.8489, -4.5206, -6.3439, -7.8592, -6.2083, -4.3131, -3.2434 };
         for (int i = 0; i < results13to20.length; i++) {
-            assertNumEquals(roc.getValue(i + 12), results13to20[i]);
+            assertNumEquals(results13to20[i], roc.getValue(i + 12));
         }
     }
 }

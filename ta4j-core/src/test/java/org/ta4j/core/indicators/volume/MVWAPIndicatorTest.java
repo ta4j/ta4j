@@ -77,16 +77,16 @@ protected TimeSeries data;
         VWAPIndicator vwap = new VWAPIndicator(data, 5);
         MVWAPIndicator mvwap = new MVWAPIndicator(vwap, 8);
 
-        assertNumEquals(mvwap.getValue(8), 45.1271);
-        assertNumEquals(mvwap.getValue(9), 45.1399);
-        assertNumEquals(mvwap.getValue(10), 45.1530);
-        assertNumEquals(mvwap.getValue(11), 45.1790);
-        assertNumEquals(mvwap.getValue(12), 45.2227);
-        assertNumEquals(mvwap.getValue(13), 45.2533);
-        assertNumEquals(mvwap.getValue(14), 45.2769);
-        assertNumEquals(mvwap.getValue(15), 45.2844);
-        assertNumEquals(mvwap.getValue(16), 45.2668);
-        assertNumEquals(mvwap.getValue(17), 45.1386);
-        assertNumEquals(mvwap.getValue(18), 44.9487);
+        assertNumEquals(45.1271, mvwap.getValue(8));
+        assertNumEquals(45.1399, mvwap.getValue(9));
+        assertNumEquals(45.1530, mvwap.getValue(10));
+        assertNumEquals(45.1790, mvwap.getValue(11));
+        assertNumEquals(45.2227, mvwap.getValue(12));
+        assertNumEquals(45.2533, mvwap.getValue(13));
+        assertNumEquals(45.2769, mvwap.getValue(14));
+        assertNumEquals(45.2844, mvwap.getValue(15));
+        assertNumEquals(45.2668, mvwap.getValue(16));
+        assertNumEquals(45.1386, mvwap.getValue(17));
+        assertNumEquals(44.9487, mvwap.getValue(18));
     }
 }

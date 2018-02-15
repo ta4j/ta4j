@@ -58,11 +58,11 @@ public class PPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void getValueWithEma10AndEma20() {
         PPOIndicator ppo = new PPOIndicator(closePriceIndicator, 10, 20);
 
-        assertNumEquals(ppo.getValue(21), 1.6778);
-        assertNumEquals(ppo.getValue(22), 1.5669);
-        assertNumEquals(ppo.getValue(23), 1.2884);
+        assertNumEquals(1.6778, ppo.getValue(21));
+        assertNumEquals(1.5669, ppo.getValue(22));
+        assertNumEquals(1.2884, ppo.getValue(23));
 
-        assertNumEquals(ppo.getValue(28), -0.2925);
-        assertNumEquals(ppo.getValue(29), -1.3088);
+        assertNumEquals(-0.2925, ppo.getValue(28));
+        assertNumEquals(-1.3088, ppo.getValue(29));
     }
 }

@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Num**: Extracted interface of dropped `Decimal` class
 - **DoubleNum**: `Num` implementation to support calculations based on `double` primitive
 - **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
+- **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
@@ -30,6 +31,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PlusDI, MinusDI, ADX**: fixed calculations
 - **LinearTransactionCostCriterion**: fixed calculations, added xls file and unit tests
 - **FisherIndicator**: fixed calculations
+- **ConvergenceDivergenceIndicator**: fixed NPE of optional "minStrenght"-property
 
 ### Changed
 - **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`

@@ -94,22 +94,22 @@ public class KeltnerChannelUpperIndicatorTest extends AbstractIndicatorTest<Indi
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
         KeltnerChannelUpperIndicator ku = new KeltnerChannelUpperIndicator(km, 2, 14);
 
-        assertNumEquals(ku.getValue(13), 11971.9132);
-        assertNumEquals(ku.getValue(14), 12002.3402);
-        assertNumEquals(ku.getValue(15), 12024.4032);
-        assertNumEquals(ku.getValue(16), 12040.3933);
-        assertNumEquals(ku.getValue(17), 12052.8572);
-        assertNumEquals(ku.getValue(18), 12067.9050);
-        assertNumEquals(ku.getValue(19), 12099.5025);
-        assertNumEquals(ku.getValue(20), 12110.5722);
-        assertNumEquals(ku.getValue(21), 12130.8675);
-        assertNumEquals(ku.getValue(22), 12147.7344);
-        assertNumEquals(ku.getValue(23), 12175.5937);
-        assertNumEquals(ku.getValue(24), 12208.1327);
-        assertNumEquals(ku.getValue(25), 12233.9032);
-        assertNumEquals(ku.getValue(26), 12256.9596);
-        assertNumEquals(ku.getValue(27), 12285.9094);
-        assertNumEquals(ku.getValue(28), 12301.1108);
-        assertNumEquals(ku.getValue(29), 12313.2042);
+        assertNumEquals(11971.9132, ku.getValue(13));
+        assertNumEquals(12002.3402, ku.getValue(14));
+        assertNumEquals(12024.4032, ku.getValue(15));
+        assertNumEquals(12040.3933, ku.getValue(16));
+        assertNumEquals(12052.8572, ku.getValue(17));
+        assertNumEquals(12067.9050, ku.getValue(18));
+        assertNumEquals(12099.5025, ku.getValue(19));
+        assertNumEquals(12110.5722, ku.getValue(20));
+        assertNumEquals(12130.8675, ku.getValue(21));
+        assertNumEquals(12147.7344, ku.getValue(22));
+        assertNumEquals(12175.5937, ku.getValue(23));
+        assertNumEquals(12208.1327, ku.getValue(24));
+        assertNumEquals(12233.9032, ku.getValue(25));
+        assertNumEquals(12256.9596, ku.getValue(26));
+        assertNumEquals(12285.9094, ku.getValue(27));
+        assertNumEquals(12301.1108, ku.getValue(28));
+        assertNumEquals(12313.2042, ku.getValue(29));
     }
 }

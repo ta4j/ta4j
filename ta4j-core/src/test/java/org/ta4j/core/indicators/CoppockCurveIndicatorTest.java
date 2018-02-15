@@ -55,14 +55,14 @@ public class CoppockCurveIndicatorTest extends AbstractIndicatorTest<Indicator<N
         
         CoppockCurveIndicator cc = new CoppockCurveIndicator(new ClosePriceIndicator(data), 14, 11, 10);
 
-        assertNumEquals(cc.getValue(31), 23.8929);
-        assertNumEquals(cc.getValue(32), 19.3187);
-        assertNumEquals(cc.getValue(33), 16.3505);
-        assertNumEquals(cc.getValue(34), 14.12);
-        assertNumEquals(cc.getValue(35), 12.782);
-        assertNumEquals(cc.getValue(36), 11.3924);
-        assertNumEquals(cc.getValue(37), 8.3662);
-        assertNumEquals(cc.getValue(38), 7.4532);
-        assertNumEquals(cc.getValue(39), 8.79);
+        assertNumEquals(23.8929, cc.getValue(31));
+        assertNumEquals(19.3187, cc.getValue(32));
+        assertNumEquals(16.3505, cc.getValue(33));
+        assertNumEquals(14.12, cc.getValue(34));
+        assertNumEquals(12.782, cc.getValue(35));
+        assertNumEquals(11.3924, cc.getValue(36));
+        assertNumEquals(8.3662, cc.getValue(37));
+        assertNumEquals(7.4532, cc.getValue(38));
+        assertNumEquals(8.79, cc.getValue(39));
     }
 }

@@ -55,8 +55,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), 2);
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(2, cashFlow.getValue(1));
     }
 
     @Test
@@ -69,13 +69,13 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), "0.5");
-        TestUtils.assertNumEquals(cashFlow.getValue(2), "0.5");
-        TestUtils.assertNumEquals(cashFlow.getValue(3), "0.5");
-        TestUtils.assertNumEquals(cashFlow.getValue(4), "0.6");
-        TestUtils.assertNumEquals(cashFlow.getValue(5), "0.6");
-        TestUtils.assertNumEquals(cashFlow.getValue(6), "0.09");
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals("0.5", cashFlow.getValue(1));
+        assertNumEquals("0.5", cashFlow.getValue(2));
+        assertNumEquals("0.5", cashFlow.getValue(3));
+        assertNumEquals("0.6", cashFlow.getValue(4));
+        assertNumEquals("0.6", cashFlow.getValue(5));
+        assertNumEquals("0.09", cashFlow.getValue(6));
     }
 
 
@@ -86,12 +86,12 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(2), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(3), "0.5");
-        TestUtils.assertNumEquals(cashFlow.getValue(4), "0.5");
-        TestUtils.assertNumEquals(cashFlow.getValue(5), "0.5");
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(1, cashFlow.getValue(2));
+        assertNumEquals("0.5", cashFlow.getValue(3));
+        assertNumEquals("0.5", cashFlow.getValue(4));
+        assertNumEquals("0.5", cashFlow.getValue(5));
     }
 
     @Test
@@ -104,12 +104,12 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), 2);
-        TestUtils.assertNumEquals(cashFlow.getValue(2), 4);
-        TestUtils.assertNumEquals(cashFlow.getValue(3), 2);
-        TestUtils.assertNumEquals(cashFlow.getValue(4), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(5), 2);
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(2, cashFlow.getValue(1));
+        assertNumEquals(4, cashFlow.getValue(2));
+        assertNumEquals(2, cashFlow.getValue(3));
+        assertNumEquals(1, cashFlow.getValue(4));
+        assertNumEquals(2, cashFlow.getValue(5));
     }
 
     @Test
@@ -119,9 +119,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(2), 2);
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(2, cashFlow.getValue(2));
     }
 
     @Test
@@ -132,9 +132,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
         assertEquals(3, cashFlow.getSize());
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), 2);
-        TestUtils.assertNumEquals(cashFlow.getValue(2), 2);
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(2, cashFlow.getValue(1));
+        assertNumEquals(2, cashFlow.getValue(2));
     }
 
     @Test
@@ -146,12 +146,12 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(1), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(2), 2);
-        TestUtils.assertNumEquals(cashFlow.getValue(3), 2);
-        TestUtils.assertNumEquals(cashFlow.getValue(4), 2);
-        TestUtils.assertNumEquals(cashFlow.getValue(5), 4);
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(2, cashFlow.getValue(2));
+        assertNumEquals(2, cashFlow.getValue(3));
+        assertNumEquals(2, cashFlow.getValue(4));
+        assertNumEquals(4, cashFlow.getValue(5));
     }
 
     @Test
@@ -166,19 +166,19 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
 
-        TestUtils.assertNumEquals(cashFlow.getValue(0), 1);
-        assertNumEquals(cashFlow.getValue(1), 2d/3);
-        assertNumEquals(cashFlow.getValue(2), 5d/3);
-        assertNumEquals(cashFlow.getValue(3), 5d/3);
-        assertNumEquals(cashFlow.getValue(4), 5d/3);
-        assertNumEquals(cashFlow.getValue(5), 5d/3);
-        assertNumEquals(cashFlow.getValue(6), 5d/3);
-        assertNumEquals(cashFlow.getValue(7), 5d/3 * 7d/4);
-        assertNumEquals(cashFlow.getValue(8), 5d/3 * 6d/4);
-        assertNumEquals(cashFlow.getValue(9), 5d/3 * 6d/4);
-        assertNumEquals(cashFlow.getValue(10), 5d/3 * 6d/4 * 8d/7);
-        assertNumEquals(cashFlow.getValue(11), 5d/3 * 6d/4 * 5d/7);
-        assertNumEquals(cashFlow.getValue(12), 5d/3 * 6d/4 * 5d/7);
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(2d/3, cashFlow.getValue(1));
+        assertNumEquals(5d/3, cashFlow.getValue(2));
+        assertNumEquals(5d/3, cashFlow.getValue(3));
+        assertNumEquals(5d/3, cashFlow.getValue(4));
+        assertNumEquals(5d/3, cashFlow.getValue(5));
+        assertNumEquals(5d/3, cashFlow.getValue(6));
+        assertNumEquals(5d/3 * 7d/4, cashFlow.getValue(7));
+        assertNumEquals(5d/3 * 6d/4, cashFlow.getValue(8));
+        assertNumEquals(5d/3 * 6d/4, cashFlow.getValue(9));
+        assertNumEquals(5d/3 * 6d/4 * 8d/7, cashFlow.getValue(10));
+        assertNumEquals(5d/3 * 6d/4 * 5d/7, cashFlow.getValue(11));
+        assertNumEquals(5d/3 * 6d/4 * 5d/7, cashFlow.getValue(12));
 
         // Second sample series
         sampleTimeSeries = new MockTimeSeries(numFunction,5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
@@ -187,24 +187,24 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 				Order.buyAt(6, sampleTimeSeries), Order.sellAt(8, sampleTimeSeries));
 
 		CashFlow flow = new CashFlow(sampleTimeSeries, tradingRecord);
-		TestUtils.assertNumEquals(flow.getValue(0), 1);
-		TestUtils.assertNumEquals(flow.getValue(1), 1);
-		TestUtils.assertNumEquals(flow.getValue(2), 1);
-		TestUtils.assertNumEquals(flow.getValue(3), 1);
-		TestUtils.assertNumEquals(flow.getValue(4), 1);
-		TestUtils.assertNumEquals(flow.getValue(5), "0.75");
-		TestUtils.assertNumEquals(flow.getValue(6), "0.75");
-		TestUtils.assertNumEquals(flow.getValue(7), "1.125");
-		TestUtils.assertNumEquals(flow.getValue(8), "0.45");
+        assertNumEquals(1, flow.getValue(0));
+        assertNumEquals(1, flow.getValue(1));
+        assertNumEquals(1, flow.getValue(2));
+        assertNumEquals(1, flow.getValue(3));
+        assertNumEquals(1, flow.getValue(4));
+        assertNumEquals("0.75", flow.getValue(5));
+        assertNumEquals("0.75", flow.getValue(6));
+        assertNumEquals("1.125", flow.getValue(7));
+        assertNumEquals("0.45", flow.getValue(8));
     }
 
     @Test
     public void cashFlowValueWithNoTrades() {
         TimeSeries sampleTimeSeries = new MockTimeSeries(numFunction,3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, new BaseTradingRecord());
-        TestUtils.assertNumEquals(cashFlow.getValue(4), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(7), 1);
-        TestUtils.assertNumEquals(cashFlow.getValue(9), 1);
+        assertNumEquals(1, cashFlow.getValue(4));
+        assertNumEquals(1, cashFlow.getValue(7));
+        assertNumEquals(1, cashFlow.getValue(9));
     }
 
     @Test
@@ -213,7 +213,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         TimeSeries sampleTimeSeries = new MockTimeSeries(Collections.nCopies(size, new MockBar(10,numFunction)));
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleTimeSeries), Order.sellAt(size - 1, sampleTimeSeries));
         CashFlow cashFlow = new CashFlow(sampleTimeSeries, tradingRecord);
-        TestUtils.assertNumEquals(cashFlow.getValue(size - 1), 1);
+        assertNumEquals(1, cashFlow.getValue(size - 1));
     }
 
 }

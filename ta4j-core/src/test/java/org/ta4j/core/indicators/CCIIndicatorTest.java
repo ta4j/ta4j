@@ -26,7 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
@@ -53,7 +52,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
      * Constructor.
      * @param function
      */
-    public CCIIndicatorTest(Function function) {
+    public CCIIndicatorTest(Function<Number, Num> function) {
         super(function);
     }
 
@@ -71,17 +70,17 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         CCIIndicator cci = new CCIIndicator(series, 20);
 
         // Incomplete time frame
-        TestUtils.assertNumEquals(cci.getValue(0), 0);
-        assertNumEquals(cci.getValue(1), -66.6667);
-        assertNumEquals(cci.getValue(2), -100d);
-        assertNumEquals(cci.getValue(10), 14.365);
-        assertNumEquals(cci.getValue(11), 54.2544);
+        assertNumEquals(0, cci.getValue(0));
+        assertNumEquals(-66.6667, cci.getValue(1));
+        assertNumEquals(-100d, cci.getValue(2));
+        assertNumEquals(14.365, cci.getValue(10));
+        assertNumEquals(54.2544, cci.getValue(11));
 
         // Complete time frame
         double[] results20to30 = new double[] { 101.9185, 31.1946, 6.5578, 33.6078, 34.9686, 13.6027,
             -10.6789, -11.471, -29.2567, -128.6, -72.7273 };
         for (int i = 0; i < results20to30.length; i++) {
-            assertNumEquals(cci.getValue(i + 19), results20to30[i]);
+            assertNumEquals(results20to30[i], cci.getValue(i + 19));
         }
     }
 }

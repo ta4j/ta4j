@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.bollinger;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -65,24 +64,24 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, timeFrame);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
 
-        TestUtils.assertNumEquals(2, bbuSMA.getK());
+        assertNumEquals(2, bbuSMA.getK());
 
-        TestUtils.assertNumEquals(1, bbuSMA.getValue(0));
+        assertNumEquals(1, bbuSMA.getValue(0));
         assertNumEquals(2.5, bbuSMA.getValue(1));
         assertNumEquals(3.633, bbuSMA.getValue(2));
         assertNumEquals(4.633, bbuSMA.getValue(3));
-        assertNumEquals(bbuSMA.getValue(4), 4.2761);
-        assertNumEquals(bbuSMA.getValue(5), 4.6094);
-        assertNumEquals(bbuSMA.getValue(6), 5.633);
-        assertNumEquals(bbuSMA.getValue(7), 5.2761);
-        assertNumEquals(bbuSMA.getValue(8), 5.633);
-        assertNumEquals(bbuSMA.getValue(9), 4.2761);
+        assertNumEquals(4.2761, bbuSMA.getValue(4));
+        assertNumEquals(4.6094, bbuSMA.getValue(5));
+        assertNumEquals(5.633, bbuSMA.getValue(6));
+        assertNumEquals(5.2761, bbuSMA.getValue(7));
+        assertNumEquals(5.633, bbuSMA.getValue(8));
+        assertNumEquals(4.2761, bbuSMA.getValue(9));
 
         BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, numFunction.apply(1.5));
 
-        assertNumEquals(bbuSMAwithK.getK(), 1.5);
+        assertNumEquals(1.5, bbuSMAwithK.getK());
 
-        TestUtils.assertNumEquals(bbuSMAwithK.getValue(0), 1);
+        assertNumEquals(1, bbuSMAwithK.getValue(0));
         assertNumEquals(2.25, bbuSMAwithK.getValue(1));
         assertNumEquals(3.2247, bbuSMAwithK.getValue(2));
         assertNumEquals(4.2247, bbuSMAwithK.getValue(3));

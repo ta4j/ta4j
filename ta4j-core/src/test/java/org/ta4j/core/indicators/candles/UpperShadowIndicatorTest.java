@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -35,6 +34,8 @@ import org.ta4j.core.num.Num;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class UpperShadowIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
@@ -59,10 +60,10 @@ public class UpperShadowIndicatorTest extends AbstractIndicatorTest<TimeSeries,N
     @Test
     public void getValue() {
         UpperShadowIndicator upperShadow = new UpperShadowIndicator(series);
-        TestUtils.assertNumEquals(upperShadow.getValue(0), 2);
-        TestUtils.assertNumEquals(upperShadow.getValue(1), 1);
-        TestUtils.assertNumEquals(upperShadow.getValue(2), 1);
-        TestUtils.assertNumEquals(upperShadow.getValue(3), 0);
-        TestUtils.assertNumEquals(upperShadow.getValue(4), 0);
+        assertNumEquals(2, upperShadow.getValue(0));
+        assertNumEquals(1, upperShadow.getValue(1));
+        assertNumEquals(1, upperShadow.getValue(2));
+        assertNumEquals(0, upperShadow.getValue(3));
+        assertNumEquals(0, upperShadow.getValue(4));
     }
 }

@@ -68,25 +68,25 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
 
         BollingerBandWidthIndicator bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
         
-        assertNumEquals(bandwidth.getValue(0), 0.0);
-        assertNumEquals(bandwidth.getValue(1), 36.3636);
-        assertNumEquals(bandwidth.getValue(2), 66.6423);
-        assertNumEquals(bandwidth.getValue(3), 60.2443);
-        assertNumEquals(bandwidth.getValue(4), 71.0767);
-        assertNumEquals(bandwidth.getValue(5), 69.9394);
-        assertNumEquals(bandwidth.getValue(6), 62.7043);
-        assertNumEquals(bandwidth.getValue(7), 56.0178);
-        assertNumEquals(bandwidth.getValue(8), 27.683);
-        assertNumEquals(bandwidth.getValue(9), 12.6491);
-        assertNumEquals(bandwidth.getValue(10), 12.6491);
-        assertNumEquals(bandwidth.getValue(11), 24.2956);
-        assertNumEquals(bandwidth.getValue(12), 68.3332);
-        assertNumEquals(bandwidth.getValue(13), 85.1469);
-        assertNumEquals(bandwidth.getValue(14), 112.8481);
-        assertNumEquals(bandwidth.getValue(15), 108.1682);
-        assertNumEquals(bandwidth.getValue(16), 66.9328);
-        assertNumEquals(bandwidth.getValue(17), 56.5194);
-        assertNumEquals(bandwidth.getValue(18), 28.1091);
-        assertNumEquals(bandwidth.getValue(19), 32.5362);
+        assertNumEquals(0.0, bandwidth.getValue(0));
+        assertNumEquals(36.3636, bandwidth.getValue(1));
+        assertNumEquals(66.6423, bandwidth.getValue(2));
+        assertNumEquals(60.2443, bandwidth.getValue(3));
+        assertNumEquals(71.0767, bandwidth.getValue(4));
+        assertNumEquals(69.9394, bandwidth.getValue(5));
+        assertNumEquals(62.7043, bandwidth.getValue(6));
+        assertNumEquals(56.0178, bandwidth.getValue(7));
+        assertNumEquals(27.683, bandwidth.getValue(8));
+        assertNumEquals(12.6491, bandwidth.getValue(9));
+        assertNumEquals(12.6491, bandwidth.getValue(10));
+        assertNumEquals(24.2956, bandwidth.getValue(11));
+        assertNumEquals(68.3332, bandwidth.getValue(12));
+        assertNumEquals(85.1469, bandwidth.getValue(13));
+        assertNumEquals(112.8481, bandwidth.getValue(14));
+        assertNumEquals(108.1682, bandwidth.getValue(15));
+        assertNumEquals(66.9328, bandwidth.getValue(16));
+        assertNumEquals(56.5194, bandwidth.getValue(17));
+        assertNumEquals(28.1091, bandwidth.getValue(18));
+        assertNumEquals(32.5362, bandwidth.getValue(19));
     }
 }

@@ -57,11 +57,11 @@ public class SeriesBuilderTest extends AbstractIndicatorTest {
             bigDecimalSeries.addBar(ZonedDateTime.now().minusSeconds(i),i,i,i,i,i);
         }
 
-        assertNumEquals(defaultSeries.getBar(1000).getClosePrice(),0);
-        assertNumEquals(defaultSeries.getBar(0).getClosePrice(),1000);
+        assertNumEquals(0,defaultSeries.getBar(1000).getClosePrice());
+        assertNumEquals(1000,defaultSeries.getBar(0).getClosePrice());
         assertEquals(defaultSeriesName.getName(),"default");
-        assertNumEquals(doubleSeries.getBar(0).getClosePrice(),99);
-        assertNumEquals(bigDecimalSeries.getBar(0).getClosePrice(),99);
+        assertNumEquals(99,doubleSeries.getBar(0).getClosePrice());
+        assertNumEquals(99,bigDecimalSeries.getBar(0).getClosePrice());
     }
 
     @Test

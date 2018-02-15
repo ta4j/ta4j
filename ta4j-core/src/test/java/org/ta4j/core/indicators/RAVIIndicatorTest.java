@@ -25,7 +25,6 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -59,20 +58,20 @@ public class RAVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         RAVIIndicator ravi = new RAVIIndicator(closePrice, 3, 8);
         
-        TestUtils.assertNumEquals(ravi.getValue(0), 0);
-        TestUtils.assertNumEquals(ravi.getValue(1), 0);
-        TestUtils.assertNumEquals(ravi.getValue(2), 0);
-        assertNumEquals(ravi.getValue(3), -0.6937);
-        assertNumEquals(ravi.getValue(4), -1.1411);
-        assertNumEquals(ravi.getValue(5), -0.1577);
-        assertNumEquals(ravi.getValue(6), 0.229);
-        assertNumEquals(ravi.getValue(7), 0.2412);
-        assertNumEquals(ravi.getValue(8), 0.1202);
-        assertNumEquals(ravi.getValue(9), -0.3324);
-        assertNumEquals(ravi.getValue(10), -0.5804);
-        assertNumEquals(ravi.getValue(11), 0.2013);
-        assertNumEquals(ravi.getValue(12), 1.6156);
-        assertNumEquals(ravi.getValue(13), 2.6167);
-        assertNumEquals(ravi.getValue(14), 4.0799);
+        assertNumEquals(0, ravi.getValue(0));
+        assertNumEquals(0, ravi.getValue(1));
+        assertNumEquals(0, ravi.getValue(2));
+        assertNumEquals(-0.6937, ravi.getValue(3));
+        assertNumEquals(-1.1411, ravi.getValue(4));
+        assertNumEquals(-0.1577, ravi.getValue(5));
+        assertNumEquals(0.229, ravi.getValue(6));
+        assertNumEquals(0.2412, ravi.getValue(7));
+        assertNumEquals(0.1202, ravi.getValue(8));
+        assertNumEquals(-0.3324, ravi.getValue(9));
+        assertNumEquals(-0.5804, ravi.getValue(10));
+        assertNumEquals(0.2013, ravi.getValue(11));
+        assertNumEquals(1.6156, ravi.getValue(12));
+        assertNumEquals(2.6167, ravi.getValue(13));
+        assertNumEquals(4.0799, ravi.getValue(14));
     }
 }

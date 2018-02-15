@@ -26,7 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -62,10 +61,10 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
     @Test
     public void getValue() {
         CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
-        assertNumEquals(clv.getValue(0), 0.6);
-        assertNumEquals(clv.getValue(1), 0.5);
-        TestUtils.assertNumEquals(clv.getValue(2), 0);
-        assertNumEquals(clv.getValue(3), -1d/7);
-        TestUtils.assertNumEquals(clv.getValue(4), 1);
+        assertNumEquals(0.6, clv.getValue(0));
+        assertNumEquals(0.5, clv.getValue(1));
+        assertNumEquals(0, clv.getValue(2));
+        assertNumEquals(-1d/7, clv.getValue(3));
+        assertNumEquals(1, clv.getValue(4));
     }
 }
