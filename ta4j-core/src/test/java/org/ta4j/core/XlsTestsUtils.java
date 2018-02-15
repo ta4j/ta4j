@@ -22,20 +22,31 @@
  */
 package org.ta4j.core;
 
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.*;
-import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.mocks.MockTradingRecord;
-import org.ta4j.core.num.Num;
-
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.zip.DataFormatException;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.CellValue;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.mocks.MockTradingRecord;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 
 public class XlsTestsUtils {
 
@@ -46,11 +57,16 @@ public class XlsTestsUtils {
      * @param clazz class containing the file resources
      * @param fileName file name of the file containing the workbook
      * @return Sheet number zero from the workbook (mutable)
-     * @throws IOException if the workbook constructor or close throws
-     *             IOException
+     * @throws IOException if inputStream returned by
+     *             getResourceAsStream is null or if HSSFWorkBook constructor
+     *             throws IOException or if close throws IOException
      */
     private static Sheet getSheet(Class<?> clazz, String fileName) throws IOException {
-        HSSFWorkbook workbook = new HSSFWorkbook(clazz.getResourceAsStream(fileName));
+        InputStream inputStream = clazz.getResourceAsStream(fileName);
+        if (inputStream == null) {
+            throw new IOException("Null InputStream for file " + fileName);
+        }
+        HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
         Sheet sheet = workbook.getSheetAt(0);
         workbook.close();
         return sheet;
@@ -118,7 +134,21 @@ public class XlsTestsUtils {
         TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
-        // parse the rows from the data section
+        int minInterval = Integer.MAX_VALUE;
+        int previousNumber = Integer.MAX_VALUE;
+        // find the minimum interval in days
+        for (Row row : rows) {
+            int currentNumber = (int) evaluator.evaluate(row.getCell(0)).getNumberValue();
+            if (previousNumber != Integer.MAX_VALUE) {
+                int interval = currentNumber - previousNumber;
+                if (interval < minInterval) {
+                    minInterval = interval;
+                }
+            }
+            previousNumber = currentNumber;
+        }
+        Duration duration = Duration.ofDays(minInterval);
+        // parse the bars from the data section
         for (Row row : rows) {
             CellValue[] cellValues = new CellValue[6];
             for (int i = 0; i < 6; i++) {
@@ -128,16 +158,17 @@ public class XlsTestsUtils {
                 }
                 cellValues[i] = evaluator.evaluate(row.getCell(i));
             }
-            // build a bar from the row and add it to the series
-            Date weekEndDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
-            ZonedDateTime weekEndDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(weekEndDate.getTime()), ZoneId.systemDefault());
-            series.addBar(weekEndDateTime,
+            // add a bar to the series
+            Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()), ZoneId.systemDefault());
+            series.addBar(duration, endDateTime,
                     // open, high, low, close, volume
-                    (cellValues[1].formatAsString()),
-                    (cellValues[2].formatAsString()),
-                    (cellValues[3].formatAsString()),
-                    (cellValues[4].formatAsString()),
-                    (cellValues[5].formatAsString()));
+                    numFunction.apply(new BigDecimal(cellValues[1].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[2].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[3].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[4].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[5].formatAsString())),
+                    numFunction.apply(0));
         }
         return series;
     }
@@ -196,7 +227,11 @@ public class XlsTestsUtils {
                 continue;
             }
             String s = evaluator.evaluate(row.getCell(column)).formatAsString();
-            values.add(numFunction.apply(new BigDecimal(s)));
+            if (s.equals("#DIV/0!")) {
+                values.add(NaN.NaN);
+            } else {
+                values.add(numFunction.apply(new BigDecimal(s)));
+            }
         }
         return values;
     }
