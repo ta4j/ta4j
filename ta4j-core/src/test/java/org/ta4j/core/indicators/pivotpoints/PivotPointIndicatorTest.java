@@ -1329,9 +1329,9 @@ public class PivotPointIndicatorTest {
         DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_5_minutes, DAY);
         DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
         DeMarkReversalIndicator deMarkS1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
-        assertNumEquals(deMarkpp.getValue(0), NaN);
-        assertNumEquals(deMarkR1.getValue(0), NaN);
-        assertNumEquals(deMarkS1.getValue(0), NaN);
+        assertEquals(deMarkpp.getValue(0), NaN);
+        assertEquals(deMarkR1.getValue(0), NaN);
+        assertEquals(deMarkS1.getValue(0), NaN);
         assertNumEquals(170.735, deMarkpp.getValue(222));
         assertNumEquals(172.66, deMarkR1.getValue(222));
         assertNumEquals(169.81, deMarkS1.getValue(222));
@@ -1380,9 +1380,9 @@ public class PivotPointIndicatorTest {
         DeMarkPivotPointIndicator deMarkpp = new DeMarkPivotPointIndicator(series_1_hours, WEEK);
         DeMarkReversalIndicator deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
         DeMarkReversalIndicator deMarkS1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
-        assertNumEquals(deMarkpp.getValue(0), NaN);
-        assertNumEquals(deMarkR1.getValue(0), NaN);
-        assertNumEquals(deMarkS1.getValue(0), NaN);
+        assertEquals(deMarkpp.getValue(0), NaN);
+        assertEquals(deMarkR1.getValue(0), NaN);
+        assertEquals(deMarkS1.getValue(0), NaN);
         assertNumEquals(170.5075, deMarkpp.getValue(series_1_hours.getEndIndex()-50));
         assertNumEquals(171.795, deMarkR1.getValue(series_1_hours.getEndIndex()-50));
         assertNumEquals(167.965, deMarkS1.getValue(series_1_hours.getEndIndex()-50));

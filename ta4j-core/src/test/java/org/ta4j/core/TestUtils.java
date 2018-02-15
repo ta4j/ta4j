@@ -22,16 +22,15 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.math.BigDecimal;
-import java.util.List;
+
+import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 /**
- * Utility class for {@code Decimal} tests.
+ * Utility class for {@code Num} tests.
  */
 public class TestUtils {
 
@@ -39,79 +38,77 @@ public class TestUtils {
     public static final double GENERAL_OFFSET = 0.0001;
 
     /**
-     * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
+     * Verifies that the actual {@code Num} value is equal to the expected
+     * {@code String} representation within GENERAL_OFFSET.
      *
-     * @param actual the actual {@code Decimal} value
-     * @param expected the given {@code String} representation to compare the actual value to
-     * @throws AssertionError if the actual value is not equal to the given {@code String} representation
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code String} representation to compare the
+     *            actual value to
+     * @throws AssertionError if the actual value is not equal to the given
+     *             {@code String} representation
      */
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(expected, actual.numOf(new BigDecimal(expected)).toString());
+        assertEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
     }
 
-    public static void assertNumEquals(Num expected, Num actual){
-        assertEquals(expected,actual);
+    public static void assertNumNotEquals(String expected, Num actual) {
+        assertNotEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
-     * Verifies that the actual {@code Decimal} value is equal to the given {@code Integer} representation.
+     * Verifies that the actual {@code Num} value is exactly equal to the
+     * expected {@code Integer} representation.
      *
-     * @param actual the actual {@code Decimal} value
-     * @param expected the given {@code Integer} representation to compare the actual value to
-     * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code int} representation to compare the
+     *            actual value to
+     * @throws AssertionError if the actual value is not equal to the given
+     *             {@code Integer} representation
      */
     public static void assertNumEquals(int expected, Num actual) {
-        assertEquals(expected, actual.intValue());
+        assertEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
+    }
+
+    public static void assertNumNotEquals(int expected, Num actual) {
+        assertNotEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
-     * Verifies that the actual {@code Decimal} value is equal (within a positive offset) to the given {@code Double} representation.
+     * Verifies that the actual {@code Num} value is equal (within a positive
+     * offset) to the given {@code Double} representation.
      *
-     * @param actual the actual {@code Decimal} value
-     * @param expected the given {@code Double} representation to compare the actual value to
-     * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code Double} representation to compare the
+     *            actual value to
+     * @throws AssertionError if the actual value is not equal to the given
+     *             {@code Double} representation
      */
     public static void assertNumEquals(double expected, Num actual) {
         assertEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
-    /**
-     * Verifies that the actual {@code Decimal} value is not equal to the given {@code Integer} representation.
-     *
-     * @param actual the actual {@code Decimal} value
-     * @param unexpected the given {@code Integer} representation to compare the actual value to
-     * @throws AssertionError if the actual value is equal to the given {@code Integer} representation
-     */
-    public static void assertDecimalNotEquals(int unexpected,Num actual) {
-        assertNotEquals(unexpected, actual.intValue());
+    public static void assertNumNotEquals(double expected, Num actual) {
+        assertNotEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
+    }
+
+    public static void assertNumEquals(String message, double expected, Num actual) {
+        assertEquals(message, expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
-     * Verifies that expected values match indicator values.
-     *
-     * @param expectedValues expected list of values
-     * @param actualIndicator indicator to compare
-     */
-    public static void assertValuesEquals(Indicator<Num> actualIndicator, List<Num> expectedValues) {
-        assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getBarCount());
-        for (int i = 0; i < expectedValues.size(); i++) {
-            assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), GENERAL_OFFSET);
-        }
-    }
-
-    /**
-     * Verifies that two indicators have the same size and values
+     * Verifies that two indicators have the same size and values.
+     * Converts Num from expected to double then calls assertNumEquals to allow
+     * for GENERAL_OFFSET.
+     * 
      * @param expected indicator of expected values
      * @param actual indicator of actual values
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
-        org.junit.Assert.assertEquals("Size does not match,",
-                expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
+        assertEquals("Size does not match,", expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
         for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-            assertEquals(String.format("Failed at index %s: %s",i,actual.toString()),
+            assertNumEquals(String.format("Failed at index %s: %s", i, actual.toString()),
                     expected.getValue(i).doubleValue(),
-                    actual.getValue(i).doubleValue(), GENERAL_OFFSET);
+                    actual.getValue(i));
         }
     }
 
