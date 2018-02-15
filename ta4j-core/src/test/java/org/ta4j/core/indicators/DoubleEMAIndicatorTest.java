@@ -56,16 +56,16 @@ public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void doubleEMAUsingTimeFrame5UsingClosePrice() {
         DoubleEMAIndicator doubleEma = new DoubleEMAIndicator(closePrice, 5);
 
-        assertNumEquals(doubleEma.getValue(0), 0.73);
-        assertNumEquals(doubleEma.getValue(1), 0.7244);
-        assertNumEquals(doubleEma.getValue(2), 0.7992);
+        assertNumEquals(0.73, doubleEma.getValue(0));
+        assertNumEquals(0.7244, doubleEma.getValue(1));
+        assertNumEquals(0.7992, doubleEma.getValue(2));
 
-        assertNumEquals(doubleEma.getValue(6), 0.7858);
-        assertNumEquals(doubleEma.getValue(7), 0.7374);
-        assertNumEquals(doubleEma.getValue(8), 0.6884);
+        assertNumEquals(0.7858, doubleEma.getValue(6));
+        assertNumEquals(0.7374, doubleEma.getValue(7));
+        assertNumEquals(0.6884, doubleEma.getValue(8));
 
-        assertNumEquals(doubleEma.getValue(12), 0.7184);
-        assertNumEquals(doubleEma.getValue(13), 0.6939);
-        assertNumEquals(doubleEma.getValue(14), 0.6859);
+        assertNumEquals(0.7184, doubleEma.getValue(12));
+        assertNumEquals(0.6939, doubleEma.getValue(13));
+        assertNumEquals(0.6859, doubleEma.getValue(14));
     }
 }

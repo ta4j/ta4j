@@ -25,7 +25,6 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -62,25 +61,25 @@ public class UlcerIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void ulcerIndexUsingTimeFrame14UsingIBMData() {
         UlcerIndexIndicator ulcer = new UlcerIndexIndicator(new ClosePriceIndicator(ibmData), 14);
 
-        TestUtils.assertNumEquals(ulcer.getValue(0), 0);
+        assertNumEquals(0, ulcer.getValue(0));
         
         // From: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index
-        assertNumEquals(ulcer.getValue(26), 1.3047);
-        assertNumEquals(ulcer.getValue(27), 1.3022);
-        assertNumEquals(ulcer.getValue(28), 1.2156);
-        assertNumEquals(ulcer.getValue(29), 0.9967);
-        assertNumEquals(ulcer.getValue(30), 0.7257);
-        assertNumEquals(ulcer.getValue(31), 0.453);
-        assertNumEquals(ulcer.getValue(32), 0.4284);
-        assertNumEquals(ulcer.getValue(33), 0.4284);
-        assertNumEquals(ulcer.getValue(34), 0.4284);
-        assertNumEquals(ulcer.getValue(35), 0.4287);
-        assertNumEquals(ulcer.getValue(36), 0.5089);
-        assertNumEquals(ulcer.getValue(37), 0.6673);
-        assertNumEquals(ulcer.getValue(38), 0.9914);
-        assertNumEquals(ulcer.getValue(39), 1.0921);
-        assertNumEquals(ulcer.getValue(40), 1.3161);
-        assertNumEquals(ulcer.getValue(41), 1.5632);
-        assertNumEquals(ulcer.getValue(42), 1.7609);
+        assertNumEquals(1.3047, ulcer.getValue(26));
+        assertNumEquals(1.3022, ulcer.getValue(27));
+        assertNumEquals(1.2156, ulcer.getValue(28));
+        assertNumEquals(0.9967, ulcer.getValue(29));
+        assertNumEquals(0.7257, ulcer.getValue(30));
+        assertNumEquals(0.453, ulcer.getValue(31));
+        assertNumEquals(0.4284, ulcer.getValue(32));
+        assertNumEquals(0.4284, ulcer.getValue(33));
+        assertNumEquals(0.4284, ulcer.getValue(34));
+        assertNumEquals(0.4287, ulcer.getValue(35));
+        assertNumEquals(0.5089, ulcer.getValue(36));
+        assertNumEquals(0.6673, ulcer.getValue(37));
+        assertNumEquals(0.9914, ulcer.getValue(38));
+        assertNumEquals(1.0921, ulcer.getValue(39));
+        assertNumEquals(1.3161, ulcer.getValue(40));
+        assertNumEquals(1.5632, ulcer.getValue(41));
+        assertNumEquals(1.7609, ulcer.getValue(42));
     }
 }

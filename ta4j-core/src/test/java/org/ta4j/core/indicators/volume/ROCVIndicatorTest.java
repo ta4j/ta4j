@@ -66,15 +66,15 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void test() {
         ROCVIndicator roc = new ROCVIndicator(series, 3);
 
-        assertNumEquals(roc.getValue(0), 0);
-        assertNumEquals(roc.getValue(1), 200);
-        assertNumEquals(roc.getValue(2), 250);
-        assertNumEquals(roc.getValue(3), 120);
-        assertNumEquals(roc.getValue(4), -23.333333333333332);
-        assertNumEquals(roc.getValue(5), -94.28571428571429);
-        assertNumEquals(roc.getValue(6), 22.727272727272727);
-        assertNumEquals(roc.getValue(7), 117.3913043478261);
-        assertNumEquals(roc.getValue(8), 400);
-        assertNumEquals(roc.getValue(9), -7.407407407407407);
+        assertNumEquals(0, roc.getValue(0));
+        assertNumEquals(200, roc.getValue(1));
+        assertNumEquals(250, roc.getValue(2));
+        assertNumEquals(120, roc.getValue(3));
+        assertNumEquals(-23.333333333333332, roc.getValue(4));
+        assertNumEquals(-94.28571428571429, roc.getValue(5));
+        assertNumEquals(22.727272727272727, roc.getValue(6));
+        assertNumEquals(117.3913043478261, roc.getValue(7));
+        assertNumEquals(400, roc.getValue(8));
+        assertNumEquals(-7.407407407407407, roc.getValue(9));
     }
 }

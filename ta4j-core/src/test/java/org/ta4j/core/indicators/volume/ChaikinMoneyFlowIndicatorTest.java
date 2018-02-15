@@ -73,18 +73,18 @@ public class ChaikinMoneyFlowIndicatorTest {
 
         ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 20);
 
-        assertNumEquals(cmf.getValue(0), 0.6082);
-        assertNumEquals(cmf.getValue(1), -0.2484);
-        assertNumEquals(cmf.getValue(19), -0.1211);
-        assertNumEquals(cmf.getValue(20), -0.0997);
-        assertNumEquals(cmf.getValue(21), -0.0659);
-        assertNumEquals(cmf.getValue(22), -0.0257);
-        assertNumEquals(cmf.getValue(23), -0.0617);
-        assertNumEquals(cmf.getValue(24), -0.0481);
-        assertNumEquals(cmf.getValue(25), -0.0086);
-        assertNumEquals(cmf.getValue(26), -0.0087);
-        assertNumEquals(cmf.getValue(27), -0.005);
-        assertNumEquals(cmf.getValue(28), -0.0574);
-        assertNumEquals(cmf.getValue(29), -0.0148);
+        assertNumEquals(0.6082, cmf.getValue(0));
+        assertNumEquals(-0.2484, cmf.getValue(1));
+        assertNumEquals(-0.1211, cmf.getValue(19));
+        assertNumEquals(-0.0997, cmf.getValue(20));
+        assertNumEquals(-0.0659, cmf.getValue(21));
+        assertNumEquals(-0.0257, cmf.getValue(22));
+        assertNumEquals(-0.0617, cmf.getValue(23));
+        assertNumEquals(-0.0481, cmf.getValue(24));
+        assertNumEquals(-0.0086, cmf.getValue(25));
+        assertNumEquals(-0.0087, cmf.getValue(26));
+        assertNumEquals(-0.005, cmf.getValue(27));
+        assertNumEquals(-0.0574, cmf.getValue(28));
+        assertNumEquals(-0.0148, cmf.getValue(29));
     }
 }

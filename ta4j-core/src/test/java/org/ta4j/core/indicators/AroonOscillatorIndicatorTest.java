@@ -26,7 +26,6 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 
 import java.time.LocalDate;
@@ -223,16 +222,16 @@ public class AroonOscillatorIndicatorTest {
     @Test
     public void test(){
         AroonOscillatorIndicator aroonOscillator = new AroonOscillatorIndicator(data, 25);
-        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()), 0);
-        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+25), 84);
-        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+26), 80);
-        TestUtils.assertNumEquals(aroonOscillator.getValue(data.getBeginIndex()+27), 76);
+        assertNumEquals(0, aroonOscillator.getValue(data.getBeginIndex()));
+        assertNumEquals(84, aroonOscillator.getValue(data.getBeginIndex() + 25));
+        assertNumEquals(80, aroonOscillator.getValue(data.getBeginIndex() + 26));
+        assertNumEquals(76, aroonOscillator.getValue(data.getBeginIndex() + 27));
 
-        assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-5), 56d);
-        assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-4), 52d);
-        assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-3), 48d);
-        assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-2), 44d);
-        assertNumEquals(aroonOscillator.getValue(data.getEndIndex()-1), 40d);
-        assertNumEquals(aroonOscillator.getValue(data.getEndIndex()), 32d);
+        assertNumEquals(56d, aroonOscillator.getValue(data.getEndIndex()-5));
+        assertNumEquals(52d, aroonOscillator.getValue(data.getEndIndex()-4));
+        assertNumEquals(48d, aroonOscillator.getValue(data.getEndIndex()-3));
+        assertNumEquals(44d, aroonOscillator.getValue(data.getEndIndex()-2));
+        assertNumEquals(40d, aroonOscillator.getValue(data.getEndIndex()-1));
+        assertNumEquals(32d, aroonOscillator.getValue(data.getEndIndex()));
     }
 }

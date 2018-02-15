@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -35,6 +34,8 @@ import org.ta4j.core.num.Num;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RealBodyIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>{
 
@@ -59,10 +60,10 @@ public class RealBodyIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>
     @Test
     public void getValue() {
         RealBodyIndicator body = new RealBodyIndicator(series);
-        TestUtils.assertNumEquals(body.getValue(0), 8);
-        TestUtils.assertNumEquals(body.getValue(1), 3);
-        TestUtils.assertNumEquals(body.getValue(2), 0);
-        TestUtils.assertNumEquals(body.getValue(3), -4);
-        TestUtils.assertNumEquals(body.getValue(4), 1);
+        assertNumEquals(8, body.getValue(0));
+        assertNumEquals(3, body.getValue(1));
+        assertNumEquals(0, body.getValue(2));
+        assertNumEquals(-4, body.getValue(3));
+        assertNumEquals(1, body.getValue(4));
     }
 }

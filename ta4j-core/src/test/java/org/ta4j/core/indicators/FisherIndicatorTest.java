@@ -25,6 +25,7 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
@@ -35,7 +36,7 @@ import java.util.function.Function;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 
-public class FisherIndicatorTest extends AbstractIndicatorTest{
+public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
 protected TimeSeries series;
 
@@ -78,11 +79,11 @@ protected TimeSeries series;
     public void fisher() {
         FisherIndicator fisher = new FisherIndicator(series);
 
-        assertNumEquals(fisher.getValue(10), 0.6448642008177138);
-        assertNumEquals(fisher.getValue(11), 0.8361770425706673);
-        assertNumEquals(fisher.getValue(12), 0.9936697984965788);
-        assertNumEquals(fisher.getValue(13), 0.8324807235379169);
-        assertNumEquals(fisher.getValue(14), 0.5026313552592737);
-        assertNumEquals(fisher.getValue(15), 0.06492516204615063);
+        assertNumEquals(0.6448642008177138, fisher.getValue(10));
+        assertNumEquals(0.8361770425706673, fisher.getValue(11));
+        assertNumEquals(0.9936697984965788, fisher.getValue(12));
+        assertNumEquals(0.8324807235379169, fisher.getValue(13));
+        assertNumEquals(0.5026313552592737, fisher.getValue(14));
+        assertNumEquals(0.06492516204615063, fisher.getValue(15));
     }
 }

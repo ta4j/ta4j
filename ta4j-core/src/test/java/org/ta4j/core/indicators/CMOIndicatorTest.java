@@ -57,16 +57,16 @@ public class CMOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void dpo() {
         CMOIndicator cmo = new CMOIndicator(new ClosePriceIndicator(series), 9);
 
-        assertNumEquals(cmo.getValue(5), 85.1351);
-        assertNumEquals(cmo.getValue(6), 53.9326);
-        assertNumEquals(cmo.getValue(7), 6.2016);
-        assertNumEquals(cmo.getValue(8), -1.083);
-        assertNumEquals(cmo.getValue(9), 0.7092);
-        assertNumEquals(cmo.getValue(10), -1.4493);
-        assertNumEquals(cmo.getValue(11), 10.7266);
-        assertNumEquals(cmo.getValue(12), -3.5857);
-        assertNumEquals(cmo.getValue(13), 4.7619);
-        assertNumEquals(cmo.getValue(14), 24.1983);
-        assertNumEquals(cmo.getValue(15), 47.644);
+        assertNumEquals(85.1351, cmo.getValue(5));
+        assertNumEquals(53.9326, cmo.getValue(6));
+        assertNumEquals(6.2016, cmo.getValue(7));
+        assertNumEquals(-1.083, cmo.getValue(8));
+        assertNumEquals(0.7092, cmo.getValue(9));
+        assertNumEquals(-1.4493, cmo.getValue(10));
+        assertNumEquals(10.7266, cmo.getValue(11));
+        assertNumEquals(-3.5857, cmo.getValue(12));
+        assertNumEquals(4.7619, cmo.getValue(13));
+        assertNumEquals(24.1983, cmo.getValue(14));
+        assertNumEquals(47.644, cmo.getValue(15));
     }
 }

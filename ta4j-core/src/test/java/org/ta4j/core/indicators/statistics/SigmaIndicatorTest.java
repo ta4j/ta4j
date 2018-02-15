@@ -53,10 +53,10 @@ public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
       
         SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
       
-        assertNumEquals(zScore.getValue(1), 1.0);
-        assertNumEquals(zScore.getValue(2), 1.224744871391589);
-        assertNumEquals(zScore.getValue(3), 1.34164078649987387);
-        assertNumEquals(zScore.getValue(4), 1.414213562373095);
-        assertNumEquals(zScore.getValue(5), 1.414213562373095);
+        assertNumEquals(1.0, zScore.getValue(1));
+        assertNumEquals(1.224744871391589, zScore.getValue(2));
+        assertNumEquals(1.34164078649987387, zScore.getValue(3));
+        assertNumEquals(1.414213562373095, zScore.getValue(4));
+        assertNumEquals(1.414213562373095, zScore.getValue(5));
     }
 }

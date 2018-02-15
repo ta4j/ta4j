@@ -26,7 +26,6 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
@@ -70,21 +69,21 @@ public class AroonUpIndicatorTest {
     @Test
     public void upAndSlowDown(){
         AroonUpIndicator arronUp = new AroonUpIndicator(data, 5);
-        TestUtils.assertNumEquals(arronUp.getValue(19),0);
-        TestUtils.assertNumEquals(arronUp.getValue(18),20);
-        TestUtils.assertNumEquals(arronUp.getValue(17),40);
-        TestUtils.assertNumEquals(arronUp.getValue(16),60);
-        TestUtils.assertNumEquals(arronUp.getValue(15),80);
-        TestUtils.assertNumEquals(arronUp.getValue(14),100);
-        TestUtils.assertNumEquals(arronUp.getValue(13),100);
-        TestUtils.assertNumEquals(arronUp.getValue(12),100);
-        TestUtils.assertNumEquals(arronUp.getValue(11),100);
-        TestUtils.assertNumEquals(arronUp.getValue(10),60);
-        TestUtils.assertNumEquals(arronUp.getValue(9),80);
-        TestUtils.assertNumEquals(arronUp.getValue(8),100);
-        TestUtils.assertNumEquals(arronUp.getValue(7),100);
-        TestUtils.assertNumEquals(arronUp.getValue(6),100);
-        TestUtils.assertNumEquals(arronUp.getValue(5),0);
+        assertNumEquals(0, arronUp.getValue(19));
+        assertNumEquals(20, arronUp.getValue(18));
+        assertNumEquals(40, arronUp.getValue(17));
+        assertNumEquals(60, arronUp.getValue(16));
+        assertNumEquals(80, arronUp.getValue(15));
+        assertNumEquals(100, arronUp.getValue(14));
+        assertNumEquals(100, arronUp.getValue(13));
+        assertNumEquals(100, arronUp.getValue(12));
+        assertNumEquals(100, arronUp.getValue(11));
+        assertNumEquals(60, arronUp.getValue(10));
+        assertNumEquals(80, arronUp.getValue(9));
+        assertNumEquals(100, arronUp.getValue(8));
+        assertNumEquals(100, arronUp.getValue(7));
+        assertNumEquals(100, arronUp.getValue(6));
+        assertNumEquals(0, arronUp.getValue(5));
 
     }
 
@@ -116,7 +115,7 @@ public class AroonUpIndicatorTest {
             if (i % 2 != 0){
                 assertEquals(NaN.toString(), aroonUpIndicator.getValue(i).toString());
             } else {
-                assertNumEquals(series.numOf(100), aroonUpIndicator.getValue(i).toString());
+                assertNumEquals(aroonUpIndicator.getValue(i).toString(), series.numOf(100));
             }
         }
     }

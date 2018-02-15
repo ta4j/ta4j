@@ -115,14 +115,4 @@ public class TestUtils {
         }
     }
 
-    /**swapping TODO: remove this asserts if all parameters of test calls are permuted*/
-    public static void assertNumEquals(Num value, int i) {
-        assertNumEquals(i,value);
-    }
-    public static void assertNumEquals(Num value, String i) {
-        assertNumEquals(i,value);
-    }
-    public static void assertNumEquals(Num value, double i) {
-        assertNumEquals(i,value);
-    }
 }

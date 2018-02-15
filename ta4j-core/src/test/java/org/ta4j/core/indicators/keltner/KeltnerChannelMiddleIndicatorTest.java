@@ -43,7 +43,7 @@ public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ind
 
     private TimeSeries data;
 
-    public KeltnerChannelMiddleIndicatorTest(Function function) {
+    public KeltnerChannelMiddleIndicatorTest(Function<Number, Num> function) {
         super(function);
     }
 
@@ -92,22 +92,22 @@ public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ind
     public void keltnerChannelMiddleIndicatorTest() {
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
 
-        assertNumEquals(km.getValue(13), 11764.23);
-        assertNumEquals(km.getValue(14), 11793.0687);
-        assertNumEquals(km.getValue(15), 11817.6182);
-        assertNumEquals(km.getValue(16), 11839.9944);
-        assertNumEquals(km.getValue(17), 11859.9725);
-        assertNumEquals(km.getValue(18), 11864.2335);
-        assertNumEquals(km.getValue(19), 11887.6903);
-        assertNumEquals(km.getValue(20), 11908.2609);
-        assertNumEquals(km.getValue(21), 11928.7941);
-        assertNumEquals(km.getValue(22), 11950.5749);
-        assertNumEquals(km.getValue(23), 11978.7156);
-        assertNumEquals(km.getValue(24), 12012.6402);
-        assertNumEquals(km.getValue(25), 12042.9401);
-        assertNumEquals(km.getValue(26), 12067.7868);
-        assertNumEquals(km.getValue(27), 12095.1832);
-        assertNumEquals(km.getValue(28), 12118.2508);
-        assertNumEquals(km.getValue(29), 12132.7027);
+        assertNumEquals(11764.23, km.getValue(13));
+        assertNumEquals(11793.0687, km.getValue(14));
+        assertNumEquals(11817.6182, km.getValue(15));
+        assertNumEquals(11839.9944, km.getValue(16));
+        assertNumEquals(11859.9725, km.getValue(17));
+        assertNumEquals(11864.2335, km.getValue(18));
+        assertNumEquals(11887.6903, km.getValue(19));
+        assertNumEquals(11908.2609, km.getValue(20));
+        assertNumEquals(11928.7941, km.getValue(21));
+        assertNumEquals(11950.5749, km.getValue(22));
+        assertNumEquals(11978.7156, km.getValue(23));
+        assertNumEquals(12012.6402, km.getValue(24));
+        assertNumEquals(12042.9401, km.getValue(25));
+        assertNumEquals(12067.7868, km.getValue(26));
+        assertNumEquals(12095.1832, km.getValue(27));
+        assertNumEquals(12118.2508, km.getValue(28));
+        assertNumEquals(12132.7027, km.getValue(29));
     }
 }

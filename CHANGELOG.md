@@ -15,6 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Num**: Extracted interface of dropped `Decimal` class
 - **DoubleNum**: `Num` implementation to support calculations based on `double` primitive
 - **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
+- **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`

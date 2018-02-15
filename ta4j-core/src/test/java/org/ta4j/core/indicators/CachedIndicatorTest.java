@@ -80,7 +80,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
         double[] data = new double[200];
         Arrays.fill(data, 10);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(numFunction,data)), 100);
-        TestUtils.assertNumEquals(sma.getValue(105), 10);
+        assertNumEquals(10, sma.getValue(105));
     }
 
     @Test
@@ -89,10 +89,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
         Arrays.fill(data, 1);
         TimeSeries timeSeries = new MockTimeSeries(numFunction,data);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
-        TestUtils.assertNumEquals(sma.getValue(5), 1);
-        TestUtils.assertNumEquals(sma.getValue(10), 1);
+        assertNumEquals(1, sma.getValue(5));
+        assertNumEquals(1, sma.getValue(10));
         timeSeries.setMaximumBarCount(12);
-        TestUtils.assertNumEquals(sma.getValue(19), 1);
+        assertNumEquals(1, sma.getValue(19));
     }
 
     @Test
@@ -144,7 +144,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
 
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         for (int i = 0; i < 5; i++) {
-            TestUtils.assertNumEquals(sma.getValue(i), 1);
+            assertNumEquals(1, sma.getValue(i));
         }
     }
 
@@ -158,7 +158,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
 
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(series), 1);
         try {
-            assertNumEquals(zlema.getValue(8), 4996);
+            assertNumEquals(4996, zlema.getValue(8));
         } catch (Throwable t) {
             fail(t.getMessage());
         }

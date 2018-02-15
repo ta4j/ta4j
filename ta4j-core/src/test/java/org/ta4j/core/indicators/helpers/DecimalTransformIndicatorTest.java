@@ -26,7 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformSimpleType;
@@ -35,6 +34,7 @@ import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num> {
 
@@ -72,15 +72,15 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Test
     public void getValue() {
-        TestUtils.assertNumEquals(transPlus.getValue(0), 14);
-        TestUtils.assertNumEquals(transMinus.getValue(0), -6);
-        TestUtils.assertNumEquals(transMultiply.getValue(0), 40);
-        TestUtils.assertNumEquals(transDivide.getValue(0), 0.4);
-        TestUtils.assertNumEquals(transMax.getValue(0), 10);
-        TestUtils.assertNumEquals(transMin.getValue(0), 4);
+        assertNumEquals(14, transPlus.getValue(0));
+        assertNumEquals(-6, transMinus.getValue(0));
+        assertNumEquals(40, transMultiply.getValue(0));
+        assertNumEquals(0.4, transDivide.getValue(0));
+        assertNumEquals(10, transMax.getValue(0));
+        assertNumEquals(4, transMin.getValue(0));
         
-        TestUtils.assertNumEquals(transAbs.getValue(0), 4);
-        TestUtils.assertNumEquals(transSqrt.getValue(0), 2);
-        TestUtils.assertNumEquals(transLog.getValue(0), 1.3862943611198906);
+        assertNumEquals(4, transAbs.getValue(0));
+        assertNumEquals(2, transSqrt.getValue(0));
+        assertNumEquals(1.3862943611198906, transLog.getValue(0));
     }
 }

@@ -43,7 +43,7 @@ public class KeltnerChannelLowerIndicatorTest extends AbstractIndicatorTest<Indi
 
     private TimeSeries data;
 
-    public KeltnerChannelLowerIndicatorTest(Function function) {
+    public KeltnerChannelLowerIndicatorTest(Function<Number, Num> function) {
         super(function);
     }
 
@@ -93,22 +93,22 @@ public class KeltnerChannelLowerIndicatorTest extends AbstractIndicatorTest<Indi
         KeltnerChannelMiddleIndicator km = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(data), 14);
         KeltnerChannelLowerIndicator kl = new KeltnerChannelLowerIndicator(km, 2, 14);
 
-        assertNumEquals(kl.getValue(13), 11556.5468);
-        assertNumEquals(kl.getValue(14), 11583.7971);
-        assertNumEquals(kl.getValue(15), 11610.8331);
-        assertNumEquals(kl.getValue(16), 11639.5955);
-        assertNumEquals(kl.getValue(17), 11667.0877);
-        assertNumEquals(kl.getValue(18), 11660.5619);
-        assertNumEquals(kl.getValue(19), 11675.8782);
-        assertNumEquals(kl.getValue(20), 11705.9497);
-        assertNumEquals(kl.getValue(21), 11726.7208);
-        assertNumEquals(kl.getValue(22), 11753.4154);
-        assertNumEquals(kl.getValue(23), 11781.8375);
-        assertNumEquals(kl.getValue(24), 11817.1476);
-        assertNumEquals(kl.getValue(25), 11851.9771);
-        assertNumEquals(kl.getValue(26), 11878.6139);
-        assertNumEquals(kl.getValue(27), 11904.4570);
-        assertNumEquals(kl.getValue(28), 11935.3907);
-        assertNumEquals(kl.getValue(29), 11952.2012);
+        assertNumEquals(11556.5468, kl.getValue(13));
+        assertNumEquals(11583.7971, kl.getValue(14));
+        assertNumEquals(11610.8331, kl.getValue(15));
+        assertNumEquals(11639.5955, kl.getValue(16));
+        assertNumEquals(11667.0877, kl.getValue(17));
+        assertNumEquals(11660.5619, kl.getValue(18));
+        assertNumEquals(11675.8782, kl.getValue(19));
+        assertNumEquals(11705.9497, kl.getValue(20));
+        assertNumEquals(11726.7208, kl.getValue(21));
+        assertNumEquals(11753.4154, kl.getValue(22));
+        assertNumEquals(11781.8375, kl.getValue(23));
+        assertNumEquals(11817.1476, kl.getValue(24));
+        assertNumEquals(11851.9771, kl.getValue(25));
+        assertNumEquals(11878.6139, kl.getValue(26));
+        assertNumEquals(11904.4570, kl.getValue(27));
+        assertNumEquals(11935.3907, kl.getValue(28));
+        assertNumEquals(11952.2012, kl.getValue(29));
     }
 }

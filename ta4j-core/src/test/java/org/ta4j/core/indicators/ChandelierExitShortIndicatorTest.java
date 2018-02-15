@@ -72,15 +72,15 @@ public class ChandelierExitShortIndicatorTest extends AbstractIndicatorTest<Indi
     public void massIndexUsing3And8TimeFrames() {
         ChandelierExitShortIndicator ces = new ChandelierExitShortIndicator(data, 5, 2);
 
-        assertNumEquals(ces.getValue(5), 45.3246);
-        assertNumEquals(ces.getValue(6), 45.3437);
-        assertNumEquals(ces.getValue(7), 45.3309);
-        assertNumEquals(ces.getValue(8), 45.3547);
-        assertNumEquals(ces.getValue(9), 45.3978);
-        assertNumEquals(ces.getValue(10), 45.3762);
-        assertNumEquals(ces.getValue(11), 45.4450);
-        assertNumEquals(ces.getValue(12), 45.5040);
-        assertNumEquals(ces.getValue(13), 45.3912);
-        assertNumEquals(ces.getValue(14), 44.9909);
+        assertNumEquals(45.3246, ces.getValue(5));
+        assertNumEquals(45.3437, ces.getValue(6));
+        assertNumEquals(45.3309, ces.getValue(7));
+        assertNumEquals(45.3547, ces.getValue(8));
+        assertNumEquals(45.3978, ces.getValue(9));
+        assertNumEquals(45.3762, ces.getValue(10));
+        assertNumEquals(45.4450, ces.getValue(11));
+        assertNumEquals(45.5040, ces.getValue(12));
+        assertNumEquals(45.3912, ces.getValue(13));
+        assertNumEquals(44.9909, ces.getValue(14));
     }
 }

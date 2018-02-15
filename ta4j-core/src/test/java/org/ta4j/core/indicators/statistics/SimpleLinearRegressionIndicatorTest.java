@@ -26,7 +26,6 @@ import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -83,18 +82,18 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
     public void calculateLinearRegressionOn4Observations() {
 
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 4);
-        TestUtils.assertNumEquals(reg.getValue(1), 20);
-        TestUtils.assertNumEquals(reg.getValue(2), 30);
+        assertNumEquals(20, reg.getValue(1));
+        assertNumEquals(30, reg.getValue(2));
         
         SimpleRegression origReg = buildSimpleRegression(10, 20, 30, 40);
-        TestUtils.assertNumEquals(reg.getValue(3), 40);
-        assertNumEquals(reg.getValue(3), origReg.predict(3));
+        assertNumEquals(40, reg.getValue(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(3));
         
         origReg = buildSimpleRegression(30, 40, 30, 40);
-        assertNumEquals(reg.getValue(5), origReg.predict(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(5));
         
         origReg = buildSimpleRegression(30, 20, 30, 50);
-        assertNumEquals(reg.getValue(9), origReg.predict(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(9));
     }
     
     @Test
@@ -104,7 +103,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
         
         SimpleRegression origReg = buildSimpleRegression(values);
-        assertNumEquals(reg.getValue(4), origReg.predict(4));
+        assertNumEquals(origReg.predict(4), reg.getValue(4));
     }
     
     /**

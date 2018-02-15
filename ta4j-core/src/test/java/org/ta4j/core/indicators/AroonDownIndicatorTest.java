@@ -25,7 +25,7 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TestUtils;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
@@ -36,7 +36,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-public class AroonDownIndicatorTest extends AbstractIndicatorTest{
+public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
@@ -76,21 +76,21 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest{
     @Test
     public void upDownAndHigh(){
         AroonDownIndicator arronDownIndicator = new AroonDownIndicator(data, 5);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(19),80);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(18),100);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(17),100);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(16),0);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(15),0);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(14),0);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(13),20);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(12),40);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(11),0);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(10),0);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(9),20);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(8),40);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(7),60);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(6),80);
-        TestUtils.assertNumEquals(arronDownIndicator.getValue(5),100);
+        assertNumEquals(80, arronDownIndicator.getValue(19));
+        assertNumEquals(100, arronDownIndicator.getValue(18));
+        assertNumEquals(100, arronDownIndicator.getValue(17));
+        assertNumEquals(0, arronDownIndicator.getValue(16));
+        assertNumEquals(0, arronDownIndicator.getValue(15));
+        assertNumEquals(0, arronDownIndicator.getValue(14));
+        assertNumEquals(20, arronDownIndicator.getValue(13));
+        assertNumEquals(40, arronDownIndicator.getValue(12));
+        assertNumEquals(0, arronDownIndicator.getValue(11));
+        assertNumEquals(0, arronDownIndicator.getValue(10));
+        assertNumEquals(20, arronDownIndicator.getValue(9));
+        assertNumEquals(40, arronDownIndicator.getValue(8));
+        assertNumEquals(60, arronDownIndicator.getValue(7));
+        assertNumEquals(80, arronDownIndicator.getValue(6));
+        assertNumEquals(100, arronDownIndicator.getValue(5));
     }
 
 
@@ -129,9 +129,9 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest{
             if (i % 2 != 0 && i<11){
                 assertEquals(NaN.toString(), aroonDownIndicator.getValue(i).toString());
             } else if (i < 11)
-                assertNumEquals(aroonDownIndicator.getValue(i), series.numOf(100).toString());
+                assertNumEquals(series.numOf(100).toString(), aroonDownIndicator.getValue(i));
             else
-                assertNumEquals(aroonDownIndicator.getValue(i),series.numOf(80).toString());
+                assertNumEquals(series.numOf(80).toString(),aroonDownIndicator.getValue(i));
         }
     }
 }

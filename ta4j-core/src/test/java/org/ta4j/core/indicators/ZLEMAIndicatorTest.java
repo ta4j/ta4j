@@ -56,15 +56,15 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     public void ZLEMAUsingTimeFrame10UsingClosePrice() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
 
-        assertNumEquals(zlema.getValue(9), 11.9091);
-        assertNumEquals(zlema.getValue(10), 8.8347);
-        assertNumEquals(zlema.getValue(11), 5.7739);
+        assertNumEquals(11.9091, zlema.getValue(9));
+        assertNumEquals(8.8347, zlema.getValue(10));
+        assertNumEquals(5.7739, zlema.getValue(11));
     }
 
     @Test
     public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
-        assertNumEquals(zlema.getValue(0), 10);
+        assertNumEquals(10, zlema.getValue(0));
     }
 
     @Test
@@ -80,6 +80,6 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     @Test
     public void smallTimeFrame() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
-        assertNumEquals(zlema.getValue(0), 10);
+        assertNumEquals(10, zlema.getValue(0));
     }
 }

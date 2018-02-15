@@ -60,15 +60,15 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void firstValueShouldBeEqualsToFirstDataValue() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertNumEquals(indicator.getValue(0), 64.75);
+        assertNumEquals(64.75, indicator.getValue(0));
     }
 
     @Test
     public void usingTimeFrame10UsingClosePrice() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 10);
-        assertNumEquals(indicator.getValue(9), 63.6948);
-        assertNumEquals(indicator.getValue(10), 63.2648);
-        assertNumEquals(indicator.getValue(11), 62.9457);
+        assertNumEquals(63.6948, indicator.getValue(9));
+        assertNumEquals(63.2648, indicator.getValue(10));
+        assertNumEquals(62.9457, indicator.getValue(11));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
-        assertNumEquals(indicator.getValue(9999), 9994.5);
+        assertNumEquals(9994.5, indicator.getValue(9999));
     }
 
     @Test

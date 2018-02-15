@@ -56,10 +56,10 @@ public class AccumulationDistributionIndicatorTest extends AbstractIndicatorTest
 
         TimeSeries series = new MockTimeSeries(bars);
         AccumulationDistributionIndicator ac = new AccumulationDistributionIndicator(series);
-        assertNumEquals(ac.getValue(0), 0);
-        assertNumEquals(ac.getValue(1), -100d / 3);
-        assertNumEquals(ac.getValue(2), -100d -(100d / 3));
-        assertNumEquals(ac.getValue(3), (-250d/35) + (-100d -(100d / 3)));
-        assertNumEquals(ac.getValue(4), 600d + ((-250d/35) + (-100d -(100d / 3))));
+        assertNumEquals(0, ac.getValue(0));
+        assertNumEquals(-100d / 3, ac.getValue(1));
+        assertNumEquals(-100d -(100d / 3), ac.getValue(2));
+        assertNumEquals((-250d/35) + (-100d -(100d / 3)), ac.getValue(3));
+        assertNumEquals(600d + ((-250d/35) + (-100d -(100d / 3))), ac.getValue(4));
     }
 }

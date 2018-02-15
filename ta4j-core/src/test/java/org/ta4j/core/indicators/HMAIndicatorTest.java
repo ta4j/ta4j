@@ -59,17 +59,17 @@ public class HMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void hmaUsingTimeFrame9UsingClosePrice() {
         // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
         HMAIndicator hma = new HMAIndicator(new ClosePriceIndicator(data), 9);
-        assertNumEquals(hma.getValue(10), 86.3204);
-        assertNumEquals(hma.getValue(11), 85.3705);
-        assertNumEquals(hma.getValue(12), 84.1044);
-        assertNumEquals(hma.getValue(13), 83.0197);
-        assertNumEquals(hma.getValue(14), 81.3913);
-        assertNumEquals(hma.getValue(15), 79.6511);
-        assertNumEquals(hma.getValue(16), 78.0443);
-        assertNumEquals(hma.getValue(17), 76.8832);
-        assertNumEquals(hma.getValue(18), 75.5363);
-        assertNumEquals(hma.getValue(19), 75.1713);
-        assertNumEquals(hma.getValue(20), 75.3597);
+        assertNumEquals(86.3204, hma.getValue(10));
+        assertNumEquals(85.3705, hma.getValue(11));
+        assertNumEquals(84.1044, hma.getValue(12));
+        assertNumEquals(83.0197, hma.getValue(13));
+        assertNumEquals(81.3913, hma.getValue(14));
+        assertNumEquals(79.6511, hma.getValue(15));
+        assertNumEquals(78.0443, hma.getValue(16));
+        assertNumEquals(76.8832, hma.getValue(17));
+        assertNumEquals(75.5363, hma.getValue(18));
+        assertNumEquals(75.1713, hma.getValue(19));
+        assertNumEquals(75.3597, hma.getValue(20));
     }
 
 }

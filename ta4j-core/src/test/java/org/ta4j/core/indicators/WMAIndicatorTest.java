@@ -45,12 +45,12 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
 
-        assertNumEquals(wmaIndicator.getValue(0), 1);
-        assertNumEquals(wmaIndicator.getValue(1), 1.6667);
-        assertNumEquals(wmaIndicator.getValue(2), 2.3333);
-        assertNumEquals(wmaIndicator.getValue(3), 3.3333);
-        assertNumEquals(wmaIndicator.getValue(4), 4.3333);
-        assertNumEquals(wmaIndicator.getValue(5), 5.3333);
+        assertNumEquals(1, wmaIndicator.getValue(0));
+        assertNumEquals(1.6667, wmaIndicator.getValue(1));
+        assertNumEquals(2.3333, wmaIndicator.getValue(2));
+        assertNumEquals(3.3333, wmaIndicator.getValue(3));
+        assertNumEquals(4.3333, wmaIndicator.getValue(4));
+        assertNumEquals(5.3333, wmaIndicator.getValue(5));
     }
     
     @Test
@@ -59,12 +59,12 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
 
-        assertNumEquals(wmaIndicator.getValue(0), 1);
-        assertNumEquals(wmaIndicator.getValue(1), 1.6667);
-        assertNumEquals(wmaIndicator.getValue(2), 2.3333);
-        assertNumEquals(wmaIndicator.getValue(3), 3);
-        assertNumEquals(wmaIndicator.getValue(4), 3.6666);
-        assertNumEquals(wmaIndicator.getValue(5), 4.3333);
+        assertNumEquals(1, wmaIndicator.getValue(0));
+        assertNumEquals(1.6667, wmaIndicator.getValue(1));
+        assertNumEquals(2.3333, wmaIndicator.getValue(2));
+        assertNumEquals(3, wmaIndicator.getValue(3));
+        assertNumEquals(3.6666, wmaIndicator.getValue(4));
+        assertNumEquals(4.3333, wmaIndicator.getValue(5));
     }
 
     @Test
@@ -81,18 +81,18 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         );
         
         WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
-        assertNumEquals(wma.getValue(8), 84.4958);
-        assertNumEquals(wma.getValue(9), 85.0158);
-        assertNumEquals(wma.getValue(10), 84.6807);
-        assertNumEquals(wma.getValue(11), 84.5387);
-        assertNumEquals(wma.getValue(12), 84.4298);
-        assertNumEquals(wma.getValue(13), 84.1224);
-        assertNumEquals(wma.getValue(14), 83.1031);
-        assertNumEquals(wma.getValue(15), 82.1462);
-        assertNumEquals(wma.getValue(16), 81.1149);
-        assertNumEquals(wma.getValue(17), 80.0736);
-        assertNumEquals(wma.getValue(18), 78.6907);
-        assertNumEquals(wma.getValue(19), 78.1504);
-        assertNumEquals(wma.getValue(20), 77.6133);
+        assertNumEquals(84.4958, wma.getValue(8));
+        assertNumEquals(85.0158, wma.getValue(9));
+        assertNumEquals(84.6807, wma.getValue(10));
+        assertNumEquals(84.5387, wma.getValue(11));
+        assertNumEquals(84.4298, wma.getValue(12));
+        assertNumEquals(84.1224, wma.getValue(13));
+        assertNumEquals(83.1031, wma.getValue(14));
+        assertNumEquals(82.1462, wma.getValue(15));
+        assertNumEquals(81.1149, wma.getValue(16));
+        assertNumEquals(80.0736, wma.getValue(17));
+        assertNumEquals(78.6907, wma.getValue(18));
+        assertNumEquals(78.1504, wma.getValue(19));
+        assertNumEquals(77.6133, wma.getValue(20));
     }
 }

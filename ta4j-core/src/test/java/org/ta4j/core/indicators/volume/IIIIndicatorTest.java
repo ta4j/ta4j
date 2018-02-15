@@ -58,10 +58,10 @@ public class IIIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         TimeSeries series = new MockTimeSeries(bars);
         IIIIndicator iiiIndicator = new IIIIndicator(series);
-        assertNumEquals(iiiIndicator.getValue(0), 0);
-        assertNumEquals(iiiIndicator.getValue(1), (2*8d-10d-7d)/((10d-7d)*100d));
-        assertNumEquals(iiiIndicator.getValue(2), (2*9d-15d-6d)/((15d-6d)*300d));
-        assertNumEquals(iiiIndicator.getValue(3), (2*20d-40d-5d)/((40d-5d)*50d));
-        assertNumEquals(iiiIndicator.getValue(4), (2*30d-30d-3d)/((30d-3d)*600d));
+        assertNumEquals(0, iiiIndicator.getValue(0));
+        assertNumEquals((2*8d-10d-7d)/((10d-7d)*100d), iiiIndicator.getValue(1));
+        assertNumEquals((2*9d-15d-6d)/((15d-6d)*300d), iiiIndicator.getValue(2));
+        assertNumEquals((2*20d-40d-5d)/((40d-5d)*50d), iiiIndicator.getValue(3));
+        assertNumEquals((2*30d-30d-3d)/((30d-3d)*600d), iiiIndicator.getValue(4));
     }
 }
