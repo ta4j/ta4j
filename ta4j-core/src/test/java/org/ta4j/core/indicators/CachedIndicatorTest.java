@@ -163,4 +163,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
             fail(t.getMessage());
         }
     }
+
+    @Test
+    public void leaveLastBarUncached() {
+        TimeSeries timeSeries = new MockTimeSeries(numFunction);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
+        assertNumEquals(5000, closePrice.getValue(timeSeries.getEndIndex()));
+        timeSeries.getLastBar().addTrade(numOf(10), numOf(5));
+        assertNumEquals(5, closePrice.getValue(timeSeries.getEndIndex()));
+
+    }
+
+    @Test
+    public void leaveBarsBeforeLastBarCached() {
+        TimeSeries timeSeries = new MockTimeSeries(numFunction);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
+
+        // Add a forgotten trade, should be ignored in the cached indicator
+        assertNumEquals(2, closePrice.getValue(1));
+        timeSeries.getBar(1).addTrade(numOf(10), numOf(5));
+        assertNumEquals(2, closePrice.getValue(1));
+    }
+
 }
