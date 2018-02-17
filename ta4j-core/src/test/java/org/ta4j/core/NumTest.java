@@ -41,7 +41,7 @@ public class NumTest extends AbstractIndicatorTest {
 
         Num doubleNumFromString = numOf(new BigDecimal("0.33"));
         Num doubleNumFromDouble = numOf(10.33);
-        assertEquals(doubleNumFromString.multipliedBy(doubleNumFromDouble), doubleNumFromDouble.multipliedBy(doubleNumFromString));
+        assertNumEquals(doubleNumFromString.multipliedBy(doubleNumFromDouble), doubleNumFromDouble.multipliedBy(doubleNumFromString));
     }
 
     @Test(expected = java.lang.ClassCastException.class)
@@ -75,25 +75,25 @@ public class NumTest extends AbstractIndicatorTest {
         Num eleven = BigDecimalNum.valueOf(11);
 
         Num mustBeNaN = a.plus(eleven);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         mustBeNaN = a.minus(eleven);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         mustBeNaN = a.dividedBy(a);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         mustBeNaN = a.multipliedBy(NaN);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         mustBeNaN = a.max(eleven);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         mustBeNaN = eleven.min(a);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         mustBeNaN = a.pow(12);
-        assertEquals(mustBeNaN, NaN);
+        assertNumEquals(mustBeNaN,NaN);
 
         Double nanDouble = a.doubleValue();
         assertEquals(Double.NaN, nanDouble);
@@ -121,7 +121,7 @@ public class NumTest extends AbstractIndicatorTest {
         Num hundredMillion = hundred.multipliedBy(million);
         assertNumEquals(100000000,hundredMillion);
 
-        assertEquals(hundredMillion.dividedBy(hundred), million);
+        assertNumEquals(hundredMillion.dividedBy(hundred),million);
         assertNumEquals(0,hundredMillion.remainder(hundred));
 
         Num five = ten.numOf(5); // generate new value with NumFunction
