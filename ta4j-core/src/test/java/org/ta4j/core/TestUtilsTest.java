@@ -1,11 +1,14 @@
 package org.ta4j.core;
 
+import java.math.BigDecimal;
 import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
@@ -17,30 +20,60 @@ public class TestUtilsTest extends AbstractIndicatorTest {
 
     @Test
     public void testStringNum() {
-        assertNumEquals("3.1415", numOf(3.14159265358979)); // expected within precision
-        assertNumNotEquals("3.141", numOf(3.14159265358979)); // expected outside precision
-        assertNumEquals("3.14159265358979", numOf(3.1415)); // actual within precision
-        assertNumNotEquals("3.14159265358979", numOf(3.141)); // actual outside precision
-    }
-
-    @Test
-    public void testIntNum() {
-        assertNumEquals(3, numOf(3));
-        assertNumEquals(3, numOf(3.0));
-        assertNumNotEquals(3, numOf(3.0001));
-        assertNumEquals(3, numOf(3.00001));
-        assertNumNotEquals(3, numOf(3.14159265358979));
-        assertNumNotEquals(4, numOf(3.14159265358979));
-        assertNumNotEquals(4, numOf(3.99));
-        assertNumEquals(4, numOf(3.99991));
+        // exact matches only
+        assertNumNotEquals("3.1415", numOf(3.14159265358979));
+        assertNumNotEquals("3.141", numOf(3.14159265358979));
+        assertNumNotEquals("3.14159265358979", numOf(3.1415));
+        assertNumNotEquals("3.14159265358979", numOf(3.141));
+        assertNumEquals("3.14159265358979", numOf(3.14159265358979));
+        // fails for BigDecimalNum only
+        //assertNumEquals("3.1415926535897", numOf(3.14159265358979));
+        // fails for DoubleNum only
+        //assertNumNotEquals("3.14159", numOf(3.14159265358979));
+        assertNumNotEquals("3.14159", numOf(3.14158));
+        assertNumNotEquals("3.14159", numOf(3.141));
+        assertNumNotEquals("3.14158", numOf(3.14159));
+        assertNumNotEquals("3.141", numOf(3.14159));
     }
 
     @Test
     public void testDoubleNum() {
-        assertNumEquals(3.14159, numOf(3.14158));
+        // inexact matches allowed
+        assertNumEquals(3.1415, numOf(3.14159265358979)); // different from testStringNum!
+        assertNumNotEquals(3.141, numOf(3.14159265358979));
+        assertNumEquals(3.14159265358979, numOf(3.1415)); // different from testStringNum!
+        assertNumNotEquals(3.14159265358979, numOf(3.141));
+        assertNumEquals(3.14159265358979, numOf(3.14159265358979));
+        // fails for BigDecimalNum only
+        //assertNumEquals("3.1415926535897", numOf(3.14159265358979));
+        // fails for DoubleNum only
+        //assertNumNotEquals("3.14159", numOf(3.14159265358979));
+        assertNumEquals(3.14159, numOf(3.14158)); // different from testStringNum!
         assertNumNotEquals(3.14159, numOf(3.141));
-        assertNumEquals(3.14158, numOf(3.14159));
+        assertNumEquals(3.14158, numOf(3.14159)); // different from testStringNum!
         assertNumNotEquals(3.141, numOf(3.14159));
     }
 
+    @Test
+    public void testNumNum() {
+        // exact matches only (identical results to testStringNum)
+        assertNumNotEquals(numOf(3.1415), numOf(3.14159265358979));
+        assertNumNotEquals(numOf(3.141), numOf(3.14159265358979));
+        assertNumNotEquals(numOf(3.14159265358979), numOf(3.1415));
+        assertNumNotEquals(numOf(3.14159265358979), numOf(3.141));
+        assertNumEquals(numOf(3.14159265358979), numOf(3.14159265358979));
+        // fails for BigDecimalNum only
+        //assertNumEquals("3.1415926535897", numOf(3.14159265358979));
+        // fails for DoubleNum only
+        //assertNumNotEquals("3.14159", numOf(3.14159265358979));
+        assertNumNotEquals(numOf(3.14159), numOf(3.14158));
+        assertNumNotEquals(numOf(3.14159), numOf(3.141));
+        assertNumNotEquals(numOf(3.14158), numOf(3.14159));
+        assertNumNotEquals(numOf(3.141), numOf(3.14159));
+    }
+
+    @Test
+    public void testIndicatorIndicator() {
+        // TODO: implement test for assertIndicatorEquals(Indicator, Indicator) 
+    }
 }

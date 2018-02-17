@@ -38,70 +38,90 @@ public class TestUtils {
     public static final double GENERAL_OFFSET = 0.0001;
 
     /**
-     * Verifies that the actual {@code Num} value is equal to the expected
-     * {@code String} representation within GENERAL_OFFSET.
+     * Verifies that the actual {@code Num} value is exactly equal to the expected {@code String} representation.
      *
+     * @param expected the given {@code String} representation to compare the actual value to
      * @param actual the actual {@code Num} value
-     * @param expected the given {@code String} representation to compare the
-     *            actual value to
-     * @throws AssertionError if the actual value is not equal to the given
-     *             {@code String} representation
+     * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code String} representation
      */
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
-    }
-
-    public static void assertNumNotEquals(String expected, Num actual) {
-        assertNotEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
+        assertEquals(actual.numOf(new BigDecimal(expected)), actual);
     }
 
     /**
-     * Verifies that the actual {@code Num} value is exactly equal to the
-     * expected {@code Integer} representation.
+     * Verifies that the actual {@code Num} value is not exactly equal to the expected {@code String} representation.
      *
+     * @param expected the given {@code String} representation to compare the actual value to
      * @param actual the actual {@code Num} value
-     * @param expected the given {@code int} representation to compare the
-     *            actual value to
-     * @throws AssertionError if the actual value is not equal to the given
-     *             {@code Integer} representation
+     * @throws AssertionError if the actual {@code Num} value is exactly equal to the given {@code String} representation
      */
-    public static void assertNumEquals(int expected, Num actual) {
-        assertEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
-    }
-
-    public static void assertNumNotEquals(int expected, Num actual) {
-        assertNotEquals(Double.valueOf(expected), actual.doubleValue(), GENERAL_OFFSET);
+    public static void assertNumNotEquals(String expected, Num actual) {
+        assertNotEquals(actual.numOf(new BigDecimal(expected)), actual);
     }
 
     /**
-     * Verifies that the actual {@code Num} value is equal (within a positive
-     * offset) to the given {@code Double} representation.
+     * Verifies that the actual {@code Num} value is exactly equal to the expected {@code Num}.
      *
+     * @param expected the given {@code Num} to compare the actual value to
      * @param actual the actual {@code Num} value
-     * @param expected the given {@code Double} representation to compare the
-     *            actual value to
-     * @throws AssertionError if the actual value is not equal to the given
-     *             {@code Double} representation
+     * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code Num}
+     */
+    public static void assertNumEquals(Num expected, Num actual){
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * Verifies that the actual {@code Num} value is not exactly equal to the expected {@code Num}.
+     *
+     * @param expected the given {@code Num} to compare the actual value to
+     * @param actual the actual {@code Num} value
+     * @throws AssertionError if the actual {@code Num} value is exactly equal to the given {@code Num}
+     */
+    public static void assertNumNotEquals(Num expected, Num actual) {
+        assertNotEquals(expected, actual);
+    }
+
+    /**
+     * Verifies that two {@code Num} values are equal to within a positive delta.
+     *
+     * @param expected the expected {@code Num} to compare the actual value to
+     * @param actual the actual {@code Num} value
+     * @throws AssertionError if the actual value is not equal to the given {@code Num} representation within the delta
      */
     public static void assertNumEquals(double expected, Num actual) {
         assertEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
+    /**
+     * Verifies that two {@code Num} values are not equal to within a positive delta.
+     *
+     * @param expected the expected {@code Num} to compare the actual value to
+     * @param actual the actual {@code Num} value
+     * @throws AssertionError if the actual value is equal to the given {@code Num} representation within the delta
+     */
     public static void assertNumNotEquals(double expected, Num actual) {
         assertNotEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
+    /**
+     * Verifies that two {@code Num} values are equal to within a positive delta.
+     *
+     * @param message the {@code String} message to print if the values are not equal
+     * @param expected the expected {@code Num} to compare the actual value to
+     * @param actual the actual {@code Num} value
+     * @throws AssertionError if the actual value is not equal to the given {@code Num} representation within the delta
+     */
     public static void assertNumEquals(String message, double expected, Num actual) {
         assertEquals(message, expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
-     * Verifies that two indicators have the same size and values.
-     * Converts Num from expected to double then calls assertNumEquals to allow
-     * for GENERAL_OFFSET.
+     * Verifies that two indicators have the same size and the same values to within a positive delta.
      * 
      * @param expected indicator of expected values
      * @param actual indicator of actual values
+     * @throws AssertionError if the size of the indicators is not identical
+     *             or if any of the actual values are not equal to the corresponding expected values within the delta
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
         assertEquals("Size does not match,", expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
