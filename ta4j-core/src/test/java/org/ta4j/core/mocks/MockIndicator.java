@@ -4,7 +4,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 
 public class MockIndicator implements Indicator<Num> {
@@ -22,6 +24,19 @@ public class MockIndicator implements Indicator<Num> {
     public MockIndicator(TimeSeries series, List<Num> values) {
         this.series = series;
         this.values = values;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param series TimeSeries of the Indicator
+     * @param values Indicator values
+     */
+    public MockIndicator(Function<Number, Num> numFunction, Num... values) {
+        TimeSeries series = new MockTimeSeries(numFunction, values.length);
+        this.series = series;
+        List<Num> listValues = Arrays.asList(values);
+        this.values = listValues;
     }
 
     /**

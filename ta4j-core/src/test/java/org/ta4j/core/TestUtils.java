@@ -132,4 +132,23 @@ public class TestUtils {
         }
     }
 
+    /**
+     * Verifies that two indicators have different size or at least one pair of values are different to within a positive delta.
+     * 
+     * @param expected indicator of expected values
+     * @param actual indicator of actual values
+     * @throws AssertionError if the size of the indicators is identical
+     *             and if all of the actual values are equal to the corresponding expected values within the delta
+     */
+    public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual) {
+        if (expected.getTimeSeries().getBarCount() == actual.getTimeSeries().getBarCount()) {
+            for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+                if (Math.abs((expected.getValue(i).minus(actual.getValue(i))).doubleValue()) > GENERAL_OFFSET) {
+                    return;
+                }
+            }
+        }
+        throw new AssertionError("indicators are the same within delta");
+    }
+
 }
