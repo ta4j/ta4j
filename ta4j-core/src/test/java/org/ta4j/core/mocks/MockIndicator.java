@@ -29,7 +29,7 @@ public class MockIndicator implements Indicator<Num> {
     /**
      * Constructor.
      * 
-     * @param series TimeSeries of the Indicator
+     * @param numFunction the {@link Function} to convert a number instance to the corresponding Num instance
      * @param values Indicator values
      */
     public MockIndicator(Function<Number, Num> numFunction, Num... values) {
