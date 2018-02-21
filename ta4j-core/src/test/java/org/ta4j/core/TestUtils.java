@@ -22,12 +22,10 @@
  */
 package org.ta4j.core;
 
-import java.math.BigDecimal;
-
+import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 /**
  * Utility class for {@code Num} tests.
@@ -35,7 +33,16 @@ import static org.junit.Assert.assertNotEquals;
 public class TestUtils {
 
     /** Offset for double equality checking */
+    // deprecated so that JUnit Assert calls direct from unit tests will show warnings
+    // TODO: modify unit tests to not call JUnit Assert but to call TestUtils Assert
+    @Deprecated
     public static final double GENERAL_OFFSET = 0.0001;
+    // for 32 digit BigDecimalNum:
+    //    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.00000000000000000000000000001");
+    // for DoubleNum:
+    //    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.000000000001");
+    // for old unit test expected values with 4 decimal precision:
+    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.0001");
 
     /**
      * Verifies that the actual {@code Num} value is exactly equal to the expected {@code String} representation.
@@ -44,8 +51,12 @@ public class TestUtils {
      * @param actual the actual {@code Num} value
      * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code String} representation
      */
+    public static void assertNumExactlyEquals(String expected, Num actual) {
+        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()));
+    }
+
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(actual.numOf(new BigDecimal(expected)), actual);
+        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()), BIGDECIMALNUM_OFFSET);
     }
 
     /**
@@ -56,7 +67,7 @@ public class TestUtils {
      * @throws AssertionError if the actual {@code Num} value is exactly equal to the given {@code String} representation
      */
     public static void assertNumNotEquals(String expected, Num actual) {
-        assertNotEquals(actual.numOf(new BigDecimal(expected)), actual);
+        assertBigDecimalNumNotEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()));
     }
 
     /**
@@ -67,7 +78,7 @@ public class TestUtils {
      * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code Num}
      */
     public static void assertNumEquals(Num expected, Num actual){
-        assertEquals(expected, actual);
+        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected.toString()), BigDecimalNum.valueOf(actual.toString()));
     }
 
     /**
@@ -78,7 +89,7 @@ public class TestUtils {
      * @throws AssertionError if the actual {@code Num} value is exactly equal to the given {@code Num}
      */
     public static void assertNumNotEquals(Num expected, Num actual) {
-        assertNotEquals(expected, actual);
+        assertBigDecimalNumNotEquals(null, BigDecimalNum.valueOf(expected.toString()), BigDecimalNum.valueOf(actual.toString()));
     }
 
     /**
@@ -89,30 +100,11 @@ public class TestUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code Num} representation within the delta
      */
     public static void assertNumEquals(double expected, Num actual) {
-        assertEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
+        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()), BIGDECIMALNUM_OFFSET);
     }
 
-    /**
-     * Verifies that two {@code Num} values are not equal to within a positive delta.
-     *
-     * @param expected the expected {@code Num} to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual value is equal to the given {@code Num} representation within the delta
-     */
     public static void assertNumNotEquals(double expected, Num actual) {
-        assertNotEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
-    }
-
-    /**
-     * Verifies that two {@code Num} values are equal to within a positive delta.
-     *
-     * @param message the {@code String} message to print if the values are not equal
-     * @param expected the expected {@code Num} to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual value is not equal to the given {@code Num} representation within the delta
-     */
-    public static void assertNumEquals(String message, double expected, Num actual) {
-        assertEquals(message, expected, actual.doubleValue(), GENERAL_OFFSET);
+        assertBigDecimalNumNotEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()));
     }
 
     /**
@@ -124,11 +116,18 @@ public class TestUtils {
      *             or if any of the actual values are not equal to the corresponding expected values within the delta
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
+        assertIndicatorEquals(expected, actual, BIGDECIMALNUM_OFFSET);
+    }
+
+    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num offset) {
         assertEquals("Size does not match,", expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
         for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-            assertNumEquals(String.format("Failed at index %s: %s", i, actual.toString()),
-                    expected.getValue(i).doubleValue(),
-                    actual.getValue(i));
+            //            System.out.println(expected.getValue(i) + ", " + actual.getValue(i));
+            Num exp = BigDecimalNum.valueOf(expected.getValue(i).toString());
+            Num act = BigDecimalNum.valueOf((actual.getValue(i).toString()));
+            assertBigDecimalNumEquals(
+                    String.format("Failed at index %s: value %s does not match expected %s", i, act.toString(), exp.toString()),
+                    exp, act, offset);
         }
     }
 
@@ -141,14 +140,44 @@ public class TestUtils {
      *             and if all of the actual values are equal to the corresponding expected values within the delta
      */
     public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual) {
+        assertIndicatorNotEquals(expected, actual, BIGDECIMALNUM_OFFSET);
+    }
+
+    public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual, Num offset) {
         if (expected.getTimeSeries().getBarCount() == actual.getTimeSeries().getBarCount()) {
             for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-                if (Math.abs((expected.getValue(i).minus(actual.getValue(i))).doubleValue()) > GENERAL_OFFSET) {
+                Num exp = BigDecimalNum.valueOf(expected.getValue(i).toString());
+                Num act = BigDecimalNum.valueOf(actual.getValue(i).toString());
+                if (exp.minus(act).abs().isGreaterThan(offset)) {
                     return;
                 }
             }
         }
         throw new AssertionError("indicators are the same within delta");
+    }
+
+    private static void assertBigDecimalNumEquals(String message, Num expected, Num actual, Num delta) {
+        //        System.out.println("assertBDE " + expected.toString() + ", " + actual.toString());
+        if (expected.minus(actual).abs().isGreaterThan(delta)) {
+            if (message == null) message = "value " + actual.toString() + " does not match expected " + expected.toString();
+            throw new AssertionError(message);
+        }
+    }
+
+    private static void assertBigDecimalNumEquals(String message, Num expected, Num actual) {
+        //        System.out.println("assertBDE " + expected.toString() + ", " + actual.toString());
+        if (expected.compareTo(actual) != 0) {
+            if (message == null) message = "value " + actual.toString() + " does not match expected " + expected.toString();
+            throw new AssertionError(message);
+        }
+    }
+
+    private static void assertBigDecimalNumNotEquals(String message, Num expected, Num actual) {
+        //        System.out.println("assertBDNE " + expected.toString() + ", " + actual.toString());
+        if (expected.compareTo(actual) == 0) {
+            if (message == null) message = "value " + actual.toString() + " matches expected " + expected.toString();
+            throw new AssertionError(message);
+        }
     }
 
 }

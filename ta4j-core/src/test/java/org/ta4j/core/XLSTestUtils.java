@@ -38,6 +38,8 @@ import java.util.function.Function;
 import java.util.zip.DataFormatException;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CellValue;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
@@ -48,7 +50,7 @@ import org.ta4j.core.mocks.MockTradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
-public class XlsTestsUtils {
+public class XLSTestUtils {
 
     /**
      * Returns the first Sheet (mutable) from a workbook with the file name in
@@ -226,11 +228,23 @@ public class XlsTestsUtils {
             if (row.getCell(column) == null) {
                 continue;
             }
-            String s = evaluator.evaluate(row.getCell(column)).formatAsString();
-            if (s.equals("#DIV/0!")) {
+            Cell cell = row.getCell(column);
+
+            // To see the difference between these two methods of reading cells, uncomment these four commented lines
+            //            CellType origCellType = cell.getCellTypeEnum();
+            //            String origString = evaluator.evaluate(cell).formatAsString();
+
+            evaluator.evaluateFormulaCellEnum(cell);
+            cell.setCellType(CellType.STRING);
+            String string = cell.toString();
+
+            //            CellType cellType = cell.getCellTypeEnum();
+            //            System.out.println("as " + origCellType + ": " + origString + ", as " + cellType + ": " + string);
+
+            if (string.equals("#DIV/0!")) {
                 values.add(NaN.NaN);
             } else {
-                values.add(numFunction.apply(new BigDecimal(s)));
+                values.add(numFunction.apply(new BigDecimal(string)));
             }
         }
         return values;
