@@ -32,6 +32,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestUtils {
 
+    public static final int HIGH_PRECISION = 64;
     /** Offset for double equality checking */
     // deprecated so that JUnit Assert calls direct from unit tests will show warnings
     // TODO: modify unit tests to not call JUnit Assert but to call TestUtils Assert
@@ -42,7 +43,7 @@ public class TestUtils {
     // for DoubleNum:
     //    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.000000000001");
     // for old unit test expected values with 4 decimal precision:
-    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.0001");
+    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.0001", HIGH_PRECISION);
 
     /**
      * Verifies that the actual {@code Num} value is exactly equal to the expected {@code String} representation.
@@ -52,11 +53,11 @@ public class TestUtils {
      * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code String} representation
      */
     public static void assertNumExactlyEquals(String expected, Num actual) {
-        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()));
+        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected, HIGH_PRECISION), BigDecimalNum.valueOf(actual.toString()));
     }
 
     public static void assertNumEquals(String expected, Num actual) {
-        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()), BIGDECIMALNUM_OFFSET);
+        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected, HIGH_PRECISION), BigDecimalNum.valueOf(actual.toString()), BIGDECIMALNUM_OFFSET);
     }
 
     /**
@@ -157,10 +158,12 @@ public class TestUtils {
     }
 
     private static void assertBigDecimalNumEquals(String message, Num expected, Num actual, Num delta) {
-        //        System.out.println("assertBDE " + expected.toString() + ", " + actual.toString());
         if (expected.minus(actual).abs().isGreaterThan(delta)) {
             if (message == null) message = "value " + actual.toString() + " does not match expected " + expected.toString();
+            //System.out.println("assertBDE " + expected.toString() + " != " + actual.toString() + ", " + delta.toString());
             throw new AssertionError(message);
+        } else {
+            //System.out.println("assertBDE " + expected.toString() + " == " + actual.toString() + ", " + delta.toString());
         }
     }
 

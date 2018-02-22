@@ -61,6 +61,10 @@ public final class BigDecimalNum implements Num {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
 
+    private BigDecimalNum(String val, int precision) {
+        delegate = new BigDecimal(val, new MathContext(precision, RoundingMode.HALF_UP));
+    }
+
     private BigDecimalNum(short val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
     }
@@ -333,6 +337,10 @@ public final class BigDecimalNum implements Num {
      */
     public static Num valueOf(String val) {
         return val.toUpperCase().equals("NAN") ? NaN : new BigDecimalNum(val);
+    }
+
+    public static Num valueOf(String val, int precision) {
+        return val.toUpperCase().equals("NAN") ? NaN : new BigDecimalNum(val, precision);
     }
 
     /**
