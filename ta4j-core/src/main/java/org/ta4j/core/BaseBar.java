@@ -221,25 +221,30 @@ public class BaseBar implements Bar {
      * @param tradePrice the price
      */
     public void addTrade(Num tradeVolume, Num tradePrice) {
-        if (openPrice == null) {
-            openPrice = tradePrice;
-        }
-        closePrice = tradePrice;
-
-        if (maxPrice == null) {
-            maxPrice = tradePrice;
-        } else {
-            maxPrice = maxPrice.isLessThan(tradePrice) ? tradePrice : maxPrice;
-        }
-        if (minPrice == null) {
-            minPrice = tradePrice;
-        } else {
-            minPrice = minPrice.isGreaterThan(tradePrice) ? tradePrice : minPrice;
-        }
+        addPrice(tradePrice);
 
         volume = volume.plus(tradeVolume);
         amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
         trades++;
+    }
+
+    @Override
+    public void addPrice(Num price) {
+        if (openPrice == null) {
+            openPrice = price;
+        }
+
+        closePrice = price;
+        if (maxPrice == null) {
+            maxPrice = price;
+        } else if(maxPrice.isLessThan(price)) {
+            maxPrice = price;
+        }
+        if (minPrice == null) {
+            minPrice = price;
+        } else if(minPrice.isGreaterThan(price)){
+            minPrice = price;
+        }
     }
 
     @Override
