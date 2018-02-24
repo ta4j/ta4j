@@ -48,13 +48,13 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      * @param series a time series
-     * @param timeFrame the number of bars used to calculate the average body height
+     * @param barCount the number of bars used to calculate the average body height
      * @param bodyFactor the factor used when checking if a candle is Doji
      */
-    public DojiIndicator(TimeSeries series, int timeFrame, double bodyFactor) {
+    public DojiIndicator(TimeSeries series, int barCount, double bodyFactor) {
         super(series);
         bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
-        averageBodyHeightInd = new SMAIndicator(bodyHeightInd, timeFrame);
+        averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
         factor = numOf(bodyFactor);
     }
 

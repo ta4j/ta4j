@@ -45,19 +45,19 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
     private VolumeIndicator volumeIndicator;
 
-    private int timeFrame;
+    private int barCount;
 
-    public ChaikinMoneyFlowIndicator(TimeSeries series, int timeFrame) {
+    public ChaikinMoneyFlowIndicator(TimeSeries series, int barCount) {
         super(series);
         this.series = series;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         this.clvIndicator = new CloseLocationValueIndicator(series);
-        this.volumeIndicator = new VolumeIndicator(series, timeFrame);
+        this.volumeIndicator = new VolumeIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        int startIndex = Math.max(0, index - timeFrame + 1);
+        int startIndex = Math.max(0, index - barCount + 1);
         Num sumOfMoneyFlowVolume = numOf(0);
         for (int i = startIndex; i <= index; i++) {
             sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
@@ -77,6 +77,6 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

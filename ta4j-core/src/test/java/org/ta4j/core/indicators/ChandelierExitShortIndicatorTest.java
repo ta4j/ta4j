@@ -69,7 +69,7 @@ public class ChandelierExitShortIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void massIndexUsing3And8TimeFrames() {
+    public void massIndexUsing3And8BarCounts() {
         ChandelierExitShortIndicator ces = new ChandelierExitShortIndicator(data, 5, 2);
 
         assertNumEquals(45.3246, ces.getValue(5));

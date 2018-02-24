@@ -48,7 +48,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     }
 
     @Test
-    public void varianceUsingTimeFrame4UsingClosePrice() {
+    public void varianceUsingBarCount4UsingClosePrice() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
 
         assertNumEquals(0, var.getValue(0));
@@ -71,14 +71,14 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     }
 
     @Test
-    public void varianceShouldBeZeroWhenTimeFrameIs1() {
+    public void varianceShouldBeZeroWhenBarCountIs1() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, var.getValue(3));
         assertNumEquals(0, var.getValue(8));
     }
 
     @Test
-    public void varianceUsingTimeFrame2UsingClosePrice() {
+    public void varianceUsingBarCount2UsingClosePrice() {
         VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
 
         assertNumEquals(0, var.getValue(0));

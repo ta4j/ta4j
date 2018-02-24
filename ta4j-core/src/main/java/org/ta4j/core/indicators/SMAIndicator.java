@@ -34,28 +34,28 @@ public class SMAIndicator extends CachedIndicator<Num> {
     private static final long serialVersionUID = 653601631245729997L;
     private final Indicator<Num> indicator;
 
-    private final int timeFrame;
+    private final int barCount;
 
-    public SMAIndicator(Indicator<Num> indicator, int timeFrame) {
+    public SMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
         Num sum = getTimeSeries().numOf(0);
-        for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
+        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
-        final int realTimeFrame = Math.min(timeFrame, index + 1);
-        return sum.dividedBy(getTimeSeries().numOf(realTimeFrame));
+        final int realBarCount = Math.min(barCount, index + 1);
+        return sum.dividedBy(getTimeSeries().numOf(realBarCount));
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
 }

@@ -51,11 +51,11 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param series the series
-     * @param timeFrameConversionLine the time frame for the conversion line (usually 9)
-     * @param timeFrameBaseLine the time frame for the base line (usually 26)
+     * @param barCountConversionLine the time frame for the conversion line (usually 9)
+     * @param barCountBaseLine the time frame for the base line (usually 26)
      */
-    public IchimokuSenkouSpanAIndicator(TimeSeries series, int timeFrameConversionLine, int timeFrameBaseLine) {
-        this(series, new IchimokuTenkanSenIndicator(series, timeFrameConversionLine), new IchimokuKijunSenIndicator(series, timeFrameBaseLine));
+    public IchimokuSenkouSpanAIndicator(TimeSeries series, int barCountConversionLine, int barCountBaseLine) {
+        this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine), new IchimokuKijunSenIndicator(series, barCountBaseLine));
     }
     
     /**

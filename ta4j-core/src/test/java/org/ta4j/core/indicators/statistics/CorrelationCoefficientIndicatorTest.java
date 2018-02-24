@@ -78,7 +78,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
-    public void usingTimeFrame5UsingClosePriceAndVolume() {
+    public void usingBarCount5UsingClosePriceAndVolume() {
         CorrelationCoefficientIndicator coef = new CorrelationCoefficientIndicator(close, volume, 5);
 
         assertTrue(coef.getValue(0).isNaN());

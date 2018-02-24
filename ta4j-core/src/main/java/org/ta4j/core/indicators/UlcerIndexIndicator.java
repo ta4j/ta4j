@@ -39,23 +39,23 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
 
     private HighestValueIndicator highestValueInd;
     
-    private int timeFrame;
+    private int barCount;
 
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public UlcerIndexIndicator(Indicator<Num> indicator, int timeFrame) {
+    public UlcerIndexIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
-        highestValueInd = new HighestValueIndicator(indicator, timeFrame);
+        this.barCount = barCount;
+        highestValueInd = new HighestValueIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         Num squaredAverage = numOf(0);
         for (int i = startIndex; i <= index; i++) {
@@ -70,6 +70,6 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

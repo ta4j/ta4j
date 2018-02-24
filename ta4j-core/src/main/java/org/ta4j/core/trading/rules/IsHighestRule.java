@@ -31,29 +31,29 @@ import org.ta4j.core.num.Num;
  * Indicator-highest-indicator rule.
  * <p></p>
  * Satisfied when the value of the {@link Indicator indicator} is the highest
- * within the timeFrame.
+ * within the barCount.
  */
 public class IsHighestRule extends AbstractRule {
 
 	/** The actual indicator */
 	private Indicator<Num> ref;
-	/** The timeFrame */
-	private int timeFrame;
+	/** The barCount */
+	private int barCount;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param ref the indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 */
-	public IsHighestRule(Indicator<Num> ref, int timeFrame) {
+	public IsHighestRule(Indicator<Num> ref, int barCount) {
 		this.ref = ref;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		HighestValueIndicator highest = new HighestValueIndicator(ref, timeFrame);
+		HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
 		Num highestVal = highest.getValue(index);
 		Num refVal = ref.getValue(index);
 		

@@ -58,7 +58,7 @@ public class UlcerIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
-    public void ulcerIndexUsingTimeFrame14UsingIBMData() {
+    public void ulcerIndexUsingBarCount14UsingIBMData() {
         UlcerIndexIndicator ulcer = new UlcerIndexIndicator(new ClosePriceIndicator(ibmData), 14);
 
         assertNumEquals(0, ulcer.getValue(0));

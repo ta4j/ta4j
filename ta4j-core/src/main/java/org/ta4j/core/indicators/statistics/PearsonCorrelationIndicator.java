@@ -18,27 +18,27 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 	
 	private final Indicator<Num> indicator1;
 	private final Indicator<Num> indicator2;
-	private final int timeFrame;
+	private final int barCount;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param indicator1 the first indicator
 	 * @param indicator2 the second indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 */
-	public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int timeFrame) {
+	public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
 		super(indicator1);
 		this.indicator1 = indicator1;
 		this.indicator2 = indicator2;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 	}
 	
 
 	@Override
 	protected Num calculate(int index) {
 
-		Num n = numOf(timeFrame);
+		Num n = numOf(barCount);
 
 		Num Sx = numOf(0);
 		Num Sy = numOf(0);
@@ -46,7 +46,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 		Num Syy = numOf(0);
 		Num Sxy = numOf(0);
 		
-		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - timeFrame + 1); i <= index; i++) {
+		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
 
 			Num x = indicator1.getValue(i);
 			Num y = indicator2.getValue(i);

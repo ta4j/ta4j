@@ -50,14 +50,14 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      * @param series a time series
-     * @param timeFrame the number of bars used to calculate the average lower shadow
+     * @param barCount the number of bars used to calculate the average lower shadow
      * @param factor the factor used when checking if a candle has a very short lower shadow
      */
-    public ThreeBlackCrowsIndicator(TimeSeries series, int timeFrame, double factor) {
+    public ThreeBlackCrowsIndicator(TimeSeries series, int barCount, double factor) {
         super(series);
         this.series = series;
         lowerShadowInd = new LowerShadowIndicator(series);
-        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, timeFrame);
+        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
         this.factor = numOf(factor);
     }
 

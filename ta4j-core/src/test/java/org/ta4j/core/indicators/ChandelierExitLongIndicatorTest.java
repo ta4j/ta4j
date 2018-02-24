@@ -69,7 +69,7 @@ public class ChandelierExitLongIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
-    public void massIndexUsing3And8TimeFrames() {
+    public void massIndexUsing3And8BarCounts() {
         ChandelierExitLongIndicator cel = new ChandelierExitLongIndicator(data, 5, 2);
 
         assertNumEquals(44.9853, cel.getValue(5));

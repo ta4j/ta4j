@@ -39,7 +39,7 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class AroonDownIndicator extends CachedIndicator<Num> {
 
-    private final int timeFrame;
+    private final int barCount;
 
     private final LowestValueIndicator lowestMinPriceIndicator;
     private final Indicator<Num> minValueIndicator;
@@ -50,25 +50,25 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
      * <p>
      * @param series the time series
      * @param minValueIndicator the indicator for the maximum price (default {@link MaxPriceIndicator})
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public AroonDownIndicator(TimeSeries series, Indicator<Num> minValueIndicator, int timeFrame) {
+    public AroonDownIndicator(TimeSeries series, Indicator<Num> minValueIndicator, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         this.minValueIndicator = minValueIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, timeFrame+1);
+        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, barCount+1);
     }
 
     /**
      * Default Constructor that is using the maximum price
      * <p>
      * @param series the time series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public AroonDownIndicator(TimeSeries series, int timeFrame) {
-        this(series,new MinPriceIndicator(series), timeFrame);
+    public AroonDownIndicator(TimeSeries series, int barCount) {
+        this(series,new MinPriceIndicator(series), barCount);
     }
 
     @Override
@@ -77,7 +77,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the lowest close price
-        int endIndex = Math.max(0,index - timeFrame);
+        int endIndex = Math.max(0,index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {
             if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
@@ -86,11 +86,11 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return numOf(timeFrame - nbBars).dividedBy(numOf(timeFrame)).multipliedBy(hundred);
+        return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+" timeFrame: "+timeFrame;
+        return getClass().getSimpleName()+" barCount: "+barCount;
     }
 }

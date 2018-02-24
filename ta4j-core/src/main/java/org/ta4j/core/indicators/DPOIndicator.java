@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
-    private final int timeFrame;
+    private final int barCount;
     
     private final int timeShift;
     
@@ -55,23 +55,23 @@ public class DPOIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param series the series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public DPOIndicator(TimeSeries series, int timeFrame) {
-        this(new ClosePriceIndicator(series), timeFrame);
+    public DPOIndicator(TimeSeries series, int barCount) {
+        this(new ClosePriceIndicator(series), barCount);
     }
     
     /**
      * Constructor.
      * @param price the price
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public DPOIndicator(Indicator<Num> price, int timeFrame) {
+    public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
-        this.timeFrame = timeFrame;
-        timeShift = timeFrame / 2 + 1;
+        this.barCount = barCount;
+        timeShift = barCount / 2 + 1;
         this.price = price;
-        sma = new SMAIndicator(price, this.timeFrame);
+        sma = new SMAIndicator(price, this.barCount);
     }
 
     @Override
@@ -81,6 +81,6 @@ public class DPOIndicator extends CachedIndicator<Num> {
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

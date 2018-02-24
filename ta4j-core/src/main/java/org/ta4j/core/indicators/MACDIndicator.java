@@ -40,7 +40,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
     private final EMAIndicator longTermEma;
 
     /**
-     * Constructor with shortTimeFrame "12" and longTimeFrame "26".
+     * Constructor with shortBarCount "12" and longBarCount "26".
      *
      * @param indicator the indicator
      */
@@ -52,16 +52,16 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator
-     * @param shortTimeFrame the short time frame (normally 12)
-     * @param longTimeFrame the long time frame (normally 26)
+     * @param shortBarCount the short time frame (normally 12)
+     * @param longBarCount the long time frame (normally 26)
      */
-    public MACDIndicator(Indicator<Num> indicator, int shortTimeFrame, int longTimeFrame) {
+    public MACDIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
         super(indicator);
-        if (shortTimeFrame > longTimeFrame) {
+        if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
-        shortTermEma = new EMAIndicator(indicator, shortTimeFrame);
-        longTermEma = new EMAIndicator(indicator, longTimeFrame);
+        shortTermEma = new EMAIndicator(indicator, shortBarCount);
+        longTermEma = new EMAIndicator(indicator, longBarCount);
     }
 
     @Override

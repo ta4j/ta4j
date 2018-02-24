@@ -55,7 +55,7 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void getValueWhenTimeFrameIs12() {
+    public void getValueWhenBarCountIs12() {
         ROCIndicator roc = new ROCIndicator(closePrice, 12);
 
         // Incomplete time frame

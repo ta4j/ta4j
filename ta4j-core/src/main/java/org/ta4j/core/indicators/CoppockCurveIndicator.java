@@ -38,9 +38,9 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
     
     /**
       * Constructor with default values: <br/>
-      * - longRoCTimeFrame=14 <br/>
-      * - shortRoCTimeFrame=11 <br/>
-      * - wmaTimeFrame=10
+      * - longRoCBarCount=14 <br/>
+      * - shortRoCBarCount=11 <br/>
+      * - wmaBarCount=10
       * 
       * @param indicator the indicator
     */
@@ -51,17 +51,17 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param indicator the indicator (usually close price)
-     * @param longRoCTimeFrame the time frame for long term RoC
-     * @param shortRoCTimeFrame the time frame for short term RoC
-     * @param wmaTimeFrame the time frame (for WMA)
+     * @param longRoCBarCount the time frame for long term RoC
+     * @param shortRoCBarCount the time frame for short term RoC
+     * @param wmaBarCount the time frame (for WMA)
      */
-    public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCTimeFrame, int shortRoCTimeFrame, int wmaTimeFrame) {
+    public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);
         SumIndicator sum = new SumIndicator(
-                new ROCIndicator(indicator, longRoCTimeFrame),
-                new ROCIndicator(indicator, shortRoCTimeFrame)
+                new ROCIndicator(indicator, longRoCBarCount),
+                new ROCIndicator(indicator, shortRoCBarCount)
         );
-        wma = new WMAIndicator(sum, wmaTimeFrame);
+        wma = new WMAIndicator(sum, wmaBarCount);
     }
 
     @Override

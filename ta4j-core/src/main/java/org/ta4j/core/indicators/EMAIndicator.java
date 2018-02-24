@@ -37,9 +37,9 @@ public class EMAIndicator extends AbstractEMAIndicator {
      * Constructor.
      *
      * @param indicator an indicator
-     * @param timeFrame the EMA time frame
+     * @param barCount the EMA time frame
      */
-    public EMAIndicator(Indicator<Num> indicator, int timeFrame) {
-        super(indicator, timeFrame, (2.0/(timeFrame+1)));
+    public EMAIndicator(Indicator<Num> indicator, int barCount) {
+        super(indicator, barCount, (2.0/(barCount+1)));
     }
 }

@@ -36,23 +36,23 @@ public class ROCIndicator extends CachedIndicator<Num> {
     private static final long serialVersionUID = 7983097470035346856L;
 	
     private final Indicator<Num> indicator;
-    private final int timeFrame;
+    private final int barCount;
 
     /**
      * Constructor.
      * 
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public ROCIndicator(Indicator<Num> indicator, int timeFrame) {
+    public ROCIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-        int nIndex = Math.max(index - timeFrame, 0);
+        int nIndex = Math.max(index - barCount, 0);
         Num nPeriodsAgoValue = indicator.getValue(nIndex);
         Num currentValue = indicator.getValue(index);
         return currentValue.minus(nPeriodsAgoValue)
@@ -62,6 +62,6 @@ public class ROCIndicator extends CachedIndicator<Num> {
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

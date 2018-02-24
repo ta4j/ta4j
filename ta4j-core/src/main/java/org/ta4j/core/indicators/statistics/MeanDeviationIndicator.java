@@ -37,20 +37,20 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     private Indicator<Num> indicator;
 
-    private int timeFrame;
+    private int barCount;
 
     private SMAIndicator sma;
     
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public MeanDeviationIndicator(Indicator<Num> indicator, int timeFrame) {
+    public MeanDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
-        sma = new SMAIndicator(indicator, timeFrame);
+        this.barCount = barCount;
+        sma = new SMAIndicator(indicator, barCount);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
         Num absoluteDeviations = numOf(0);
 
         final Num average = sma.getValue(index);
-        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int startIndex = Math.max(0, index - barCount + 1);
         final int nbValues = index - startIndex + 1;
 
         for (int i = startIndex; i <= index; i++) {
@@ -70,6 +70,6 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

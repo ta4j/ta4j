@@ -48,7 +48,7 @@ public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
-    public void standardDeviationUsingTimeFrame4UsingClosePrice() {
+    public void standardDeviationUsingBarCount4UsingClosePrice() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 4);
 
         assertNumEquals(0, sdv.getValue(0));
@@ -65,7 +65,7 @@ public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
-    public void standardDeviationShouldBeZeroWhenTimeFrameIs1() {
+    public void standardDeviationShouldBeZeroWhenBarCountIs1() {
         StandardDeviationIndicator sdv = new StandardDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, sdv.getValue(3));
         assertNumEquals(0, sdv.getValue(8));

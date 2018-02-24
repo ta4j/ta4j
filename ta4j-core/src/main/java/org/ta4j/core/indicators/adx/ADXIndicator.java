@@ -37,18 +37,18 @@ import org.ta4j.core.num.Num;
 public class ADXIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator averageDXIndicator;
-    private final int diTimeFrame;
-    private final int adxTimeFrame;
+    private final int diBarCount;
+    private final int adxBarCount;
 
-    public ADXIndicator(TimeSeries series, int diTimeFrame, int adxTimeFrame) {
+    public ADXIndicator(TimeSeries series, int diBarCount, int adxBarCount) {
         super(series);
-        this.diTimeFrame = diTimeFrame;
-        this.adxTimeFrame = adxTimeFrame;
-        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diTimeFrame), adxTimeFrame);
+        this.diBarCount = diBarCount;
+        this.adxBarCount = adxBarCount;
+        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
     }
 
-    public ADXIndicator(TimeSeries series, int timeFrame) {
-        this(series, timeFrame, timeFrame);
+    public ADXIndicator(TimeSeries series, int barCount) {
+        this(series, barCount, barCount);
     }
 
     @Override
@@ -58,6 +58,6 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " diTimeFrame: " + diTimeFrame + " adxTimeFrame: " + adxTimeFrame;
+        return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
     }
 }

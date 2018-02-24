@@ -43,20 +43,20 @@ public class CCIIndicator extends CachedIndicator<Num> {
 
     private MeanDeviationIndicator meanDeviationInd;
 
-    private int timeFrame;
+    private int barCount;
 
     /**
      * Constructor.
      * @param series the time series
-     * @param timeFrame the time frame (normally 20)
+     * @param barCount the time frame (normally 20)
      */
-    public CCIIndicator(TimeSeries series, int timeFrame) {
+    public CCIIndicator(TimeSeries series, int barCount) {
         super(series);
         FACTOR = numOf(0.015);
         typicalPriceInd = new TypicalPriceIndicator(series);
-        smaInd = new SMAIndicator(typicalPriceInd, timeFrame);
-        meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, timeFrame);
-        this.timeFrame = timeFrame;
+        smaInd = new SMAIndicator(typicalPriceInd, barCount);
+        meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
+        this.barCount = barCount;
     }
 
     @Override
@@ -72,6 +72,6 @@ public class CCIIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

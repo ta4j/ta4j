@@ -57,66 +57,66 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      */
-    public FisherIndicator(Indicator<Num> price, int timeFrame) {
-        this(price, timeFrame, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
+    public FisherIndicator(Indicator<Num> price, int barCount) {
+        this(price, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
     }
 
     /**
      * Constructor (with gamma 0.5, delta 0.5).
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 0.5 or)
      */
-    public FisherIndicator(Indicator<Num> price, int timeFrame, double alpha, double beta) {
-        this(price, timeFrame,alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE,1, true);
+    public FisherIndicator(Indicator<Num> price, int barCount, double alpha, double beta) {
+        this(price, barCount,alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE,1, true);
     }
 
     /**
      * Constructor.
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 or 0.5)
      * @param gamma the gamma (usually 0.25 or 0.5)
      * @param delta the delta (usually 0.5)
      */
-    public FisherIndicator(Indicator<Num> price, int timeFrame, double alpha, double beta, double gamma, double delta) {
-        this(price, timeFrame, alpha, beta, gamma, delta, 1, true);
+    public FisherIndicator(Indicator<Num> price, int barCount, double alpha, double beta, double gamma, double delta) {
+        this(price, barCount, alpha, beta, gamma, delta, 1, true);
     }
 
     /**
      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param ref the indicator
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
-    public FisherIndicator(Indicator<Num> ref, int timeFrame, boolean isPriceIndicator) {
-        this(ref, timeFrame, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, isPriceIndicator);
+    public FisherIndicator(Indicator<Num> ref, int barCount, boolean isPriceIndicator) {
+        this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, isPriceIndicator);
     }
 
     /**
      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param ref the indicator
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      * @param densityFactor the density factor (usually 1.0)
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
-    public FisherIndicator(Indicator<Num> ref, int timeFrame, double densityFactor, boolean isPriceIndicator) {
-        this(ref, timeFrame, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, densityFactor, isPriceIndicator);
+    public FisherIndicator(Indicator<Num> ref, int barCount, double densityFactor, boolean isPriceIndicator) {
+        this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, densityFactor, isPriceIndicator);
     }
 
     /**
      * Constructor.
      *
      * @param ref the indicator
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 or 0.5)
      * @param gamma the gamma (usually 0.25 or 0.5)
@@ -124,8 +124,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param densityFactor the density factor (usually 1.0)
      * @param isPriceIndicator use true, if "ref" is a price indicator
 
-    public FisherIndicator(Indicator<Num> ref, int timeFrame, double alpha, double beta, double gamma, double delta, double densityFactor, boolean isPriceIndicator) {
-        this(ref, timeFrame, alpha, beta, gamma, delta, densityFactor, isPriceIndicator);
+    public FisherIndicator(Indicator<Num> ref, int barCount, double alpha, double beta, double gamma, double delta, double densityFactor, boolean isPriceIndicator) {
+        this(ref, barCount, alpha, beta, gamma, delta, densityFactor, isPriceIndicator);
     }
      */
 
@@ -133,7 +133,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor
      *
      * @param ref the indicator
-     * @param timeFrame the time frame (usually 10)
+     * @param barCount the time frame (usually 10)
      * @param alphaD the alpha (usually 0.33 or 0.5)
      * @param betaD the beta (usually 0.67 or 0.5)
      * @param gammaD the gamma (usually 0.25 or 0.5)
@@ -141,7 +141,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param densityFactorD the density factor (usually 1.0)
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
-    public FisherIndicator(Indicator<Num> ref, int timeFrame, final double alphaD, final double betaD,
+    public FisherIndicator(Indicator<Num> ref, int barCount, final double alphaD, final double betaD,
                            final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
         super(ref);
         this.ref = ref;
@@ -151,8 +151,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
         Num alpha = numOf(alphaD);
         Num beta = numOf(betaD);
-        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new MaxPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
-        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new MinPriceIndicator(ref.getTimeSeries()) : ref, timeFrame);
+        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new MaxPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new MinPriceIndicator(ref.getTimeSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 

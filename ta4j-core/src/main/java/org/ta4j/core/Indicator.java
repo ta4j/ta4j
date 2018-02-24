@@ -58,14 +58,14 @@ public interface Indicator<T> extends Serializable {
 	 *
 	 * @param ref the indicator
 	 * @param index the index
-	 * @param timeFrame the timeFrame
-	 * @return array of double within the timeFrame
+	 * @param barCount the barCount
+	 * @return array of double within the barCount
 	 */
-	static Double[] toDouble(Indicator<Num> ref, int index, int timeFrame) {
+	static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
 
-		Double[] all = new Double[timeFrame];
+		Double[] all = new Double[barCount];
 
-		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
+		for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
 			Num number = ref.getValue(index);
 			all[i] = number.doubleValue();
 		}

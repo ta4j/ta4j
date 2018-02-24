@@ -30,14 +30,14 @@ import org.ta4j.core.num.Num;
  * Indicator-rising-indicator rule.
  * <p></p>
  * Satisfied when the values of the {@link Indicator indicator} increase
- * within the timeFrame.
+ * within the barCount.
  */
 public class IsRisingRule extends AbstractRule {
 
 	/** The actual indicator */
 	private final Indicator<Num> ref;
-	/** The timeFrame */
-	private final int timeFrame;
+	/** The barCount */
+	private final int barCount;
 	/** The minimum required strenght of the rising */
 	private double minStrenght;
 
@@ -45,22 +45,22 @@ public class IsRisingRule extends AbstractRule {
 	 * Constructor for strict rising.
 	 * 
 	 * @param ref the indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 */
-	public IsRisingRule(Indicator<Num> ref, int timeFrame) {
-		this(ref, timeFrame, 1);
+	public IsRisingRule(Indicator<Num> ref, int barCount) {
+		this(ref, barCount, 1);
 	}
 	
 	/**
 	 * Constructor.
 	 * 
 	 * @param ref the indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 * @param minStrenght the minimum required rising strenght (between '0' and '1', e.g. '1' for strict rising)
 	 */
-	public IsRisingRule(Indicator<Num> ref, int timeFrame, double minStrenght) {
+	public IsRisingRule(Indicator<Num> ref, int barCount, double minStrenght) {
 		this.ref = ref;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 		this.minStrenght = minStrenght;
 	}
 
@@ -72,13 +72,13 @@ public class IsRisingRule extends AbstractRule {
 		}
 		
 		int count = 0;
-		for (int i = Math.max(0, index - timeFrame + 1); i <= index; i++) {
+		for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
 			if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(0, i - 1)))) {
 				count += 1;
 			}
 		}
 
-		double ratio = count / (double) timeFrame;
+		double ratio = count / (double) barCount;
 		
 		final boolean satisfied = ratio >= minStrenght;
 		traceIsSatisfied(index, satisfied);

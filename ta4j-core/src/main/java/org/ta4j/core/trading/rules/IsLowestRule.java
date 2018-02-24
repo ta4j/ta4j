@@ -31,29 +31,29 @@ import org.ta4j.core.num.Num;
  * Indicator-lowest-indicator rule.
  * <p></p>
  * Satisfied when the value of the {@link Indicator indicator} is the lowest
- * within the timeFrame.
+ * within the barCount.
  */
 public class IsLowestRule extends AbstractRule {
 
 	/** The actual indicator */
 	private Indicator<Num> ref;
-	/** The timeFrame */
-	private int timeFrame;
+	/** The barCount */
+	private int barCount;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param ref the indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 */
-	public IsLowestRule(Indicator<Num> ref, int timeFrame) {
+	public IsLowestRule(Indicator<Num> ref, int barCount) {
 		this.ref = ref;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 	}
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		LowestValueIndicator lowest = new LowestValueIndicator(ref, timeFrame);
+		LowestValueIndicator lowest = new LowestValueIndicator(ref, barCount);
 		Num lowestVal = lowest.getValue(index);
 		Num refVal = ref.getValue(index);
 

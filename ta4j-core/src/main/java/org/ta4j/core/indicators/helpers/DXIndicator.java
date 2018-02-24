@@ -35,15 +35,15 @@ import org.ta4j.core.num.Num;
  */
 public class DXIndicator extends CachedIndicator<Num> {
 
-    private final int timeFrame;
+    private final int barCount;
     private final PlusDIIndicator plusDIIndicator;
     private final MinusDIIndicator minusDIIndicator;
 
-    public DXIndicator(TimeSeries series, int timeFrame) {
+    public DXIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
-        plusDIIndicator = new PlusDIIndicator(series, timeFrame);
-        minusDIIndicator = new MinusDIIndicator(series, timeFrame);
+        this.barCount = barCount;
+        plusDIIndicator = new PlusDIIndicator(series, barCount);
+        minusDIIndicator = new MinusDIIndicator(series, barCount);
     }
 
     @Override
@@ -58,6 +58,6 @@ public class DXIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

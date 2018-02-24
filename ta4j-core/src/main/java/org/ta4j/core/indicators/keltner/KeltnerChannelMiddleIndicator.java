@@ -38,13 +38,13 @@ public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
 
     private final EMAIndicator emaIndicator;
 
-    public KeltnerChannelMiddleIndicator(TimeSeries series, int timeFrameEMA) {
-        this(new TypicalPriceIndicator(series), timeFrameEMA);
+    public KeltnerChannelMiddleIndicator(TimeSeries series, int barCountEMA) {
+        this(new TypicalPriceIndicator(series), barCountEMA);
     }
 
-    public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int timeFrameEMA) {
+    public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
         super(indicator);
-        emaIndicator = new EMAIndicator(indicator, timeFrameEMA);
+        emaIndicator = new EMAIndicator(indicator, barCountEMA);
     }
 
     @Override

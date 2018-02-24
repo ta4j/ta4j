@@ -35,19 +35,19 @@ import org.ta4j.core.num.Num;
  */
 public class HMAIndicator extends CachedIndicator<Num> {
 
-    private final int timeFrame;
+    private final int barCount;
 
     private final WMAIndicator sqrtWma;
     
-    public HMAIndicator(Indicator<Num> indicator, int timeFrame) {
+    public HMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         
-        WMAIndicator halfWma = new WMAIndicator(indicator, timeFrame / 2);
-        WMAIndicator origWma = new WMAIndicator(indicator, timeFrame);
+        WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
+        WMAIndicator origWma = new WMAIndicator(indicator, barCount);
         
         Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(new MultiplierIndicator(halfWma, 2), origWma);
-        sqrtWma = new WMAIndicator(indicatorForSqrtWma, (int) Math.sqrt(timeFrame));
+        sqrtWma = new WMAIndicator(indicatorForSqrtWma, (int) Math.sqrt(barCount));
     }
 
     @Override
@@ -57,7 +57,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
 }

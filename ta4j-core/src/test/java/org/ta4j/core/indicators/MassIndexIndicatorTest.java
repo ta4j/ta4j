@@ -74,7 +74,7 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void massIndexUsing3And8TimeFrames() {
+    public void massIndexUsing3And8BarCounts() {
         MassIndexIndicator massIndex = new MassIndexIndicator(data, 3, 8);
 
         assertNumEquals(1, massIndex.getValue(0));

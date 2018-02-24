@@ -38,34 +38,34 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Num> {
     
     private final ATRIndicator averageTrueRange;
     
-    private final Num sqrtTimeFrame;
+    private final Num sqrtBarCount;
     
-    private final int timeFrame;
+    private final int barCount;
     
     /**
      * Constructor.
      *
      * @param series the series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public RandomWalkIndexHighIndicator(TimeSeries series, int timeFrame) {
+    public RandomWalkIndexHighIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new ATRIndicator(series, timeFrame);
-        sqrtTimeFrame = numOf(Math.sqrt(timeFrame));
+        averageTrueRange = new ATRIndicator(series, barCount);
+        sqrtBarCount = numOf(Math.sqrt(barCount));
     }
 
     @Override
     protected Num calculate(int index) {
-        return maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index - timeFrame)))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
+        return maxPrice.getValue(index).minus(minPrice.getValue(Math.max(0, index - barCount)))
+                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtBarCount));
     }
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
 }

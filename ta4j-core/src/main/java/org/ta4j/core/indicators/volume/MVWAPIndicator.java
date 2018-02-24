@@ -39,11 +39,11 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param vwap the vwap
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public MVWAPIndicator(VWAPIndicator vwap, int timeFrame) {
+    public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);
-        sma = new SMAIndicator(vwap, timeFrame);
+        sma = new SMAIndicator(vwap, barCount);
     }
 
     @Override

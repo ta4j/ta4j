@@ -64,7 +64,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void usingTimeFrame10UsingClosePrice() throws Exception {
+    public void usingBarCount10UsingClosePrice() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 10);
         assertNumEquals(63.6948, indicator.getValue(9));
         assertNumEquals(63.2648, indicator.getValue(10));

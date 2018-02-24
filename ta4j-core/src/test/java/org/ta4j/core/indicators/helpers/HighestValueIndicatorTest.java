@@ -52,7 +52,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
-    public void highestValueUsingTimeFrame5UsingClosePrice() {
+    public void highestValueUsingBarCount5UsingClosePrice() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
         assertNumEquals("4.0", highestValue.getValue(4));
@@ -73,7 +73,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
-    public void highestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
+    public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
         assertNumEquals("6.0", highestValue.getValue(12));
     }

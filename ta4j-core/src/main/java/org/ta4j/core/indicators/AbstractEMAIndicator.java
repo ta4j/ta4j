@@ -34,14 +34,14 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     private static final long serialVersionUID = -7312565662007443461L;
     private final Indicator<Num> indicator;
 
-    private final int timeFrame;
+    private final int barCount;
 
     private final Num multiplier;
 
-    public AbstractEMAIndicator(Indicator<Num> indicator, int timeFrame, double multiplier) {
+    public AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         this.multiplier = numOf(multiplier);
     }
 
@@ -56,6 +56,6 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

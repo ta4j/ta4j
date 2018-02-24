@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  */
 public class VWAPIndicator extends CachedIndicator<Num> {
 
-    private final int timeFrame;
+    private final int barCount;
     
     private final Indicator<Num> typicalPrice;
     
@@ -51,11 +51,11 @@ public class VWAPIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param series the series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public VWAPIndicator(TimeSeries series, int timeFrame) {
+    public VWAPIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         typicalPrice = new TypicalPriceIndicator(series);
         volume = new VolumeIndicator(series);
         this.ZERO = numOf(0);
@@ -66,7 +66,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         if (index <= 0) {
             return typicalPrice.getValue(index);
         }
-        int startIndex = Math.max(0, index - timeFrame + 1);
+        int startIndex = Math.max(0, index - barCount + 1);
         Num cumulativeTPV = ZERO;
         Num cumulativeVolume = ZERO;
         for (int i = startIndex; i <= index; i++) {
@@ -79,6 +79,6 @@ public class VWAPIndicator extends CachedIndicator<Num> {
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

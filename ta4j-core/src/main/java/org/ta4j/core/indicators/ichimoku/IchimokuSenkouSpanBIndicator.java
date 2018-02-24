@@ -43,10 +43,10 @@ public class IchimokuSenkouSpanBIndicator extends AbstractIchimokuLineIndicator 
     /**
      * Constructor.
      * @param series the series
-     * @param timeFrame the time frame (usually 52)
+     * @param barCount the time frame (usually 52)
      */
-    public IchimokuSenkouSpanBIndicator(TimeSeries series, int timeFrame) {
-        super(series, timeFrame);
+    public IchimokuSenkouSpanBIndicator(TimeSeries series, int barCount) {
+        super(series, barCount);
     }
 
 }

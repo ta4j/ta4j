@@ -32,24 +32,24 @@ import org.ta4j.core.num.Num;
  */
 public class StandardErrorIndicator extends CachedIndicator<Num> {
 
-    private int timeFrame;
+    private int barCount;
     
     private StandardDeviationIndicator sdev;
 
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public StandardErrorIndicator(Indicator<Num> indicator, int timeFrame) {
+    public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.timeFrame = timeFrame;
-        sdev = new StandardDeviationIndicator(indicator, timeFrame);
+        this.barCount = barCount;
+        sdev = new StandardDeviationIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         return sdev.getValue(index).dividedBy(numOf(Math.sqrt(numberOfObservations)));
     }

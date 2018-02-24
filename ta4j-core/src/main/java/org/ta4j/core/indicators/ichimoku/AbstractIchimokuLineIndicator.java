@@ -48,12 +48,12 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
     /**
      * Contructor.
      * @param series the series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public AbstractIchimokuLineIndicator(TimeSeries series, int timeFrame) {
+    public AbstractIchimokuLineIndicator(TimeSeries series, int barCount) {
         super(series);
-        periodHigh = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
-        periodLow = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
+        periodHigh = new HighestValueIndicator(new MaxPriceIndicator(series), barCount);
+        periodLow = new LowestValueIndicator(new MinPriceIndicator(series), barCount);
     }
 
     @Override

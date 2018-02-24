@@ -44,13 +44,13 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      * Constructor.
      * @param indicator1 the first indicator
      * @param indicator2 the second indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int timeFrame) {
+    public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);
-        variance1 = new VarianceIndicator(indicator1, timeFrame);
-        variance2 = new VarianceIndicator(indicator2, timeFrame);
-        covariance = new CovarianceIndicator(indicator1, indicator2, timeFrame);
+        variance1 = new VarianceIndicator(indicator1, barCount);
+        variance2 = new VarianceIndicator(indicator2, barCount);
+        covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
     }
 
     @Override

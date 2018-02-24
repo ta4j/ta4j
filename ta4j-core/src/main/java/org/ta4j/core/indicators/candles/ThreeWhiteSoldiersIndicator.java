@@ -50,14 +50,14 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      * @param series a time series
-     * @param timeFrame the number of bars used to calculate the average upper shadow
+     * @param barCount the number of bars used to calculate the average upper shadow
      * @param factor the factor used when checking if a candle has a very short upper shadow
      */
-    public ThreeWhiteSoldiersIndicator(TimeSeries series, int timeFrame, Num factor) {
+    public ThreeWhiteSoldiersIndicator(TimeSeries series, int barCount, Num factor) {
         super(series);
         this.series = series;
         upperShadowInd = new UpperShadowIndicator(series);
-        averageUpperShadowInd = new SMAIndicator(upperShadowInd, timeFrame);
+        averageUpperShadowInd = new SMAIndicator(upperShadowInd, barCount);
         this.factor = factor;
     }
 

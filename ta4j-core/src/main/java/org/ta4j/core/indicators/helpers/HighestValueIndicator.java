@@ -34,19 +34,19 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
-    private final int timeFrame;
+    private final int barCount;
 
-    public HighestValueIndicator(Indicator<Num> indicator, int timeFrame) {
+    public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && timeFrame != 1)
-            return new HighestValueIndicator(indicator,timeFrame-1).getValue(index-1);
-        int end = Math.max(0, index - timeFrame + 1);
+        if (indicator.getValue(index).isNaN() && barCount != 1)
+            return new HighestValueIndicator(indicator,barCount-1).getValue(index-1);
+        int end = Math.max(0, index - barCount + 1);
         Num highest = indicator.getValue(index);
         for (int i = index - 1; i >= end; i--) {
             if (highest.isLessThan(indicator.getValue(i))) {
@@ -58,6 +58,6 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }
