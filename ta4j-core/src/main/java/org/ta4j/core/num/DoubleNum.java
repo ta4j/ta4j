@@ -24,6 +24,8 @@ package org.ta4j.core.num;
 
 import java.util.function.Function;
 
+import org.ta4j.core.TestUtils;
+
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
@@ -33,6 +35,9 @@ import static org.ta4j.core.num.NaN.NaN;
 public class DoubleNum implements Num {
 
     private static final long serialVersionUID = -2611177221813615070L;
+
+    //private static final double EPS = 0.000000000000001;
+    private static final double EPS = TestUtils.GENERAL_OFFSET;
 
     private final double delegate;
 
@@ -185,7 +190,7 @@ public class DoubleNum implements Num {
         if(obj == NaN){
             return false;
         }
-        return Double.compare(delegate, ((DoubleNum) obj).delegate) == 0 ? true : false;
+        return (Math.abs(delegate - ((DoubleNum) obj).delegate) < EPS);
     }
 
     @Override

@@ -31,6 +31,37 @@ public class NumTest extends AbstractIndicatorTest {
         assertNumEquals(0.33, numOf(0.33));
         assertNumEquals(1, numOf(1));
         assertNumEquals(2.54, numOf(new BigDecimal(2.54)));
+
+        Num a = numOf(1.000001);
+        Num b = numOf(0.000001);
+
+        assertEquals(numOf(1.0), a.minus(b));
+        assertNumEquals(1.0, a.minus(b));
+        assertTrue(a.minus(b).equals(numOf(1.0)));
+        assertFalse(a.minus(b).equals(1.0));
+
+        // fail for both:
+        //assertEquals(1.0, a.minus(b));
+
+        // pass for BigDecimalNum, fail for DoubleNum:
+        //assertNumEquals(numOf(1.0), a.minus(b));
+        //assertNumEquals(BigDecimalNum.valueOf(1.0), a.minus(b));
+        //assertNumEquals(BigDecimalNum.valueOf("1.0"), a.minus(b));
+        //assertNumEquals(DoubleNum.valueOf(1.0), a.minus(b));
+
+        // pass for BigDecimalNum, ClassCastException for DoubleNum
+        //assertTrue(a.minus(b).equals(BigDecimalNum.valueOf("1.0")));
+        //assertEquals(BigDecimalNum.valueOf("1.0"), a.minus(b));
+
+        // fail for BigDecimalNum, pass for DoubleNum:
+        //assertEquals(numOf(0.9999999999999999), a.minus(b));
+        //assertNumEquals(BigDecimalNum.valueOf(0.9999999999999999), a.minus(b));
+        //assertNumEquals(BigDecimalNum.valueOf("0.9999999999999999"), a.minus(b));
+        //assertNumEquals(DoubleNum.valueOf(0.9999999999999999), a.minus(b));
+
+        // ClassCastException for BigDecimalNum, pass for DoubleNum
+        //assertTrue(a.minus(b).equals(DoubleNum.valueOf("1.0")));
+        //assertEquals(DoubleNum.valueOf("1.0"), a.minus(b));
     }
 
     @Test
