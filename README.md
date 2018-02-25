@@ -47,14 +47,14 @@ The current snapshot version is `0.12-SNAPSHOT` from the [develop](https://githu
 ```
 
 ### Getting Help
-The wiki is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
+The [wiki](https://ta4j.github.io/ta4j-wiki/) is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
 
 ### Contributing to ta4j
 
 Here are some ways for you to contribute to ta4j:
-  * Take a look at the [Roadmap items](https://github.com/ta4j/ta4j/wiki/Roadmap)
+  * Take a look at the [Roadmap items](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html)
   * [Fork this repository](http://help.github.com/forking/) and submit pull requests.
-  * Take a look at [How to contribute](https://github.com/ta4j/ta4j/wiki/How-to-contribute)
+  * Take a look at [How to contribute](https://ta4j.github.io/ta4j-wiki/How-to-contribute)
 
 See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Cunduct](CODE_OF_CONDUCT.md)
 <br/><br/><br/>
