@@ -62,6 +62,18 @@ public class NumTest extends AbstractIndicatorTest {
         // ClassCastException for BigDecimalNum, pass for DoubleNum
         //assertTrue(a.minus(b).equals(DoubleNum.valueOf("1.0")));
         //assertEquals(DoubleNum.valueOf("1.0"), a.minus(b));
+
+        assertFalse(BigDecimalNum.valueOf(0.9999999999999999).equals(BigDecimalNum.valueOf(1)));
+        Num first = DoubleNum.valueOf(0.9999999999999999);
+        Num second = DoubleNum.valueOf(1);
+        // inexact delta compare
+        assertTrue(first.equals(second));
+        // exact Double.compare()
+        assertFalse(isEqual(first, second));
+    }
+
+    private boolean isEqual(Num first, Num second) {
+        return (!first.isGreaterThan(second) && !first.isLessThan(second));
     }
 
     @Test
