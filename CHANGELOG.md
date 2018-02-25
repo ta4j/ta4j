@@ -12,12 +12,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TimeSeries | Bar**: preferred way to add bar data to a `TimeSeries` is directly to the series via new `TimeSeries#addBar(time,open,high,..)` functions. It ensures to use the correct `Num` implementation of the series
 - **XlsTestsUtils**: now processes xls with one or more days between data rows (daily, weekly, monthly, etc).  Also handle xls #DIV/0! calculated cells (imported as NaN.NaN)
 - **CachedIndicator**: Last bar is not cached to support real time indicators
+- **TimeSeries | Bar **: added new `#addPrice(price)` function that adds price to (last) bar.
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
 - **Num**: Extracted interface of dropped `Decimal` class
 - **DoubleNum**: `Num` implementation to support calculations based on `double` primitive
 - **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
+- **TestUtils**: added parametrized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`

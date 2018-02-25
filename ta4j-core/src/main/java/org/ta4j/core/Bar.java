@@ -158,4 +158,15 @@ public interface Bar extends Serializable {
      * @param tradePrice the price
      */
     void addTrade(Num tradeVolume, Num tradePrice);
+
+
+    default void addPrice(String price, Function<Number, Num> numFunction){
+        addPrice(numFunction.apply(new BigDecimal(price)));
+    }
+
+    default void addPrice(Number price, Function<Number, Num> numFunction){
+        addPrice(numFunction.apply(price));
+    }
+
+    void addPrice(Num price);
 }
