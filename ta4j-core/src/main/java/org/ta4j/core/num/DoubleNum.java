@@ -36,11 +36,11 @@ public class DoubleNum implements Num {
 
     private static final long serialVersionUID = -2611177221813615070L;
 
-    //private static final double EPS = 0.000000000000001;
-    private static final double EPS = TestUtils.GENERAL_OFFSET;
-
     private final double delegate;
 
+    //private static final double EPS = 0.000000000000001;
+    private static final double EPS = TestUtils.GENERAL_OFFSET;
+    
     @Override
     public Function<Number, Num> function() {
         return DoubleNum::valueOf;
@@ -190,7 +190,8 @@ public class DoubleNum implements Num {
         if(obj == NaN){
             return false;
         }
-        return (Math.abs(delegate - ((DoubleNum) obj).delegate) < EPS);
+        DoubleNum doubleNumObj = (DoubleNum) obj;
+        return Math.abs(delegate - doubleNumObj.delegate) < EPS;
     }
 
     @Override
