@@ -36,8 +36,6 @@ public class DoubleNum implements Num {
 
     private final double delegate;
 
-    private final static double EPS = 0.00001; // precision
-
     @Override
     public Function<Number, Num> function() {
         return DoubleNum::valueOf;
@@ -187,8 +185,7 @@ public class DoubleNum implements Num {
         if(obj == NaN){
             return false;
         }
-        DoubleNum doubleNumObj = (DoubleNum) obj;
-        return Math.abs(delegate - doubleNumObj.delegate) < EPS;
+        return Double.compare(delegate, ((DoubleNum) obj).delegate) == 0 ? true : false;
     }
 
     @Override
