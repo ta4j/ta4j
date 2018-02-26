@@ -188,8 +188,8 @@ public class DoubleNum implements Num {
         if(obj == NaN){
             return false;
         }
-        DoubleNum doubleNumObj = (DoubleNum) obj;
-        return Math.abs(delegate - doubleNumObj.delegate) < EPS;
+        Num doubleNumObj = DoubleNum.valueOf(obj.toString());
+        return Math.abs(delegate - doubleNumObj.getDelegate().doubleValue()) < EPS;
     }
 
     @Override

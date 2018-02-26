@@ -13,17 +13,38 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.setPrecision;
 import static org.ta4j.core.num.NaN.NaN;
 
 
 public class NumTest extends AbstractIndicatorTest {
 
+    Num a;
+    Num b;
+
     public NumTest(Function<Number, Num> numFunction) {
         super(numFunction);
+        a = numOf(1.000001);
+        b = numOf(0.000001);
+    }
+
+    @Test(expected = java.lang.AssertionError.class)
+    public void failValueOf() {
+        assertEquals(1.0, a.minus(b));
     }
 
     @Test
-    public void testValueOf() {
+    public void testValueOfPass() {
+        valueOf("0.0000000000000001");
+    }
+
+    @Test(expected = java.lang.AssertionError.class)
+    public void testValueOfFail() {
+        valueOf("0.00000000000000001");
+    }
+
+    public void valueOf(String precision) {
+        setPrecision(precision);
         assertNumEquals(0.33333333333333333332, numOf(0.33333333333333333332));
         assertNumEquals(1, numOf(1d));
         assertNumEquals(2.54, numOf(new BigDecimal("2.54")));
@@ -32,36 +53,26 @@ public class NumTest extends AbstractIndicatorTest {
         assertNumEquals(1, numOf(1));
         assertNumEquals(2.54, numOf(new BigDecimal(2.54)));
 
-        Num a = numOf(1.000001);
-        Num b = numOf(0.000001);
-
         assertEquals(numOf(1.0), a.minus(b));
         assertNumEquals(1.0, a.minus(b));
         assertTrue(a.minus(b).equals(numOf(1.0)));
         assertFalse(a.minus(b).equals(1.0));
 
-        // fail for both:
-        //assertEquals(1.0, a.minus(b));
+        assertNumEquals(numOf(1.0), a.minus(b));
+        assertNumEquals(BigDecimalNum.valueOf(1.0), a.minus(b));
+        assertNumEquals(BigDecimalNum.valueOf("1.0"), a.minus(b));
+        assertNumEquals(DoubleNum.valueOf(1.0), a.minus(b));
 
-        // pass for BigDecimalNum, fail for DoubleNum:
-        //assertNumEquals(numOf(1.0), a.minus(b));
-        //assertNumEquals(BigDecimalNum.valueOf(1.0), a.minus(b));
-        //assertNumEquals(BigDecimalNum.valueOf("1.0"), a.minus(b));
-        //assertNumEquals(DoubleNum.valueOf(1.0), a.minus(b));
+        assertTrue(a.minus(b).equals(BigDecimalNum.valueOf("1.0")));
+        assertNumEquals(BigDecimalNum.valueOf("1.0"), a.minus(b));
 
-        // pass for BigDecimalNum, ClassCastException for DoubleNum
-        //assertTrue(a.minus(b).equals(BigDecimalNum.valueOf("1.0")));
-        //assertEquals(BigDecimalNum.valueOf("1.0"), a.minus(b));
+        assertNumEquals(numOf(0.9999999999999999), a.minus(b));
+        assertNumEquals(BigDecimalNum.valueOf(0.9999999999999999), a.minus(b));
+        assertNumEquals(BigDecimalNum.valueOf("0.9999999999999999"), a.minus(b));
+        assertNumEquals(DoubleNum.valueOf(0.9999999999999999), a.minus(b));
 
-        // fail for BigDecimalNum, pass for DoubleNum:
-        //assertEquals(numOf(0.9999999999999999), a.minus(b));
-        //assertNumEquals(BigDecimalNum.valueOf(0.9999999999999999), a.minus(b));
-        //assertNumEquals(BigDecimalNum.valueOf("0.9999999999999999"), a.minus(b));
-        //assertNumEquals(DoubleNum.valueOf(0.9999999999999999), a.minus(b));
-
-        // ClassCastException for BigDecimalNum, pass for DoubleNum
-        //assertTrue(a.minus(b).equals(DoubleNum.valueOf("1.0")));
-        //assertEquals(DoubleNum.valueOf("1.0"), a.minus(b));
+        assertTrue(a.minus(b).equals(DoubleNum.valueOf("1.0")));
+        assertEquals(DoubleNum.valueOf("1.0"), a.minus(b));
 
         assertFalse(BigDecimalNum.valueOf(0.9999999999999999).equals(BigDecimalNum.valueOf(1)));
         Num first = DoubleNum.valueOf(0.9999999999999999);

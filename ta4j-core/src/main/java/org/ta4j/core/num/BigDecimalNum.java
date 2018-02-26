@@ -327,7 +327,9 @@ public final class BigDecimalNum implements Num {
         if (!(obj instanceof Num)) {
             return false;
         }
-        return !((Num) obj).isNaN() && this.delegate.compareTo(((BigDecimalNum) obj).delegate) == 0;
+        if (((Num) obj).isNaN()) return false;
+        BigDecimalNum bigDecimalObj = (BigDecimalNum) BigDecimalNum.valueOf(obj.toString());
+        return this.delegate.compareTo(bigDecimalObj.delegate) == 0;
     }
 
     /**
