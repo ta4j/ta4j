@@ -36,6 +36,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.setPrecision;
 
 public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -54,7 +55,19 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void usingTimeFrame3UsingClosePrice() throws Exception {
+    public void testPass() {
+        // maximum precision to pass DoubleNum (and BigDecimalNum)
+        usingTimeFrame3UsingClosePrice("0.000000000000001");
+    }
+
+    @Test(expected = java.lang.AssertionError.class)
+    public void testFail() {
+        // minimum precision to fail BigDecimalNum (and DoubleNum)
+        usingTimeFrame3UsingClosePrice("0.00000000000000000000000000000001");
+    }
+
+    public void usingTimeFrame3UsingClosePrice(String precision) {
+        setPrecision(precision);
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
         assertNumEquals("1", indicator.getValue(0));
@@ -82,6 +95,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void externalData() throws Exception {
+        setPrecision("0.000000000001");
         Indicator<Num> xlsClose = new ClosePriceIndicator(xls.getSeries());
         Indicator<Num> actualIndicator;
 
