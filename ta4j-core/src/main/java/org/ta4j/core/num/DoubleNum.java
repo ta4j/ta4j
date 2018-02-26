@@ -24,8 +24,6 @@ package org.ta4j.core.num;
 
 import java.util.function.Function;
 
-import org.ta4j.core.TestUtils;
-
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
@@ -38,9 +36,9 @@ public class DoubleNum implements Num {
 
     private final double delegate;
 
-    //private static final double EPS = 0.000000000000001;
-    private static final double EPS = TestUtils.GENERAL_OFFSET;
-    
+    // TODO: increase precision here after unit tests are updated with high precision expected values
+    public static final double EPS = 0.0001;
+
     @Override
     public Function<Number, Num> function() {
         return DoubleNum::valueOf;

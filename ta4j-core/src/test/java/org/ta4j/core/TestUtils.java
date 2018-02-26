@@ -22,7 +22,10 @@
  */
 package org.ta4j.core;
 
+import java.util.function.Function;
+
 import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertEquals;
@@ -32,124 +35,161 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestUtils {
 
+    // digits of precision for high precision operations
     public static final int HIGH_PRECISION = 64;
+    // override the default BigDecimalNum precision for high precision conversions
+    private static final Function<String, Num> highPrecisionNumFunc = (val -> BigDecimalNum.valueOf(val, HIGH_PRECISION));
     /** Offset for double equality checking */
     // deprecated so that JUnit Assert calls direct from unit tests will show warnings
     // TODO: modify unit tests to not call JUnit Assert but to call TestUtils Assert
     @Deprecated
-    public static final double GENERAL_OFFSET = 0.0001;
-    // for 32 digit BigDecimalNum:
-    //    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.00000000000000000000000000001");
-    // for DoubleNum:
-    //    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.000000000001");
-    // for old unit test expected values with 4 decimal precision:
-    private static final Num BIGDECIMALNUM_OFFSET = BigDecimalNum.valueOf("0.0001", HIGH_PRECISION);
+    public static final double GENERAL_OFFSET = DoubleNum.valueOf(DoubleNum.EPS).doubleValue();
+    private static final Num HIGH_PRECISION_OFFSET = highPrecisionNumFunc.apply("0.0001");
+
 
     /**
-     * Verifies that the actual {@code Num} value is exactly equal to the expected {@code String} representation.
+     * Verifies that the {@code Num} value is equal to the {@code String} value within an offset.
      *
-     * @param expected the given {@code String} representation to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code String} representation
+     * @param expected {@code String} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @throws AssertionError if the {@code Num} is not equal to the {@code String} within an offset
      */
-    public static void assertNumExactlyEquals(String expected, Num actual) {
-        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected, HIGH_PRECISION), BigDecimalNum.valueOf(actual.toString()));
-    }
-
     public static void assertNumEquals(String expected, Num actual) {
-        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected, HIGH_PRECISION), BigDecimalNum.valueOf(actual.toString()), BIGDECIMALNUM_OFFSET);
+        assertNumEquals(null,
+                highPrecisionNumFunc.apply(expected),
+                highPrecisionNumFunc.apply(actual.toString()),
+                HIGH_PRECISION_OFFSET);
     }
 
     /**
-     * Verifies that the actual {@code Num} value is not exactly equal to the expected {@code String} representation.
+     * Verifies that the {@code Num} value is not equal to the {@code String} value within an offset.
      *
-     * @param expected the given {@code String} representation to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual {@code Num} value is exactly equal to the given {@code String} representation
+     * @param expected {@code String} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @throws AssertionError if the {@code Num} is equal to the {@code String} within an offset
      */
     public static void assertNumNotEquals(String expected, Num actual) {
-        assertBigDecimalNumNotEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()));
+        assertNumNotEquals(null,
+                highPrecisionNumFunc.apply(expected),
+                highPrecisionNumFunc.apply(actual.toString()),
+                HIGH_PRECISION_OFFSET);
     }
 
     /**
-     * Verifies that the actual {@code Num} value is exactly equal to the expected {@code Num}.
+     * Verifies that the {@code Num} values are equal within an offset.
      *
-     * @param expected the given {@code Num} to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual {@code Num} value is not exactly equal to the given {@code Num}
+     * @param expected {@code Num} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @throws AssertionError if the {@code Num} values are not equal within an offset
      */
-    public static void assertNumEquals(Num expected, Num actual){
-        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected.toString()), BigDecimalNum.valueOf(actual.toString()));
+    public static void assertNumEquals(Num expected, Num actual) {
+        assertNumEquals(null,
+                highPrecisionNumFunc.apply(expected.toString()),
+                highPrecisionNumFunc.apply(actual.toString()),
+                HIGH_PRECISION_OFFSET);
     }
 
     /**
-     * Verifies that the actual {@code Num} value is not exactly equal to the expected {@code Num}.
+     * Verifies that the {@code Num} values are not equal within an offset.
      *
-     * @param expected the given {@code Num} to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual {@code Num} value is exactly equal to the given {@code Num}
+     * @param expected {@code Num} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @throws AssertionError if the {@code Num} values are equal within an offset
      */
     public static void assertNumNotEquals(Num expected, Num actual) {
-        assertBigDecimalNumNotEquals(null, BigDecimalNum.valueOf(expected.toString()), BigDecimalNum.valueOf(actual.toString()));
+        assertNumNotEquals(null,
+                highPrecisionNumFunc.apply(expected.toString()),
+                highPrecisionNumFunc.apply(actual.toString()),
+                HIGH_PRECISION_OFFSET);
     }
 
     /**
-     * Verifies that two {@code Num} values are equal to within a positive delta.
+     * Verifies that the {@code Num} value is equal to the {@code double} value within an offset.
      *
-     * @param expected the expected {@code Num} to compare the actual value to
-     * @param actual the actual {@code Num} value
-     * @throws AssertionError if the actual value is not equal to the given {@code Num} representation within the delta
+     * @param expected {@code double} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @throws AssertionError if the {@code Num} is not equal to the {@code double} within an offset
      */
     public static void assertNumEquals(double expected, Num actual) {
-        assertBigDecimalNumEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()), BIGDECIMALNUM_OFFSET);
-    }
-
-    public static void assertNumNotEquals(double expected, Num actual) {
-        assertBigDecimalNumNotEquals(null, BigDecimalNum.valueOf(expected), BigDecimalNum.valueOf(actual.toString()));
+        assertNumEquals(null,
+                highPrecisionNumFunc.apply(Double.toString(expected)),
+                highPrecisionNumFunc.apply(actual.toString()),
+                HIGH_PRECISION_OFFSET);
     }
 
     /**
-     * Verifies that two indicators have the same size and the same values to within a positive delta.
-     * 
-     * @param expected indicator of expected values
-     * @param actual indicator of actual values
-     * @throws AssertionError if the size of the indicators is not identical
-     *             or if any of the actual values are not equal to the corresponding expected values within the delta
+     * Verifies that the {@code Num} value is not equal to the {@code double} value within an offset.
+     *
+     * @param expected {@code double} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @throws AssertionError if the {@code Num} is equal to the {@code double} within an offset
      */
-    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
-        assertIndicatorEquals(expected, actual, BIGDECIMALNUM_OFFSET);
+    public static void assertNumNotEquals(double expected, Num actual) {
+        assertNumNotEquals(null,
+                highPrecisionNumFunc.apply(Double.toString(expected)),
+                highPrecisionNumFunc.apply(actual.toString()),
+                HIGH_PRECISION_OFFSET);
     }
 
-    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num offset) {
+    /**
+     * Verifies that two {@code Indicator} objects have the same size and the same values to within an offset.
+     * 
+     * @param expected {@code Indicator} to compare the actual {@code Indicator} to
+     * @param actual {@code Indicator} of actual values to inspect
+     * @throws AssertionError if the size of the {@code Indicator}s is not identical
+     *             or if any of the corresponding values are not equal within the delta
+     */
+    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
+        assertIndicatorEquals(expected, actual, HIGH_PRECISION_OFFSET);
+    }
+
+    /**
+     * Verifies that two {@code Indicator} objects have the same size and the same values to within an offset.
+     * 
+     * @param expected {@code Indicator} to compare the actual {@code Indicator} to
+     * @param actual {@code Indicator} of actual values to inspect
+     * @param delta {@code Num} of the allowable offset
+     * @throws AssertionError if the size of the {@code Indicator}s is not identical
+     *             or if any of the corresponding values are not equal within the delta
+     */
+    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
         assertEquals("Size does not match,", expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
         for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-            //            System.out.println(expected.getValue(i) + ", " + actual.getValue(i));
-            Num exp = BigDecimalNum.valueOf(expected.getValue(i).toString());
-            Num act = BigDecimalNum.valueOf((actual.getValue(i).toString()));
-            assertBigDecimalNumEquals(
-                    String.format("Failed at index %s: value %s does not match expected %s", i, act.toString(), exp.toString()),
-                    exp, act, offset);
+            Num exp = highPrecisionNumFunc.apply(expected.getValue(i).toString());
+            Num act = highPrecisionNumFunc.apply((actual.getValue(i).toString()));
+            assertNumEquals(
+                    String.format("Failed at index %s: value %s does not match expected %s",
+                            i, act.toString(), exp.toString()), exp, act, delta);
         }
     }
 
     /**
-     * Verifies that two indicators have different size or at least one pair of values are different to within a positive delta.
+     * Verifies that two {@code Indicator} objects have different sizes or different values to within an offset.
      * 
-     * @param expected indicator of expected values
-     * @param actual indicator of actual values
-     * @throws AssertionError if the size of the indicators is identical
-     *             and if all of the actual values are equal to the corresponding expected values within the delta
+     * @param expected {@code Indicator} to compare the actual {@code Indicator} to
+     * @param actual {@code Indicator} of actual values to inspect
+     * @throws AssertionError if the size of the {@code Indicator}s are not equal
+     *             or if any of the corresponding values are not equal within the delta
      */
     public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual) {
-        assertIndicatorNotEquals(expected, actual, BIGDECIMALNUM_OFFSET);
+        assertIndicatorNotEquals(expected, actual, HIGH_PRECISION_OFFSET);
     }
 
-    public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual, Num offset) {
+    /**
+     * Verifies that two {@code Indicator} objects have different sizes or different values to within an offset.
+     * 
+     * @param expected {@code Indicator} to compare the actual {@code Indicator} to
+     * @param actual {@code Indicator} of actual values to inspect
+     * @param delta {@code Num} of the allowable offset
+     * @throws AssertionError if the size of the {@code Indicator}s are not equal
+     *             or if any of the corresponding values are not equal within the delta
+     */
+    public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
         if (expected.getTimeSeries().getBarCount() == actual.getTimeSeries().getBarCount()) {
             for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
-                Num exp = BigDecimalNum.valueOf(expected.getValue(i).toString());
-                Num act = BigDecimalNum.valueOf(actual.getValue(i).toString());
-                if (exp.minus(act).abs().isGreaterThan(offset)) {
+                Num exp = highPrecisionNumFunc.apply(expected.getValue(i).toString());
+                Num act = highPrecisionNumFunc.apply(actual.getValue(i).toString());
+                if (exp.minus(act).abs().isGreaterThan(delta)) {
                     return;
                 }
             }
@@ -157,28 +197,34 @@ public class TestUtils {
         throw new AssertionError("indicators are the same within delta");
     }
 
-    private static void assertBigDecimalNumEquals(String message, Num expected, Num actual, Num delta) {
+    /**
+     * Verifies that the {@code Num} values are equal within an offset.
+     *
+     * @param message {@code String} to print in the AssertionError (or null)
+     * @param expected {@code Num} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @param delta {@code Num} of the allowable offset
+     * @throws AssertionError if the {@code Num} values are not equal within an offset
+     */
+    private static void assertNumEquals(String message, Num expected, Num actual, Num delta) {
         if (expected.minus(actual).abs().isGreaterThan(delta)) {
-            if (message == null) message = "value " + actual.toString() + " does not match expected " + expected.toString();
-            //System.out.println("assertBDE " + expected.toString() + " != " + actual.toString() + ", " + delta.toString());
-            throw new AssertionError(message);
-        } else {
-            //System.out.println("assertBDE " + expected.toString() + " == " + actual.toString() + ", " + delta.toString());
-        }
-    }
-
-    private static void assertBigDecimalNumEquals(String message, Num expected, Num actual) {
-        //        System.out.println("assertBDE " + expected.toString() + ", " + actual.toString());
-        if (expected.compareTo(actual) != 0) {
-            if (message == null) message = "value " + actual.toString() + " does not match expected " + expected.toString();
+            if (message == null) message = "value " + actual.toString() + " does not match expected " + expected.toString() + " within delta";
             throw new AssertionError(message);
         }
     }
 
-    private static void assertBigDecimalNumNotEquals(String message, Num expected, Num actual) {
-        //        System.out.println("assertBDNE " + expected.toString() + ", " + actual.toString());
-        if (expected.compareTo(actual) == 0) {
-            if (message == null) message = "value " + actual.toString() + " matches expected " + expected.toString();
+    /**
+     * Verifies that the {@code Num} values are different within an offset.
+     *
+     * @param message {@code String} to print in the AssertionError (or null)
+     * @param expected {@code Num} to compare the actual value to
+     * @param actual {@code Num} to inspect
+     * @param delta {@code Num} of the allowable offset
+     * @throws AssertionError if the {@code Num} values are equal within an offset
+     */
+    private static void assertNumNotEquals(String message, Num expected, Num actual, Num delta) {
+        if (expected.minus(actual).abs().isLessThan(delta)) {
+            if (message == null) message = "value " + actual.toString() + " matches expected " + expected.toString() + " within delta";
             throw new AssertionError(message);
         }
     }
