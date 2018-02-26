@@ -44,7 +44,11 @@ public class TestUtils {
     // TODO: modify unit tests to not call JUnit Assert but to call TestUtils Assert
     @Deprecated
     public static final double GENERAL_OFFSET = DoubleNum.valueOf(DoubleNum.EPS).doubleValue();
-    private static final Num HIGH_PRECISION_OFFSET = highPrecisionNumFunc.apply("0.0001");
+    private static Num HIGH_PRECISION_OFFSET = highPrecisionNumFunc.apply("0.0001");
+
+    public static void setPrecision(String precision) {
+        HIGH_PRECISION_OFFSET = highPrecisionNumFunc.apply(precision);
+    }
 
 
     /**
