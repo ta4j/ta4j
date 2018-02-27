@@ -43,9 +43,19 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold a threshold
      */
-    public CrossedUpIndicatorRule(Indicator<Num> indicator, double threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(),indicator.numOf(threshold)));
+    public CrossedUpIndicatorRule(Indicator<Num> indicator, Number threshold) {
+        this(indicator, indicator.numOf(threshold));
     }
+
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param threshold a threshold
+     */
+    public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(),threshold));
+    }
+
 
     /**
      * Constructor.
