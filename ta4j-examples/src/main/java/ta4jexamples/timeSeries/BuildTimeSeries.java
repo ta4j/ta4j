@@ -1,4 +1,4 @@
-package ta4jexamples.TimeSeries;
+package ta4jexamples.timeSeries;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
