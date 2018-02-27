@@ -40,6 +40,16 @@ public class StopGainRule extends AbstractRule {
     /** The gain ratio threshold (e.g. 1.03 for 3%) */
     private Num gainRatioThreshold;
 
+
+    /**
+     * Constructor.
+     * @param closePrice the close price indicator
+     * @param gainPercentage the gain percentage
+     */
+    public StopGainRule(ClosePriceIndicator closePrice, Number gainPercentage) {
+        this(closePrice,closePrice.numOf(gainPercentage));
+    }
+
     /**
      * Constructor.
      * @param closePrice the close price indicator
@@ -50,6 +60,8 @@ public class StopGainRule extends AbstractRule {
         Num HUNDRED = closePrice.numOf(100);
         this.gainRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
     }
+
+
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {

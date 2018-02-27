@@ -25,6 +25,10 @@ package org.ta4j.core;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
+import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
@@ -243,6 +247,33 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
+    }
+
+    @Test
+    public void addPriceTest(){
+        ClosePriceIndicator cp = new ClosePriceIndicator(defaultSeries);
+        MaxPriceIndicator mxPrice = new MaxPriceIndicator(defaultSeries);
+        MinPriceIndicator mnPrice = new MinPriceIndicator(defaultSeries);
+        PreviousValueIndicator prevValue = new PreviousValueIndicator(cp, 1);
+
+        Num adding1 = numOf(100);
+        Num prevClose = defaultSeries.getBar(defaultSeries.getEndIndex()-1).getClosePrice();
+        Num currentMin = mnPrice.getValue(defaultSeries.getEndIndex());
+        Num currentClose = cp.getValue(defaultSeries.getEndIndex());
+
+        TestUtils.assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
+        defaultSeries.addPrice(adding1);
+        TestUtils.assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close
+        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
+        TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
+        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays same
+
+        Num adding2 = numOf(0);
+        defaultSeries.addPrice(adding2);
+        TestUtils.assertNumEquals(adding2, cp.getValue(defaultSeries.getEndIndex())); // adding2 is new close
+        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
+        TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
+        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays same
     }
 
     @Test(expected = IllegalArgumentException.class)

@@ -38,7 +38,16 @@ public class IsEqualRule extends AbstractRule {
     private Indicator<Num> first;
     /** The second indicator */
     private Indicator<Num> second;
-    
+
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param value the value to check
+     */
+    public IsEqualRule(Indicator<Num> indicator, Number value) {
+        this(indicator, indicator.numOf(value));
+    }
+
     /**
      * Constructor.
      * @param indicator the indicator
