@@ -314,11 +314,10 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
-     * @deprecated will be private in next release. Use other {@link #addBar(Duration, ZonedDateTime) addBar function}
-     * @param bar the bar to be added
+     * @param bar the <code>Bar</code> to be added
+     * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)
      */
     @Override
-    @Deprecated
     public void addBar(Bar bar) {
         Objects.requireNonNull(bar);
         if(!checkBar(bar)){
@@ -346,73 +345,27 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
     public void addBar(Duration timePeriod, ZonedDateTime endTime) {
-        this.addBar(new BaseBar(timePeriod,endTime, function()));
+        this.addBar(new BaseBar(timePeriod, endTime, function()));
     }
 
     @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
-    public void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
-                       Number volume) {
-        this.addBar(new BaseBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
-                numOf(volume), numOf(0)));
-    }
-
-    @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function, converts to Num before calling constructor
-    public void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
-                       Number volume, Number amount) {
-        this.addBar(new BaseBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
-                numOf(volume), numOf(amount)));
-    }
-
-    @Override
-    public void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice) {
-        this.addBar(endTime,openPrice,highPrice,lowPrice,closePrice,0);
-    }
-
-    @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
-    public void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
-                       String volume) {
-        this.addBar(new BaseBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
-                numOf(0)));
-    }
-
-    @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
-    public void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
-                       String volume, String amount) {
-        this.addBar(new BaseBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
-                numOf(new BigDecimal(amount))));
-    }
-
-    @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
-    public void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice) {
-        this.addBar(new BaseBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(0),
-                numOf(0)));
-    }
-
-    @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
     public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
         this.addBar(new BaseBar(endTime, openPrice,highPrice,lowPrice,closePrice,volume, numOf(0)));
     }
 
     @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
+    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
+        this.addBar(new BaseBar(endTime,openPrice,highPrice,lowPrice,closePrice,volume,amount));
+    }
+
+    @Override
     public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
                        Num closePrice, Num volume) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
     }
 
     @Override
-    @SuppressWarnings( "deprecation" ) // will also work with private addBar function
     public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
                        Num closePrice, Num volume, Num amount) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice,highPrice,lowPrice,closePrice,volume, amount));
@@ -431,6 +384,11 @@ public class BaseTimeSeries implements TimeSeries {
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
         getLastBar().addTrade(tradeVolume,tradePrice);
+    }
+
+    @Override
+    public void addPrice(Num price) {
+        getLastBar().addPrice(price);
     }
 
     /**
