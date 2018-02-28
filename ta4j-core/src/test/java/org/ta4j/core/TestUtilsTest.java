@@ -5,13 +5,13 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertNumNotEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
-import static org.ta4j.core.TestUtils.setPrecision;
 
 public class TestUtilsTest extends AbstractIndicatorTest {
 
@@ -21,123 +21,130 @@ public class TestUtilsTest extends AbstractIndicatorTest {
 
     @Test
     public void testStringNumPass() {
-        stringNum("0.0001");
+        stringNum(BigDecimalNum.valueOf("0.0001", 64));
     }
 
-    @Test(expected = java.lang.AssertionError.class)
+    @Test(expected = AssertionError.class)
     public void testStringNumFail() {
-        stringNum("0.00001");
+        stringNum(BigDecimalNum.valueOf("0.00001", 64));
     }
 
-    public void stringNum(String precision) {
-        setPrecision(precision);
-        assertNumEquals("0.1234", numOf(0.123456789));
-        assertNumNotEquals("0.123", numOf(0.123456789));
-        assertNumEquals("0.123456789", numOf(0.1234));
-        assertNumNotEquals("0.123456789", numOf(0.123));
-        assertNumEquals("0.123456789", numOf(0.123456789));
-        assertNumEquals("0.12345678", numOf(0.123456789));
-        assertNumEquals("0.12345", numOf(0.123456789));
-        assertNumEquals("0.12345", numOf(0.12344));
-        assertNumNotEquals("0.12345", numOf(0.123));
-        assertNumEquals("0.12344", numOf(0.12345));
-        assertNumNotEquals("0.123", numOf(0.12345));
+    public void stringNum(Num delta) {
+        assertNumEquals("0.1234", numOf(0.123456789), delta);
+        assertNumNotEquals("0.123", numOf(0.123456789), delta);
+        assertNumEquals("0.123456789", numOf(0.1234), delta);
+        assertNumNotEquals("0.123456789", numOf(0.123), delta);
+        assertNumEquals("0.123456789", numOf(0.123456789), delta);
+        assertNumEquals("0.12345678", numOf(0.123456789), delta);
+        assertNumEquals("0.12345", numOf(0.123456789), delta);
+        assertNumEquals("0.12345", numOf(0.12344), delta);
+        assertNumNotEquals("0.12345", numOf(0.123), delta);
+        assertNumEquals("0.12344", numOf(0.12345), delta);
+        assertNumNotEquals("0.123", numOf(0.12345), delta);
     }
 
     @Test
     public void testDoubleNumPass() {
-        doubleNum("0.0001");
+        doubleNum(BigDecimalNum.valueOf("0.0001", 64));
     }
 
-    @Test(expected = java.lang.AssertionError.class)
+    @Test(expected = AssertionError.class)
     public void testDoubleNumFail() {
-        doubleNum("0.00001");
+        doubleNum(BigDecimalNum.valueOf("0.00001", 64));
     }
 
-    public void doubleNum(String precision) {
-        setPrecision(precision);
-        assertNumEquals(0.1234, numOf(0.123456789));
-        assertNumNotEquals(0.123, numOf(0.123456789));
-        assertNumEquals(0.123456789, numOf(0.1234));
-        assertNumNotEquals(0.123456789, numOf(0.123));
-        assertNumEquals(0.123456789, numOf(0.123456789));
-        assertNumEquals(0.12345678, numOf(0.123456789));
-        assertNumEquals(0.12345, numOf(0.123456789));
-        assertNumEquals(0.12345, numOf(0.12344));
-        assertNumNotEquals(0.12345, numOf(0.123));
-        assertNumEquals(0.12344, numOf(0.12345));
-        assertNumNotEquals(0.123, numOf(0.12345));
+    public void doubleNum(Num delta) {
+        assertNumEquals(0.1234, numOf(0.123456789), delta);
+        assertNumNotEquals(0.123, numOf(0.123456789), delta);
+        assertNumEquals(0.123456789, numOf(0.1234), delta);
+        assertNumNotEquals(0.123456789, numOf(0.123), delta);
+        assertNumEquals(0.123456789, numOf(0.123456789), delta);
+        assertNumEquals(0.12345678, numOf(0.123456789), delta);
+        assertNumEquals(0.12345, numOf(0.123456789), delta);
+        assertNumEquals(0.12345, numOf(0.12344), delta);
+        assertNumNotEquals(0.12345, numOf(0.123), delta);
+        assertNumEquals(0.12344, numOf(0.12345), delta);
+        assertNumNotEquals(0.123, numOf(0.12345), delta);
     }
 
     @Test
     public void testNumNumPass() {
-        numNum("0.0001");
+        numNum(BigDecimalNum.valueOf("0.0001", 64));
     }
 
-    @Test(expected = java.lang.AssertionError.class)
+    @Test(expected = AssertionError.class)
     public void testNumNumFail() {
-        numNum("0.00001");
+        numNum(BigDecimalNum.valueOf("0.00001", 64));
     }
 
-    public void numNum(String precision) {
-        setPrecision(precision);
-        assertNumEquals(numOf(0.1234), numOf(0.123456789));
-        assertNumNotEquals(numOf(0.123), numOf(0.123456789));
-        assertNumEquals(numOf(0.123456789), numOf(0.1234));
-        assertNumNotEquals(numOf(0.123456789), numOf(0.123));
-        assertNumEquals(numOf(0.123456789), numOf(0.123456789));
-        assertNumEquals(numOf(0.12345678), numOf(0.123456789));
-        assertNumEquals(numOf(0.12345), numOf(0.123456789));
-        assertNumEquals(numOf(0.12345), numOf(0.12344));
-        assertNumNotEquals(numOf(0.12345), numOf(0.123));
-        assertNumEquals(numOf(0.12344), numOf(0.12345));
-        assertNumNotEquals(numOf(0.123), numOf(0.12345));
+    public void numNum(Num delta) {
+        assertNumEquals(numOf(0.1234), numOf(0.123456789), delta);
+        assertNumNotEquals(numOf(0.123), numOf(0.123456789), delta);
+        assertNumEquals(numOf(0.123456789), numOf(0.1234), delta);
+        assertNumNotEquals(numOf(0.123456789), numOf(0.123), delta);
+        assertNumEquals(numOf(0.123456789), numOf(0.123456789), delta);
+        assertNumEquals(numOf(0.12345678), numOf(0.123456789), delta);
+        assertNumEquals(numOf(0.12345), numOf(0.123456789), delta);
+        assertNumEquals(numOf(0.12345), numOf(0.12344), delta);
+        assertNumNotEquals(numOf(0.12345), numOf(0.123), delta);
+        assertNumEquals(numOf(0.12344), numOf(0.12345), delta);
+        assertNumNotEquals(numOf(0.123), numOf(0.12345), delta);
     }
 
     @Test
     public void testIndicatorIndicatorPass() {
-        indicatorIndicator("0.0001");
+        indicatorIndicator(BigDecimalNum.valueOf("0.0001", 64));
     }
 
-    @Test(expected = java.lang.AssertionError.class)
+    @Test(expected = AssertionError.class)
     public void testIndicatorIndicatorFail() {
-        indicatorIndicator("0.00001");
+        indicatorIndicator(BigDecimalNum.valueOf("0.00001", 64));
     }
 
-    public void indicatorIndicator(String precision) {
-        setPrecision(precision);
+    public void indicatorIndicator(Num delta) {
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.1234)),
-                new MockIndicator(numFunction, numOf(0.123456789)));
+                new MockIndicator(numFunction, numOf(0.123456789)),
+                delta);
         assertIndicatorNotEquals(
                 new MockIndicator(numFunction, numOf(0.123)),
-                new MockIndicator(numFunction, numOf(0.123456789)));
+                new MockIndicator(numFunction, numOf(0.123456789)),
+                delta);
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.123456789)),
-                new MockIndicator(numFunction, numOf(0.1234)));
+                new MockIndicator(numFunction, numOf(0.1234)),
+                delta);
         assertIndicatorNotEquals(
                 new MockIndicator(numFunction, numOf(0.123456789)),
-                new MockIndicator(numFunction, numOf(0.123)));
+                new MockIndicator(numFunction, numOf(0.123)),
+                delta);
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.123456789)),
-                new MockIndicator(numFunction, numOf(0.123456789)));
+                new MockIndicator(numFunction, numOf(0.123456789)),
+                delta);
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.12345678)),
-                new MockIndicator(numFunction, numOf(0.123456789)));
+                new MockIndicator(numFunction, numOf(0.123456789)),
+                delta);
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.12345)),
-                new MockIndicator(numFunction, numOf(0.123456789)));
+                new MockIndicator(numFunction, numOf(0.123456789)),
+                delta);
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.12345)),
-                new MockIndicator(numFunction, numOf(0.12344)));
+                new MockIndicator(numFunction, numOf(0.12344)),
+                delta);
         assertIndicatorNotEquals(
                 new MockIndicator(numFunction, numOf(0.12345)),
-                new MockIndicator(numFunction, numOf(0.123)));
+                new MockIndicator(numFunction, numOf(0.123)),
+                delta);
         assertIndicatorEquals(
                 new MockIndicator(numFunction, numOf(0.12344)),
-                new MockIndicator(numFunction, numOf(0.12345)));
+                new MockIndicator(numFunction, numOf(0.12345)),
+                delta);
         assertIndicatorNotEquals(
                 new MockIndicator(numFunction, numOf(0.123)),
-                new MockIndicator(numFunction, numOf(0.12345)));
+                new MockIndicator(numFunction, numOf(0.12345)),
+                delta);
     }
 }

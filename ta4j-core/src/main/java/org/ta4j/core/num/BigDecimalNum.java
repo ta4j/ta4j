@@ -28,6 +28,8 @@ import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.ta4j.core.num.NaN.NaN;
 /**
  * Representation of BigDecimal. High precision, low performance.
@@ -47,6 +49,7 @@ public final class BigDecimalNum implements Num {
 
     private final BigDecimal delegate;
 
+    private static final Logger log = LoggerFactory.getLogger(BigDecimalNum.class);
 
     @Override
     public Function<Number, Num> function() {
@@ -254,7 +257,27 @@ public final class BigDecimalNum implements Num {
     }
 
     /**
+     * Checks if this value is equal to another.
+     * 
+     * @param other the other value, not null
+     * @return true is this is greater than the specified value, false otherwise
+     */
+    public boolean matches(Num other, int precision) {
+        Num otherNum = BigDecimalNum.valueOf(other.toString(), precision);
+        Num thisNum = BigDecimalNum.valueOf(this.toString(), precision);
+        if (thisNum.toString().equals(otherNum.toString())) {
+            log.trace("{} from {} matches", thisNum.toString(), this.toString());
+            log.trace("{} from {}", otherNum.toString(), other.toString());
+            return true;
+        }
+        log.debug("{} from {} does not match", thisNum.toString(), this.toString());
+        log.debug("{} from {}", otherNum.toString(), other.toString());
+        return false;
+    }
+
+    /**
      * Checks if this value is greater than another.
+     * 
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
@@ -327,9 +350,7 @@ public final class BigDecimalNum implements Num {
         if (!(obj instanceof Num)) {
             return false;
         }
-        if (((Num) obj).isNaN()) return false;
-        BigDecimalNum bigDecimalObj = (BigDecimalNum) BigDecimalNum.valueOf(obj.toString());
-        return this.delegate.compareTo(bigDecimalObj.delegate) == 0;
+        return !((Num) obj).isNaN() && this.delegate.compareTo(((BigDecimalNum) obj).delegate) == 0;
     }
 
     /**

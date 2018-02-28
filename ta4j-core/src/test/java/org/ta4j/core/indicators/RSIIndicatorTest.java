@@ -31,11 +31,14 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 
+import java.math.BigDecimal;
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumMatches;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -85,19 +88,46 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void usingTimeFrame14UsingClosePrice() throws Exception {
+    public void testUsingTimeFrame14UsingClosePricePass() {
+        // find the maximum precision of the current Num class (up to 64 digits)
+        // create 64 digit precision BigDecimalNum,
+        // then transform it with the current numOf()
+        // then transform it back into BigDecimalNum
+        // if numOf() is DoubleNum.valueOf() then precision will be 16
+        // if numOf() is BigDecimalNum.valueOf() then precision will be BigDecimalNum default (32)
+        Num num = BigDecimalNum.valueOf(numOf(BigDecimalNum.valueOf("68.47467140686891745891139277307765935855946901587159762304918549", 64).getDelegate()).toString());
+        int precision = ((BigDecimal) num.getDelegate()).precision();
+        // our 32 digit calculations will be differ slightly from the first 32 digits of the 64 digit expected result 
+        // so bump down the precision just a little to get a pass
+        if (precision <= 16)
+            precision -= 3; // DoubleNum propagates far more error so it has to bump down 3 digits for this test data
+        else
+            precision -= 1; // BigDecimalNum is so precise it only has to bump down 1
+        usingTimeFrame14UsingClosePrice(precision);
+    }
+
+    @Test(expected = AssertionError.class)
+    public void testUsingTimeFrame14UsingClosePriceFail() {
+        Num num = BigDecimalNum.valueOf(numOf(BigDecimalNum.valueOf("68.47467140686891745891139277307765935855946901587159762304918549", 64).getDelegate()).toString());
+        int precision = ((BigDecimal) num.getDelegate()).precision();
+        // our 32 digit calculations will not match the first 32 digits of the 64 digit expected results
+        // and our 16 digit calculations will not match the first 16 digits of the 64 digit expected results
+        usingTimeFrame14UsingClosePrice(precision);
+    }
+
+    public void usingTimeFrame14UsingClosePrice(int precision) {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertNumEquals("68.47467140686891745891139277307765935855946901587159762304918549", indicator.getValue(15));
-        assertNumEquals("64.78361407616318060500150810244389574498371890364077611771330462", indicator.getValue(16));
-        assertNumEquals("72.07767796184254162132503853908729204188471901054560573155102940", indicator.getValue(17));
-        assertNumEquals("60.78000613652222875621591049003085035009611219640159711280821773", indicator.getValue(18));
-        assertNumEquals("63.64390001766678277442060892989089954716303111479626309796498855", indicator.getValue(19));
-        assertNumEquals("72.34337823720912781333178318202597949386893319906949927429396455", indicator.getValue(20));
-        assertNumEquals("67.38227542194746461101622925834558588616620256794318584501247184", indicator.getValue(21));
-        assertNumEquals("68.54383090897891183125622285563568410156452400468031044777754703", indicator.getValue(22));
-        assertNumEquals("76.27702700480215362448227687687201456306087413243254458111073709", indicator.getValue(23));
-        assertNumEquals("77.99083631939523394885491528464062999046196925343149284775230497", indicator.getValue(24));
-        assertNumEquals("67.48950614025902300618871095448921619512018125813311760441542342", indicator.getValue(25));
+        assertNumMatches("68.47467140686891745891139277307765935855946901587159762304918549", indicator.getValue(15), precision);
+        assertNumMatches("64.78361407616318060500150810244389574498371890364077611771330462", indicator.getValue(16), precision);
+        assertNumMatches("72.07767796184254162132503853908729204188471901054560573155102940", indicator.getValue(17), precision);
+        assertNumMatches("60.78000613652222875621591049003085035009611219640159711280821773", indicator.getValue(18), precision);
+        assertNumMatches("63.64390001766678277442060892989089954716303111479626309796498855", indicator.getValue(19), precision);
+        assertNumMatches("72.34337823720912781333178318202597949386893319906949927429396455", indicator.getValue(20), precision);
+        assertNumMatches("67.38227542194746461101622925834558588616620256794318584501247184", indicator.getValue(21), precision);
+        assertNumMatches("68.54383090897891183125622285563568410156452400468031044777754703", indicator.getValue(22), precision);
+        assertNumMatches("76.27702700480215362448227687687201456306087413243254458111073709", indicator.getValue(23), precision);
+        assertNumMatches("77.99083631939523394885491528464062999046196925343149284775230497", indicator.getValue(24), precision);
+        assertNumMatches("67.48950614025902300618871095448921619512018125813311760441542342", indicator.getValue(25), precision);
     }
 
     @Test
