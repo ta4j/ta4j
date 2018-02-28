@@ -18,19 +18,75 @@ import static org.ta4j.core.num.NaN.NaN;
 
 public class NumTest extends AbstractIndicatorTest {
 
+    Num a;
+    Num b;
+
     public NumTest(Function<Number, Num> numFunction) {
         super(numFunction);
+        a = numOf(1.000001);
+        b = numOf(0.000001);
+    }
+
+    @Test(expected = java.lang.AssertionError.class)
+    public void failValueOf() {
+        assertEquals(1.0, a.minus(b));
     }
 
     @Test
-    public void testValueOf() {
-        assertNumEquals(0.33333333333333333332, numOf(0.33333333333333333332));
-        assertNumEquals(1, numOf(1d));
-        assertNumEquals(2.54, numOf(new BigDecimal("2.54")));
+    public void testValueOfDefault() {
+        valueOf(null);
+    }
 
-        assertNumEquals(0.33, numOf(0.33));
-        assertNumEquals(1, numOf(1));
-        assertNumEquals(2.54, numOf(new BigDecimal(2.54)));
+    @Test
+    public void testValueOfPass() {
+        valueOf(BigDecimalNum.valueOf("0.0000000000000001"));
+    }
+
+    @Test(expected = java.lang.AssertionError.class)
+    public void testValueOfFail() {
+        valueOf(BigDecimalNum.valueOf("0.00000000000000001"));
+    }
+
+    public void valueOf(Num delta) {
+        assertNumEquals(0.33333333333333333332, numOf(0.33333333333333333332), delta);
+        assertNumEquals(1, numOf(1d), delta);
+        assertNumEquals(2.54, numOf(new BigDecimal("2.54")), delta);
+
+        assertNumEquals(0.33, numOf(0.33), delta);
+        assertNumEquals(1, numOf(1), delta);
+        assertNumEquals(2.54, numOf(new BigDecimal(2.54)), delta);
+
+        assertEquals(numOf(1.0), a.minus(b));
+        assertNumEquals(1.0, a.minus(b), delta);
+        assertTrue(a.minus(b).equals(numOf(1.0)));
+        assertFalse(a.minus(b).equals(1.0));
+
+        assertNumEquals(numOf(1.0), a.minus(b), delta);
+        assertNumEquals(BigDecimalNum.valueOf(1.0), a.minus(b), delta);
+        assertNumEquals(BigDecimalNum.valueOf("1.0"), a.minus(b), delta);
+        assertNumEquals(DoubleNum.valueOf(1.0), a.minus(b), delta);
+
+        assertTrue(a.minus(b).equals(BigDecimalNum.valueOf("1.0")));
+        assertNumEquals(BigDecimalNum.valueOf("1.0"), a.minus(b), delta);
+
+        assertNumEquals(numOf(0.9999999999999999), a.minus(b), delta);
+        assertNumEquals(BigDecimalNum.valueOf(0.9999999999999999), a.minus(b), delta);
+        assertNumEquals(BigDecimalNum.valueOf("0.9999999999999999"), a.minus(b), delta);
+        assertNumEquals(DoubleNum.valueOf(0.9999999999999999), a.minus(b), delta);
+
+        assertEquals(DoubleNum.valueOf("1.0"), a.minus(b));
+
+        assertFalse(BigDecimalNum.valueOf(0.9999999999999999).equals(BigDecimalNum.valueOf(1)));
+        Num first = DoubleNum.valueOf(0.9999999999999999);
+        Num second = DoubleNum.valueOf(1);
+        // inexact delta compare
+        assertTrue(first.equals(second));
+        // exact Double.compare()
+        assertFalse(isEqual(first, second));
+    }
+
+    private boolean isEqual(Num first, Num second) {
+        return (!first.isGreaterThan(second) && !first.isLessThan(second));
     }
 
     @Test

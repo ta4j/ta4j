@@ -87,8 +87,12 @@ public class MockTimeSeries extends BaseTimeSeries {
     }
 
     private static List<Bar> arbitraryBars(Function<Number, Num> nf) {
+        return arbitraryBars(nf, 5000);
+    }
+
+    private static List<Bar> arbitraryBars(Function<Number, Num> nf, int count) {
         ArrayList<Bar> bars = new ArrayList<>();
-        for (double i = 0d; i < 5000; i++) {
+        for (double i = 0d; i < count; i++) {
             bars.add(new MockBar(ZonedDateTime.now().minusMinutes((long)(5001-i)), i, i + 1, i + 2, i + 3, i + 4, i + 5, (int) (i + 6),nf));
         }
         return bars;

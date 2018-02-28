@@ -26,17 +26,19 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 
+import java.math.BigDecimal;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumMatches;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -68,37 +70,64 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void firstValueShouldBeZero() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(data.numOf(0), indicator.getValue(0));
+        assertNumEquals(0, indicator.getValue(0));
     }
 
     @Test
     public void hundredIfNoLoss() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(data.numOf(100), indicator.getValue(14));
-        assertEquals(data.numOf(100), indicator.getValue(15));
+        assertNumEquals(100, indicator.getValue(14));
+        assertNumEquals(100, indicator.getValue(15));
     }
 
     @Test
     public void zeroIfNoGain() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
-        assertEquals(data.numOf(0), indicator.getValue(1));
-        assertEquals(data.numOf(0), indicator.getValue(2));
+        assertNumEquals(0, indicator.getValue(1));
+        assertNumEquals(0, indicator.getValue(2));
     }
 
     @Test
-    public void usingTimeFrame14UsingClosePrice() throws Exception {
+    public void testUsingTimeFrame14UsingClosePricePass() {
+        // find the maximum precision of the current Num class (up to 64 digits)
+        // create 64 digit precision BigDecimalNum,
+        // then transform it with the current numOf()
+        // then transform it back into BigDecimalNum
+        // if numOf() is DoubleNum.valueOf() then precision will be 16
+        // if numOf() is BigDecimalNum.valueOf() then precision will be BigDecimalNum default (32)
+        Num num = BigDecimalNum.valueOf(numOf(BigDecimalNum.valueOf("68.47467140686891745891139277307765935855946901587159762304918549", 64).getDelegate()).toString());
+        int precision = ((BigDecimal) num.getDelegate()).precision();
+        // our 32 digit calculations will be differ slightly from the first 32 digits of the 64 digit expected result 
+        // so bump down the precision just a little to get a pass
+        if (precision <= 16)
+            precision -= 3; // DoubleNum propagates far more error so it has to bump down 3 digits for this test data
+        else
+            precision -= 1; // BigDecimalNum is so precise it only has to bump down 1
+        usingTimeFrame14UsingClosePrice(precision);
+    }
+
+    @Test(expected = AssertionError.class)
+    public void testUsingTimeFrame14UsingClosePriceFail() {
+        Num num = BigDecimalNum.valueOf(numOf(BigDecimalNum.valueOf("68.47467140686891745891139277307765935855946901587159762304918549", 64).getDelegate()).toString());
+        int precision = ((BigDecimal) num.getDelegate()).precision();
+        // our 32 digit calculations will not match the first 32 digits of the 64 digit expected results
+        // and our 16 digit calculations will not match the first 16 digits of the 64 digit expected results
+        usingTimeFrame14UsingClosePrice(precision);
+    }
+
+    public void usingTimeFrame14UsingClosePrice(int precision) {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 14);
-        assertEquals(68.4746, indicator.getValue(15).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(64.7836, indicator.getValue(16).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(72.0776, indicator.getValue(17).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(60.7800, indicator.getValue(18).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(63.6439, indicator.getValue(19).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(72.3433, indicator.getValue(20).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(67.3822, indicator.getValue(21).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(68.5438, indicator.getValue(22).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(76.2770, indicator.getValue(23).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(77.9908, indicator.getValue(24).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(67.4895, indicator.getValue(25).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertNumMatches("68.47467140686891745891139277307765935855946901587159762304918549", indicator.getValue(15), precision);
+        assertNumMatches("64.78361407616318060500150810244389574498371890364077611771330462", indicator.getValue(16), precision);
+        assertNumMatches("72.07767796184254162132503853908729204188471901054560573155102940", indicator.getValue(17), precision);
+        assertNumMatches("60.78000613652222875621591049003085035009611219640159711280821773", indicator.getValue(18), precision);
+        assertNumMatches("63.64390001766678277442060892989089954716303111479626309796498855", indicator.getValue(19), precision);
+        assertNumMatches("72.34337823720912781333178318202597949386893319906949927429396455", indicator.getValue(20), precision);
+        assertNumMatches("67.38227542194746461101622925834558588616620256794318584501247184", indicator.getValue(21), precision);
+        assertNumMatches("68.54383090897891183125622285563568410156452400468031044777754703", indicator.getValue(22), precision);
+        assertNumMatches("76.27702700480215362448227687687201456306087413243254458111073709", indicator.getValue(23), precision);
+        assertNumMatches("77.99083631939523394885491528464062999046196925343149284775230497", indicator.getValue(24), precision);
+        assertNumMatches("67.48950614025902300618871095448921619512018125813311760441542342", indicator.getValue(25), precision);
     }
 
     @Test
@@ -108,15 +137,15 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         indicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertNumEquals("100", indicator.getValue(indicator.getTimeSeries().getEndIndex()));
 
         indicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertNumEquals("67.04537458239054018366892427448437610204731551106392023415107574", indicator.getValue(indicator.getTimeSeries().getEndIndex()));
 
         indicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertNumEquals("52.58768185890309760191197582379221951878504634897434288638106563", indicator.getValue(indicator.getTimeSeries().getEndIndex()));
     }
 
     @Test
@@ -141,14 +170,14 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> avgLoss = new SMAIndicator(loss, 14);
 
         // first online calculation is simple division
-        double onlineRs = avgGain.getValue(14).dividedBy(avgLoss.getValue(14)).doubleValue();
-        assertEquals(0.5848, avgGain.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(0.5446, avgLoss.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
-        assertEquals(1.0738, onlineRs, TestUtils.GENERAL_OFFSET);
-        double onlineRsi = 100d - (100d / (1d + onlineRs));
+        Num onlineRs = avgGain.getValue(14).dividedBy(avgLoss.getValue(14));
+        assertNumEquals("0.58482142857142857142857142857143", avgGain.getValue(14));
+        assertNumEquals("0.54464285714285714285714285714286", avgLoss.getValue(14));
+        assertNumEquals("1.0737704918032786885245901639344", onlineRs);
+        Num onlineRsi = numFunction.apply(100d).minus(numFunction.apply(100d).dividedBy(onlineRs.plus(numFunction.apply(1d))));
         // difference in RSI values:
-        assertEquals(51.779, onlineRsi, 0.001);
-        assertEquals(52.1304, indicator.getValue(14).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertNumEquals("51.778656126482213438735177865612", onlineRsi);
+        assertNumEquals("52.130477585417047356473650689120", indicator.getValue(14));
 
         // strange, online average gain and loss is not a simple moving average!
         // but they only use them for the first RS calculation
@@ -156,14 +185,14 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // assertEquals(0.5772, avgLoss.getValue(15).doubleValue(), TATestsUtils.GENERAL_OFFSET);
         // second online calculation uses MMAs
         // MMA of average gain
-        double dividend = avgGain.getValue(14).multipliedBy(series.numOf(13)).plus(gain.getValue(15)).dividedBy(series.numOf(14)).doubleValue();
+        Num dividend = avgGain.getValue(14).multipliedBy(series.numOf(13)).plus(gain.getValue(15)).dividedBy(series.numOf(14));
         // MMA of average loss
-        double divisor = avgLoss.getValue(14).multipliedBy(series.numOf(13)).plus(loss.getValue(15)).dividedBy(series.numOf(14)).doubleValue();
-        onlineRs = dividend / divisor;
-        assertEquals(0.9409, onlineRs, TestUtils.GENERAL_OFFSET);
-        onlineRsi = 100d - (100d / (1d + onlineRs));
+        Num divisor = avgLoss.getValue(14).multipliedBy(series.numOf(13)).plus(loss.getValue(15)).dividedBy(series.numOf(14));
+        onlineRs = dividend.dividedBy(divisor);
+        assertNumEquals("0.94088397790055248618784530386739", onlineRs);
+        onlineRsi = numFunction.apply(100d).minus(numFunction.apply(100d).dividedBy((onlineRs.plus(numFunction.apply(1d)))));
         // difference in RSI values:
-        assertEquals(48.477, onlineRsi, 0.001);
-        assertEquals(47.3710, indicator.getValue(15).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertNumEquals("48.477085112439510389980074010817", onlineRsi);
+        assertNumEquals("47.371031400457402995260283818450", indicator.getValue(15));
     }
 }

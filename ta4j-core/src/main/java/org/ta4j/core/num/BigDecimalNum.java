@@ -28,6 +28,8 @@ import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.ta4j.core.num.NaN.NaN;
 /**
  * Representation of BigDecimal. High precision, low performance.
@@ -47,6 +49,7 @@ public final class BigDecimalNum implements Num {
 
     private final BigDecimal delegate;
 
+    private static final Logger log = LoggerFactory.getLogger(BigDecimalNum.class);
 
     @Override
     public Function<Number, Num> function() {
@@ -59,6 +62,10 @@ public final class BigDecimalNum implements Num {
      */
     private BigDecimalNum(String val) {
         delegate = new BigDecimal(val, MATH_CONTEXT);
+    }
+
+    private BigDecimalNum(String val, int precision) {
+        delegate = new BigDecimal(val, new MathContext(precision, RoundingMode.HALF_UP));
     }
 
     private BigDecimalNum(short val) {
@@ -250,7 +257,27 @@ public final class BigDecimalNum implements Num {
     }
 
     /**
+     * Checks if this value is equal to another.
+     * 
+     * @param other the other value, not null
+     * @return true is this is greater than the specified value, false otherwise
+     */
+    public boolean matches(Num other, int precision) {
+        Num otherNum = BigDecimalNum.valueOf(other.toString(), precision);
+        Num thisNum = BigDecimalNum.valueOf(this.toString(), precision);
+        if (thisNum.toString().equals(otherNum.toString())) {
+            log.trace("{} from {} matches", thisNum.toString(), this.toString());
+            log.trace("{} from {}", otherNum.toString(), other.toString());
+            return true;
+        }
+        log.debug("{} from {} does not match", thisNum.toString(), this.toString());
+        log.debug("{} from {}", otherNum.toString(), other.toString());
+        return false;
+    }
+
+    /**
      * Checks if this value is greater than another.
+     * 
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
@@ -333,6 +360,10 @@ public final class BigDecimalNum implements Num {
      */
     public static Num valueOf(String val) {
         return val.toUpperCase().equals("NAN") ? NaN : new BigDecimalNum(val);
+    }
+
+    public static Num valueOf(String val, int precision) {
+        return val.toUpperCase().equals("NAN") ? NaN : new BigDecimalNum(val, precision);
     }
 
     /**

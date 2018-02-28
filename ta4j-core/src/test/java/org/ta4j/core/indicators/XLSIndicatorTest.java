@@ -25,7 +25,7 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.XlsTestsUtils;
+import org.ta4j.core.XLSTestUtils;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -44,6 +44,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @param clazz class containing the file resources
      * @param fileName file name of the file containing the workbook
      * @param column column number containing the calculated indicator values
+     * @param numFunction a {@link Function} to convert a {@link Number} to a {@link Num Num implementation}
      */
     public XLSIndicatorTest(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) {
         this.clazz = clazz;
@@ -60,9 +61,20 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      */
     public TimeSeries getSeries() throws Exception {
         if (cachedSeries == null) {
-            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName,numFunction);
+            cachedSeries = XLSTestUtils.getSeries(clazz, fileName, numFunction);
         }
         return cachedSeries;
+    }
+
+    /**
+     * Gets the TimeSeries from the XLS file using the given Num implementation.
+     *
+     * @param numFunction a {@link Function} to convert a {@link Number} to a {@link Num Num implementation}
+     * @return TimeSeries from the file
+     * @throws Exception if getSeries throws IOException or DataFormatException
+     */
+    public TimeSeries getSeries(Function<Number, Num> numFunction) throws Exception {
+        return XLSTestUtils.getSeries(clazz, fileName, numFunction);
     }
 
     /**
@@ -74,7 +86,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      *             DataFormatException
      */
     public Indicator<Num> getIndicator(Object... params) throws Exception {
-        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
+        return XLSTestUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
     }
 
 }

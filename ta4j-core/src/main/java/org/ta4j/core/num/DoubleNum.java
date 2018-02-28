@@ -36,7 +36,8 @@ public class DoubleNum implements Num {
 
     private final double delegate;
 
-    private final static double EPS = 0.00001; // precision
+    // TODO: increase precision here after unit tests are updated with high precision expected values
+    public static final double EPS = 0.0001;
 
     @Override
     public Function<Number, Num> function() {
