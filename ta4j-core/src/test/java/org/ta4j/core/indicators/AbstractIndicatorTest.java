@@ -31,6 +31,9 @@ import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -94,4 +97,10 @@ public abstract class AbstractIndicatorTest<D, I> {
     protected Num numOf(Number n){
         return numFunction.apply(n);
     }
+
+    public Num numOf(String string, int precision) {
+        MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        return this.numOf(new BigDecimal(string, mathContext));
+    }
+
 }
