@@ -28,6 +28,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import java.util.function.Function;
@@ -41,6 +42,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 public class NumTest extends AbstractIndicatorTest {
 
+    public static final int HIGH_PRECISION = 128;
+
     public NumTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
@@ -53,6 +56,44 @@ public class NumTest extends AbstractIndicatorTest {
     @Test
     public void testStringNumPass() {
         assertNumEquals("1.234", numOf(1.234));
+    }
+
+    @Test
+    public void testPrecisionNumPrecision() {
+        String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
+        Num num = numOf(highPrecisionString, HIGH_PRECISION);
+        Num highPrecisionNum = PrecisionNum.valueOf(highPrecisionString, HIGH_PRECISION);
+        // matches() would be better in Num but currently lives only in PrecisionNum
+        assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 17));
+        assertFalse(((PrecisionNum) highPrecisionNum).matches(num, 33));
+        if (num.getClass().equals(DoubleNum.class)) {
+            assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 17));
+            assertFalse(((PrecisionNum) highPrecisionNum).matches(num, 18));
+        }
+        if (num.getClass().equals(BigDecimalNum.class)) {
+            assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 32));
+            assertFalse(((PrecisionNum) highPrecisionNum).matches(num, 33));
+        }
+    }
+
+    @Test
+    public void testPrecisionNumOffset() {
+        String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
+        Num num = numOf(highPrecisionString, HIGH_PRECISION);
+        // upconvert num to PrecisionNum so that we don't throw ClassCastException in minus() from PrecisionNum.matches()
+        Num lowerPrecisionNum = PrecisionNum.valueOf(num.toString(), 128);
+        Num highPrecisionNum = PrecisionNum.valueOf(highPrecisionString, 128);
+        // use HIGH_PRECISION PrecisionNums for delta because they are so small
+        assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
+        assertFalse(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.00000000000000000000000000000001", HIGH_PRECISION)));
+        if (num.getClass().equals(DoubleNum.class)) {
+            assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
+            assertFalse(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.00000000000000001", HIGH_PRECISION)));
+        }
+        if (num.getClass().equals(BigDecimalNum.class)) {
+            assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.0000000000000000000000000000001", HIGH_PRECISION)));
+            assertFalse(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.00000000000000000000000000000001", HIGH_PRECISION)));
+        }
     }
 
     @Test
