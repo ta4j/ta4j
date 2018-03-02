@@ -48,8 +48,12 @@ public class CsvBarsLoader {
      * @return a time series from Apple Inc. bars.
      */
     public static TimeSeries loadAppleIncSeries() {
+        return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
+    }
 
-        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_bars_from_20130101_usd.csv");
+    public static TimeSeries loadCsvSeries(String filename) {
+
+        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
         TimeSeries series =  new BaseTimeSeries("apple_bars");
 
