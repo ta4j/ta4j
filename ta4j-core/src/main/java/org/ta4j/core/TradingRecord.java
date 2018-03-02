@@ -105,6 +105,9 @@ public interface TradingRecord extends Serializable {
      * @return true if no trade is open, false otherwise
      */
     default boolean isClosed() {
+        if (getCurrentTrade() == null) {
+            return false;
+        }
         return !getCurrentTrade().isOpened();
     }
     
