@@ -33,8 +33,8 @@ import org.ta4j.core.num.Num;
  * Doji indicator.
  * <p></p>
  * A candle/bar is considered Doji if its body height is lower than the average multiplied by a factor.
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#doji">
- *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#doji</a>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
+ *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
 public class DojiIndicator extends CachedIndicator<Boolean> {
 

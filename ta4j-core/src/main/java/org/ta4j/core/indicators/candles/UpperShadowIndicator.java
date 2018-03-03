@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
  * <p></p>
  * Provides the (absolute) difference between the max price and the highest price of the candle body.
  * I.e.: max price - max(open price, close price)
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#formation">
- *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesbars#formation</a>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
+ *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
  */
 public class UpperShadowIndicator extends CachedIndicator<Num> {
 
