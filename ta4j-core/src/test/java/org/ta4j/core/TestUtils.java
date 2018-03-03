@@ -46,7 +46,7 @@ public class TestUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
      */
     public static void assertNumEquals(String expected, Num actual) {
-        assertEquals(expected, actual.numOf(new BigDecimal(expected)).toString());
+        assertEquals(expected, actual.toString());
     }
 
     public static void assertNumEquals(Num expected, Num actual){
