@@ -1,5 +1,6 @@
 package org.ta4j.core;
 
+import org.junit.ComparisonFailure;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.BigDecimalNum;
@@ -147,6 +148,11 @@ public class NumTest extends AbstractIndicatorTest {
         assertFalse(five.equals(five.function().apply(6)));
         assertFalse(five.equals(five.function().apply((float)15)));
         assertFalse(five.equals(five.function().apply((short)45)));
+    }
+
+    @Test(expected = ComparisonFailure.class)
+    public void testNumEqualsFailsIfThereIsADifference() {
+        assertNumEquals("1", numOf(2));
     }
 
     //TODO: add precision tests for BigDecimalNum
