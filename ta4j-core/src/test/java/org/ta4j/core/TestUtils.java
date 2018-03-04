@@ -31,7 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 /**
- * Utility class for {@code Decimal} tests.
+ * Utility class for {@code Num} tests.
  */
 public class TestUtils {
 
@@ -39,9 +39,9 @@ public class TestUtils {
     public static final double GENERAL_OFFSET = 0.0001;
 
     /**
-     * Verifies that the actual {@code Decimal} value is equal to the given {@code String} representation.
+     * Verifies that the actual {@code Num} value is equal to the given {@code String} representation.
      *
-     * @param actual the actual {@code Decimal} value
+     * @param actual the actual {@code Num} value
      * @param expected the given {@code String} representation to compare the actual value to
      * @throws AssertionError if the actual value is not equal to the given {@code String} representation
      */
@@ -54,35 +54,35 @@ public class TestUtils {
     }
 
     /**
-     * Verifies that the actual {@code Decimal} value is equal to the given {@code Integer} representation.
+     * Verifies that the actual {@code Num} value is equal to the given {@code int} representation.
      *
-     * @param actual the actual {@code Decimal} value
-     * @param expected the given {@code Integer} representation to compare the actual value to
-     * @throws AssertionError if the actual value is not equal to the given {@code Integer} representation
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code int} representation to compare the actual value to
+     * @throws AssertionError if the actual value is not equal to the given {@code int} representation
      */
     public static void assertNumEquals(int expected, Num actual) {
         assertEquals(expected, actual.intValue());
     }
 
     /**
-     * Verifies that the actual {@code Decimal} value is equal (within a positive offset) to the given {@code Double} representation.
+     * Verifies that the actual {@code Num} value is equal (within a positive offset) to the given {@code double} representation.
      *
-     * @param actual the actual {@code Decimal} value
-     * @param expected the given {@code Double} representation to compare the actual value to
-     * @throws AssertionError if the actual value is not equal to the given {@code Double} representation
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code double} representation to compare the actual value to
+     * @throws AssertionError if the actual value is not equal to the given {@code double} representation
      */
     public static void assertNumEquals(double expected, Num actual) {
         assertEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
     /**
-     * Verifies that the actual {@code Decimal} value is not equal to the given {@code Integer} representation.
+     * Verifies that the actual {@code Num} value is not equal to the given {@code int} representation.
      *
-     * @param actual the actual {@code Decimal} value
-     * @param unexpected the given {@code Integer} representation to compare the actual value to
-     * @throws AssertionError if the actual value is equal to the given {@code Integer} representation
+     * @param actual the actual {@code Num} value
+     * @param unexpected the given {@code int} representation to compare the actual value to
+     * @throws AssertionError if the actual value is equal to the given {@code int} representation
      */
-    public static void assertDecimalNotEquals(int unexpected,Num actual) {
+    public static void assertNumNotEquals(int unexpected,Num actual) {
         assertNotEquals(unexpected, actual.intValue());
     }
 
