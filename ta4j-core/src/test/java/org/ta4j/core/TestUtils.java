@@ -54,7 +54,7 @@ public class TestUtils {
      *
      * @param actual the actual {@code Num} value
      * @param expected the given {@code Num} representation to compare the actual value to
-     * @throws AssertionError if the actual value is not equal to the given {@code String} representation
+     * @throws AssertionError if the actual value is not equal to the given {@code Num} representation
      */
     public static void assertNumEquals(Num expected, Num actual){
         assertEquals(expected, actual);
