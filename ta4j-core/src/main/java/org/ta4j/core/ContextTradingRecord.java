@@ -24,8 +24,11 @@
 package org.ta4j.core;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.num.Num;
 
@@ -36,94 +39,41 @@ import org.ta4j.core.num.Num;
 
 public class ContextTradingRecord implements TradingRecord {
 
-    /** The recorded orders */
-    private List<Order> orders = new ArrayList<Order>();
-
-    /** The recorded BUY orders */
-    private List<Order> buyOrders = new ArrayList<Order>();
-
-    /** The recorded SELL orders */
-    private List<Order> sellOrders = new ArrayList<Order>();
-
-    /** The recorded entry orders */
-    private List<Order> entryOrders = new ArrayList<Order>();
-
-    /** The recorded exit orders */
-    private List<Order> exitOrders = new ArrayList<Order>();
-
     /** The recorded trades */
     private List<Trade> trades = new ArrayList<Trade>();
 
-/** The entry type (BUY or SELL) in the trading session */
-    private final OrderType entryType;
-
-    private final OrderType exitType;
-
-    private List<Trade> closedTrades = new ArrayList<Trade>();
-
-    /**
-     * Constructor.
-     */
-    public ContextTradingRecord() {
-        this(OrderType.BUY);
-    }
-
-    /**
-     * Constructor.
-     * @param entryOrderType the {@link Order.OrderType order type} of entries in the trading session
-     */
-    public ContextTradingRecord(OrderType entryOrderType) {
-        if (entryOrderType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
-        }
-        this.entryType = entryOrderType;
-        exitType = entryOrderType == OrderType.BUY ? OrderType.SELL : OrderType.BUY;
-    }
+    private Logger log = LoggerFactory.getLogger(ContextTradingRecord.class);
 
     /**
      * Constructor.
      * @param orders the orders to be recorded (cannot be empty)
      */
     public ContextTradingRecord(Order... orders) {
-        this(orders[0].getType());
+        log.trace("number of orders {}", orders.length);
         for (Order o : orders) {
-            Trade currentTrade = getCurrentTrade(o.getIndex());
-            boolean newOrderWillBeAnEntry = false;
-            if (currentTrade == null) {
-                currentTrade = new Trade(entryType);
-                newOrderWillBeAnEntry = true;
-                // Special case for entry/exit types reversal
-                // E.g.: BUY, SELL,
-                //    BUY, SELL,
-                //    SELL, BUY,
-                //    BUY, SELL
-                if (o.getType() != entryType) {
-                    currentTrade = new Trade(o.getType());
-                }
-                trades.add(currentTrade);
-            }
-            Order newOrder = currentTrade.operate(o.getIndex(), o.getPrice(), o.getAmount());
-            recordOrder(newOrder, newOrderWillBeAnEntry);
+            operate(o.getIndex(), o.getPrice(), o.getAmount());
         }
     }
 
     @Override
     public Trade getCurrentTrade() {
-        if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
-        }
-        return null;
+        return (trades.isEmpty()) ? null : trades.get(trades.size() - 1);
     }
 
     public Trade getCurrentTrade(int index) {
+        log.trace("index {}", index);
+        // ordered linear search, not great but low overhead with getters and int comparisons
         for (Trade trade : trades) {
             if (trade.getEntry().getIndex() > index) {
+                log.trace("quit at newer Trade {}", trade);
                 return null;
             }
             if (trade.getEntry().getIndex() <= index && trade.getExit() == null) {
+                log.debug("found open Trade {}", trade);
                 return trade;
             }
             if (trade.getEntry().getIndex() <= index && trade.getExit().getIndex() >= index) {
+                log.debug("found current Trade {}", trade);
                 return trade;
             }
         }
@@ -132,108 +82,98 @@ public class ContextTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
+        log.trace("operate {} {} {}", index, price, amount);
         Trade currentTrade = getCurrentTrade(index);
         if (currentTrade == null) {
             currentTrade = new Trade();
             trades.add(currentTrade);
+            log.debug("added new Trade");
         }
         if (currentTrade.isClosed()) {
             // Current trade closed, should not occur
             throw new IllegalStateException("Current trade should not be closed");
         }
-        boolean newOrderWillBeAnEntry = currentTrade.isNew();
         Order newOrder = currentTrade.operate(index, price, amount);
-        recordOrder(newOrder, newOrderWillBeAnEntry);
+        log.debug("added new Order {}", newOrder);
     }
 
     @Override
     public boolean enter(int index, Num price, Num amount) {
-        if (getCurrentTrade(index) == null) {
+        Trade currentTrade = getCurrentTrade(index);
+        if (currentTrade == null || currentTrade.getExit() == null) {
             operate(index, price, amount);
             return true;
         }
+        log.warn("skip not-null or open Trade {}", currentTrade);
         return false;
     }
 
     @Override
     public boolean exit(int index, Num price, Num amount) {
-        if (getCurrentTrade(index).isOpened()) {
+        Trade currentTrade = getCurrentTrade(index);
+        if (currentTrade != null && currentTrade.isOpened()) {
             operate(index, price, amount);
             return true;
         }
+        log.warn("skip not-open Trade {}", currentTrade);
         return false;
     }
 
     @Override
     public List<Trade> getTrades() {
-        return closedTrades;
+        return getClosedTrades();
+    }
+
+    public List<Trade> getClosedTrades() {
+        List<Trade> tradesCopy = new ArrayList<Trade>(trades);
+        if (tradesCopy.isEmpty()) return tradesCopy;
+        if (tradesCopy.get(tradesCopy.size() - 1).isOpened()) {
+            tradesCopy.remove(tradesCopy.size() - 1);
+        }
+        return tradesCopy;
+    }
+
+    public List<Trade> getAllTrades() {
+        return trades;
     }
 
     @Override
     public Order getLastOrder() {
-        if (!orders.isEmpty()) {
-            return orders.get(orders.size() - 1);
-        }
-        return null;
+        return getLastOrder(null);
     }
 
     @Override
     public Order getLastOrder(Order.OrderType orderType) {
-        if (Order.OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
-            return buyOrders.get(buyOrders.size() - 1);
-        } else if (Order.OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
-            return sellOrders.get(sellOrders.size() - 1);
+        if (trades.isEmpty()) return null;
+        for (int i = trades.size() - 1; i >= 0; i--) {
+            Trade trade = trades.get(i);
+            Order exit = trade.getExit();
+            if (exit != null && (orderType == null || orderType.equals(exit.getType()))) return exit;
+            Order entry = trade.getEntry();
+            if (entry != null && (orderType == null || orderType.equals(entry.getType()))) return entry;
         }
         return null;
+    }
+
+    public Trade getLastTrade() {
+        return getLastClosedTrade();
+    }
+
+    public Trade getLastClosedTrade() {
+        List<Trade> closedTrades = getClosedTrades();
+        return closedTrades.isEmpty() ? null : closedTrades.get(closedTrades.size() - 1);
     }
 
     @Override
     public Order getLastEntry() {
-        if (!entryOrders.isEmpty()) {
-            return entryOrders.get(entryOrders.size() - 1);
-        }
-        return null;
+        List<Trade> allTrades = getAllTrades();
+        return allTrades.isEmpty() ? null : allTrades.get(allTrades.size() - 1).getEntry();
     }
 
     @Override
     public Order getLastExit() {
-        if (!exitOrders.isEmpty()) {
-            return exitOrders.get(exitOrders.size() - 1);
-        }
-        return null;
-    }
-
-    private void recordOrder(Order order, boolean isEntry) {
-        if (order == null) {
-            throw new IllegalArgumentException("Order should not be null");
-        }
-
-        // Storing the new order in entries/exits lists
-        if (isEntry) {
-            entryOrders.add(order);
-        } else {
-            exitOrders.add(order);
-        }
-
-        // Storing the new order in orders list
-        orders.add(order);
-        if (Order.OrderType.BUY.equals(order.getType())) {
-            // Storing the new order in buy orders list
-            buyOrders.add(order);
-        } else if (Order.OrderType.SELL.equals(order.getType())) {
-            // Storing the new order in sell orders list
-            sellOrders.add(order);
-        }
-
-        Trade currentTrade = getCurrentTrade(order.getIndex());
-        if (currentTrade == null) {
-            currentTrade = new Trade(order.getType());
-            trades.add(currentTrade);
-        }
-        // Storing the trade if closed
-        if (currentTrade.isClosed()) {
-            closedTrades.add(currentTrade);
-        }
+        Trade lastClosedTrade = getLastClosedTrade();
+        return lastClosedTrade == null ? null : lastClosedTrade.getExit();
     }
 
 }

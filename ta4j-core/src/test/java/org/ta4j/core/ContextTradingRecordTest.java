@@ -85,7 +85,7 @@ public class ContextTradingRecordTest {
     
     @Test
     public void isClosed() {
-        assertFalse(emptyRecord.isClosed());
+        assertTrue(emptyRecord.isClosed());
         assertFalse(openedRecord.isClosed());
         assertTrue(closedRecord.isClosed());
     }

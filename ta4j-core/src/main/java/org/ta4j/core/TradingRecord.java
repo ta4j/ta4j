@@ -105,26 +105,24 @@ public interface TradingRecord extends Serializable {
      * @return true if no trade is open, false otherwise
      */
     default boolean isClosed() {
-        if (getCurrentTrade() == null) {
-            return false;
-        }
+        if (getCurrentTrade() == null) return true;
         return !getCurrentTrade().isOpened();
     }
     
     /**
-     * @return the recorded trades
+     * @return the closed trades.  Omits the final trade if it is not closed.
      */
     List<Trade> getTrades();
     
     /**
-     * @return the number of recorded trades
+     * @return the number of closed trades
      */
     default int getTradeCount() {
         return getTrades().size();
     }
     
     /**
-     * @return the last trade recorded
+     * @return the last closed trade.  Returns the next to last trade if the final trade is not closed.
      */
     default Trade getLastTrade() {
     	List<Trade> trades = getTrades();
@@ -135,23 +133,23 @@ public interface TradingRecord extends Serializable {
     }
     
     /**
-     * @return the last order recorded
+     * @return the last order of the final trade.
      */
     Order getLastOrder();
     
     /**
      * @param orderType the type of the order to get the last of
-     * @return the last order (of the provided type) recorded
+     * @return the last order of the provided type.  Uses the last trade with an order of the provided type.
      */
     Order getLastOrder(OrderType orderType);
     
     /**
-     * @return the last entry order recorded
+     * @return the last entry order.  Always uses the final trade even if it is still open. 
      */
     Order getLastEntry();
     
     /**
-     * @return the last exit order recorded
+     * @return the last exit order.  Uses the next to last trade if the final trade is not closed.
      */
     Order getLastExit();
 }
