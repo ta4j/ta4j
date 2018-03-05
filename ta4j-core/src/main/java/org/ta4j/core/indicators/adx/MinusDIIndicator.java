@@ -41,13 +41,13 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator avgMinusDMIndicator;
     private final ATRIndicator atrIndicator;
-    private final int timeFrame;
+    private final int barCount;
 
-    public MinusDIIndicator(TimeSeries series, int timeFrame) {
+    public MinusDIIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
-        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), timeFrame);
-        this.atrIndicator = new ATRIndicator(series, timeFrame);
+        this.barCount = barCount;
+        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
+        this.atrIndicator = new ATRIndicator(series, barCount);
     }
 
     @Override
@@ -57,6 +57,6 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

@@ -42,13 +42,13 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param indicator (normally {@link MedianPriceIndicator})
-     * @param timeFrameSma1 (normally 5)
-     * @param timeFrameSma2 (normally 34)
+     * @param barCountSma1 (normally 5)
+     * @param barCountSma2 (normally 34)
      */
-    public AwesomeOscillatorIndicator(Indicator<Num> indicator, int timeFrameSma1, int timeFrameSma2) {
+    public AwesomeOscillatorIndicator(Indicator<Num> indicator, int barCountSma1, int barCountSma2) {
         super(indicator);
-        this.sma5 = new SMAIndicator(indicator, timeFrameSma1);
-        this.sma34 = new SMAIndicator(indicator, timeFrameSma2);
+        this.sma5 = new SMAIndicator(indicator, barCountSma1);
+        this.sma34 = new SMAIndicator(indicator, barCountSma2);
     }
 
     /**

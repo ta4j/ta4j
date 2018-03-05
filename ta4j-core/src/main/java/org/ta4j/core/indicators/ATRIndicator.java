@@ -34,9 +34,9 @@ public class ATRIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator averageTrueRangeIndicator;
 
-    public ATRIndicator(TimeSeries series, int timeFrame) {
+    public ATRIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), timeFrame);
+        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), barCount);
     }
 
     @Override

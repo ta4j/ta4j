@@ -38,7 +38,7 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class AroonUpIndicator extends CachedIndicator<Num> {
 
-    private final int timeFrame;
+    private final int barCount;
 
     private final HighestValueIndicator highestMaxPriceIndicator;
     private final Indicator<Num> maxValueIndicator;
@@ -49,25 +49,25 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
      * <p>
      * @param series the time series
      * @param maxValueIndicator the indicator for the maximum price (default {@link MaxPriceIndicator})
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public AroonUpIndicator(TimeSeries series, Indicator<Num> maxValueIndicator, int timeFrame) {
+    public AroonUpIndicator(TimeSeries series, Indicator<Num> maxValueIndicator, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         this.maxValueIndicator = maxValueIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, timeFrame+1);
+        highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, barCount+1);
     }
 
     /**
      * Default Constructor that is using the maximum price
      * <p>
      * @param series the time series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public AroonUpIndicator(TimeSeries series, int timeFrame) {
-        this(series,new MaxPriceIndicator(series), timeFrame);
+    public AroonUpIndicator(TimeSeries series, int barCount) {
+        this(series,new MaxPriceIndicator(series), barCount);
     }
 
     @Override
@@ -76,7 +76,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the highest close price
-        int endIndex = Math.max(0,index - timeFrame);
+        int endIndex = Math.max(0,index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {
             if (maxValueIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
@@ -85,11 +85,11 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return numOf(timeFrame - nbBars).dividedBy(numOf(timeFrame)).multipliedBy(hundred);
+        return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

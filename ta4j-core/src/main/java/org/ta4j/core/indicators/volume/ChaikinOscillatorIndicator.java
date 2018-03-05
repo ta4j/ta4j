@@ -42,13 +42,13 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
 	 * Constructor.
 	 * 
 	 * @param series the {@link TimeSeries}
-	 * @param shortTimeFrame (usually 3)
-	 * @param longTimeFrame (usually 10)
+	 * @param shortBarCount (usually 3)
+	 * @param longBarCount (usually 10)
 	 */
-	public ChaikinOscillatorIndicator(TimeSeries series, int shortTimeFrame, int longTimeFrame) {
+	public ChaikinOscillatorIndicator(TimeSeries series, int shortBarCount, int longBarCount) {
 		super(series);
-		ema3 = new EMAIndicator(new AccumulationDistributionIndicator(series), shortTimeFrame);
-		ema10 = new EMAIndicator(new AccumulationDistributionIndicator(series), longTimeFrame);
+		ema3 = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
+		ema10 = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
 	}
 
 	/**

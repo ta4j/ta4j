@@ -55,7 +55,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void usingTimeFrame3UsingClosePrice() throws Exception {
+    public void usingBarCount3UsingClosePrice() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 3);
 
         assertNumEquals(1, indicator.getValue(0));
@@ -74,7 +74,7 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void whenTimeFrameIs1ResultShouldBeIndicatorValue() throws Exception {
+    public void whenBarCountIs1ResultShouldBeIndicatorValue() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         for (int i = 0; i < data.getBarCount(); i++) {
             assertEquals(data.getBar(i).getClosePrice(), indicator.getValue(i));

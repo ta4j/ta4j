@@ -38,33 +38,33 @@ private final MaxPriceIndicator maxPrice;
     
     private final ATRIndicator averageTrueRange;
     
-    private final Num sqrtTimeFrame;
+    private final Num sqrtBarCount;
     
-    private final int timeFrame;
+    private final int barCount;
     
     /**
      * Constructor.
      *
      * @param series the series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public RandomWalkIndexLowIndicator(TimeSeries series, int timeFrame) {
+    public RandomWalkIndexLowIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
-        averageTrueRange = new ATRIndicator(series, timeFrame);
-        sqrtTimeFrame = series.numOf(Math.sqrt(timeFrame));
+        averageTrueRange = new ATRIndicator(series, barCount);
+        sqrtBarCount = series.numOf(Math.sqrt(barCount));
     }
 
     @Override
     protected Num calculate(int index) {
-        return maxPrice.getValue(Math.max(0, index - timeFrame)).minus(minPrice.getValue(index))
-                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtTimeFrame));
+        return maxPrice.getValue(Math.max(0, index - barCount)).minus(minPrice.getValue(index))
+                .dividedBy(averageTrueRange.getValue(index).multipliedBy(sqrtBarCount));
     }
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

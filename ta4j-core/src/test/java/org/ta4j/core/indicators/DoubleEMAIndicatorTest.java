@@ -53,7 +53,7 @@ public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void doubleEMAUsingTimeFrame5UsingClosePrice() {
+    public void doubleEMAUsingBarCount5UsingClosePrice() {
         DoubleEMAIndicator doubleEma = new DoubleEMAIndicator(closePrice, 5);
 
         assertNumEquals(0.73, doubleEma.getValue(0));

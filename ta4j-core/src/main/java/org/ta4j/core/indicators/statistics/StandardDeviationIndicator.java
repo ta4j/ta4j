@@ -39,11 +39,11 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public StandardDeviationIndicator(Indicator<Num> indicator, int timeFrame) {
+    public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        variance = new VarianceIndicator(indicator, timeFrame);
+        variance = new VarianceIndicator(indicator, barCount);
     }
 
     @Override

@@ -36,7 +36,7 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
     
     private Indicator<Num> indicator2;
 
-    private int timeFrame;
+    private int barCount;
 
     private SMAIndicator sma1;
     
@@ -46,20 +46,20 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
      * Constructor.
      * @param indicator1 the first indicator
      * @param indicator2 the second indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int timeFrame) {
+    public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
-        this.timeFrame = timeFrame;
-        sma1 = new SMAIndicator(indicator1, timeFrame);
-        sma2 = new SMAIndicator(indicator2, timeFrame);
+        this.barCount = barCount;
+        sma1 = new SMAIndicator(indicator1, barCount);
+        sma2 = new SMAIndicator(indicator2, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         Num covariance = numOf(0);
         Num average1 = sma1.getValue(index);
@@ -74,6 +74,6 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

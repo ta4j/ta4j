@@ -37,7 +37,7 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     private static final long serialVersionUID = 6283425887025798038L;
     
     private Indicator<Num> ref;
-    private int timeFrame;
+    private int barCount;
 
     private SMAIndicator mean;
     private StandardDeviationIndicator sd;
@@ -45,14 +45,14 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param ref the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public SigmaIndicator(Indicator<Num> ref, int timeFrame) {
+    public SigmaIndicator(Indicator<Num> ref, int barCount) {
         super(ref);
         this.ref = ref;
-        this.timeFrame = timeFrame;
-        mean = new SMAIndicator(ref, timeFrame);
-        sd = new StandardDeviationIndicator(ref, timeFrame);
+        this.barCount = barCount;
+        mean = new SMAIndicator(ref, barCount);
+        sd = new StandardDeviationIndicator(ref, barCount);
     }
 
     @Override
@@ -63,6 +63,6 @@ public class SigmaIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

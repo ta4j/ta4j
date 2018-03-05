@@ -52,7 +52,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void lowestValueIndicatorUsingTimeFrame5UsingClosePrice() {
+    public void lowestValueIndicatorUsingBarCount5UsingClosePrice() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
         assertNumEquals("1.0", lowestValue.getValue(1));
         assertNumEquals("1.0", lowestValue.getValue(2));
@@ -76,7 +76,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void lowestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
+    public void lowestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
         assertNumEquals("1.0", lowestValue.getValue(12));
     }

@@ -64,7 +64,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void mmaUsingTimeFrame10UsingClosePrice() throws Exception {
+    public void mmaUsingBarCount10UsingClosePrice() throws Exception {
         Indicator<Num> actualIndicator = getIndicator(new ClosePriceIndicator(data), 10);
         assertEquals(63.9983, actualIndicator.getValue(9).doubleValue(), TestUtils.GENERAL_OFFSET);
         assertEquals(63.7315, actualIndicator.getValue(10).doubleValue(), TestUtils.GENERAL_OFFSET);

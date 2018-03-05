@@ -46,7 +46,7 @@ public class PivotPointIndicatorTest {
     private TimeSeries series_1_weeks;
 
     @Before
-    public void initDataForDailyTimeFrame(){
+    public void initDataForDailyBarCount(){
 
         String rawData_5_minutes = "2017-09-27,22:00:00,167.86,167.949,167.63,167.68,1746768,0\n" +
                 "2017-09-28,15:35:00,167.94,168.37,167.6,168.24,706119,0\n" +
@@ -611,7 +611,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Before
-    public void initDataForWeeklyTimeFrame(){
+    public void initDataForWeeklyBarCount(){
 
         String rawData_1_hours = "2017-09-01,16:00:00,172.4,172.55,171.58,171.8,2204582,0\n" +
                 "2017-09-01,17:00:00,171.79,172.49,171.31,172.43,1870246,0\n" +
@@ -804,7 +804,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Before
-    public void initDataForMonthlyTimeFrame(){
+    public void initDataForMonthlyBarCount(){
         String rawData_1_days = "2017/08/18,167.4100,15065590.0000,166.8400,168.6700,166.2100\n" +
                 "2017/08/17,166.9100,17009420.0000,169.3400,169.8600,166.8500\n" +
                 "2017/08/16,170.0000,15732840.0000,171.2500,171.3800,169.2400\n" +
@@ -980,7 +980,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Before
-    public void initDataForYearlyTimeFrame(){
+    public void initDataForYearlyBarCount(){
 
         String rawData_1_week = "2012-05-14,42.049999,45.000000,38.000000,38.230000,38.230000,573576400\n" +
                 "2012-05-21,36.529999,36.660000,30.940001,31.910000,31.910000,430966300\n" +
@@ -1280,7 +1280,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Test
-    public void PivotPointTestDailyTimeFrame(){
+    public void PivotPointTestDailyBarCount(){
         PivotPointIndicator pp = new PivotPointIndicator(series_5_minutes, DAY);
         StandardReversalIndicator s1 = new StandardReversalIndicator(pp, SUPPORT_1);
         StandardReversalIndicator s2 = new StandardReversalIndicator(pp, SUPPORT_2);
@@ -1342,7 +1342,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Test
-    public void PivotPointTestWeeklyTimeFrame(){
+    public void PivotPointTestWeeklyBarCount(){
         PivotPointIndicator pp = new PivotPointIndicator(series_1_hours, TimeLevel.WEEK);
 
         assertEquals(pp.getValue(0), NaN);// first bar no data for
@@ -1393,7 +1393,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Test
-    public void PivotPointTestMonthlyTimeFrame(){
+    public void PivotPointTestMonthlyBarCount(){
         PivotPointIndicator pp = new PivotPointIndicator(series_1_days, MONTH);
         StandardReversalIndicator s1 = new StandardReversalIndicator(pp, SUPPORT_1);
         StandardReversalIndicator s2 = new StandardReversalIndicator(pp, SUPPORT_2);
@@ -1449,7 +1449,7 @@ public class PivotPointIndicatorTest {
     }
 
     @Test
-    public void PivotPointTestYearlyTimeFrame(){
+    public void PivotPointTestYearlyBarCount(){
         PivotPointIndicator pp = new PivotPointIndicator(series_1_weeks, YEAR);
         StandardReversalIndicator s1 = new StandardReversalIndicator(pp, SUPPORT_1);
         StandardReversalIndicator s2 = new StandardReversalIndicator(pp, SUPPORT_2);

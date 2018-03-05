@@ -34,7 +34,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 502597792760330884L;
 	
-    private final int timeFrame;
+    private final int barCount;
     private final EMAIndicator ema;
     private final EMAIndicator emaEma;
 
@@ -42,13 +42,13 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public DoubleEMAIndicator(Indicator<Num> indicator, int timeFrame) {
+    public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-        this.emaEma = new EMAIndicator(ema, timeFrame);
+        this.barCount = barCount;
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
     }
 
     @Override
@@ -59,6 +59,6 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

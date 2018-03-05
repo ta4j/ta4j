@@ -66,7 +66,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void getValueWhenTimeFrameIs20() {
+    public void getValueWhenBarCountIs20() {
         CCIIndicator cci = new CCIIndicator(series, 20);
 
         // Incomplete time frame

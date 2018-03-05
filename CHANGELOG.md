@@ -1,9 +1,11 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ##(unreleased, `0.12-SNAPSHOT`)
+
 ### Breaking: 
    - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
-   - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries` allows to add data directly to the series
+   - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries` allow to add data directly to the series
+
 
 ### Fixed
 ### Changed
@@ -12,7 +14,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TimeSeries | Bar**: preferred way to add bar data to a `TimeSeries` is directly to the series via new `TimeSeries#addBar(time,open,high,..)` functions. It ensures to use the correct `Num` implementation of the series
 - **XlsTestsUtils**: now processes xls with one or more days between data rows (daily, weekly, monthly, etc).  Also handle xls #DIV/0! calculated cells (imported as NaN.NaN)
 - **CachedIndicator**: Last bar is not cached to support real time indicators
-- **TimeSeries | Bar**: added new `#addPrice(price)` function that adds price to (last) bar.
+- **TimeSeries | Bar **: added new `#addPrice(price)` function that adds price to (last) bar.
+- Parameter **timeFrame** renamed to **barCount**.
 - **Various Rules**: added constructor that provides `Number` parameters
 
 ### Added
@@ -46,7 +49,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
-    - now `Decimal` extends `Number` 
+    - now `Decimal` extends `Number`
 - **Strategy:** can now have a optional parameter "name".
 - **Tick:** `Tick` has been renamed to **`Bar`** for a more appropriate description of the price movement over a set period of time.
 - **MMAIndicator**: restructured and moved from `helpers` to `indicators` package
@@ -177,7 +180,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
   * Added candle indicators: Real body, Upper/Lower shadow, Doji, 3 black crows, 3 white soldiers, Bullish/Bearish Harami, Bullish/Bearish Engulfing
   * Added absolute indicator
   * Added Hull Moving Average indicator
-  * Updated Bollinger Bands (variable multiplier, see #53) 
+  * Updated Bollinger Bands (variable multiplier, see #53)
   * Fixed #39 - Possible update for TimeSeries.run()
   * Added Chaikin Money Flow indicator
   * Improved volume indicator
@@ -224,7 +227,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 
   * Switched doubles for TADecimals (BigDecimals) in indicators
   * Semantic improvement for IndicatorOverIndicatorStrategy
-  * Fixed #11 - UnknownFormatConversionException when using toString() for 4 strategies 
+  * Fixed #11 - UnknownFormatConversionException when using toString() for 4 strategies
   * Added a maximum value starter strategy
   * Added linear transaction cost (analysis criterion)
   * Removed evaluators (replaced by `.chooseBest(...)` and `.betterThan(...)` methods)

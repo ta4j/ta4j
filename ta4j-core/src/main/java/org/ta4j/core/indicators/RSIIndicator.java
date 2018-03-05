@@ -37,10 +37,10 @@ public class RSIIndicator extends CachedIndicator<Num> {
     private final MMAIndicator averageGainIndicator;
     private final MMAIndicator averageLossIndicator;
 
-    public RSIIndicator(Indicator<Num> indicator, int timeFrame) {
+    public RSIIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), timeFrame);
-        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), timeFrame);
+        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
+        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
     }
 
     @Override

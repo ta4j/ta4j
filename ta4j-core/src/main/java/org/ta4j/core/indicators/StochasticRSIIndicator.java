@@ -43,31 +43,31 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param series the series
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public StochasticRSIIndicator(TimeSeries series, int timeFrame) {
-        this(new ClosePriceIndicator(series), timeFrame);
+    public StochasticRSIIndicator(TimeSeries series, int barCount) {
+        this(new ClosePriceIndicator(series), barCount);
     }
 
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public StochasticRSIIndicator(Indicator<Num> indicator, int timeFrame) {
-        this(new RSIIndicator(indicator, timeFrame), timeFrame);
+    public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
+        this(new RSIIndicator(indicator, barCount), barCount);
     }
 
     /**
      * Constructor.
      * @param rsi the rsi indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public StochasticRSIIndicator(RSIIndicator rsi, int timeFrame) {
+    public StochasticRSIIndicator(RSIIndicator rsi, int barCount) {
         super(rsi);
         this.rsi = rsi;
-        minRsi = new LowestValueIndicator(rsi, timeFrame);
-        maxRsi = new HighestValueIndicator(rsi, timeFrame);
+        minRsi = new LowestValueIndicator(rsi, barCount);
+        maxRsi = new HighestValueIndicator(rsi, barCount);
     }
 
     @Override

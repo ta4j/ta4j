@@ -76,7 +76,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
-    public void usingTimeFrame5UsingClosePriceAndVolume() {
+    public void usingBarCount5UsingClosePriceAndVolume() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 5);
 
         assertNumEquals(0, covar.getValue(0));
@@ -108,7 +108,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
-    public void shouldBeZeroWhenTimeFrameIs1() {
+    public void shouldBeZeroWhenBarCountIs1() {
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 1);
         assertNumEquals(0, covar.getValue(3));
         assertNumEquals(0, covar.getValue(8));

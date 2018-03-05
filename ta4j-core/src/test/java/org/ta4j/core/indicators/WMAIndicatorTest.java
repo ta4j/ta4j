@@ -54,7 +54,7 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
     
     @Test
-    public void wmaWithTimeFrameGreaterThanSeriesSize() {
+    public void wmaWithBarCountGreaterThanSeriesSize() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
@@ -68,7 +68,7 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void wmaUsingTimeFrame9UsingClosePrice() {
+    public void wmaUsingBarCount9UsingClosePrice() {
         // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
         TimeSeries data = new MockTimeSeries(numFunction,
                 84.53, 87.39, 84.55,

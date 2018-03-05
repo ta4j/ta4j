@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Stochastic oscillator K.
  * <p></p>
- * Receives timeSeries and timeFrame and calculates the StochasticOscillatorKIndicator
+ * Receives timeSeries and barCount and calculates the StochasticOscillatorKIndicator
  * over ClosePriceIndicator, or receives an indicator, MaxPriceIndicator and
  * MinPriceIndicator and returns StochasticOsiclatorK over this indicator.
  * 
@@ -39,30 +39,30 @@ import org.ta4j.core.num.Num;
 public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
 
-    private final int timeFrame;
+    private final int barCount;
 
     private MaxPriceIndicator maxPriceIndicator;
 
     private MinPriceIndicator minPriceIndicator;
 
-    public StochasticOscillatorKIndicator(TimeSeries timeSeries, int timeFrame) {
-        this(new ClosePriceIndicator(timeSeries), timeFrame, new MaxPriceIndicator(timeSeries), new MinPriceIndicator(
+    public StochasticOscillatorKIndicator(TimeSeries timeSeries, int barCount) {
+        this(new ClosePriceIndicator(timeSeries), barCount, new MaxPriceIndicator(timeSeries), new MinPriceIndicator(
                 timeSeries));
     }
 
-    public StochasticOscillatorKIndicator(Indicator<Num> indicator, int timeFrame,
+    public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount,
             MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
         this.maxPriceIndicator = maxPriceIndicator;
         this.minPriceIndicator = minPriceIndicator;
     }
 
     @Override
     protected Num calculate(int index) {
-        HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, timeFrame);
-        LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, timeFrame);
+        HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, barCount);
+        LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, barCount);
 
         Num highestHighPrice = highestHigh.getValue(index);
         Num lowestLowPrice = lowestMin.getValue(index);
@@ -74,6 +74,6 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

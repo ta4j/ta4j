@@ -53,7 +53,7 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void tripleEMAUsingTimeFrame5UsingClosePrice() {
+    public void tripleEMAUsingBarCount5UsingClosePrice() {
         TripleEMAIndicator tripleEma = new TripleEMAIndicator(closePrice, 5);
 
         assertNumEquals(0.73, tripleEma.getValue(0));

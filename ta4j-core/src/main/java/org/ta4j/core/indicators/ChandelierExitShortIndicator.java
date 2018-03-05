@@ -51,13 +51,13 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param series the time series
-     * @param timeFrame the time frame (usually 22)
+     * @param barCount the time frame (usually 22)
      * @param k the K multiplier for ATR (usually 3.0)
      */
-    public ChandelierExitShortIndicator(TimeSeries series, int timeFrame, double k) {
+    public ChandelierExitShortIndicator(TimeSeries series, int barCount, double k) {
         super(series);
-        low = new LowestValueIndicator(new MinPriceIndicator(series), timeFrame);
-        atr = new ATRIndicator(series, timeFrame);
+        low = new LowestValueIndicator(new MinPriceIndicator(series), barCount);
+        atr = new ATRIndicator(series, barCount);
         this.k = k;
     }
 

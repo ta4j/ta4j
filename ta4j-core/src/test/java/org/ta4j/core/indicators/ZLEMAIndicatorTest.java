@@ -53,7 +53,7 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
-    public void ZLEMAUsingTimeFrame10UsingClosePrice() {
+    public void ZLEMAUsingBarCount10UsingClosePrice() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
 
         assertNumEquals(11.9091, zlema.getValue(9));
@@ -68,7 +68,7 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
-    public void valuesLessThanTimeFrameMustBeEqualsToSMAValues() {
+    public void valuesLessThanBarCountMustBeEqualsToSMAValues() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
 
@@ -78,7 +78,7 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
     
     @Test
-    public void smallTimeFrame() {
+    public void smallBarCount() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(10, zlema.getValue(0));
     }

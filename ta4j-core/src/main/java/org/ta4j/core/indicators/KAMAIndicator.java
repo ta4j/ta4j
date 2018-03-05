@@ -35,7 +35,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> price;
     
-    private final int timeFrameEffectiveRatio;
+    private final int barCountEffectiveRatio;
     
     private final Num fastest;
     
@@ -45,22 +45,22 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * @param price the price
-     * @param timeFrameEffectiveRatio the time frame of the effective ratio (usually 10)
-     * @param timeFrameFast the time frame fast (usually 2)
-     * @param timeFrameSlow the time frame slow (usually 30)
+     * @param barCountEffectiveRatio the time frame of the effective ratio (usually 10)
+     * @param barCountFast the time frame fast (usually 2)
+     * @param barCountSlow the time frame slow (usually 30)
      */
-    public KAMAIndicator(Indicator<Num> price, int timeFrameEffectiveRatio, int timeFrameFast, int timeFrameSlow) {
+    public KAMAIndicator(Indicator<Num> price, int barCountEffectiveRatio, int barCountFast, int barCountSlow) {
         super(price);
         this.price = price;
-        this.timeFrameEffectiveRatio = timeFrameEffectiveRatio;
-        fastest = numOf(2).dividedBy(numOf(timeFrameFast + 1));
-        slowest = numOf(2).dividedBy(numOf(timeFrameSlow + 1));
+        this.barCountEffectiveRatio = barCountEffectiveRatio;
+        fastest = numOf(2).dividedBy(numOf(barCountFast + 1));
+        slowest = numOf(2).dividedBy(numOf(barCountSlow + 1));
     }
 
     @Override
     protected Num calculate(int index) {
         Num currentPrice = price.getValue(index);
-        if (index < timeFrameEffectiveRatio) {
+        if (index < barCountEffectiveRatio) {
             return currentPrice;
         }
         /*
@@ -70,7 +70,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
          * Volatility = Sum10(ABS(Close - Prior Close))
          * Volatility is the sum of the absolute value of the last ten price changes (Close - Prior Close).
          */
-        int startChangeIndex = Math.max(0, index - timeFrameEffectiveRatio);
+        int startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
         Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
         Num volatility = numOf(0);
         for (int i = startChangeIndex; i < index; i++) {

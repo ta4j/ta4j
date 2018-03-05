@@ -32,14 +32,14 @@ import org.ta4j.core.num.Num;
 public class WMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -1610206345404758687L;
-    private int timeFrame;
+    private int barCount;
 
     private Indicator<Num> indicator;
 
-    public WMAIndicator(Indicator<Num> indicator, int timeFrame) {
+    public WMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
     }
 
     @Override
@@ -48,7 +48,7 @@ public class WMAIndicator extends CachedIndicator<Num> {
             return indicator.getValue(0);
         }
         Num value = numOf(0);
-        if(index - timeFrame < 0) {
+        if(index - barCount < 0) {
             
             for(int i = index + 1; i > 0; i--) {
                 value = value.plus(numOf(i).multipliedBy(indicator.getValue(i-1)));
@@ -57,15 +57,15 @@ public class WMAIndicator extends CachedIndicator<Num> {
         }
         
         int actualIndex = index;
-        for(int i = timeFrame; i > 0; i--) {
+        for(int i = barCount; i > 0; i--) {
             value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
-        return value.dividedBy(numOf((timeFrame * (timeFrame + 1)) / 2));
+        return value.dividedBy(numOf((barCount * (barCount + 1)) / 2));
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

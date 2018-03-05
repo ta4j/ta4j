@@ -44,14 +44,14 @@ public class PercentBIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param indicator an indicator (usually close price)
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      * @param k the K multiplier (usually 2.0)
      */
-    public PercentBIndicator(Indicator<Num> indicator, int timeFrame, double k) {
+    public PercentBIndicator(Indicator<Num> indicator, int barCount, double k) {
         super(indicator);
         this.indicator = indicator;
-        BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, timeFrame));
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, timeFrame);
+        BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, barCount));
+        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, barCount);
         this.bbu = new BollingerBandsUpperIndicator(bbm, sd, numOf(k));
         this.bbl = new BollingerBandsLowerIndicator(bbm, sd, numOf(k));
     }

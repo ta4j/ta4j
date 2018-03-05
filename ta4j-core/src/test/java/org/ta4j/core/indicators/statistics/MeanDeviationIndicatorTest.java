@@ -49,7 +49,7 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
-    public void meanDeviationUsingTimeFrame5UsingClosePrice() {
+    public void meanDeviationUsingBarCount5UsingClosePrice() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
 
         assertNumEquals(2.44444444444444, meanDeviation.getValue(2));
@@ -66,7 +66,7 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
-    public void meanDeviationShouldBeZeroWhenTimeFrameIs1() {
+    public void meanDeviationShouldBeZeroWhenBarCountIs1() {
         MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, meanDeviation.getValue(2));
         assertNumEquals(0, meanDeviation.getValue(7));

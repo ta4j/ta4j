@@ -34,25 +34,25 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     private Indicator<Num> indicator;
 
-    private int timeFrame;
+    private int barCount;
 
     private SMAIndicator sma;
 
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public VarianceIndicator(Indicator<Num> indicator, int timeFrame) {
+    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
-        sma = new SMAIndicator(indicator, timeFrame);
+        this.barCount = barCount;
+        sma = new SMAIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - timeFrame + 1);
+        final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         Num variance = numOf(0);
         Num average = sma.getValue(index);
@@ -66,6 +66,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

@@ -48,7 +48,7 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
-    public void usingTimeFrame5UsingClosePrice() {
+    public void usingBarCount5UsingClosePrice() {
         StandardErrorIndicator se = new StandardErrorIndicator(new ClosePriceIndicator(data), 5);
 
         assertNumEquals(0, se.getValue(0));
@@ -66,7 +66,7 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
-    public void shouldBeZeroWhenTimeFrameIs1() {
+    public void shouldBeZeroWhenBarCountIs1() {
         StandardErrorIndicator se = new StandardErrorIndicator(new ClosePriceIndicator(data), 1);
         assertNumEquals(0, se.getValue(1));
         assertNumEquals(0, se.getValue(3));

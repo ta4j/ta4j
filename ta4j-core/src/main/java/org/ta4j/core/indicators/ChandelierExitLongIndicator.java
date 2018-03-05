@@ -51,13 +51,13 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param series the time series
-     * @param timeFrame the time frame (usually 22)
+     * @param barCount the time frame (usually 22)
      * @param k the K multiplier for ATR (usually 3.0)
      */
-    public ChandelierExitLongIndicator(TimeSeries series, int timeFrame, double k) {
+    public ChandelierExitLongIndicator(TimeSeries series, int barCount, double k) {
         super(series);
-        high = new HighestValueIndicator(new MaxPriceIndicator(series), timeFrame);
-        atr = new ATRIndicator(series, timeFrame);
+        high = new HighestValueIndicator(new MaxPriceIndicator(series), barCount);
+        atr = new ATRIndicator(series, barCount);
         this.k = numOf(k);
     }
 

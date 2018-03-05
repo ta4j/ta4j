@@ -69,7 +69,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void williamsRUsingTimeFrame5UsingClosePrice() {
+    public void williamsRUsingBarCount5UsingClosePrice() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5,
                 new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
@@ -85,7 +85,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void williamsRUsingTimeFrame10UsingClosePrice() {
+    public void williamsRUsingBarCount10UsingClosePrice() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 
@@ -97,7 +97,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void valueLessThenTimeFrame() {
+    public void valueLessThenBarCount() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
                 new MinPriceIndicator(data));
 

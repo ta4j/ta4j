@@ -36,13 +36,13 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num>{
 
     private final AroonDownIndicator aroonDownIndicator;
     private final AroonUpIndicator aroonUpIndicator;
-    private final int timeFrame;
+    private final int barCount;
 
-    public AroonOscillatorIndicator(TimeSeries series, int timeFrame) {
+    public AroonOscillatorIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.timeFrame = timeFrame;
-        aroonDownIndicator = new AroonDownIndicator(series, timeFrame);
-        aroonUpIndicator = new AroonUpIndicator(series, timeFrame);
+        this.barCount = barCount;
+        aroonDownIndicator = new AroonDownIndicator(series, barCount);
+        aroonUpIndicator = new AroonUpIndicator(series, barCount);
     }
 
     @Override
@@ -52,6 +52,6 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num>{
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+" timeFrame: "+timeFrame;
+        return getClass().getSimpleName()+" barCount: "+barCount;
     }
 }
