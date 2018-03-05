@@ -62,18 +62,14 @@ public class ContextTradingRecord implements TradingRecord {
 
     public Trade getCurrentTrade(int index) {
         log.trace("index {}", index);
-        // ordered linear search, not great but low overhead with getters and int comparisons
+        // linear search, not great but low overhead with getters and int comparisons
         for (Trade trade : trades) {
-            if (trade.getEntry().getIndex() > index) {
-                log.trace("quit at newer Trade {}", trade);
-                continue;
-            }
             if (trade.getEntry().getIndex() <= index && trade.getExit() == null) {
                 log.debug("found open Trade {}", trade);
                 return trade;
             }
             if (trade.getEntry().getIndex() <= index && trade.getExit().getIndex() >= index) {
-                log.debug("found current Trade {}", trade);
+                log.debug("found closed Trade {}", trade);
                 return trade;
             }
         }
