@@ -42,6 +42,26 @@ public class ContextTradingRecordTest {
     }
 
     @Test
+    public void outOfOrder() {
+        ContextTradingRecord firstRecord = new ContextTradingRecord();
+        firstRecord.enter(0);
+        firstRecord.enter(3);
+        firstRecord.enter(7);
+        firstRecord.exit(8);
+        ContextTradingRecord secondRecord = new ContextTradingRecord();
+        secondRecord.enter(7);
+        secondRecord.exit(8);
+        //assertRecordNotEquals(firstRecord, secondRecord);
+        assertNotEquals(firstRecord.getCurrentTrade(1), secondRecord.getCurrentTrade(1));
+        assertEquals(firstRecord.getCurrentTrade(7), secondRecord.getCurrentTrade(7));
+        secondRecord.enter(0);
+        secondRecord.enter(3);
+        //assertRecordEquals(firstRecord, secondRecord);
+        assertEquals(firstRecord.getCurrentTrade(1), secondRecord.getCurrentTrade(1));
+        assertEquals(firstRecord.getCurrentTrade(7), secondRecord.getCurrentTrade(7));
+    }
+
+    @Test
     public void getCurrentContextTrade() {
         assertNull(((ContextTradingRecord) emptyRecord).getCurrentTrade(1));
         assertEquals(new Trade(Order.buyAt(0, NaN, NaN), Order.sellAt(3, NaN, NaN)),

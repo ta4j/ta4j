@@ -66,7 +66,7 @@ public class ContextTradingRecord implements TradingRecord {
         for (Trade trade : trades) {
             if (trade.getEntry().getIndex() > index) {
                 log.trace("quit at newer Trade {}", trade);
-                return null;
+                continue;
             }
             if (trade.getEntry().getIndex() <= index && trade.getExit() == null) {
                 log.debug("found open Trade {}", trade);
