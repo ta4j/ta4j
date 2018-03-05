@@ -46,7 +46,7 @@ public class ContextTradingRecord implements TradingRecord {
 
     /**
      * Constructor.
-     * @param orders the orders to be recorded (cannot be empty)
+     * @param orders the orders to be recorded (can be empty)
      */
     public ContextTradingRecord(Order... orders) {
         log.trace("number of orders {}", orders.length);
