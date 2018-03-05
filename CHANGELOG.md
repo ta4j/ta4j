@@ -1,9 +1,11 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ##(unreleased, `0.12-SNAPSHOT`)
-### Breaking:
-   - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations.
-   - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries`
+
+### Breaking: 
+   - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
+   - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries` allow to add data directly to the series
+
 
 ### Fixed
 ### Changed
@@ -14,6 +16,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CachedIndicator**: Last bar is not cached to support real time indicators
 - **TimeSeries | Bar **: added new `#addPrice(price)` function that adds price to (last) bar.
 - Parameter **timeFrame** renamed to **barCount**.
+- **Various Rules**: added constructor that provides `Number` parameters
+
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
 - **Num**: Extracted interface of dropped `Decimal` class
@@ -21,12 +25,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 - **TestUtils**: added parametrized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
+
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
 - **BaseTimeSeries**: _Consturctor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 
-##0.11 (released January 25, 2018)
+## 0.11 (released January 25, 2018)
 
 - **BREAKING**: Tick has been renamed to **Bar**
 

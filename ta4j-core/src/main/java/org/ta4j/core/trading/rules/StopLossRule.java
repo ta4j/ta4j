@@ -46,6 +46,15 @@ public class StopLossRule extends AbstractRule {
      * @param closePrice the close price indicator
      * @param lossPercentage the loss percentage
      */
+    public StopLossRule(ClosePriceIndicator closePrice, Number lossPercentage) {
+        this(closePrice, closePrice.numOf(lossPercentage));
+    }
+
+    /**
+     * Constructor.
+     * @param closePrice the close price indicator
+     * @param lossPercentage the loss percentage
+     */
     public StopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
         this.closePrice = closePrice;
         TimeSeries series = closePrice.getTimeSeries();

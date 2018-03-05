@@ -47,6 +47,16 @@ public class InPipeRule extends AbstractRule {
      * @param upper the upper threshold
      * @param lower the lower threshold
      */
+    public InPipeRule(Indicator<Num> ref, Number upper, Number lower) {
+        this(ref, ref.numOf(upper), ref.numOf(lower));
+    }
+
+    /**
+     * Constructor.
+     * @param ref the reference indicator
+     * @param upper the upper threshold
+     * @param lower the lower threshold
+     */
     public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
         this(ref, new ConstantIndicator<Num>(ref.getTimeSeries(), upper), new ConstantIndicator<Num>(ref.getTimeSeries(), lower));
     }

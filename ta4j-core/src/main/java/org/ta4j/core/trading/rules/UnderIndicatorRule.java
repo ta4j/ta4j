@@ -44,6 +44,15 @@ public class UnderIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold a threshold
      */
+    public UnderIndicatorRule(Indicator<Num> indicator, Number threshold) {
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), indicator.numOf(threshold)));
+    }
+
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param threshold a threshold
+     */
     public UnderIndicatorRule(Indicator<Num> indicator, Num threshold) {
         this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
     }

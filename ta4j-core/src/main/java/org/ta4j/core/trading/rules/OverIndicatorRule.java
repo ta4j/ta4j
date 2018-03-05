@@ -44,10 +44,19 @@ public class OverIndicatorRule extends AbstractRule {
      * @param indicator the indicator
      * @param threshold a threshold
      */
+    public OverIndicatorRule(Indicator<Num> indicator, Number threshold) {
+        this(indicator, indicator.numOf(threshold));
+    }
+
+    /**
+     * Constructor.
+     * @param indicator the indicator
+     * @param threshold a threshold
+     */
     public OverIndicatorRule(Indicator<Num> indicator, Num threshold) {
         this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
     }
-    
+
     /**
      * Constructor.
      * @param first the first indicator
