@@ -22,6 +22,16 @@ public class NumTest extends AbstractIndicatorTest {
         super(numFunction);
     }
 
+    @Test(expected = AssertionError.class)
+    public void testStringNumFail() {
+        assertNumEquals("1.234", numOf(4.321));
+    }
+
+    @Test
+    public void testStringNumPass() {
+        assertNumEquals("1.234", numOf(1.234));
+    }
+
     @Test
     public void testValueOf() {
         assertNumEquals(0.33333333333333333332, numOf(0.33333333333333333332));
