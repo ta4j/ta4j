@@ -23,6 +23,8 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import org.ta4j.core.num.Num;
+
 import java.util.List;
 
 /**
@@ -37,18 +39,18 @@ import java.util.List;
 public interface AnalysisCriterion {
 
     /**
-     * @param series a time series
-     * @param trade a trade
+     * @param series a time series, not null
+     * @param trade a trade, not null
      * @return the criterion value for the trade
      */
-    double calculate(TimeSeries series, Trade trade);
+    Num calculate(TimeSeries series, Trade trade);
 
     /**
-     * @param series a time series
-     * @param tradingRecord a trading record
+     * @param series a time series, not null
+     * @param tradingRecord a trading record, not null
      * @return the criterion value for the trades
      */
-    double calculate(TimeSeries series, TradingRecord tradingRecord);
+    Num calculate(TimeSeries series, TradingRecord tradingRecord);
 
     /**
      * @param manager the time series manager
@@ -58,11 +60,11 @@ public interface AnalysisCriterion {
     default Strategy chooseBest(TimeSeriesManager manager, List<Strategy> strategies) {
 
         Strategy bestStrategy = strategies.get(0);
-        double bestCriterionValue = calculate(manager.getTimeSeries(), manager.run(bestStrategy));
+        Num bestCriterionValue = calculate(manager.getTimeSeries(), manager.run(bestStrategy));
 
         for (int i = 1; i < strategies.size(); i++) {
             Strategy currentStrategy = strategies.get(i);
-            double currentCriterionValue = calculate(manager.getTimeSeries(), manager.run(currentStrategy));
+            Num currentCriterionValue = calculate(manager.getTimeSeries(), manager.run(currentStrategy));
 
             if (betterThan(currentCriterionValue, bestCriterionValue)) {
                 bestStrategy = currentStrategy;
@@ -77,5 +79,5 @@ public interface AnalysisCriterion {
      * @param criterionValue2 the second value
      * @return true if the first value is better than (according to the criterion) the second one, false otherwise
      */
-    boolean betterThan(double criterionValue1, double criterionValue2);
+    boolean betterThan(Num criterionValue1, Num criterionValue2);
 }

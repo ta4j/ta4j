@@ -24,6 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.*;
+import org.ta4j.core.num.Num;
 
 /**
  * Versus "buy and hold" criterion.
@@ -43,30 +44,25 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());
 
-        return criterion.calculate(series, tradingRecord) / criterion.calculate(series, fakeRecord);
+        return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
-    public double calculate(TimeSeries series, Trade trade) {
+    public Num calculate(TimeSeries series, Trade trade) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());
 
-        return criterion.calculate(series, trade) / criterion.calculate(series, fakeRecord);
+        return criterion.calculate(series, trade).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 > criterionValue2;
-    }
-
-    @Override
-    public String toString() {
-        return super.toString() + " (" + criterion + ')';
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

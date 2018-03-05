@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
 public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, Trade trade) {
+    public Num calculate(TimeSeries series, Trade trade) {
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
 
@@ -49,11 +49,11 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
             result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
         }
 
-        return (result.isGreaterThan(series.numOf(1))) ? 1d : 0d;
+        return (result.isGreaterThan(series.numOf(1))) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         int numberOfProfitable = 0;
         for (Trade trade : tradingRecord.getTrades()) {
             int entryIndex = trade.getEntry().getIndex();
@@ -71,11 +71,11 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
                 numberOfProfitable++;
             }
         }
-        return ((double) numberOfProfitable) / tradingRecord.getTradeCount();
+        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
     }
 
     @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 > criterionValue2;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

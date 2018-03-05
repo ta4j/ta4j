@@ -27,6 +27,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 
 /**
  * Average profit criterion.
@@ -40,25 +41,27 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        double bars = numberOfBars.calculate(series, tradingRecord);
-        if (bars == 0) {
-            return 1;
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+        Num bars = numberOfBars.calculate(series, tradingRecord);
+        if (bars.isEqual(series.numOf(0))) {
+            return series.numOf(1);
         }
-        return Math.pow(totalProfit.calculate(series, tradingRecord), 1d / bars);
+
+        return totalProfit.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
-    public double calculate(TimeSeries series, Trade trade) {
-        double bars = numberOfBars.calculate(series, trade);
-        if (bars == 0) {
-            return 1;
+    public Num calculate(TimeSeries series, Trade trade) {
+        Num bars = numberOfBars.calculate(series, trade);
+        if (bars.isEqual(series.numOf(0))) {
+            return series.numOf(1);
         }
-        return Math.pow(totalProfit.calculate(series, trade), 1d / bars);
+
+        return totalProfit.calculate(series, trade).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 > criterionValue2;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

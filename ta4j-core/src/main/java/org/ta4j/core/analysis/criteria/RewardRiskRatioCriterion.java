@@ -27,6 +27,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 
 /**
  * Reward risk ratio criterion.
@@ -40,17 +41,17 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
     private AnalysisCriterion maxDrawdown = new MaximumDrawdownCriterion();
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return totalProfit.calculate(series, tradingRecord) / maxDrawdown.calculate(series, tradingRecord);
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+        return totalProfit.calculate(series, tradingRecord).dividedBy(maxDrawdown.calculate(series, tradingRecord));
     }
 
     @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 > criterionValue2;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
     @Override
-    public double calculate(TimeSeries series, Trade trade) {
-        return totalProfit.calculate(series, trade) / maxDrawdown.calculate(series, trade);
+    public Num calculate(TimeSeries series, Trade trade) {
+        return totalProfit.calculate(series, trade).dividedBy(maxDrawdown.calculate(series, trade));
     }
 }

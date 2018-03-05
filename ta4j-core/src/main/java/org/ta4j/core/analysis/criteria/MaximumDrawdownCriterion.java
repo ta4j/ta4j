@@ -36,25 +36,25 @@ import org.ta4j.core.num.Num;
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
         Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
-        return maximumDrawdown.doubleValue();
+        return maximumDrawdown;
     }
 
     @Override
-    public double calculate(TimeSeries series, Trade trade) {
+    public Num calculate(TimeSeries series, Trade trade) {
         if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
             CashFlow cashFlow = new CashFlow(series, trade);
             Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
-            return maximumDrawdown.doubleValue();
+            return maximumDrawdown;
         }
-        return 0;
+        return series.numOf(0);
     }
 
     @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 < criterionValue2;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isLessThan(criterionValue2);
     }
 
     /**

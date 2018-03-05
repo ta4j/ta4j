@@ -25,6 +25,7 @@ package ta4jexamples.walkforward;
 
 import org.ta4j.core.*;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.num.Num;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 import ta4jexamples.strategies.GlobalExtremaStrategy;
@@ -175,7 +176,7 @@ public class WalkForward {
                 String name = entry.getValue();
                 // For each strategy...
                 TradingRecord tradingRecord = sliceManager.run(strategy);
-                double profit = profitCriterion.calculate(slice, tradingRecord);
+                Num profit = profitCriterion.calculate(slice, tradingRecord);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
             Strategy bestStrategy = profitCriterion.chooseBest(sliceManager, new ArrayList<Strategy>(strategies.keySet()));
