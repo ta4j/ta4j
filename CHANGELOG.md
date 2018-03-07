@@ -29,43 +29,23 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Num**: Extracted interface of dropped `Decimal` class
 - **DoubleNum**: `Num` implementation to support calculations based on `double` primitive
 - **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
-<<<<<<< Upstream, based on develop
 - **DifferencePercentageIndicator**: New indicator to get the difference in percentage from last value
-<<<<<<< Upstream, based on develop
-=======
 - **PrecisionNum**: `Num` implementation to support arbitrary precision
-=======
->>>>>>> 593f98a changelog
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
-<<<<<<< Upstream, based on develop
->>>>>>> 6463301 changelog
 - **TestUtils**: added parameterized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
-<<<<<<< Upstream, based on develop
 - **ChopIndicator** new common indicator of market choppiness (low volatility), and related 'ChopIndicatorTest' JUnit test and 'CandlestickChartWithChopIndicator' example
 - **BollingerBandWidthIndicator**: added missing constructor documentation.
 - **BollingerBandsLowerIndicator**: added missing constructor documentation.
 - **BollingerBandsMiddleIndicator**: added missing constructor documentation.
 - **PrecisionNum**: `Num` implementation to support arbitrary precision
-=======
-=======
-- **TestUtils**: added parametrized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
->>>>>>> 593f98a changelog
->>>>>>> 6463301 changelog
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
-<<<<<<< Upstream, based on develop
 - **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 - **FisherIndicator**: commented constructor removed.
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
-<<<<<<< Upstream, based on develop
-=======
-
-=======
 - **BaseTimeSeries**: _Consturctor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
->>>>>>> 6463301 changelog
->>>>>>> 69b27e1 changelog
 
 ## 0.11 (released January 25, 2018)
 
