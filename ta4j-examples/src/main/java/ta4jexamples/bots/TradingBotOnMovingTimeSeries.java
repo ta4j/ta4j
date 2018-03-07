@@ -88,7 +88,9 @@ public class TradingBotOnMovingTimeSeries {
     private static Num randDecimal(Num min, Num max) {
         Num randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
-            randomDecimal = max.minus(min).multipliedBy((BigDecimalNum.valueOf(Math.random())).plus(min));
+            Num range = max.minus(min);
+            Num position = range.multipliedBy(BigDecimalNum.valueOf(Math.random()));
+            randomDecimal = min.plus(position);
         }
         return randomDecimal;
     }
@@ -100,8 +102,8 @@ public class TradingBotOnMovingTimeSeries {
     private static Bar generateRandomBar() {
         final Num maxRange = BigDecimalNum.valueOf("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
-        Num minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
-        Num maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
+        Num minPrice = openPrice.minus(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random())));
+        Num maxPrice = openPrice.plus(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random())));
         Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
         return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, BigDecimalNum.valueOf(1),BigDecimalNum.valueOf(1));

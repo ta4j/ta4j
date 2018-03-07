@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Fixed
+- **TradingBotOnMovingTimeSeries**: fixed calculations and ArithmeticException Overflow
 ### Changed
 - **ALL INDICATORS**: `Decimal` replaced by `Num`.
 - **AbstractIndicator**: new `AbstractIndicator#numOf(Number n)` function as counterpart of dropped `Decimal.valueOf(double|int|..)`
