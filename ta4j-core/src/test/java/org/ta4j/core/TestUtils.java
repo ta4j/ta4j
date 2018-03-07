@@ -23,13 +23,18 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+
+//import static java.lang.String.substring;
 
 /**
  * Utility class for {@code Num} tests.
@@ -38,6 +43,8 @@ public class TestUtils {
 
     /** Offset for double equality checking */
     public static final double GENERAL_OFFSET = 0.0001;
+
+    private static Logger log = LoggerFactory.getLogger(TestUtils.class);
 
     /**
      * Verifies that the actual {@code Num} value is equal to the given {@code String} representation.
@@ -120,6 +127,40 @@ public class TestUtils {
             assertEquals(String.format("Failed at index %s: %s",i,actual.toString()),
                     expected.getValue(i).doubleValue(),
                     actual.getValue(i).doubleValue(), GENERAL_OFFSET);
+        }
+    }
+
+    /**
+     * Verifies that two indicators have the same size and values
+     * @param expected indicator of expected values
+     * @param actual indicator of actual values
+     */
+    public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
+        org.junit.Assert.assertEquals("Size does not match,",
+                expected.getTimeSeries().getBarCount(), actual.getTimeSeries().getBarCount());
+        for (int i = expected.getTimeSeries().getBeginIndex(); i < expected.getTimeSeries().getEndIndex(); i++) {
+            // convert to PrecisionNum via String (auto-precision) avoids Cast Class Exception
+            Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
+            Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
+            Num result = exp.minus(act).abs();
+            if (result.isGreaterThan(delta)) {
+                log.debug("{} expected does not match", exp);
+                log.debug("{} actual", act);
+                log.debug("{} offset", delta);
+                String expString = exp.toString();
+                String actString = act.toString();
+                int minLen = Math.min(expString.length(), actString.length());
+                if (expString.length() > minLen)
+                    expString = expString.substring(0, minLen) + "..";
+                if (actString.length() > minLen)
+                    actString = actString.substring(0, minLen) + "..";
+                throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s",
+                        i, expString, actString));
+            } else {
+                log.trace("{} expected matches", exp);
+                log.trace("{} actual", act);
+                log.trace("{} offset", delta);
+            }
         }
     }
 
