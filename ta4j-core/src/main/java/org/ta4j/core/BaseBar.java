@@ -234,7 +234,11 @@ public class BaseBar implements Bar {
 
     @Override
     public void addPrice(Num inPrice) {
-        Num price = numFunction.apply(inPrice.getDelegate());
+        // is this better fixed in the Mocks?
+        Num price = inPrice;
+        if (numFunction != null)
+            price = numFunction.apply(inPrice.getDelegate());
+
         if (openPrice == null) {
             openPrice = price;
         }
