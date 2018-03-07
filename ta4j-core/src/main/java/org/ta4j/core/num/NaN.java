@@ -108,6 +108,11 @@ public class NaN implements Num {
     }
 
     @Override
+    public Num pow(Num n) {
+        return this;
+    }
+
+    @Override
     public Num abs() {
         return this;
     }
