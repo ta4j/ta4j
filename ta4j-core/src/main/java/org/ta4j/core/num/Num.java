@@ -90,6 +90,13 @@ public interface Num extends Comparable<Num>, Serializable {
     Num pow(int n);
 
     /**
+     * Returns a {@code num} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * @param n power to raise this {@code num} to.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    Num pow(Num n);
+
+    /**
      * Returns a {@code num} whose value is the absolute value
      * of this {@code num}.
      * @return {@code abs(this)}

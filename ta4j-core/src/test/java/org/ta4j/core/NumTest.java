@@ -105,6 +105,9 @@ public class NumTest extends AbstractIndicatorTest {
         mustBeNaN = a.pow(12);
         assertNumEquals(mustBeNaN,NaN);
 
+        mustBeNaN = a.pow(a);
+        assertNumEquals(mustBeNaN,NaN);
+
         Double nanDouble = a.doubleValue();
         assertEquals(Double.NaN, nanDouble);
 
@@ -140,6 +143,8 @@ public class NumTest extends AbstractIndicatorTest {
         assertNumEquals(0,hundredMillion.remainder(five));
 
         assertNumEquals(0.00032, zeroDotTwo.pow(5));
+        assertNumEquals(0.7247796636776955, zeroDotTwo.pow(zeroDotTwo));
+        assertNumEquals(1.37972966146, zeroDotTwo.pow(numOf(-0.2)));
         assertNumEquals(554,fiveHundred54.max(five));
         assertNumEquals(5,fiveHundred54.min(five));
         assertTrue(fiveHundred54.isGreaterThan(five));

@@ -92,6 +92,11 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public Num pow(Num n) {
+        return new DoubleNum(Math.pow(delegate,n.doubleValue()));
+    }
+
+    @Override
     public Num abs() {
         return new DoubleNum(Math.abs(delegate));
     }

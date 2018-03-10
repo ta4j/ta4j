@@ -182,6 +182,36 @@ public final class BigDecimalNum implements Num {
     }
 
     /**
+     * Returns a {@code Num} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * @param n power to raise this {@code Num} to.
+     * @return <tt>this<sup>n</sup></tt>
+     * @see BigDecimal#pow(int, java.math.MathContext)
+     */
+    public Num pow(Num n) {
+        // Because BigDecimal.pow(BigDecimal) is not supported we need to find another way, we could do:
+        // Math.pow(a.doubleValue(), b.doubleValue()), but there is a better way:
+        // Perform X^(A+B)=X^A*X^B (B = remainder)
+        // As suggested: https://stackoverflow.com/a/3590314
+        BigDecimal result;
+        BigDecimal power = ((BigDecimalNum)n).delegate;
+        int signOfPower = power.signum();
+        power = power.multiply(new BigDecimal(signOfPower));
+
+        BigDecimal remainderOf2 = power.remainder(BigDecimal.ONE);
+        BigDecimal n2IntPart = power.subtract(remainderOf2);
+
+        BigDecimal intPow = delegate.pow(n2IntPart.intValueExact(), MATH_CONTEXT);
+        BigDecimal doublePow = new BigDecimal(Math.pow(delegate.doubleValue(), remainderOf2.doubleValue()));
+        result = intPow.multiply(doublePow);
+
+        if (signOfPower == -1) {
+            result = BigDecimal.ONE.divide(result, MATH_CONTEXT);
+        }
+
+        return new BigDecimalNum(result);
+    }
+
+    /**
      * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Num}.
      * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
      * @return the positive square root of {@code this}
