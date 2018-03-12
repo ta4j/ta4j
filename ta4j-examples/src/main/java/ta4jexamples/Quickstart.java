@@ -24,7 +24,6 @@
 package ta4jexamples;
 
 import org.ta4j.core.*;
-import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.criteria.AverageProfitableTradesCriterion;
 import org.ta4j.core.analysis.criteria.RewardRiskRatioCriterion;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
@@ -93,9 +92,6 @@ public class Quickstart {
 
 
         // Analysis
-
-        // Getting the cash flow of the resulting trades
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         // Getting the profitable trades ratio
         AnalysisCriterion profitTradesRatio = new AverageProfitableTradesCriterion();
