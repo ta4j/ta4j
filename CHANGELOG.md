@@ -8,6 +8,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Fixed
+- Fixed wrong indexing in `Indicator.toDouble()`.
+
 ### Changed
 - **ALL INDICATORS**: `Decimal` replaced by `Num`.
 - **AbstractIndicator**: new `AbstractIndicator#numOf(Number n)` function as counterpart of dropped `Decimal.valueOf(double|int|..)`

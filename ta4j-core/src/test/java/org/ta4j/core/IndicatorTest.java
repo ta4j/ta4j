@@ -1,7 +1,7 @@
 /*******************************************************************************
  *   The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization
  *   & respective authors (see AUTHORS)
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,56 +23,32 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import org.junit.Test;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
-import java.io.Serializable;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
- * Indicator over a {@link TimeSeries time series}.
- * <p/p>
- * For each index of the time series, returns a value of type <b>T</b>.
+ * Tests for {@link Indicator}.
  *
- * @param <T> the type of returned value (Double, Boolean, etc.)
+ * @author Johnny Lim
  */
-public interface Indicator<T> extends Serializable {
+public class IndicatorTest {
 
-    /**
-     * @param index the bar index
-     * @return the value of the indicator
-     */
-    T getValue(int index);
+	@Test
+	public void toDouble() {
+		Indicator<Num> indicator = mock(Indicator.class);
+		when(indicator.getValue(8)).thenReturn(DoubleNum.valueOf(1d));
+		when(indicator.getValue(9)).thenReturn(DoubleNum.valueOf(2d));
+		when(indicator.getValue(10)).thenReturn(DoubleNum.valueOf(3d));
 
-	/**
-	 * @return the related time series
-	 */
-	TimeSeries getTimeSeries();
+		int index = 10;
+		int barCount = 3;
 
-	/**
-	 * @return  the {@link Num Num extending class} for the given {@link Number}
-	 */
-	Num numOf(Number number);
-
-	 /**
-	 * Returns all values from an {@link Indicator} as an array of Doubles. The
-	 * returned doubles could have a minor loss of precise, if {@link Indicator}
-	 * was based on {@link Num Num}.
-	 *
-	 * @param ref the indicator
-	 * @param index the index
-	 * @param barCount the barCount
-	 * @return array of Doubles within the barCount
-	 */
-	static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
-
-		Double[] all = new Double[barCount];
-
-		int startIndex = Math.max(0, index - barCount + 1);
-		for (int i = 0; i < barCount; i++) {
-			Num number = ref.getValue(i + startIndex);
-			all[i] = number.doubleValue();
-		}
-
-		return all;
+		assertThat(Indicator.toDouble(indicator, index, barCount)).containsExactly(1d, 2d, 3d);
 	}
 
 }
