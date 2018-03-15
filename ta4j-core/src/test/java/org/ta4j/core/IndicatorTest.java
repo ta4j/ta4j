@@ -23,13 +23,14 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.Test;
-import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for {@link Indicator}.
@@ -40,15 +41,22 @@ public class IndicatorTest {
 
 	@Test
 	public void toDouble() {
-		Indicator<Num> indicator = mock(Indicator.class);
-		when(indicator.getValue(8)).thenReturn(DoubleNum.valueOf(1d));
-		when(indicator.getValue(9)).thenReturn(DoubleNum.valueOf(2d));
-		when(indicator.getValue(10)).thenReturn(DoubleNum.valueOf(3d));
+		TimeSeries series = new BaseTimeSeries();
+		List<Num> values = new ArrayList<>();
+		for (int i = 0; i < 100; i++) {
+			values.add(series.numOf(i));
+		}
+		Indicator<Num> indicator = new MockIndicator(series, values);
 
 		int index = 10;
 		int barCount = 3;
 
-		assertThat(Indicator.toDouble(indicator, index, barCount)).containsExactly(1d, 2d, 3d);
+		Double[] doubles = Indicator.toDouble(indicator, index, barCount);
+
+		assertTrue(doubles.length == barCount);
+		assertTrue(doubles[0] == 8d);
+		assertTrue(doubles[1] == 9d);
+		assertTrue(doubles[2] == 10d);
 	}
 
 }
