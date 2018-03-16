@@ -1,7 +1,7 @@
 /*******************************************************************************
  *   The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization
  *   & respective authors (see AUTHORS)
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,56 +23,40 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Test;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 
-import java.io.Serializable;
+import static org.junit.Assert.assertTrue;
 
 /**
- * Indicator over a {@link TimeSeries time series}.
- * <p/p>
- * For each index of the time series, returns a value of type <b>T</b>.
+ * Tests for {@link Indicator}.
  *
- * @param <T> the type of returned value (Double, Boolean, etc.)
+ * @author Johnny Lim
  */
-public interface Indicator<T> extends Serializable {
+public class IndicatorTest {
 
-    /**
-     * @param index the bar index
-     * @return the value of the indicator
-     */
-    T getValue(int index);
-
-	/**
-	 * @return the related time series
-	 */
-	TimeSeries getTimeSeries();
-
-	/**
-	 * @return  the {@link Num Num extending class} for the given {@link Number}
-	 */
-	Num numOf(Number number);
-
-	 /**
-	 * Returns all values from an {@link Indicator} as an array of Doubles. The
-	 * returned doubles could have a minor loss of precise, if {@link Indicator}
-	 * was based on {@link Num Num}.
-	 *
-	 * @param ref the indicator
-	 * @param index the index
-	 * @param barCount the barCount
-	 * @return array of Doubles within the barCount
-	 */
-	static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
-
-		Double[] all = new Double[barCount];
-
-		int startIndex = Math.max(0, index - barCount + 1);
-		for (int i = 0; i < barCount; i++) {
-			Num number = ref.getValue(i + startIndex);
-			all[i] = number.doubleValue();
+	@Test
+	public void toDouble() {
+		TimeSeries series = new BaseTimeSeries();
+		List<Num> values = new ArrayList<>();
+		for (int i = 0; i < 100; i++) {
+			values.add(series.numOf(i));
 		}
+		Indicator<Num> indicator = new MockIndicator(series, values);
 
-		return all;
+		int index = 10;
+		int barCount = 3;
+
+		Double[] doubles = Indicator.toDouble(indicator, index, barCount);
+
+		assertTrue(doubles.length == barCount);
+		assertTrue(doubles[0] == 8d);
+		assertTrue(doubles[1] == 9d);
+		assertTrue(doubles[2] == 10d);
 	}
 
 }
