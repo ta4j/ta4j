@@ -79,7 +79,7 @@ public class PrecisionNumTest {
         assertEquals(60975, ((PrecisionNum) result).getMathContext().getPrecision());
     }
 
-    //@Test
+    @Test
     public void precisionNumTest() throws Exception {
         // different series values may lead to different accuracies
         // series is generated randomly so test a bunch of them to find nefarious cases
