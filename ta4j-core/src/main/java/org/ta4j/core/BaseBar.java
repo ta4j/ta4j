@@ -58,6 +58,8 @@ public class BaseBar implements Bar {
     private Num volume;
     /** Trade count */
     private int trades = 0;
+    /** Num function **/
+    private Function<Number, Num> numFunction;
 
 
     /**
@@ -72,6 +74,7 @@ public class BaseBar implements Bar {
         this.beginTime = endTime.minus(timePeriod);
         this.volume = numFunction.apply(0);
         this.amount = numFunction.apply(0);
+        this.numFunction = numFunction;
     }
 
     /**
@@ -230,7 +233,12 @@ public class BaseBar implements Bar {
     }
 
     @Override
-    public void addPrice(Num price) {
+    public void addPrice(Num inPrice) {
+        // is this better fixed in the Mocks?
+        Num price = inPrice;
+        if (numFunction != null)
+            price = numFunction.apply(inPrice.getDelegate());
+
         if (openPrice == null) {
             openPrice = price;
         }

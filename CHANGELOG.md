@@ -28,8 +28,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DoubleNum**: `Num` implementation to support calculations based on `double` primitive
 - **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
 - **DifferencePercentageIndicator**: New indicator to get the difference in percentage from last value
+- **PrecisionNum**: `Num` implementation to support arbitrary precision
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
-- **TestUtils**: added parametrized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
+- **TestUtils**: added parameterized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
+- **TestUtils**: add assertIndicatorEquals(Indicator e, Indicator a, Num delta)
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
