@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 import java.util.function.Function;
 
 import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
 
@@ -43,7 +44,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(0, (int) numberOfBars.calculate(series, new BaseTradingRecord()));
+        assertNumEquals(0, numberOfBars.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -54,7 +55,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
                 Order.buyAt(3,series), Order.sellAt(5,series));
 
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(6, numberOfBars.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
+        assertNumEquals(6, numberOfBars.calculate(series, tradingRecord));
     }
 
     @Test
@@ -62,13 +63,13 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade t = new Trade(Order.buyAt(2,series), Order.sellAt(5,series));
         AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
-        assertEquals(4, numberOfBars.calculate(series, t), TestUtils.GENERAL_OFFSET);
+        assertNumEquals(4, numberOfBars.calculate(series, t));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new NumberOfBarsCriterion();
-        assertTrue(criterion.betterThan(3, 6));
-        assertFalse(criterion.betterThan(6, 2));
+        assertTrue(criterion.betterThan(numOf(3), numOf(6)));
+        assertFalse(criterion.betterThan(numOf(6), numOf(2)));
     }
 }

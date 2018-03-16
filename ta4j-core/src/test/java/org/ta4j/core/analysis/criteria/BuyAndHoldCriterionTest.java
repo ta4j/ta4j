@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 import java.util.function.Function;
 
 import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
 
@@ -46,7 +47,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(1.05, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
+        assertNumEquals(1.05, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -57,7 +58,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(0.7, buyAndHold.calculate(series, tradingRecord), TestUtils.GENERAL_OFFSET);
+        assertNumEquals(0.7, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -65,7 +66,7 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()), TestUtils.GENERAL_OFFSET);
+        assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
     
     @Test
@@ -73,13 +74,13 @@ public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion buyAndHold = new BuyAndHoldCriterion();
-        assertEquals(105d/100, buyAndHold.calculate(series, trade), TestUtils.GENERAL_OFFSET);
+        assertNumEquals(105d/100, buyAndHold.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = new BuyAndHoldCriterion();
-        assertTrue(criterion.betterThan(1.3, 1.1));
-        assertFalse(criterion.betterThan(0.6, 0.9));
+        assertTrue(criterion.betterThan(numOf(1.3), numOf(1.1)));
+        assertFalse(criterion.betterThan(numOf(0.6), numOf(0.9)));
     }
 }

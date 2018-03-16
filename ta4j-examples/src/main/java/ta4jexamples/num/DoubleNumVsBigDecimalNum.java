@@ -34,6 +34,7 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.IsEqualRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
@@ -73,7 +74,7 @@ public class DoubleNumVsBigDecimalNum {
         TimeSeriesManager manager = new TimeSeriesManager(series);
         TradingRecord record1 = manager.run(strategy1);
         TotalProfitCriterion profit1 = new TotalProfitCriterion();
-        double profitResult1 = profit1.calculate(series, record1);
+        Num profitResult1 = profit1.calculate(series, record1);
         long end = System.currentTimeMillis();
 
         System.out.printf("[%s]\n" +

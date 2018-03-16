@@ -36,22 +36,22 @@ import org.ta4j.core.num.Num;
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public double calculate(TimeSeries series, TradingRecord tradingRecord) {
-        double value = 1d;
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+        Num value = series.numOf(1);
         for (Trade trade : tradingRecord.getTrades()) {
-            value *= calculateProfit(series, trade);
+            value = value.multipliedBy(calculateProfit(series, trade));
         }
         return value;
     }
 
     @Override
-    public double calculate(TimeSeries series, Trade trade) {
+    public Num calculate(TimeSeries series, Trade trade) {
         return calculateProfit(series, trade);
     }
 
     @Override
-    public boolean betterThan(double criterionValue1, double criterionValue2) {
-        return criterionValue1 > criterionValue2;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
     /**
@@ -60,7 +60,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @param trade a trade
      * @return the profit of the trade
      */
-    private double calculateProfit(TimeSeries series, Trade trade) {
+    private Num calculateProfit(TimeSeries series, Trade trade) {
         Num profit = series.numOf(1);
         if (trade.isClosed()) {
             // use price of entry/exit order, if NaN use close price of underlying time series
@@ -77,6 +77,6 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
                 profit = entryClosePrice.dividedBy(exitClosePrice);
             }
         }
-        return profit.doubleValue();
+        return profit;
     }
 }
