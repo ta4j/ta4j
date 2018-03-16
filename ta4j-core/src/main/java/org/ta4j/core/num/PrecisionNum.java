@@ -132,7 +132,13 @@ public final class PrecisionNum implements Num {
 
 
     public Num plus(Num augend) {
-        return augend.isNaN() ? NaN : new PrecisionNum(delegate.add(((PrecisionNum) augend).delegate, mathContext), mathContext.getPrecision());
+        if (augend.isNaN()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) augend).delegate;
+        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        BigDecimal result = delegate.add(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -143,7 +149,13 @@ public final class PrecisionNum implements Num {
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
     public Num minus(Num subtrahend) {
-        return subtrahend.isNaN() ? NaN : new PrecisionNum(delegate.subtract(((PrecisionNum) subtrahend).delegate, mathContext), mathContext.getPrecision());
+        if (subtrahend.isNaN()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) subtrahend).delegate;
+        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        BigDecimal result = delegate.subtract(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -154,12 +166,11 @@ public final class PrecisionNum implements Num {
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     public Num multipliedBy(Num multiplicand) {
-        //return multiplicand.isNaN() ? NaN : new PrecisionNum(delegate.multiply(((PrecisionNum) multiplicand).delegate, mathContext), mathContext.getPrecision());
         if (multiplicand.isNaN()) {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) multiplicand).delegate;
-        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
         BigDecimal result = delegate.multiply(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
         return new PrecisionNum(result, precision);
     }
@@ -176,7 +187,7 @@ public final class PrecisionNum implements Num {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
-        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
         BigDecimal result = delegate.divide(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
         return new PrecisionNum(result, precision);
     }
@@ -190,10 +201,10 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num remainder(Num divisor) {
-        if (divisor.isNaN() || divisor.isZero()) {
-            return NaN;
-        }
-        return new PrecisionNum(delegate.remainder(((PrecisionNum) divisor).delegate, mathContext), mathContext.getPrecision());
+        BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
+        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -201,7 +212,8 @@ public final class PrecisionNum implements Num {
      * @return <tt>this<sup>n</sup></tt>
      */
     public Num floor() {
-        return new PrecisionNum(delegate.setScale(0, RoundingMode.FLOOR), mathContext.getPrecision());
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        return new PrecisionNum(delegate.setScale(0, RoundingMode.FLOOR), precision);
     }
 
     /**
@@ -209,7 +221,8 @@ public final class PrecisionNum implements Num {
      * @return <tt>this<sup>n</sup></tt>
      */
     public Num ceil() {
-        return new PrecisionNum(delegate.setScale(0, RoundingMode.CEILING), mathContext.getPrecision());
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        return new PrecisionNum(delegate.setScale(0, RoundingMode.CEILING), precision);
     }
 
     /**
@@ -219,7 +232,9 @@ public final class PrecisionNum implements Num {
      * @see BigDecimal#pow(int, java.math.MathContext)
      */
     public Num pow(int n) {
-        return new PrecisionNum(delegate.pow(n, mathContext), mathContext.getPrecision());
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        BigDecimal result = delegate.pow(n, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -239,7 +254,7 @@ public final class PrecisionNum implements Num {
      * @return {@code abs(this)}
      */
     public Num abs() {
-        return new PrecisionNum(delegate.abs(), mathContext.getPrecision());
+        return new PrecisionNum(delegate.abs(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
     }
 
     /**
@@ -519,6 +534,8 @@ public final class PrecisionNum implements Num {
         //   x^b uses   double Math.pow(double x, double b)         cannot overflow double because b < 1.
         // As suggested: https://stackoverflow.com/a/3590314
 
+        BigDecimal bigDecimal = ((PrecisionNum) n).delegate;
+        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
         // get n = a+b, same precision as n
         BigDecimal aplusb = (((PrecisionNum) n).delegate);
         // get the remainder 0 <= b < 1, looses precision as double
@@ -532,6 +549,6 @@ public final class PrecisionNum implements Num {
         // use PrecisionNum.multiply(PrecisionNum), same precision as xpowa (same as delegate) 
         BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
         // same precision as result (same as xpowa) (same as delegate)
-        return new PrecisionNum(result.toString());
+        return new PrecisionNum(result.toString(), precision);
     }
 }
