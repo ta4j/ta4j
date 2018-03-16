@@ -8,7 +8,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 
 ### Fixed
-- Fixed wrong indexing in `Indicator.toDouble()`.
+- **TradingBotOnMovingTimeSeries**: fixed calculations and ArithmeticException Overflow
+- **Fixed wrong indexing in**: `Indicator.toDouble()`.
 
 ### Changed
 - **ALL INDICATORS**: `Decimal` replaced by `Num`.
