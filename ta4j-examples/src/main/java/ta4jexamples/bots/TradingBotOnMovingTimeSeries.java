@@ -26,7 +26,6 @@ package ta4jexamples.bots;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
@@ -89,7 +88,7 @@ public class TradingBotOnMovingTimeSeries {
     private static Num randDecimal(Num min, Num max) {
         Num randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
-            randomDecimal = max.minus(min).multipliedBy((BigDecimalNum.valueOf(Math.random())).plus(min));
+            randomDecimal = max.minus(min).multipliedBy((Num.defaultNumberFunction.apply(Math.random())).plus(min));
         }
         return randomDecimal;
     }
@@ -99,13 +98,13 @@ public class TradingBotOnMovingTimeSeries {
      * @return a random bar
      */
     private static Bar generateRandomBar() {
-        final Num maxRange = BigDecimalNum.valueOf("0.03"); // 3.0%
+        final Num maxRange = Num.defaultStringFunction.apply("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
-        Num minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
-        Num maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
+        Num minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(Num.defaultNumberFunction.apply(Math.random()))));
+        Num maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(Num.defaultNumberFunction.apply(Math.random()))));
         Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, BigDecimalNum.valueOf(1),BigDecimalNum.valueOf(1));
+        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, Num.defaultNumberFunction.apply(1), Num.defaultNumberFunction.apply(1));
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -137,7 +136,7 @@ public class TradingBotOnMovingTimeSeries {
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);
-                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), BigDecimalNum.valueOf(10));
+                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), Num.defaultNumberFunction.apply(10));
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex()
@@ -147,7 +146,7 @@ public class TradingBotOnMovingTimeSeries {
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
                 System.out.println("Strategy should EXIT on " + endIndex);
-                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), BigDecimalNum.valueOf(10));
+                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), Num.defaultNumberFunction.apply(10));
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex()

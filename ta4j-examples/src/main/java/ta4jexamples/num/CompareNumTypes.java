@@ -32,7 +32,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
-import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.trading.rules.IsEqualRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
@@ -40,12 +40,12 @@ import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import java.time.ZonedDateTime;
 import java.util.Random;
 
-public class DoubleNumVsBigDecimalNum {
+public class CompareNumTypes {
 
     public static void main(String args[]) {
         BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder();
         TimeSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf).build();
-        TimeSeries seriesB = timeSeriesBuilder.withName("Sample Series BigDecimal").withNumTypeOf(BigDecimalNum::valueOf).build();
+        TimeSeries seriesB = timeSeriesBuilder.withName("Sample Series BigDecimal").withNumTypeOf(PrecisionNum::valueOf).build();
 
         int[] randoms = new Random().ints(1000000, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {

@@ -27,9 +27,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
-import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -53,9 +53,9 @@ public abstract class AbstractIndicatorTest<D, I> {
 
         public final Function<Number, Num> numFunction;
 
-        @Parameterized.Parameters(name = "Test Case: {index} (0=BigDecimalNum, 1=DoubleNum)")
+    @Parameterized.Parameters(name = "Test Case: {index} (0=PrecisionNum, 1=DoubleNum)")
         public static List<Function<Number, Num>> function(){
-            return Arrays.asList(BigDecimalNum::valueOf, DoubleNum::valueOf);
+        return Arrays.asList(PrecisionNum::valueOf, DoubleNum::valueOf);
         }
 
     private final IndicatorFactory<D, I> factory;

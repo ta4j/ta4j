@@ -31,9 +31,9 @@ import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.trading.rules.FixedRule;
 
 import java.time.ZoneId;
@@ -280,12 +280,12 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDouble(){
         TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
-        series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, BigDecimalNum::valueOf));
+        series.addBar(new BaseBar(ZonedDateTime.now(), 1, 1, 1, 1, 1, PrecisionNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimal(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(BigDecimalNum::valueOf).build();
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
         series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, DoubleNum::valueOf));
     }
 }

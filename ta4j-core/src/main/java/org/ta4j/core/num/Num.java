@@ -40,6 +40,9 @@ import java.util.function.Function;
  */
 public interface Num extends Comparable<Num>, Serializable {
 
+    public final static Function<Number, Num> defaultNumberFunction = PrecisionNum::valueOf;
+    public final static Function<String, Num> defaultStringFunction = PrecisionNum::valueOf;
+
     /**
      * @return the delegate used from this <code>Num</code> implementation
      */
