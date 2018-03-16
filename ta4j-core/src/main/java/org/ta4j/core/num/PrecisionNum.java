@@ -154,7 +154,14 @@ public final class PrecisionNum implements Num {
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     public Num multipliedBy(Num multiplicand) {
-        return multiplicand.isNaN() ? NaN : new PrecisionNum(delegate.multiply(((PrecisionNum) multiplicand).delegate, mathContext), mathContext.getPrecision());
+        //return multiplicand.isNaN() ? NaN : new PrecisionNum(delegate.multiply(((PrecisionNum) multiplicand).delegate, mathContext), mathContext.getPrecision());
+        if (multiplicand.isNaN()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) multiplicand).delegate;
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        BigDecimal result = delegate.multiply(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -169,7 +176,9 @@ public final class PrecisionNum implements Num {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
-        return new PrecisionNum(delegate.divide(bigDecimal, mathContext), mathContext.getPrecision());
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        BigDecimal result = delegate.divide(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
