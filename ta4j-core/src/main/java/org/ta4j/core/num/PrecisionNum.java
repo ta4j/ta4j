@@ -30,6 +30,7 @@ import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static org.ta4j.core.num.NaN.NaN;
 /**
  * Representation of arbitrary precision BigDecimal.
@@ -114,6 +115,14 @@ public final class PrecisionNum implements Num {
      */
     public Number getDelegate() {
         return delegate;
+    }
+
+    /**
+     * Returns the underlying {@link MathContext} mathContext
+     * @return MathContext of this instance
+     */
+    public MathContext getMathContext() {
+        return mathContext;
     }
 
     @Override
@@ -483,5 +492,37 @@ public final class PrecisionNum implements Num {
     @Override
     public String toString() {
         return delegate.toString();
+    }
+
+    @Override
+    public Num pow(Num n) {
+        // There is no BigDecimal.pow(BigDecimal).  We could do:
+        //   double Math.pow(double delegate.doubleValue(), double n)
+        // But that could overflow any of the three doubles.
+        // Instead perform:
+        //   x^(a+b) = x^a * x^b
+        // Where:
+        //   n = a+b
+        //   a is a whole number (make sure it doesn't overflow int)
+        //   remainder 0 <= b < 1
+        // So:
+        //   x^a uses   PrecisionNum ((PrecisionNum) x).pow(int a)  cannot overflow Num
+        //   x^b uses   double Math.pow(double x, double b)         cannot overflow double because b < 1.
+        // As suggested: https://stackoverflow.com/a/3590314
+
+        // get n = a+b, same precision as n
+        BigDecimal aplusb = (((PrecisionNum) n).delegate);
+        // get the remainder 0 <= b < 1, looses precision as double
+        double b = aplusb.remainder(BigDecimal.ONE).doubleValue();
+        // get the whole number a, fails on overflow
+        int a = aplusb.subtract(new BigDecimal(b)).intValueExact();
+        // use BigDecimal pow(int), cannot overflow, same precision as delegate
+        BigDecimal xpowa = delegate.pow(a);
+        // use double pow(double, double), cannot overflow, looses precision as double
+        double xpowb = Math.pow(delegate.doubleValue(), b);
+        // use PrecisionNum.multiply(PrecisionNum), same precision as xpowa (same as delegate) 
+        BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
+        // same precision as result (same as xpowa) (same as delegate)
+        return new PrecisionNum(result.toString());
     }
 }
