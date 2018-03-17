@@ -48,7 +48,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+        super(null, numFunction);
     }
 
     @Before

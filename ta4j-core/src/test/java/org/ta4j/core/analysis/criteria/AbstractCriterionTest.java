@@ -45,19 +45,15 @@ public abstract class AbstractCriterionTest {
     public static List<Function<Number, Num>> function(){
         return Arrays.asList(BigDecimalNum::valueOf, DoubleNum::valueOf);
     }
+
     /**
      * Constructor.
      * 
      * @param factory CriterionFactory for building an AnalysisCriterion given
      *            parameters
      */
-    public AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
+    protected AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
         this.factory = factory;
-        this.numFunction = numFunction;
-    }
-
-    public AbstractCriterionTest(Function<Number, Num> numFunction){
-        this.factory = null;
         this.numFunction = numFunction;
     }
 
@@ -69,6 +65,15 @@ public abstract class AbstractCriterionTest {
      */
     public AnalysisCriterion getCriterion(Object... params) {
         return factory.getCriterion(params);
+    }
+
+    /**
+     * Generates an AnalysisCriterion without any parameters
+     *
+     * @return AnalysisCriterion
+     */
+    public AnalysisCriterion getCriterion() {
+        return factory.getCriterion();
     }
 
     public Num numOf(Number n){
