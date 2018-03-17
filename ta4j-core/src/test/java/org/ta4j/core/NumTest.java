@@ -30,11 +30,14 @@ import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -187,5 +190,33 @@ public class NumTest extends AbstractIndicatorTest {
         assertFalse(five.equals(five.function().apply((short)45)));
     }
 
-    //TODO: add precision tests for BigDecimalNum
+    @Test
+    public void sqrtOfBigInteger() {
+        String sqrtOfTwo = "1.4142135623730950488016887242096980785696718753769480731" +
+            "766797379907324784621070388503875343276415727350138462309122970249248360" +
+            "558507372126441214970999358314132226659275055927557999505011527820605715";
+
+        int precision = 200;
+        assertNumEquals(sqrtOfTwo, numOf(2).sqrt(precision));
+    }
+
+    @Test
+    public void sqrtOfBigDouble() {
+        String sqrtOfOnePointTwo = "1.095445115010332226913939565601604267905489389995966508453788899464986554245445467601716872327741252";
+
+        int precision = 100;
+        assertNumEquals(sqrtOfOnePointTwo, numOf(1.2).sqrt(precision));
+    }
+
+    @Test
+    public void sqrtOfNegativeDouble() {
+        assertTrue(numOf(-1.2).sqrt(12).isNaN());
+        assertTrue(numOf(-1.2).sqrt().isNaN());
+    }
+
+    @Test
+    public void sqrtOfZero() {
+        assertNumEquals(0, numOf(0).sqrt(12));
+        assertNumEquals(0, numOf(0).sqrt());
+    }
 }

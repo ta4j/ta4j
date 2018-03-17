@@ -44,6 +44,8 @@ public final class BigDecimalNum implements Num {
 
     private static final long serialVersionUID = 785564782721079992L;
 
+    private static int PRECISION = 32;
+
     private static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     private final BigDecimal delegate;
@@ -59,7 +61,7 @@ public final class BigDecimalNum implements Num {
      * @param val the string representation of the Num value
      */
     private BigDecimalNum(String val) {
-        delegate = new BigDecimal(val, MATH_CONTEXT);
+        delegate = new BigDecimal(val);
     }
 
     private BigDecimalNum(short val) {
@@ -211,15 +213,46 @@ public final class BigDecimalNum implements Num {
 
         return new BigDecimalNum(result);
     }
+    /**
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    @Override
+    public Num sqrt() {
+        // We can't use delegate.getPrecision(), because if the BigDecimal is '2' the precision is 1,
+        // which will result in very low accuracy
+        return sqrt(PRECISION);
+    }
 
     /**
-     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Num}.
-     * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
-     * @return the positive square root of {@code this}
-     * @see StrictMath#sqrt(double)
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @param precision to calculate.
+     * @return <tt>this<sup>n</sup></tt>
      */
-    public Num sqrt() {
-        return new BigDecimalNum(StrictMath.sqrt(delegate.doubleValue()));
+    @Override
+    public Num sqrt(int precision) {
+        int comparedToZero = delegate.compareTo(BigDecimal.ZERO);
+        switch (comparedToZero) {
+            case -1:
+                return NaN;
+
+            case 0:
+                return BigDecimalNum.valueOf(0);
+        }
+
+        // Direct implementation of the example in:
+        // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+        MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
+        BigDecimal two = BigDecimal.valueOf(2);
+        BigDecimal in = delegate.setScale(precision, RoundingMode.HALF_UP);
+        BigDecimal out = new BigDecimal(Math.sqrt(in.doubleValue()), precisionContext);
+        while (!in.equals(out)) {
+            in = out;
+            out = in.add(delegate.divide(in, precisionContext));
+            out = out.divide(two, precisionContext);
+        }
+
+        return new BigDecimalNum(out);
     }
 
     /**

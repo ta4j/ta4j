@@ -114,6 +114,16 @@ public class NaN implements Num {
     }
 
     @Override
+    public Num sqrt() {
+        return this;
+    }
+
+    @Override
+    public Num sqrt(int precision) {
+        return this;
+    }
+
+    @Override
     public Num abs() {
         return this;
     }
