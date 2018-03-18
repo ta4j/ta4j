@@ -36,12 +36,10 @@ import java.util.function.Function;
  * @see Num#function()
  * @see DoubleNum
  * @see BigDecimalNum
+ * @See PrecisionNum
 
  */
 public interface Num extends Comparable<Num>, Serializable {
-
-    public final static Function<Number, Num> defaultNumberFunction = PrecisionNum::valueOf;
-    public final static Function<String, Num> defaultStringFunction = PrecisionNum::valueOf;
 
     /**
      * @return the delegate used from this <code>Num</code> implementation
@@ -223,9 +221,9 @@ public interface Num extends Comparable<Num>, Serializable {
     }
 
     /**
-     * Only for NaN this should be true
-     * @return false if this implementation is not NaN
-     */
+      * Only for NaN this should be true
+      * @return false if this implementation is not NaN
+      */
     default boolean isNaN(){
         return false;
     }

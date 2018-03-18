@@ -1,4 +1,4 @@
-package org.ta4j.core;
+package org.ta4j.core.num;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -9,6 +9,11 @@ import java.util.Random;
 import java.util.function.Function;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DoubleNum;
@@ -26,7 +31,7 @@ public class PrecisionNumTest {
 
     // 120 digit precision
     final static String superPrecisionString =
-            "1.234567890" + // 10 
+            "1.234567890" + // 10
             "1234567890" + // 20
             "1234567890" + // 30
             "1234567890" + // 40
@@ -40,7 +45,7 @@ public class PrecisionNumTest {
             "1234567890"; // 120
     // 120 digit precision
     final static String superPrecisionLargeString =
-            "1234567890" + // 10 
+            "1234567890" + // 10
             "1234567890" + // 20
             "1234567890" + // 30
             "1234567890" + // 40
@@ -170,23 +175,23 @@ public class PrecisionNumTest {
         calculatePrecision32();
         calculateDouble();
 
-        // accuracies relative to SuperPrecision (maximum precisions to which they match superPrecision) 
+        // accuracies relative to SuperPrecision (maximum precisions to which they match superPrecision)
         assertIndicatorEquals(superPrecisionIndicator, precisionIndicator,
                 PrecisionNum.valueOf("0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
         assertIndicatorEquals(superPrecisionIndicator, precision32Indicator,
                 PrecisionNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorEquals(superPrecisionIndicator, doubleIndicator,
                 PrecisionNum.valueOf("0.0000000000001"));
-        // accuracies relative to Precision (maximum precisions to which they match Precision) 
+        // accuracies relative to Precision (maximum precisions to which they match Precision)
         assertIndicatorEquals(precisionIndicator, precision32Indicator,
                 PrecisionNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorEquals(precisionIndicator, doubleIndicator,
                 PrecisionNum.valueOf("0.0000000000001"));
-        // accuracies relative to BigDecimal (maximum precisions to which they match BigDecimal) 
+        // accuracies relative to BigDecimal (maximum precisions to which they match BigDecimal)
         // since precision32Indicator and bigDecimalIndicator have the same precision, they match to any precision
         assertIndicatorEquals(precision32Indicator, doubleIndicator,
                 PrecisionNum.valueOf("0.0000000000001"));
-        // accuracies relative to Double (maximum precisions to which they match Double) 
+        // accuracies relative to Double (maximum precisions to which they match Double)
 
         // This helps for doing a memory snapshot
         //Thread.sleep(1000000);

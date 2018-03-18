@@ -25,9 +25,9 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -64,7 +64,6 @@ public class BaseTimeSeries implements TimeSeries {
     private int removedBarsCount = 0;
     /** True if the current series is constrained (i.e. its indexes cannot change), false otherwise */
     private boolean constrained = false;
-    private static final Function<Number, Num> defaultFunction = Num.defaultNumberFunction;
 
     protected final Function<Number, Num> numFunction;
 
@@ -129,7 +128,7 @@ public class BaseTimeSeries implements TimeSeries {
      *
      */
     private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, defaultFunction);
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, BigDecimalNum::valueOf);
     }
 
 
@@ -448,7 +447,7 @@ public class BaseTimeSeries implements TimeSeries {
         private void initValues() {
             this.bars = new ArrayList<>();
             this.name = "unnamed_series";
-            this.numFunction = defaultFunction;
+            this.numFunction = BigDecimalNum::valueOf;
             this.isConstrained = false;
             this.maxBarCount = Integer.MAX_VALUE;
         }
@@ -498,14 +497,14 @@ public class BaseTimeSeries implements TimeSeries {
         }
 
         public SeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
-            if (abstractNumClass == PrecisionNum.class) {
-                numFunction = PrecisionNum::valueOf;
+            if(abstractNumClass==BigDecimalNum.class){
+                numFunction = BigDecimalNum::valueOf;
                 return this;
             } else if(abstractNumClass== DoubleNum.class){
                 numFunction = DoubleNum::valueOf;
                 return this;
             }
-            numFunction = defaultFunction;
+            numFunction = BigDecimalNum::valueOf;
             return this;
         }
     }

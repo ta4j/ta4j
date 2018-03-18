@@ -26,30 +26,25 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
-    public DifferenceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
-    }
+public class DifferenceIndicatorTest {
 
     private DifferenceIndicator differenceIndicator;
     
     @Before
     public void setUp() {
-        //        Function<Number, Num> numFunction = BigDecimalNum::valueOf;
+        Function<Number, Num> numFunction = BigDecimalNum::valueOf;
 
         TimeSeries series = new BaseTimeSeries();
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
-                numOf(-2.0),
+                numFunction.apply(-2.0),
                 numFunction.apply(0.00),
                 numFunction.apply(1.00),
                 numFunction.apply(2.53),

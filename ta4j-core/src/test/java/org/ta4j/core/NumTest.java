@@ -129,14 +129,14 @@ public class NumTest extends AbstractIndicatorTest {
 
     @Test(expected = java.lang.ClassCastException.class)
     public void testFailDifferentNumsAdd(){
-        Num a = PrecisionNum.valueOf(12);
+        Num a = BigDecimalNum.valueOf(12);
         Num b = DoubleNum.valueOf(12);
         a.plus(b);
     }
 
     @Test(expected = java.lang.ClassCastException.class)
     public void testFailDifferentNumsCompare(){
-        Num a = PrecisionNum.valueOf(12);
+        Num a = BigDecimalNum.valueOf(12);
         Num b = DoubleNum.valueOf(13);
         a.isEqual(b);
     }
@@ -155,7 +155,7 @@ public class NumTest extends AbstractIndicatorTest {
     @Test
     public void testNaN(){
         Num a = NaN;
-        Num eleven = PrecisionNum.valueOf(11);
+        Num eleven = BigDecimalNum.valueOf(11);
 
         Num mustBeNaN = a.plus(eleven);
         assertNumEquals(mustBeNaN,NaN);

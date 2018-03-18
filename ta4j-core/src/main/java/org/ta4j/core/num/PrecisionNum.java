@@ -72,7 +72,7 @@ public final class PrecisionNum implements Num {
 
     /**
      * Constructor. Above double precision, only String parameters can represent the value.
-     * 
+     *
      * @param val the string representation of the Num value
      * @param precision the int precision of the Num value
      */
@@ -122,6 +122,7 @@ public final class PrecisionNum implements Num {
      * Returns the underlying {@link BigDecimal} delegate
      * @return BigDecimal delegate instance of this instance
      */
+    @Override
     public Number getDelegate() {
         return delegate;
     }
@@ -140,6 +141,7 @@ public final class PrecisionNum implements Num {
     }
 
 
+    @Override
     public Num plus(Num augend) {
         if (augend.isNaN()) {
             return NaN;
@@ -158,6 +160,7 @@ public final class PrecisionNum implements Num {
      * @return {@code this - subtrahend}, rounded as necessary
      * @see BigDecimal#subtract(java.math.BigDecimal, java.math.MathContext)
      */
+    @Override
     public Num minus(Num subtrahend) {
         if (subtrahend.isNaN()) {
             return NaN;
@@ -176,6 +179,7 @@ public final class PrecisionNum implements Num {
      * @return {@code this * multiplicand}, rounded as necessary
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
+    @Override
     public Num multipliedBy(Num multiplicand) {
         if (multiplicand.isNaN()) {
             return NaN;
@@ -194,6 +198,7 @@ public final class PrecisionNum implements Num {
      * @return {@code this / divisor}, rounded as necessary
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
+    @Override
     public Num dividedBy(Num divisor) {
         if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
@@ -245,6 +250,7 @@ public final class PrecisionNum implements Num {
      * @return <tt>this<sup>n</sup></tt>
      * @see BigDecimal#pow(int, java.math.MathContext)
      */
+    @Override
     public Num pow(int n) {
         int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
         BigDecimal result = delegate.pow(n, new MathContext(precision, RoundingMode.HALF_UP));
@@ -270,6 +276,7 @@ public final class PrecisionNum implements Num {
      * of this {@code Num}.
      * @return {@code abs(this)}
      */
+    @Override
     public Num abs() {
         return new PrecisionNum(delegate.abs(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
     }
@@ -278,6 +285,7 @@ public final class PrecisionNum implements Num {
      * Checks if the value is zero.
      * @return true if the value is zero, false otherwise
      */
+    @Override
     public boolean isZero() {
         return compareTo(PrecisionNum.valueOf(0)) == 0;
     }
@@ -286,6 +294,7 @@ public final class PrecisionNum implements Num {
      * Checks if the value is greater than zero.
      * @return true if the value is greater than zero, false otherwise
      */
+    @Override
     public boolean isPositive() {
         return compareTo(PrecisionNum.valueOf(0)) > 0;
     }
@@ -294,6 +303,7 @@ public final class PrecisionNum implements Num {
      * Checks if the value is zero or greater.
      * @return true if the value is zero or greater, false otherwise
      */
+    @Override
     public boolean isPositiveOrZero() {
         return compareTo(PrecisionNum.valueOf(0)) >= 0;
     }
@@ -302,6 +312,7 @@ public final class PrecisionNum implements Num {
      * Checks if the value is less than zero.
      * @return true if the value is less than zero, false otherwise
      */
+    @Override
     public boolean isNegative() {
         return compareTo(function().apply(0)) < 0;
     }
@@ -310,6 +321,7 @@ public final class PrecisionNum implements Num {
      * Checks if the value is zero or less.
      * @return true if the value is zero or less, false otherwise
      */
+    @Override
     public boolean isNegativeOrZero() {
         return compareTo(PrecisionNum.valueOf(0)) <= 0;
     }
@@ -319,13 +331,14 @@ public final class PrecisionNum implements Num {
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
+    @Override
     public boolean isEqual(Num other) {
         return !other.isNaN() && compareTo(other) == 0;
     }
 
     /**
      * Checks if this value matches another to a precision.
-     * 
+     *
      * @param other the other value, not null
      * @param precision the int precision
      * @return true is this matches the specified value to a precision, false otherwise
@@ -345,7 +358,7 @@ public final class PrecisionNum implements Num {
 
     /**
      * Checks if this value matches another within an offset.
-     * 
+     *
      * @param other the other value, not null
      * @param delta the {@link Num} offset
      * @return true is this matches the specified value within an offset, false otherwise
@@ -367,6 +380,7 @@ public final class PrecisionNum implements Num {
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
+    @Override
     public boolean isGreaterThan(Num other) {
         return !other.isNaN() && compareTo(other) > 0;
     }
@@ -376,6 +390,7 @@ public final class PrecisionNum implements Num {
      * @param other the other value, not null
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
+    @Override
     public boolean isGreaterThanOrEqual(Num other) {
         return !other.isNaN() && compareTo(other) > -1;
     }
@@ -385,6 +400,7 @@ public final class PrecisionNum implements Num {
      * @param other the other value, not null
      * @return true is this is less than the specified value, false otherwise
      */
+    @Override
     public boolean isLessThan(Num other) {
         return !other.isNaN() && compareTo(other) < 0;
     }
@@ -394,6 +410,7 @@ public final class PrecisionNum implements Num {
         return !other.isNaN() && delegate.compareTo(((PrecisionNum) other).delegate) < 1;
     }
 
+    @Override
     public int compareTo(Num other) {
         return other.isNaN() ? 0 : delegate.compareTo(((PrecisionNum) other).delegate);
     }
@@ -406,6 +423,7 @@ public final class PrecisionNum implements Num {
      *         as defined by the {@link #compareTo(Num) compareTo}
      *         method, {@code this} is returned.
      */
+    @Override
     public Num min(Num other) {
         return other.isNaN() ? NaN : (compareTo(other) <= 0 ? this : other);
     }
@@ -418,6 +436,7 @@ public final class PrecisionNum implements Num {
      *         as defined by the {@link #compareTo(Num) compareTo}
      *         method, {@code this} is returned.
      */
+    @Override
     public Num max(Num other) {
         return other.isNaN() ? NaN : (compareTo(other) >= 0 ? this : other);
     }
@@ -583,7 +602,7 @@ public final class PrecisionNum implements Num {
         // use double pow(double, double)
         double xpowb = Math.pow(delegate.doubleValue(), bDouble);
         log.trace("xpowb {}", xpowb);
-        // use PrecisionNum.multiply(PrecisionNum) 
+        // use PrecisionNum.multiply(PrecisionNum)
         BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
         log.trace("result {}", result);
         return new PrecisionNum(result.toString());
