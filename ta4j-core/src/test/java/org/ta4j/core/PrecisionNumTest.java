@@ -38,6 +38,20 @@ public class PrecisionNumTest {
             "1234567890" + // 100
             "1234567890" + // 110
             "1234567890"; // 120
+    // 120 digit precision
+    final static String superPrecisionLargeString =
+            "1234567890" + // 10 
+            "1234567890" + // 20
+            "1234567890" + // 30
+            "1234567890" + // 40
+            "1234567890" + // 50
+            "1234567890" + // 60
+            "1234567890" + // 70
+            "1234567890" + // 80
+            "1234567890" + // 90
+            "1234567890" + // 100
+            "1234567890" + // 110
+            "1234567890"; // 120
     final static Num firstSuperPrecisionNum = PrecisionNum.valueOf(superPrecisionString);
     Num superPrecisionNum = PrecisionNum.valueOf(superPrecisionString);
 
@@ -61,8 +75,8 @@ public class PrecisionNumTest {
     @Test(expected = ArithmeticException.class)
     public void testPowOverflowExponent() {
         Num x = PrecisionNum.valueOf("2");
-        Num n = PrecisionNum.valueOf(superPrecisionString);
-        x.pow(n);
+        Num n = PrecisionNum.valueOf(superPrecisionLargeString);
+        assertNumEquals("1", x.pow(n));
     }
 
     @Test
