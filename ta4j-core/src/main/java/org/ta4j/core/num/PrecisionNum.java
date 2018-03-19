@@ -147,8 +147,8 @@ public final class PrecisionNum implements Num {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) augend).delegate;
-        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
-        BigDecimal result = delegate.add(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.add(bigDecimal, mathContext);
         log.trace("delegate {} augend {}, calculated precision {}", delegate, augend, precision);
         return new PrecisionNum(result, precision);
     }
@@ -166,8 +166,8 @@ public final class PrecisionNum implements Num {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) subtrahend).delegate;
-        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
-        BigDecimal result = delegate.subtract(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.subtract(bigDecimal, mathContext);
         log.trace("delegate {} subtrahend {}, calculated precision", delegate, subtrahend, precision);
         return new PrecisionNum(result, precision);
     }
@@ -185,7 +185,7 @@ public final class PrecisionNum implements Num {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) multiplicand).delegate;
-        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        int precision = mathContext.getPrecision();
         BigDecimal result = delegate.multiply(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
         log.trace("delegate {} multiplicand {}, calculated precision", delegate, multiplicand, precision);
         return new PrecisionNum(result, precision);
@@ -204,7 +204,7 @@ public final class PrecisionNum implements Num {
             return NaN;
         }
         BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
-        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        int precision = mathContext.getPrecision();
         BigDecimal result = delegate.divide(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
         log.trace("delegate {} divisor {}, calculated precision {}", delegate, divisor, precision);
         return new PrecisionNum(result, precision);
@@ -220,7 +220,7 @@ public final class PrecisionNum implements Num {
     @Override
     public Num remainder(Num divisor) {
         BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
-        int precision = Math.max(bigDecimal.precision(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        int precision = mathContext.getPrecision();
         BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
         log.trace("delegate {} divisor {}, calculated precision", delegate, divisor, precision);
         return new PrecisionNum(result, precision);
@@ -252,7 +252,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num pow(int n) {
-        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        int precision = mathContext.getPrecision();
         BigDecimal result = delegate.pow(n, new MathContext(precision, RoundingMode.HALF_UP));
         log.trace("delegate {} n {}, calculated precision {}", delegate, n, precision);
         return new PrecisionNum(result, precision);
@@ -278,7 +278,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num abs() {
-        return new PrecisionNum(delegate.abs(), Math.max(mathContext.getPrecision(), DEFAULT_PRECISION));
+        return new PrecisionNum(delegate.abs(), mathContext.getPrecision());
     }
 
     /**
@@ -579,7 +579,7 @@ public final class PrecisionNum implements Num {
         log.trace("delegatePrecision {}", delegatePrecision);
         int mathContextPrecision = mathContext.getPrecision();
         log.trace("mathContextPrecision {}", mathContextPrecision);
-        int precision = Math.max(((PrecisionNum) n).delegate.precision(), Math.max(delegate.precision(), DEFAULT_PRECISION));
+        int precision = mathContext.getPrecision();
         log.trace("precision {}", precision);
         // get n = a+b, same precision as n
         BigDecimal aplusb = (((PrecisionNum) n).delegate);
