@@ -76,6 +76,11 @@ public class CsvBarsLoader {
         } catch (NumberFormatException nfe) {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
+        try {
+            csvReader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         return series;
     }
