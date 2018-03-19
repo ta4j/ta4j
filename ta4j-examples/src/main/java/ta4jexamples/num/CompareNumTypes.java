@@ -51,7 +51,7 @@ public class CompareNumTypes {
         TimeSeries seriesP = timeSeriesBuilder.withName("Sample Series PrecisionNum 32").withNumTypeOf(PrecisionNum::valueOf).build();
         TimeSeries seriesPH = timeSeriesBuilder.withName("Sample Series PrecisionNum 256").withNumTypeOf(number -> PrecisionNum.valueOf(number.toString(), 256)).build();
 
-        int[] randoms = new Random().ints(1000000, 80, 100).toArray();
+        int[] randoms = new Random().ints(100000, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
             seriesD.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
