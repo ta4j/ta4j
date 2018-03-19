@@ -75,7 +75,8 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      * <p>
-     * Opens the trades with {@link OrderType} BUY @return the trading record coming from the run
+     * Opens the trades with {@link OrderType} BUY order.
+     * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
         return run(strategy, OrderType.BUY);
@@ -84,7 +85,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
      * <p>
-     * Opens the trades with {@link OrderType} BUY orders.
+     * Opens the trades with {@link OrderType} BUY order.
      * @param strategy the trading strategy
      * @param startIndex the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
@@ -97,7 +98,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      * <p>
-     * Opens the trades with {@link OrderType} BUY orders.
+     * Opens the trades with the specified {@code orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @return the trading record coming from the run
@@ -109,7 +110,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
      * <p>
-     * Opens the trades with {@link OrderType} BUYorders.
+     * Opens the trades with the specified {@code orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param startIndex the start index for the run (included)

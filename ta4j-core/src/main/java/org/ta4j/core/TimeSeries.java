@@ -89,7 +89,7 @@ public interface TimeSeries extends Serializable {
      * It means that it returns the current List object used internally to store the {@link Bar bars}.
      * It may be:
      *   - a shortened bar list if a maximum bar count has been set
-     *   - a extended bar list if it is a constrained time series
+     *   - an extended bar list if it is a constrained time series
      * @return the raw bar data
      */
     List<Bar> getBarData();
@@ -275,7 +275,7 @@ public interface TimeSeries extends Serializable {
     }
 
     /**
-     * Returns a new TimeSeries implementation that is a subset of this TimeSeries implementation.
+     * Returns a new TimeSeries instance that is a subset of this TimeSeries instance.
      * It holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
      * of this TimeSeries.
      * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
