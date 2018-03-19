@@ -338,7 +338,7 @@ public class BaseTimeSeries implements TimeSeries {
 
         bars.add(bar);
         if (seriesBeginIndex == -1) {
-            // Begin index set to 0 only if if wasn't initialized
+            // Begin index set to 0 only if it wasn't initialized
             seriesBeginIndex = 0;
         }
         seriesEndIndex++;

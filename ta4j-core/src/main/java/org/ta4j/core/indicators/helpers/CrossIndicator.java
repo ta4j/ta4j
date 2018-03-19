@@ -63,13 +63,11 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
         i--;
         if (up.getValue(i).isGreaterThan(low.getValue(i))) {
             return true;
-        } else {
-
-            while (i > 0 && up.getValue(i).isEqual(low.getValue(i))) {
-                i--;
-            }
-            return (i != 0) && (up.getValue(i).isGreaterThan(low.getValue(i)));
         }
+        while (i > 0 && up.getValue(i).isEqual(low.getValue(i))) {
+            i--;
+        }
+        return (i != 0) && (up.getValue(i).isGreaterThan(low.getValue(i)));
     }
 
     /**
