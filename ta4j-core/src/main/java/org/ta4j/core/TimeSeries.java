@@ -141,8 +141,8 @@ public interface TimeSeries extends Serializable {
     /**
      * Adds a bar at the end of the series.
      * <p>
-     * Begin index set to 0 if if wasn't initialized.<br>
-     * End index set to 0 if if wasn't initialized, or incremented if it matches the end of the series.<br>
+     * Begin index set to 0 if it wasn't initialized.<br>
+     * End index set to 0 if it wasn't initialized, or incremented if it matches the end of the series.<br>
      * Exceeding bars are removed.
      * @param bar the bar to be added
      * @see TimeSeries#setMaximumBarCount(int)
