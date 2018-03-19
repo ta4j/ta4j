@@ -58,8 +58,7 @@ public class CsvBarsLoader {
 
         TimeSeries series =  new BaseTimeSeries("apple_bars");
 
-        CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1);
-        try {
+        try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1)) {
             String[] line;
             while ((line = csvReader.readNext()) != null) {
                 ZonedDateTime date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneId.systemDefault());
@@ -76,12 +75,6 @@ public class CsvBarsLoader {
         } catch (NumberFormatException nfe) {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
-        try {
-            csvReader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         return series;
     }
 
