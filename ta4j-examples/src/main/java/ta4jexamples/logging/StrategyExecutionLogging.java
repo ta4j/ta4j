@@ -62,6 +62,13 @@ public class StrategyExecutionLogging {
         }
     }
 
+    private static void unloadLoggerConfiguration() {
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        context.reset();
+        JoranConfigurator configurator = new JoranConfigurator();
+        configurator.setContext(context);
+    }
+
     public static void main(String[] args) {
         // Loading the Logback configuration
         loadLoggerConfiguration();
@@ -75,5 +82,8 @@ public class StrategyExecutionLogging {
         // Running the strategy
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         seriesManager.run(strategy);
+
+        // Unload the Logback configuration
+        unloadLoggerConfiguration();
     }
 }

@@ -48,7 +48,7 @@ public class DoubleNumVsBigDecimalNum {
         TimeSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf).build();
         TimeSeries seriesB = timeSeriesBuilder.withName("Sample Series BigDecimal").withNumTypeOf(BigDecimalNum::valueOf).build();
 
-        int[] randoms = new Random().ints(1000000, 80, 100).toArray();
+        int[] randoms = new Random().ints(100000, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
             seriesD.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
