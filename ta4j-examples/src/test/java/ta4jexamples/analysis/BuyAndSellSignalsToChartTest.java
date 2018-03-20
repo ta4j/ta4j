@@ -5,7 +5,7 @@ import org.junit.Test;
 public class BuyAndSellSignalsToChartTest {
     @Test
     public void test() {
-        //BuyAndSellSignalsToChart.main(null);
+        BuyAndSellSignalsToChart.main(null);
     }
 
 }
