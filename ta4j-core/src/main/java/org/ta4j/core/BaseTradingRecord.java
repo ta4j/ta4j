@@ -126,7 +126,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public final boolean exit(int index, Num price, Num amount) {
+    public boolean exit(int index, Num price, Num amount) {
         if (currentTrade.isOpened()) {
             operate(index, price, amount);
             return true;
