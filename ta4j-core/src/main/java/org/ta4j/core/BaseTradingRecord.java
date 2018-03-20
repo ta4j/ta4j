@@ -37,22 +37,22 @@ public class BaseTradingRecord implements TradingRecord {
 	private static final long serialVersionUID = -4436851731855891220L;
 
 	/** The recorded orders */
-    private List<Order> orders = new ArrayList<Order>();
+    private List<Order> orders = new ArrayList<>();
     
     /** The recorded BUY orders */
-    private List<Order> buyOrders = new ArrayList<Order>();
+    private List<Order> buyOrders = new ArrayList<>();
     
     /** The recorded SELL orders */
-    private List<Order> sellOrders = new ArrayList<Order>();
+    private List<Order> sellOrders = new ArrayList<>();
     
     /** The recorded entry orders */
-    private List<Order> entryOrders = new ArrayList<Order>();
+    private List<Order> entryOrders = new ArrayList<>();
     
     /** The recorded exit orders */
-    private List<Order> exitOrders = new ArrayList<Order>();
+    private List<Order> exitOrders = new ArrayList<>();
     
     /** The recorded trades */
-    private List<Trade> trades = new ArrayList<Trade>();
+    private List<Trade> trades = new ArrayList<>();
 
     /** The entry type (BUY or SELL) in the trading session */
     private Order.OrderType startingType;
