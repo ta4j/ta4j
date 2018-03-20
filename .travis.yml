@@ -3,3 +3,5 @@ language: java
 jdk:
   - oraclejdk8
 #  - openjdk8
+
+script: xvfb-run make test
