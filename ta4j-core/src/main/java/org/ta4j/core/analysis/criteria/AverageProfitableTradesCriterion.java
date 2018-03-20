@@ -37,36 +37,27 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
+        Num result = calculateResult(series, trade);
+        return (result.isGreaterThan(series.numOf(1))) ? series.numOf(1) : series.numOf(0);
+    }
+
+    private Num calculateResult(TimeSeries series, Trade trade) {
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
-
-        Num result;
         if (trade.getEntry().isBuy()) {
             // buy-then-sell trade
-            result = series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
+            return series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
         } else {
             // sell-then-buy trade
-            result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
+            return series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
         }
-
-        return (result.isGreaterThan(series.numOf(1))) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         int numberOfProfitable = 0;
         for (Trade trade : tradingRecord.getTrades()) {
-            int entryIndex = trade.getEntry().getIndex();
-            int exitIndex = trade.getExit().getIndex();
-
-            Num result;
-            if (trade.getEntry().isBuy()) {
-                // buy-then-sell trade
-                result = series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
-            } else {
-                // sell-then-buy trade
-                result = series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
-            }
+            Num result = calculateResult(series, trade);
             if (result.isGreaterThan(series.numOf(1))) {
                 numberOfProfitable++;
             }
