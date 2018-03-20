@@ -4,12 +4,8 @@ jdk:
   - oraclejdk8
 #  - openjdk8
 
-addons:
-    apt:
-      packages:
-        - xvfb
-  
-  install:
-    - export DISPLAY=':99.0'
-    - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
 
