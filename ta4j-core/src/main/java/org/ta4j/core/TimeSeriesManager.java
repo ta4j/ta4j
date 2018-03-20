@@ -98,7 +98,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      * <p>
-     * Opens the trades with the specified {@code orderType} order.
+     * Opens the trades with the specified {@link OrderType orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @return the trading record coming from the run
@@ -110,7 +110,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
      * <p>
-     * Opens the trades with the specified {@code orderType} order.
+     * Opens the trades with the specified {@link OrderType orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param startIndex the start index for the run (included)
