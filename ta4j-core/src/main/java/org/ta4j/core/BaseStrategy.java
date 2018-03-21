@@ -150,14 +150,14 @@ public class BaseStrategy implements Strategy {
     @Override
     public Strategy and(Strategy strategy) {
         String andName = "and(" + name + "," + strategy.getName() + ")";
-        int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
+        int unstable = Math.max(unstablePeriod, strategy.getUnstablePeriod());
         return and(andName, strategy, unstable);
     }
 
     @Override
     public Strategy or(Strategy strategy) {
         String orName = "or(" + name + "," + strategy.getName() + ")";
-        int unstable = unstablePeriod > strategy.getUnstablePeriod() ? unstablePeriod : strategy.getUnstablePeriod();
+        int unstable = Math.max(unstablePeriod, strategy.getUnstablePeriod());
         return or(orName, strategy, unstable);
     }
 
