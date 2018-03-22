@@ -5,30 +5,34 @@ package org.ta4j.core.indicators;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.ZonedDateTime;
-import java.util.Random;
-import java.util.function.Function;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.mocks.MockTimeSeries;
-import org.ta4j.core.num.BigDecimalNum;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import java.time.ZonedDateTime;
+import java.util.function.Function;
+
 
 /**
  * @author jtomkinson
  *
  */
-class ChopIndicatorTest  {
+public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>  {
+	
+	protected TimeSeries series;
+	protected final BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction);
+    
+	public ChopIndicatorTest( Function<Number, Num> numFunction ) {
+        super( numFunction );
+	}
+
 	/**
 	 * this will assert that choppiness is high if market price is not moving
 	 */
 	@Test
-	void testChoppy() {
-        BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder();
-        TimeSeries series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(DoubleNum::valueOf).build();
+	public void testChoppy() {
+        series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         for (int i = 0; i < 50; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
             series.addBar(date, 21.5, 21.5+1, 21.5 - 1, 21.5);
@@ -42,9 +46,8 @@ class ChopIndicatorTest  {
 	 * this will assert that choppiness is low if market price is trending significantly
 	 */
 	@Test
-	void testTradableTrend() {
-        BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder();
-        TimeSeries series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(DoubleNum::valueOf).build();
+	public void testTradableTrend() {
+        series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         float value = 21.5f;
         for (int i = 0; i < 50; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);

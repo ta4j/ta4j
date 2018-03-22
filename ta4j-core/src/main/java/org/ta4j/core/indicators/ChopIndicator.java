@@ -22,9 +22,11 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 				MaxHi(n) = The highest high over past n bars
 				
 				++ usually this index is between 0 and 100, but could be scalled differently by the 'scaleTo' arg of the constructor
- *
+ * @implNote precision may be lost because of the double calcuations using log10
  */
 public class ChopIndicator extends CachedIndicator<Num> {
+	public static final double DEFAULT_UPPER_THRESHOLD = 61.8;
+	public static final double DEFAULT_LOWER_THRESHOLD = 38.2;
 
 	private ATRIndicator atrIndicator;
 	TimeSeries timeseries;
@@ -37,7 +39,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
 
 	/**
 	 * ctor
-	 * @param timeseries
+	 * @param timeseries the time series or @param timeseries the {@link TimeSeries}
 	 * @param ciTimeFrame time-frame often something like '14'
 	 * @param scaleTo maximum value to scale this oscillator, usually '1' or '100'
 	 */
@@ -59,7 +61,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
         for( int i = 1; i<timeFrame; ++i ) {
         	summ = summ.plus( atrIndicator.getValue( index - i ) );
         }
-		Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))) );
+		Num a = summ.dividedBy( (hvi.getValue(index).minus(lvi.getValue(index))) );
 		double chop = scaleUpTo * Math.log10( a.doubleValue() ) / LOG10n;
 		return DoubleNum.valueOf( chop );
 	}
