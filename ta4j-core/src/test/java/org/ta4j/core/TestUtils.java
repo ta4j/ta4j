@@ -69,7 +69,7 @@ public class TestUtils {
      * @throws AssertionError if the actual value is not equal to the given {@code int} representation
      */
     public static void assertNumEquals(int expected, Num actual) {
-        assertEquals(expected, actual.intValue());
+        assertEquals(actual.numOf(expected), actual);
     }
 
     /**
@@ -90,26 +90,12 @@ public class TestUtils {
      * @param unexpected the given {@code int} representation to compare the actual value to
      * @throws AssertionError if the actual value is equal to the given {@code int} representation
      */
-    public static void assertNumNotEquals(int unexpected,Num actual) {
-        assertNotEquals(unexpected, actual.intValue());
+    public static void assertNumNotEquals(int unexpected, Num actual) {
+        assertNotEquals(actual.numOf(unexpected), actual);
     }
 
     /**
-     * Verifies that expected values match indicator values.
-     *
-     * @param expectedValues expected list of values
-     * @param actualIndicator indicator to compare
-     */
-    public static void assertValuesEquals(Indicator<Num> actualIndicator, List<Num> expectedValues) {
-        assertEquals("Size does not match,", expectedValues.size(), actualIndicator.getTimeSeries().getBarCount());
-        for (int i = 0; i < expectedValues.size(); i++) {
-            assertEquals(String.format("Values at index <%d> does not match,", i),
-                    expectedValues.get(i).doubleValue(), actualIndicator.getValue(i).doubleValue(), GENERAL_OFFSET);
-        }
-    }
-
-    /**
-     * Verifies that two indicators have the same size and values
+     * Verifies that two indicators have the same size and values to an offset
      * @param expected indicator of expected values
      * @param actual indicator of actual values
      */
@@ -121,6 +107,54 @@ public class TestUtils {
                     expected.getValue(i).doubleValue(),
                     actual.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
+    }
+
+    /**
+     * Verifies that two indicators have either different size or different values to an offset
+     * @param expected indicator of expected values
+     * @param actual indicator of actual values
+     */
+    public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual) {
+        if (expected.getTimeSeries().getBarCount() != actual.getTimeSeries().getBarCount())
+            return;
+        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+            if (Math.abs(expected.getValue(i).doubleValue() - actual.getValue(i).doubleValue()) > GENERAL_OFFSET)
+                return;
+        }
+        throw new AssertionError("Indicators match to " + GENERAL_OFFSET);
+    }
+
+    /**
+     * Verifies that the actual {@code Num} value is not equal to the given {@code String} representation.
+     *
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code String} representation to compare the actual value to
+     * @throws AssertionError if the actual value is equal to the given {@code String} representation
+     */
+    public static void assertNumNotEquals(String expected, Num actual) {
+        assertNotEquals(actual.numOf(new BigDecimal(expected)), actual);
+    }
+
+    /**
+     * Verifies that the actual {@code Num} value is not equal to the given {@code Num}.
+     *
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code Num} representation to compare the actual value to
+     * @throws AssertionError if the actual value is equal to the given {@code Num} representation
+     */
+    public static void assertNumNotEquals(Num expected, Num actual) {
+        assertNotEquals(expected, actual);
+    }
+
+    /**
+     * Verifies that the actual {@code Num} value is not equal (within a positive offset) to the given {@code double} representation.
+     *
+     * @param actual the actual {@code Num} value
+     * @param expected the given {@code double} representation to compare the actual value to
+     * @throws AssertionError if the actual value is equal to the given {@code double} representation
+     */
+    public static void assertNumNotEquals(double expected, Num actual) {
+        assertNotEquals(expected, actual.doubleValue(), GENERAL_OFFSET);
     }
 
 }
