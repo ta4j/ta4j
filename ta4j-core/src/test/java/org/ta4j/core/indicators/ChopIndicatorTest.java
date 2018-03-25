@@ -3,15 +3,16 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.assertTrue;
+
+import java.time.ZonedDateTime;
+import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
-import java.time.ZonedDateTime;
-import java.util.function.Function;
 
 
 /**
@@ -39,7 +40,7 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         }
 		ChopIndicator ci1 = new ChopIndicator( series, 14, 100 );
 	    int HIGH_CHOPPINESS_VALUE = 85;
-		assertTrue( ci1.getValue( series.getEndIndex() ).doubleValue() > HIGH_CHOPPINESS_VALUE );
+		assertTrue(ci1.getValue(series.getEndIndex()).doubleValue() > HIGH_CHOPPINESS_VALUE );
 	}
 	
 	/**
