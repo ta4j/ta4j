@@ -26,15 +26,21 @@ package org.ta4j.core.indicators.bollinger;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+
 /**
- * Buy - Occurs when the price line cross from down to up de Bollinger Band Low.
- * Sell - Occurs when the price line cross from up to down de Bollinger Band High.
+ * Buy - Occurs when the price line crosses from below to above the Lower Bollinger Band.
+ * Sell - Occurs when the price line crosses from above to below the Upper Bollinger Band.
  * 
  */
 public class BollingerBandsMiddleIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
 
+    /**
+    * Constructor.
+    * @param indicator the indicator that gives the values of the middle band
+    *
+    */
     public BollingerBandsMiddleIndicator(Indicator<Num> indicator) {
         super(indicator);
         this.indicator = indicator;
