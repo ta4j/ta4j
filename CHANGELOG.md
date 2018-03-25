@@ -30,6 +30,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferencePercentageIndicator**: New indicator to get the difference in percentage from last value
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 - **TestUtils**: added parametrized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
+- **ChopIndicator** new common indicator of market choppiness (low volatility), and related 'ChopIndicatorTest' JUnit test and 'CandlestickChartWithChopIndicator' example
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
