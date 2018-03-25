@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core;
 
 import org.slf4j.Logger;
@@ -31,7 +32,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * A manager for {@link TimeSeries} objects.
- * <p></p>
+ * </p>
  * Used for backtesting.
  * Allows to run a {@link Strategy trading strategy} over the managed time series.
  */
@@ -74,7 +75,8 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      * <p>
-     * Opens the trades with {@link OrderType} BUY @return the trading record coming from the run
+     * Opens the trades with {@link OrderType} BUY order.
+     * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
         return run(strategy, OrderType.BUY);
@@ -83,7 +85,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
      * <p>
-     * Opens the trades with {@link OrderType} BUY orders.
+     * Opens the trades with {@link OrderType} BUY order.
      * @param strategy the trading strategy
      * @param startIndex the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
@@ -96,7 +98,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      * <p>
-     * Opens the trades with {@link OrderType} BUY orders.
+     * Opens the trades with the specified {@link OrderType orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @return the trading record coming from the run
@@ -108,7 +110,7 @@ public class TimeSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
      * <p>
-     * Opens the trades with {@link OrderType} BUYorders.
+     * Opens the trades with the specified {@link OrderType orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param startIndex the start index for the run (included)

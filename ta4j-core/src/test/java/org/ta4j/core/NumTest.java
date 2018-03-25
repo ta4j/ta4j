@@ -1,3 +1,26 @@
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core;
 
 import org.junit.Test;
@@ -20,6 +43,16 @@ public class NumTest extends AbstractIndicatorTest {
 
     public NumTest(Function<Number, Num> numFunction) {
         super(numFunction);
+    }
+
+    @Test(expected = AssertionError.class)
+    public void testStringNumFail() {
+        assertNumEquals("1.234", numOf(4.321));
+    }
+
+    @Test
+    public void testStringNumPass() {
+        assertNumEquals("1.234", numOf(1.234));
     }
 
     @Test
@@ -95,6 +128,9 @@ public class NumTest extends AbstractIndicatorTest {
         mustBeNaN = a.pow(12);
         assertNumEquals(mustBeNaN,NaN);
 
+        mustBeNaN = a.pow(a);
+        assertNumEquals(mustBeNaN,NaN);
+
         Double nanDouble = a.doubleValue();
         assertEquals(Double.NaN, nanDouble);
 
@@ -130,6 +166,8 @@ public class NumTest extends AbstractIndicatorTest {
         assertNumEquals(0,hundredMillion.remainder(five));
 
         assertNumEquals(0.00032, zeroDotTwo.pow(5));
+        assertNumEquals(0.7247796636776955, zeroDotTwo.pow(zeroDotTwo));
+        assertNumEquals(1.37972966146, zeroDotTwo.pow(numOf(-0.2)));
         assertNumEquals(554,fiveHundred54.max(five));
         assertNumEquals(5,fiveHundred54.min(five));
         assertTrue(fiveHundred54.isGreaterThan(five));

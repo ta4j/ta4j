@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.num;
 
 import java.math.BigDecimal;
@@ -179,6 +180,36 @@ public final class BigDecimalNum implements Num {
      */
     public Num pow(int n) {
         return new BigDecimalNum(delegate.pow(n, MATH_CONTEXT));
+    }
+
+    /**
+     * Returns a {@code Num} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * @param n power to raise this {@code Num} to.
+     * @return <tt>this<sup>n</sup></tt>
+     * @see BigDecimal#pow(int, java.math.MathContext)
+     */
+    public Num pow(Num n) {
+        // Because BigDecimal.pow(BigDecimal) is not supported we need to find another way, we could do:
+        // Math.pow(a.doubleValue(), b.doubleValue()), but there is a better way:
+        // Perform X^(A+B)=X^A*X^B (B = remainder)
+        // As suggested: https://stackoverflow.com/a/3590314
+        BigDecimal result;
+        BigDecimal power = ((BigDecimalNum)n).delegate;
+        int signOfPower = power.signum();
+        power = power.multiply(new BigDecimal(signOfPower));
+
+        BigDecimal remainderOf2 = power.remainder(BigDecimal.ONE);
+        BigDecimal n2IntPart = power.subtract(remainderOf2);
+
+        BigDecimal intPow = delegate.pow(n2IntPart.intValueExact(), MATH_CONTEXT);
+        BigDecimal doublePow = new BigDecimal(Math.pow(delegate.doubleValue(), remainderOf2.doubleValue()));
+        result = intPow.multiply(doublePow);
+
+        if (signOfPower == -1) {
+            result = BigDecimal.ONE.divide(result, MATH_CONTEXT);
+        }
+
+        return new BigDecimalNum(result);
     }
 
     /**

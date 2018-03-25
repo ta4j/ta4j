@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package ta4jexamples.bots;
 
 import org.ta4j.core.*;
@@ -88,7 +89,9 @@ public class TradingBotOnMovingTimeSeries {
     private static Num randDecimal(Num min, Num max) {
         Num randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
-            randomDecimal = max.minus(min).multipliedBy((BigDecimalNum.valueOf(Math.random())).plus(min));
+            Num range = max.minus(min);
+            Num position = range.multipliedBy(BigDecimalNum.valueOf(Math.random()));
+            randomDecimal = min.plus(position);
         }
         return randomDecimal;
     }
@@ -100,8 +103,8 @@ public class TradingBotOnMovingTimeSeries {
     private static Bar generateRandomBar() {
         final Num maxRange = BigDecimalNum.valueOf("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
-        Num minPrice = openPrice.minus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
-        Num maxPrice = openPrice.plus(openPrice.multipliedBy(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random()))));
+        Num minPrice = openPrice.minus(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random())));
+        Num maxPrice = openPrice.plus(maxRange.multipliedBy(BigDecimalNum.valueOf(Math.random())));
         Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
         return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, BigDecimalNum.valueOf(1),BigDecimalNum.valueOf(1));

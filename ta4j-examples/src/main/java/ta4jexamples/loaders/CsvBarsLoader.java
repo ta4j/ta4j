@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package ta4jexamples.loaders;
 
 import com.opencsv.CSVReader;
@@ -48,13 +49,16 @@ public class CsvBarsLoader {
      * @return a time series from Apple Inc. bars.
      */
     public static TimeSeries loadAppleIncSeries() {
+        return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
+    }
 
-        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_bars_from_20130101_usd.csv");
+    public static TimeSeries loadCsvSeries(String filename) {
+
+        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
         TimeSeries series =  new BaseTimeSeries("apple_bars");
 
-        CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1);
-        try {
+        try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1)) {
             String[] line;
             while ((line = csvReader.readNext()) != null) {
                 ZonedDateTime date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneId.systemDefault());
@@ -71,7 +75,6 @@ public class CsvBarsLoader {
         } catch (NumberFormatException nfe) {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
         }
-
         return series;
     }
 

@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan, Ta4j Organization & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
@@ -88,7 +89,7 @@ public interface TimeSeries extends Serializable {
      * It means that it returns the current List object used internally to store the {@link Bar bars}.
      * It may be:
      *   - a shortened bar list if a maximum bar count has been set
-     *   - a extended bar list if it is a constrained time series
+     *   - an extended bar list if it is a constrained time series
      * @return the raw bar data
      */
     List<Bar> getBarData();
@@ -140,8 +141,8 @@ public interface TimeSeries extends Serializable {
     /**
      * Adds a bar at the end of the series.
      * <p>
-     * Begin index set to 0 if if wasn't initialized.<br>
-     * End index set to 0 if if wasn't initialized, or incremented if it matches the end of the series.<br>
+     * Begin index set to 0 if it wasn't initialized.<br>
+     * End index set to 0 if it wasn't initialized, or incremented if it matches the end of the series.<br>
      * Exceeding bars are removed.
      * @param bar the bar to be added
      * @see TimeSeries#setMaximumBarCount(int)
@@ -274,7 +275,7 @@ public interface TimeSeries extends Serializable {
     }
 
     /**
-     * Returns a new TimeSeries implementation that is a subset of this TimeSeries implementation.
+     * Returns a new TimeSeries instance that is a subset of this TimeSeries instance.
      * It holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
      * of this TimeSeries.
      * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
