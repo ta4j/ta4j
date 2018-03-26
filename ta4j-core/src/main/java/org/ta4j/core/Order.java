@@ -182,6 +182,7 @@ public class Order implements Serializable {
     
     /**
      * @param index the index the order is executed
+     * @param series the time series
      * @return a BUY order
      */
     public static Order buyAt(int index, TimeSeries series) {
@@ -200,6 +201,7 @@ public class Order implements Serializable {
 
     /**
      * @param index the index the order is executed
+     * @param series the time series
      * @return a SELL order
      */
     public static Order sellAt(int index, TimeSeries series) {
