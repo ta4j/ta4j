@@ -77,7 +77,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param beta the beta (usually 0.67 0.5 or)
      */
     public FisherIndicator(Indicator<Num> price, int barCount, double alpha, double beta) {
-        this(price, barCount,alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE,1, true);
+        this(price, barCount, alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE,1, true);
     }
 
     /**
@@ -116,23 +116,6 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     public FisherIndicator(Indicator<Num> ref, int barCount, double densityFactor, boolean isPriceIndicator) {
         this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, densityFactor, isPriceIndicator);
     }
-
-    /**
-     * Constructor.
-     *
-     * @param ref the indicator
-     * @param barCount the time frame (usually 10)
-     * @param alpha the alpha (usually 0.33 or 0.5)
-     * @param beta the beta (usually 0.67 or 0.5)
-     * @param gamma the gamma (usually 0.25 or 0.5)
-     * @param delta the delta (usually 0.5)
-     * @param densityFactor the density factor (usually 1.0)
-     * @param isPriceIndicator use true, if "ref" is a price indicator
-
-    public FisherIndicator(Indicator<Num> ref, int barCount, double alpha, double beta, double gamma, double delta, double densityFactor, boolean isPriceIndicator) {
-        this(ref, barCount, alpha, beta, gamma, delta, densityFactor, isPriceIndicator);
-    }
-     */
 
     /**
      * Constructor

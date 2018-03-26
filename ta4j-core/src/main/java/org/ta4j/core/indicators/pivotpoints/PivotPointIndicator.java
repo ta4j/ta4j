@@ -59,7 +59,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * The user has to make sure that there are enough previous bars to calculate correct pivots at the first bar that matters. For example for PIVOT_TIME_LEVEL_ID_MONTH
      * there will be only correct pivot point values (and reversals) after the first complete month
      */
-    public PivotPointIndicator(TimeSeries series,TimeLevel timeLevel) {
+    public PivotPointIndicator(TimeSeries series, TimeLevel timeLevel) {
         super(series);
         this.timeLevel = timeLevel;
     }
