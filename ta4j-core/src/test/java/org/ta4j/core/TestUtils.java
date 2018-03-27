@@ -113,7 +113,6 @@ public class TestUtils {
     }
 
     /**
-<<<<<<< Upstream, based on develop
      * Verifies that two indicators have either different size or different values to an offset
      * @param expected indicator of expected values
      * @param actual indicator of actual values
