@@ -2,10 +2,10 @@ package ta4jexamples.num;
 
 import org.junit.Test;
 
-public class DoubleNumVsBigDecimalNumTest {
+public class CompareNumTypesTest {
 
     @Test
     public void test() {
-        DoubleNumVsBigDecimalNum.main(null);
+        CompareNumTypes.main(null);
     }
 }
