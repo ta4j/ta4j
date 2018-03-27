@@ -36,10 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfBarsCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new NumberOfBarsCriterion(),
-            numFunction
-        );
+        super(NumberOfBarsCriterion.class, numFunction);
     }
 
     @Test

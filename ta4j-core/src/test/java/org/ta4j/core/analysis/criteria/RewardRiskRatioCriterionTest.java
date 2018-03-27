@@ -36,10 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
     public RewardRiskRatioCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new RewardRiskRatioCriterion(),
-            numFunction
-        );
+        super(RewardRiskRatioCriterion.class, numFunction);
     }
 
     @Test

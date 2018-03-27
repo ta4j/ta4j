@@ -35,10 +35,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class BuyAndHoldCriterionTest extends AbstractCriterionTest{
     public BuyAndHoldCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new BuyAndHoldCriterion(),
-            numFunction
-        );
+        super(BuyAndHoldCriterion.class, numFunction);
     }
 
     @Test

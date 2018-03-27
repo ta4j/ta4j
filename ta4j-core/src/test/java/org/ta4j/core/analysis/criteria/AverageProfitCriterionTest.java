@@ -37,10 +37,7 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
     private MockTimeSeries series;
 
     public AverageProfitCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new AverageProfitCriterion(),
-            numFunction
-        );
+        super(AverageProfitCriterion.class, numFunction);
     }
 
     @Test

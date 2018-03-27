@@ -36,10 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     public MaximumDrawdownCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new MaximumDrawdownCriterion(),
-            numFunction
-        );
+        super(MaximumDrawdownCriterion.class, numFunction);
     }
 
     @Test

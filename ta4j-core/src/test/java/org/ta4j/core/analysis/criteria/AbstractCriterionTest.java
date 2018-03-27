@@ -26,7 +26,6 @@ package org.ta4j.core.analysis.criteria;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.CriterionFactory;
 import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
@@ -38,7 +37,7 @@ import java.util.function.Function;
 @RunWith(Parameterized.class)
 public abstract class AbstractCriterionTest {
 
-    private final CriterionFactory factory;
+    private Class indicatorClass;
     protected final Function<Number, Num> numFunction;
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=BigDecimalNum, 1=DoubleNum)")
@@ -49,11 +48,10 @@ public abstract class AbstractCriterionTest {
     /**
      * Constructor.
      * 
-     * @param factory CriterionFactory for building an AnalysisCriterion given
-     *            parameters
+     * @param indicatorClass The indicator class to test
      */
-    protected AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
-        this.factory = factory;
+    protected AbstractCriterionTest(Class indicatorClass, Function<Number, Num> numFunction) {
+        this.indicatorClass = indicatorClass;
         this.numFunction = numFunction;
     }
 
@@ -64,16 +62,12 @@ public abstract class AbstractCriterionTest {
      * @return AnalysisCriterion given parameters
      */
     public AnalysisCriterion getCriterion(Object... params) {
-        return factory.getCriterion(params);
-    }
-
-    /**
-     * Generates an AnalysisCriterion without any parameters
-     *
-     * @return AnalysisCriterion
-     */
-    public AnalysisCriterion getCriterion() {
-        return factory.getCriterion();
+        try {
+            return (AnalysisCriterion)indicatorClass.getConstructor().newInstance(params);
+        } catch (Exception e) {
+            throw new RuntimeException("Cannot instantiate " + indicatorClass.getSimpleName()
+                + " implement getCriterion in your test class instead.");
+        }
     }
 
     public Num numOf(Number n){

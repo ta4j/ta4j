@@ -36,10 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
 
     public NumberOfTradesCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new NumberOfTradesCriterion(),
-            numFunction
-        );
+        super(NumberOfTradesCriterion.class, numFunction);
     }
 
     @Test

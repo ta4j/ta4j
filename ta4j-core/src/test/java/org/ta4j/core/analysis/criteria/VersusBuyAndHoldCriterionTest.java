@@ -37,10 +37,12 @@ import static org.ta4j.core.num.NaN.NaN;
 public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest{
 
     public VersusBuyAndHoldCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new VersusBuyAndHoldCriterion((AnalysisCriterion)params[0]),
-            numFunction
-        );
+        super(VersusBuyAndHoldCriterion.class, numFunction);
+    }
+
+    @Override
+    public AnalysisCriterion getCriterion(Object... params) {
+        return new VersusBuyAndHoldCriterion((AnalysisCriterion)params[0]);
     }
 
     @Test

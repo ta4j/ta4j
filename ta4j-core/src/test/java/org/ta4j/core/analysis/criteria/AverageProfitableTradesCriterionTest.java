@@ -36,7 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest {
     public AverageProfitableTradesCriterionTest(Function<Number, Num> numFunction) {
         super(
-            (params) -> new AverageProfitableTradesCriterion(),
+            AverageProfitableTradesCriterion.class,
             numFunction
         );
     }

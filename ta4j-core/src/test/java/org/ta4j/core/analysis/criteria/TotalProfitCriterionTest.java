@@ -36,10 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class TotalProfitCriterionTest extends AbstractCriterionTest{
 
     public TotalProfitCriterionTest(Function<Number, Num> numFunction) {
-        super(
-            (params) -> new TotalProfitCriterion(),
-            numFunction
-        );
+        super(TotalProfitCriterion.class, numFunction);
     }
 
     @Test
