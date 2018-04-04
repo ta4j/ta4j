@@ -1,5 +1,9 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## 0.12-SNAPSHOT (unreleased)
+
+## Added
+- **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 
 ## 0.11 (released January 25, 2017)
 
