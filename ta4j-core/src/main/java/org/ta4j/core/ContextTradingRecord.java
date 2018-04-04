@@ -25,9 +25,9 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,17 +37,38 @@ import org.ta4j.core.num.Num;
 
 public class ContextTradingRecord implements TradingRecord {
 
-    /** The recorded trades */
+    /** The trades */
     private List<Trade> trades = new ArrayList<Trade>();
+
+    private Order.OrderType entryOrderType;
 
     private Logger log = LoggerFactory.getLogger(ContextTradingRecord.class);
 
     /**
      * Constructor.
-     * @param orders the orders to be recorded (can be empty)
      */
+    public ContextTradingRecord() {
+        this(Order.OrderType.BUY);
+    }
+
+    /**
+     * Constructor.
+     * @param entryOrderType the {@link Order.OrderType order type} of entries in the trading session
+     */
+    public ContextTradingRecord(OrderType entryOrderType) {
+        if (entryOrderType == null) {
+            throw new IllegalArgumentException("Starting type must not be null");
+        }
+        this.entryOrderType = entryOrderType;
+    }
+
+    /**
+      * Constructor.
+      * @param orders the orders to be recorded (can be empty)
+      */
     public ContextTradingRecord(Order... orders) {
         log.trace("number of orders {}", orders.length);
+        if (orders.length > 0) entryOrderType = orders[0].getType();
         for (Order o : orders) {
             operate(o.getIndex(), o.getPrice(), o.getAmount());
         }
@@ -76,19 +97,19 @@ public class ContextTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        log.trace("operate {} {} {}", index, price, amount);
+        log.trace("index {} {} {}", index, price, amount);
         Trade currentTrade = getCurrentTrade(index);
         if (currentTrade == null) {
-            currentTrade = new Trade();
+            currentTrade = new Trade(entryOrderType);
             trades.add(currentTrade);
-            log.debug("added new Trade");
+            log.debug("added new Trade at {}", index);
         }
         if (currentTrade.isClosed()) {
             // Current trade closed, should not occur
             throw new IllegalStateException("Current trade should not be closed");
         }
         Order newOrder = currentTrade.operate(index, price, amount);
-        log.debug("added new Order {}", newOrder);
+        log.debug("added new Order {} at {}", newOrder, index);
     }
 
     @Override
