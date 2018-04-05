@@ -22,7 +22,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static assertNumEquals;
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.ChaikinOscillatorIndicator;
@@ -54,17 +54,17 @@ public class ChaikinOscillatorIndicatorTest {
         TimeSeries series = new MockTimeSeries(bars);
 
         ChaikinOscillatorIndicator co = new ChaikinOscillatorIndicator(series);
-        assertDecimalEquals(co.getValue(0), 0.0);
-        assertDecimalEquals(co.getValue(1), 0.0);
-        assertDecimalEquals(co.getValue(2), -165349.14743589723);
-        assertDecimalEquals(co.getValue(3), -337362.31490384537);
-        assertDecimalEquals(co.getValue(4), -662329.9816620838);
-        assertDecimalEquals(co.getValue(5), -836710.5421757463);
-        assertDecimalEquals(co.getValue(6), -1847749.1562169262);
-        assertDecimalEquals(co.getValue(7), -2710068.6997245993);
-        assertDecimalEquals(co.getValue(8), -3069157.9046621257);
-        assertDecimalEquals(co.getValue(9), -2795286.881074371);
-        assertDecimalEquals(co.getValue(9), -2795286.881074371);
-        assertDecimalEquals(co.getValue(9), -2795286.881074371);
+        assertNumEquals(co.getValue(0), 0.0);
+        assertNumEquals(co.getValue(1), 0.0);
+        assertNumEquals(co.getValue(2), -165349.14743589723);
+        assertNumEquals(co.getValue(3), -337362.31490384537);
+        assertNumEquals(co.getValue(4), -662329.9816620838);
+        assertNumEquals(co.getValue(5), -836710.5421757463);
+        assertNumEquals(co.getValue(6), -1847749.1562169262);
+        assertNumEquals(co.getValue(7), -2710068.6997245993);
+        assertNumEquals(co.getValue(8), -3069157.9046621257);
+        assertNumEquals(co.getValue(9), -2795286.881074371);
+        assertNumEquals(co.getValue(9), -2795286.881074371);
+        assertNumEquals(co.getValue(9), -2795286.881074371);
     }
 }

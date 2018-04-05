@@ -1,30 +1,30 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
-
+import org.ta4j.core.num.Num;
 /**
  * Triple exponential moving average indicator.
  * </p>
@@ -35,11 +35,11 @@ import org.ta4j.core.Indicator;
  * </p>
  * see https://en.wikipedia.org/wiki/Triple_exponential_moving_average
  */
-public class TripleEMAIndicator extends CachedIndicator<Decimal> {
+public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -3091675249185831978L;
 
-    private final int timeFrame;
+    private final int barCount;
     private final EMAIndicator ema;
     private final EMAIndicator emaEma;
     private final EMAIndicator emaEmaEma;
@@ -48,21 +48,21 @@ public class TripleEMAIndicator extends CachedIndicator<Decimal> {
      * Constructor.
      * 
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public TripleEMAIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.timeFrame = timeFrame;
-        this.ema = new EMAIndicator(indicator, timeFrame);
-        this.emaEma = new EMAIndicator(ema, timeFrame);
-        this.emaEmaEma = new EMAIndicator(emaEma, timeFrame);
+        this.barCount = barCount;
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
+        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
     	
-    		// trix = 3 * ema - 3 * emaEma + emaEmaEma 
-        return Decimal.THREE.multipliedBy(
+    		// trix = 3 * ( ema - emaEma ) + emaEmaEma
+        return numOf(3).multipliedBy(
         		ema.getValue(index)
         			.minus(emaEma.getValue(index)))
         			.plus(emaEmaEma.getValue(index));
@@ -70,6 +70,6 @@ public class TripleEMAIndicator extends CachedIndicator<Decimal> {
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timeFrame: " + timeFrame;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

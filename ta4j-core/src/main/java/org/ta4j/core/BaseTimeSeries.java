@@ -1,38 +1,47 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Base implementation of a {@link TimeSeries}.
- * <p></p>
+ * </p>
  */
 public class BaseTimeSeries implements TimeSeries {
 
@@ -56,6 +65,8 @@ public class BaseTimeSeries implements TimeSeries {
     /** True if the current series is constrained (i.e. its indexes cannot change), false otherwise */
     private boolean constrained = false;
 
+    protected final Function<Number, Num> numFunction;
+
     /**
      * Constructor of an unnamed series.
      */
@@ -68,7 +79,7 @@ public class BaseTimeSeries implements TimeSeries {
      * @param name the name of the series
      */
     public BaseTimeSeries(String name) {
-        this(name, new ArrayList<Bar>());
+        this(name, new ArrayList<>());
     }
 
     /**
@@ -90,25 +101,36 @@ public class BaseTimeSeries implements TimeSeries {
 
     /**
      * Constructor.
-     * <p>
-     * Constructs a constrained time series from an original one.
-     * @param defaultSeries the original time series to construct a constrained series from
+     * @param name the name of the series
+     */
+    public BaseTimeSeries(String name, Function<Number, Num> numFunction) {
+        this(name,new ArrayList<>(),numFunction);
+    }
+
+    /**
+     * Constructor.
+     * @param name the name of the series
+     * @param bars the list of bars of the series
+     */
+    public BaseTimeSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
+        this(name, bars, 0, bars.size() - 1, false, numFunction);
+    }
+
+    /**
+     * Constructor.<p/>
+     * Creates a BaseTimeSeries with default {@link BigDecimalNum BigDecimal} as type for the data and all operations on it
+     * @param name the name of the series
+     * @param bars the list of bars of the series
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex the end index (inclusive) of the time series
+     * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
      *
-     * @deprecated use {@link #getSubSeries(int, int) getSubSeries(startIndex, endIndex)} to satisfy correct behaviour of
-     * the new sub series in further calculations
+     *
      */
-    @Deprecated
-    public BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex) {
-        this(defaultSeries.getName(), defaultSeries.getBarData(), seriesBeginIndex, seriesEndIndex, true);
-        if (defaultSeries.getBarData() == null || defaultSeries.getBarData().isEmpty()) {
-            throw new IllegalArgumentException("Cannot create a constrained series from a time series with a null/empty list of bars");
-        }
-        if (defaultSeries.getMaximumBarCount() != Integer.MAX_VALUE) {
-            throw new IllegalStateException("Cannot create a constrained series from a time series for which a maximum bar count has been set");
-        }
+    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, BigDecimalNum::valueOf);
     }
+
 
     /**
      * Constructor.
@@ -117,17 +139,28 @@ public class BaseTimeSeries implements TimeSeries {
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex the end index (inclusive) of the time series
      * @param constrained true to constrain the time series (i.e. indexes cannot change), false otherwise
+     * @param numFunction a {@link Function} to convert a {@link Number} to a {@link Num Num implementation}
      */
-    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        Objects.requireNonNull(bars);
-        this.bars = bars;
+    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Function<Number, Num> numFunction) {
         this.name = name;
+
+        this.bars = bars;
         if (bars.isEmpty()) {
         	// Bar list empty
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
+            this.numFunction = numFunction;
             return;
+        }
+        // Bar list not empty: take Function of first bar
+        this.numFunction = bars.get(0).getClosePrice().function();
+        // Bar list not empty: checking num types
+        if(!checkBars(bars)){
+            throw new IllegalArgumentException(
+                    String.format("Num implementation of bars: %s" +
+                            " does not match to Num implementation of time series: %s",
+                            bars.get(0).getClosePrice().getClass(),numFunction));
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
@@ -163,10 +196,51 @@ public class BaseTimeSeries implements TimeSeries {
         if(!bars.isEmpty()) {
             int start = Math.max(startIndex, this.seriesBeginIndex);
             int end = Math.min(endIndex, this.seriesEndIndex + 1);
-            return new BaseTimeSeries(getName(), cut(bars, start, end));
+            return new BaseTimeSeries(getName(), cut(bars, start, end), numFunction);
         }
-        return new BaseTimeSeries(name);
+        return new BaseTimeSeries(name,numFunction);
 
+    }
+
+    @Override
+    public Num numOf(Number number){
+        return this.numFunction.apply(number);
+    }
+
+    @Override
+    public Function<Number, Num> function() {
+        return numFunction;
+    }
+
+    /**
+     * Checks if all {@link Bar bars} of a list fits to the {@link Num NumFunction} used by this time series.
+     * @param bars a List of Bar objects.
+     * @return false if a Num implementation of at least one Bar does not fit.
+     */
+    private boolean checkBars(List<Bar> bars){
+        for(Bar bar: bars){
+            if(!checkBar(bar)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks if the {@link Num} implementation of a {@link Bar} fits to the NumFunction used by time series.
+     * @param bar a Bar object.
+     * @return false if another Num implementation is used than by this time series.
+     * @see Num
+     * @see Bar
+     * @see #addBar(Duration, ZonedDateTime)
+     */
+    private boolean checkBar(Bar bar){
+        if(bar.getClosePrice()==null){
+            return true; // bar has not been initialized with data (uses deprecated constructor)
+        }
+        // all other constructors initialize at least the close price, check if Num implementation fits to numFunction
+        Class<? extends Num> f = numOf(1).getClass();
+        return f == bar.getClosePrice().getClass() || bar.getClosePrice().equals(NaN);
     }
 
     @Override
@@ -240,27 +314,82 @@ public class BaseTimeSeries implements TimeSeries {
         return removedBarsCount;
     }
 
+    /**
+     * @param bar the <code>Bar</code> to be added
+     * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)
+     */
     @Override
     public void addBar(Bar bar) {
-        if (bar == null) {
-            throw new IllegalArgumentException("Cannot add null bar");
+        Objects.requireNonNull(bar);
+        if(!checkBar(bar)){
+            throw new IllegalArgumentException(String.format("Cannot add Bar with data type: %s to series with data" +
+                    "type: %s",bar.getClosePrice().getClass(), numOf(1).getClass()));
         }
-
         if (!bars.isEmpty()) {
             final int lastBarIndex = bars.size() - 1;
             ZonedDateTime seriesEndTime = bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
-                throw new IllegalArgumentException("Cannot add a bar with end time <= to series end time");
+                throw new IllegalArgumentException(
+                        String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
+                                bar.getEndTime(),
+                                seriesEndTime));
             }
         }
 
         bars.add(bar);
         if (seriesBeginIndex == -1) {
-            // Begin index set to 0 only if if wasn't initialized
+            // Begin index set to 0 only if it wasn't initialized
             seriesBeginIndex = 0;
         }
         seriesEndIndex++;
         removeExceedingBars();
+    }
+
+    @Override
+    public void addBar(Duration timePeriod, ZonedDateTime endTime) {
+        this.addBar(new BaseBar(timePeriod, endTime, function()));
+    }
+
+    @Override
+    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
+        this.addBar(new BaseBar(endTime, openPrice,highPrice,lowPrice,closePrice,volume, numOf(0)));
+    }
+
+    @Override
+    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
+        this.addBar(new BaseBar(endTime,openPrice,highPrice,lowPrice,closePrice,volume,amount));
+    }
+
+    @Override
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
+                       Num closePrice, Num volume) {
+        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
+    }
+
+    @Override
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
+                       Num closePrice, Num volume, Num amount) {
+        this.addBar(new BaseBar(timePeriod, endTime, openPrice,highPrice,lowPrice,closePrice,volume, amount));
+    }
+
+    @Override
+    public void addTrade(Number price, Number amount) {
+        addTrade(numOf(price), numOf(amount));
+    }
+
+    @Override
+    public void addTrade(String price, String amount) {
+        addTrade(numOf(new BigDecimal(price)), numOf(new BigDecimal(amount)));
+    }
+
+    @Override
+    public void addTrade(Num tradeVolume, Num tradePrice) {
+        getLastBar().addTrade(tradeVolume,tradePrice);
+    }
+
+    @Override
+    public void addPrice(Num price) {
+        getLastBar().addPrice(price);
     }
 
     /**
@@ -296,7 +425,87 @@ public class BaseTimeSeries implements TimeSeries {
      * @return a message for an OutOfBoundsException
      */
     private static String buildOutOfBoundsMessage(BaseTimeSeries series, int index) {
-        return "Size of series: " + series.bars.size() + " bars, "
-                + series.removedBarsCount + " bars removed, index = " + index;
+        return String.format("Size of series: %s bars, %s bars removed, index = %s",
+                series.bars.size(), series.removedBarsCount,index);
+    }
+
+    public static class SeriesBuilder implements TimeSeriesBuilder {
+
+        private static final long serialVersionUID = 111164611841087550L;
+
+        private List<Bar> bars;
+        private String name;
+        private Function<Number, Num> numFunction;
+
+        private boolean isConstrained;
+        private int maxBarCount;
+
+        public SeriesBuilder(){
+            initValues();
+        }
+
+        private void initValues() {
+            this.bars = new ArrayList<>();
+            this.name = "unnamed_series";
+            this.numFunction = BigDecimalNum::valueOf;
+            this.isConstrained = false;
+            this.maxBarCount = Integer.MAX_VALUE;
+        }
+
+        @Override
+        public TimeSeries build() {
+            int beginIndex = -1;
+            int endIndex = -1;
+            if(!bars.isEmpty()){
+                beginIndex = 0;
+                endIndex = bars.size()-1;
+            }
+            TimeSeries series = new BaseTimeSeries(name, bars, beginIndex, endIndex, isConstrained, numFunction);
+            series.setMaximumBarCount(maxBarCount);
+            initValues(); // reinitialize values for next series
+            return series;
+        }
+
+        public SeriesBuilder setConstrained(boolean isConstrained){
+            this.isConstrained = true;
+            return this;
+        }
+
+        public SeriesBuilder withName(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public SeriesBuilder withBars(List<Bar> bars) {
+            this.bars = bars;
+            return this;
+        }
+
+        public SeriesBuilder withMaxBarCount(int maxBarCount){
+            this.maxBarCount = maxBarCount;
+            return this;
+        }
+
+        public SeriesBuilder withNumTypeOf(Num type) {
+            numFunction = type.function();
+            return this;
+        }
+
+        public SeriesBuilder withNumTypeOf(Function<Number, Num> function) {
+            numFunction = function;
+            return this;
+        }
+
+        public SeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
+            if(abstractNumClass==BigDecimalNum.class){
+                numFunction = BigDecimalNum::valueOf;
+                return this;
+            } else if(abstractNumClass== DoubleNum.class){
+                numFunction = DoubleNum::valueOf;
+                return this;
+            }
+            numFunction = BigDecimalNum::valueOf;
+            return this;
+        }
     }
 }

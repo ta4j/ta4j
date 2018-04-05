@@ -1,64 +1,68 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core;
 
 
+import org.ta4j.core.num.Num;
+
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Function;
 
 /**
  * End bar of a time period.
- * <p></p>
+ * </p>
  * Bar object is aggregated open/high/low/close/volume/etc. data over a time period.
  */
 public interface Bar extends Serializable {
-
     /**
      * @return the open price of the period
      */
-    Decimal getOpenPrice();
+    Num getOpenPrice();
 
     /**
      * @return the min price of the period
      */
-    Decimal getMinPrice();
+    Num getMinPrice();
 
     /**
      * @return the max price of the period
      */
-    Decimal getMaxPrice();
+    Num getMaxPrice();
 
     /**
      * @return the close price of the period
      */
-    Decimal getClosePrice();
+    Num getClosePrice();
 
     /**
-     * @return the whole traded volume in the period
+     * @return the whole tradeNum volume in the period
      */
-    Decimal getVolume();
+    Num getVolume();
 
     /**
      * @return the number of trades in the period
@@ -68,7 +72,7 @@ public interface Bar extends Serializable {
     /**
      * @return the whole traded amount of the period
      */
-    Decimal getAmount();
+    Num getAmount();
 
     /**
      * @return the time period of the bar
@@ -113,8 +117,8 @@ public interface Bar extends Serializable {
      * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
-    	Decimal openPrice = getOpenPrice();
-    	Decimal closePrice = getClosePrice();
+        Num openPrice = getOpenPrice();
+        Num closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
     }
 
@@ -122,8 +126,8 @@ public interface Bar extends Serializable {
      * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
-    	Decimal openPrice = getOpenPrice();
-    	Decimal closePrice = getClosePrice();
+    	Num openPrice = getOpenPrice();
+        Num closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
     }
 
@@ -131,9 +135,22 @@ public interface Bar extends Serializable {
      * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
+     * @deprecated use corresponding function of TimeSeries
      */
-    default void addTrade(double tradeVolume, double tradePrice) {
-        addTrade(Decimal.valueOf(tradeVolume), Decimal.valueOf(tradePrice));
+    @Deprecated
+    default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
+        addTrade(numFunction.apply(tradeVolume),numFunction.apply(tradePrice));
+    }
+
+    /**
+     * Adds a trade at the end of bar period.
+     * @param tradeVolume the traded volume
+     * @param tradePrice the price
+     * @deprecated use corresponding function of TimeSeries
+     */
+    @Deprecated
+    default void addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction) {
+        addTrade(numFunction.apply(new BigDecimal(tradeVolume)), numFunction.apply(new BigDecimal(tradePrice)));
     }
 
     /**
@@ -141,14 +158,16 @@ public interface Bar extends Serializable {
      * @param tradeVolume the traded volume
      * @param tradePrice the price
      */
-    default void addTrade(String tradeVolume, String tradePrice) {
-        addTrade(Decimal.valueOf(tradeVolume), Decimal.valueOf(tradePrice));
+    void addTrade(Num tradeVolume, Num tradePrice);
+
+
+    default void addPrice(String price, Function<Number, Num> numFunction){
+        addPrice(numFunction.apply(new BigDecimal(price)));
     }
 
-    /**
-     * Adds a trade at the end of bar period.
-     * @param tradeVolume the traded volume
-     * @param tradePrice the price
-     */
-    void addTrade(Decimal tradeVolume, Decimal tradePrice);
+    default void addPrice(Number price, Function<Number, Num> numFunction){
+        addPrice(numFunction.apply(price));
+    }
+
+    void addPrice(Num price);
 }

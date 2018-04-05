@@ -1,40 +1,43 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.pivotpoints;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
 
 import java.util.List;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Pivot Reversal Indicator.
- * <p></p>
+ * </p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal> {
+public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     private final PivotPointIndicator pivotPointIndicator;
     private final PivotLevel level;
@@ -53,10 +56,10 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
         if (barsOfPreviousPeriod.isEmpty()) {
-            return Decimal.NaN;
+            return NaN;
         }
         switch (level){
             case RESISTANCE_3:
@@ -72,26 +75,26 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
             case SUPPORT_3:
                 return calculateS3(barsOfPreviousPeriod, index);
             default:
-                return Decimal.NaN;
+                return NaN;
         }
 
     }
 
-    private Decimal calculateR3(List<Integer> barsOfPreviousPeriod, int index){
+    private Num calculateR3(List<Integer> barsOfPreviousPeriod, int index){
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Decimal low = bar.getMinPrice();
-        Decimal high =  bar.getMaxPrice();
+        Num low = bar.getMinPrice();
+        Num high =  bar.getMaxPrice();
         for(int i: barsOfPreviousPeriod){
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
         }
-        return high.plus(Decimal.TWO.multipliedBy((pivotPointIndicator.getValue(index).minus(low))));
+        return high.plus(numOf(2).multipliedBy((pivotPointIndicator.getValue(index).minus(low))));
     }
 
-    private Decimal calculateR2(List<Integer> barsOfPreviousPeriod, int index){
+    private Num calculateR2(List<Integer> barsOfPreviousPeriod, int index){
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Decimal low = bar.getMinPrice();
-        Decimal high = bar.getMaxPrice();
+        Num low = bar.getMinPrice();
+        Num high = bar.getMaxPrice();
         for(int i: barsOfPreviousPeriod){
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
@@ -99,26 +102,26 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
         return pivotPointIndicator.getValue(index).plus((high.minus(low)));
     }
 
-    private Decimal calculateR1(List<Integer> barsOfPreviousPeriod, int index){
-        Decimal low = getTimeSeries().getBar(barsOfPreviousPeriod.get(0)).getMinPrice();
+    private Num calculateR1(List<Integer> barsOfPreviousPeriod, int index){
+        Num low = getTimeSeries().getBar(barsOfPreviousPeriod.get(0)).getMinPrice();
         for(int i: barsOfPreviousPeriod){
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
         }
-        return Decimal.TWO.multipliedBy(pivotPointIndicator.getValue(index)).minus(low);
+        return numOf(2).multipliedBy(pivotPointIndicator.getValue(index)).minus(low);
     }
 
-    private Decimal calculateS1(List<Integer> barsOfPreviousPeriod, int index){
-        Decimal high =  getTimeSeries().getBar(barsOfPreviousPeriod.get(0)).getMaxPrice();
+    private Num calculateS1(List<Integer> barsOfPreviousPeriod, int index){
+        Num high =  getTimeSeries().getBar(barsOfPreviousPeriod.get(0)).getMaxPrice();
         for(int i: barsOfPreviousPeriod){
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
         }
-        return Decimal.TWO.multipliedBy(pivotPointIndicator.getValue(index)).minus(high);
+        return numOf(2).multipliedBy(pivotPointIndicator.getValue(index)).minus(high);
     }
 
-    private Decimal calculateS2(List<Integer> barsOfPreviousPeriod, int index){
+    private Num calculateS2(List<Integer> barsOfPreviousPeriod, int index){
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Decimal high =  bar.getMaxPrice();
-        Decimal low = bar.getMinPrice();
+        Num high =  bar.getMaxPrice();
+        Num low = bar.getMinPrice();
         for(int i: barsOfPreviousPeriod){
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
@@ -126,14 +129,14 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Decimal>
         return pivotPointIndicator.getValue(index).minus((high.minus(low)));
     }
 
-    private Decimal calculateS3(List<Integer> barsOfPreviousPeriod, int index){
+    private Num calculateS3(List<Integer> barsOfPreviousPeriod, int index){
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Decimal high =  bar.getMaxPrice();
-        Decimal low = bar.getMinPrice();
+        Num high =  bar.getMaxPrice();
+        Num low = bar.getMinPrice();
         for(int i: barsOfPreviousPeriod){
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
         }
-        return low.minus(Decimal.TWO.multipliedBy((high.minus(pivotPointIndicator.getValue(index)))));
+        return low.minus(numOf(2).multipliedBy((high.minus(pivotPointIndicator.getValue(index)))));
     }
 }

@@ -1,36 +1,37 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Three black crows indicator.
- * <p></p>
+ * </p>
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
  *     http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
@@ -43,22 +44,22 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
     /** Average lower shadow */
     private final SMAIndicator averageLowerShadowInd;
     /** Factor used when checking if a candle has a very short lower shadow */
-    private final Decimal factor;
+    private final Num factor;
 
     private int whiteCandleIndex = -1;
 
     /**
      * Constructor.
      * @param series a time series
-     * @param timeFrame the number of bars used to calculate the average lower shadow
+     * @param barCount the number of bars used to calculate the average lower shadow
      * @param factor the factor used when checking if a candle has a very short lower shadow
      */
-    public ThreeBlackCrowsIndicator(TimeSeries series, int timeFrame, Decimal factor) {
+    public ThreeBlackCrowsIndicator(TimeSeries series, int barCount, double factor) {
         super(series);
         this.series = series;
         lowerShadowInd = new LowerShadowIndicator(series);
-        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, timeFrame);
-        this.factor = factor;
+        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
+        this.factor = numOf(factor);
     }
 
     @Override
@@ -79,9 +80,9 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the bar/candle has a very short lower shadow, false otherwise
      */
     private boolean hasVeryShortLowerShadow(int index) {
-        Decimal currentLowerShadow = lowerShadowInd.getValue(index);
+        Num currentLowerShadow = lowerShadowInd.getValue(index);
         // We use the white candle index to remove to bias of the previous crows
-        Decimal averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
+        Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
 
         return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
     }
@@ -93,10 +94,10 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
     private boolean isDeclining(int index) {
         Bar prevBar = series.getBar(index-1);
         Bar currBar = series.getBar(index);
-        final Decimal prevOpenPrice = prevBar.getOpenPrice();
-        final Decimal prevClosePrice = prevBar.getClosePrice();
-        final Decimal currOpenPrice = currBar.getOpenPrice();
-        final Decimal currClosePrice = currBar.getClosePrice();
+        final Num prevOpenPrice = prevBar.getOpenPrice();
+        final Num prevClosePrice = prevBar.getClosePrice();
+        final Num currOpenPrice = currBar.getOpenPrice();
+        final Num currClosePrice = currBar.getClosePrice();
 
         // Opens within the body of the previous candle
         return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)

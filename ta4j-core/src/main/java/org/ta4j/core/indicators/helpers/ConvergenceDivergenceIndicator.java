@@ -1,36 +1,36 @@
-/**
- * The MIT License (MIT)
+/*******************************************************************************
+ *   The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.IsFallingRule;
 import org.ta4j.core.trading.rules.IsRisingRule;
-
 /**
  * Indicator-convergence-divergence.
  */
@@ -45,7 +45,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		/**
 		 * Returns true for <b>"positiveConvergent"</b> when the values of the
 		 * ref-{@link Indicator indicator} and the values of the
-		 * other-{@link Indicator indicator} increase within the timeFrame. In
+		 * other-{@link Indicator indicator} increase within the barCount. In
 		 * short: "other" and "ref" makes higher highs.
 		 */
 		positiveConvergent, 
@@ -53,7 +53,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		/**
 		 * Returns true for <b>"negativeConvergent"</b> when the values of the
 		 * ref-{@link Indicator indicator} and the values of the
-		 * other-{@link Indicator indicator} decrease within the timeFrame. In
+		 * other-{@link Indicator indicator} decrease within the barCount. In
 		 * short: "other" and "ref" makes lower lows.
 		 */
 		negativeConvergent, 
@@ -61,7 +61,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		/**
 		 * Returns true for <b>"positiveDivergent"</b> when the values of the
 		 * ref-{@link Indicator indicator} increase and the values of the
-		 * other-{@link Indicator indicator} decrease within a timeFrame. In
+		 * other-{@link Indicator indicator} decrease within a barCount. In
 		 * short: "other" makes lower lows while "ref" makes higher highs.
 		 */
 		positiveDivergent, 
@@ -69,7 +69,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		/**
 		 * Returns true for <b>"negativeDivergent"</b> when the values of the
 		 * ref-{@link Indicator indicator} decrease and the values of the
-		 * other-{@link Indicator indicator} increase within a timeFrame. In
+		 * other-{@link Indicator indicator} increase within a barCount. In
 		 * short: "other" makes higher highs while "ref" makes lower lows.
 		 */
 		negativeDivergent
@@ -84,7 +84,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * Returns true for <b>"positiveConvergentStrict"</b> when the values of
 		 * the ref-{@link Indicator indicator} and the values of the
 		 * other-{@link Indicator indicator} increase consecutively within a
-		 * timeFrame. In short: "other" and "ref" makes strict higher highs.
+		 * barCount. In short: "other" and "ref" makes strict higher highs.
 		 */
 		positiveConvergentStrict,
 		
@@ -92,7 +92,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * Returns true for <b>"negativeConvergentStrict"</b> when the values of
 		 * the ref-{@link Indicator indicator} and the values of the
 		 * other-{@link Indicator indicator} decrease consecutively within a
-		 * timeFrame. In short: "other" and "ref" makes strict lower lows.
+		 * barCount. In short: "other" and "ref" makes strict lower lows.
 		 */
 		negativeConvergentStrict, 
 		
@@ -100,7 +100,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * Returns true for <b>"positiveDivergentStrict"</b> when the values of
 		 * the ref-{@link Indicator indicator} increase consecutively and the
 		 * values of the other-{@link Indicator indicator} decrease
-		 * consecutively within a timeFrame. In short: "other" makes strict
+		 * consecutively within a barCount. In short: "other" makes strict
 		 * higher highs and "ref" makes strict lower lows.
 		 */
 		positiveDivergentStrict, 
@@ -109,7 +109,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		 * Returns true for <b>"negativeDivergentStrict"</b> when the values of
 		 * the ref-{@link Indicator indicator} decrease consecutively and the
 		 * values of the other-{@link Indicator indicator} increase
-		 * consecutively within a timeFrame. In short: "other" makes strict
+		 * consecutively within a barCount. In short: "other" makes strict
 		 * lower lows and "ref" makes strict higher highs.
 		 */
 		negativeDivergentStrict
@@ -117,13 +117,13 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
 
 	/** The actual indicator. */
-	private final Indicator<Decimal> ref;
+	private final Indicator<Num> ref;
 
 	/** The other indicator. */
-	private final Indicator<Decimal> other;
+	private final Indicator<Num> other;
 
-	/** The timeFrame. */
-	private final int timeFrame;
+	/** The barCount. */
+	private final int barCount;
 	
 	/** The type of the convergence or divergence **/
 	private final ConvergenceDivergenceType type;
@@ -132,10 +132,10 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private final ConvergenceDivergenceStrictType strictType;
 	
 	/** The minimum strenght for convergence or divergence. **/
-	private Decimal minStrenght;
+	private Num minStrenght;
 	
 	/** The minimum slope for convergence or divergence. **/
-	private Decimal minSlope;
+	private Num minSlope;
     
 	/**
 	 * Constructor. <br/>
@@ -159,21 +159,21 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 * @param type of convergence or divergence
 	 * @param minStrenght the minimum required strenght for convergence or divergence
 	 * @param minSlope the minimum required slope for convergence or divergence
 	 */
-	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
 			ConvergenceDivergenceType type, double minStrenght, double minSlope) {
 		super(ref);
 		this.ref = ref;
 		this.other = other;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = Decimal.valueOf(minStrenght).abs();
-		this.minSlope = Decimal.valueOf(minSlope);
+		this.minStrenght = numOf(minStrenght).abs();
+		this.minSlope = numOf(minSlope);
 	}
 	
 	/**
@@ -181,19 +181,19 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 * @param type of convergence or divergence
 	 */
-	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
 			ConvergenceDivergenceType type) {
 		super(ref);
 		this.ref = ref;
 		this.other = other;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = Decimal.valueOf(0.8).abs();
-		this.minSlope = Decimal.valueOf(0.3);
+		this.minStrenght = numOf(0.8).abs();
+		this.minSlope = numOf(0.3);
 	}
 	
 	/**
@@ -201,14 +201,15 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
+	 * @param strictType of strict convergence or divergence
 	 */
-	public ConvergenceDivergenceIndicator(Indicator<Decimal> ref, Indicator<Decimal> other, int timeFrame,
+	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
 			ConvergenceDivergenceStrictType strictType) {
 		super(ref);
 		this.ref = ref;
 		this.other = other;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 		this.type = null;
 		this.strictType = strictType;
 		this.minStrenght = null;
@@ -218,12 +219,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	@Override
 	protected Boolean calculate(int index) {
 
-		if (minStrenght.isZero()) {
+		if (minStrenght != null && minStrenght.isZero()) {
 			return false;
 		}
 
-		if (minStrenght.isGreaterThan(Decimal.ONE)) {
-			minStrenght = Decimal.ONE;
+		if (minStrenght != null && minStrenght.isGreaterThan(numOf(1))) {
+			minStrenght = numOf(1);
 		}
 
 		if (type != null) {
@@ -264,8 +265,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if strict positive convergent
 	 */
 	private Boolean calculatePositiveConvergenceStrict(int index) {
-		Rule refIsRising = new IsRisingRule(ref, timeFrame);
-		Rule otherIsRising = new IsRisingRule(ref, timeFrame);
+		Rule refIsRising = new IsRisingRule(ref, barCount);
+		Rule otherIsRising = new IsRisingRule(ref, barCount);
 
 		return (refIsRising.and(otherIsRising)).isSatisfied(index);
 	}
@@ -275,8 +276,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if strict negative convergent
 	 */
 	private Boolean calculateNegativeConvergenceStrict(int index) {
-		Rule refIsFalling = new IsFallingRule(ref, timeFrame);
-		Rule otherIsFalling = new IsFallingRule(ref, timeFrame);
+		Rule refIsFalling = new IsFallingRule(ref, barCount);
+		Rule otherIsFalling = new IsFallingRule(ref, barCount);
 
 		return (refIsFalling.and(otherIsFalling)).isSatisfied(index);
 	}
@@ -286,8 +287,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if positive divergent
 	 */
 	private Boolean calculatePositiveDivergenceStrict(int index) {
-		Rule refIsRising = new IsRisingRule(ref, timeFrame);
-		Rule otherIsFalling = new IsFallingRule(ref, timeFrame);
+		Rule refIsRising = new IsRisingRule(ref, barCount);
+		Rule otherIsFalling = new IsFallingRule(ref, barCount);
 
 		return (refIsRising.and(otherIsFalling)).isSatisfied(index);
 	}
@@ -297,8 +298,8 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @return true, if negative divergent
 	 */
 	private Boolean calculateNegativeDivergenceStrict(int index) {
-		Rule refIsFalling = new IsFallingRule(ref, timeFrame);
-		Rule otherIsRising = new IsRisingRule(ref, timeFrame);
+		Rule refIsFalling = new IsFallingRule(ref, barCount);
+		Rule otherIsRising = new IsRisingRule(ref, barCount);
 
 		return (refIsFalling.and(otherIsRising)).isSatisfied(index);
 	}
@@ -308,10 +309,10 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if positive convergent
      */
 	private Boolean calculatePositiveConvergence(int index) {
-		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
+		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
 		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 
-		Decimal slope = calculateSlopeRel(index);
+		Num slope = calculateSlopeRel(index);
 		boolean isPositive = slope.isGreaterThanOrEqual(minSlope.abs());
 
 		return isConvergent && isPositive;
@@ -323,11 +324,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      * @return true, if negative convergent
      */
     private Boolean calculateNegativeConvergence(int index) {
-    		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
+    		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
     		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
 		
-    		Decimal slope = calculateSlopeRel(index);
-    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(Decimal.valueOf(-1)));
+    		Num slope = calculateSlopeRel(index);
+    		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
 		
 		return isConvergent && isNegative;
     }
@@ -338,12 +339,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
 	private Boolean calculatePositiveDivergence(int index) {
 		
-		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
+		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(numOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
-			Decimal slope = calculateSlopeRel(index);
+			Num slope = calculateSlopeRel(index);
 			return slope.isGreaterThanOrEqual(minSlope.abs());
 		}
 
@@ -357,13 +358,13 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
 	private Boolean calculateNegativeDivergence(int index) {
 		
-		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, timeFrame);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(Decimal.valueOf(-1)));
+		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(numOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
-			Decimal slope = calculateSlopeRel(index);
-			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(Decimal.valueOf(-1)));
+			Num slope = calculateSlopeRel(index);
+			return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
 		}
 
 		return false;
@@ -373,20 +374,20 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param index the actual index
 	 * @return the absolute slope
 	 */
-	private Decimal calculateSlopeAbs(int index) {
-		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
-		int firstIndex = Math.max(0, index - timeFrame + 1);
+	private Num calculateSlopeAbs(int index) {
+		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
+		int firstIndex = Math.max(0, index - barCount + 1);
 		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
-				.dividedBy(Decimal.valueOf(timeFrame).minus(Decimal.valueOf(firstIndex)));
+				.dividedBy(numOf(barCount).minus(numOf(firstIndex)));
 	}
 	
 	/**
 	 * @param index the actual index
 	 * @return the relative slope
 	 */
-	private Decimal calculateSlopeRel(int index) {
-		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, timeFrame);
-		int firstIndex = Math.max(0, index - timeFrame + 1);
+	private Num calculateSlopeRel(int index) {
+		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
+		int firstIndex = Math.max(0, index - barCount + 1);
 		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
 				.dividedBy(slrRef.getValue(index));
 	}

@@ -1,108 +1,115 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.num.NaN.NaN;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class HighestValueIndicatorTest {
+public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
+    public HighestValueIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
-    public void highestValueUsingTimeFrame5UsingClosePrice() {
+    public void highestValueUsingBarCount5UsingClosePrice() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
 
-        assertDecimalEquals(highestValue.getValue(4), "4");
-        assertDecimalEquals(highestValue.getValue(5), "4");
-        assertDecimalEquals(highestValue.getValue(6), "5");
-        assertDecimalEquals(highestValue.getValue(7), "6");
-        assertDecimalEquals(highestValue.getValue(8), "6");
-        assertDecimalEquals(highestValue.getValue(9), "6");
-        assertDecimalEquals(highestValue.getValue(10), "6");
-        assertDecimalEquals(highestValue.getValue(11), "6");
-        assertDecimalEquals(highestValue.getValue(12), "4");
+        assertNumEquals("4.0", highestValue.getValue(4));
+        assertNumEquals("4.0", highestValue.getValue(5));
+        assertNumEquals("5.0", highestValue.getValue(6));
+        assertNumEquals("6.0", highestValue.getValue(7));
+        assertNumEquals("6.0", highestValue.getValue(8));
+        assertNumEquals("6.0", highestValue.getValue(9));
+        assertNumEquals("6.0", highestValue.getValue(10));
+        assertNumEquals("6.0", highestValue.getValue(11));
+        assertNumEquals("4.0", highestValue.getValue(12));
     }
 
     @Test
     public void firstHighestValueIndicatorValueShouldBeEqualsToFirstDataValue() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
-        assertDecimalEquals(highestValue.getValue(0), "1");
+        assertNumEquals("1.0", highestValue.getValue(0));
     }
 
     @Test
-    public void highestValueIndicatorWhenTimeFrameIsGreaterThanIndex() {
+    public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
-        assertDecimalEquals(highestValue.getValue(12), "6");
+        assertNumEquals("6.0", highestValue.getValue(12));
     }
 
     @Test
     public void onlyNaNValues(){
-        List<Bar> bars = new ArrayList<>();
+        BaseTimeSeries series = new BaseTimeSeries("NaN test");
         for (long i = 0; i<= 10000; i++){
-            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i), Decimal.NaN, Decimal.NaN,Decimal.NaN, Decimal.NaN, Decimal.NaN);
-            bars.add(bar);
+            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN,NaN, NaN, NaN);
         }
 
-        BaseTimeSeries series = new BaseTimeSeries("NaN test", bars);
+
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
         for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
-            assertEquals(Decimal.NaN.toString(),highestValue.getValue(i).toString());
+            assertEquals(NaN.toString(),highestValue.getValue(i).toString());
         }
     }
 
     @Test
     public void naNValuesInIntervall(){
-        List<Bar> bars = new ArrayList<>();
+        BaseTimeSeries series = new BaseTimeSeries("NaN test");
         for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
-            Decimal closePrice = i % 2 == 0 ? Decimal.valueOf(i): Decimal.NaN;
-            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i),Decimal.NaN, Decimal.NaN,Decimal.NaN, closePrice, Decimal.NaN);
-            bars.add(bar);
+            Num closePrice = i % 2 == 0 ? series.numOf(i): NaN;
+            series.addBar(ZonedDateTime.now().plusDays(i),NaN, NaN,NaN, closePrice, NaN);
         }
 
-        BaseTimeSeries series = new BaseTimeSeries("NaN test", bars);
+
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
 
         // index is the biggest of (index, index-1)
         for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
             if (i % 2 != 0) // current is NaN take the previous as highest
-                assertEquals(series.getBar(i-1).getClosePrice().toString(),highestValue.getValue(i).toString());
+                assertEquals(series.getBar(i-1).getClosePrice().toString(), highestValue.getValue(i).toString());
             else // current is not NaN but previous, take the current
-                assertEquals(series.getBar(i).getClosePrice().toString(),highestValue.getValue(i).toString());
+                assertEquals(series.getBar(i).getClosePrice().toString(), highestValue.getValue(i).toString());
         }
     }
 }

@@ -1,8 +1,33 @@
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Indicator-Pearson-Correlation
@@ -10,44 +35,44 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
  * see
  * http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/
  */
-public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decimal> {
+public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
 	private static final long serialVersionUID = 6317147143504055664L;
 	
-	private final Indicator<Decimal> indicator1;
-	private final Indicator<Decimal> indicator2;
-	private final int timeFrame;
+	private final Indicator<Num> indicator1;
+	private final Indicator<Num> indicator2;
+	private final int barCount;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param indicator1 the first indicator
 	 * @param indicator2 the second indicator
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 */
-	public PearsonCorrelationIndicator(Indicator<Decimal> indicator1, Indicator<Decimal> indicator2, int timeFrame) {
+	public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
 		super(indicator1);
 		this.indicator1 = indicator1;
 		this.indicator2 = indicator2;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 	}
 	
 
 	@Override
-	protected Decimal calculate(int index) {
+	protected Num calculate(int index) {
 
-		Decimal n = Decimal.valueOf(timeFrame);
+		Num n = numOf(barCount);
 
-		Decimal Sx = Decimal.ZERO;
-		Decimal Sy = Decimal.ZERO;
-		Decimal Sxx = Decimal.ZERO;
-		Decimal Syy = Decimal.ZERO;
-		Decimal Sxy = Decimal.ZERO;
+		Num Sx = numOf(0);
+		Num Sy = numOf(0);
+		Num Sxx = numOf(0);
+		Num Syy = numOf(0);
+		Num Sxy = numOf(0);
 		
-		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - timeFrame + 1); i <= index; i++) {
+		for (int i = Math.max(getTimeSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
 
-			Decimal x = indicator1.getValue(i);
-			Decimal y = indicator2.getValue(i);
+			Num x = indicator1.getValue(i);
+			Num y = indicator2.getValue(i);
 
 			Sx = Sx.plus(x);
 			Sy = Sy.plus(y);
@@ -57,14 +82,14 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Decima
 		}
 
 		// (n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy)
-		Decimal toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
+		Num toSqrt = (n.multipliedBy(Sxx).minus(Sx.multipliedBy(Sx)))
 				.multipliedBy(n.multipliedBy(Syy).minus(Sy.multipliedBy(Sy)));
 		
-		if (toSqrt.isGreaterThan(Decimal.ZERO)) {
+		if (toSqrt.isGreaterThan(numOf(0))) {
 			// pearson = (n * Sxy - Sx * Sy) / sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy))
-			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(Decimal.valueOf(Math.sqrt(toSqrt.doubleValue())));
+			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(numOf(Math.sqrt(toSqrt.doubleValue())));
 		}
 
-		return Decimal.NaN;
+		return NaN;
 	}
 }
