@@ -40,6 +40,12 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
     
     private final BollingerBandsLowerIndicator bbl;
 
+    /**
+     * Constructor.
+     * @param bbu the upper band Indicator.
+     * @param bbm the middle band Indicator.  Typically an SMAIndicator is used.
+     * @param bbl the lower band Indicator.
+     */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm, BollingerBandsLowerIndicator bbl) {
         super(bbm.getTimeSeries());
         this.bbu = bbu;

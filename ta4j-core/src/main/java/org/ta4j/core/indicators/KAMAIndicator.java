@@ -58,6 +58,18 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         slowest = numOf(2).dividedBy(numOf(barCountSlow + 1));
     }
 
+    /**
+     * Constructor with default values: <br/>
+     * - barCountEffectiveRatio=10 <br/>
+     * - barCountFast=2 <br/>
+     * - barCountSlow=30
+     *
+     * @param price the priceindicator
+     */
+    public KAMAIndicator(Indicator<Num> price) {
+        this(price, 10, 2, 30);
+    }
+
     @Override
     protected Num calculate(int index) {
         Num currentPrice = price.getValue(index);

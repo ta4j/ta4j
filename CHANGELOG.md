@@ -21,6 +21,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TimeSeries | Bar **: added new `#addPrice(price)` function that adds price to (last) bar.
 - Parameter **timeFrame** renamed to **barCount**.
 - **Various Rules**: added constructor that provides `Number` parameters
+- **AroonUpIndicator**: redundant TimeSeries call was removed from constructor
+- **AroonDownIndicator**: redundant TimeSeries call was removed from constructor
 
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
@@ -31,11 +33,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 - **TestUtils**: added parametrized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
 - **ChopIndicator** new common indicator of market choppiness (low volatility), and related 'ChopIndicatorTest' JUnit test and 'CandlestickChartWithChopIndicator' example
+- **BollingerBandWidthIndicator**: added missing constructor documentation.
+- **BollingerBandsLowerIndicator**: added missing constructor documentation.
+- **BollingerBandsMiddleIndicator**: added missing constructor documentation.
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
-- **BaseTimeSeries**: _Consturctor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
+- **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
+- **FisherIndicator**: commented constructor removed.
 
 ## 0.11 (released January 25, 2018)
 
