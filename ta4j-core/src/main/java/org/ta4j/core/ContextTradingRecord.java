@@ -25,6 +25,10 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.zip.DataFormatException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Order.OrderType;
@@ -39,6 +43,9 @@ public class ContextTradingRecord implements TradingRecord {
 
     /** The trades */
     private List<Trade> trades = new ArrayList<Trade>();
+
+    private TreeMap<Integer, Trade> entries = new TreeMap<Integer, Trade>();
+    private TreeMap<Integer, Trade> exits = new TreeMap<Integer, Trade>();
 
     private Order.OrderType entryOrderType;
 
@@ -81,16 +88,14 @@ public class ContextTradingRecord implements TradingRecord {
 
     public Trade getCurrentTrade(int index) {
         log.trace("index {}", index);
-        // linear search, not great but low overhead with getters and int comparisons
-        for (Trade trade : trades) {
-            if (trade.getEntry().getIndex() <= index && trade.getExit() == null) {
-                log.debug("found open Trade {}", trade);
-                return trade;
-            }
-            if (trade.getEntry().getIndex() <= index && trade.getExit().getIndex() >= index) {
-                log.debug("found closed Trade {}", trade);
-                return trade;
-            }
+        Integer entryFloor = entries.floorKey(index);
+        if (entryFloor == null) {
+            return null;
+        }
+        Integer exitFloor = exits.floorKey(index);
+        if (exitFloor == null || exitFloor < entryFloor || exitFloor == index) {
+            log.trace("found Trade at {} with entry at {}", index, entryFloor);
+            return entries.get(entryFloor);
         }
         return null;
     }
@@ -99,9 +104,11 @@ public class ContextTradingRecord implements TradingRecord {
     public void operate(int index, Num price, Num amount) {
         log.trace("index {} {} {}", index, price, amount);
         Trade currentTrade = getCurrentTrade(index);
+        boolean entry = false;
         if (currentTrade == null) {
             currentTrade = new Trade(entryOrderType);
             trades.add(currentTrade);
+            entry = true;
             log.debug("added new Trade at {}", index);
         }
         if (currentTrade.isClosed()) {
@@ -109,6 +116,14 @@ public class ContextTradingRecord implements TradingRecord {
             throw new IllegalStateException("Current trade should not be closed");
         }
         Order newOrder = currentTrade.operate(index, price, amount);
+        if (entry) {
+            entries.put(index, currentTrade);
+            log.trace("added new entry at {}", index);
+        }
+        else {
+            exits.put(index, currentTrade);
+            log.trace("added new exit at {}", index);
+        }
         log.debug("added new Order {} at {}", newOrder, index);
     }
 

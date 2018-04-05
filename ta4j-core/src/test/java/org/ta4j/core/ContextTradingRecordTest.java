@@ -31,7 +31,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 public class ContextTradingRecordTest {
 
-    private TradingRecord emptyRecord, openedRecord, closedRecord;
+    private ContextTradingRecord emptyRecord, openedRecord, closedRecord;
 
     @Before
     public void setUp() {
@@ -64,22 +64,22 @@ public class ContextTradingRecordTest {
 
     @Test
     public void getCurrentContextTrade() {
-        assertNull(((ContextTradingRecord) emptyRecord).getCurrentTrade(1));
+        assertNull(emptyRecord.getCurrentTrade(1));
         assertEquals(new Trade(Order.buyAt(0, NaN, NaN), Order.sellAt(3, NaN, NaN)),
-                ((ContextTradingRecord) openedRecord).getCurrentTrade(1));
+                openedRecord.getCurrentTrade(1));
         assertEquals(new Trade(Order.buyAt(0, NaN, NaN), Order.sellAt(3, NaN, NaN)),
                 ((ContextTradingRecord) closedRecord).getCurrentTrade(1));
 
-        assertNull(((ContextTradingRecord) openedRecord).getCurrentTrade(5));
-        assertNull(((ContextTradingRecord) closedRecord).getCurrentTrade(5));
+        assertNull(openedRecord.getCurrentTrade(5));
+        assertNull(closedRecord.getCurrentTrade(5));
 
-        assertTrue(((ContextTradingRecord) openedRecord).getCurrentTrade(7).isOpened());
+        assertTrue(openedRecord.getCurrentTrade(7).isOpened());
         assertEquals(Order.buyAt(7, NaN, NaN),
-                ((ContextTradingRecord) openedRecord).getCurrentTrade(8).getEntry());
+                openedRecord.getCurrentTrade(8).getEntry());
 
-        assertFalse(((ContextTradingRecord) closedRecord).getCurrentTrade(7).isOpened());
+        assertFalse(closedRecord.getCurrentTrade(7).isOpened());
         assertEquals(new Trade(Order.buyAt(7, NaN, NaN), Order.sellAt(8, NaN, NaN)),
-                ((ContextTradingRecord) closedRecord).getCurrentTrade(8));
+                closedRecord.getCurrentTrade(8));
     }
 
     @Test
