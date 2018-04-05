@@ -36,6 +36,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BollingerBandWidthIndicator**: added missing constructor documentation.
 - **BollingerBandsLowerIndicator**: added missing constructor documentation.
 - **BollingerBandsMiddleIndicator**: added missing constructor documentation.
+- **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
