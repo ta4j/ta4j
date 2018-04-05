@@ -106,6 +106,12 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
+    public Trade getCurrentTrade(int index) {
+        // same as getCurrentTrade()
+        return currentTrade;
+    }
+
+    @Override
     public void operate(int index, Num price, Num amount) {
         if (currentTrade.isClosed()) {
             // Current trade closed, should not occur

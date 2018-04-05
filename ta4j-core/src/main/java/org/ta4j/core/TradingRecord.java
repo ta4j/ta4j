@@ -50,6 +50,12 @@ public interface TradingRecord extends Serializable {
     Trade getCurrentTrade();
     
     /**
+     * @param index the integer index to check for a Trade
+     * @return the current trade
+     */
+    Trade getCurrentTrade(int index);
+
+    /**
      * Operates an order in the trading record.
      * @param index the index to operate the order
      */

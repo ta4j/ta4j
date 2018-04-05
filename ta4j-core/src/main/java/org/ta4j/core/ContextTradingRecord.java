@@ -86,6 +86,7 @@ public class ContextTradingRecord implements TradingRecord {
         return (trades.isEmpty()) ? null : trades.get(trades.size() - 1);
     }
 
+    @Override
     public Trade getCurrentTrade(int index) {
         log.trace("index {}", index);
         Integer entryFloor = entries.floorKey(index);
