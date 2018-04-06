@@ -42,6 +42,8 @@ public class TrailingStopLossRule extends AbstractRule {
 	private Num currentExtremum = null;
 	/** the current threshold */
 	private Num threshold = null;
+	/** the current trade */
+	private Trade supervisedTrade;
 
 	/**
      * Constructor.
@@ -60,15 +62,16 @@ public class TrailingStopLossRule extends AbstractRule {
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if ( currentTrade.isOpened() ) {
+            	if ( ! currentTrade.equals(supervisedTrade) ) {
+            		supervisedTrade = currentTrade;
+                	currentExtremum = null;
+                	threshold = null;
+            	}
             	Num currentPrice = closePrice.getValue(index);
                 if ( currentTrade.getEntry().isBuy() ) {
                 	satisfied = isBuySatisfied(currentPrice);
                 } else {
                 	satisfied = isSellSatisfied(currentPrice);
-                }
-                if ( satisfied ) {
-                	currentExtremum = null;
-                	threshold = null;
                 }
             }
         }
