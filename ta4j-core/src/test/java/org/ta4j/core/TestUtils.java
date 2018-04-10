@@ -186,10 +186,6 @@ public class TestUtils {
                     actString = actString.substring(0, minLen) + "..";
                 throw new AssertionError(String.format("Failed at index %s: expected %s but actual was %s",
                         i, expString, actString));
-            } else {
-                log.trace("{} expected matches", exp);
-                log.trace("{} actual", act);
-                log.trace("{} offset", delta);
             }
         }
     }
