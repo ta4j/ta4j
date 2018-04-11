@@ -230,8 +230,7 @@ public class BaseBar implements Bar {
     }
 
     @Override
-    public void addPrice(Num inPrice) {
-        Num price = inPrice;
+    public void addPrice(Num price) {
         if (openPrice == null) {
             openPrice = price;
         }
