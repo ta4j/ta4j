@@ -244,9 +244,9 @@ public final class BigDecimalNum implements Num {
         // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
         MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
         BigDecimal two = BigDecimal.valueOf(2);
+
         BigDecimal in = delegate.setScale(precision, RoundingMode.HALF_UP);
-        BigDecimal est =
-        BigDecimal out = new BigDecimal(Math.sqrt(in.doubleValue()), precisionContext);
+        BigDecimal out = sqrtGuess();
         while (!in.equals(out)) {
             in = out;
             out = in.add(delegate.divide(in, precisionContext));
@@ -256,17 +256,17 @@ public final class BigDecimalNum implements Num {
         return new BigDecimalNum(out);
     }
 
-    function BabylonianGuess(S);      /* provide initial guess */
-    str = put(floor(S), 16.);      /* convert [S] to string */
-    L = length(strip(str));        /* count how many digits */
-    d = ceil(L/2);                 /* about half as many digits (round up) */
-    guess2 = 2*10**(d-1);
-    guess7 = 7*10**(d-1);
-   if abs(guess2**2 - S) < abs(guess7**2 - S) then
-      return( guess2 );
-   else
-       return( guess7 );
-    endsub;
+    BigDecimal sqrtGuess() {
+        // Implementation of Rough Estimation
+        // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Rough_estimation
+        BigDecimal exponent = BigDecimal.valueOf(10).pow((delegate.toBigInteger().toString().length()-1) / 2);
+
+        if (delegate.compareTo(BigDecimal.valueOf(10)) == -1) {
+            return BigDecimal.valueOf(2).multiply(exponent);
+        } else {
+            return BigDecimal.valueOf(6).multiply(exponent);
+        }
+    }
 
     /**
      * Returns a {@code Num} whose value is the absolute value

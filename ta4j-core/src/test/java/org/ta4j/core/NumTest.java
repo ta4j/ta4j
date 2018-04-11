@@ -30,6 +30,8 @@ import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
@@ -219,11 +221,22 @@ public class NumTest extends AbstractIndicatorTest {
 
     @Test
     public void sqrtOverflow() {
-        assertNumEquals(1d,
-            BigDecimalNum.valueOf(Double.MAX_VALUE).
-                multipliedBy(BigDecimalNum.valueOf(Double.MAX_VALUE).
-                    plus(BigDecimalNum.valueOf(1))).
-
+        assertNumEquals(1.7976931348623157E308,
+            BigDecimalNum.valueOf(Double.MAX_VALUE).multipliedBy(BigDecimalNum.valueOf(Double.MAX_VALUE).plus(BigDecimalNum.valueOf(1))).
                 sqrt(100));
+    }
+
+    @Test
+    public void sqrtLudicrousPrecision() {
+        BigDecimal numBD = BigDecimal.valueOf(Double.MAX_VALUE).multiply(BigDecimal.valueOf(Double.MAX_VALUE).add(BigDecimal.ONE));
+        Num sqrt = numOf(numBD).sqrt(100000);
+        if (numOf(0).getClass().equals(DoubleNum.class)) {
+            assertEquals("Infinity", sqrt.toString());
+        } else {
+            assertNumEquals(1.7976931348623157E308, sqrt);
+            assertNumEquals(Double.MAX_VALUE, sqrt);
+            BigDecimal sqrtBD = new BigDecimal(sqrt.toString());
+            assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(9999, RoundingMode.HALF_UP))));
+        }
     }
 }
