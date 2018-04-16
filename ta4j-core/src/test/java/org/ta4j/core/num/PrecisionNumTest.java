@@ -142,20 +142,15 @@ public class PrecisionNumTest {
         Random random = new Random();
         superPrecisionNum = firstSuperPrecisionNum;
         for (int i = 0; i < NUMBARS; i++) {
-            bar = new BaseBar(timePeriod, endTime, superPrecisionFunc);
-            bar.addPrice(superPrecisionNum);
+            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", superPrecisionFunc);
             superPrecisionBarList.add(bar);
-            bar = new BaseBar(timePeriod, endTime, precisionFunc);
-            bar.addPrice(superPrecisionNum);
+            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", precisionFunc);
             precisionBarList.add(bar);
-            bar = new BaseBar(timePeriod, endTime, precision32Func);
-            bar.addPrice(superPrecisionNum);
+            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", precision32Func);
             precision32BarList.add(bar);
-            bar = new BaseBar(timePeriod, endTime, bigDecimalFunc);
-            bar.addPrice(superPrecisionNum);
+            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", bigDecimalFunc);
             bigDecimalBarList.add(bar);
-            bar = new BaseBar(timePeriod, endTime, doubleFunc);
-            bar.addPrice(superPrecisionNum);
+            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", doubleFunc);
             doubleBarList.add(bar);
             endTime = endTime.plus(timePeriod);
             superPrecisionNum = superPrecisionNum.plus(superPrecisionFunc.apply(100d * random.nextGaussian()));
