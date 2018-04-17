@@ -190,4 +190,25 @@ public class TestUtils {
         }
     }
 
+    /**
+     * Verifies that two indicators have either different size or different values to an offset
+     * @param expected indicator of expected values
+     * @param actual indicator of actual values
+     * @param delta num offset to which the indicators must be different
+     */
+    public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
+        if (expected.getTimeSeries().getBarCount() != actual.getTimeSeries().getBarCount()) {
+            return;
+        }
+        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+            Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
+            Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
+            Num result = exp.minus(act).abs();
+            if (result.isGreaterThan(delta)) {
+                return;
+            }
+        }
+        throw new AssertionError("Indicators match to " + delta);
+    }
+
 }
