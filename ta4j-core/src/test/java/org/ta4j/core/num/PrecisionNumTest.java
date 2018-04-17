@@ -49,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 
 public class PrecisionNumTest {
 
-    final static int NUMBARS = 1000;
+    final static int NUMBARS = 10000;
 
     // 120 digit precision
     final static String superPrecisionString =
