@@ -30,6 +30,7 @@ import org.ta4j.core.CriterionFactory;
 import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.util.Arrays;
 import java.util.List;
@@ -41,9 +42,9 @@ public abstract class AbstractCriterionTest {
     private final CriterionFactory factory;
     protected final Function<Number, Num> numFunction;
 
-    @Parameterized.Parameters(name = "Test Case: {index} (0=BigDecimalNum, 1=DoubleNum)")
+    @Parameterized.Parameters(name = "Test Case: {index} (0=BigDecimalNum, 1=DoubleNum, 2=PrecisionNum)")
     public static List<Function<Number, Num>> function(){
-        return Arrays.asList(BigDecimalNum::valueOf, DoubleNum::valueOf);
+        return Arrays.asList(BigDecimalNum::valueOf, DoubleNum::valueOf, PrecisionNum::valueOf);
     }
     /**
      * Constructor.

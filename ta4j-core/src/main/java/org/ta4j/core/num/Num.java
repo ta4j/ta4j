@@ -24,6 +24,9 @@
 package org.ta4j.core.num;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.function.Function;
 
 /**
@@ -33,6 +36,7 @@ import java.util.function.Function;
  * @see Num#function()
  * @see DoubleNum
  * @see BigDecimalNum
+ * @See PrecisionNum
 
  */
 public interface Num extends Comparable<Num>, Serializable {
@@ -205,9 +209,21 @@ public interface Num extends Comparable<Num>, Serializable {
     }
 
     /**
-     * Only for NaN this should be true
-     * @return false if this implementation is not NaN
+     * Transforms a {@link String} into a new Num instance of this with a precision
+     * <code>Num</code> implementation
+     * @param value the String to transform
+     * @param precision the precision
+     * @return the corresponding Num implementation of the <code>value</code>
      */
+    default Num numOf(String string, int precision) {
+        MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        return this.numOf(new BigDecimal(string, mathContext));
+    }
+
+    /**
+      * Only for NaN this should be true
+      * @return false if this implementation is not NaN
+      */
     default boolean isNaN(){
         return false;
     }
