@@ -32,7 +32,6 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
 import org.ta4j.core.indicators.helpers.MinPriceIndicator;
-import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
@@ -49,7 +48,6 @@ public class CompareNumTypes {
     public static void main(String args[]) {
         BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder();
         TimeSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf).build();
-        TimeSeries seriesB = timeSeriesBuilder.withName("Sample Series BigDecimal").withNumTypeOf(BigDecimalNum::valueOf).build();
         TimeSeries seriesP = timeSeriesBuilder.withName("Sample Series PrecisionNum 32").withNumTypeOf(PrecisionNum::valueOf).build();
         TimeSeries seriesPH = timeSeriesBuilder.withName("Sample Series PrecisionNum 256").withNumTypeOf(number -> PrecisionNum.valueOf(number.toString(), 256)).build();
 
@@ -57,17 +55,14 @@ public class CompareNumTypes {
         for (int i = 0; i < randoms.length; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(NUMBARS - i);
             seriesD.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
-            seriesB.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
             seriesP.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
             seriesPH.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
         }
-        Num B = PrecisionNum.valueOf(test(seriesB).toString(), 256);
         Num D = PrecisionNum.valueOf(test(seriesD).toString(), 256);
         Num P = PrecisionNum.valueOf(test(seriesP).toString(), 256);
         Num standard = PrecisionNum.valueOf(test(seriesPH).toString(), 256);
-        System.out.println("BigDecimalNum error percent: " + B.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
-        System.out.println("DoubleNum error percent: " + D.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
-        System.out.println("PrecisionNum error percent: " + P.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
+        System.out.println(seriesD.getName() + " error: " + D.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
+        System.out.println(seriesP.getName() + " error: " + P.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
     }
 
     public static Num test(TimeSeries series) {

@@ -25,7 +25,6 @@ package org.ta4j.core;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.BigDecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
@@ -70,11 +69,6 @@ public class NumTest extends AbstractIndicatorTest {
             assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 17));
             assertFalse(((PrecisionNum) highPrecisionNum).matches(num, 18));
         }
-        if (num.getClass().equals(BigDecimalNum.class)) {
-            assertEquals(32, fromNum.precision());
-            assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 32));
-            assertFalse(((PrecisionNum) highPrecisionNum).matches(num, 33));
-        }
         if (num.getClass().equals(PrecisionNum.class)) {
             assertEquals(97, fromNum.precision());
             // since precisions are the same, will match to any precision
@@ -94,10 +88,6 @@ public class NumTest extends AbstractIndicatorTest {
         if (num.getClass().equals(DoubleNum.class)) {
             assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
             assertFalse(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.00000000000000001", HIGH_PRECISION)));
-        }
-        if (num.getClass().equals(BigDecimalNum.class)) {
-            assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.0000000000000000000000000000001", HIGH_PRECISION)));
-            assertFalse(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum, highPrecisionNum.numOf("0.00000000000000000000000000000001", HIGH_PRECISION)));
         }
         if (num.getClass().equals(PrecisionNum.class)) {
             // since precisions are the same, will match to any precision
@@ -129,14 +119,14 @@ public class NumTest extends AbstractIndicatorTest {
 
     @Test(expected = java.lang.ClassCastException.class)
     public void testFailDifferentNumsAdd(){
-        Num a = BigDecimalNum.valueOf(12);
+        Num a = PrecisionNum.valueOf(12);
         Num b = DoubleNum.valueOf(12);
         a.plus(b);
     }
 
     @Test(expected = java.lang.ClassCastException.class)
     public void testFailDifferentNumsCompare(){
-        Num a = BigDecimalNum.valueOf(12);
+        Num a = PrecisionNum.valueOf(12);
         Num b = DoubleNum.valueOf(13);
         a.isEqual(b);
     }
@@ -155,7 +145,7 @@ public class NumTest extends AbstractIndicatorTest {
     @Test
     public void testNaN(){
         Num a = NaN;
-        Num eleven = BigDecimalNum.valueOf(11);
+        Num eleven = PrecisionNum.valueOf(11);
 
         Num mustBeNaN = a.plus(eleven);
         assertNumEquals(mustBeNaN,NaN);
