@@ -440,6 +440,8 @@ public class BaseTimeSeries implements TimeSeries {
         private boolean isConstrained;
         private int maxBarCount;
 
+        private static Function<Number, Num> defaultFunction = PrecisionNum::valueOf;
+
         public SeriesBuilder(){
             initValues();
         }
@@ -447,7 +449,7 @@ public class BaseTimeSeries implements TimeSeries {
         private void initValues() {
             this.bars = new ArrayList<>();
             this.name = "unnamed_series";
-            this.numFunction = PrecisionNum::valueOf;
+            this.numFunction = SeriesBuilder.defaultFunction;
             this.isConstrained = false;
             this.maxBarCount = Integer.MAX_VALUE;
         }
@@ -507,5 +509,10 @@ public class BaseTimeSeries implements TimeSeries {
             numFunction = PrecisionNum::valueOf;
             return this;
         }
+
+        public static void setDefaultFunction(Function<Number, Num> defaultFunction) {
+            SeriesBuilder.defaultFunction = defaultFunction;
+        }
+
     }
 }
