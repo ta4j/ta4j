@@ -38,8 +38,13 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
     private ExternalCriterionTest xls;
 
     public LinearTransactionCostCriterionTest(Function<Number, Num> numFunction) throws Exception {
-        super((params) -> new LinearTransactionCostCriterion((double) params[0], (double) params[1], (double) params[2]),numFunction);
+        super(LinearTransactionCostCriterion.class, numFunction);
         xls = new XLSCriterionTest(this.getClass(), "LTC.xls", 16, 6, numFunction);
+    }
+
+    @Override
+    public AnalysisCriterion getCriterion(Object... params) {
+        return new LinearTransactionCostCriterion((double)params[0], (double)params[1], (double)params[2]);
     }
 
     @Test
@@ -119,7 +124,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new LinearTransactionCostCriterion(1000, 0.5);
+        AnalysisCriterion criterion = getCriterion(1000d, 0.5, 0d);
         assertTrue(criterion.betterThan(numOf(3.1), numOf(4.2)));
         assertFalse(criterion.betterThan(numOf(2.1), numOf(1.9)));
     }

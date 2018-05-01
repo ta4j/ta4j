@@ -36,14 +36,14 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
 
     public NumberOfTradesCriterionTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+        super(NumberOfTradesCriterion.class, numFunction);
     }
 
     @Test
     public void calculateWithNoTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-        AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
+        AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
@@ -54,7 +54,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
                 Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
-        AnalysisCriterion buyAndHold = new NumberOfTradesCriterion();
+        AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(2, buyAndHold.calculate(series, tradingRecord));
     }
 
@@ -62,14 +62,14 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
     public void calculateWithOneTrade() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         Trade trade = new Trade();
-        NumberOfTradesCriterion tradesCriterion = new NumberOfTradesCriterion();
+        AnalysisCriterion tradesCriterion = getCriterion();
 
         assertNumEquals(1, tradesCriterion.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new NumberOfTradesCriterion();
+        AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(3), numOf(6)));
         assertFalse(criterion.betterThan(numOf(7), numOf(4)));
     }

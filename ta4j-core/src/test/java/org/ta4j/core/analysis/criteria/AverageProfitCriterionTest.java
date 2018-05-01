@@ -37,7 +37,7 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
     private MockTimeSeries series;
 
     public AverageProfitCriterionTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+        super(AverageProfitCriterion.class, numFunction);
     }
 
     @Test
@@ -46,7 +46,7 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
-        AnalysisCriterion averageProfit = new AverageProfitCriterion();
+        AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(1.0243, averageProfit.calculate(series, tradingRecord));
     }
 
@@ -64,14 +64,14 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
-        AnalysisCriterion averageProfit = new AverageProfitCriterion();
+        AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(95d/100 * 70d/100).pow(numOf(1d / 6)), averageProfit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithNoBarsShouldReturn1() {
         series = new MockTimeSeries(numFunction,100, 95, 100, 80, 85, 70);
-        AnalysisCriterion averageProfit = new AverageProfitCriterion();
+        AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(1, averageProfit.calculate(series, new BaseTradingRecord()));
     }
 
@@ -79,13 +79,13 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
     public void calculateWithOneTrade() {
         series = new MockTimeSeries(numFunction,100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
-        AnalysisCriterion average = new AverageProfitCriterion();
+        AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new AverageProfitCriterion();
+        AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }
