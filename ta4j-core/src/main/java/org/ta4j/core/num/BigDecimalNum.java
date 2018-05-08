@@ -29,6 +29,9 @@ import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.ta4j.core.num.NaN.NaN;
 /**
  * Representation of BigDecimal. High precision, low performance.
@@ -44,10 +47,14 @@ public final class BigDecimalNum implements Num {
 
     private static final long serialVersionUID = 785564782721079992L;
 
+    private static int PRECISION = 32;
+
     private static final MathContext MATH_CONTEXT = new MathContext(32, RoundingMode.HALF_UP);
 
     private final BigDecimal delegate;
 
+    /** The logger */
+    protected final static Logger log = LoggerFactory.getLogger(BigDecimalNum.class);
 
     @Override
     public Function<Number, Num> function() {
@@ -83,7 +90,7 @@ public final class BigDecimalNum implements Num {
     }
 
     private BigDecimalNum(BigDecimal val) {
-        delegate = Objects.requireNonNull(val);
+        delegate = new BigDecimal(val.toString(), MATH_CONTEXT);
     }
 
     /**
@@ -211,15 +218,85 @@ public final class BigDecimalNum implements Num {
 
         return new BigDecimalNum(result);
     }
+    /**
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    @Override
+    public Num sqrt() {
+        // We can't use delegate.getPrecision(), because if the BigDecimal is '2' the precision is 1,
+        // which will result in very low accuracy
+        return sqrt(PRECISION);
+    }
 
     /**
-     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Num}.
-     * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
-     * @return the positive square root of {@code this}
-     * @see StrictMath#sqrt(double)
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @param precision to calculate.
+     * @return <tt>this<sup>n</sup></tt>
      */
-    public Num sqrt() {
-        return new BigDecimalNum(StrictMath.sqrt(delegate.doubleValue()));
+    @Override
+    public Num sqrt(int precision) {
+        log.trace("delegate {}", delegate);
+        int comparedToZero = delegate.compareTo(BigDecimal.ZERO);
+        switch (comparedToZero) {
+            case -1:
+                return NaN;
+
+            case 0:
+                return BigDecimalNum.valueOf(0);
+        }
+
+        // Direct implementation of the example in:
+        // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+        MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
+        BigDecimal estimate = new BigDecimal(delegate.toString(), precisionContext);
+        String string = String.format("%1.1e", estimate);
+        log.trace("scientific notation {}", string);
+        if (string.contains("e")) {
+            String[] parts = string.split("e");
+            BigDecimal mantissa = new BigDecimal(parts[0]);
+            BigDecimal exponent = new BigDecimal(parts[1]);
+            if (exponent.remainder(new BigDecimal(2)).compareTo(BigDecimal.ZERO) > 0) {
+                exponent = exponent.subtract(BigDecimal.ONE);
+                mantissa = mantissa.multiply(BigDecimal.TEN);
+                log.trace("modified notatation {}e{}", mantissa, exponent);
+            }
+            BigDecimal estimatedMantissa = mantissa.compareTo(BigDecimal.TEN) < 0 ? new BigDecimal(2) : new BigDecimal(6);
+            BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
+            String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
+            log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            estimate = new BigDecimal(estimateString);
+        }
+        BigDecimal delta = null;
+        BigDecimal test = null;
+        BigDecimal sum = null;
+        BigDecimal newEstimate = null;
+        BigDecimal two = new BigDecimal(2);
+        String estimateString = null;
+        int endIndex;
+        int frontEndIndex;
+        int backStartIndex;
+        int i = 1;
+        do {
+            test = delegate.divide(estimate, precisionContext);
+            sum = estimate.add(test);
+            newEstimate = sum.divide(two, precisionContext);
+            delta = newEstimate.subtract(estimate).abs();
+            estimate = newEstimate;
+            if (log.isTraceEnabled()) {
+                estimateString = String.format("%1." + precision + "e", estimate);
+                endIndex = estimateString.length();
+                frontEndIndex = 20 > endIndex ? endIndex : 20;
+                backStartIndex = 20 > endIndex ? 0 : endIndex - 20;
+                log.trace("x[{}] = {}..{}, delta = {}",
+                        i,
+                        estimateString.substring(0, frontEndIndex),
+                        estimateString.substring(backStartIndex, endIndex),
+                        String.format("%1.1e", delta));
+                i++;
+            }
+        } while (delta.compareTo(BigDecimal.ZERO) > 0);
+        return BigDecimalNum.valueOf(estimate);
     }
 
     /**
@@ -403,7 +480,7 @@ public final class BigDecimalNum implements Num {
     }
 
     public static BigDecimalNum valueOf(BigDecimal val){
-                return new BigDecimalNum(val);
+        return new BigDecimalNum(val);
     }
 
     /**

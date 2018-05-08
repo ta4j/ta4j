@@ -259,16 +259,83 @@ public final class PrecisionNum implements Num {
     }
 
     /**
-     * Returns the correctly rounded positive square root of the <code>double</code> value of this {@code Num}.
-     * /!\ Warning! Uses the {@code StrictMath#sqrt(double)} method under the hood.
+     * Returns the correctly rounded positive square root of this {@code Num}.
+     * /!\ Warning! Uses DEFAULT_PRECISION.
      * @return the positive square root of {@code this}
-     * @see StrictMath#sqrt(double)
+     * @see PrecisionNum#sqrt(int)
      */
     public Num sqrt() {
-        // TODO: fix this
-        double doubleValue = delegate.doubleValue();
-        log.trace("delegate {}, delegate doubleValue {}", delegate, doubleValue);
-        return new PrecisionNum(StrictMath.sqrt(doubleValue));
+        return sqrt(DEFAULT_PRECISION);
+    }
+
+    /**
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @param precision to calculate.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    @Override
+    public Num sqrt(int precision) {
+        log.trace("delegate {}", delegate);
+        int comparedToZero = delegate.compareTo(BigDecimal.ZERO);
+        switch (comparedToZero) {
+        case -1:
+            return NaN;
+
+        case 0:
+            return BigDecimalNum.valueOf(0);
+        }
+
+        // Direct implementation of the example in:
+        // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+        MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
+        BigDecimal estimate = new BigDecimal(delegate.toString(), precisionContext);
+        String string = String.format("%1.1e", estimate);
+        log.trace("scientific notation {}", string);
+        if (string.contains("e")) {
+            String[] parts = string.split("e");
+            BigDecimal mantissa = new BigDecimal(parts[0]);
+            BigDecimal exponent = new BigDecimal(parts[1]);
+            if (exponent.remainder(new BigDecimal(2)).compareTo(BigDecimal.ZERO) > 0) {
+                exponent = exponent.subtract(BigDecimal.ONE);
+                mantissa = mantissa.multiply(BigDecimal.TEN);
+                log.trace("modified notatation {}e{}", mantissa, exponent);
+            }
+            BigDecimal estimatedMantissa = mantissa.compareTo(BigDecimal.TEN) < 0 ? new BigDecimal(2) : new BigDecimal(6);
+            BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
+            String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
+            log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            estimate = new BigDecimal(estimateString);
+        }
+        BigDecimal delta = null;
+        BigDecimal test = null;
+        BigDecimal sum = null;
+        BigDecimal newEstimate = null;
+        BigDecimal two = new BigDecimal(2);
+        String estimateString = null;
+        int endIndex;
+        int frontEndIndex;
+        int backStartIndex;
+        int i = 1;
+        do {
+            test = delegate.divide(estimate, precisionContext);
+            sum = estimate.add(test);
+            newEstimate = sum.divide(two, precisionContext);
+            delta = newEstimate.subtract(estimate).abs();
+            estimate = newEstimate;
+            if (log.isTraceEnabled()) {
+                estimateString = String.format("%1." + precision + "e", estimate);
+                endIndex = estimateString.length();
+                frontEndIndex = 20 > endIndex ? endIndex : 20;
+                backStartIndex = 20 > endIndex ? 0 : endIndex - 20;
+                log.trace("x[{}] = {}..{}, delta = {}",
+                        i,
+                        estimateString.substring(0, frontEndIndex),
+                        estimateString.substring(backStartIndex, endIndex),
+                        String.format("%1.1e", delta));
+                i++;
+            }
+        } while (delta.compareTo(BigDecimal.ZERO) > 0);
+        return PrecisionNum.valueOf(estimate, precision);
     }
 
     /**
@@ -607,4 +674,5 @@ public final class PrecisionNum implements Num {
         log.trace("result {}", result);
         return new PrecisionNum(result.toString());
     }
+
 }
