@@ -38,6 +38,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BollingerBandsLowerIndicator**: added missing constructor documentation.
 - **BollingerBandsMiddleIndicator**: added missing constructor documentation.
 - **PrecisionNum**: `Num` implementation to support arbitrary precision
+- **Num**: added Num sqrt(int) and Num sqrt()
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
