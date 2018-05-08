@@ -64,7 +64,7 @@ public class BaseTimeSeries implements TimeSeries {
     private int removedBarsCount = 0;
     /** True if the current series is constrained (i.e. its indexes cannot change), false otherwise */
     private boolean constrained = false;
-
+    /** Num type function **/
     protected final Function<Number, Num> numFunction;
 
     /**
@@ -440,6 +440,7 @@ public class BaseTimeSeries implements TimeSeries {
         private boolean isConstrained;
         private int maxBarCount;
 
+        /** Default Num type function **/
         private static Function<Number, Num> defaultFunction = PrecisionNum::valueOf;
 
         public SeriesBuilder(){
