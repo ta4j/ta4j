@@ -21,7 +21,7 @@
  *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *******************************************************************************/
-package org.ta4j.core;
+package org.ta4j.core.num;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.net.URL;
 import java.util.function.Function;
 import java.util.Properties;
 
@@ -279,21 +280,20 @@ public class NumTest extends AbstractIndicatorTest {
             assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, RoundingMode.HALF_UP))));
             assertNumEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
         } else if (numOf(0).getClass().equals(PrecisionNum.class)) {
-			Properties props = new Properties();
-			try(InputStream is = getClass().getResourceAsStream("numTest.properties")){
-				props.load(is);
-				assertNumEquals(props.getProperty("value1"), sqrt);
-				assertNumNotEquals(props.getProperty("value2"), sqrt);
-				System.out.println(props.getProperty("value1"));
-				assertNumEquals(Double.MAX_VALUE, sqrt);
-				assertNumNotEquals(numOf(Double.MAX_VALUE), sqrt);
-				BigDecimal sqrtBD = new BigDecimal(sqrt.toString());
-				assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, RoundingMode.HALF_UP))));
-				assertNumNotEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
-			} catch(IOException ioe){
-				ioe.printStackTrace();
-			}
-		}
+            Properties props = new Properties();
+            try (InputStream is = getClass().getResourceAsStream("numTest.properties")) {
+                props.load(is);
+                assertNumEquals(props.getProperty("sqrtCorrect100000"), sqrt);
+                assertNumNotEquals(props.getProperty("sqrtCorrect99999"), sqrt);
+                assertNumEquals(Double.MAX_VALUE, sqrt);
+                assertNumNotEquals(numOf(Double.MAX_VALUE), sqrt);
+                BigDecimal sqrtBD = new BigDecimal(sqrt.toString());
+                assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, RoundingMode.HALF_UP))));
+                assertNumNotEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+        }
     }
 
     @Test
