@@ -45,7 +45,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
 	 */
 	public ChopIndicator( TimeSeries timeseries, int ciTimeFrame, int scaleTo ) {
 		super( timeseries );
-        this.atrIndicator = new ATRIndicator( timeseries, ciTimeFrame );
+        this.atrIndicator = new ATRIndicator( timeseries, 1 );	// ATR(1) = Average True Range (Period of 1)
         hvi = new HighestValueIndicator( new MaxPriceIndicator(timeseries), ciTimeFrame );
         lvi = new LowestValueIndicator( new MinPriceIndicator(timeseries), ciTimeFrame );
         this.timeFrame = ciTimeFrame;
