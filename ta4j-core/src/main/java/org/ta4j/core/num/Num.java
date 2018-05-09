@@ -102,6 +102,19 @@ public interface Num extends Comparable<Num>, Serializable {
     Num pow(Num n);
 
     /**
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    Num sqrt();
+
+    /**
+     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * @param precision to calculate.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    Num sqrt(int precision);
+
+    /**
      * Returns a {@code num} whose value is the absolute value
      * of this {@code num}.
      * @return {@code abs(this)}

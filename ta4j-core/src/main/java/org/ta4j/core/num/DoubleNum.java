@@ -98,6 +98,19 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public Num sqrt() {
+        if (delegate < 0) {
+            return NaN;
+        }
+        return new DoubleNum(Math.sqrt(delegate));
+    }
+
+    @Override
+    public Num sqrt(int precision) {
+        return sqrt();
+    }
+
+    @Override
     public Num abs() {
         return new DoubleNum(Math.abs(delegate));
     }
