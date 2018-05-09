@@ -102,7 +102,8 @@ public class Trade implements Serializable {
     public boolean equals(Object obj) {
         if (obj instanceof Trade) {
             Trade t = (Trade) obj;
-            return entry.equals(t.getEntry()) && exit.equals(t.getExit());
+            return (entry == null ? t.getEntry() == null : entry.equals(t.getEntry()))
+            		&& (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
         }
         return false;
     }
