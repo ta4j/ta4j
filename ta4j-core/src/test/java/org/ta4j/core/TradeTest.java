@@ -98,12 +98,12 @@ public class TradeTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrderTypeIsNull() {
-        Trade t = new Trade(null);
+        new Trade(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
-        Trade t = new Trade(Order.buyAt(0,NaN,NaN), Order.buyAt(1,NaN,NaN));
+        new Trade(Order.buyAt(0,NaN,NaN), Order.buyAt(1,NaN,NaN));
     }
 
     @Test
@@ -124,5 +124,48 @@ public class TradeTest {
         assertEquals(trEquals1.toString(), trEquals2.toString());
         assertNotEquals(trEquals1.toString(), trNotEquals1.toString());
         assertNotEquals(trEquals1.toString(), trNotEquals2.toString());
+    }
+
+    @Test
+    public void testEqualsForNewTrades() {
+    	assertEquals(newTrade, new Trade());
+    	assertNotEquals(newTrade, new Object());
+    	assertNotEquals(newTrade, null);
+    }
+
+    @Test
+    public void testEqualsForEntryOrders() {
+    	Trade trLeft = newTrade;
+    	Trade trRightEquals = new Trade();
+    	Trade trRightNotEquals = new Trade();
+
+    	assertEquals(OrderType.BUY, trRightNotEquals.operate(2).getType());
+    	assertNotEquals(trLeft, trRightNotEquals);
+
+    	assertEquals(OrderType.BUY, trLeft.operate(1).getType());
+    	assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+    	assertEquals(trLeft, trRightEquals);
+
+    	assertNotEquals(trLeft, trRightNotEquals);
+    }
+
+    @Test
+    public void testEqualsForExitOrders() {
+    	Trade trLeft = newTrade;
+    	Trade trRightEquals = new Trade();
+    	Trade trRightNotEquals = new Trade();
+
+    	assertEquals(OrderType.BUY, trLeft.operate(1).getType());
+    	assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+    	assertEquals(OrderType.BUY, trRightNotEquals.operate(1).getType());
+    	
+    	assertEquals(OrderType.SELL, trRightNotEquals.operate(3).getType());
+    	assertNotEquals(trLeft, trRightNotEquals);
+
+    	assertEquals(OrderType.SELL, trLeft.operate(2).getType());
+    	assertEquals(OrderType.SELL, trRightEquals.operate(2).getType());
+    	assertEquals(trLeft, trRightEquals);
+
+    	assertNotEquals(trLeft, trRightNotEquals);
     }
 }

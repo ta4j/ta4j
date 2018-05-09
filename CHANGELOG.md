@@ -38,6 +38,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BollingerBandsLowerIndicator**: added missing constructor documentation.
 - **BollingerBandsMiddleIndicator**: added missing constructor documentation.
 - **PrecisionNum**: `Num` implementation to support arbitrary precision
+- **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
