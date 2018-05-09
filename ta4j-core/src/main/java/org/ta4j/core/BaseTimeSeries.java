@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
@@ -128,7 +128,7 @@ public class BaseTimeSeries implements TimeSeries {
      *
      */
     private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, BigDecimalNum::valueOf);
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, PrecisionNum::valueOf);
     }
 
 
@@ -447,7 +447,7 @@ public class BaseTimeSeries implements TimeSeries {
         private void initValues() {
             this.bars = new ArrayList<>();
             this.name = "unnamed_series";
-            this.numFunction = BigDecimalNum::valueOf;
+            this.numFunction = PrecisionNum::valueOf;
             this.isConstrained = false;
             this.maxBarCount = Integer.MAX_VALUE;
         }
@@ -497,14 +497,14 @@ public class BaseTimeSeries implements TimeSeries {
         }
 
         public SeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
-            if(abstractNumClass==BigDecimalNum.class){
-                numFunction = BigDecimalNum::valueOf;
+            if (abstractNumClass == PrecisionNum.class) {
+                numFunction = PrecisionNum::valueOf;
                 return this;
             } else if(abstractNumClass== DoubleNum.class){
                 numFunction = DoubleNum::valueOf;
                 return this;
             }
-            numFunction = BigDecimalNum::valueOf;
+            numFunction = PrecisionNum::valueOf;
             return this;
         }
     }

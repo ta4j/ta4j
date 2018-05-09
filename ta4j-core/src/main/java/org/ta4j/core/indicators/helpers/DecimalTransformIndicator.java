@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 /**
  * Simple decimal transform indicator.
  * </p>
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal/BigDecimal} to to {@link Double double}
+ * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num PrecisionNum} to to {@link Double double}
  * Transforms any indicator by using common math operations.
  */
 public class DecimalTransformIndicator extends CachedIndicator<Num> {

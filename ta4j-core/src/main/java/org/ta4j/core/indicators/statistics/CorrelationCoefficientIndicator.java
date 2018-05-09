@@ -26,10 +26,11 @@ package org.ta4j.core.indicators.statistics;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+
 /**
  * Correlation coefficient indicator.
  * <p/>
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal/BigDecimal} to double
+ * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num PrecisionNum} to double
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
  * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */

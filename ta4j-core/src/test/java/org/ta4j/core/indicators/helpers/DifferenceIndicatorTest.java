@@ -27,7 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -40,7 +40,7 @@ public class DifferenceIndicatorTest {
     
     @Before
     public void setUp() {
-        Function<Number, Num> numFunction = BigDecimalNum::valueOf;
+        Function<Number, Num> numFunction = PrecisionNum::valueOf;
 
         TimeSeries series = new BaseTimeSeries();
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,

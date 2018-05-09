@@ -67,7 +67,6 @@ public final class PrecisionNum implements Num {
         delegate = new BigDecimal(val);
         int precision = Math.max(delegate.precision(), DEFAULT_PRECISION);
         mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-        log.trace("String {}, precision {}", val, precision);
     }
 
     /**
@@ -79,43 +78,36 @@ public final class PrecisionNum implements Num {
     private PrecisionNum(String val, int precision) {
         mathContext = new MathContext(precision, RoundingMode.HALF_UP);
         delegate = new BigDecimal(val, new MathContext(precision, RoundingMode.HALF_UP));
-        log.trace("String {} precision {}", val, precision);
     }
 
     private PrecisionNum(short val) {
         mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
         delegate = new BigDecimal(val, mathContext);
-        log.trace("short {}", val);
     }
 
     private PrecisionNum(int val) {
         mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
         delegate = BigDecimal.valueOf(val);
-        log.trace("int {}", val);
     }
 
     private PrecisionNum(long val) {
         mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
         delegate = BigDecimal.valueOf(val);
-        log.trace("long {}", val);
     }
 
     private PrecisionNum(float val) {
         mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
         delegate = new BigDecimal(val, mathContext);
-        log.trace("float {}", val);
     }
 
     private PrecisionNum(double val) {
         mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
         delegate = BigDecimal.valueOf(val);
-        log.trace("double {}", val);
     }
 
     private PrecisionNum(BigDecimal val, int precision) {
         mathContext = new MathContext(precision, RoundingMode.HALF_UP);
         delegate = Objects.requireNonNull(val);
-        log.trace("BigDecimal {} precision {}", val, precision);
     }
 
     /**
@@ -149,7 +141,6 @@ public final class PrecisionNum implements Num {
         BigDecimal bigDecimal = ((PrecisionNum) augend).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.add(bigDecimal, mathContext);
-        log.trace("delegate {} augend {}, calculated precision {}", delegate, augend, precision);
         return new PrecisionNum(result, precision);
     }
 
@@ -168,7 +159,6 @@ public final class PrecisionNum implements Num {
         BigDecimal bigDecimal = ((PrecisionNum) subtrahend).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.subtract(bigDecimal, mathContext);
-        log.trace("delegate {} subtrahend {}, calculated precision", delegate, subtrahend, precision);
         return new PrecisionNum(result, precision);
     }
 
@@ -187,7 +177,6 @@ public final class PrecisionNum implements Num {
         BigDecimal bigDecimal = ((PrecisionNum) multiplicand).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.multiply(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
-        log.trace("delegate {} multiplicand {}, calculated precision", delegate, multiplicand, precision);
         return new PrecisionNum(result, precision);
     }
 
@@ -206,7 +195,6 @@ public final class PrecisionNum implements Num {
         BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.divide(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
-        log.trace("delegate {} divisor {}, calculated precision {}", delegate, divisor, precision);
         return new PrecisionNum(result, precision);
     }
 
@@ -222,7 +210,6 @@ public final class PrecisionNum implements Num {
         BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
-        log.trace("delegate {} divisor {}, calculated precision", delegate, divisor, precision);
         return new PrecisionNum(result, precision);
     }
 
@@ -254,7 +241,6 @@ public final class PrecisionNum implements Num {
     public Num pow(int n) {
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.pow(n, new MathContext(precision, RoundingMode.HALF_UP));
-        log.trace("delegate {} n {}, calculated precision {}", delegate, n, precision);
         return new PrecisionNum(result, precision);
     }
 
@@ -267,7 +253,6 @@ public final class PrecisionNum implements Num {
     public Num sqrt() {
         // TODO: fix this
         double doubleValue = delegate.doubleValue();
-        log.trace("delegate {}, delegate doubleValue {}", delegate, doubleValue);
         return new PrecisionNum(StrictMath.sqrt(doubleValue));
     }
 
@@ -347,8 +332,6 @@ public final class PrecisionNum implements Num {
         Num otherNum = PrecisionNum.valueOf(other.toString(), precision);
         Num thisNum = PrecisionNum.valueOf(this.toString(), precision);
         if (thisNum.toString().equals(otherNum.toString())) {
-            log.trace("{} from {} matches", thisNum, this);
-            log.trace("{} from {} to precision {}", otherNum, other, precision);
             return true;
         }
         log.debug("{} from {} does not match", thisNum, this);
@@ -366,8 +349,6 @@ public final class PrecisionNum implements Num {
     public boolean matches(Num other, Num delta) {
         Num result = this.minus(other);
         if (!result.isGreaterThan(delta)) {
-            log.trace("{} matches", this);
-            log.trace("{} to offset {}", other, delta);
             return true;
         }
         log.debug("{} does not match", this);
@@ -570,41 +551,22 @@ public final class PrecisionNum implements Num {
         //   x^b uses   double Math.pow(double x, double b)         cannot overflow double because b < 1.
         // As suggested: https://stackoverflow.com/a/3590314
 
-        log.trace("n {}", n);
-        int nDelegatePrecision = ((PrecisionNum) n).delegate.precision();
-        log.trace("nDelegatePrecision {}", nDelegatePrecision);
-        int nMathContextPrecision = ((PrecisionNum) n).mathContext.getPrecision();
-        log.trace("nMathContextPrecision {}", nMathContextPrecision);
-        int delegatePrecision = delegate.precision();
-        log.trace("delegatePrecision {}", delegatePrecision);
-        int mathContextPrecision = mathContext.getPrecision();
-        log.trace("mathContextPrecision {}", mathContextPrecision);
-        int precision = mathContext.getPrecision();
-        log.trace("precision {}", precision);
         // get n = a+b, same precision as n
         BigDecimal aplusb = (((PrecisionNum) n).delegate);
-        log.trace("aplusb {}", aplusb);
         // get the remainder 0 <= b < 1, looses precision as double
         BigDecimal b = aplusb.remainder(BigDecimal.ONE);
-        log.trace("b {}", b);
         // bDouble looses precision
         double bDouble = b.doubleValue();
-        log.trace("bDouble {}", bDouble);
         // get the whole number a
         BigDecimal a = aplusb.subtract(b);
-        log.trace("a {}", a);
         // convert a to an int, fails on overflow
         int aInt = a.intValueExact();
-        log.trace("aInt {}", aInt);
         // use BigDecimal pow(int)
         BigDecimal xpowa = delegate.pow(aInt);
-        log.trace("xpowa {}", xpowa);
         // use double pow(double, double)
         double xpowb = Math.pow(delegate.doubleValue(), bDouble);
-        log.trace("xpowb {}", xpowb);
         // use PrecisionNum.multiply(PrecisionNum)
         BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
-        log.trace("result {}", result);
         return new PrecisionNum(result.toString());
     }
 }

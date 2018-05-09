@@ -87,21 +87,18 @@ public class PrecisionNumTest {
     // auto-set precision based on length of superPrecisionString (120)
     Function<Number, Num> precisionFunc = PrecisionNum::valueOf;
     Function<Number, Num> precision32Func = (number -> PrecisionNum.valueOf(number.toString(), 32));
-    Function<Number, Num> bigDecimalFunc = BigDecimalNum::valueOf;
     Function<Number, Num> doubleFunc = DoubleNum::valueOf;
     Function<Number, Num> lowPrecisionFunc = (number -> PrecisionNum.valueOf(number.toString(), 3));
 
     TimeSeries superPrecisionSeries;
     TimeSeries precisionSeries;
     TimeSeries precision32Series;
-    TimeSeries bigDecimalSeries;
     TimeSeries doubleSeries;
     TimeSeries lowPrecisionSeries;
 
     Indicator<Num> superPrecisionIndicator;
     Indicator<Num> precisionIndicator;
     Indicator<Num> precision32Indicator;
-    Indicator<Num> bigDecimalIndicator;
     Indicator<Num> doubleIndicator;
     Indicator<Num> lowPrecisionIndicator;
 
@@ -147,8 +144,6 @@ public class PrecisionNumTest {
             precisionBarList.add(bar);
             bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", precision32Func);
             precision32BarList.add(bar);
-            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", bigDecimalFunc);
-            bigDecimalBarList.add(bar);
             bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", doubleFunc);
             doubleBarList.add(bar);
             bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), "0", lowPrecisionFunc);
@@ -162,8 +157,6 @@ public class PrecisionNumTest {
                 .withName("precision").withNumTypeOf(precisionFunc).withBars(precisionBarList).build();
         precision32Series = new BaseTimeSeries.SeriesBuilder()
                 .withName("precision32").withNumTypeOf(precision32Func).withBars(precision32BarList).build();
-        bigDecimalSeries = new BaseTimeSeries.SeriesBuilder()
-                .withName("bigDecimal").withNumTypeOf(bigDecimalFunc).withBars(bigDecimalBarList).build();
         doubleSeries = new BaseTimeSeries.SeriesBuilder()
                 .withName("double").withNumTypeOf(doubleFunc).withBars(doubleBarList).build();
         lowPrecisionSeries = new BaseTimeSeries.SeriesBuilder()
@@ -181,7 +174,6 @@ public class PrecisionNumTest {
         assertEquals(120, (((PrecisionNum) firstSuperPrecisionNum).getMathContext().getPrecision()));
         assertEquals(120, ((BigDecimal) superPrecisionSeries.getBar(0).getClosePrice().getDelegate()).precision());
         assertEquals(120, ((BigDecimal) precisionSeries.getBar(0).getClosePrice().getDelegate()).precision());
-        assertEquals(32, ((BigDecimal) bigDecimalSeries.getBar(0).getClosePrice().getDelegate()).precision());
         assertEquals(17, (new BigDecimal(doubleSeries.getBar(0).getClosePrice().toString())).precision());
         assertEquals(3, (new BigDecimal(lowPrecisionSeries.getBar(0).getClosePrice().toString())).precision());
 
@@ -191,8 +183,6 @@ public class PrecisionNumTest {
                 precisionSeries.getBar(0).getClosePrice());
         assertNumEquals(PrecisionNum.valueOf("1.2345678901234567890123456789012"),
                 precision32Series.getBar(0).getClosePrice());
-        assertNumEquals(PrecisionNum.valueOf("1.2345678901234567890123456789012"),
-                PrecisionNum.valueOf(bigDecimalSeries.getBar(0).getClosePrice().toString()));
         assertNumEquals(PrecisionNum.valueOf("1.2345678901234567"),
                 PrecisionNum.valueOf(doubleSeries.getBar(0).getClosePrice().toString()));
         assertNumEquals(PrecisionNum.valueOf("1.23"),
@@ -201,21 +191,18 @@ public class PrecisionNumTest {
         Indicator<Num> superPrecisionClose = new ClosePriceIndicator(superPrecisionSeries);
         Indicator<Num> precisionClose = new ClosePriceIndicator(precisionSeries);
         Indicator<Num> precision32Close = new ClosePriceIndicator(precision32Series);
-        Indicator<Num> bigDecimalClose = new ClosePriceIndicator(bigDecimalSeries);
         Indicator<Num> doubleClose = new ClosePriceIndicator(doubleSeries);
         Indicator<Num> lowPrecisionClose = new ClosePriceIndicator(lowPrecisionSeries);
 
         superPrecisionIndicator = new RSIIndicator(superPrecisionClose, 200);
         precisionIndicator = new RSIIndicator(precisionClose, 200);
         precision32Indicator = new RSIIndicator(precision32Close, 200);
-        bigDecimalIndicator = new RSIIndicator(bigDecimalClose, 200);
         doubleIndicator = new RSIIndicator(doubleClose, 200);
         lowPrecisionIndicator = new RSIIndicator(lowPrecisionClose, 200);
 
         calculateSuperPrecision();
         calculatePrecision();
         calculatePrecision32();
-        calculateBigDecimal();
         calculateDouble();
         calculateLowPrecision();
 
@@ -227,10 +214,6 @@ public class PrecisionNumTest {
         assertIndicatorEquals(superPrecisionIndicator, precision32Indicator,
                 PrecisionNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorNotEquals(superPrecisionIndicator, precision32Indicator,
-                PrecisionNum.valueOf("0.00000000000000000000000000001"));
-        assertIndicatorEquals(superPrecisionIndicator, bigDecimalIndicator,
-                PrecisionNum.valueOf("0.0000000000000000000000000001"));
-        assertIndicatorNotEquals(superPrecisionIndicator, bigDecimalIndicator,
                 PrecisionNum.valueOf("0.00000000000000000000000000001"));
         assertIndicatorEquals(superPrecisionIndicator, doubleIndicator,
                 PrecisionNum.valueOf("0.000000000001"));
@@ -245,10 +228,6 @@ public class PrecisionNumTest {
                 PrecisionNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorNotEquals(precisionIndicator, precision32Indicator,
                 PrecisionNum.valueOf("0.00000000000000000000000000001"));
-        assertIndicatorEquals(precisionIndicator, bigDecimalIndicator,
-                PrecisionNum.valueOf("0.0000000000000000000000000001"));
-        assertIndicatorNotEquals(precisionIndicator, bigDecimalIndicator,
-                PrecisionNum.valueOf("0.00000000000000000000000000001"));
         assertIndicatorEquals(precisionIndicator, doubleIndicator,
                 PrecisionNum.valueOf("0.000000000001"));
         assertIndicatorNotEquals(precisionIndicator, doubleIndicator,
@@ -258,11 +237,6 @@ public class PrecisionNumTest {
         assertIndicatorNotEquals(precisionIndicator, lowPrecisionIndicator,
                 PrecisionNum.valueOf("3.4"));
         // accuracies relative to Precision32
-        // since precision32Indicator and bigDecimalIndicator have the same precision, they match to any precision
-        assertIndicatorEquals(precision32Indicator, bigDecimalIndicator,
-                PrecisionNum.valueOf("0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
-        // no delta to which they don't match
-        // so no assertIndicatorNotEquals(precision32Indicator, bigDecimalIndicator, delta)
         assertIndicatorEquals(precision32Indicator, doubleIndicator,
                 PrecisionNum.valueOf("0.000000000001"));
         assertIndicatorNotEquals(precision32Indicator, doubleIndicator,
@@ -270,15 +244,6 @@ public class PrecisionNumTest {
         assertIndicatorEquals(precision32Indicator, lowPrecisionIndicator,
                 PrecisionNum.valueOf("3.5"));
         assertIndicatorNotEquals(precision32Indicator, lowPrecisionIndicator,
-                PrecisionNum.valueOf("3.4"));
-        // accuracies relative to BigDecimal
-        assertIndicatorEquals(bigDecimalIndicator, doubleIndicator,
-                PrecisionNum.valueOf("0.000000000001"));
-        assertIndicatorNotEquals(bigDecimalIndicator, doubleIndicator,
-                PrecisionNum.valueOf("0.0000000000001"));
-        assertIndicatorEquals(bigDecimalIndicator, lowPrecisionIndicator,
-                PrecisionNum.valueOf("3.5"));
-        assertIndicatorNotEquals(bigDecimalIndicator, lowPrecisionIndicator,
                 PrecisionNum.valueOf("3.4"));
         // accuracies relative to Double
         assertIndicatorEquals(doubleIndicator, lowPrecisionIndicator,
@@ -308,13 +273,6 @@ public class PrecisionNumTest {
 
     public void calculatePrecision32() {
         Indicator<Num> indicator = precision32Indicator;
-        for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
-            indicator.getValue(i);
-        }
-    }
-
-    public void calculateBigDecimal() {
-        Indicator<Num> indicator = bigDecimalIndicator;
         for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
             indicator.getValue(i);
         }

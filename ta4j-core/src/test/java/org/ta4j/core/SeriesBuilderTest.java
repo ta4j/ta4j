@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.BigDecimalNum;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
@@ -49,20 +49,20 @@ public class SeriesBuilderTest extends AbstractIndicatorTest {
         TimeSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed time series using BigDecimal as delegate
         TimeSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty unnamed time series using BigDecimal as delegate
         TimeSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class).withName("useDouble").build();
-        TimeSeries bigDecimalSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(BigDecimalNum.class).withName("useBigDecimal").build();
+        TimeSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(PrecisionNum.class).withName("useBigDecimal").build();
 
         for(int i=1000; i>=0;i--){
             defaultSeries.addBar(ZonedDateTime.now().minusSeconds(i),i,i,i,i,i);
             defaultSeriesName.addBar(ZonedDateTime.now().minusSeconds(i),i,i,i,i,i);
             doubleSeries.addBar(ZonedDateTime.now().minusSeconds(i),i,i,i,i,i);
-            bigDecimalSeries.addBar(ZonedDateTime.now().minusSeconds(i),i,i,i,i,i);
+            precisionSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
         }
 
         assertNumEquals(0,defaultSeries.getBar(1000).getClosePrice());
         assertNumEquals(1000,defaultSeries.getBar(0).getClosePrice());
         assertEquals(defaultSeriesName.getName(),"default");
         assertNumEquals(99,doubleSeries.getBar(0).getClosePrice());
-        assertNumEquals(99,bigDecimalSeries.getBar(0).getClosePrice());
+        assertNumEquals(99, precisionSeries.getBar(0).getClosePrice());
     }
 
     @Test
@@ -71,13 +71,13 @@ public class SeriesBuilderTest extends AbstractIndicatorTest {
         TimeSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
         assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
 
-        TimeSeries seriesB = seriesBuilder.withNumTypeOf(BigDecimalNum.class).build();
-        assertNumEquals(seriesB.numOf(12), BigDecimalNum.valueOf(12));
+        TimeSeries seriesB = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
+        assertNumEquals(seriesB.numOf(12), PrecisionNum.valueOf(12));
     }
 
     @Test(expected = ClassCastException.class)
     public void testWrongNumType(){
-        TimeSeries series = seriesBuilder.withNumTypeOf(BigDecimalNum.class).build();
+        TimeSeries series = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
         assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
     }
 }
