@@ -26,6 +26,7 @@ package ta4jexamples.timeSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseTimeSeries.SeriesBuilder;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
@@ -43,6 +44,10 @@ public class BuildTimeSeries {
      */
     public static void main(String[] args){
         TimeSeries a = buildAndAddData();
+        System.out.println("a: " + a.getBar(0).getClosePrice().getName());
+        SeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
+        a = buildAndAddData();
+        System.out.println("a: " + a.getBar(0).getClosePrice().getName());
         TimeSeries b = buildWithDouble();
         TimeSeries c = buildWithBigDecimal();
         TimeSeries d = buildManually();

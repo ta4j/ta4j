@@ -23,6 +23,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Various Rules**: added constructor that provides `Number` parameters
 - **AroonUpIndicator**: redundant TimeSeries call was removed from constructor
 - **AroonDownIndicator**: redundant TimeSeries call was removed from constructor
+- **BaseTimeSeries**: added setDefaultFunction() to SeriesBuilder for setting the default Num type function for all new TimeSeries built by that SeriesBuilder, updated BuildTimeSeries example
 
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
