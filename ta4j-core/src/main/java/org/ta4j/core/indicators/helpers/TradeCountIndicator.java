@@ -33,15 +33,13 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class TradeCountIndicator extends CachedIndicator<Integer> {
 
     private static final long serialVersionUID = -925772914642803594L;
-    private TimeSeries series;
 
     public TradeCountIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Integer calculate(int index) {
-        return series.getBar(index).getTrades();
+        return getTimeSeries().getBar(index).getTrades();
     }
 }

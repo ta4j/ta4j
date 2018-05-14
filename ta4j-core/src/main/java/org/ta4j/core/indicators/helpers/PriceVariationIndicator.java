@@ -33,17 +33,14 @@ import org.ta4j.core.num.Num;
  */
 public class PriceVariationIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public PriceVariationIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        Num previousBarClosePrice = series.getBar(Math.max(0, index - 1)).getClosePrice();
-        Num currentBarClosePrice = series.getBar(index).getClosePrice();
+        Num previousBarClosePrice = getTimeSeries().getBar(Math.max(0, index - 1)).getClosePrice();
+        Num currentBarClosePrice = getTimeSeries().getBar(index).getClosePrice();
         return currentBarClosePrice.dividedBy(previousBarClosePrice);
     }
 }

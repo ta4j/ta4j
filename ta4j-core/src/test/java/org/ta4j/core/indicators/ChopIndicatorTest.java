@@ -47,7 +47,7 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 	 * this will assert that choppiness is low if market price is trending significantly
 	 */
 	@Test
-	public void testTradableTrend() {
+    public void testTradeableTrend() {
         series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         float value = 21.5f;
         for (int i = 0; i < 50; i++) {
@@ -59,5 +59,7 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 		int LOW_CHOPPINESS_VALUE = 30;
 	    assertTrue( ci1.getValue( series.getEndIndex() ).doubleValue() < LOW_CHOPPINESS_VALUE );
 	}
+
+    // TODO: this test class needs better cases
 
 }

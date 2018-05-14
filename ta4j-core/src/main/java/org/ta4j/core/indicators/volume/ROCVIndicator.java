@@ -37,7 +37,6 @@ public class ROCVIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 6366365574748347534L;
 
-    private final TimeSeries series;
     private final int barCount;
 
     private final Num HUNDRED;
@@ -50,7 +49,6 @@ public class ROCVIndicator extends CachedIndicator<Num> {
      */
     public ROCVIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.series = series;
         this.barCount = barCount;
         this.HUNDRED = numOf(100);
     }
@@ -58,8 +56,8 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int nIndex = Math.max(index - barCount, 0);
-        Num nPeriodsAgoValue = series.getBar(nIndex).getVolume();
-        Num currentValue = series.getBar(index).getVolume();
+        Num nPeriodsAgoValue = getTimeSeries().getBar(nIndex).getVolume();
+        Num currentValue = getTimeSeries().getBar(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue)
                 .dividedBy(nPeriodsAgoValue)
                 .multipliedBy(HUNDRED);
