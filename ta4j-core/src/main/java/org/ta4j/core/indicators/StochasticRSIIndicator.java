@@ -53,11 +53,11 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param closePriceIndicator the close prices
+     * @param indicator the Indicator, in practice is always a ClosePriceIndicator.
      * @param barCount the time frame
      */
-    public StochasticRSIIndicator(Indicator<Num> closePriceIndicator, int barCount) {
-        this(new RSIIndicator(closePriceIndicator, barCount), barCount);
+    public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
+        this(new RSIIndicator(indicator, barCount), barCount);
     }
 
     /**
