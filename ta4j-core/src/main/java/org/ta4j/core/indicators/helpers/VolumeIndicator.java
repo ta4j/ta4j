@@ -33,8 +33,6 @@ import org.ta4j.core.num.Num;
  */
 public class VolumeIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     private int barCount;
 
     public VolumeIndicator(TimeSeries series) {
@@ -43,7 +41,6 @@ public class VolumeIndicator extends CachedIndicator<Num> {
 
     public VolumeIndicator(TimeSeries series, int barCount) {
         super(series);
-        this.series = series;
         this.barCount = barCount;
     }
 
@@ -52,7 +49,7 @@ public class VolumeIndicator extends CachedIndicator<Num> {
         int startIndex = Math.max(0, index - barCount + 1);
         Num sumOfVolume = numOf(0);
         for (int i = startIndex; i <= index; i++) {
-            sumOfVolume = sumOfVolume.plus(series.getBar(i).getVolume());
+            sumOfVolume = sumOfVolume.plus(getTimeSeries().getBar(i).getVolume());
         }
         return sumOfVolume;
     }

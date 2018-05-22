@@ -35,15 +35,12 @@ import org.ta4j.core.num.Num;
  */
 public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
 
-    private final TimeSeries series;
-
     /**
      * Constructor.
      * @param series a time series
      */
     public BullishHaramiIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
@@ -52,8 +49,8 @@ public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
             // Harami is a 2-candle pattern
             return false;
         }
-        Bar prevBar = series.getBar(index-1);
-        Bar currBar = series.getBar(index);
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
         if (prevBar.isBearish() && currBar.isBullish()) {
             final Num prevOpenPrice = prevBar.getOpenPrice();
             final Num prevClosePrice = prevBar.getClosePrice();

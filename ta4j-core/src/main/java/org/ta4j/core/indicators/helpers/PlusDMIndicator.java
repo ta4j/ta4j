@@ -32,11 +32,8 @@ import org.ta4j.core.num.Num;
  */
 public class PlusDMIndicator extends CachedIndicator<Num> {
 
-    private final TimeSeries series;
-
     public PlusDMIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
@@ -44,8 +41,8 @@ public class PlusDMIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return numOf(0);
         }
-        Num upMove = series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getMaxPrice());
-        Num downMove = series.getBar(index - 1).getMinPrice().minus(series.getBar(index).getMinPrice());
+        Num upMove = getTimeSeries().getBar(index).getMaxPrice().minus(getTimeSeries().getBar(index - 1).getMaxPrice());
+        Num downMove = getTimeSeries().getBar(index - 1).getMinPrice().minus(getTimeSeries().getBar(index).getMinPrice());
         if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numOf(0))) {
             return upMove;
         } else {

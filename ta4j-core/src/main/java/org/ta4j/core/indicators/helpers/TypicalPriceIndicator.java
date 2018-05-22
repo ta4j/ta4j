@@ -33,18 +33,15 @@ import org.ta4j.core.num.Num;
  */
 public class TypicalPriceIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public TypicalPriceIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        Num maxPrice = series.getBar(index).getMaxPrice();
-        Num minPrice = series.getBar(index).getMinPrice();
-        Num closePrice = series.getBar(index).getClosePrice();
+        Num maxPrice = getTimeSeries().getBar(index).getMaxPrice();
+        Num minPrice = getTimeSeries().getBar(index).getMinPrice();
+        Num closePrice = getTimeSeries().getBar(index).getClosePrice();
         return maxPrice.plus(minPrice).plus(closePrice).dividedBy(numOf(3));
     }
 }

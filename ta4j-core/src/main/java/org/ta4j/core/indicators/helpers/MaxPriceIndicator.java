@@ -33,15 +33,12 @@ import org.ta4j.core.num.Num;
  */
 public class MaxPriceIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public MaxPriceIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        return series.getBar(index).getMaxPrice();
+        return getTimeSeries().getBar(index).getMaxPrice();
     }
 }

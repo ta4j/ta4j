@@ -33,16 +33,13 @@ import org.ta4j.core.num.Num;
  */
 public class MedianPriceIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public MedianPriceIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        return series.getBar(index).getMaxPrice().plus(series.getBar(index).getMinPrice())
+        return getTimeSeries().getBar(index).getMaxPrice().plus(getTimeSeries().getBar(index).getMinPrice())
                 .dividedBy(numOf(2));
     }
 }

@@ -38,11 +38,8 @@ import org.ta4j.core.num.Num;
  */
 public class PVIIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final TimeSeries series;
-
     public PVIIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
@@ -51,8 +48,8 @@ public class PVIIndicator extends RecursiveCachedIndicator<Num> {
             return numOf(1000);
         }
 
-        Bar currentBar = series.getBar(index);
-        Bar previousBar = series.getBar(index - 1);
+        Bar currentBar = getTimeSeries().getBar(index);
+        Bar previousBar = getTimeSeries().getBar(index - 1);
         Num previousValue = getValue(index - 1);
 
         if (currentBar.getVolume().isGreaterThan(previousBar.getVolume())) {

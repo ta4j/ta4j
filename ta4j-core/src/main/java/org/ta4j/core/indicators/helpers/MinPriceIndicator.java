@@ -33,15 +33,12 @@ import org.ta4j.core.num.Num;
  */
 public class MinPriceIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public MinPriceIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        return series.getBar(index).getMinPrice();
+        return getTimeSeries().getBar(index).getMinPrice();
     }
 }

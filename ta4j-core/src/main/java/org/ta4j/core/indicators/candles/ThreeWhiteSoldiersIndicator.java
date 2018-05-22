@@ -37,8 +37,6 @@ import org.ta4j.core.num.Num;
  */
 public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
-    private final TimeSeries series;
-
     /** Upper shadow */
     private final UpperShadowIndicator upperShadowInd;
     /** Average upper shadow */
@@ -56,7 +54,6 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeWhiteSoldiersIndicator(TimeSeries series, int barCount, Num factor) {
         super(series);
-        this.series = series;
         upperShadowInd = new UpperShadowIndicator(series);
         averageUpperShadowInd = new SMAIndicator(upperShadowInd, barCount);
         this.factor = factor;
@@ -69,7 +66,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
             return false;
         }
         blackCandleIndex = index - 3;
-        return series.getBar(blackCandleIndex).isBearish()
+        return getTimeSeries().getBar(blackCandleIndex).isBearish()
                 && isWhiteSoldier(index - 2)
                 && isWhiteSoldier(index - 1)
                 && isWhiteSoldier(index);
@@ -92,8 +89,8 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is growing, false otherwise
      */
     private boolean isGrowing(int index) {
-        Bar prevBar = series.getBar(index-1);
-        Bar currBar = series.getBar(index);
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
         final Num prevOpenPrice = prevBar.getOpenPrice();
         final Num prevClosePrice = prevBar.getClosePrice();
         final Num currOpenPrice = currBar.getOpenPrice();
@@ -110,8 +107,8 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is a white soldier, false otherwise
      */
     private boolean isWhiteSoldier(int index) {
-        Bar prevBar = series.getBar(index-1);
-        Bar currBar = series.getBar(index);
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
         if (currBar.isBullish()) {
             if (prevBar.isBearish()) {
                 // First soldier case

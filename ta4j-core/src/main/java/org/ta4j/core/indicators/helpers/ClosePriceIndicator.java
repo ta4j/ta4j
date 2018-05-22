@@ -33,15 +33,12 @@ import org.ta4j.core.num.Num;
  */
 public class ClosePriceIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public ClosePriceIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        return series.getBar(index).getClosePrice();
+        return getTimeSeries().getBar(index).getClosePrice();
     }
 }

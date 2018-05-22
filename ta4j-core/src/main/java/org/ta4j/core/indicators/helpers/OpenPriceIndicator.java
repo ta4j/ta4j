@@ -32,15 +32,12 @@ import org.ta4j.core.num.Num;
  */
 public class OpenPriceIndicator extends CachedIndicator<Num> {
 
-    private TimeSeries series;
-
     public OpenPriceIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        return series.getBar(index).getOpenPrice();
+        return getTimeSeries().getBar(index).getOpenPrice();
     }
 }

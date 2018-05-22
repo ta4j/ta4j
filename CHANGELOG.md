@@ -24,6 +24,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **AroonUpIndicator**: redundant TimeSeries call was removed from constructor
 - **AroonDownIndicator**: redundant TimeSeries call was removed from constructor
 - **BaseTimeSeries**: added setDefaultFunction() to SeriesBuilder for setting the default Num type function for all new TimeSeries built by that SeriesBuilder, updated BuildTimeSeries example
+- **ChopIndicator**: transparent fixes
+- **StochasticRSIIndicator**: comments and params names changes to reduce confusion
+- **ConvergenceDivergenceIndicator**: remove unused method
+- **ChopIndicatorTest**: spelling, TODO: add better tests
 
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
@@ -50,6 +54,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 - **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 - **BigDecimalNum**: _removed_.  Replaced by `PrecisionNum`
+- **<various>Indicator**: removed redundant `private TimeSeries`
 
 ## 0.11 (released January 25, 2018)
 
