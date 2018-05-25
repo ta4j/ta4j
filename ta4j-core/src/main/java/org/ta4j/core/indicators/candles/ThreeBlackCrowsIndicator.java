@@ -37,8 +37,6 @@ import org.ta4j.core.num.Num;
  */
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
-    private final TimeSeries series;
-
     /** Lower shadow */
     private final LowerShadowIndicator lowerShadowInd;
     /** Average lower shadow */
@@ -56,7 +54,6 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeBlackCrowsIndicator(TimeSeries series, int barCount, double factor) {
         super(series);
-        this.series = series;
         lowerShadowInd = new LowerShadowIndicator(series);
         averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
         this.factor = numOf(factor);
@@ -69,7 +66,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
             return false;
         }
         whiteCandleIndex = index - 3;
-        return series.getBar(whiteCandleIndex).isBullish()
+        return getTimeSeries().getBar(whiteCandleIndex).isBullish()
                 && isBlackCrow(index - 2)
                 && isBlackCrow(index - 1)
                 && isBlackCrow(index);
@@ -92,8 +89,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is declining, false otherwise
      */
     private boolean isDeclining(int index) {
-        Bar prevBar = series.getBar(index-1);
-        Bar currBar = series.getBar(index);
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
         final Num prevOpenPrice = prevBar.getOpenPrice();
         final Num prevClosePrice = prevBar.getClosePrice();
         final Num currOpenPrice = currBar.getOpenPrice();
@@ -110,8 +107,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is a black crow, false otherwise
      */
     private boolean isBlackCrow(int index) {
-        Bar prevBar = series.getBar(index-1);
-        Bar currBar = series.getBar(index);
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
         if (currBar.isBearish()) {
             if (prevBar.isBullish()) {
                 // First crow case

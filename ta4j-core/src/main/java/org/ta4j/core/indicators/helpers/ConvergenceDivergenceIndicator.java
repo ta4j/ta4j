@@ -372,17 +372,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	
 	/**
 	 * @param index the actual index
-	 * @return the absolute slope
-	 */
-	private Num calculateSlopeAbs(int index) {
-		SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
-		int firstIndex = Math.max(0, index - barCount + 1);
-		return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex)))
-				.dividedBy(numOf(barCount).minus(numOf(firstIndex)));
-	}
-	
-	/**
-	 * @param index the actual index
 	 * @return the relative slope
 	 */
 	private Num calculateSlopeRel(int index) {

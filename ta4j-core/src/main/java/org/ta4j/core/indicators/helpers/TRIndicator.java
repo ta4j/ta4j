@@ -33,18 +33,15 @@ import org.ta4j.core.num.Num;
  */
 public class TRIndicator extends CachedIndicator<Num> {
 
-    private final TimeSeries series;
-
     public TRIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        Num ts = series.getBar(index).getMaxPrice().minus(series.getBar(index).getMinPrice());
-        Num ys = index == 0 ? numOf(0) : series.getBar(index).getMaxPrice().minus(series.getBar(index - 1).getClosePrice());
-        Num yst = index == 0 ? numOf(0) : series.getBar(index - 1).getClosePrice().minus(series.getBar(index).getMinPrice());
+        Num ts = getTimeSeries().getBar(index).getMaxPrice().minus(getTimeSeries().getBar(index).getMinPrice());
+        Num ys = index == 0 ? numOf(0) : getTimeSeries().getBar(index).getMaxPrice().minus(getTimeSeries().getBar(index - 1).getClosePrice());
+        Num yst = index == 0 ? numOf(0) : getTimeSeries().getBar(index - 1).getClosePrice().minus(getTimeSeries().getBar(index).getMinPrice());
         return ts.abs().max(ys.abs()).max(yst.abs());
     }
 }

@@ -42,7 +42,8 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     private final HighestValueIndicator maxRsi;
 
     /**
-     * Constructor.
+     * Constructor.  In most cases, this should be used to avoid confusion
+     * over what Indicator parameters should be used.
      * @param series the series
      * @param barCount the time frame
      */
@@ -52,7 +53,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param indicator the indicator
+     * @param indicator the Indicator, in practice is always a ClosePriceIndicator.
      * @param barCount the time frame
      */
     public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
@@ -61,14 +62,14 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param rsi the rsi indicator
+     * @param rsiIndicator the rsi indicator
      * @param barCount the time frame
      */
-    public StochasticRSIIndicator(RSIIndicator rsi, int barCount) {
-        super(rsi);
-        this.rsi = rsi;
-        minRsi = new LowestValueIndicator(rsi, barCount);
-        maxRsi = new HighestValueIndicator(rsi, barCount);
+    public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
+        super(rsiIndicator);
+        this.rsi = rsiIndicator;
+        minRsi = new LowestValueIndicator(rsiIndicator, barCount);
+        maxRsi = new HighestValueIndicator(rsiIndicator, barCount);
     }
 
     @Override

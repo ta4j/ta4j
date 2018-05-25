@@ -38,20 +38,17 @@ import org.ta4j.core.num.Num;
  */
 public class RealBodyIndicator extends CachedIndicator<Num> {
 
-    private final TimeSeries series;
-
     /**
      * Constructor.
      * @param series a time series
      */
     public RealBodyIndicator(TimeSeries series) {
         super(series);
-        this.series = series;
     }
 
     @Override
     protected Num calculate(int index) {
-        Bar t = series.getBar(index);
+        Bar t = getTimeSeries().getBar(index);
         return t.getClosePrice().minus(t.getOpenPrice());
     }
 }
