@@ -30,7 +30,6 @@ import org.ta4j.core.num.Num;
 /**
  * Correlation coefficient indicator.
  * <p/>
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num PrecisionNum} to double
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
  * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */
@@ -60,7 +59,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
         Num cov = covariance.getValue(index);
         Num var1 = variance1.getValue(index);
         Num var2 = variance2.getValue(index);
-        Num var1_2_sqrt = numOf(Math.sqrt(var1.multipliedBy(var2).doubleValue()));
+        Num var1_2_sqrt = var1.multipliedBy(var2).sqrt();
         return cov.dividedBy(var1_2_sqrt);
 
 

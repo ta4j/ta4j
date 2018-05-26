@@ -87,7 +87,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 		
 		if (toSqrt.isGreaterThan(numOf(0))) {
 			// pearson = (n * Sxy - Sx * Sy) / sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy))
-			return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(numOf(Math.sqrt(toSqrt.doubleValue())));
+            return (n.multipliedBy(Sxy).minus(Sx.multipliedBy(Sy))).dividedBy(toSqrt.sqrt());
 		}
 
 		return NaN;
