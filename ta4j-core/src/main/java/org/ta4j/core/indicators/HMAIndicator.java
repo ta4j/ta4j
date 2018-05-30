@@ -48,7 +48,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
         WMAIndicator origWma = new WMAIndicator(indicator, barCount);
         
         Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(new MultiplierIndicator(halfWma, 2), origWma);
-        sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
+        sqrtWma = new WMAIndicator(indicatorForSqrtWma, (int) Math.sqrt(barCount));
     }
 
     @Override

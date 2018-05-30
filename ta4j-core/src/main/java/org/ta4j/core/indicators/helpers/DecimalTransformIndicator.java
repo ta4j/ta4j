@@ -160,7 +160,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 		else if (simpleType != null) {
 			switch (simpleType) {
 			case sqrt:
-				return val.sqrt();
+				return numOf(Math.sqrt(val.doubleValue()));
 			case abs:
 				return val.abs();
 			case log:

@@ -87,9 +87,9 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      * Only complete barCounts are taken into the calculation.
      * @return the total return from the calculated results of the method 'calculate'
      */
-    public Num getTotalReturn() {
+    public double getTotalReturn() {
 
-        Num totalProduct = ONE;
+        Num totalProduct = numOf(1);
         int completeTimeframes = (getTimeSeries().getBarCount() / barCount);
 
         for (int i = 1; i <= completeTimeframes; i++) {
@@ -103,7 +103,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             }
         }
 
-        return totalProduct.pow(ONE.dividedBy(numOf(completeTimeframes)));
+        return (Math.pow(totalProduct.doubleValue(), (1.0 / completeTimeframes)));
     }
 
     @Override
@@ -112,26 +112,23 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         Num currentValue = indicator.getValue(index);
 
         int helpPartialTimeframe = index % barCount;
-        // TODO: implement Num.floor()
-        Num helpFullTimeframes = numOf(Math.floor(
-                numOf(indicator.getTimeSeries().getBarCount())
-                        .dividedBy(numOf(barCount))
-                        .doubleValue()));
-        Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
+        double helpFullTimeframes = Math.floor((double) indicator.getTimeSeries().getBarCount() / (double) barCount);
+        double helpIndexTimeframes = (double) index / (double) barCount;
 
-        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
-        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? ONE : helpPartialTimeframeHeld;
+        double helpPartialTimeframeHeld = (double) helpPartialTimeframe / (double) barCount;
+        double partialTimeframeHeld = (helpPartialTimeframeHeld == 0) ? 1.0 : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:
         // a.) if index number is below timeframe
         // e.g. timeframe = 365, index = 5 => no calculation
         // b.) if at the end of a series incomplete timeframes would remain
         Num timeframedReturn = NaN;
-        if ((index >= barCount) /*(a)*/&& (helpIndexTimeframes.isLessThan(helpFullTimeframes)) /*(b)*/) {
+        if ((index >= barCount) /*(a)*/ && (helpIndexTimeframes < helpFullTimeframes) /*(b)*/) {
             Num movingValue = indicator.getValue(index - barCount);
             Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
-            timeframedReturn = ONE.plus(movingSimpleReturn).pow(ONE.dividedBy(partialTimeframeHeld)).minus(ONE);
+            double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.doubleValue()), (1 / partialTimeframeHeld)) - 1;
+            timeframedReturn = numOf(timeframedReturn_double);
         }
 
         return timeframedReturn;

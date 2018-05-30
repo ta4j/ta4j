@@ -52,6 +52,6 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        return sdev.getValue(index).dividedBy(numOf(numberOfObservations).sqrt());
+        return sdev.getValue(index).dividedBy(numOf(Math.sqrt(numberOfObservations)));
     }
 }

@@ -41,15 +41,15 @@ import org.ta4j.core.indicators.helpers.MinPriceIndicator;
                 MaxHi(n) = The highest high over past n bars
 
                 ++ usually this index is between 0 and 100, but could be scaled differently by the 'scaleTo' arg of the constructor
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal/BigDecimal} to to {@link Double double}
+ * @implNote precision may be lost because of the double calculations using log10
  */
 public class ChopIndicator extends CachedIndicator<Num> {
     private final ATRIndicator atrIndicator;
     private final int timeFrame;
-    private final Num LOG10n;
+    private final double LOG10n;
     private final HighestValueIndicator hvi;
     private final LowestValueIndicator lvi;
-    private final Num scaleUpTo;
+    private final double scaleUpTo;
 
     /**
      * Constructor.
@@ -57,25 +57,25 @@ public class ChopIndicator extends CachedIndicator<Num> {
      * @param ciTimeFrame time-frame often something like '14'
      * @param scaleTo maximum value to scale this oscillator, usually '1' or '100'
      */
-    public ChopIndicator(TimeSeries timeseries, int ciTimeFrame, int scaleTo) {
-        super(timeseries);
-        this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new MaxPriceIndicator(timeseries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new MinPriceIndicator(timeseries), ciTimeFrame);
+    public ChopIndicator( TimeSeries timeseries, int ciTimeFrame, int scaleTo ) {
+        super( timeseries );
+        this.atrIndicator = new ATRIndicator( timeseries, 1 );	// ATR(1) = Average True Range (Period of 1)
+        hvi = new HighestValueIndicator( new MaxPriceIndicator(timeseries), ciTimeFrame );
+        lvi = new LowestValueIndicator( new MinPriceIndicator(timeseries), ciTimeFrame );
         this.timeFrame = ciTimeFrame;
-        this.LOG10n = numOf(Math.log10(ciTimeFrame));
-        this.scaleUpTo = numOf(scaleTo);
+        this.LOG10n = Math.log10( ciTimeFrame );
+        this.scaleUpTo = scaleTo;
     }
 
     @Override
     public Num calculate(int index) {
         Num summ = atrIndicator.getValue(index);
-        for(int i = 1; i < timeFrame; ++i ) {
+        for( int i = 1; i<timeFrame; ++i ) {
             summ = summ.plus(atrIndicator.getValue(index - i));
         }
         Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
         // TODO: implement Num.log10(Num)
-        Num chop = scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(LOG10n);
+        Num chop = numOf(scaleUpTo).multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(numOf(LOG10n));
         return chop;
     }
 }
