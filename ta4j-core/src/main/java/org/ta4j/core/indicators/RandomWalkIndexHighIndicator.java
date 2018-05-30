@@ -55,7 +55,7 @@ public class RandomWalkIndexHighIndicator extends CachedIndicator<Num> {
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
         averageTrueRange = new ATRIndicator(series, barCount);
-        sqrtBarCount = numOf(Math.sqrt(barCount));
+        sqrtBarCount = numOf(barCount).sqrt();
     }
 
     @Override

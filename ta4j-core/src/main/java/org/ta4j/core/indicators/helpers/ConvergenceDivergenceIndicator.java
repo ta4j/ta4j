@@ -131,17 +131,17 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	/** The type of the strict convergence or strict divergence **/
 	private final ConvergenceDivergenceStrictType strictType;
 	
-	/** The minimum strenght for convergence or divergence. **/
-	private Num minStrenght;
+	/** The minimum strength for convergence or divergence. **/
+	private Num minStrength;
 	
 	/** The minimum slope for convergence or divergence. **/
 	private Num minSlope;
     
 	/**
-	 * Constructor. <br/>
+	Constructor. <br/>
 	 * <br/>
 	 * 
-	 * The <b>"minStrenght"</b> is the minimum required strenght for convergence or divergence
+	 * The <b>"minStrength"</b> is the minimum required strength for convergence or divergence
 	 * and must be a number between "0.1" and "1.0": <br/>
 	 * <br/>
 	 * 0.1: very weak <br/>
@@ -161,18 +161,18 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * @param other the other indicator
 	 * @param barCount the time frame
 	 * @param type of convergence or divergence
-	 * @param minStrenght the minimum required strenght for convergence or divergence
+	 * @param minStrength the minimum required strength for convergence or divergence
 	 * @param minSlope the minimum required slope for convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
-			ConvergenceDivergenceType type, double minStrenght, double minSlope) {
+			ConvergenceDivergenceType type, double minStrength, double minSlope) {
 		super(ref);
 		this.ref = ref;
 		this.other = other;
 		this.barCount = barCount;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = numOf(minStrenght).abs();
+		this.minStrength = numOf(minStrength).abs();
 		this.minSlope = numOf(minSlope);
 	}
 	
@@ -192,7 +192,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.barCount = barCount;
 		this.type = type;
 		this.strictType = null;
-		this.minStrenght = numOf(0.8).abs();
+		this.minStrength = numOf(0.8).abs();
 		this.minSlope = numOf(0.3);
 	}
 	
@@ -212,19 +212,19 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 		this.barCount = barCount;
 		this.type = null;
 		this.strictType = strictType;
-		this.minStrenght = null;
+		this.minStrength = null;
 		this.minSlope = null;
 	}
 
 	@Override
 	protected Boolean calculate(int index) {
 
-		if (minStrenght != null && minStrenght.isZero()) {
+		if (minStrength != null && minStrength.isZero()) {
 			return false;
 		}
 
-		if (minStrenght != null && minStrenght.isGreaterThan(numOf(1))) {
-			minStrenght = numOf(1);
+		if (minStrength != null && minStrength.isGreaterThan(numOf(1))) {
+			minStrength = numOf(1);
 		}
 
 		if (type != null) {
@@ -310,7 +310,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
 	private Boolean calculatePositiveConvergence(int index) {
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
+		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
 		Num slope = calculateSlopeRel(index);
 		boolean isPositive = slope.isGreaterThanOrEqual(minSlope.abs());
@@ -325,7 +325,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     private Boolean calculateNegativeConvergence(int index) {
     		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-    		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrenght);
+    		boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 		
     		Num slope = calculateSlopeRel(index);
     		boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
@@ -340,7 +340,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculatePositiveDivergence(int index) {
 		
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(numOf(-1)));
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(numOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.
@@ -359,7 +359,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Boolean calculateNegativeDivergence(int index) {
 		
 		CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrenght.multipliedBy(numOf(-1)));
+		boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(numOf(-1)));
 
 		if (isDivergent) {
 			// If "isDivergent" and "ref" is positive, then "other" must be negative.

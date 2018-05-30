@@ -29,7 +29,6 @@ import org.ta4j.core.num.Num;
 /**
  * Ulcer index indicator.
  * <p/>
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal/BigDecimal} to to {@link Double double}
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index</a>
  * @see <a href="https://en.wikipedia.org/wiki/Ulcer_index">https://en.wikipedia.org/wiki/Ulcer_index</a>
@@ -66,7 +65,7 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
         squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
-        return numOf(Math.sqrt(squaredAverage.doubleValue()));
+        return squaredAverage.sqrt();
     }
 
     @Override

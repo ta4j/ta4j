@@ -39,7 +39,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
     
     private final ATRIndicator atr;
     
-    private final double k;
+    private final Num k;
 
     /**
      * Constructor.
@@ -59,11 +59,11 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
         super(series);
         low = new LowestValueIndicator(new MinPriceIndicator(series), barCount);
         atr = new ATRIndicator(series, barCount);
-        this.k = k;
+        this.k = numOf(k);
     }
 
     @Override
     protected Num calculate(int index) {
-        return low.getValue(index).plus(atr.getValue(index).multipliedBy(numOf(k)));
+        return low.getValue(index).plus(atr.getValue(index).multipliedBy(k));
     }
 }

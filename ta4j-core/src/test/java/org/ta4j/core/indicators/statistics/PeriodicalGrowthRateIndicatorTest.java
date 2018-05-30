@@ -65,9 +65,8 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void testGetTotalReturn() { 
         PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
-        double expResult = 0.9564;
-        double result = gri.getTotalReturn();
-        assertEquals(expResult, result, 0.01);
+        Num result = gri.getTotalReturn();
+        assertNumEquals(0.9564, result);
     }
     
     @Test

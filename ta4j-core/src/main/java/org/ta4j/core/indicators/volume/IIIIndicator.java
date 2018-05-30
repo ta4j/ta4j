@@ -60,11 +60,11 @@ public class IIIIndicator extends CachedIndicator<Num> {
         if (index == getTimeSeries().getBeginIndex()) {
             return numOf(0);
         }
-        Num doubleClosePrice =  numOf(2).multipliedBy(closePriceIndicator.getValue(index));
+        Num closePrice = numOf(2).multipliedBy(closePriceIndicator.getValue(index));
         Num highmlow = maxPriceIndicator.getValue(index).minus(minPriceIndicator.getValue(index));
         Num highplow = maxPriceIndicator.getValue(index).plus(minPriceIndicator.getValue(index));
 
-        return (doubleClosePrice.minus(highplow)).dividedBy(highmlow.multipliedBy(volumeIndicator.getValue(index)));
+        return (closePrice.minus(highplow)).dividedBy(highmlow.multipliedBy(volumeIndicator.getValue(index)));
 
     }
 }
