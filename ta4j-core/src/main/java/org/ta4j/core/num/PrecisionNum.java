@@ -25,8 +25,6 @@ package org.ta4j.core.num;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.ParseException;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -270,7 +268,7 @@ public final class PrecisionNum implements Num {
             return NaN;
 
         case 0:
-            return PrecisionNum.valueOf(0);
+            return BigDecimalNum.valueOf(0);
         }
 
         // Direct implementation of the example in:
@@ -292,14 +290,7 @@ public final class PrecisionNum implements Num {
             BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
             String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
             log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
-            DecimalFormat format = new DecimalFormat();
-            format.setParseBigDecimal(true);
-            try {
-                estimate = (BigDecimal) format.parse(estimateString);
-            } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            estimate = new BigDecimal(estimateString);
         }
         BigDecimal delta = null;
         BigDecimal test = null;

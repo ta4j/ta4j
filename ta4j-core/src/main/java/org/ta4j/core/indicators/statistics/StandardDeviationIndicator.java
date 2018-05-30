@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 /**
  * Standard deviation indicator.
  * <p/>
+ * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal/BigDecimal} to to {@link Double double}
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>
  */
@@ -48,6 +49,6 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return variance.getValue(index).sqrt();
+        return numOf(Math.sqrt(variance.getValue(index).doubleValue()));
     }
 }

@@ -10,7 +10,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **TradingBotOnMovingTimeSeries**: fixed calculations and ArithmeticException Overflow
 - **Fixed wrong indexing in**: `Indicator.toDouble()`.
-- **PrecisionNum.sqrt()**: using DecimalFormat.parse().
 
 ### Changed
 - **ALL INDICATORS**: `Decimal` replaced by `Num`.
@@ -30,7 +29,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **StochasticRSIIndicator**: comments and params names changes to reduce confusion
 - **ConvergenceDivergenceIndicator**: remove unused method
 - **ChopIndicatorTest**: spelling, TODO: add better tests
-- **Various Indicators**: remove double math operations, change `Math.sqrt(double)` to `Num.sqrt()`, other small improvements
 
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
@@ -45,6 +43,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BollingerBandWidthIndicator**: added missing constructor documentation.
 - **BollingerBandsLowerIndicator**: added missing constructor documentation.
 - **BollingerBandsMiddleIndicator**: added missing constructor documentation.
+- **PrecisionNum**: `Num` implementation to support arbitrary precision
 - **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 - **Num**: added Num sqrt(int) and Num sqrt()
 

@@ -55,7 +55,7 @@ private final MaxPriceIndicator maxPrice;
         maxPrice = new MaxPriceIndicator(series);
         minPrice = new MinPriceIndicator(series);
         averageTrueRange = new ATRIndicator(series, barCount);
-        sqrtBarCount = numOf(barCount).sqrt();
+        sqrtBarCount = series.numOf(Math.sqrt(barCount));
     }
 
     @Override
