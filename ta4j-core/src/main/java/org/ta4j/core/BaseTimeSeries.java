@@ -515,5 +515,9 @@ public class BaseTimeSeries implements TimeSeries {
             SeriesBuilder.defaultFunction = defaultFunction;
         }
 
+        public static Function<Number, Num> getDefaultFunction() {
+            return SeriesBuilder.defaultFunction;
+        }
+
     }
 }

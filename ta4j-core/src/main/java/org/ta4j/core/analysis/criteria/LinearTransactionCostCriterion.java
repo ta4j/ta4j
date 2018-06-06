@@ -23,10 +23,13 @@
  *******************************************************************************/
 package org.ta4j.core.analysis.criteria;
 
+import java.util.function.Function;
+
 import org.ta4j.core.Order;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.BaseTimeSeries.SeriesBuilder;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,10 +40,10 @@ import org.ta4j.core.num.Num;
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
-    private double initialAmount;
+    private Num initialAmount;
 
-    private double a;
-    private double b;
+    private Num a;
+    private Num b;
 
     private TotalProfitCriterion profit;
 
@@ -51,7 +54,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @param a the a coefficient (e.g. 0.005 for 0.5% per {@link Order order})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a) {
-        this(initialAmount, a, 0);
+        this(initialAmount, a, 0, SeriesBuilder.getDefaultFunction());
     }
 
     /**
@@ -61,22 +64,22 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @param a the a coefficient (e.g. 0.005 for 0.5% per {@link Order order})
      * @param b the b constant (e.g. 0.2 for $0.2 per {@link Order order})
      */
-    public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
-        this.initialAmount = initialAmount;
-        this.a = a;
-        this.b = b;
+    public LinearTransactionCostCriterion(double initialAmount, double a, double b, Function<Number, Num> numFunction) {
+        this.initialAmount = numFunction.apply(initialAmount);
+        this.a = numFunction.apply(a);
+        this.b = numFunction.apply(b);
         profit = new TotalProfitCriterion();
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return getTradeCost(series, trade, series.numOf(initialAmount));
+        return getTradeCost(series, trade, initialAmount);
     }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         Num totalCosts = series.numOf(0);
-        Num tradedAmount = series.numOf(initialAmount);
+        Num tradedAmount = initialAmount;
         
         for (Trade trade : tradingRecord.getTrades()) {
             Num tradeCost = getTradeCost(series, trade, tradedAmount);
@@ -110,9 +113,9 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute order cost
      */
     private Num getOrderCost(Order order, Num tradedAmount) {
-        Num orderCost = tradedAmount.numOf(0);
+        Num orderCost = SeriesBuilder.getDefaultFunction().apply(0);
         if (order != null) {
-            return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
+            return a.multipliedBy(tradedAmount).plus(b);
         }
         return orderCost;
     }
@@ -124,7 +127,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute total cost of all orders in the trade
      */
     private Num getTradeCost(TimeSeries series, Trade trade, Num initialAmount) {
-        Num totalTradeCost = series.numOf(0);
+        Num totalTradeCost = SeriesBuilder.getDefaultFunction().apply(0);
         if (trade != null) {
             if (trade.getEntry() != null) {
                 totalTradeCost = getOrderCost(trade.getEntry(), initialAmount);
