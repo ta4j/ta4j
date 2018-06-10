@@ -127,7 +127,6 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute total cost of all orders in the trade
      */
     private Num getTradeCost(TimeSeries series, Trade trade, Num initialAmount) {
-        //Num totalTradeCost = SeriesBuilder.getDefaultFunction().apply(0);
         Num totalTradeCost = series.numOf(0);
         if (trade != null) {
             if (trade.getEntry() != null) {
