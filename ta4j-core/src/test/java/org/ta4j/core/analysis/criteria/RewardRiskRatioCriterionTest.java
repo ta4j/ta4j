@@ -36,15 +36,15 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
 
-    private RewardRiskRatioCriterion rrc;
+    private AnalysisCriterion rrc;
 
     public RewardRiskRatioCriterionTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+        super((params) -> new RewardRiskRatioCriterion(), numFunction);
     }
 
     @Before
     public void setUp() {
-        this.rrc = new RewardRiskRatioCriterion();
+        this.rrc = getCriterion();
     }
 
     @Test
@@ -84,13 +84,13 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
-        RewardRiskRatioCriterion ratioCriterion = new RewardRiskRatioCriterion();
+        AnalysisCriterion ratioCriterion = getCriterion();
         assertNumEquals((95d/100) / ((1d - 0.95d)), ratioCriterion.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new RewardRiskRatioCriterion();
+        AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(3.5), numOf(2.2)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.7)));
     }

@@ -56,11 +56,6 @@ public abstract class AbstractCriterionTest {
         this.numFunction = numFunction;
     }
 
-    public AbstractCriterionTest(Function<Number, Num> numFunction){
-        this.factory = null;
-        this.numFunction = numFunction;
-    }
-
     /**
      * Generates an AnalysisCriterion given criterion parameters.
      * 

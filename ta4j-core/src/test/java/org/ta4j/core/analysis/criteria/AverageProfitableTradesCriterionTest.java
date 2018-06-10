@@ -36,7 +36,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest {
 
     public AverageProfitableTradesCriterionTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+        super((params) -> new AverageProfitableTradesCriterion(), numFunction);
     }
 
     @Test
@@ -47,7 +47,7 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
                 Order.buyAt(2, series), Order.sellAt(3, series),
                 Order.buyAt(4, series), Order.sellAt(5, series));
         
-        AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
+        AnalysisCriterion average = getCriterion();
         
         assertNumEquals(2d/3, average.calculate(series, tradingRecord));
     }
@@ -57,7 +57,7 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
         TimeSeries series = new MockTimeSeries(numFunction,100d, 95d, 102d, 105d, 97d, 113d);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
             
-        AverageProfitableTradesCriterion average = new AverageProfitableTradesCriterion();
+        AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(0), average.calculate(series, trade));
         
         trade = new Trade(Order.buyAt(1, series), Order.sellAt(2, series));
@@ -66,7 +66,7 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = new AverageProfitableTradesCriterion();
+        AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(12), numOf(8)));
         assertFalse(criterion.betterThan(numOf(8), numOf(12)));
     }
