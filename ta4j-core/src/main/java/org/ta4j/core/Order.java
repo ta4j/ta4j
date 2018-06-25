@@ -111,6 +111,20 @@ public class Order implements Serializable {
     }
 
     /**
+     * Constructor.
+     * @param index the index the order is executed
+     * @param series the time series
+     * @param type the type of the order
+     * @param amount the amount to be (or that was) ordered
+     */
+    protected Order(int index, TimeSeries series, OrderType type, Num amount) {
+        this.type = type;
+        this.index = index;
+        this.price = series.getBar(index).getClosePrice();
+        this.amount = amount;
+    }
+
+    /**
      * @return the type of the order (BUY or SELL)
      */
     public OrderType getType() {
@@ -202,6 +216,16 @@ public class Order implements Serializable {
     /**
      * @param index the index the order is executed
      * @param series the time series
+     * @param amount the amount to be (or that was) bought
+     * @return a BUY order
+     */
+    public static Order buyAt(int index, TimeSeries series, Num amount) {
+        return new Order(index, series, OrderType.BUY, amount);
+    }
+
+    /**
+     * @param index the index the order is executed
+     * @param series the time series
      * @return a SELL order
      */
     public static Order sellAt(int index, TimeSeries series) {
@@ -216,5 +240,15 @@ public class Order implements Serializable {
      */
     public static Order sellAt(int index, Num price, Num amount) {
         return new Order(index, OrderType.SELL, price, amount);
+    }
+
+    /**
+     * @param index the index the order is executed
+     * @param series the time series
+     * @param amount the amount to be (or that was) bought
+     * @return a SELL order
+     */
+    public static Order sellAt(int index, TimeSeries series, Num amount) {
+        return new Order(index, series, OrderType.SELL, amount);
     }
 }
