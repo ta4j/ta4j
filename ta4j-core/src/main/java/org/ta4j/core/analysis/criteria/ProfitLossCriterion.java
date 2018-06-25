@@ -17,7 +17,7 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
         return tradingRecord.getTrades().stream()
                 .filter(trade -> trade.isClosed())
                 .map(trade -> calculateProfitLoss(series, trade))
-                .reduce(series.numOf(1), (profit1, profit2) -> profit1.plus(profit2));
+                .reduce(series.numOf(0), (profit1, profit2) -> profit1.plus(profit2));
     }
 
     @Override
