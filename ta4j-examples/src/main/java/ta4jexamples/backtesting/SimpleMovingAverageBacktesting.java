@@ -36,6 +36,7 @@ public class SimpleMovingAverageBacktesting {
         calculateCriterion(new NumberOfTradesCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
         calculateCriterion(new RewardRiskRatioCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
         calculateCriterion(new TotalProfitCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
+        calculateCriterion(new ProfitLossCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
     }
 
     private static void calculateCriterion(AnalysisCriterion criterion, TimeSeries series, TradingRecord tradingRecord3DaySmaUnder, TradingRecord tradingRecord3DaySmaOver) {
