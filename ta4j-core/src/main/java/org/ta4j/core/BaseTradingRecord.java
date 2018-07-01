@@ -206,4 +206,14 @@ public class BaseTradingRecord implements TradingRecord {
             currentTrade = new Trade(startingType);
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("BaseTradingRecord:\n");
+        for(Order order : orders) {
+            sb.append(order.toString() + "\n");
+        }
+        return sb.toString();
+    }
 }
