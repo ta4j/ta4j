@@ -27,6 +27,7 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.ParseException;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -277,7 +278,7 @@ public final class PrecisionNum implements Num {
         // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
         MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
         BigDecimal estimate = new BigDecimal(delegate.toString(), precisionContext);
-        String string = String.format("%1.1e", estimate);
+        String string = String.format(Locale.ROOT,"%1.1e", estimate);
         log.trace("scientific notation {}", string);
         if (string.contains("e")) {
             String[] parts = string.split("e");
