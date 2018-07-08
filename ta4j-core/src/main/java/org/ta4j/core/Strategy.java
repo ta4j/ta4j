@@ -23,6 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A trading strategy.
  * </p>
@@ -31,6 +34,7 @@ package org.ta4j.core;
  */
 public interface Strategy {
 
+    final static Logger log = LoggerFactory.getLogger(Strategy.class);
     /**
      * @return the name of the strategy
      */
@@ -101,8 +105,8 @@ public interface Strategy {
      * @return true to recommend an order, false otherwise (no recommendation)
      */
     default boolean shouldOperate(int index, TradingRecord tradingRecord) {
-        Trade trade = tradingRecord.getCurrentTrade();
-        if (trade.isNew()) {
+        Trade trade = tradingRecord.getCurrentTrade(index);
+        if (trade == null || trade.isClosed() || trade.isNew()) {
             return shouldEnter(index, tradingRecord);
         } else if (trade.isOpened()) {
             return shouldExit(index, tradingRecord);
@@ -132,6 +136,7 @@ public interface Strategy {
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index) {
+        log.trace("index {}", index);
         return shouldExit(index, null);
     }
 

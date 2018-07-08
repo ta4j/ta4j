@@ -23,6 +23,8 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import java.lang.reflect.Constructor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Order.OrderType;
@@ -83,6 +85,18 @@ public class TimeSeriesManager {
     }
 
     /**
+     * Runs the provided strategy over the managed series using a TradingRecord class.
+     * <p>
+     * Opens the trades with {@link OrderType} BUY order.
+     * @param strategy the Strategy
+     * @param tradingRecordClass the TradingRecord class
+     * @return the trading record coming from the run
+     */
+    public TradingRecord run(Strategy strategy, Class<?> tradingRecordClass) {
+        return run(strategy, OrderType.BUY, NaN, this.getTimeSeries().getBeginIndex(), this.getTimeSeries().getEndIndex(), tradingRecordClass);
+    }
+
+    /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
      * <p>
      * Opens the trades with {@link OrderType} BUY order.
@@ -134,7 +148,7 @@ public class TimeSeriesManager {
     }
 
     /**
-     * Runs the provided strategy over the managed series (from startIndex to finishIndex).
+     * Runs the provided strategy over the managed series (from startIndex to finishIndex) using BaseTradingRecord.
      * <p>
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
@@ -144,12 +158,39 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, Num amount, int startIndex, int finishIndex) {
+        return run(strategy, orderType, amount, startIndex, finishIndex, BaseTradingRecord.class);
+    }
+
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to finishIndex).
+     * <p>
+     * @param strategy the trading strategy
+     * @param orderType the {@link OrderType} used to open the trades
+     * @param amount the amount used to open/close the trades
+     * @param startIndex the start index for the run (included)
+     * @param finishIndex the finish index for the run (included)
+     * @param tradingRecordClass the class to be used for the TradingRecord
+     * @return the trading record coming from the run
+     */
+    public TradingRecord run(Strategy strategy, OrderType orderType, Num amount, int startIndex, int finishIndex, Class<?> tradingRecordClass) {
 
         int runBeginIndex = Math.max(startIndex, timeSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());
 
         log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy, orderType);
-        TradingRecord tradingRecord = new BaseTradingRecord(orderType);
+
+        // construct a TradingRecord from tradingRecordClass
+        TradingRecord tradingRecord = null;
+        try {
+            log.trace("orderType {}", orderType);
+            log.trace("tradingRecordClass {}", tradingRecordClass);
+            Constructor<?> constructor = tradingRecordClass.getConstructor(Order.OrderType.class);
+            log.trace("constructor {}", constructor);
+            tradingRecord = (TradingRecord) constructor.newInstance(orderType);
+        } catch (Exception ex) {
+            log.error("failed to construct a {} ({}): {}", tradingRecordClass, ex.getClass(), ex.getMessage());
+            return null;
+        }
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
