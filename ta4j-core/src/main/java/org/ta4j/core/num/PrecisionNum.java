@@ -298,8 +298,7 @@ public final class PrecisionNum implements Num {
             try {
                 estimate = (BigDecimal) format.parse(estimateString);
             } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                throw new RuntimeException("Unable to parse into DecimalFormat the following string:" + estimateString + ": " + e);
             }
         }
         BigDecimal delta = null;
