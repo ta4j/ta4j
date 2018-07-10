@@ -24,9 +24,11 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Base implementation of a {@link TradingRecord}.
@@ -171,6 +173,47 @@ public class BaseTradingRecord implements TradingRecord {
             return exitOrders.get(exitOrders.size() - 1);
         }
         return null;
+    }
+
+    @Override
+    public Num getTotalProfit() {
+        List<Trade> profitTrades = trades.stream()
+                .filter(trade -> trade.getProfit().isGreaterThan(PrecisionNum.valueOf(0)))
+                .collect(Collectors.toList());
+
+        Num totalProfit = PrecisionNum.valueOf(0);
+        for(Trade trade : profitTrades) {
+            totalProfit = totalProfit.plus(trade.getProfit());
+        };
+        return totalProfit;
+    }
+
+    @Override
+    public Num getTotalLoss() {
+        List<Trade> lossTrades = trades.stream()
+                .filter(trade -> trade.getProfit().isLessThan(PrecisionNum.valueOf(0)))
+                .collect(Collectors.toList());
+
+        Num totalLoss = PrecisionNum.valueOf(0);
+        for(Trade trade : lossTrades) {
+            totalLoss = totalLoss.plus(trade.getProfit());
+        };
+        return totalLoss;
+    }
+
+    @Override
+    public long getProfitTradeCount() {
+        return trades.stream().filter(trade -> trade.getProfit().isGreaterThan(PrecisionNum.valueOf(0))).count();
+    }
+
+    @Override
+    public long getLossTradeCount() {
+        return trades.stream().filter(trade -> trade.getProfit().isLessThan(PrecisionNum.valueOf(0))).count();
+    }
+
+    @Override
+    public long getBreakEvenTradeCount() {
+        return trades.stream().filter(trade -> trade.getProfit().isEqual(PrecisionNum.valueOf(0))).count();
     }
 
     /**

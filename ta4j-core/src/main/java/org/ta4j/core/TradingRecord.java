@@ -151,4 +151,29 @@ public interface TradingRecord extends Serializable {
      * @return the last exit order recorded
      */
     Order getLastExit();
+
+    /**
+     * @return the total profit of all the trades
+     */
+    Num getTotalProfit();
+
+    /**
+     * @return the total loss of all the trades
+     */
+    Num getTotalLoss();
+
+    /**
+     * @return the count of the trades that gave profit
+     */
+    long getProfitTradeCount();
+
+    /**
+     * @return the count of the trades that gave loss
+     */
+    long getLossTradeCount();
+
+    /**
+     * @return the count of the trades that gave break even
+     */
+    long getBreakEvenTradeCount();
 }

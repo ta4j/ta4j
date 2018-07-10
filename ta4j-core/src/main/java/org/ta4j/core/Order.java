@@ -251,4 +251,8 @@ public class Order implements Serializable {
     public static Order sellAt(int index, TimeSeries series, Num amount) {
         return new Order(index, series, OrderType.SELL, amount);
     }
+
+    public Num getValue() {
+        return price.multipliedBy(amount);
+    }
 }
