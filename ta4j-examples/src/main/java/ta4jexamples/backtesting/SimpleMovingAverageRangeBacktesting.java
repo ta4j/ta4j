@@ -15,25 +15,33 @@ public class SimpleMovingAverageRangeBacktesting {
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
         ProfitLossCriterion criterion = new ProfitLossCriterion();
+
         Backtesting backtesting = new Backtesting(series, criterion);
 
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        // createParameter -> start stop step
-        for(int i=3; i<=50; i++) {
-            SMAIndicator sma = new SMAIndicator(closePrice, i);
-            Rule entryRule = new UnderIndicatorRule(sma, closePrice);
-            Rule exitRule = new OverIndicatorRule(sma, closePrice);
-            Num calculate = backtesting.calculate(entryRule, exitRule, PrecisionNum.valueOf(50));
+        int start = 3;
+        int stop = 50;
+        int step = 5;
 
-            System.out.println("----- " + i +" -----");
-            backtesting.createTradingRecordReport();
-
-            System.out.println(calculate);
-            System.out.println();
+        for(int i=start; i<=stop; i += step) {
+            Strategy strategy = new BaseStrategy(
+                    createEntryRule(series, i),
+                    createExitRule(series, i)
+            );
+            backtesting.addStrategy(strategy);
         }
+        backtesting.calculate(PrecisionNum.valueOf(50));
+        backtesting.printBacktestingResults();
     }
 
-    private static void createTradeReport(Trade trade) {
-        System.out.println("Profit: " + trade.getProfit());
+    private static Rule createEntryRule(TimeSeries series, int barCount) {
+        Indicator closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
+        return new UnderIndicatorRule(sma, closePrice);
+    }
+
+    private static Rule createExitRule(TimeSeries series, int barCount) {
+        Indicator closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
+        return new OverIndicatorRule(sma, closePrice);
     }
 }
