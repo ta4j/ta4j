@@ -24,6 +24,7 @@ public class SimpleMovingAverageRangeBacktesting {
 
         for(int i=start; i<=stop; i += step) {
             Strategy strategy = new BaseStrategy(
+                    "Sma("+ i +")",
                     createEntryRule(series, i),
                     createExitRule(series, i)
             );

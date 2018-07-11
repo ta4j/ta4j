@@ -5,10 +5,12 @@ import org.ta4j.core.num.Num;
 
 public class BacktestingResult implements Comparable<BacktestingResult>{
 
+    private String strategyName;
     private TradingRecord tradingRecord;
     private Num calculation;
 
-    public BacktestingResult(TradingRecord tradingRecord, Num calculation) {
+    public BacktestingResult(String strategyName, TradingRecord tradingRecord, Num calculation) {
+        this.strategyName = strategyName;
         this.tradingRecord = tradingRecord;
         this.calculation = calculation;
     }
@@ -23,7 +25,7 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
 
     public void printBacktestingResult() {
         //tradingRecord.getTrades().stream().forEach(trade -> createTradeReport(trade));
-        System.out.println("----------------------------");
+        System.out.println("------------ " + strategyName + " ------------");
         System.out.println("Total trades: " + tradingRecord.getTradeCount());
         System.out.println("Total profit: " + tradingRecord.getTotalProfit() + " Trade count: " + tradingRecord.getProfitTradeCount());
         System.out.println("Total loss: " + tradingRecord.getTotalLoss() + " Trade count: " + tradingRecord.getLossTradeCount());
