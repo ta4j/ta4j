@@ -14,35 +14,23 @@ public class SimpleMovingAverageRangeBacktesting {
 
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
+        ProfitLossCriterion criterion = new ProfitLossCriterion();
+        Backtesting backtesting = new Backtesting(series, criterion);
+
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
-
+        // createParameter -> start stop step
         for(int i=3; i<=50; i++) {
-
             SMAIndicator sma = new SMAIndicator(closePrice, i);
-            Strategy strategy = new BaseStrategy(
-                    new UnderIndicatorRule(sma, closePrice),
-                    new OverIndicatorRule(sma, closePrice)
-            );
-            TradingRecord tradingRecord = seriesManager.run(strategy, Order.OrderType.BUY, PrecisionNum.valueOf(50));
-            ProfitLossCriterion criterion = new ProfitLossCriterion();
-            Num calculate = criterion.calculate(series, tradingRecord);
+            Rule entryRule = new UnderIndicatorRule(sma, closePrice);
+            Rule exitRule = new OverIndicatorRule(sma, closePrice);
+            Num calculate = backtesting.calculate(entryRule, exitRule, PrecisionNum.valueOf(50));
 
             System.out.println("----- " + i +" -----");
-            createTradingRecordReport(tradingRecord);
+            backtesting.createTradingRecordReport();
 
             System.out.println(calculate);
             System.out.println();
         }
-    }
-
-    private static void createTradingRecordReport(TradingRecord tradingRecord) {
-        //tradingRecord.getTrades().stream().forEach(trade -> createTradeReport(trade));
-
-        System.out.println("Total trades: " + tradingRecord.getTradeCount());
-        System.out.println("Total profit: " + tradingRecord.getTotalProfit() + " Trade count: " + tradingRecord.getProfitTradeCount());
-        System.out.println("Total loss: " + tradingRecord.getTotalLoss() + " Trade count: " + tradingRecord.getLossTradeCount());
-        System.out.println("Break event trade count: " + tradingRecord.getBreakEvenTradeCount());
     }
 
     private static void createTradeReport(Trade trade) {
