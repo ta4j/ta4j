@@ -1,8 +1,6 @@
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 
 /**
@@ -11,6 +9,12 @@ import org.ta4j.core.num.Num;
  * The profit or loss over the provided {@link TimeSeries series}.
  */
 public class ProfitLossCriterion extends AbstractAnalysisCriterion {
+
+    private TradeAt tradeAt;
+
+    public ProfitLossCriterion(TradeAt tradeAt) {
+        this.tradeAt = tradeAt;
+    }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
@@ -37,11 +41,22 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
      * @return the profit or loss of the trade
      */
     private Num calculateProfitLoss(TimeSeries series, Trade trade) {
-        Num exitClosePrice = trade.getExit().getPrice().isNaN() ?
-                series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
-        Num entryClosePrice = trade.getEntry().getPrice().isNaN() ?
-                series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
+        Num exitPrice = getExitPrice(series, trade.getExit());
+        Num entryPrice = getExitPrice(series, trade.getEntry());
 
-        return exitClosePrice.minus(entryClosePrice).multipliedBy(trade.getExit().getAmount());
+        return exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+    }
+
+    private Num getExitPrice(TimeSeries series, Order order) {
+        if (tradeAt == TradeAt.OPEN) {
+            return series.getBar(order.getIndex()).getOpenPrice();
+        }
+        if (tradeAt == TradeAt.HIGH) {
+            return series.getBar(order.getIndex()).getMaxPrice();
+        }
+        if (tradeAt == TradeAt.LOW) {
+            return series.getBar(order.getIndex()).getMinPrice();
+        }
+        return series.getBar(order.getIndex()).getClosePrice();
     }
 }

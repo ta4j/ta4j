@@ -14,7 +14,7 @@ public class SimpleMovingAverageRangeBacktesting {
 
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
-        ProfitLossCriterion criterion = new ProfitLossCriterion();
+        ProfitLossCriterion criterion = new ProfitLossCriterion(TradeAt.OPEN);
 
         Backtesting backtesting = new Backtesting(series, criterion);
 
