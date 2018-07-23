@@ -6,13 +6,23 @@ import org.ta4j.core.num.Num;
 public class BacktestingResult implements Comparable<BacktestingResult>{
 
     private String strategyName;
+    private Strategy strategy;
     private TradingRecord tradingRecord;
     private Num calculation;
 
-    public BacktestingResult(String strategyName, TradingRecord tradingRecord, Num calculation) {
+    public BacktestingResult(String strategyName, Strategy strategy, TradingRecord tradingRecord, Num calculation) {
         this.strategyName = strategyName;
+        this.strategy = strategy;
         this.tradingRecord = tradingRecord;
         this.calculation = calculation;
+    }
+
+    public String getStrategyName() {
+        return strategyName;
+    }
+
+    public Strategy getStrategy() {
+        return strategy;
     }
 
     public TradingRecord getTradingRecord() {
