@@ -42,13 +42,19 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
         System.out.println("Calculation: " + calculation);
         if(printTrades) {
             tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade, series));
+            Order lastOrder = tradingRecord.getLastOrder();
+            if(lastOrder.getType() == Order.OrderType.BUY) {
+                Bar lastOrderBar = series.getBar(lastOrder.getIndex());
+                System.out.println("Trade entry: " + lastOrderBar.getSimpleDateName() + ", exit: ?.");
+            }
         }
         System.out.println();
     }
 
-    private static void printTrade(Trade trade, TimeSeries series) {
+    private void printTrade(Trade trade, TimeSeries series) {
         Bar entryBar = series.getBar(trade.getEntry().getIndex());
-        System.out.println("Trade: " + entryBar.getEndTime() + " Profit: " + trade.getProfit());
+        Bar exitBar = series.getBar(trade.getExit().getIndex());
+        System.out.println("Trade entry: " + entryBar.getSimpleDateName() + ", exit: " + exitBar.getSimpleDateName() + ". Profit: " + trade.getProfit());
     }
 
     @Override
