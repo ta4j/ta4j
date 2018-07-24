@@ -82,6 +82,9 @@ public class Order implements Serializable {
     
     /** The amount to be (or that was) ordered */
     private Num amount;
+
+    /** The bar of the order */
+    private Bar bar;
     
     /**
      * Constructor.
@@ -117,10 +120,11 @@ public class Order implements Serializable {
      * @param type the type of the order
      * @param amount the amount to be (or that was) ordered
      */
-    protected Order(int index, TimeSeries series, OrderType type, Num amount) {
+    protected Order(int index, TimeSeries series, OrderType type, Num amount, PriceType priceType) {
         this.type = type;
         this.index = index;
-        this.price = series.getBar(index).getClosePrice();
+        this.bar = series.getBar(index);
+        this.price = series.getBar(index).getPrice(priceType);
         this.amount = amount;
     }
 
@@ -129,6 +133,13 @@ public class Order implements Serializable {
      */
     public OrderType getType() {
         return type;
+    }
+
+    /**
+     * @return the bar when the order was placed
+     */
+    public Bar getBar() {
+        return bar;
     }
 
     /**
@@ -219,8 +230,8 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a BUY order
      */
-    public static Order buyAt(int index, TimeSeries series, Num amount) {
-        return new Order(index, series, OrderType.BUY, amount);
+    public static Order buyAt(int index, TimeSeries series, Num amount, PriceType priceType) {
+        return new Order(index, series, OrderType.BUY, amount, priceType);
     }
 
     /**
@@ -248,8 +259,8 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a SELL order
      */
-    public static Order sellAt(int index, TimeSeries series, Num amount) {
-        return new Order(index, series, OrderType.SELL, amount);
+    public static Order sellAt(int index, TimeSeries series, Num amount, PriceType priceType) {
+        return new Order(index, series, OrderType.SELL, amount, priceType);
     }
 
     public Num getValue() {

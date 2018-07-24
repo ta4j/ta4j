@@ -48,8 +48,7 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
     }
 
     private static void printTrade(Trade trade) {
-        trade.getEntry()
-        System.out.println("Profit: " + trade.getProfit());
+        System.out.println("Trade: " + trade.getEntry().getBar().getSimpleDateName() + " Profit: " + trade.getProfit());
     }
 
     @Override

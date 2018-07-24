@@ -37,10 +37,10 @@ public class Backtesting {
         }
     }
 
-    public void printBacktestingResults() {
+    public void printBacktestingResults(boolean printTrades) {
         Collections.sort(backtestingResults);
         for(BacktestingResult backtestingResult : backtestingResults) {
-            backtestingResult.printBacktestingResult();
+            backtestingResult.printBacktestingResult(printTrades);
         }
     }
 }

@@ -21,8 +21,8 @@ public class ProfitLossCriterionTest  extends AbstractCriterionTest {
     public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0,series, series.numOf(50)), Order.sellAt(2,series, series.numOf(50)),
-                Order.buyAt(3,series, series.numOf(50)), Order.sellAt(5,series, series.numOf(50)));
+                Order.buyAt(0,series, series.numOf(50), PriceType.CLOSE), Order.sellAt(2,series, series.numOf(50), PriceType.CLOSE),
+                Order.buyAt(3,series, series.numOf(50), PriceType.CLOSE), Order.sellAt(5,series, series.numOf(50), PriceType.CLOSE));
 
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(500 + 250, profit.calculate(series, tradingRecord));
@@ -32,8 +32,8 @@ public class ProfitLossCriterionTest  extends AbstractCriterionTest {
     public void calculateOnlyWithLossTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0,series, series.numOf(50)), Order.sellAt(1,series, series.numOf(50)),
-                Order.buyAt(2,series, series.numOf(50)), Order.sellAt(5,series, series.numOf(50)));
+                Order.buyAt(0,series, series.numOf(50), PriceType.CLOSE), Order.sellAt(1,series, series.numOf(50), PriceType.CLOSE),
+                Order.buyAt(2,series, series.numOf(50), PriceType.CLOSE), Order.sellAt(5,series, series.numOf(50), PriceType.CLOSE));
 
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(-250 - 1500, profit.calculate(series, tradingRecord));

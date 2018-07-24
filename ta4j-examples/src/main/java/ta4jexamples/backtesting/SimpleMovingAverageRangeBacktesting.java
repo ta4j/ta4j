@@ -30,7 +30,7 @@ public class SimpleMovingAverageRangeBacktesting {
             backtesting.addStrategy(strategy);
         }
         backtesting.calculate(PrecisionNum.valueOf(50), PriceType.CLOSE);
-        backtesting.printBacktestingResults();
+        backtesting.printBacktestingResults(true);
     }
 
     private static Rule createEntryRule(TimeSeries series, int barCount) {
