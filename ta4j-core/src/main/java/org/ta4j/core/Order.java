@@ -26,6 +26,7 @@ package org.ta4j.core;
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
+import java.time.ZonedDateTime;
 import java.util.Objects;
 
 /**
@@ -83,9 +84,9 @@ public class Order implements Serializable {
     /** The amount to be (or that was) ordered */
     private Num amount;
 
-    /** The bar of the order */
-    private Bar bar;
-    
+    /** The dateTime of the order */
+    private ZonedDateTime dateTime;
+
     /**
      * Constructor.
      * @param index the index the order is executed
@@ -97,6 +98,7 @@ public class Order implements Serializable {
         this.index = index;
         this.amount = series.numOf(1);
         this.price = series.getBar(index).getClosePrice();
+        this.dateTime = series.getBar(index).getEndTime();
     }
 
     /**
@@ -123,9 +125,9 @@ public class Order implements Serializable {
     protected Order(int index, TimeSeries series, OrderType type, Num amount, PriceType priceType) {
         this.type = type;
         this.index = index;
-        this.bar = series.getBar(index);
         this.price = series.getBar(index).getPrice(priceType);
         this.amount = amount;
+        this.dateTime = series.getBar(index).getEndTime();
     }
 
     /**
@@ -136,10 +138,10 @@ public class Order implements Serializable {
     }
 
     /**
-     * @return the bar when the order was placed
+     * @return the dateTime of the order
      */
-    public Bar getBar() {
-        return bar;
+    public ZonedDateTime getDateTime() {
+        return dateTime;
     }
 
     /**
