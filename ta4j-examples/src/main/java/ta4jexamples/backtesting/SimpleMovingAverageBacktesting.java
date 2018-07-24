@@ -21,11 +21,11 @@ public class SimpleMovingAverageBacktesting {
         Strategy strategy3DaySma = create3DaySmaStrategy(series);
 
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);
-        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50), PriceType.CLOSE);
         System.out.println(tradingRecord3DaySma);
 
         Strategy strategy2DaySma = create2DaySmaStrategy(series);
-        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50), PriceType.CLOSE);
         System.out.println(tradingRecord2DaySma);
 
         AnalysisCriterion criterion = new TotalProfitCriterion();

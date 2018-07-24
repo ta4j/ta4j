@@ -29,9 +29,9 @@ public class Backtesting {
         return backtestingResults;
     }
 
-    public void calculate(Num amount) {
+    public void calculate(Num amount, PriceType priceType) {
         for(Strategy strategy : strategies) {
-            TradingRecord tradingRecord = seriesManager.run(strategy, Order.OrderType.BUY, amount);
+            TradingRecord tradingRecord = seriesManager.run(strategy, Order.OrderType.BUY, amount, priceType);
             Num calculation = criterion.calculate(series, tradingRecord);
             backtestingResults.add(new BacktestingResult(strategy.getName(), strategy, tradingRecord, calculation));
         }

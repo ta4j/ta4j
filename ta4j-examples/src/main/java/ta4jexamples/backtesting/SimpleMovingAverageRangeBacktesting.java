@@ -4,7 +4,6 @@ import org.ta4j.core.*;
 import org.ta4j.core.analysis.criteria.*;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
@@ -14,7 +13,7 @@ public class SimpleMovingAverageRangeBacktesting {
 
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
-        ProfitLossCriterion criterion = new ProfitLossCriterion(TradeAt.OPEN);
+        ProfitLossCriterion criterion = new ProfitLossCriterion(PriceType.OPEN);
 
         Backtesting backtesting = new Backtesting(series, criterion);
 
@@ -30,7 +29,7 @@ public class SimpleMovingAverageRangeBacktesting {
             );
             backtesting.addStrategy(strategy);
         }
-        backtesting.calculate(PrecisionNum.valueOf(50));
+        backtesting.calculate(PrecisionNum.valueOf(50), PriceType.CLOSE);
         backtesting.printBacktestingResults();
     }
 

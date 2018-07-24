@@ -91,7 +91,7 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
     public void runOnWholeSeriesWithAmount() {
         TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
         manager.setTimeSeries(series);
-        List<Trade> allTrades = manager.run(strategy, OrderType.BUY, HUNDRED).getTrades();
+        List<Trade> allTrades = manager.run(strategy, OrderType.BUY, HUNDRED, PriceType.CLOSE).getTrades();
 
         assertEquals(2, allTrades.size());
         assertEquals(HUNDRED, allTrades.get(0).getEntry().getAmount());

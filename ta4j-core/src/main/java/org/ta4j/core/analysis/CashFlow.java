@@ -44,16 +44,16 @@ public class CashFlow implements Indicator<Num> {
     private List<Num> values;
 
     /** The price you traded at */
-    private TradeAt tradeAt;
+    private PriceType priceType;
 
     /**
      * Constructor.
      * @param timeSeries the time series
      * @param trade a single trade
      */
-    public CashFlow(TimeSeries timeSeries, Trade trade, TradeAt tradeAt) {
+    public CashFlow(TimeSeries timeSeries, Trade trade, PriceType priceType) {
         this.timeSeries = timeSeries;
-        this.tradeAt = tradeAt;
+        this.priceType = priceType;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(trade);
         fillToTheEnd();
@@ -64,9 +64,9 @@ public class CashFlow implements Indicator<Num> {
      * @param timeSeries the time series
      * @param tradingRecord the trading record
      */
-    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, TradeAt tradeAt) {
+    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, PriceType priceType) {
         this.timeSeries = timeSeries;
-        this.tradeAt = tradeAt;
+        this.priceType = priceType;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(tradingRecord);
 
@@ -123,13 +123,13 @@ public class CashFlow implements Indicator<Num> {
     }
 
     private Num getRatio(int entryIndex, int exitIndex) {
-        if(tradeAt == TradeAt.OPEN) {
+        if(priceType == PriceType.OPEN) {
             return timeSeries.getBar(exitIndex).getOpenPrice().dividedBy(timeSeries.getBar(entryIndex).getOpenPrice());
         }
-        if(tradeAt == TradeAt.HIGH) {
+        if(priceType == PriceType.HIGH) {
             return timeSeries.getBar(exitIndex).getMaxPrice().dividedBy(timeSeries.getBar(entryIndex).getMaxPrice());
         }
-        if(tradeAt == TradeAt.LOW) {
+        if(priceType == PriceType.LOW) {
             return timeSeries.getBar(exitIndex).getMinPrice().dividedBy(timeSeries.getBar(entryIndex).getMinPrice());
         }
         return timeSeries.getBar(exitIndex).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());

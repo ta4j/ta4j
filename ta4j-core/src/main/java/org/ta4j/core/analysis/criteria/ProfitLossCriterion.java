@@ -10,10 +10,10 @@ import org.ta4j.core.num.Num;
  */
 public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
-    private TradeAt tradeAt;
+    private PriceType priceType;
 
-    public ProfitLossCriterion(TradeAt tradeAt) {
-        this.tradeAt = tradeAt;
+    public ProfitLossCriterion(PriceType priceType) {
+        this.priceType = priceType;
     }
 
     @Override
@@ -48,13 +48,13 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
     }
 
     private Num getExitPrice(TimeSeries series, Order order) {
-        if (tradeAt == TradeAt.OPEN) {
+        if (priceType == PriceType.OPEN) {
             return series.getBar(order.getIndex()).getOpenPrice();
         }
-        if (tradeAt == TradeAt.HIGH) {
+        if (priceType == PriceType.HIGH) {
             return series.getBar(order.getIndex()).getMaxPrice();
         }
-        if (tradeAt == TradeAt.LOW) {
+        if (priceType == PriceType.LOW) {
             return series.getBar(order.getIndex()).getMinPrice();
         }
         return series.getBar(order.getIndex()).getClosePrice();

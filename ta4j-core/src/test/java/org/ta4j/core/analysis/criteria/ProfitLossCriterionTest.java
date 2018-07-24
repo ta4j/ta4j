@@ -14,7 +14,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class ProfitLossCriterionTest  extends AbstractCriterionTest {
 
     public ProfitLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ProfitLossCriterion(TradeAt.CLOSE), numFunction);
+        super((params) -> new ProfitLossCriterion(PriceType.CLOSE), numFunction);
     }
 
     @Test

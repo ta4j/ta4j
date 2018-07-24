@@ -1,5 +1,5 @@
 package org.ta4j.core;
 
-public enum TradeAt {
+public enum PriceType {
     OPEN, HIGH, LOW, CLOSE
 }
