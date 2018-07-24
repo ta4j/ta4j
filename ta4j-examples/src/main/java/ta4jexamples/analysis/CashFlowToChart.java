@@ -110,7 +110,7 @@ public class CashFlowToChart {
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         // Getting the cash flow of the resulting trades
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, TradeAt.CLOSE);
 
         /*
           Building chart datasets

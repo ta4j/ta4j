@@ -23,10 +23,7 @@
  *******************************************************************************/
 package org.ta4j.core.analysis;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -46,13 +43,17 @@ public class CashFlow implements Indicator<Num> {
     /** The cash flow values */
     private List<Num> values;
 
+    /** The price you traded at */
+    private TradeAt tradeAt;
+
     /**
      * Constructor.
      * @param timeSeries the time series
      * @param trade a single trade
      */
-    public CashFlow(TimeSeries timeSeries, Trade trade) {
+    public CashFlow(TimeSeries timeSeries, Trade trade, TradeAt tradeAt) {
         this.timeSeries = timeSeries;
+        this.tradeAt = tradeAt;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(trade);
         fillToTheEnd();
@@ -63,8 +64,9 @@ public class CashFlow implements Indicator<Num> {
      * @param timeSeries the time series
      * @param tradingRecord the trading record
      */
-    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
+    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, TradeAt tradeAt) {
         this.timeSeries = timeSeries;
+        this.tradeAt = tradeAt;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(tradingRecord);
 
@@ -112,12 +114,25 @@ public class CashFlow implements Indicator<Num> {
         for (int i = Math.max(begin, 1); i <= end; i++) {
             Num ratio;
             if (trade.getEntry().isBuy()) {
-                ratio = timeSeries.getBar(i).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
+                ratio = getRatio(entryIndex, i);
             } else {
-                ratio = timeSeries.getBar(entryIndex).getClosePrice().dividedBy(timeSeries.getBar(i).getClosePrice());
+                ratio = getRatio(i, entryIndex);
             }
             values.add(values.get(entryIndex).multipliedBy(ratio));
         }
+    }
+
+    private Num getRatio(int entryIndex, int exitIndex) {
+        if(tradeAt == TradeAt.OPEN) {
+            return timeSeries.getBar(exitIndex).getOpenPrice().dividedBy(timeSeries.getBar(entryIndex).getOpenPrice());
+        }
+        if(tradeAt == TradeAt.HIGH) {
+            return timeSeries.getBar(exitIndex).getMaxPrice().dividedBy(timeSeries.getBar(entryIndex).getMaxPrice());
+        }
+        if(tradeAt == TradeAt.LOW) {
+            return timeSeries.getBar(exitIndex).getMinPrice().dividedBy(timeSeries.getBar(entryIndex).getMinPrice());
+        }
+        return timeSeries.getBar(exitIndex).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
     }
 
     /**

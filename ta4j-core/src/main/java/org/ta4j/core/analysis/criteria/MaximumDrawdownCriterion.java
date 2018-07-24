@@ -25,6 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeAt;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
@@ -37,7 +38,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, TradeAt.CLOSE);
         Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
         return maximumDrawdown;
     }
@@ -45,7 +46,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
         if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-            CashFlow cashFlow = new CashFlow(series, trade);
+            CashFlow cashFlow = new CashFlow(series, trade, TradeAt.CLOSE);
             Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
             return maximumDrawdown;
         }
