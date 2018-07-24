@@ -33,8 +33,7 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
         return calculation;
     }
 
-    public void printBacktestingResult(boolean printTrades) {
-        tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade));
+    public void printBacktestingResult(boolean printTrades, TimeSeries series) {
         System.out.println("------------ " + strategyName + " ------------");
         System.out.println("Total trades: " + tradingRecord.getTradeCount());
         System.out.println("Total profit: " + tradingRecord.getTotalProfit() + " Trade count: " + tradingRecord.getProfitTradeCount());
@@ -42,13 +41,14 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
         System.out.println("Break event trade count: " + tradingRecord.getBreakEvenTradeCount());
         System.out.println("Calculation: " + calculation);
         if(printTrades) {
-            tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade));
+            tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade, series));
         }
         System.out.println();
     }
 
-    private static void printTrade(Trade trade) {
-        System.out.println("Trade: " + trade.getEntry().getDateTime() + " Profit: " + trade.getProfit());
+    private static void printTrade(Trade trade, TimeSeries series) {
+        Bar entryBar = series.getBar(trade.getEntry().getIndex());
+        System.out.println("Trade: " + entryBar.getEndTime() + " Profit: " + trade.getProfit());
     }
 
     @Override

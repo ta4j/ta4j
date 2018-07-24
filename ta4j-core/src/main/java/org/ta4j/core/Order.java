@@ -84,9 +84,6 @@ public class Order implements Serializable {
     /** The amount to be (or that was) ordered */
     private Num amount;
 
-    /** The dateTime of the order */
-    private ZonedDateTime dateTime;
-
     /**
      * Constructor.
      * @param index the index the order is executed
@@ -98,7 +95,6 @@ public class Order implements Serializable {
         this.index = index;
         this.amount = series.numOf(1);
         this.price = series.getBar(index).getClosePrice();
-        this.dateTime = series.getBar(index).getEndTime();
     }
 
     /**
@@ -127,7 +123,6 @@ public class Order implements Serializable {
         this.index = index;
         this.price = series.getBar(index).getPrice(priceType);
         this.amount = amount;
-        this.dateTime = series.getBar(index).getEndTime();
     }
 
     /**
@@ -135,13 +130,6 @@ public class Order implements Serializable {
      */
     public OrderType getType() {
         return type;
-    }
-
-    /**
-     * @return the dateTime of the order
-     */
-    public ZonedDateTime getDateTime() {
-        return dateTime;
     }
 
     /**

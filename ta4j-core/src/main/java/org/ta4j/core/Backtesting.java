@@ -40,7 +40,7 @@ public class Backtesting {
     public void printBacktestingResults(boolean printTrades) {
         Collections.sort(backtestingResults);
         for(BacktestingResult backtestingResult : backtestingResults) {
-            backtestingResult.printBacktestingResult(printTrades);
+            backtestingResult.printBacktestingResult(printTrades, series);
         }
     }
 }
