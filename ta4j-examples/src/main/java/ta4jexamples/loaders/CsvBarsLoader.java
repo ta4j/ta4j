@@ -54,7 +54,7 @@ public class CsvBarsLoader {
      */
     public static TimeSeries loadAppleIncSeries() {
 
-        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_bars_from_20130101_usd.csv");
+        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream("appleinc_ticks_from_20130101_usd.csv");
 
         List<Bar> bars = new ArrayList<>();
 
