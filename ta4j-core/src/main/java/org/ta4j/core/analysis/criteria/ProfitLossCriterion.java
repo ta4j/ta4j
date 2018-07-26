@@ -41,13 +41,13 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
      * @return the profit or loss of the trade
      */
     private Num calculateProfitLoss(TimeSeries series, Trade trade) {
-        Num exitPrice = getExitPrice(series, trade.getExit());
-        Num entryPrice = getExitPrice(series, trade.getEntry());
+        Num exitPrice = getPrice(series, trade.getExit());
+        Num entryPrice = getPrice(series, trade.getEntry());
 
         return exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
     }
 
-    private Num getExitPrice(TimeSeries series, Order order) {
+    private Num getPrice(TimeSeries series, Order order) {
         if (priceType == PriceType.OPEN) {
             return series.getBar(order.getIndex()).getOpenPrice();
         }
