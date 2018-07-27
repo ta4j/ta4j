@@ -9,12 +9,23 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
     private Strategy strategy;
     private TradingRecord tradingRecord;
     private Num calculation;
+    private Num totalProfit;
+    private long profitTradeCount;
+    private Num totalLoss;
+    private long lossTradeCount;
+    private long breakEvenTradeCount;
 
-    public BacktestingResult(String strategyName, Strategy strategy, TradingRecord tradingRecord, Num calculation) {
+
+    public BacktestingResult(String strategyName, Strategy strategy, TradingRecord tradingRecord, Num calculation, Num totalProfit, long profitTradeCount, Num totalLoss, long lossTradeCount, long breakEvenTradeCount) {
         this.strategyName = strategyName;
         this.strategy = strategy;
         this.tradingRecord = tradingRecord;
         this.calculation = calculation;
+        this.totalProfit = totalProfit;
+        this.profitTradeCount = profitTradeCount;
+        this.totalLoss = totalLoss;
+        this.lossTradeCount = lossTradeCount;
+        this.breakEvenTradeCount = breakEvenTradeCount;
     }
 
     public String getStrategyName() {
@@ -36,9 +47,9 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
     public void printBacktestingResult(boolean printTrades, TimeSeries series) {
         System.out.println("------------ " + strategyName + " ------------");
         System.out.println("Total trades: " + tradingRecord.getTradeCount());
-        System.out.println("Total profit: " + tradingRecord.getTotalProfit() + " Trade count: " + tradingRecord.getProfitTradeCount());
-        System.out.println("Total loss: " + tradingRecord.getTotalLoss() + " Trade count: " + tradingRecord.getLossTradeCount());
-        System.out.println("Break event trade count: " + tradingRecord.getBreakEvenTradeCount());
+        System.out.println("Total profit: " + totalProfit + " Trade count: " + profitTradeCount);
+        System.out.println("Total loss: " + totalLoss + " Trade count: " + lossTradeCount);
+        System.out.println("Break event trade count: " + breakEvenTradeCount);
         System.out.println("Calculation: " + calculation);
         if(printTrades) {
             tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade, series));
