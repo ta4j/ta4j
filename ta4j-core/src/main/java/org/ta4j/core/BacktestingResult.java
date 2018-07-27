@@ -1,5 +1,6 @@
 package org.ta4j.core;
 
+import org.ta4j.core.analysis.criteria.*;
 import org.ta4j.core.num.Num;
 
 
@@ -8,24 +9,23 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
     private String strategyName;
     private Strategy strategy;
     private TradingRecord tradingRecord;
-    private Num calculation;
+    private Num totalProfitLoss;
     private Num totalProfit;
-    private long profitTradeCount;
     private Num totalLoss;
-    private long lossTradeCount;
-    private long breakEvenTradeCount;
+    private Num profitTradeCount;
+    private Num lossTradeCount;
+    private Num breakEvenTradeCount;
 
-
-    public BacktestingResult(String strategyName, Strategy strategy, TradingRecord tradingRecord, Num calculation, Num totalProfit, long profitTradeCount, Num totalLoss, long lossTradeCount, long breakEvenTradeCount) {
+    public BacktestingResult(String strategyName, Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
         this.strategyName = strategyName;
         this.strategy = strategy;
         this.tradingRecord = tradingRecord;
-        this.calculation = calculation;
-        this.totalProfit = totalProfit;
-        this.profitTradeCount = profitTradeCount;
-        this.totalLoss = totalLoss;
-        this.lossTradeCount = lossTradeCount;
-        this.breakEvenTradeCount = breakEvenTradeCount;
+        this.totalProfitLoss = new ProfitLossCriterion(PriceType.OPEN).calculate(series, tradingRecord);
+        this.totalProfit = new TotalProfit2Criterion(PriceType.OPEN).calculate(series, tradingRecord);
+        this.totalLoss = new TotalLossCriterion(PriceType.OPEN).calculate(series, tradingRecord);
+        this.profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
+        this.lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
+        this.breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
     }
 
     public String getStrategyName() {
@@ -40,9 +40,11 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
         return tradingRecord;
     }
 
-    public Num getCalculation() {
-        return calculation;
+    public Num getTotalProfitLoss() {
+        return totalProfitLoss;
     }
+
+
 
     public void printBacktestingResult(boolean printTrades, TimeSeries series) {
         System.out.println("------------ " + strategyName + " ------------");
@@ -50,7 +52,7 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
         System.out.println("Total profit: " + totalProfit + " Trade count: " + profitTradeCount);
         System.out.println("Total loss: " + totalLoss + " Trade count: " + lossTradeCount);
         System.out.println("Break event trade count: " + breakEvenTradeCount);
-        System.out.println("Calculation: " + calculation);
+        System.out.println("Total profitLoss: " + totalProfitLoss);
         if(printTrades) {
             tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade, series));
             Order lastOrder = tradingRecord.getLastOrder();
@@ -70,6 +72,6 @@ public class BacktestingResult implements Comparable<BacktestingResult>{
 
     @Override
     public int compareTo(BacktestingResult that) {
-        return this.calculation.compareTo(that.getCalculation());
+        return this.totalProfitLoss.compareTo(that.getTotalProfitLoss());
     }
 }
