@@ -4,19 +4,16 @@ import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 
-public class TotalLossCriterion extends AbstractAnalysisCriterion {
-
-    private PriceType priceType;
+public class TotalLossCriterion extends AbstractBacktestingCriterion {
 
     public TotalLossCriterion(PriceType priceType) {
-        this.priceType = priceType;
+        super(priceType);
     }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream()
                 .filter(trade -> trade.isClosed())
-                .filter(trade -> trade.getProfit().isLessThan(PrecisionNum.valueOf(0)))
                 .map(trade -> calculateTotalLoss(series, trade))
                 .reduce(series.numOf(0), (profit1, profit2) -> profit1.plus(profit2));
     }
@@ -41,19 +38,10 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
         Num exitPrice = getPrice(series, trade.getExit());
         Num entryPrice = getPrice(series, trade.getEntry());
 
-        return exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-    }
-
-    private Num getPrice(TimeSeries series, Order order) {
-        if (priceType == PriceType.OPEN) {
-            return series.getBar(order.getIndex()).getOpenPrice();
+        Num loss = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+        if(loss.isLessThan(PrecisionNum.valueOf(0))){
+            return loss;
         }
-        if (priceType == PriceType.HIGH) {
-            return series.getBar(order.getIndex()).getMaxPrice();
-        }
-        if (priceType == PriceType.LOW) {
-            return series.getBar(order.getIndex()).getMinPrice();
-        }
-        return series.getBar(order.getIndex()).getClosePrice();
+        return PrecisionNum.valueOf(0);
     }
 }
