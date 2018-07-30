@@ -14,16 +14,18 @@ public class Backtesting {
 
     private TimeSeries seriesToTradeOn;
     private TimeSeriesManager seriesManager;
+    private PriceType priceType;
     private List<Strategy> strategies = new ArrayList<>();
     private List<BacktestingResult> backtestingResults = new ArrayList<>();
 
-    public Backtesting(TimeSeries series) {
-        this(series, series);
+    public Backtesting(TimeSeries series, PriceType priceType) {
+        this(series, series, priceType);
     }
 
-    public Backtesting(TimeSeries seriesToBacktest, TimeSeries seriesToTradeOn) {
+    public Backtesting(TimeSeries seriesToBacktest, TimeSeries seriesToTradeOn, PriceType priceType) {
         this.seriesToTradeOn = seriesToTradeOn;
         this.seriesManager = new TimeSeriesManager(seriesToBacktest);
+        this.priceType = priceType;
     }
 
     public void addStrategy(Strategy strategy) {
@@ -37,7 +39,7 @@ public class Backtesting {
     public void calculate(Num amount, PriceType priceType) {
         for(Strategy strategy : strategies) {
             TradingRecord tradingRecord = seriesManager.run(strategy, Order.OrderType.BUY, amount, priceType);
-            backtestingResults.add(new BacktestingResult(strategy.getName(), strategy, tradingRecord, seriesToTradeOn));
+            backtestingResults.add(new BacktestingResult(strategy.getName(), strategy, tradingRecord, seriesToTradeOn, priceType));
         }
     }
 

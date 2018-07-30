@@ -12,9 +12,11 @@ import ta4jexamples.loaders.CsvBarsLoader;
 public class SimpleMovingAverageRangeBacktesting {
 
     public static void main(String[] args) throws InterruptedException {
+        PriceType priceType = PriceType.CLOSE;
+
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-        Backtesting backtesting = new Backtesting(series);
+        Backtesting backtesting = new Backtesting(series, priceType);
 
         int start = 3;
         int stop = 50;
@@ -28,7 +30,7 @@ public class SimpleMovingAverageRangeBacktesting {
             );
             backtesting.addStrategy(strategy);
         }
-        backtesting.calculate(PrecisionNum.valueOf(50), PriceType.CLOSE);
+        backtesting.calculate(PrecisionNum.valueOf(50), priceType);
         backtesting.printBacktestingResults(true);
     }
 
