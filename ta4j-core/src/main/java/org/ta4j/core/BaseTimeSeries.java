@@ -373,6 +373,15 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     @Override
+    public void updateBar(Bar bar) {
+        if (bars.isEmpty()) {
+            addBar(bar);
+        } else {
+            bars.set(bars.size() - 1, bar);
+        }
+    }
+
+    @Override
     public void addTrade(Number price, Number amount) {
         addTrade(numOf(price), numOf(amount));
     }

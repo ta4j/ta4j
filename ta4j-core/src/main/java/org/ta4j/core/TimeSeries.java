@@ -236,6 +236,12 @@ public interface TimeSeries extends Serializable {
                 Num volume, Num amount);
 
     /**
+     * Update the latest bar. Some exchange provide continuous new bar data in the time period. (eg. 1s in 1m Duration)<br>
+     * @param bar new bar to replace the latest
+     */
+    void updateBar(Bar bar);
+
+    /**
      * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
