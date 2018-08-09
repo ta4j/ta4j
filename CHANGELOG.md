@@ -47,6 +47,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BollingerBandsMiddleIndicator**: added missing constructor documentation.
 - **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 - **Num**: added Num sqrt(int) and Num sqrt()
+- **pom.xml**: added support to generate ta4j-core OSGi artifact.
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
