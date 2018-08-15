@@ -148,7 +148,22 @@ public interface TimeSeries extends Serializable {
      * @see TimeSeries#setMaximumBarCount(int)
      * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add bar data directly
      */
-    void addBar(Bar bar);
+    default void addBar(Bar bar) {
+        addBar(bar, false);
+    }
+
+    /**
+     * Adds a bar at the end of the series.
+     * <p>
+     * Begin index set to 0 if it wasn't initialized.<br>
+     * End index set to 0 if it wasn't initialized, or incremented if it matches the end of the series.<br>
+     * Exceeding bars are removed.
+     * @param bar the bar to be added
+     * @param replace true to replace the latest bar. Some exchange provide continuous new bar data in the time period. (eg. 1s in 1m Duration)<br>
+     * @see TimeSeries#setMaximumBarCount(int)
+     * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add bar data directly
+     */
+    void addBar(Bar bar, boolean replace);
 
     /**
      * Adds a bar at the end of the series.
@@ -234,12 +249,6 @@ public interface TimeSeries extends Serializable {
      */
     void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
                 Num volume, Num amount);
-
-    /**
-     * Update the latest bar. Some exchange provide continuous new bar data in the time period. (eg. 1s in 1m Duration)<br>
-     * @param bar new bar to replace the latest
-     */
-    void updateBar(Bar bar);
 
     /**
      * Adds a trade at the end of bar period.

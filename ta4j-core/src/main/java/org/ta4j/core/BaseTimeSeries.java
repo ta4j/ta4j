@@ -319,13 +319,17 @@ public class BaseTimeSeries implements TimeSeries {
      * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)
      */
     @Override
-    public void addBar(Bar bar) {
+    public void addBar(Bar bar, boolean replace) {
         Objects.requireNonNull(bar);
         if(!checkBar(bar)){
             throw new IllegalArgumentException(String.format("Cannot add Bar with data type: %s to series with data" +
                     "type: %s",bar.getClosePrice().getClass(), numOf(1).getClass()));
         }
         if (!bars.isEmpty()) {
+            if (replace) {
+                bars.set(bars.size() - 1, bar);
+                return;
+            }
             final int lastBarIndex = bars.size() - 1;
             ZonedDateTime seriesEndTime = bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
@@ -370,15 +374,6 @@ public class BaseTimeSeries implements TimeSeries {
     public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
                        Num closePrice, Num volume, Num amount) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice,highPrice,lowPrice,closePrice,volume, amount));
-    }
-
-    @Override
-    public void updateBar(Bar bar) {
-        if (bars.isEmpty()) {
-            addBar(bar);
-        } else {
-            bars.set(bars.size() - 1, bar);
-        }
     }
 
     @Override
