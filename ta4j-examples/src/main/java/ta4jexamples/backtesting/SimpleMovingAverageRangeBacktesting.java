@@ -16,7 +16,7 @@ public class SimpleMovingAverageRangeBacktesting {
 
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-        Backtesting backtesting = new Backtesting(series, priceType);
+        Backtesting backtesting = new Backtesting(series);
 
         int start = 3;
         int stop = 50;
