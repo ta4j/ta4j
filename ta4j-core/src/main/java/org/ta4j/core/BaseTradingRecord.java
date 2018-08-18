@@ -24,11 +24,9 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Base implementation of a {@link TradingRecord}.
