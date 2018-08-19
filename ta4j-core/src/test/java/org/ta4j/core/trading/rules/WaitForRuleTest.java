@@ -47,8 +47,8 @@ public class WaitForRuleTest {
         // Waits for 3 bars since last buy order
         rule = new WaitForRule(Order.OrderType.BUY, 3);
 
-        assertFalse(rule.isSatisfied(0, null));
-        assertFalse(rule.isSatisfied(1, tradingRecord));
+        assertTrue(rule.isSatisfied(0, null));
+        assertTrue(rule.isSatisfied(1, tradingRecord));
 
         tradingRecord.enter(10);
         assertFalse(rule.isSatisfied(10, tradingRecord));
@@ -66,6 +66,7 @@ public class WaitForRuleTest {
         assertFalse(rule.isSatisfied(18, tradingRecord));
         assertFalse(rule.isSatisfied(19, tradingRecord));
         assertTrue(rule.isSatisfied(20, tradingRecord));
+        assertTrue(rule.isSatisfied(21, tradingRecord));
     }
 
     @Test
@@ -73,14 +74,14 @@ public class WaitForRuleTest {
         // Waits for 2 bars since last sell order
         rule = new WaitForRule(Order.OrderType.SELL, 2);
 
-        assertFalse(rule.isSatisfied(0, null));
-        assertFalse(rule.isSatisfied(1, tradingRecord));
+        assertTrue(rule.isSatisfied(0, null));
+        assertTrue(rule.isSatisfied(1, tradingRecord));
 
         tradingRecord.enter(10);
-        assertFalse(rule.isSatisfied(10, tradingRecord));
-        assertFalse(rule.isSatisfied(11, tradingRecord));
-        assertFalse(rule.isSatisfied(12, tradingRecord));
-        assertFalse(rule.isSatisfied(13, tradingRecord));
+        assertTrue(rule.isSatisfied(10, tradingRecord));
+        assertTrue(rule.isSatisfied(11, tradingRecord));
+        assertTrue(rule.isSatisfied(12, tradingRecord));
+        assertTrue(rule.isSatisfied(13, tradingRecord));
 
         tradingRecord.exit(15);
         assertFalse(rule.isSatisfied(15, tradingRecord));
@@ -95,5 +96,6 @@ public class WaitForRuleTest {
         assertFalse(rule.isSatisfied(20, tradingRecord));
         assertFalse(rule.isSatisfied(21, tradingRecord));
         assertTrue(rule.isSatisfied(22, tradingRecord));
+        assertTrue(rule.isSatisfied(23, tradingRecord));
     }
 }
