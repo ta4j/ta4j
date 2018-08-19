@@ -52,6 +52,25 @@ public class OrRuleTest {
         assertTrue(BooleanRule.TRUE.or(satisfiedRule).isSatisfied(10));
         assertTrue(unsatisfiedRule.or(BooleanRule.TRUE).isSatisfied(10));
         assertTrue(BooleanRule.TRUE.or(unsatisfiedRule).isSatisfied(10));
+
+        assertTrue(new OrRule(satisfiedRule, BooleanRule.FALSE, BooleanRule.FALSE).isSatisfied(20));
+        assertTrue(new OrRule(BooleanRule.FALSE, satisfiedRule, BooleanRule.FALSE).isSatisfied(20));
+        assertTrue(new OrRule(BooleanRule.FALSE, BooleanRule.FALSE, satisfiedRule).isSatisfied(20));
+
+        assertTrue(new OrRule(satisfiedRule, BooleanRule.TRUE, BooleanRule.TRUE).isSatisfied(20));
+        assertTrue(new OrRule(BooleanRule.TRUE, satisfiedRule, BooleanRule.TRUE).isSatisfied(20));
+        assertTrue(new OrRule(BooleanRule.TRUE, BooleanRule.TRUE, satisfiedRule).isSatisfied(20));
+
+        assertFalse(new OrRule(unsatisfiedRule, BooleanRule.FALSE, BooleanRule.FALSE).isSatisfied(20));
+        assertFalse(new OrRule(BooleanRule.FALSE, unsatisfiedRule, BooleanRule.FALSE).isSatisfied(20));
+        assertFalse(new OrRule(BooleanRule.FALSE, BooleanRule.FALSE, unsatisfiedRule).isSatisfied(20));
+
+        assertTrue(new OrRule(unsatisfiedRule, BooleanRule.TRUE, BooleanRule.TRUE).isSatisfied(20));
+        assertTrue(new OrRule(BooleanRule.TRUE, unsatisfiedRule, BooleanRule.TRUE).isSatisfied(20));
+        assertTrue(new OrRule(BooleanRule.TRUE, BooleanRule.TRUE, unsatisfiedRule).isSatisfied(20));
+
+        assertTrue(satisfiedRule.or(BooleanRule.FALSE, BooleanRule.FALSE).isSatisfied(30));
+        assertFalse(unsatisfiedRule.or(BooleanRule.FALSE, BooleanRule.FALSE).isSatisfied(30));
     }
 }
         
