@@ -55,7 +55,7 @@ public class WaitForRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = true;
-        // No trading history, no need to wait. Therefore it have to return true.
+        // No trading history, no need to wait. Therefore it has to return true.
         if (tradingRecord != null) {
             Order lastOrder = tradingRecord.getLastOrder(orderType);
             if (lastOrder != null) {
