@@ -8,7 +8,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 
 /**
- * Number of losing trades criterion.
+ * Number of break even trades criterion.
  */
 public class NumberOfBreakEvenTradesCriterion extends AbstractBacktestingCriterion {
 
