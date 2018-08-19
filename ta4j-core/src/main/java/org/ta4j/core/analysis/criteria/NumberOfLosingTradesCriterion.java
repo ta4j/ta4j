@@ -34,7 +34,7 @@ public class NumberOfLosingTradesCriterion extends AbstractBacktestingCriterion 
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return series.numOf(1);
+        return isLosingTrade(series, trade) ? PrecisionNum.valueOf(1) : series.numOf(0);
     }
 
     @Override

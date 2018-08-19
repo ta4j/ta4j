@@ -34,7 +34,7 @@ public class NumberOfWinningTradesCriterion extends AbstractBacktestingCriterion
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return series.numOf(1);
+        return isWinningTrade(series, trade) ? PrecisionNum.valueOf(1) : series.numOf(0);
     }
 
     @Override

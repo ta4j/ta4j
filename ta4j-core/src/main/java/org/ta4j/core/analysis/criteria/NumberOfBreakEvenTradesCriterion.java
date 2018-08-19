@@ -34,7 +34,7 @@ public class NumberOfBreakEvenTradesCriterion extends AbstractBacktestingCriteri
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return series.numOf(1);
+        return isBreakEvenTrade(series, trade) ? PrecisionNum.valueOf(1) : series.numOf(0);
     }
 
     @Override
