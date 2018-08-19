@@ -23,17 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.trading.rules;
 
-import lombok.extern.slf4j.Slf4j;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-@Slf4j
 public abstract class AndOrRule extends AbstractRule {
 
     private Rule[] rules;
