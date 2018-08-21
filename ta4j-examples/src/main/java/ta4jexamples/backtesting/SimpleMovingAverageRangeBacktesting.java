@@ -30,7 +30,7 @@ public class SimpleMovingAverageRangeBacktesting {
             );
             backtesting.addStrategy(strategy);
         }
-        backtesting.calculate(PrecisionNum.valueOf(50), priceType);
+        backtesting.calculate(Order.OrderType.BUY, PrecisionNum.valueOf(50), priceType);
         backtesting.printBacktestingResults(true);
     }
 
