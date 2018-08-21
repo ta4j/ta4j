@@ -39,6 +39,17 @@ public class Backtesting {
      * @param amount    - The amount used to open/close the trades
      * @param priceType - The type of price used in calculation (open, high, low, close)
      */
+    public List<BacktestingResult> calculate(Num amount, PriceType priceType) {
+        return calculate(Order.OrderType.BUY, amount, priceType);
+    }
+
+    /**
+     * Calculate your strategies and giving you a backtesting result
+     *
+     * @param orderType the {@link Order.OrderType} used to open the trades
+     * @param amount    - The amount used to open/close the trades
+     * @param priceType - The type of price used in calculation (open, high, low, close)
+     */
     public List<BacktestingResult> calculate(Order.OrderType orderType, Num amount, PriceType priceType) {
         for (Strategy strategy : strategies) {
             TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount, priceType);
