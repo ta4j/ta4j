@@ -39,6 +39,7 @@ import org.ta4j.core.trading.rules.FixedRule;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
@@ -62,7 +63,6 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         super(numFunction);
     }
 
-    @SuppressWarnings("deprecation") // it is purposed to test the deprecated sub series creation
     @Before
     public void setUp() {
         bars = new LinkedList<>();
@@ -71,8 +71,8 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         bars.add(new MockBar(ZonedDateTime.of(2014, 6, 15, 0, 0, 0, 0, ZoneId.systemDefault()), 3d,numFunction));
         bars.add(new MockBar(ZonedDateTime.of(2014, 6, 20, 0, 0, 0, 0, ZoneId.systemDefault()), 4d,numFunction));
         bars.add(new MockBar(ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault()), 5d,numFunction));
-        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 30, 0, 0, 0, 0, ZoneId.systemDefault()), 6d,numFunction));
-
+        bars.add(new MockBar(ZonedDateTime.of(2014, 6, 30, 0, 0, 0, 0, ZoneId.systemDefault()), 6d,numFunction)); 
+        
         defaultName = "Series Name";
 
         defaultSeries = new BaseTimeSeries.SeriesBuilder()
@@ -80,7 +80,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
                 .withName(defaultName)
                 .withBars(bars)
                 .build();
-
+        
         subseries = defaultSeries.getSubSeries(2,5);
         emptySeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
 
@@ -88,6 +88,25 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
 
 
+    }
+    
+    /**
+     * Tests if the addBar(bar, boolean) function works correct.
+     */
+    @Test
+    public void replaceBarTest() {
+    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
+    	assertEquals(series.getBarCount(),1);
+    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
+    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d,numFunction), false);
+    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d,numFunction), false);
+    	assertEquals(series.getBarCount(), 3);
+    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
+    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d,numFunction), true);
+    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d,numFunction), true);
+    	assertEquals(series.getBarCount(), 3);
+    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
     }
 
     @Test
