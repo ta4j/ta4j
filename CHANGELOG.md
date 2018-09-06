@@ -11,7 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TradingBotOnMovingTimeSeries**: fixed calculations and ArithmeticException Overflow
 - **Fixed wrong indexing in**: `Indicator.toDouble()`.
 - **PrecisionNum.sqrt()**: using DecimalFormat.parse().
-- **RandomWalk[High|Low]Indicator**: fixed formula (n iterating from 2 to barCount)
+- **RandomWalk[High|Low]Indicator**: fixed formula (max/min of formula with n iterating from 2 to barCount)
 
 ### Changed
 - **ALL INDICATORS**: `Decimal` replaced by `Num`.
@@ -32,7 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ConvergenceDivergenceIndicator**: remove unused method
 - **ChopIndicatorTest**: spelling, TODO: add better tests
 - **Various Indicators**: remove double math operations, change `Math.sqrt(double)` to `Num.sqrt()`, other small improvements
-- **RandomWalk[High|Low]Indicator**: renamed to RWI[High|Low]Indicator
+- **RandomWalk[High|Low]Indicator**: renamed to `RWI[High|Low]Indicator`
 
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
