@@ -28,7 +28,6 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
-import org.ta4j.core.num.BigDecimalNum;
 
 import java.io.InputStream;
 import java.io.IOException;
@@ -47,7 +46,7 @@ import static org.ta4j.core.TestUtils.assertNumNotEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
 
-public class NumTest extends AbstractIndicatorTest {
+public class NumTest extends AbstractIndicatorTest<Object,Num> {
 
     public static final int HIGH_PRECISION = 128;
 
@@ -271,6 +270,8 @@ public class NumTest extends AbstractIndicatorTest {
         Num sqrt = numOf(numBD).sqrt(100000);
         if (numOf(0).getClass().equals(DoubleNum.class)) {
             assertEquals("Infinity", sqrt.toString());
+        /* BigDecimalNum has been replaced by PrecisionNum 
+         * 
         } else if (numOf(0).getClass().equals(BigDecimalNum.class)) {
             assertNumEquals("1.7976931348623157000000000000000E+308", sqrt);
             assertNumNotEquals("1.7976931348623157000000000000001E+308", sqrt);
@@ -279,6 +280,7 @@ public class NumTest extends AbstractIndicatorTest {
             BigDecimal sqrtBD = new BigDecimal(sqrt.toString());
             assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, RoundingMode.HALF_UP))));
             assertNumEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
+        */
         } else if (numOf(0).getClass().equals(PrecisionNum.class)) {
             Properties props = new Properties();
             try (InputStream is = getClass().getResourceAsStream("numTest.properties")) {
