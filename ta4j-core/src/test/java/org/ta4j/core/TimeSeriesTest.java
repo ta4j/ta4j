@@ -36,10 +36,10 @@ import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.FixedRule;
 
+import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
@@ -295,6 +295,22 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays same
     }
+    
+    /**
+     * Tests if the {@link BaseTimeSeries#addTrade(Number, Number)} method works correct.
+     */
+    @Test
+    public void addTradeTest() {
+    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
+    	series.addTrade(200, 11.5);
+    	TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
+    	TestUtils.assertNumEquals(series.numOf(11.5),series.getLastBar().getClosePrice());
+    	series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
+    	TestUtils.assertNumEquals(series.numOf(400),series.getLastBar().getVolume());
+    	TestUtils.assertNumEquals(series.numOf(100),series.getLastBar().getClosePrice());
+    }
+    
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDouble(){
