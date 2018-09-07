@@ -1,5 +1,66 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## 0.12 (released September 07, 2018)
+
+### Breaking: 
+   - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
+   - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries` allow to add data directly to the series
+
+
+### Fixed
+- **TradingBotOnMovingTimeSeries**: fixed calculations and ArithmeticException Overflow
+- **Fixed wrong indexing in**: `Indicator.toDouble()`.
+- **PrecisionNum.sqrt()**: using DecimalFormat.parse().
+- **RandomWalk[High|Low]Indicator**: fixed formula (max/min of formula with n iterating from 2 to barCount)
+
+### Changed
+- **ALL INDICATORS**: `Decimal` replaced by `Num`.
+- **ALL CRITERION**: Calculations modified to use `Num`.
+- **AbstractIndicator**: new `AbstractIndicator#numOf(Number n)` function as counterpart of dropped `Decimal.valueOf(double|int|..)`
+- **TimeSeries | Bar**: preferred way to add bar data to a `TimeSeries` is directly to the series via new `TimeSeries#addBar(time,open,high,..)` functions. It ensures to use the correct `Num` implementation of the series
+- **XlsTestsUtils**: now processes xls with one or more days between data rows (daily, weekly, monthly, etc).  Also handle xls #DIV/0! calculated cells (imported as NaN.NaN)
+- **CachedIndicator**: Last bar is not cached to support real time indicators
+- **TimeSeries | Bar **: added new `#addPrice(price)` function that adds price to (last) bar.
+- Parameter **timeFrame** renamed to **barCount**.
+- **Various Rules**: added constructor that provides `Number` parameters
+- **AroonUpIndicator**: redundant TimeSeries call was removed from constructor
+- **AroonDownIndicator**: redundant TimeSeries call was removed from constructor
+- **BaseTimeSeries**: added setDefaultFunction() to SeriesBuilder for setting the default Num type function for all new TimeSeries built by that SeriesBuilder, updated BuildTimeSeries example
+- **<various>CriterionTest**: changed from explicit constructor calls to `AbstractCriterionTest.getCriterion()` calls.
+- **ChopIndicator**: transparent fixes
+- **StochasticRSIIndicator**: comments and params names changes to reduce confusion
+- **ConvergenceDivergenceIndicator**: remove unused method
+- **ChopIndicatorTest**: spelling, TODO: add better tests
+- **Various Indicators**: remove double math operations, change `Math.sqrt(double)` to `Num.sqrt()`, other small improvements
+- **RandomWalk[High|Low]Indicator**: renamed to `RWI[High|Low]Indicator`
+
+### Added
+- **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
+- **Num**: Extracted interface of dropped `Decimal` class
+- **DoubleNum**: `Num` implementation to support calculations based on `double` primitive
+- **BigDecimalNum**: Default `Num` implementation of `BaseTimeSeries`
+- **DifferencePercentageIndicator**: New indicator to get the difference in percentage from last value
+- **PrecisionNum**: `Num` implementation to support arbitrary precision
+- **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
+- **TestUtils**: added parameterized abstract test classes to allow two test runs with `DoubleNum` and `BigDecimalNum`
+- **ChopIndicator** new common indicator of market choppiness (low volatility), and related 'ChopIndicatorTest' JUnit test and 'CandlestickChartWithChopIndicator' example
+- **BollingerBandWidthIndicator**: added missing constructor documentation.
+- **BollingerBandsLowerIndicator**: added missing constructor documentation.
+- **BollingerBandsMiddleIndicator**: added missing constructor documentation.
+- **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
+- **Num**: added Num sqrt(int) and Num sqrt()
+- **pom.xml**: added support to generate ta4j-core OSGi artifact.
+
+### Removed/Deprecated
+- **Decimal**: _removed_. Replaced by `Num` interface
+- **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
+- **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
+- **FisherIndicator**: commented constructor removed.
+- **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
+- **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
+- **BigDecimalNum**: _removed_.  Replaced by `PrecisionNum`
+- **AbstractCriterionTest**: removed constructor `AbstractCriterionTest(Function<Number, Num)`.  Use `AbstractCriterionTest(CriterionFactory, Function<Number, Num>)`. 
+- **<various>Indicator**: removed redundant `private TimeSeries`
 
 ## 0.11 (released January 25, 2018)
 
@@ -10,6 +71,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PlusDI, MinusDI, ADX**: fixed calculations
 - **LinearTransactionCostCriterion**: fixed calculations, added xls file and unit tests
 - **FisherIndicator**: fixed calculations
+- **ConvergenceDivergenceIndicator**: fixed NPE of optional "minStrenght"-property
 
 ### Changed
 - **TotalProfitCriterion**: If not `NaN` the criterion uses the price of the `Order` and not just the close price of underlying `TimeSeries`
@@ -18,7 +80,7 @@ behaviour of criterions (entry/exit prices can differ from corresponding close p
 - **JustOnceRule**: now it is possible to add another rule so that this rule is satisfied if the inner rule is satisfied for the first time
 - **MeanDeviationIndicator**: moved to statistics package
 - **Decimal**: use `BigDecimal::valueof` instead of instantiating a new BigDecimal for double, int and long
-    - now `Decimal` extends `Number` 
+    - now `Decimal` extends `Number`
 - **Strategy:** can now have a optional parameter "name".
 - **Tick:** `Tick` has been renamed to **`Bar`** for a more appropriate description of the price movement over a set period of time.
 - **MMAIndicator**: restructured and moved from `helpers` to `indicators` package
@@ -149,7 +211,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
   * Added candle indicators: Real body, Upper/Lower shadow, Doji, 3 black crows, 3 white soldiers, Bullish/Bearish Harami, Bullish/Bearish Engulfing
   * Added absolute indicator
   * Added Hull Moving Average indicator
-  * Updated Bollinger Bands (variable multiplier, see #53) 
+  * Updated Bollinger Bands (variable multiplier, see #53)
   * Fixed #39 - Possible update for TimeSeries.run()
   * Added Chaikin Money Flow indicator
   * Improved volume indicator
@@ -196,7 +258,7 @@ _Changed ownership of the ta4j repository_: from mdeverdelhan/ta4j (stopped the 
 
   * Switched doubles for TADecimals (BigDecimals) in indicators
   * Semantic improvement for IndicatorOverIndicatorStrategy
-  * Fixed #11 - UnknownFormatConversionException when using toString() for 4 strategies 
+  * Fixed #11 - UnknownFormatConversionException when using toString() for 4 strategies
   * Added a maximum value starter strategy
   * Added linear transaction cost (analysis criterion)
   * Removed evaluators (replaced by `.chooseBest(...)` and `.betterThan(...)` methods)

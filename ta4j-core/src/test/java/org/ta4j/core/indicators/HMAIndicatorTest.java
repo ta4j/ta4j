@@ -1,42 +1,51 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import java.util.function.Function;
 
-public class HMAIndicatorTest {
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class HMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
+    public HMAIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
-        data = new MockTimeSeries(
+        data = new MockTimeSeries(numFunction,
                 84.53, 87.39, 84.55,
                 82.83, 82.58, 83.74,
                 83.33, 84.57, 86.98,
@@ -48,20 +57,20 @@ public class HMAIndicatorTest {
     }
 
     @Test
-    public void hmaUsingTimeFrame9UsingClosePrice() {
+    public void hmaUsingBarCount9UsingClosePrice() {
         // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
         HMAIndicator hma = new HMAIndicator(new ClosePriceIndicator(data), 9);
-        assertDecimalEquals(hma.getValue(10), 86.3204);
-        assertDecimalEquals(hma.getValue(11), 85.3705);
-        assertDecimalEquals(hma.getValue(12), 84.1044);
-        assertDecimalEquals(hma.getValue(13), 83.0197);
-        assertDecimalEquals(hma.getValue(14), 81.3913);
-        assertDecimalEquals(hma.getValue(15), 79.6511);
-        assertDecimalEquals(hma.getValue(16), 78.0443);
-        assertDecimalEquals(hma.getValue(17), 76.8832);
-        assertDecimalEquals(hma.getValue(18), 75.5363);
-        assertDecimalEquals(hma.getValue(19), 75.1713);
-        assertDecimalEquals(hma.getValue(20), 75.3597);
+        assertNumEquals(86.3204, hma.getValue(10));
+        assertNumEquals(85.3705, hma.getValue(11));
+        assertNumEquals(84.1044, hma.getValue(12));
+        assertNumEquals(83.0197, hma.getValue(13));
+        assertNumEquals(81.3913, hma.getValue(14));
+        assertNumEquals(79.6511, hma.getValue(15));
+        assertNumEquals(78.0443, hma.getValue(16));
+        assertNumEquals(76.8832, hma.getValue(17));
+        assertNumEquals(75.5363, hma.getValue(18));
+        assertNumEquals(75.1713, hma.getValue(19));
+        assertNumEquals(75.3597, hma.getValue(20));
     }
 
 }

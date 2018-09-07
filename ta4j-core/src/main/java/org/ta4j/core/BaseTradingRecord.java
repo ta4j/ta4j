@@ -1,55 +1,58 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core;
+
+import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Base implementation of a {@link TradingRecord}.
- * <p></p>
+ * </p>
  */
 public class BaseTradingRecord implements TradingRecord {
 
 	private static final long serialVersionUID = -4436851731855891220L;
 
 	/** The recorded orders */
-    private List<Order> orders = new ArrayList<Order>();
+    private List<Order> orders = new ArrayList<>();
     
     /** The recorded BUY orders */
-    private List<Order> buyOrders = new ArrayList<Order>();
+    private List<Order> buyOrders = new ArrayList<>();
     
     /** The recorded SELL orders */
-    private List<Order> sellOrders = new ArrayList<Order>();
+    private List<Order> sellOrders = new ArrayList<>();
     
     /** The recorded entry orders */
-    private List<Order> entryOrders = new ArrayList<Order>();
+    private List<Order> entryOrders = new ArrayList<>();
     
     /** The recorded exit orders */
-    private List<Order> exitOrders = new ArrayList<Order>();
+    private List<Order> exitOrders = new ArrayList<>();
     
     /** The recorded trades */
-    private List<Trade> trades = new ArrayList<Trade>();
+    private List<Trade> trades = new ArrayList<>();
 
     /** The entry type (BUY or SELL) in the trading session */
     private Order.OrderType startingType;
@@ -103,7 +106,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public void operate(int index, Decimal price, Decimal amount) {
+    public void operate(int index, Num price, Num amount) {
         if (currentTrade.isClosed()) {
             // Current trade closed, should not occur
             throw new IllegalStateException("Current trade should not be closed");
@@ -114,7 +117,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public boolean enter(int index, Decimal price, Decimal amount) {
+    public boolean enter(int index, Num price, Num amount) {
         if (currentTrade.isNew()) {
             operate(index, price, amount);
             return true;
@@ -123,7 +126,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
     
     @Override
-    public final boolean exit(int index, Decimal price, Decimal amount) {
+    public boolean exit(int index, Num price, Num amount) {
         if (currentTrade.isOpened()) {
             operate(index, price, amount);
             return true;
@@ -202,5 +205,15 @@ public class BaseTradingRecord implements TradingRecord {
             trades.add(currentTrade);
             currentTrade = new Trade(startingType);
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("BaseTradingRecord:\n");
+        for(Order order : orders) {
+            sb.append(order.toString() + "\n");
+        }
+        return sb.toString();
     }
 }

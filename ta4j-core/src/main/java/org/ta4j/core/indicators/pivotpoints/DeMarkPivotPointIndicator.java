@@ -1,43 +1,46 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.pivotpoints;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
 
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * DeMark Pivot Point indicator.
- * <p></p>
+ * </p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal> {
+public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
 
@@ -63,38 +66,38 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Decimal>
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         return calcPivotPoint(getBarsOfPreviousPeriod(index));
     }
 
 
-	private Decimal calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
+	private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
-            return Decimal.NaN;
+            return NaN;
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-		Decimal open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size()-1)).getOpenPrice();
-        Decimal close = bar.getClosePrice();
-		Decimal high =  bar.getMaxPrice();
-		Decimal low = bar.getMinPrice();
+		Num open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size()-1)).getOpenPrice();
+        Num close = bar.getClosePrice();
+		Num high =  bar.getMaxPrice();
+		Num low = bar.getMinPrice();
 
         for(int i: barsOfPreviousPeriod){
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
         }
 
-		Decimal x;
-
+		Num x;
+        Num TWO = numOf(2);
 		if (close.isLessThan(open)){
-		    x = high.plus(Decimal.TWO.multipliedBy(low)).plus(close);
+		    x = high.plus(TWO.multipliedBy(low)).plus(close);
         }
         else if (close.isGreaterThan(open)) {
-            x = Decimal.TWO.multipliedBy(high).plus(low).plus(close);
+            x = TWO.multipliedBy(high).plus(low).plus(close);
         }
         else{
-		    x = high.plus(low).plus(Decimal.TWO.multipliedBy(close));
+		    x = high.plus(low).plus(TWO.multipliedBy(close));
         }
 
-		return x.dividedBy(Decimal.valueOf(4));
+		return x.dividedBy(numOf(4));
 	}
 
     /**

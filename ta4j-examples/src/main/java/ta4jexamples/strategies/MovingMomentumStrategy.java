@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package ta4jexamples.strategies;
 
 import org.ta4j.core.*;
@@ -36,9 +37,9 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * Moving momentum strategy.
- * <p></p>
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:moving_momentum">
- *     http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
+ * </p>
+ * @see <a href="http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum">
+ *     http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
  */
 public class MovingMomentumStrategy {
 
@@ -65,12 +66,12 @@ public class MovingMomentumStrategy {
         
         // Entry rule
         Rule entryRule = new OverIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedDownIndicatorRule(stochasticOscillK, Decimal.valueOf(20))) // Signal 1
+                .and(new CrossedDownIndicatorRule(stochasticOscillK, 20)) // Signal 1
                 .and(new OverIndicatorRule(macd, emaMacd)); // Signal 2
         
         // Exit rule
         Rule exitRule = new UnderIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedUpIndicatorRule(stochasticOscillK, Decimal.valueOf(80))) // Signal 1
+                .and(new CrossedUpIndicatorRule(stochasticOscillK,20)) // Signal 1
                 .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2
         
         return new BaseStrategy(entryRule, exitRule);

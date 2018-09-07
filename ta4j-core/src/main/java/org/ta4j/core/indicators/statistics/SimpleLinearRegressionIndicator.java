@@ -1,39 +1,42 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Simple linear regression indicator.
- * <p></p>
+ * </p>
  * A moving (i.e. over the time frame) simple linear regression (least squares).
  * y = slope * x + intercept
  * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
-public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
+public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
 	 /**
 	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
@@ -42,43 +45,43 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
 		y, slope, intercept
 	}
 
-	private Indicator<Decimal> indicator;
-	private int timeFrame;
-	private Decimal slope;
-	private Decimal intercept;
+	private Indicator<Num> indicator;
+	private int barCount;
+	private Num slope;
+	private Num intercept;
 	private SimpleLinearRegressionType type;
 
 	/**
 	 * Constructor for the y-values of the formula (y = slope * x + intercept).
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 */
-	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame) {
-		this(indicator, timeFrame, SimpleLinearRegressionType.y);
+	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
+		this(indicator, barCount, SimpleLinearRegressionType.y);
 	}
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param timeFrame the time frame
+	 * @param barCount the time frame
 	 * @param type the type of the outcome value (y, slope, intercept)
 	 */
-	public SimpleLinearRegressionIndicator(Indicator<Decimal> indicator, int timeFrame,
+	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount,
 			SimpleLinearRegressionType type) {
 		super(indicator);
 		this.indicator = indicator;
-		this.timeFrame = timeFrame;
+		this.barCount = barCount;
 		this.type = type;
 	}
 
     @Override
-    protected Decimal calculate(int index) {
-        final int startIndex = Math.max(0, index - timeFrame + 1);
+    protected Num calculate(int index) {
+        final int startIndex = Math.max(0, index - barCount + 1);
         if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
-            return Decimal.NaN;
+            return NaN;
         }
         calculateRegressionLine(startIndex, index);
         
@@ -90,7 +93,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
             return intercept;
         }
       
-        return slope.multipliedBy(Decimal.valueOf(index)).plus(intercept);
+        return slope.multipliedBy(numOf(index)).plus(intercept);
     }
     
     /**
@@ -100,22 +103,22 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Decimal> {
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar
-        Decimal sumX = Decimal.ZERO;
-        Decimal sumY = Decimal.ZERO;
+        Num sumX = numOf(0);
+        Num sumY = numOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
-            sumX = sumX.plus(Decimal.valueOf(i));
+            sumX = sumX.plus(numOf(i));
             sumY = sumY.plus(indicator.getValue(i));
         }
-        Decimal nbObservations = Decimal.valueOf(endIndex - startIndex + 1);
-        Decimal xBar = sumX.dividedBy(nbObservations);
-        Decimal yBar = sumY.dividedBy(nbObservations);
+        Num nbObservations = numOf(endIndex - startIndex + 1);
+        Num xBar = sumX.dividedBy(nbObservations);
+        Num yBar = sumY.dividedBy(nbObservations);
         
         // Second pass: compute slope and intercept
-        Decimal xxBar = Decimal.ZERO;
-        Decimal xyBar = Decimal.ZERO;
+        Num xxBar = numOf(0);
+        Num xyBar = numOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
-            Decimal dX = Decimal.valueOf(i).minus(xBar);
-            Decimal dY = indicator.getValue(i).minus(yBar);
+            Num dX = numOf(i).minus(xBar);
+            Num dY = indicator.getValue(i).minus(yBar);
             xxBar = xxBar.plus(dX.multipliedBy(dX));
             xyBar = xyBar.plus(dX.multipliedBy(dY));
         }

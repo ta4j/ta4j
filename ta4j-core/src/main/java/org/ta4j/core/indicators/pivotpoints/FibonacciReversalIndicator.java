@@ -1,44 +1,47 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.pivotpoints;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
 
 import java.util.List;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Fibonacci Reversal Indicator.
- * <p></p>
+ * </p>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
-public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal> {
+public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     private final PivotPointIndicator pivotPointIndicator;
     private final FibReversalTyp fibReversalTyp;
-    private final Decimal fibonacciFactor;
+    private final Num fibonacciFactor;
 
     public enum FibReversalTyp{
         SUPPORT,
@@ -49,17 +52,17 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal
      * Standard Fibonacci factors
      */
     public enum FibonacciFactor {
-        Factor1(Decimal.valueOf(0.382)),
-        Factor2(Decimal.valueOf(0.618)),
-        Factor3(Decimal.ONE);
+        Factor1(0.382),
+        Factor2(0.618),
+        Factor3(1);
 
-        private final Decimal factor;
+        private final double factor;
 
-        FibonacciFactor(Decimal factor) {
+        FibonacciFactor(double factor) {
             this.factor = factor;
         }
 
-        public Decimal getFactor(){
+        public double getFactor(){
             return this.factor;
         }
 
@@ -73,10 +76,10 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal
      * @param fibonacciFactor the fibonacci factor for this reversal
      * @param fibReversalTyp the FibonacciReversalIndicator.FibReversalTyp of the reversal (SUPPORT, RESISTANCE)
      */
-    public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, Decimal fibonacciFactor, FibReversalTyp fibReversalTyp) {
+    public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, double fibonacciFactor, FibReversalTyp fibReversalTyp) {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
-        this.fibonacciFactor = fibonacciFactor;
+        this.fibonacciFactor = numOf(fibonacciFactor);
         this.fibReversalTyp = fibReversalTyp;
     }
 
@@ -92,13 +95,13 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Decimal
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
         List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
         if (barsOfPreviousPeriod.isEmpty())
-            return Decimal.NaN;
+            return NaN;
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Decimal high =  bar.getMaxPrice();
-        Decimal low = bar.getMinPrice();
+        Num high =  bar.getMaxPrice();
+        Num low = bar.getMinPrice();
         for(int i: barsOfPreviousPeriod){
             high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
             low = (getTimeSeries().getBar(i).getMinPrice()).min(low);

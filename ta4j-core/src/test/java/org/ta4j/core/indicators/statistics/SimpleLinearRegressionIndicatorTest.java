@@ -1,46 +1,54 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.statistics;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.num.Num;
+
+import java.util.function.Function;
 
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class SimpleLinearRegressionIndicatorTest {
+public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private Indicator<Decimal> closePrice;
-    
+    private Indicator<Num> closePrice;
+
+    public SimpleLinearRegressionIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Before
     public void setUp() {
         double[] data = new double[]{10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80};
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(data));
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, data));
     }
 
     @Test
@@ -75,28 +83,28 @@ public class SimpleLinearRegressionIndicatorTest {
     public void calculateLinearRegressionOn4Observations() {
 
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 4);
-        assertDecimalEquals(reg.getValue(1), 20);
-        assertDecimalEquals(reg.getValue(2), 30);
+        assertNumEquals(20, reg.getValue(1));
+        assertNumEquals(30, reg.getValue(2));
         
         SimpleRegression origReg = buildSimpleRegression(10, 20, 30, 40);
-        assertDecimalEquals(reg.getValue(3), 40);
-        assertDecimalEquals(reg.getValue(3), origReg.predict(3));
+        assertNumEquals(40, reg.getValue(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(3));
         
         origReg = buildSimpleRegression(30, 40, 30, 40);
-        assertDecimalEquals(reg.getValue(5), origReg.predict(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(5));
         
         origReg = buildSimpleRegression(30, 20, 30, 50);
-        assertDecimalEquals(reg.getValue(9), origReg.predict(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(9));
     }
     
     @Test
     public void calculateLinearRegression() {
         double[] values = new double[] { 1, 2, 1.3, 3.75, 2.25 };
-        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(values));
+        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(numFunction, values));
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
         
         SimpleRegression origReg = buildSimpleRegression(values);
-        assertDecimalEquals(reg.getValue(4), origReg.predict(4));
+        assertNumEquals(origReg.predict(4), reg.getValue(4));
     }
     
     /**

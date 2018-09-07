@@ -1,38 +1,39 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Simple decimal transform indicator.
  * </p>
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Decimal Decimal/BigDecimal} to to {@link Double double}
+ * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num PrecisionNum} to to {@link Double double}
  * Transforms any indicator by using common math operations.
  */
-public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
+public class DecimalTransformIndicator extends CachedIndicator<Num> {
 
 	private static final long serialVersionUID = -8017034587193428498L;
 
@@ -101,8 +102,8 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 		log
 	}
 
-	private Indicator<Decimal> indicator;
-	private Decimal coefficient;
+	private Indicator<Num> indicator;
+	private Num coefficient;
 	private DecimalTransformType type;
 	private DecimalTransformSimpleType simpleType;
 
@@ -113,10 +114,10 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 	 * @param coefficient the value for transformation
 	 * @param type the type of the transformation
 	 */
-	public DecimalTransformIndicator(Indicator<Decimal> indicator, Decimal coefficient, DecimalTransformType type) {
+	public DecimalTransformIndicator(Indicator<Num> indicator, double coefficient, DecimalTransformType type) {
 		super(indicator);
 		this.indicator = indicator;
-		this.coefficient = coefficient;
+		this.coefficient = numOf(coefficient);
 		this.type = type;
 	}
 
@@ -126,16 +127,16 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 	 * @param indicator the indicator
 	 * @param type the type of the transformation
 	 */
-	public DecimalTransformIndicator(Indicator<Decimal> indicator, DecimalTransformSimpleType type) {
+	public DecimalTransformIndicator(Indicator<Num> indicator, DecimalTransformSimpleType type) {
 		super(indicator);
 		this.indicator = indicator;
 		this.simpleType = type;
 	}
 
 	@Override
-	protected Decimal calculate(int index) {
+	protected Num calculate(int index) {
 
-		Decimal val = indicator.getValue(index);
+		Num val = indicator.getValue(index);
 
 		if (type != null) {
 			switch (type) {
@@ -159,11 +160,11 @@ public class DecimalTransformIndicator extends CachedIndicator<Decimal> {
 		else if (simpleType != null) {
 			switch (simpleType) {
 			case sqrt:
-				return Decimal.valueOf(Math.sqrt(val.doubleValue()));
+				return val.sqrt();
 			case abs:
 				return val.abs();
 			case log:
-				return Decimal.valueOf(Math.log(val.doubleValue()));
+				return numOf(Math.log(val.doubleValue()));
 			default:
 				break;
 			}

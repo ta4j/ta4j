@@ -1,40 +1,41 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators;
 
 
-import static org.ta4j.core.TATestsUtils.assertDecimalEquals;
-
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.TimeSeries;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 
 public class AroonOscillatorIndicatorTest {
@@ -207,30 +208,31 @@ public class AroonOscillatorIndicatorTest {
 
 
         String[] dataLine = rawData.split("\n");
-        List<Bar> bars = new ArrayList<>();
+        data = new BaseTimeSeries("FB_daily");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.getDefault());
         for (int i = dataLine.length-1; i >= 0; i--) {
-            String[] barData = dataLine[i].split(",");
-            Bar bar = new BaseBar(ZonedDateTime.now().plusDays(i),barData[3],barData[4],barData[5],barData[1],barData[2]);
-            bars.add(bar);
+            String[] tickData = dataLine[i].split(",");
+            ZonedDateTime date = LocalDate.parse(tickData[0],dtf).atStartOfDay(ZoneId.systemDefault());
+            data.addBar(date,tickData[3],tickData[4],tickData[5],tickData[1],tickData[2]);
         }
-        data = new BaseTimeSeries("FB_daily", bars);
+
+
 
     }
 
     @Test
     public void test(){
         AroonOscillatorIndicator aroonOscillator = new AroonOscillatorIndicator(data, 25);
+        assertNumEquals(0, aroonOscillator.getValue(data.getBeginIndex()));
+        assertNumEquals(84, aroonOscillator.getValue(data.getBeginIndex() + 25));
+        assertNumEquals(80, aroonOscillator.getValue(data.getBeginIndex() + 26));
+        assertNumEquals(76, aroonOscillator.getValue(data.getBeginIndex() + 27));
 
-        assertDecimalEquals(aroonOscillator.getValue(data.getBeginIndex()), 0);
-        assertDecimalEquals(aroonOscillator.getValue(data.getBeginIndex()+25), 84);
-        assertDecimalEquals(aroonOscillator.getValue(data.getBeginIndex()+26), 80);
-        assertDecimalEquals(aroonOscillator.getValue(data.getBeginIndex()+27), 76);
-
-        assertDecimalEquals(aroonOscillator.getValue(data.getEndIndex()-5), 56d);
-        assertDecimalEquals(aroonOscillator.getValue(data.getEndIndex()-4), 52d);
-        assertDecimalEquals(aroonOscillator.getValue(data.getEndIndex()-3), 48d);
-        assertDecimalEquals(aroonOscillator.getValue(data.getEndIndex()-2), 44d);
-        assertDecimalEquals(aroonOscillator.getValue(data.getEndIndex()-1), 40d);
-        assertDecimalEquals(aroonOscillator.getValue(data.getEndIndex()), 32d);
+        assertNumEquals(56d, aroonOscillator.getValue(data.getEndIndex()-5));
+        assertNumEquals(52d, aroonOscillator.getValue(data.getEndIndex()-4));
+        assertNumEquals(48d, aroonOscillator.getValue(data.getEndIndex()-3));
+        assertNumEquals(44d, aroonOscillator.getValue(data.getEndIndex()-2));
+        assertNumEquals(40d, aroonOscillator.getValue(data.getEndIndex()-1));
+        assertNumEquals(32d, aroonOscillator.getValue(data.getEndIndex()));
     }
 }

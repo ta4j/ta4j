@@ -1,30 +1,33 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package org.ta4j.core.indicators.statistics;
 
-import org.ta4j.core.Decimal;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 
 /**
@@ -56,74 +59,79 @@ import org.ta4j.core.indicators.CachedIndicator;
  * http://www.fool.com/knowledge-center/2015/11/03/annualized-return-vs-cumulative-return.aspx
  *
  */
-public class PeriodicalGrowthRateIndicator extends CachedIndicator<Decimal> {
+public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Decimal> indicator;
+    private final Indicator<Num> indicator;
 
-    private final int timeFrame;
+    private final int barCount;
+    private final Num ONE;
 
     /**
      * Constructor.
-     * Example: use timeFrame = 251 and "end of day"-bars for annual behaviour
+     * Example: use barCount = 251 and "end of day"-bars for annual behaviour
      * in the US (http://tradingsim.com/blog/trading-days-in-a-year/).
      * @param indicator the indicator
-     * @param timeFrame the time frame
+     * @param barCount the time frame
      */
-    public PeriodicalGrowthRateIndicator(Indicator<Decimal> indicator, int timeFrame) {
+    public PeriodicalGrowthRateIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
-        this.timeFrame = timeFrame;
+        this.barCount = barCount;
+        ONE = numOf(1);
     }
 
     /**
      * Gets the TotalReturn from the calculated results of the method 'calculate'.
-     * For a timeFrame = number of trading days within a year (e. g. 251 days in the US)
+     * For a barCount = number of trading days within a year (e. g. 251 days in the US)
      * and "end of day"-bars you will get the 'Annualized Total Return'.
-     * Only complete timeFrames are taken into the calculation.
+     * Only complete barCounts are taken into the calculation.
      * @return the total return from the calculated results of the method 'calculate'
      */
-    public double getTotalReturn() {
+    public Num getTotalReturn() {
 
-        Decimal totalProduct = Decimal.ONE;
-        int completeTimeframes = (getTimeSeries().getBarCount() / timeFrame);
+        Num totalProduct = ONE;
+        int completeTimeframes = (getTimeSeries().getBarCount() / barCount);
 
         for (int i = 1; i <= completeTimeframes; i++) {
-            int index = i * timeFrame;
-            Decimal currentReturn = getValue(index);
+            int index = i * barCount;
+            Num currentReturn = getValue(index);
 
             // Skip NaN at the end of a series
-            if (currentReturn != Decimal.NaN) {
-                currentReturn = currentReturn.plus(Decimal.ONE);
+            if (currentReturn != NaN) {
+                currentReturn = currentReturn.plus(ONE);
                 totalProduct = totalProduct.multipliedBy(currentReturn);
             }
         }
 
-        return (Math.pow(totalProduct.doubleValue(), (1.0 / completeTimeframes)));
+        return totalProduct.pow(ONE.dividedBy(numOf(completeTimeframes)));
     }
 
     @Override
-    protected Decimal calculate(int index) {
+    protected Num calculate(int index) {
 
-        Decimal currentValue = indicator.getValue(index);
+        Num currentValue = indicator.getValue(index);
 
-        int helpPartialTimeframe = index % timeFrame;
-        double helpFullTimeframes = Math.floor((double) indicator.getTimeSeries().getBarCount() / (double) timeFrame);
-        double helpIndexTimeframes = (double) index / (double) timeFrame;
+        int helpPartialTimeframe = index % barCount;
+        // TODO: implement Num.floor()
+        Num helpFullTimeframes = numOf(Math.floor(
+                numOf(indicator.getTimeSeries().getBarCount())
+                        .dividedBy(numOf(barCount))
+                        .doubleValue()));
+        Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
 
-        double helpPartialTimeframeHeld = (double) helpPartialTimeframe / (double) timeFrame;
-        double partialTimeframeHeld = (helpPartialTimeframeHeld == 0) ? 1.0 : helpPartialTimeframeHeld;
+        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
+        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? ONE : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:
         // a.) if index number is below timeframe
         // e.g. timeframe = 365, index = 5 => no calculation
         // b.) if at the end of a series incomplete timeframes would remain
-        Decimal timeframedReturn = Decimal.NaN;
-        if ((index >= timeFrame) /*(a)*/ && (helpIndexTimeframes < helpFullTimeframes) /*(b)*/) {
-            Decimal movingValue = indicator.getValue(index - timeFrame);
-            Decimal movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+        Num timeframedReturn = NaN;
+        if ((index >= barCount) /*(a)*/&& (helpIndexTimeframes.isLessThan(helpFullTimeframes)) /*(b)*/) {
+            Num movingValue = indicator.getValue(index - barCount);
+            Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
-            double timeframedReturn_double = Math.pow((1 + movingSimpleReturn.doubleValue()), (1 / partialTimeframeHeld)) - 1;
-            timeframedReturn = Decimal.valueOf(timeframedReturn_double);
+            timeframedReturn = ONE.plus(movingSimpleReturn).pow(ONE.dividedBy(partialTimeframeHeld)).minus(ONE);
         }
 
         return timeframedReturn;

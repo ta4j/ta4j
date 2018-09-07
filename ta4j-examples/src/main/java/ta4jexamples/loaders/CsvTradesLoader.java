@@ -1,25 +1,26 @@
-/*
-  The MIT License (MIT)
-
-  Copyright (c) 2014-2017 Marc de Verdelhan & respective authors (see AUTHORS)
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of
-  this software and associated documentation files (the "Software"), to deal in
-  the Software without restriction, including without limitation the rights to
-  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-  the Software, and to permit persons to whom the Software is furnished to do so,
-  subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-  FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+/*******************************************************************************
+ *   The MIT License (MIT)
+ *
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   & respective authors (see AUTHORS)
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of
+ *   this software and associated documentation files (the "Software"), to deal in
+ *   the Software without restriction, including without limitation the rights to
+ *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ *   the Software, and to permit persons to whom the Software is furnished to do so,
+ *   subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *******************************************************************************/
 package ta4jexamples.loaders;
 
 import com.opencsv.CSVReader;
@@ -36,7 +37,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
@@ -72,7 +72,7 @@ public class CsvTradesLoader {
             }
         }
 
-        List<Bar> bars = null;
+        TimeSeries series = new BaseTimeSeries();
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
@@ -87,10 +87,10 @@ public class CsvTradesLoader {
                 Collections.reverse(lines);
             }
             // build the list of populated bars
-           	bars = buildBars(beginTime, endTime, 300, lines);
+           	buildSeries(series,beginTime, endTime, 300, lines);
         }
 
-        return new BaseTimeSeries("bitstamp_trades", bars);
+        return series;
     }
 
     /**
@@ -101,9 +101,8 @@ public class CsvTradesLoader {
      * @param lines the csv data returned by CSVReader.readAll()
      * @return the list of populated bars
      */
-    private static List<Bar> buildBars(ZonedDateTime beginTime, ZonedDateTime endTime, int duration, List<String[]> lines) {
+    private static void buildSeries(TimeSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration, List<String[]> lines) {
 
-    	List<Bar> bars = new ArrayList<>();
 
     	Duration barDuration = Duration.ofSeconds(duration);
     	ZonedDateTime barEndTime = beginTime;
@@ -112,7 +111,7 @@ public class CsvTradesLoader {
     	do {
     		// build a bar
     		barEndTime = barEndTime.plus(barDuration);
-    		Bar bar = new BaseBar(barDuration, barEndTime);
+    		Bar bar = new BaseBar(barDuration, barEndTime, series.function());
     		do {
     			// get a trade
     			String[] tradeLine = lines.get(i);
@@ -121,8 +120,8 @@ public class CsvTradesLoader {
     			if (bar.inPeriod(tradeTimeStamp)) {
     				// add the trade to the bar
     				double tradePrice = Double.parseDouble(tradeLine[1]);
-    				double tradeAmount = Double.parseDouble(tradeLine[2]);
-    				bar.addTrade(tradeAmount, tradePrice);
+    				double tradeVolume = Double.parseDouble(tradeLine[2]);
+    				bar.addTrade(tradeVolume, tradePrice, series.function());
     			} else {
     				// the trade happened after the end of the bar
     				// go to the next bar but stay with the same trade (don't increment i)
@@ -134,10 +133,9 @@ public class CsvTradesLoader {
     		// if the bar has any trades add it to the bars list
     		// this is where the break drops to
     		if (bar.getTrades() > 0) {
-    			bars.add(bar);
+    			series.addBar(bar);
     		}
     	} while (barEndTime.isBefore(endTime));
-    	return bars;
     }
 
     public static void main(String[] args) {
