@@ -106,7 +106,6 @@ public class BuildTimeSeries {
 
     public static TimeSeries buildManuallyDoubleNum(){
         TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
-
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
         series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
