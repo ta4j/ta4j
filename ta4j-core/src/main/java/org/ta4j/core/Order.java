@@ -26,7 +26,6 @@ package org.ta4j.core;
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
-import java.time.ZonedDateTime;
 import java.util.Objects;
 
 /**
@@ -249,7 +248,7 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a SELL order
      */
-    public static Order sellAt(int index, TimeSeries series, Num amount ) {
+    public static Order sellAt(int index, TimeSeries series, Num amount) {
         return new Order(index, series, OrderType.SELL, amount);
     }
 

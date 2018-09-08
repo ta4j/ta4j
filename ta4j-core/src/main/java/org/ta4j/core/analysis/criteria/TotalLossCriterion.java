@@ -35,9 +35,9 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
         Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num loss = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        if(loss.isLessThan(PrecisionNum.valueOf(0))){
+        if(loss.isLessThan(series.numOf(0))){
             return loss;
         }
-        return PrecisionNum.valueOf(0);
+        return series.numOf(0);
     }
 }

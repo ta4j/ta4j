@@ -63,9 +63,9 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
         Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        if(profit.isGreaterThan(PrecisionNum.valueOf(0))){
+        if(profit.isGreaterThan(series.numOf(0))){
             return profit;
         }
-        return PrecisionNum.valueOf(0);
+        return series.numOf(0);
     }
 }
