@@ -4,11 +4,7 @@ import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 
-public class TotalLossCriterion extends AbstractBacktestingCriterion {
-
-    public TotalLossCriterion(PriceType priceType) {
-        super(priceType);
-    }
+public class TotalLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
@@ -35,8 +31,8 @@ public class TotalLossCriterion extends AbstractBacktestingCriterion {
      * @return the profit or loss of the trade
      */
     private Num calculateTotalLoss(TimeSeries series, Trade trade) {
-        Num exitPrice = getPrice(series, trade.getExit());
-        Num entryPrice = getPrice(series, trade.getEntry());
+        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num loss = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
         if(loss.isLessThan(PrecisionNum.valueOf(0))){

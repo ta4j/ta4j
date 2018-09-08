@@ -17,15 +17,15 @@ public class BacktestingResult implements Comparable<BacktestingResult> {
     private Num lossTradeCount;
     private Num breakEvenTradeCount;
 
-    public BacktestingResult(Strategy strategy, TradingRecord tradingRecord, TimeSeries series, PriceType priceType) {
+    public BacktestingResult(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
         this.strategy = strategy;
         this.tradingRecord = tradingRecord;
-        this.totalProfitLoss = new ProfitLossCriterion(priceType).calculate(series, tradingRecord);
-        this.totalProfit = new TotalProfit2Criterion(priceType).calculate(series, tradingRecord);
-        this.totalLoss = new TotalLossCriterion(priceType).calculate(series, tradingRecord);
-        this.profitTradeCount = new NumberOfWinningTradesCriterion(priceType).calculate(series, tradingRecord);
-        this.lossTradeCount = new NumberOfLosingTradesCriterion(priceType).calculate(series, tradingRecord);
-        this.breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion(priceType).calculate(series, tradingRecord);
+        this.totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
+        this.totalProfit = new TotalProfit2Criterion().calculate(series, tradingRecord);
+        this.totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
+        this.profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
+        this.lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
+        this.breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
     }
 
     public String getStrategyName() {

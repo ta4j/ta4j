@@ -32,11 +32,7 @@ import org.ta4j.core.num.PrecisionNum;
  * </p>
  * The total profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
  */
-public class TotalProfit2Criterion extends AbstractBacktestingCriterion {
-
-    public TotalProfit2Criterion(PriceType priceType) {
-        super(priceType);
-    }
+public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
@@ -63,8 +59,8 @@ public class TotalProfit2Criterion extends AbstractBacktestingCriterion {
      * @return the total profit
      */
     private Num calculateTotalProfit(TimeSeries series, Trade trade) {
-        Num exitPrice = getPrice(series, trade.getExit());
-        Num entryPrice = getPrice(series, trade.getEntry());
+        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
         if(profit.isGreaterThan(PrecisionNum.valueOf(0))){

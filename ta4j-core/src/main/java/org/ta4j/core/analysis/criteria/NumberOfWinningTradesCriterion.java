@@ -1,6 +1,5 @@
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.PriceType;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -10,11 +9,7 @@ import org.ta4j.core.num.PrecisionNum;
 /**
  * Number of winning trades criterion.
  */
-public class NumberOfWinningTradesCriterion extends AbstractBacktestingCriterion {
-
-    public NumberOfWinningTradesCriterion(PriceType priceType) {
-        super(priceType);
-    }
+public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
@@ -25,8 +20,8 @@ public class NumberOfWinningTradesCriterion extends AbstractBacktestingCriterion
     }
 
     private boolean isWinningTrade(TimeSeries series, Trade trade) {
-        Num exitPrice = getPrice(series, trade.getExit());
-        Num entryPrice = getPrice(series, trade.getEntry());
+        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
         return profit.isGreaterThan(PrecisionNum.valueOf(0));

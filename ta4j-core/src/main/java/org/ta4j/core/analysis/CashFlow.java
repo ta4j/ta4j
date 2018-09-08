@@ -43,17 +43,13 @@ public class CashFlow implements Indicator<Num> {
     /** The cash flow values */
     private List<Num> values;
 
-    /** The price you traded at */
-    private PriceType priceType;
-
     /**
      * Constructor.
      * @param timeSeries the time series
      * @param trade a single trade
      */
-    public CashFlow(TimeSeries timeSeries, Trade trade, PriceType priceType) {
+    public CashFlow(TimeSeries timeSeries, Trade trade) {
         this.timeSeries = timeSeries;
-        this.priceType = priceType;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(trade);
         fillToTheEnd();
@@ -64,9 +60,8 @@ public class CashFlow implements Indicator<Num> {
      * @param timeSeries the time series
      * @param tradingRecord the trading record
      */
-    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, PriceType priceType) {
+    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
         this.timeSeries = timeSeries;
-        this.priceType = priceType;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(tradingRecord);
 
@@ -123,15 +118,6 @@ public class CashFlow implements Indicator<Num> {
     }
 
     private Num getRatio(int entryIndex, int exitIndex) {
-        if(priceType == PriceType.OPEN) {
-            return timeSeries.getBar(exitIndex).getOpenPrice().dividedBy(timeSeries.getBar(entryIndex).getOpenPrice());
-        }
-        if(priceType == PriceType.HIGH) {
-            return timeSeries.getBar(exitIndex).getMaxPrice().dividedBy(timeSeries.getBar(entryIndex).getMaxPrice());
-        }
-        if(priceType == PriceType.LOW) {
-            return timeSeries.getBar(exitIndex).getMinPrice().dividedBy(timeSeries.getBar(entryIndex).getMinPrice());
-        }
         return timeSeries.getBar(exitIndex).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
     }
 

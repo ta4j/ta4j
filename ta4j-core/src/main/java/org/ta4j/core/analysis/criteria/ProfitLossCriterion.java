@@ -8,11 +8,7 @@ import org.ta4j.core.num.Num;
  * </p>
  * The profit or loss over the provided {@link TimeSeries series}.
  */
-public class ProfitLossCriterion extends AbstractBacktestingCriterion {
-
-    public ProfitLossCriterion(PriceType priceType) {
-        super(priceType);
-    }
+public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
@@ -39,8 +35,8 @@ public class ProfitLossCriterion extends AbstractBacktestingCriterion {
      * @return the profit or loss of the trade
      */
     private Num calculateProfitLoss(TimeSeries series, Trade trade) {
-        Num exitPrice = getPrice(series, trade.getExit());
-        Num entryPrice = getPrice(series, trade.getEntry());
+        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         return exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
     }

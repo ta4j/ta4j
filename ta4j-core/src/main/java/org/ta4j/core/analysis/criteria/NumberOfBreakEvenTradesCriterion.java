@@ -1,6 +1,5 @@
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.PriceType;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -10,13 +9,9 @@ import org.ta4j.core.num.PrecisionNum;
 /**
  * Number of break even trades criterion.
  */
-public class NumberOfBreakEvenTradesCriterion extends AbstractBacktestingCriterion {
+public class NumberOfBreakEvenTradesCriterion extends AbstractAnalysisCriterion {
 
-    public NumberOfBreakEvenTradesCriterion(PriceType priceType) {
-        super(priceType);
-    }
-
-    @Override
+   @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
          long numberOfLosingTrades = tradingRecord.getTrades().stream()
                 .filter(trade -> trade.isClosed())
@@ -25,8 +20,8 @@ public class NumberOfBreakEvenTradesCriterion extends AbstractBacktestingCriteri
     }
 
     private boolean isBreakEvenTrade(TimeSeries series, Trade trade) {
-        Num exitPrice = getPrice(series, trade.getExit());
-        Num entryPrice = getPrice(series, trade.getEntry());
+        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
         return profit.isEqual(PrecisionNum.valueOf(0));

@@ -175,23 +175,6 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * @param priceType
-     * @return the price of the priceType
-     */
-    public Num getPrice(PriceType priceType) {
-        if(priceType == PriceType.OPEN) {
-            return openPrice;
-        }
-        if(priceType == PriceType.LOW) {
-            return minPrice;
-        }
-        if(priceType == PriceType.HIGH) {
-            return maxPrice;
-        }
-        return closePrice;
-    }
-
-    /**
      * @return the whole traded volume in the period
      */
     public Num getVolume() {

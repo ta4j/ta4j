@@ -60,12 +60,6 @@ public interface Bar extends Serializable {
     Num getClosePrice();
 
     /**
-     * @param priceType
-     * @return the price of the priceType
-     */
-    Num getPrice(PriceType priceType);
-
-    /**
      * @return the whole tradeNum volume in the period
      */
     Num getVolume();

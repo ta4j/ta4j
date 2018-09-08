@@ -12,8 +12,6 @@ import ta4jexamples.loaders.CsvBarsLoader;
 public class SimpleMovingAverageRangeBacktesting {
 
     public static void main(String[] args) throws InterruptedException {
-        PriceType priceType = PriceType.CLOSE;
-
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         Backtesting backtesting = new Backtesting(series);
@@ -30,7 +28,7 @@ public class SimpleMovingAverageRangeBacktesting {
             );
             backtesting.addStrategy(strategy);
         }
-        backtesting.calculate(Order.OrderType.BUY, PrecisionNum.valueOf(50), priceType);
+        backtesting.calculate(Order.OrderType.BUY, PrecisionNum.valueOf(50));
         backtesting.printBacktestingResults(true);
     }
 
