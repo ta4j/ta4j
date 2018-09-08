@@ -1,7 +1,6 @@
 package ta4jexamples.backtesting;
 
 import org.ta4j.core.*;
-import org.ta4j.core.analysis.criteria.*;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.PrecisionNum;
