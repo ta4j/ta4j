@@ -23,9 +23,10 @@
  *******************************************************************************/
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.*;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 /**
  * Total profit criterion.
@@ -54,8 +55,9 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the total profit of all the trades
+     *
      * @param series a time series
-     * @param trade a trade
+     * @param trade  a trade
      * @return the total profit
      */
     private Num calculateTotalProfit(TimeSeries series, Trade trade) {
@@ -63,7 +65,7 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
         Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
         Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        if(profit.isGreaterThan(series.numOf(0))){
+        if (profit.isGreaterThan(series.numOf(0))) {
             return profit;
         }
         return series.numOf(0);

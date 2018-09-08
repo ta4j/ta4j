@@ -4,7 +4,6 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 /**
  * Number of winning trades criterion.

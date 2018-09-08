@@ -4,7 +4,6 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 /**
  * Number of losing trades criterion.
@@ -13,10 +12,10 @@ public class NumberOfLosingTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-         long numberOfLosingTrades = tradingRecord.getTrades().stream()
+        long numberOfLosingTrades = tradingRecord.getTrades().stream()
                 .filter(trade -> trade.isClosed())
                 .filter(trade -> isLosingTrade(series, trade)).count();
-         return series.numOf(numberOfLosingTrades);
+        return series.numOf(numberOfLosingTrades);
     }
 
     private boolean isLosingTrade(TimeSeries series, Trade trade) {

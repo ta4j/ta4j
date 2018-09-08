@@ -10,12 +10,12 @@ import org.ta4j.core.num.Num;
  */
 public class NumberOfBreakEvenTradesCriterion extends AbstractAnalysisCriterion {
 
-   @Override
+    @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-         long numberOfLosingTrades = tradingRecord.getTrades().stream()
+        long numberOfLosingTrades = tradingRecord.getTrades().stream()
                 .filter(trade -> trade.isClosed())
                 .filter(trade -> isBreakEvenTrade(series, trade)).count();
-         return series.numOf(numberOfLosingTrades);
+        return series.numOf(numberOfLosingTrades);
     }
 
     private boolean isBreakEvenTrade(TimeSeries series, Trade trade) {
