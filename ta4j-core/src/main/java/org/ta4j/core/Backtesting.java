@@ -29,6 +29,10 @@ public class Backtesting {
         this.strategies.add(strategy);
     }
 
+    public void addStrategies(List<Strategy> strategies) {
+        this.strategies.addAll(strategies);
+    }
+
     public List<BacktestingResult> getBacktestingResults() {
         return backtestingResults;
     }
