@@ -53,9 +53,11 @@ public class Backtesting {
      * @param amount    - The amount used to open/close the trades
      */
     public List<BacktestingResult> calculate(Order.OrderType orderType, Num amount) {
-        for (Strategy strategy : strategies) {
+        for(int i=0; i<strategies.size(); i++) {
+            Strategy strategy = strategies.get(i);
             TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
             backtestingResults.add(new BacktestingResult(strategy, tradingRecord, seriesToTradeOn));
+            System.out.println(i+1 + "/" + strategies.size());
         }
         return backtestingResults;
     }
