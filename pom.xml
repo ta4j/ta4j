@@ -1,10 +1,8 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.ta4j</groupId>
 	<artifactId>ta4j-parent</artifactId>
-	<version>0.12-SNAPSHOT</version>
+	<version>0.12</version>
 	<packaging>pom</packaging>
 
 	<name>Ta4j Parent</name>
@@ -54,7 +52,7 @@
 		<connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
 		<developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
 		<url>http://github.com/ta4j/ta4j</url>
-		<tag>0.11</tag>
+		<tag>0.12</tag>
 	</scm>
 
 	<modules>
