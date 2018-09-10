@@ -1,7 +1,7 @@
 /*******************************************************************************
  *   The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization
  *   & respective authors (see AUTHORS)
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,20 +24,34 @@
 package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 
-/**
- * An OR combination of multiple {@link Rule rules}.
- * </p>
- * Satisfied when one of the multiple provided rules is satisfied.<br>
- * Warning: If the previous condition is satisfied, the following condition is not tested.
- */
-public class OrRule extends AndOrRule {
+public abstract class AndOrRule extends AbstractRule {
 
-    /**
-     * Constructor
-     * @param rules trading rules
-     */
-    public OrRule(Rule ... rules) {
-        init(1, rules);
+    private Rule[] rules;
+    private int satisfiedCount = 0;
+
+
+    protected void init(int satisfiedCount, Rule ... rules) {
+        this.rules = rules;
+        this.satisfiedCount = satisfiedCount;
+    }
+
+    @Override
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        int satisfiedCount = this.satisfiedCount;
+
+        boolean satisfied = false;
+        for (int i = 0; i < rules.length && !satisfied; i++) {
+            if(rules[i].isSatisfied(index, tradingRecord)) {
+                satisfiedCount--;
+                if(satisfiedCount <= 0) {
+                    satisfied = true;
+                }
+            }
+        }
+
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

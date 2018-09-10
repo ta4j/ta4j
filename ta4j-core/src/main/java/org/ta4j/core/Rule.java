@@ -28,9 +28,12 @@ import org.ta4j.core.trading.rules.NotRule;
 import org.ta4j.core.trading.rules.OrRule;
 import org.ta4j.core.trading.rules.XorRule;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * A rule for strategy building.
- * </p>
+ * <p></p>
  * A trading rule may be composed of a combination of other rules.
  *
  * A {@link Strategy trading strategy} is a pair of complementary (entry and exit) rules.
@@ -38,19 +41,27 @@ import org.ta4j.core.trading.rules.XorRule;
 public interface Rule {
 
     /**
-     * @param rule another trading rule
-     * @return a rule which is the AND combination of this rule with the provided one
+     * @param rules other trading rules
+     * @return a rule which is the AND combination of this rule with the provided others
      */
-    default Rule and(Rule rule) {
-    	return new AndRule(this, rule);
+    default Rule and(Rule ... rules) {
+
+        Rule[] newRules = Arrays.copyOf(rules, rules.length + 1);
+        newRules[rules.length] = this;
+
+        return new AndRule(newRules);
     }
 
     /**
-     * @param rule another trading rule
-     * @return a rule which is the OR combination of this rule with the provided one
+     * @param rules other trading rules
+     * @return a rule which is the OR combination of this rule with the provided others
      */
-    default Rule or(Rule rule) {
-    	return new OrRule(this, rule);
+    default Rule or(Rule ... rules) {
+
+        Rule[] newRules = Arrays.copyOf(rules, rules.length + 1);
+        newRules[rules.length] = this;
+
+    	return new OrRule(newRules);
     }
 
     /**

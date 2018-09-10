@@ -24,34 +24,20 @@
 package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Rule;
-import org.ta4j.core.TradingRecord;
 
 /**
- * An AND combination of two {@link Rule rules}.
+ * An AND combination of multiple {@link Rule rules}.
  * </p>
- * Satisfied when the two provided rules are satisfied as well.<br>
- * Warning: the second rule is not tested if the first rule is not satisfied.
+ * Satisfied when the multiple provided rules are satisfied as well.<br>
+ * Warning: If the previous condition is satisfied, the following condition is not tested.
  */
-public class AndRule extends AbstractRule {
-
-    private Rule rule1;
-    
-    private Rule rule2;
+public class AndRule extends AndOrRule {
 
     /**
      * Constructor
-     * @param rule1 a trading rule
-     * @param rule2 another trading rule
+     * @param rules trading rules
      */
-    public AndRule(Rule rule1, Rule rule2) {
-        this.rule1 = rule1;
-        this.rule2 = rule2;
-    }
-
-    @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+    public AndRule(Rule ... rules) {
+        init(rules.length, rules);
     }
 }
