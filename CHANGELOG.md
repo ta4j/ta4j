@@ -1,6 +1,6 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.12 (released September 07, 2018)
+## 0.12 (released September 10, 2018)
 
 ### Breaking: 
    - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
@@ -59,7 +59,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 - **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 - **BigDecimalNum**: _removed_.  Replaced by `PrecisionNum`
-- **AbstractCriterionTest**: removed constructor `AbstractCriterionTest(Function<Number, Num)`.  Use `AbstractCriterionTest(CriterionFactory, Function<Number, Num>)`. 
+- **AbstractCriterionTest**: removed constructor `AbstractCriterionTest(Function<Number, Num)`.  Use `AbstractCriterionTest(CriterionFactory, Function<Number, Num>)`.
 - **<various>Indicator**: removed redundant `private TimeSeries`
 
 ## 0.11 (released January 25, 2018)

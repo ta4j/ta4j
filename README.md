@@ -26,7 +26,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search). You just 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.11</version>
+  <version>0.12</version>
 </dependency>
 ```
 
@@ -37,15 +37,23 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 ```
-The current snapshot version is `0.12-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
+The current ***snapshot version*** is `0.13-SNAPSHOT` from the [develop](https://github.com/ta4j/ta4j/tree/develop) branch.
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.12-SNAPSHOT</version>
+  <version>0.13-SNAPSHOT</version>
 </dependency>
 ```
 
+You can also download ***example code*** from the maven central repository by adding the following dependency to your pom.xml:
+```xml
+<dependency>
+  <groupId>org.ta4j</groupId>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.12</version>
+</dependency>
+```
 ### Getting Help
 The [wiki](https://ta4j.github.io/ta4j-wiki/) is the best place to start learning about ta4j. For more detailed questions, please use the [issues tracker](https://github.com/ta4j/ta4j/issues).
 
