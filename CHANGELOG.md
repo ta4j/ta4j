@@ -1,6 +1,19 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-##(unreleased, `0.12-SNAPSHOT`)
+## 0.13 (unreleased)
+
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Added
+- :tada: **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
+
+### Removed/Deprecated
+
+## 0.12 (released September 10, 2018)
 
 ### Breaking: 
    - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
@@ -11,6 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TradingBotOnMovingTimeSeries**: fixed calculations and ArithmeticException Overflow
 - **Fixed wrong indexing in**: `Indicator.toDouble()`.
 - **PrecisionNum.sqrt()**: using DecimalFormat.parse().
+- **RandomWalk[High|Low]Indicator**: fixed formula (max/min of formula with n iterating from 2 to barCount)
 
 ### Changed
 - **ALL INDICATORS**: `Decimal` replaced by `Num`.
@@ -31,6 +45,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ConvergenceDivergenceIndicator**: remove unused method
 - **ChopIndicatorTest**: spelling, TODO: add better tests
 - **Various Indicators**: remove double math operations, change `Math.sqrt(double)` to `Num.sqrt()`, other small improvements
+- **RandomWalk[High|Low]Indicator**: renamed to `RWI[High|Low]Indicator`
 
 ### Added
 - **BaseTimeSeries.SeriesBuilder**: simplifies creation of BaseTimeSeries.
@@ -48,7 +63,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 - **Num**: added Num sqrt(int) and Num sqrt()
 - **pom.xml**: added support to generate ta4j-core OSGi artifact.
-- :tada: **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
@@ -58,7 +72,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
 - **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 - **BigDecimalNum**: _removed_.  Replaced by `PrecisionNum`
-- **AbstractCriterionTest**: removed constructor `AbstractCriterionTest(Function<Number, Num)`.  Use `AbstractCriterionTest(CriterionFactory, Function<Number, Num>)`. 
+- **AbstractCriterionTest**: removed constructor `AbstractCriterionTest(Function<Number, Num)`.  Use `AbstractCriterionTest(CriterionFactory, Function<Number, Num>)`.
 - **<various>Indicator**: removed redundant `private TimeSeries`
 
 ## 0.11 (released January 25, 2018)
