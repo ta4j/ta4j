@@ -1,5 +1,17 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## 0.13 (unreleased)
+
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Added
+
+### Removed/Deprecated
+
 ## 0.12 (released September 10, 2018)
 
 ### Breaking: 
