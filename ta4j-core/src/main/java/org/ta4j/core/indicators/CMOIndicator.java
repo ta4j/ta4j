@@ -39,9 +39,7 @@ import org.ta4j.core.num.Num;
 public class CMOIndicator extends CachedIndicator<Num> {
 
     private final GainIndicator gainIndicator;
-
     private final LossIndicator lossIndicator;
-
     private final int barCount;
 
     /**

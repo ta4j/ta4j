@@ -35,32 +35,39 @@ import org.ta4j.core.num.Num;
  */
 public class UnderIndicatorRule extends AbstractRule {
 
-    /** The first indicator */
-    private Indicator<Num> first;
-    /** The second indicator */
-    private Indicator<Num> second;
+    /**
+     * The first indicator
+     */
+    private final Indicator<Num> first;
+    /**
+     * The second indicator
+     */
+    private final Indicator<Num> second;
 
     /**
      * Constructor.
+     *
      * @param indicator the indicator
      * @param threshold a threshold
      */
     public UnderIndicatorRule(Indicator<Num> indicator, Number threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), indicator.numOf(threshold)));
+        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), indicator.numOf(threshold)));
     }
 
     /**
      * Constructor.
+     *
      * @param indicator the indicator
      * @param threshold a threshold
      */
     public UnderIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
+        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), threshold));
     }
-    
+
     /**
      * Constructor.
-     * @param first the first indicator
+     *
+     * @param first  the first indicator
      * @param second the second indicator
      */
     public UnderIndicatorRule(Indicator<Num> first, Indicator<Num> second) {

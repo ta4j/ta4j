@@ -32,16 +32,21 @@ import org.ta4j.core.TradingRecord;
  */
 public class BooleanRule extends AbstractRule {
 
-    /** An always-true rule */
+    /**
+     * An always-true rule
+     */
     public static final BooleanRule TRUE = new BooleanRule(true);
-    
-    /** An always-false rule */
+
+    /**
+     * An always-false rule
+     */
     public static final BooleanRule FALSE = new BooleanRule(false);
-    
-    private boolean satisfied;
+
+    private final boolean satisfied;
 
     /**
      * Constructor.
+     *
      * @param satisfied true for the rule to be always satisfied, false to be never satisfied
      */
     public BooleanRule(boolean satisfied) {

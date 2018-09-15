@@ -34,9 +34,8 @@ import org.ta4j.core.TradingRecord;
  */
 public class OrRule extends AbstractRule {
 
-    private Rule rule1;
-    
-    private Rule rule2;
+    private final Rule rule1;
+    private final Rule rule2;
 
     /**
      * Constructor.

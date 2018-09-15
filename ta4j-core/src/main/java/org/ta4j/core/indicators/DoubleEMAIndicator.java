@@ -34,16 +34,16 @@ import org.ta4j.core.num.Num;
 public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 502597792760330884L;
-	
+
     private final int barCount;
     private final EMAIndicator ema;
     private final EMAIndicator emaEma;
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
-     * @param barCount the time frame
+     * @param barCount  the time frame
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -54,10 +54,9 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return ema.getValue(index).multipliedBy(numOf(2))
-                .minus(emaEma.getValue(index));
+        return ema.getValue(index).multipliedBy(numOf(2)).minus(emaEma.getValue(index));
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;

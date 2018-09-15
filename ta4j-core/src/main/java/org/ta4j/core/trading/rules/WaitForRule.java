@@ -36,15 +36,20 @@ import static org.ta4j.core.Order.OrderType;
  */
 public class WaitForRule extends AbstractRule {
 
-    /** The type of the order since we have to wait for */
-    private OrderType orderType;
+    /**
+     * The type of the order since we have to wait for
+     */
+    private final OrderType orderType;
 
-    /** The number of bars to wait for */
-    private int numberOfBars;
+    /**
+     * The number of bars to wait for
+     */
+    private final int numberOfBars;
 
     /**
      * Constructor.
-     * @param orderType the type of the order since we have to wait for
+     *
+     * @param orderType    the type of the order since we have to wait for
      * @param numberOfBars the number of bars to wait for
      */
     public WaitForRule(OrderType orderType, int numberOfBars) {

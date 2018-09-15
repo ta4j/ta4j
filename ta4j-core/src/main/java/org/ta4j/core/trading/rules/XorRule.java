@@ -33,12 +33,12 @@ import org.ta4j.core.TradingRecord;
  */
 public class XorRule extends AbstractRule {
 
-    private Rule rule1;
-    
-    private Rule rule2;
+    private final Rule rule1;
+    private final Rule rule2;
 
     /**
      * Constructor.
+     *
      * @param rule1 a trading rule
      * @param rule2 another trading rule
      */

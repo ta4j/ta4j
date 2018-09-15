@@ -35,13 +35,18 @@ import org.ta4j.core.num.Num;
  */
 public class OverIndicatorRule extends AbstractRule {
 
-    /** The first indicator */
-    private Indicator<Num> first;
-    /** The second indicator */
-    private Indicator<Num> second;
+    /**
+     * The first indicator
+     */
+    private final Indicator<Num> first;
+    /**
+     * The second indicator
+     */
+    private final Indicator<Num> second;
 
     /**
      * Constructor.
+     *
      * @param indicator the indicator
      * @param threshold a threshold
      */
@@ -51,6 +56,7 @@ public class OverIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
+     *
      * @param indicator the indicator
      * @param threshold a threshold
      */
@@ -60,7 +66,8 @@ public class OverIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param first the first indicator
+     *
+     * @param first  the first indicator
      * @param second the second indicator
      */
     public OverIndicatorRule(Indicator<Num> first, Indicator<Num> second) {

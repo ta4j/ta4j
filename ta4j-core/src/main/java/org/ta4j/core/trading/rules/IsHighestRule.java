@@ -36,30 +36,34 @@ import org.ta4j.core.num.Num;
  */
 public class IsHighestRule extends AbstractRule {
 
-	/** The actual indicator */
-	private Indicator<Num> ref;
-	/** The barCount */
-	private int barCount;
+    /**
+     * The actual indicator
+     */
+    private final Indicator<Num> ref;
+    /**
+     * The barCount
+     */
+    private final int barCount;
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param ref the indicator
-	 * @param barCount the time frame
-	 */
-	public IsHighestRule(Indicator<Num> ref, int barCount) {
-		this.ref = ref;
-		this.barCount = barCount;
-	}
+    /**
+     * Constructor.
+     *
+     * @param ref      the indicator
+     * @param barCount the time frame
+     */
+    public IsHighestRule(Indicator<Num> ref, int barCount) {
+        this.ref = ref;
+        this.barCount = barCount;
+    }
 
-	@Override
-	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
-		Num highestVal = highest.getValue(index);
-		Num refVal = ref.getValue(index);
-		
-		final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
-		traceIsSatisfied(index, satisfied);
-		return satisfied;
-	}
+    @Override
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
+        Num highestVal = highest.getValue(index);
+        Num refVal = ref.getValue(index);
+
+        final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
+    }
 }

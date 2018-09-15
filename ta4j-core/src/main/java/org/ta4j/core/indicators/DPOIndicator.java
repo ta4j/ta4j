@@ -46,11 +46,8 @@ import org.ta4j.core.num.Num;
 public class DPOIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    
     private final int timeShift;
-    
     private final Indicator<Num> price;
-    
     private final SMAIndicator sma;
     
     /**
