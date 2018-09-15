@@ -10,6 +10,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - :tada: **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
+- :tada: **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades 
+- :tada: **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
+- :tada: **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
+- :tada: **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
+- :tada: **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades 
+- :tada: **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
+- :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades  
 
 ### Removed/Deprecated
 
