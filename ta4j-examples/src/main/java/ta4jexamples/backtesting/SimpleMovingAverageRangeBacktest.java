@@ -28,7 +28,7 @@ public class SimpleMovingAverageRangeBacktest {
             backtest.addStrategy(strategy);
         }
         backtest.calculate(Order.OrderType.BUY, PrecisionNum.valueOf(50));
-        backtest.printBacktestingResults(true);
+        backtest.printBacktestResults(true);
     }
 
     private static Rule createEntryRule(TimeSeries series, int barCount) {

@@ -67,7 +67,7 @@ public class Backtest {
      *
      * @param printTrades - Print trades on each backtesting result
      */
-    public void printBacktestingResults(boolean printTrades) {
+    public void printBacktestResults(boolean printTrades) {
         Collections.sort(backtestResults);
         for (BacktestResult backtestResult : backtestResults) {
             backtestResult.printBacktestingResult(printTrades, seriesToTradeOn);
