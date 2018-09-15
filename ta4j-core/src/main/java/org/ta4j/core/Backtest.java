@@ -3,7 +3,6 @@ package org.ta4j.core;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -60,17 +59,5 @@ public class Backtest {
             System.out.println(i+1 + "/" + strategies.size());
         }
         return backtestResults;
-    }
-
-    /**
-     * Print to console the backtesting results
-     *
-     * @param printTrades - Print trades on each backtesting result
-     */
-    public void printBacktestResults(boolean printTrades) {
-        Collections.sort(backtestResults);
-        for (BacktestResult backtestResult : backtestResults) {
-            backtestResult.printBacktestResult(printTrades, seriesToTradeOn);
-        }
     }
 }
