@@ -6,7 +6,7 @@ import org.ta4j.core.num.Num;
 /**
  * This class contains the result of a backtested strategy
  */
-public class BacktestingResult implements Comparable<BacktestingResult> {
+public class BacktestResult implements Comparable<BacktestResult> {
 
     private Strategy strategy;
     private TradingRecord tradingRecord;
@@ -18,7 +18,7 @@ public class BacktestingResult implements Comparable<BacktestingResult> {
     private Num lossTradeCount;
     private Num breakEvenTradeCount;
 
-    public BacktestingResult(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
+    public BacktestResult(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
         this.strategy = strategy;
         this.tradingRecord = tradingRecord;
         this.totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
@@ -65,7 +65,7 @@ public class BacktestingResult implements Comparable<BacktestingResult> {
         System.out.println("Total profitLoss: " + totalProfitLoss);
         System.out.println("Total profitLoss: " + round(totalProfitLossPercentage, 1) + "%");
         if (printTrades) {
-            tradingRecord.getTrades().stream().forEach(trade -> printTrade(trade, series));
+            tradingRecord.getTrades().forEach(trade -> printTrade(trade, series));
             Order lastOrder = tradingRecord.getLastOrder();
             if (lastOrder.getType() == Order.OrderType.BUY) {
                 Bar lastOrderBar = series.getBar(lastOrder.getIndex());
@@ -82,7 +82,7 @@ public class BacktestingResult implements Comparable<BacktestingResult> {
     }
 
     @Override
-    public int compareTo(BacktestingResult that) {
+    public int compareTo(BacktestResult that) {
         return this.totalProfitLossPercentage.compareTo(that.getTotalProfitLossPercentage());
     }
 

@@ -7,20 +7,20 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * This class enables backtesting of multiple strategies and comparing them to see wich is the best
+ * This class enables backtesting of multiple strategies and comparing them to see which is the best
  */
-public class Backtesting {
+public class Backtest {
 
     private TimeSeries seriesToTradeOn;
     private TimeSeriesManager seriesManager;
     private List<Strategy> strategies = new ArrayList<>();
-    private List<BacktestingResult> backtestingResults = new ArrayList<>();
+    private List<BacktestResult> backtestResults = new ArrayList<>();
 
-    public Backtesting(TimeSeries series) {
+    public Backtest(TimeSeries series) {
         this(series, series);
     }
 
-    public Backtesting(TimeSeries seriesToBacktest, TimeSeries seriesToTradeOn) {
+    public Backtest(TimeSeries seriesToBacktest, TimeSeries seriesToTradeOn) {
         this.seriesToTradeOn = seriesToTradeOn;
         this.seriesManager = new TimeSeriesManager(seriesToBacktest);
     }
@@ -33,8 +33,8 @@ public class Backtesting {
         this.strategies.addAll(strategies);
     }
 
-    public List<BacktestingResult> getBacktestingResults() {
-        return backtestingResults;
+    public List<BacktestResult> getBacktestResults() {
+        return backtestResults;
     }
 
     /**
@@ -42,7 +42,7 @@ public class Backtesting {
      *
      * @param amount    - The amount used to open/close the trades
      */
-    public List<BacktestingResult> calculate(Num amount) {
+    public List<BacktestResult> calculate(Num amount) {
         return calculate(Order.OrderType.BUY, amount);
     }
 
@@ -52,14 +52,14 @@ public class Backtesting {
      * @param orderType the {@link Order.OrderType} used to open the trades
      * @param amount    - The amount used to open/close the trades
      */
-    public List<BacktestingResult> calculate(Order.OrderType orderType, Num amount) {
+    public List<BacktestResult> calculate(Order.OrderType orderType, Num amount) {
         for(int i=0; i<strategies.size(); i++) {
             Strategy strategy = strategies.get(i);
             TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
-            backtestingResults.add(new BacktestingResult(strategy, tradingRecord, seriesToTradeOn));
+            backtestResults.add(new BacktestResult(strategy, tradingRecord, seriesToTradeOn));
             System.out.println(i+1 + "/" + strategies.size());
         }
-        return backtestingResults;
+        return backtestResults;
     }
 
     /**
@@ -68,9 +68,9 @@ public class Backtesting {
      * @param printTrades - Print trades on each backtesting result
      */
     public void printBacktestingResults(boolean printTrades) {
-        Collections.sort(backtestingResults);
-        for (BacktestingResult backtestingResult : backtestingResults) {
-            backtestingResult.printBacktestingResult(printTrades, seriesToTradeOn);
+        Collections.sort(backtestResults);
+        for (BacktestResult backtestResult : backtestResults) {
+            backtestResult.printBacktestingResult(printTrades, seriesToTradeOn);
         }
     }
 }

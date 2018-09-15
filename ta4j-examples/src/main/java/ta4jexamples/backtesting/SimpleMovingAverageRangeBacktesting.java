@@ -13,7 +13,7 @@ public class SimpleMovingAverageRangeBacktesting {
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-        Backtesting backtesting = new Backtesting(series);
+        Backtest backtest = new Backtest(series);
 
         int start = 3;
         int stop = 50;
@@ -25,10 +25,10 @@ public class SimpleMovingAverageRangeBacktesting {
                     createEntryRule(series, i),
                     createExitRule(series, i)
             );
-            backtesting.addStrategy(strategy);
+            backtest.addStrategy(strategy);
         }
-        backtesting.calculate(Order.OrderType.BUY, PrecisionNum.valueOf(50));
-        backtesting.printBacktestingResults(true);
+        backtest.calculate(Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        backtest.printBacktestingResults(true);
     }
 
     private static Rule createEntryRule(TimeSeries series, int barCount) {
