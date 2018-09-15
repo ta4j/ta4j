@@ -8,7 +8,7 @@ import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvBarsLoader;
 
-public class SimpleMovingAverageRangeBacktesting {
+public class SimpleMovingAverageRangeBacktest {
 
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();

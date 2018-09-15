@@ -35,7 +35,7 @@ import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-public class SimpleMovingAverageBacktesting {
+public class SimpleMovingAverageBacktest {
 
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = createTimeSeries();
