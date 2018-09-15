@@ -35,15 +35,20 @@ import org.ta4j.core.num.Num;
  */
 public class IsEqualRule extends AbstractRule {
 
-      /** The first indicator */
-    private Indicator<Num> first;
-    /** The second indicator */
-    private Indicator<Num> second;
+    /**
+     * The first indicator
+     */
+    private final Indicator<Num> first;
+    /**
+     * The second indicator
+     */
+    private final Indicator<Num> second;
 
     /**
      * Constructor.
+     *
      * @param indicator the indicator
-     * @param value the value to check
+     * @param value     the value to check
      */
     public IsEqualRule(Indicator<Num> indicator, Number value) {
         this(indicator, indicator.numOf(value));
@@ -51,16 +56,18 @@ public class IsEqualRule extends AbstractRule {
 
     /**
      * Constructor.
+     *
      * @param indicator the indicator
-     * @param value the value to check
+     * @param value     the value to check
      */
     public IsEqualRule(Indicator<Num> indicator, Num value) {
-    	this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), value));
+        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), value));
     }
-    
+
     /**
      * Constructor.
-     * @param first the first indicator
+     *
+     * @param first  the first indicator
      * @param second the second indicator
      */
     public IsEqualRule(Indicator<Num> first, Indicator<Num> second) {

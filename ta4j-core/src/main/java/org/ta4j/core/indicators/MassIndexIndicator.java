@@ -38,11 +38,9 @@ import org.ta4j.core.num.Num;
  */
 public class MassIndexIndicator extends CachedIndicator<Num> {
 
-    private EMAIndicator singleEma;
-    
-    private EMAIndicator doubleEma;
-    
-    private int barCount;
+    private final EMAIndicator singleEma;
+    private final EMAIndicator doubleEma;
+    private final int barCount;
 
     /**
      * Constructor.

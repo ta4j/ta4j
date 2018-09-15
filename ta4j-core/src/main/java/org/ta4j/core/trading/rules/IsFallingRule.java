@@ -36,9 +36,9 @@ import org.ta4j.core.num.Num;
 public class IsFallingRule extends AbstractRule {
 
 	/** The actual indicator */
-	private Indicator<Num> ref;
+	private final Indicator<Num> ref;
 	/** The barCount */
-	private int barCount;
+	private final int barCount;
 	/** The minimum required strenght of the falling */
 	private double minStrenght;
 
@@ -67,7 +67,6 @@ public class IsFallingRule extends AbstractRule {
 
 	@Override
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		
 		if (minStrenght >= 1) {
 			minStrenght = 0.99;
 		}

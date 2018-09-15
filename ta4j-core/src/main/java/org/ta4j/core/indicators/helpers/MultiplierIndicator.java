@@ -33,9 +33,8 @@ import org.ta4j.core.num.Num;
  */
 public class MultiplierIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> indicator;
-    
-    private Num coefficient;
+    private final Indicator<Num> indicator;
+    private final Num coefficient;
     
     public MultiplierIndicator(Indicator<Num> indicator, double coefficient) {
         super(indicator);

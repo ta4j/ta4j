@@ -135,7 +135,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	private Num minStrength;
 	
 	/** The minimum slope for convergence or divergence. **/
-	private Num minSlope;
+	private final Num minSlope;
     
 	/**
 	Constructor. <br/>

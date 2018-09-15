@@ -31,24 +31,22 @@ import org.ta4j.core.num.Num;
 /**
  * Commodity Channel Index (CCI) indicator.
  * <p/>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
+ * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
 public class CCIIndicator extends CachedIndicator<Num> {
 
-    public final Num FACTOR;
-
-    private TypicalPriceIndicator typicalPriceInd;
-
-    private SMAIndicator smaInd;
-
-    private MeanDeviationIndicator meanDeviationInd;
-
-    private int barCount;
+    private final Num FACTOR;
+    private final TypicalPriceIndicator typicalPriceInd;
+    private final SMAIndicator smaInd;
+    private final MeanDeviationIndicator meanDeviationInd;
+    private final int barCount;
 
     /**
      * Constructor.
-     * @param series the time series
+     *
+     * @param series   the time series
      * @param barCount the time frame (normally 20)
      */
     public CCIIndicator(TimeSeries series, int barCount) {

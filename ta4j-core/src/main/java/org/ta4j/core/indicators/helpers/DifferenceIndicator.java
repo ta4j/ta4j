@@ -34,9 +34,8 @@ import org.ta4j.core.num.Num;
  */
 public class DifferenceIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> first;
-    
-    private Indicator<Num> second;
+    private final Indicator<Num> first;
+    private final Indicator<Num> second;
     
     /**
      * Constructor.

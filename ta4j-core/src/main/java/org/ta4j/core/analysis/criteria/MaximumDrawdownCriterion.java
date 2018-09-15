@@ -38,16 +38,14 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
-        return maximumDrawdown;
+        return calculateMaximumDrawdown(series, cashFlow);
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
         if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
             CashFlow cashFlow = new CashFlow(series, trade);
-            Num maximumDrawdown = calculateMaximumDrawdown(series, cashFlow);
-            return maximumDrawdown;
+            return calculateMaximumDrawdown(series, cashFlow);
         }
         return series.numOf(0);
     }

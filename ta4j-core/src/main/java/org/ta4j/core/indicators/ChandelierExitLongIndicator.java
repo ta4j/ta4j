@@ -36,9 +36,7 @@ import org.ta4j.core.num.Num;
 public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
 
     private final HighestValueIndicator high;
-    
     private final ATRIndicator atr;
-    
     private final Num k;
 
     /**

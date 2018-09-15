@@ -33,9 +33,8 @@ import org.ta4j.core.num.Num;
 public class WMAIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -1610206345404758687L;
-    private int barCount;
-
-    private Indicator<Num> indicator;
+    private final int barCount;
+    private final Indicator<Num> indicator;
 
     public WMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -49,16 +48,16 @@ public class WMAIndicator extends CachedIndicator<Num> {
             return indicator.getValue(0);
         }
         Num value = numOf(0);
-        if(index - barCount < 0) {
-            
-            for(int i = index + 1; i > 0; i--) {
-                value = value.plus(numOf(i).multipliedBy(indicator.getValue(i-1)));
+        if (index - barCount < 0) {
+
+            for (int i = index + 1; i > 0; i--) {
+                value = value.plus(numOf(i).multipliedBy(indicator.getValue(i - 1)));
             }
             return value.dividedBy(numOf(((index + 1) * (index + 2)) / 2));
         }
-        
+
         int actualIndex = index;
-        for(int i = barCount; i > 0; i--) {
+        for (int i = barCount; i > 0; i--) {
             value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }

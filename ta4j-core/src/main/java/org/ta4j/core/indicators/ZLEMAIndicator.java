@@ -36,11 +36,8 @@ import org.ta4j.core.num.Num;
 public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final int barCount;
-
     private final Num k;
-
     private final int lag;
 
     public ZLEMAIndicator(Indicator<Num> indicator, int barCount) {

@@ -37,10 +37,11 @@ import org.ta4j.core.num.Num;
  * </p>
  */
 public class DifferencePercentage extends CachedIndicator<Num> {
-    private Indicator<Num> indicator;
+
+    private final Indicator<Num> indicator;
     private final Num percentageThreshold;
+    private final Num hundred;
     private Num lastNotification;
-    private Num hundred;
 
     public DifferencePercentage(Indicator<Num> indicator) {
         this(indicator, indicator.numOf(0));
@@ -52,7 +53,6 @@ public class DifferencePercentage extends CachedIndicator<Num> {
 
     public DifferencePercentage(Indicator<Num> indicator, Num percentageThreshold) {
         super(indicator);
-
         this.indicator = indicator;
         this.percentageThreshold = percentageThreshold;
         hundred = numOf(100);

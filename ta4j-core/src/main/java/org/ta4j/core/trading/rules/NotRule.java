@@ -34,10 +34,11 @@ import org.ta4j.core.TradingRecord;
  */
 public class NotRule extends AbstractRule {
 
-    private Rule rule;
+    private final Rule rule;
 
     /**
      * Constructor.
+     *
      * @param rule a trading rule
      */
     public NotRule(Rule rule) {

@@ -33,10 +33,11 @@ import org.ta4j.core.TradingRecord;
  */
 public class BooleanIndicatorRule extends AbstractRule {
 
-    private Indicator<Boolean> indicator;
+    private final Indicator<Boolean> indicator;
 
     /**
      * Constructor.
+     *
      * @param indicator a boolean indicator
      */
     public BooleanIndicatorRule(Indicator<Boolean> indicator) {

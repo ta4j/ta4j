@@ -36,15 +36,20 @@ import org.ta4j.core.num.Num;
  */
 public class StopLossRule extends AbstractRule {
 
-    /** The close price indicator */
-    private ClosePriceIndicator closePrice;
-    
-    /** The loss ratio threshold (e.g. 0.97 for 3%) */
-    private Num lossRatioThreshold;
+    /**
+     * The close price indicator
+     */
+    private final ClosePriceIndicator closePrice;
+
+    /**
+     * The loss ratio threshold (e.g. 0.97 for 3%)
+     */
+    private final Num lossRatioThreshold;
 
     /**
      * Constructor.
-     * @param closePrice the close price indicator
+     *
+     * @param closePrice     the close price indicator
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(ClosePriceIndicator closePrice, Number lossPercentage) {
@@ -53,7 +58,8 @@ public class StopLossRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param closePrice the close price indicator
+     *
+     * @param closePrice     the close price indicator
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
