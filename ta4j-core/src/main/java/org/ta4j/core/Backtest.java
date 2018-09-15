@@ -70,7 +70,7 @@ public class Backtest {
     public void printBacktestResults(boolean printTrades) {
         Collections.sort(backtestResults);
         for (BacktestResult backtestResult : backtestResults) {
-            backtestResult.printBacktestingResult(printTrades, seriesToTradeOn);
+            backtestResult.printBacktestResult(printTrades, seriesToTradeOn);
         }
     }
 }

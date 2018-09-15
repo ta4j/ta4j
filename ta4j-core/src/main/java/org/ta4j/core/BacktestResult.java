@@ -56,7 +56,7 @@ public class BacktestResult implements Comparable<BacktestResult> {
      * @param printTrades - Print trades from the backtesting result
      * @param series      - The time series
      */
-    public void printBacktestingResult(boolean printTrades, TimeSeries series) {
+    public void printBacktestResult(boolean printTrades, TimeSeries series) {
         System.out.println("------------ " + getStrategyName() + " ------------");
         System.out.println("Total trades: " + tradingRecord.getTradeCount());
         System.out.println("Total profit: " + totalProfit + " Trade count: " + profitTradeCount);
