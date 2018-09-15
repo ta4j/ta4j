@@ -30,64 +30,80 @@ public class BacktestResult implements Comparable<BacktestResult> {
         this.breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
     }
 
-    public String getStrategyName() {
-        return strategy.getName();
-    }
-
     public Strategy getStrategy() {
         return strategy;
+    }
+
+    public void setStrategy(Strategy strategy) {
+        this.strategy = strategy;
     }
 
     public TradingRecord getTradingRecord() {
         return tradingRecord;
     }
 
+    public void setTradingRecord(TradingRecord tradingRecord) {
+        this.tradingRecord = tradingRecord;
+    }
+
     public Num getTotalProfitLoss() {
         return totalProfitLoss;
+    }
+
+    public void setTotalProfitLoss(Num totalProfitLoss) {
+        this.totalProfitLoss = totalProfitLoss;
     }
 
     public Num getTotalProfitLossPercentage() {
         return totalProfitLossPercentage;
     }
 
-    /**
-     * Print to console the backtesting result
-     *
-     * @param printTrades - Print trades from the backtesting result
-     * @param series      - The time series
-     */
-    public void printBacktestResult(boolean printTrades, TimeSeries series) {
-        System.out.println("------------ " + getStrategyName() + " ------------");
-        System.out.println("Total trades: " + tradingRecord.getTradeCount());
-        System.out.println("Total profit: " + totalProfit + " Trade count: " + profitTradeCount);
-        System.out.println("Total loss: " + totalLoss + " Trade count: " + lossTradeCount);
-        System.out.println("Break event trade count: " + breakEvenTradeCount);
-        System.out.println("Total profitLoss: " + totalProfitLoss);
-        System.out.println("Total profitLoss: " + round(totalProfitLossPercentage, 1) + "%");
-        if (printTrades) {
-            tradingRecord.getTrades().forEach(trade -> printTrade(trade, series));
-            Order lastOrder = tradingRecord.getLastOrder();
-            if (lastOrder.getType() == Order.OrderType.BUY) {
-                Bar lastOrderBar = series.getBar(lastOrder.getIndex());
-                System.out.println("Trade entry: " + lastOrderBar.getSimpleDateName() + ", exit: ?.");
-            }
-        }
-        System.out.println();
+    public void setTotalProfitLossPercentage(Num totalProfitLossPercentage) {
+        this.totalProfitLossPercentage = totalProfitLossPercentage;
     }
 
-    private void printTrade(Trade trade, TimeSeries series) {
-        Bar entryBar = series.getBar(trade.getEntry().getIndex());
-        Bar exitBar = series.getBar(trade.getExit().getIndex());
-        System.out.println("Trade entry: " + entryBar.getSimpleDateName() + ", exit: " + exitBar.getSimpleDateName() + ". Profit: " + trade.getProfit());
+    public Num getTotalProfit() {
+        return totalProfit;
+    }
+
+    public void setTotalProfit(Num totalProfit) {
+        this.totalProfit = totalProfit;
+    }
+
+    public Num getTotalLoss() {
+        return totalLoss;
+    }
+
+    public void setTotalLoss(Num totalLoss) {
+        this.totalLoss = totalLoss;
+    }
+
+    public Num getProfitTradeCount() {
+        return profitTradeCount;
+    }
+
+    public void setProfitTradeCount(Num profitTradeCount) {
+        this.profitTradeCount = profitTradeCount;
+    }
+
+    public Num getLossTradeCount() {
+        return lossTradeCount;
+    }
+
+    public void setLossTradeCount(Num lossTradeCount) {
+        this.lossTradeCount = lossTradeCount;
+    }
+
+    public Num getBreakEvenTradeCount() {
+        return breakEvenTradeCount;
+    }
+
+    public void setBreakEvenTradeCount(Num breakEvenTradeCount) {
+        this.breakEvenTradeCount = breakEvenTradeCount;
     }
 
     @Override
     public int compareTo(BacktestResult that) {
         return this.totalProfitLossPercentage.compareTo(that.getTotalProfitLossPercentage());
-    }
-
-    private static double round(Num value, int precision) {
-        int scale = (int) Math.pow(10, precision);
-        return (double) Math.round(value.doubleValue() * scale) / scale;
     }
 }
