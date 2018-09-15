@@ -252,6 +252,9 @@ public class Order implements Serializable {
         return new Order(index, series, OrderType.SELL, amount);
     }
 
+    /**
+     * @return the value of an order
+     */
     public Num getValue() {
         return price.multipliedBy(amount);
     }
