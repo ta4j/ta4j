@@ -1,10 +1,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 

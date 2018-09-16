@@ -169,4 +169,11 @@ public class Trade implements Serializable {
     public String toString() {
         return "Entry: " + entry + " exit: " + exit;
     }
+
+    /**
+     * @return the profit or loss of the trade
+     */
+    public Num getProfit() {
+        return exit.getValue().minus(entry.getValue());
+    }
 }
