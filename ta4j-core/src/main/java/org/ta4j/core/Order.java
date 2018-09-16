@@ -82,7 +82,7 @@ public class Order implements Serializable {
     
     /** The amount to be (or that was) ordered */
     private Num amount;
-    
+
     /**
      * Constructor.
      * @param index the index the order is executed
@@ -250,5 +250,12 @@ public class Order implements Serializable {
      */
     public static Order sellAt(int index, TimeSeries series, Num amount) {
         return new Order(index, series, OrderType.SELL, amount);
+    }
+
+    /**
+     * @return the value of an order
+     */
+    public Num getValue() {
+        return price.multipliedBy(amount);
     }
 }

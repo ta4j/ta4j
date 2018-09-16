@@ -35,25 +35,31 @@ import org.ta4j.core.num.Num;
  */
 public class StopGainRule extends AbstractRule {
 
-    /** The close price indicator */
-    private ClosePriceIndicator closePrice;
-    
-    /** The gain ratio threshold (e.g. 1.03 for 3%) */
-    private Num gainRatioThreshold;
+    /**
+     * The close price indicator
+     */
+    private final ClosePriceIndicator closePrice;
+
+    /**
+     * The gain ratio threshold (e.g. 1.03 for 3%)
+     */
+    private final Num gainRatioThreshold;
 
 
     /**
      * Constructor.
-     * @param closePrice the close price indicator
+     *
+     * @param closePrice     the close price indicator
      * @param gainPercentage the gain percentage
      */
     public StopGainRule(ClosePriceIndicator closePrice, Number gainPercentage) {
-        this(closePrice,closePrice.numOf(gainPercentage));
+        this(closePrice, closePrice.numOf(gainPercentage));
     }
 
     /**
      * Constructor.
-     * @param closePrice the close price indicator
+     *
+     * @param closePrice     the close price indicator
      * @param gainPercentage the gain percentage
      */
     public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
@@ -61,7 +67,6 @@ public class StopGainRule extends AbstractRule {
         Num HUNDRED = closePrice.numOf(100);
         this.gainRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
     }
-
 
 
     @Override

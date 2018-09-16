@@ -171,12 +171,7 @@ public class NaN implements Num {
      */
     @Override
     public boolean isEqual(Num other) {
-        if(!(other instanceof Num)){
-            return false;
-        } else if(other.equals(NaN)){
-            return true;
-        }
-        return false;
+        return other != null && other.equals(NaN);
     }
 
     @Override

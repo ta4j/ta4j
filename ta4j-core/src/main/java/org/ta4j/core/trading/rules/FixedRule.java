@@ -47,8 +47,8 @@ public class FixedRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
-        for (int i = 0; i < indexes.length; i++) {
-            if (indexes[i] == index) {
+        for (int idx : indexes) {
+            if (idx == index) {
                 satisfied = true;
                 break;
             }

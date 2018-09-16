@@ -36,7 +36,7 @@ public class BaseStrategy implements Strategy {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     /** The class name */
-    protected final String className = getClass().getSimpleName();
+    private final String className = getClass().getSimpleName();
 
     /** Name of the strategy */
     private String name;

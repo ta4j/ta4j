@@ -36,7 +36,7 @@ public abstract class AbstractRule implements Rule {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     /** The class name */
-    protected final String className = getClass().getSimpleName();
+    private final String className = getClass().getSimpleName();
 
     /**
      * Traces the isSatisfied() method calls.

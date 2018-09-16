@@ -2,10 +2,10 @@ package ta4jexamples.backtesting;
 
 import org.junit.Test;
 
-public class SimpleMovingAverageBacktestingTest {
+public class SimpleMovingAverageBacktestTest {
 
     @Test
     public void test() throws InterruptedException {
-        SimpleMovingAverageBacktesting.main(null);
+        SimpleMovingAverageBacktest.main(null);
     }
 }

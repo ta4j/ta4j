@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  */
 public class SumIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num>[] operands;
+    private final Indicator<Num>[] operands;
     
     /**
      * Constructor.
@@ -51,8 +51,8 @@ public class SumIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num sum = numOf(0);
-        for (int i = 0; i < operands.length; i++) {
-            sum = sum.plus(operands[i].getValue(index));
+        for (Indicator<Num> operand : operands) {
+            sum = sum.plus(operand.getValue(index));
         }
         return sum;
     }

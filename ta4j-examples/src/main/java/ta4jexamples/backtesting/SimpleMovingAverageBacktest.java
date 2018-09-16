@@ -24,7 +24,7 @@
 package ta4jexamples.backtesting;
 
 import org.ta4j.core.*;
-import org.ta4j.core.analysis.criteria.*;
+import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -35,40 +35,27 @@ import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-public class SimpleMovingAverageBacktesting {
+public class SimpleMovingAverageBacktest {
 
     public static void main(String[] args) throws InterruptedException {
         TimeSeries series = createTimeSeries();
 
-        Strategy strategy3DaySmaUnder = create3DaySmaUnderStrategy(series);
+        Strategy strategy3DaySma = create3DaySmaStrategy(series);
 
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);
-        TradingRecord tradingRecord3DaySmaUnder = seriesManager.run(strategy3DaySmaUnder, Order.OrderType.BUY, PrecisionNum.valueOf(50));
-        System.out.println(tradingRecord3DaySmaUnder);
+        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        System.out.println(tradingRecord3DaySma);
 
-        Strategy strategy3DaySmaOver = create3DaySmaOverStrategy(series);
-        TradingRecord tradingRecord3DaySmaOver = seriesManager.run(strategy3DaySmaOver, Order.OrderType.BUY, PrecisionNum.valueOf(50));
-        System.out.println(tradingRecord3DaySmaOver);
+        Strategy strategy2DaySma = create2DaySmaStrategy(series);
+        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        System.out.println(tradingRecord2DaySma);
 
-        calculateCriterion(new AverageProfitableTradesCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new AverageProfitCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new BuyAndHoldCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new LinearTransactionCostCriterion(5000, 0.005), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new MaximumDrawdownCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new NumberOfBarsCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new NumberOfTradesCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new RewardRiskRatioCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new TotalProfitCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-        calculateCriterion(new ProfitLossCriterion(), series, tradingRecord3DaySmaUnder, tradingRecord3DaySmaOver);
-    }
+        AnalysisCriterion criterion = new TotalProfitCriterion();
+        Num calculate3DaySma = criterion.calculate(series, tradingRecord3DaySma);
+        Num calculate2DaySma = criterion.calculate(series, tradingRecord2DaySma);
 
-    private static void calculateCriterion(AnalysisCriterion criterion, TimeSeries series, TradingRecord tradingRecord3DaySmaUnder, TradingRecord tradingRecord3DaySmaOver) {
-        System.out.println("-- " + criterion.getClass().getSimpleName() + " --");
-        Num calculate3DaySmaUnder = criterion.calculate(series, tradingRecord3DaySmaUnder);
-        Num calculate3DaySmaOver = criterion.calculate(series, tradingRecord3DaySmaOver);
-        System.out.println(calculate3DaySmaUnder);
-        System.out.println(calculate3DaySmaOver);
-        System.out.println();
+        System.out.println(calculate3DaySma);
+        System.out.println(calculate2DaySma);
     }
 
     private static TimeSeries createTimeSeries() {
@@ -88,7 +75,7 @@ public class SimpleMovingAverageBacktesting {
         return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneId.systemDefault());
     }
 
-    private static Strategy create3DaySmaUnderStrategy(TimeSeries series) {
+    private static Strategy create3DaySmaStrategy(TimeSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, 3);
         return new BaseStrategy(
@@ -97,12 +84,12 @@ public class SimpleMovingAverageBacktesting {
         );
     }
 
-    private static Strategy create3DaySmaOverStrategy(TimeSeries series) {
+    private static Strategy create2DaySmaStrategy(TimeSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+        SMAIndicator sma = new SMAIndicator(closePrice, 2);
         return new BaseStrategy(
-                new OverIndicatorRule(sma, closePrice),
-                new UnderIndicatorRule(sma, closePrice)
+                new UnderIndicatorRule(sma, closePrice),
+                new OverIndicatorRule(sma, closePrice)
         );
     }
 }

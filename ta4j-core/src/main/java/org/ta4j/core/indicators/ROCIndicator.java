@@ -35,15 +35,15 @@ import org.ta4j.core.num.Num;
 public class ROCIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = 7983097470035346856L;
-	
+
     private final Indicator<Num> indicator;
     private final int barCount;
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator
-     * @param barCount the time frame
+     * @param barCount  the time frame
      */
     public ROCIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -56,11 +56,9 @@ public class ROCIndicator extends CachedIndicator<Num> {
         int nIndex = Math.max(index - barCount, 0);
         Num nPeriodsAgoValue = indicator.getValue(nIndex);
         Num currentValue = indicator.getValue(index);
-        return currentValue.minus(nPeriodsAgoValue)
-                .dividedBy(nPeriodsAgoValue)
-                .multipliedBy(numOf(100));
+        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(numOf(100));
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;

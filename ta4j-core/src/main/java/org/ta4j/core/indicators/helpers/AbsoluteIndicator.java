@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  */
 public class AbsoluteIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> indicator;
+    private final Indicator<Num> indicator;
     
     public AbsoluteIndicator(Indicator<Num> indicator) {
         super(indicator);

@@ -39,7 +39,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream()
             .map(trade -> calculateProfit(series, trade))
-            .reduce(series.numOf(1), (profit1, profit2) -> profit1.multipliedBy(profit2));
+            .reduce(series.numOf(1), Num::multipliedBy);
     }
 
     @Override

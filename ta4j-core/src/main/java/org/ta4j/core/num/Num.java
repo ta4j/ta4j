@@ -35,7 +35,6 @@ import java.util.function.Function;
  * @see Num
  * @see Num#function()
  * @see DoubleNum
- * @see BigDecimalNum
  * @See PrecisionNum
 
  */
@@ -228,9 +227,9 @@ public interface Num extends Comparable<Num>, Serializable {
      * @param precision the precision
      * @return the corresponding Num implementation of the <code>value</code>
      */
-    default Num numOf(String string, int precision) {
+    default Num numOf(String value, int precision) {
         MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-        return this.numOf(new BigDecimal(string, mathContext));
+        return this.numOf(new BigDecimal(value, mathContext));
     }
 
     /**
@@ -240,8 +239,6 @@ public interface Num extends Comparable<Num>, Serializable {
     default boolean isNaN(){
         return false;
     }
-
-
 
     /**
      * Converts this {@code num} to a {@code double}.

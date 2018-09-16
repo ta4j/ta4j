@@ -23,10 +23,7 @@
  *******************************************************************************/
 package org.ta4j.core.analysis;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -112,12 +109,16 @@ public class CashFlow implements Indicator<Num> {
         for (int i = Math.max(begin, 1); i <= end; i++) {
             Num ratio;
             if (trade.getEntry().isBuy()) {
-                ratio = timeSeries.getBar(i).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
+                ratio = getRatio(entryIndex, i);
             } else {
-                ratio = timeSeries.getBar(entryIndex).getClosePrice().dividedBy(timeSeries.getBar(i).getClosePrice());
+                ratio = getRatio(i, entryIndex);
             }
             values.add(values.get(entryIndex).multipliedBy(ratio));
         }
+    }
+
+    private Num getRatio(int entryIndex, int exitIndex) {
+        return timeSeries.getBar(exitIndex).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
     }
 
     /**
