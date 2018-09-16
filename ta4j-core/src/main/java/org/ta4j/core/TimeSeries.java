@@ -124,6 +124,7 @@ public interface TimeSeries extends Serializable {
      * <p>
      * If a new bar is added to the series such that the number of bars will exceed the maximum bar count,
      * then the FIRST bar in the series is automatically removed, ensuring that the maximum bar count is not exceeded.
+     * 
      * @param maximumBarCount the maximum bar count
      */
     void setMaximumBarCount(int maximumBarCount);

@@ -218,7 +218,7 @@ public class BaseTimeSeries implements TimeSeries {
      * @return false if a Num implementation of at least one Bar does not fit.
      */
     private boolean checkBars(List<Bar> bars){
-        for(Bar bar: bars){
+    	for(Bar bar: bars){
             if(!checkBar(bar)){
                 return false;
             }
@@ -320,7 +320,7 @@ public class BaseTimeSeries implements TimeSeries {
      */
     @Override
     public void addBar(Bar bar, boolean replace) {
-        Objects.requireNonNull(bar);
+        Objects.requireNonNull(bar, "Bar should not be null.");
         if(!checkBar(bar)){
             throw new IllegalArgumentException(String.format("Cannot add Bar with data type: %s to series with data" +
                     "type: %s",bar.getClosePrice().getClass(), numOf(1).getClass()));
@@ -406,6 +406,7 @@ public class BaseTimeSeries implements TimeSeries {
             int nbBarsToRemove = barCount - maximumBarCount;
             for (int i = 0; i < nbBarsToRemove; i++) {
                 bars.remove(0);
+                seriesEndIndex--;
             }
             // Updating removed bars count
             removedBarsCount += nbBarsToRemove;

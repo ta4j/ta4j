@@ -43,6 +43,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -223,6 +224,12 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         defaultSeries.setMaximumBarCount(-1);
     }
 
+    /**
+     * Tests if the setMaximumBarCount function works correct if used at
+     * an existing time series
+     * 
+     *TODO: remove the possibility to call this method on an existing timeSeries
+     */
     @Test
     public void setMaximumBarCount() {
         // Before
@@ -234,7 +241,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
         // After
         assertEquals(0, defaultSeries.getBeginIndex());
-        assertEquals(5, defaultSeries.getEndIndex());
+        assertEquals(2, defaultSeries.getEndIndex()); // changed from 5 to 2
         assertEquals(3, defaultSeries.getBarCount());
     }
 
@@ -294,6 +301,21 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
         TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays same
+    }
+    
+    @Test
+    public void SubSeriesOfMaxBarCountSeriesTest() {
+    	final TimeSeries series = new BaseTimeSeries.SeriesBuilder()
+    							.withNumTypeOf(numFunction)
+    							.withName("Series with maxBar count")
+    							.withMaxBarCount(20)
+    							.build();
+    	final int timespan = 5;
+    	
+    	IntStream.range(0, 100).forEach(i -> {
+    		series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i),5,7,1,5,5);
+    		TimeSeries subseries = series.getSubSeries(series.getEndIndex() - (timespan + 1), series.getEndIndex());
+    		System.out.println(String.format("Subseries #%s of size %s created.",i,subseries.getBarCount())); });
     }
     
     /**
