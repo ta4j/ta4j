@@ -56,7 +56,6 @@ public class Backtest {
             Strategy strategy = strategies.get(i);
             TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
             backtestResults.add(new BacktestResult(strategy, tradingRecord, seriesToTradeOn));
-            System.out.println(i+1 + "/" + strategies.size());
         }
         return backtestResults;
     }
