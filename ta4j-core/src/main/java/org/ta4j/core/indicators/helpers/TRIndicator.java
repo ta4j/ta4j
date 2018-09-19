@@ -39,9 +39,9 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num ts = getTimeSeries().getBar(index).getMaxPrice().minus(getTimeSeries().getBar(index).getMinPrice());
-        Num ys = index == 0 ? numOf(0) : getTimeSeries().getBar(index).getMaxPrice().minus(getTimeSeries().getBar(index - 1).getClosePrice());
-        Num yst = index == 0 ? numOf(0) : getTimeSeries().getBar(index - 1).getClosePrice().minus(getTimeSeries().getBar(index).getMinPrice());
+        Num ts = getTimeSeries().getBar(index).getHighPrice().minus(getTimeSeries().getBar(index).getLowPrice());
+        Num ys = index == 0 ? numOf(0) : getTimeSeries().getBar(index).getHighPrice().minus(getTimeSeries().getBar(index - 1).getClosePrice());
+        Num yst = index == 0 ? numOf(0) : getTimeSeries().getBar(index - 1).getClosePrice().minus(getTimeSeries().getBar(index).getLowPrice());
         return ts.abs().max(ys.abs()).max(yst.abs());
     }
 }

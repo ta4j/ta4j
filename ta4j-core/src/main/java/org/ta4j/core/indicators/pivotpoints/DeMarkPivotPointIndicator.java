@@ -77,12 +77,12 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
 		Num open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size()-1)).getOpenPrice();
         Num close = bar.getClosePrice();
-		Num high =  bar.getMaxPrice();
-		Num low = bar.getMinPrice();
+		Num high =  bar.getHighPrice();
+		Num low = bar.getLowPrice();
 
         for(int i: barsOfPreviousPeriod){
-            high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
-            low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
+            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
         }
 
 		Num x;

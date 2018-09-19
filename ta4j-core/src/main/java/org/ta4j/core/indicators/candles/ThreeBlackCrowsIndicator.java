@@ -113,7 +113,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
             if (prevBar.isBullish()) {
                 // First crow case
                 return hasVeryShortLowerShadow(index)
-                        && currBar.getOpenPrice().isLessThan(prevBar.getMaxPrice());
+                        && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
             } else {
                 return hasVeryShortLowerShadow(index) && isDeclining(index);
             }

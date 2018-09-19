@@ -66,8 +66,8 @@ public class BarTest extends AbstractIndicatorTest {
         assertNumEquals(3 * 200 + 4 * 201 + 2 * 198, bar.getAmount());
         assertNumEquals(200, bar.getOpenPrice());
         assertNumEquals(198, bar.getClosePrice());
-        assertNumEquals(198, bar.getMinPrice());
-        assertNumEquals(201, bar.getMaxPrice());
+        assertNumEquals(198, bar.getLowPrice());
+        assertNumEquals(201, bar.getHighPrice());
         assertNumEquals(9, bar.getVolume());
     }
 

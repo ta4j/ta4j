@@ -50,10 +50,10 @@ public class GlobalExtremaStrategy {
         ClosePriceIndicator closePrices = new ClosePriceIndicator(series);
 
         // Getting the max price over the past week
-        MaxPriceIndicator maxPrices = new MaxPriceIndicator(series);
+        HighPriceIndicator maxPrices = new HighPriceIndicator(series);
         HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_BARS_PER_WEEK);
         // Getting the min price over the past week
-        MinPriceIndicator minPrices = new MinPriceIndicator(series);
+        LowPriceIndicator minPrices = new LowPriceIndicator(series);
         LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the min price

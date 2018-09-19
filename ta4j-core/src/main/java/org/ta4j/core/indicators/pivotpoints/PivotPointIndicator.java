@@ -75,11 +75,11 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
             return NaN;
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
 		Num close = bar.getClosePrice();
-		Num high =  bar.getMaxPrice();
-		Num low = bar.getMinPrice();
+		Num high =  bar.getHighPrice();
+		Num low = bar.getLowPrice();
 		for(int i: barsOfPreviousPeriod){
-			high = (getTimeSeries().getBar(i).getMaxPrice()).max(high);
-			low = (getTimeSeries().getBar(i).getMinPrice()).min(low);
+			high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+			low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
 		}
 		return (high.plus(low).plus(close)).dividedBy(numOf(3));
 	}

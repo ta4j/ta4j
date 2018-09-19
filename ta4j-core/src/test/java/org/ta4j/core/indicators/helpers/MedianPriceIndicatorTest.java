@@ -72,7 +72,7 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void indicatorShouldRetrieveBarClosePrice() {
         Num result;
         for (int i = 0; i < 10; i++) {
-            result = timeSeries.getBar(i).getMaxPrice().plus(timeSeries.getBar(i).getMinPrice())
+            result = timeSeries.getBar(i).getHighPrice().plus(timeSeries.getBar(i).getLowPrice())
                     .dividedBy(timeSeries.numOf(2));
             assertEquals(average.getValue(i), result);
         }

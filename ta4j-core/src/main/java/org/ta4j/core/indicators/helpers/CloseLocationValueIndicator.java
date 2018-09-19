@@ -45,7 +45,7 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Bar bar = getTimeSeries().getBar(index);
 
-        return ((bar.getClosePrice().minus(bar.getMinPrice())).minus(bar.getMaxPrice().minus(bar.getClosePrice())))
-                 .dividedBy(bar.getMaxPrice().minus(bar.getMinPrice()));
+        return ((bar.getClosePrice().minus(bar.getLowPrice())).minus(bar.getHighPrice().minus(bar.getClosePrice())))
+                 .dividedBy(bar.getHighPrice().minus(bar.getLowPrice()));
     }
 }

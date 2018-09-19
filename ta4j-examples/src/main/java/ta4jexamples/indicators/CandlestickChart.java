@@ -69,8 +69,8 @@ public class CandlestickChart {
             Bar bar = series.getBar(i);
             dates[i] = new Date(bar.getEndTime().toEpochSecond() * 1000);
             opens[i] = bar.getOpenPrice().doubleValue();
-            highs[i] = bar.getMaxPrice().doubleValue();
-            lows[i] = bar.getMinPrice().doubleValue();
+            highs[i] = bar.getHighPrice().doubleValue();
+            lows[i] = bar.getLowPrice().doubleValue();
             closes[i] = bar.getClosePrice().doubleValue();
             volumes[i] = bar.getVolume().doubleValue();
         }
