@@ -12,6 +12,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 
 ### Added
+- :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
+- :tada: **Enhancement** Implemented Expected Shortfall Analysis Criterion
+- :tada: **Enhancement** Implemented Returns class to analyze the time series of return rates. Supports logarithmic and arithmetic returns
 - :tada: **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
 - :tada: **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades 
 - :tada: **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
