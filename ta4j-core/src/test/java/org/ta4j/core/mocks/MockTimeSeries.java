@@ -42,6 +42,10 @@ public class MockTimeSeries extends BaseTimeSeries {
         super(doublesToBars(nf, data));
     }
 
+    public MockTimeSeries(Function<Number, Num> nf, List<Double> data) {
+        super(doublesToBars(nf, data));
+    }
+
     public MockTimeSeries(List<Bar> bars) {
         super(bars);
     }
@@ -56,6 +60,15 @@ public class MockTimeSeries extends BaseTimeSeries {
 
     public MockTimeSeries(Function<Number, Num> nf) {
         super(arbitraryBars(nf));
+    }
+
+    private static List<Bar> doublesToBars(Function<Number, Num> nf, List<Double> data) {
+        ArrayList<Bar> bars = new ArrayList<>();
+        for (int i = 0; i < data.size(); i++) {
+            //bars.add(new MockBar(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, i), data[i]));
+            bars.add(new MockBar(ZonedDateTime.now().minusSeconds((data.size()+1-i)), data.get(i), nf));
+        }
+        return bars;
     }
 
     private static List<Bar> doublesToBars(Function<Number, Num> nf,double... data) {

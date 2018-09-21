@@ -168,6 +168,13 @@ public class DoubleNum implements Num {
         return !other.isNaN() && delegate == ((DoubleNum) other).delegate;
     }
 
+    public Num log() {
+        if (delegate <= 0) {
+            return NaN;
+        }
+        return new DoubleNum(Math.log(delegate));
+    }
+
     /**
      * Checks if this value is greater than another.
      *
