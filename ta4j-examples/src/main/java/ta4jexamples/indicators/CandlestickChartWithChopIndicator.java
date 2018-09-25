@@ -28,9 +28,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYLineAnnotation;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.panel.CrosshairOverlay;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
-import org.jfree.chart.plot.Crosshair;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
@@ -87,8 +85,8 @@ public class CandlestickChartWithChopIndicator {
             Bar bar = series.getBar(i);
             dates[i] = new Date(bar.getEndTime().toEpochSecond() * 1000);
             opens[i] = bar.getOpenPrice().doubleValue();
-            highs[i] = bar.getMaxPrice().doubleValue();
-            lows[i] = bar.getMinPrice().doubleValue();
+            highs[i] = bar.getHighPrice().doubleValue();
+            lows[i] = bar.getLowPrice().doubleValue();
             closes[i] = bar.getClosePrice().doubleValue();
             volumes[i] = bar.getVolume().doubleValue();
         }

@@ -39,7 +39,7 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return getTimeSeries().getBar(index).getMaxPrice().plus(getTimeSeries().getBar(index).getMinPrice())
+        return getTimeSeries().getBar(index).getHighPrice().plus(getTimeSeries().getBar(index).getLowPrice())
                 .dividedBy(numOf(2));
     }
 }

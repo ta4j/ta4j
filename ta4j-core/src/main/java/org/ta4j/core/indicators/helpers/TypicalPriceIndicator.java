@@ -39,8 +39,8 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num maxPrice = getTimeSeries().getBar(index).getMaxPrice();
-        Num minPrice = getTimeSeries().getBar(index).getMinPrice();
+        Num maxPrice = getTimeSeries().getBar(index).getHighPrice();
+        Num minPrice = getTimeSeries().getBar(index).getLowPrice();
         Num closePrice = getTimeSeries().getBar(index).getClosePrice();
         return maxPrice.plus(minPrice).plus(closePrice).dividedBy(numOf(3));
     }

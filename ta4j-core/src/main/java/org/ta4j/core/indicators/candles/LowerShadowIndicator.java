@@ -53,10 +53,10 @@ public class LowerShadowIndicator extends CachedIndicator<Num> {
         final Num closePrice = t.getClosePrice();
         if (closePrice.isGreaterThan(openPrice)) {
             // Bullish
-            return openPrice.minus(t.getMinPrice());
+            return openPrice.minus(t.getLowPrice());
         } else {
             // Bearish
-            return closePrice.minus(t.getMinPrice());
+            return closePrice.minus(t.getLowPrice());
         }
     }
 }

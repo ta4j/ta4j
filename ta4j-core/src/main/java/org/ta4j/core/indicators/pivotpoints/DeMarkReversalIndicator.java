@@ -84,9 +84,9 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
             return NaN;
         }
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num low = bar.getMinPrice();
+        Num low = bar.getLowPrice();
         for(int i: barsOfPreviousPeriod){
-            low = getTimeSeries().getBar(i).getMinPrice().min(low);
+            low = getTimeSeries().getBar(i).getLowPrice().min(low);
         }
 
         return x.dividedBy(TWO).minus(low);
@@ -98,9 +98,9 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
            return NaN;
        }
        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-       Num high = bar.getMaxPrice();
+       Num high = bar.getHighPrice();
        for(int i: barsOfPreviousPeriod){
-           high = getTimeSeries().getBar(i).getMaxPrice().max(high);
+           high = getTimeSeries().getBar(i).getHighPrice().max(high);
        }
 
        return x.dividedBy(TWO).minus(high);

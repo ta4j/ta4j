@@ -139,8 +139,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
         Num alpha = numOf(alphaD);
         Num beta = numOf(betaD);
-        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new MaxPriceIndicator(ref.getTimeSeries()) : ref, barCount);
-        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new MinPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new HighPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new LowPriceIndicator(ref.getTimeSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 

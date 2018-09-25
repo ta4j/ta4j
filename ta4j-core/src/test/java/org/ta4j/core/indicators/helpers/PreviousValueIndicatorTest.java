@@ -39,8 +39,8 @@ public class PreviousValueIndicatorTest {
     private PreviousValueIndicator prevValueIndicator;
 
     private OpenPriceIndicator openPriceIndicator;
-    private MinPriceIndicator minPriceIndicator;
-    private MaxPriceIndicator maxPriceIndicator;
+    private LowPriceIndicator lowPriceIndicator;
+    private HighPriceIndicator highPriceIndicator;
 
     private VolumeIndicator volumeIndicator;
     private EMAIndicator emaIndicator;
@@ -62,8 +62,8 @@ public class PreviousValueIndicatorTest {
 
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
-        this.minPriceIndicator = new MinPriceIndicator(this.series);
-        this.maxPriceIndicator = new MaxPriceIndicator(this.series);
+        this.lowPriceIndicator = new LowPriceIndicator(this.series);
+        this.highPriceIndicator = new HighPriceIndicator(this.series);
         this.volumeIndicator = new VolumeIndicator(this.series);
         ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(this.series);
         this.emaIndicator = new EMAIndicator(closePriceIndicator, 20);
@@ -80,17 +80,17 @@ public class PreviousValueIndicatorTest {
         }
 
         //test 2 with minPrice-indicator
-        prevValueIndicator = new PreviousValueIndicator(minPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), minPriceIndicator.getValue(0));
+        prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
+        assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), minPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i-1));
         }
 
         //test 3 with maxPrice-indicator
-        prevValueIndicator = new PreviousValueIndicator(maxPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), maxPriceIndicator.getValue(0));
+        prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
+        assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), maxPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), highPriceIndicator.getValue(i-1));
         }
     }
 

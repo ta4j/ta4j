@@ -30,8 +30,8 @@ import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
@@ -74,7 +74,7 @@ public class CompareNumTypes {
         DifferenceIndicator macdIndicator2 = new DifferenceIndicator(ema,emaLong);
 
         Rule entry = new IsEqualRule(macdIndicator,macdIndicator2);
-        Rule exit = new UnderIndicatorRule(new MinPriceIndicator(series), new MaxPriceIndicator(series));
+        Rule exit = new UnderIndicatorRule(new LowPriceIndicator(series), new HighPriceIndicator(series));
         Strategy strategy1 = new BaseStrategy(entry, exit); // enter/exit every tick
 
         long start = System.currentTimeMillis();

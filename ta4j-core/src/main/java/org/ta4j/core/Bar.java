@@ -45,14 +45,14 @@ public interface Bar extends Serializable {
     Num getOpenPrice();
 
     /**
-     * @return the min price of the period
+     * @return the low price of the period
      */
-    Num getMinPrice();
+    Num getLowPrice();
 
     /**
-     * @return the max price of the period
+     * @return the high price of the period
      */
-    Num getMaxPrice();
+    Num getHighPrice();
 
     /**
      * @return the close price of the period

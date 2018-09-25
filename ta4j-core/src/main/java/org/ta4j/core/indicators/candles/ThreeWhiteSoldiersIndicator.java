@@ -113,7 +113,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
             if (prevBar.isBearish()) {
                 // First soldier case
                 return hasVeryShortUpperShadow(index)
-                        && currBar.getOpenPrice().isGreaterThan(prevBar.getMinPrice());
+                        && currBar.getOpenPrice().isGreaterThan(prevBar.getLowPrice());
             } else {
                 return hasVeryShortUpperShadow(index) && isGrowing(index);
             }

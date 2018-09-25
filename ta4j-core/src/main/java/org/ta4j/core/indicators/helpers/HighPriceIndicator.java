@@ -23,37 +23,22 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
+/**
+ * High price indicator.
+ * </p>
+ */
+public class HighPriceIndicator extends CachedIndicator<Num> {
 
-import static junit.framework.TestCase.assertEquals;
-
-public class MinPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private MinPriceIndicator minPriceIndicator;
-
-    TimeSeries timeSeries;
-
-    public MinPriceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public HighPriceIndicator(TimeSeries series) {
+        super(series);
     }
 
-    @Before
-    public void setUp() {
-        timeSeries = new MockTimeSeries(numFunction);
-        minPriceIndicator = new MinPriceIndicator(timeSeries);
-    }
-
-    @Test
-    public void indicatorShouldRetrieveBarMinPrice() {
-        for (int i = 0; i < 10; i++) {
-            assertEquals(minPriceIndicator.getValue(i), timeSeries.getBar(i).getMinPrice());
-        }
+    @Override
+    protected Num calculate(int index) {
+        return getTimeSeries().getBar(index).getHighPrice();
     }
 }

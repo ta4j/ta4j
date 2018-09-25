@@ -27,8 +27,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.PrecisionNum;
@@ -272,8 +272,8 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
     @Test
     public void addPriceTest(){
         ClosePriceIndicator cp = new ClosePriceIndicator(defaultSeries);
-        MaxPriceIndicator mxPrice = new MaxPriceIndicator(defaultSeries);
-        MinPriceIndicator mnPrice = new MinPriceIndicator(defaultSeries);
+        HighPriceIndicator mxPrice = new HighPriceIndicator(defaultSeries);
+        LowPriceIndicator mnPrice = new LowPriceIndicator(defaultSeries);
         PreviousValueIndicator prevValue = new PreviousValueIndicator(cp, 1);
 
         Num adding1 = numOf(100);

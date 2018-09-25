@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.13 (unreleased)
 
 ### Breaking
+- :boom: **Breaking** Refactored from Max/Min to High/Low
 
 ### Fixed
 

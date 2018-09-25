@@ -28,8 +28,8 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -53,8 +53,8 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
      */
     public AbstractIchimokuLineIndicator(TimeSeries series, int barCount) {
         super(series);
-        periodHigh = new HighestValueIndicator(new MaxPriceIndicator(series), barCount);
-        periodLow = new LowestValueIndicator(new MinPriceIndicator(series), barCount);
+        periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+        periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
     }
 
     @Override

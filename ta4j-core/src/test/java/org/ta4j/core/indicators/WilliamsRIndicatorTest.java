@@ -30,8 +30,8 @@ import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 
@@ -72,8 +72,8 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     @Test
     public void williamsRUsingBarCount5UsingClosePrice() {
         WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5,
-                new MaxPriceIndicator(data),
-                new MinPriceIndicator(data));
+                new HighPriceIndicator(data),
+                new LowPriceIndicator(data));
 
         assertNumEquals(-47.2222, wr.getValue(4));
         assertNumEquals(-54.5454, wr.getValue(5));
@@ -87,8 +87,8 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void williamsRUsingBarCount10UsingClosePrice() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new MaxPriceIndicator(data),
-                new MinPriceIndicator(data));
+        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 10, new HighPriceIndicator(data),
+                new LowPriceIndicator(data));
 
         assertNumEquals(-4.0816, wr.getValue(9));
         assertNumEquals(-11.7647, wr.getValue(10));
@@ -99,8 +99,8 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void valueLessThenBarCount() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new MaxPriceIndicator(data),
-                new MinPriceIndicator(data));
+        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 100, new HighPriceIndicator(data),
+                new LowPriceIndicator(data));
 
         assertNumEquals(-100d * (0.12 / 0.21), wr.getValue(0));
         assertNumEquals(-100d * (0.07 / 0.21), wr.getValue(1));

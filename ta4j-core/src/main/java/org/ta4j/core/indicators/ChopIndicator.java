@@ -25,9 +25,9 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -64,8 +64,8 @@ public class ChopIndicator extends CachedIndicator<Num> {
     public ChopIndicator(TimeSeries timeseries, int ciTimeFrame, int scaleTo) {
         super(timeseries);
         this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new MaxPriceIndicator(timeseries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new MinPriceIndicator(timeseries), ciTimeFrame);
+        hvi = new HighestValueIndicator(new HighPriceIndicator(timeseries), ciTimeFrame);
+        lvi = new LowestValueIndicator(new LowPriceIndicator(timeseries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
         this.LOG10n = numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = numOf(scaleTo);

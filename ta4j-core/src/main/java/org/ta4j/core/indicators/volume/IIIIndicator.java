@@ -26,8 +26,8 @@ package org.ta4j.core.indicators.volume;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
@@ -41,17 +41,17 @@ public class IIIIndicator extends CachedIndicator<Num> {
 
     private ClosePriceIndicator closePriceIndicator;
 
-    private MaxPriceIndicator maxPriceIndicator;
+    private HighPriceIndicator highPriceIndicator;
 
-    private MinPriceIndicator minPriceIndicator;
+    private LowPriceIndicator lowPriceIndicator;
 
     private VolumeIndicator volumeIndicator;
 
     public IIIIndicator(TimeSeries series) {
         super(series);
         closePriceIndicator = new ClosePriceIndicator(series);
-        maxPriceIndicator = new MaxPriceIndicator(series);
-        minPriceIndicator = new MinPriceIndicator(series);
+        highPriceIndicator = new HighPriceIndicator(series);
+        lowPriceIndicator = new LowPriceIndicator(series);
         volumeIndicator = new VolumeIndicator(series);
     }
     @Override
@@ -61,8 +61,8 @@ public class IIIIndicator extends CachedIndicator<Num> {
             return numOf(0);
         }
         Num closePrice = numOf(2).multipliedBy(closePriceIndicator.getValue(index));
-        Num highmlow = maxPriceIndicator.getValue(index).minus(minPriceIndicator.getValue(index));
-        Num highplow = maxPriceIndicator.getValue(index).plus(minPriceIndicator.getValue(index));
+        Num highmlow = highPriceIndicator.getValue(index).minus(lowPriceIndicator.getValue(index));
+        Num highplow = highPriceIndicator.getValue(index).plus(lowPriceIndicator.getValue(index));
 
         return (closePrice.minus(highplow)).dividedBy(highmlow.multipliedBy(volumeIndicator.getValue(index)));
 

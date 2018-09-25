@@ -154,16 +154,16 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * @return the min price of the period
+     * @return the low price of the period
      */
-    public Num getMinPrice() {
+    public Num getLowPrice() {
         return minPrice;
     }
 
     /**
-     * @return the max price of the period
+     * @return the high price of the period
      */
-    public Num getMaxPrice() {
+    public Num getHighPrice() {
         return maxPrice;
     }
 
