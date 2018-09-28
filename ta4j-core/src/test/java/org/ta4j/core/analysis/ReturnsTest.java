@@ -7,6 +7,7 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.util.function.Function;
 
@@ -89,5 +90,24 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(0, returns.getValue(4));
         assertNumEquals(0, returns.getValue(7));
         assertNumEquals(0, returns.getValue(9));
+    }
+
+    @Test
+    public void returnsPrecision() {
+        // Return calculation is with double precision. Returns should be the same for PrecisionNum
+        DoubleNum x_new_double = DoubleNum.valueOf(1.2);
+        DoubleNum x_old_double = DoubleNum.valueOf(1.1);
+
+        PrecisionNum x_new_precision = PrecisionNum.valueOf(1.2);
+        PrecisionNum x_old_precision = PrecisionNum.valueOf(1.1);
+
+        Num arithDouble = Returns.ReturnType.ARITHMETIC.calculate(x_new_double, x_old_double);
+        Num arithPrecision = Returns.ReturnType.ARITHMETIC.calculate(x_new_precision, x_old_precision);
+
+        Num logDouble = Returns.ReturnType.LOG.calculate(x_new_double, x_old_double);
+        Num logPrecision = Returns.ReturnType.LOG.calculate(x_new_precision, x_old_precision);
+
+        assertNumEquals(arithDouble, arithPrecision);
+        assertNumEquals(logDouble, logPrecision);
     }
 }

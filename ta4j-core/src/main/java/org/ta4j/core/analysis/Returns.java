@@ -38,22 +38,23 @@ import java.util.List;
 /**
  * The return rates.
  * </p>
- * This class allows to compute the return rate of a price time-series
+ * This class allows to compute the return rate (in Double precision) of a price time-series
  */
 public class Returns implements Indicator<Num> {
-
+    private static Num one = DoubleNum.valueOf(1);
     public enum ReturnType {
         LOG {
+            @Override
             public Num calculate(Num x_new, Num x_old) {
                 // r_i = ln(P_i/P_(i-1))
-                return ((DoubleNum) x_new.dividedBy(x_old)).log();
+                return DoubleNum.valueOf(x_new.dividedBy(x_old).doubleValue()).log();
             }
         },
         ARITHMETIC {
             @Override
             public Num calculate(Num x_new, Num x_old) {
                 // r_i = P_i/P_(i-1) - 1
-                return x_new.dividedBy(x_old).minus(x_new.numOf(1));
+                return DoubleNum.valueOf(x_new.dividedBy(x_old).doubleValue()).minus(one);
             }
         };
 
@@ -135,6 +136,7 @@ public class Returns implements Indicator<Num> {
      */
     private void calculate(Trade trade) {
         final int entryIndex = trade.getEntry().getIndex();
+        Num minusOne = timeSeries.numOf(-1);
         int begin = entryIndex + 1;
         if (begin > values.size()) {
             // fill returns since last trade with zeroes
@@ -148,7 +150,7 @@ public class Returns implements Indicator<Num> {
             if (trade.getEntry().isBuy()) {
                 strategyReturn = assetReturn;
             } else {
-                strategyReturn = assetReturn.multipliedBy(assetReturn.numOf(-1));
+                strategyReturn = assetReturn.multipliedBy(minusOne);
             }
             values.add(strategyReturn);
         }
