@@ -15,10 +15,8 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .map(trade -> calculateProfitLossInPercentage(series, trade))
-                .reduce(series.numOf(0), (profit1, profit2) -> profit1.plus(profit2));
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculateProfitLossInPercentage(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     @Override
@@ -33,8 +31,9 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the profit or loss of a sell trade in percentage.
+     *
      * @param series a time series
-     * @param trade a trade
+     * @param trade  a trade
      * @return the profit or loss of the trade
      */
     private Num calculateProfitLossInPercentage(TimeSeries series, Trade trade) {

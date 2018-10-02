@@ -14,10 +14,7 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .map(trade -> calculateTotalProfit(series, trade))
-                .reduce(series.numOf(0), (profit1, profit2) -> profit1.plus(profit2));
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculateTotalProfit(series, trade)).reduce(series.numOf(0), Num::plus);
     }
 
     @Override

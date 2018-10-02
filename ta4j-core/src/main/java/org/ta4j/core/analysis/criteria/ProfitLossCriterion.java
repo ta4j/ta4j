@@ -37,10 +37,7 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream()
-                .filter(Trade::isClosed)
-                .map(trade -> calculateProfitLoss(series, trade))
-                .reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculateProfitLoss(series, trade)).reduce(series.numOf(0), Num::plus);
     }
 
     @Override
@@ -55,15 +52,14 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the profit or loss of a sell trade.
+     *
      * @param series a time series
-     * @param trade a trade
+     * @param trade  a trade
      * @return the profit or loss of the trade
      */
     private Num calculateProfitLoss(TimeSeries series, Trade trade) {
-        Num exitClosePrice = trade.getExit().getPrice().isNaN() ?
-                series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
-        Num entryClosePrice = trade.getEntry().getPrice().isNaN() ?
-                series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
+        Num exitClosePrice = trade.getExit().getPrice().isNaN() ? series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
+        Num entryClosePrice = trade.getEntry().getPrice().isNaN() ? series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
 
         return exitClosePrice.minus(entryClosePrice).multipliedBy(trade.getExit().getAmount());
     }

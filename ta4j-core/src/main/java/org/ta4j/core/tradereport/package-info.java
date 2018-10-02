@@ -24,7 +24,7 @@
 
 
 /**
- * The main module for backtesting
+ * The main module for trade reports
  * <p>
  */
-package org.ta4j.core.backtest;
+package org.ta4j.core.tradereport;

@@ -12,9 +12,7 @@ public class NumberOfLosingTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .filter(trade -> isLosingTrade(series, trade)).count();
+        long numberOfLosingTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed).filter(trade -> isLosingTrade(series, trade)).count();
         return series.numOf(numberOfLosingTrades);
     }
 
