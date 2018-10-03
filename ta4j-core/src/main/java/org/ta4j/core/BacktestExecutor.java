@@ -33,9 +33,9 @@ public class BacktestExecutor {
      * @param orderType the {@link Order.OrderType} used to open the trades
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Order.OrderType orderType) {
-        List<TradingStatement> tradeStats = new ArrayList<>(strategies.size());
+        final List<TradingStatement> tradeStats = new ArrayList<>(strategies.size());
         for (Strategy strategy : strategies) {
-            TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
+            final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
             tradeStats.add(new TradingStatement(tradingRecord, seriesManager.getTimeSeries()));
         }
         return tradeStats;
