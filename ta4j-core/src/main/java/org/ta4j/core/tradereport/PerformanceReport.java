@@ -2,6 +2,9 @@ package org.ta4j.core.tradereport;
 
 import org.ta4j.core.num.Num;
 
+/**
+ * This class represents report which contains performance statistics
+ */
 public class PerformanceReport {
 
     private final Num totalProfitLoss;

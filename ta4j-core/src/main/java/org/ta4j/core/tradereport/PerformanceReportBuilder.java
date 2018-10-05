@@ -8,6 +8,11 @@ import org.ta4j.core.analysis.criteria.TotalLossCriterion;
 import org.ta4j.core.analysis.criteria.TotalProfit2Criterion;
 import org.ta4j.core.num.Num;
 
+/**
+ * This class builds PerformanceReport basis on provided trading report and time series
+ *
+ * @see PerformanceReport
+ */
 public class PerformanceReportBuilder implements ReportBuilder<PerformanceReport> {
 
     @Override

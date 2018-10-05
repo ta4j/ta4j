@@ -7,6 +7,11 @@ import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
 import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
 import org.ta4j.core.num.Num;
 
+/**
+ * This class builds TradeStatsReport basis on provided trading report and time series
+ *
+ * @see TradeStatsReport
+ */
 public class TradeStatsReportBuilder implements ReportBuilder<TradeStatsReport> {
 
     @Override

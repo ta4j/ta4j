@@ -1,5 +1,8 @@
 package org.ta4j.core.tradereport;
 
+/**
+ * This class represents trading statement report which contains trade and performance statistics
+ */
 public class TradingStatement {
 
     private final TradeStatsReport tradeStatsReport;

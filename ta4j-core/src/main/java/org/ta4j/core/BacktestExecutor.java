@@ -20,7 +20,7 @@ public class BacktestExecutor {
     }
 
     /**
-     * Calculate your strategies and giving you a backtesting result
+     * Execute given strategies and return trading statements
      *
      * @param amount - The amount used to open/close the trades
      */
@@ -29,7 +29,7 @@ public class BacktestExecutor {
     }
 
     /**
-     * Calculate your strategies and giving you a backtesting result as list of trading statements
+     * Execute given strategies with specified order type to open trades and return trading statements
      *
      * @param amount    - The amount used to open/close the trades
      * @param orderType the {@link Order.OrderType} used to open the trades

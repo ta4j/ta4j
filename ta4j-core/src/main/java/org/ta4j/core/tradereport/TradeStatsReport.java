@@ -3,7 +3,7 @@ package org.ta4j.core.tradereport;
 import org.ta4j.core.num.Num;
 
 /**
- * This class contains the result of a backtested strategy
+ * This class represents report with statistics for executed trades
  */
 public class TradeStatsReport {
 
