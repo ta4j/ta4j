@@ -20,6 +20,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades  
 
 ### Removed/Deprecated
+- :skull: **Removed** Removed unnecessary license in file 
 
 ## 0.12 (released September 10, 2018)
 
