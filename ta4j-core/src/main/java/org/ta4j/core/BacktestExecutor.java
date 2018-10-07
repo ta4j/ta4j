@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.tradereport.TradingStatement;
-import org.ta4j.core.tradereport.TradingStatementBuilder;
+import org.ta4j.core.tradereport.TradingStatementGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +35,7 @@ import java.util.List;
  */
 public class BacktestExecutor {
 
-    private final TradingStatementBuilder tradingStatementBuilder = new TradingStatementBuilder();
+    private final TradingStatementGenerator tradingStatementGenerator = new TradingStatementGenerator();
     private final TimeSeriesManager seriesManager;
 
     public BacktestExecutor(TimeSeries series) {
@@ -61,7 +61,7 @@ public class BacktestExecutor {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
         for (Strategy strategy : strategies) {
             final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
-            final TradingStatement tradingStatement = tradingStatementBuilder.buildReport(tradingRecord, seriesManager.getTimeSeries());
+            final TradingStatement tradingStatement = tradingStatementGenerator.generate(tradingRecord, seriesManager.getTimeSeries());
             tradingStatements.add(tradingStatement);
         }
         return tradingStatements;
