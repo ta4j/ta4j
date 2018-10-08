@@ -34,6 +34,7 @@ import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
 public class SeriesBuilderTest extends AbstractIndicatorTest {
 
@@ -75,9 +76,9 @@ public class SeriesBuilderTest extends AbstractIndicatorTest {
         assertNumEquals(seriesB.numOf(12), PrecisionNum.valueOf(12));
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test
     public void testWrongNumType(){
         TimeSeries series = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
-        assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
+        assertNumNotEquals(series.numOf(12), DoubleNum.valueOf(12));
     }
 }
