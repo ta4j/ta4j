@@ -225,12 +225,10 @@ public class DoubleNum implements Num {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Num)) {
+        if (!(obj instanceof DoubleNum)) {
             return false;
         }
-        if (obj == NaN) {
-            return false;
-        }
+
         DoubleNum doubleNumObj = (DoubleNum) obj;
         return Math.abs(delegate - doubleNumObj.delegate) < EPS;
     }
