@@ -17,7 +17,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
 - :tada: **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades 
 - :tada: **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
-- :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades  
+- :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
+- :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
 
 ### Removed/Deprecated
 
