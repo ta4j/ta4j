@@ -204,9 +204,8 @@ public interface Num extends Comparable<Num>, Serializable {
     Num max(Num other);
 
     /**
-     * Returns the {@link Function} to convert a number instance to
-     * the corresponding Num instance
-     * @return function which convert a number instance to the corresponding Num instance
+     * Returns the {@link Function} to convert a number instance into the corresponding Num instance
+     * @return function which converts a number instance into the corresponding Num instance
      */
     Function<Number, Num> function();
 
@@ -259,5 +258,17 @@ public interface Num extends Comparable<Num>, Serializable {
     default float floatValue(){
         return getDelegate().floatValue();
     }
+
+    @Override
+    int hashCode();
+
+    @Override
+    String toString();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    boolean equals(Object obj);
 
 }
