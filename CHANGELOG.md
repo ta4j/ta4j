@@ -6,6 +6,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :boom: **Breaking** Refactored from Max/Min to High/Low
 
 ### Fixed
+- **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
 
 ### Changed
 
