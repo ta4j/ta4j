@@ -39,6 +39,7 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
+import static org.junit.Assert.assertFalse;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
@@ -300,6 +301,15 @@ public class PrecisionNumTest {
     @Test(expected = NumberFormatException.class)
     public void testValueOfForDoubleNaNShouldThrowNumberFormatException() {
         PrecisionNum.valueOf(Double.NaN);
+    }
+
+    @Test
+    public void testEqualsPrecisionNumWithDoubleNum() {
+        final DoubleNum doubleNum = DoubleNum.valueOf(3.0);
+
+        final PrecisionNum precisionNum = PrecisionNum.valueOf(3.0);
+
+        assertFalse(precisionNum.equals(doubleNum));
     }
 
 }
