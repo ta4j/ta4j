@@ -6,23 +6,34 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Total profit criterion.
+ * Gross profit criterion.
  * </p>
- * The total profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
+ * The gross profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
  */
 public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .map(trade -> calculateTotalProfit(series, trade))
-                .reduce(series.numOf(0), (profit1, profit2) -> profit1.plus(profit2));
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade)).reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * Calculates the gross profit value of given trade
+     *
+     * @param series a time series
+     * @param trade  a trade to calculate profit
+     * @return the total profit
+     */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return calculateTotalProfit(series, trade);
+        if (trade.isClosed()) {
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+
+            Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            return profit.isPositive() ? profit : series.numOf(0);
+        }
+        return series.numOf(0);
     }
 
     @Override
@@ -30,21 +41,5 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /**
-     * Calculates the total profit of all the trades
-     *
-     * @param series a time series
-     * @param trade  a trade
-     * @return the total profit
-     */
-    private Num calculateTotalProfit(TimeSeries series, Trade trade) {
-        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
-        Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        if (profit.isGreaterThan(series.numOf(0))) {
-            return profit;
-        }
-        return series.numOf(0);
-    }
 }
