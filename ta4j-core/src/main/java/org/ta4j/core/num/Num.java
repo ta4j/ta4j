@@ -35,7 +35,7 @@ import java.util.function.Function;
  * @see Num
  * @see Num#function()
  * @see DoubleNum
- * @See PrecisionNum
+ * @see PrecisionNum
 
  */
 public interface Num extends Comparable<Num>, Serializable {
@@ -204,9 +204,8 @@ public interface Num extends Comparable<Num>, Serializable {
     Num max(Num other);
 
     /**
-     * Retruns the {@link Function} to convert a number instance to
-     * the corresponding Num instance
-     * @return
+     * Returns the {@link Function} to convert a number instance into the corresponding Num instance
+     * @return function which converts a number instance into the corresponding Num instance
      */
     Function<Number, Num> function();
 
@@ -260,7 +259,6 @@ public interface Num extends Comparable<Num>, Serializable {
         return getDelegate().floatValue();
     }
 
-
     @Override
     int hashCode();
 
@@ -269,7 +267,6 @@ public interface Num extends Comparable<Num>, Serializable {
 
     /**
      * {@inheritDoc}
-     * @apiNote: This method should return true if `this` and `obj` are both NaN.
      */
     @Override
     boolean equals(Object obj);
