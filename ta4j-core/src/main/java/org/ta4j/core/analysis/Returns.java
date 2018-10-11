@@ -38,23 +38,23 @@ import java.util.List;
 /**
  * The return rates.
  * </p>
- * This class allows to compute the return rate (in Double precision) of a price time-series
+ * This class allows to compute the return rate of a price time-series
  */
 public class Returns implements Indicator<Num> {
-    private static Num one = DoubleNum.valueOf(1);
+
     public enum ReturnType {
         LOG {
             @Override
             public Num calculate(Num x_new, Num x_old) {
                 // r_i = ln(P_i/P_(i-1))
-                return DoubleNum.valueOf(x_new.dividedBy(x_old).doubleValue()).log();
+                return x_new.numOf(DoubleNum.valueOf(x_new.dividedBy(x_old).doubleValue()).log().doubleValue());
             }
         },
         ARITHMETIC {
             @Override
             public Num calculate(Num x_new, Num x_old) {
                 // r_i = P_i/P_(i-1) - 1
-                return DoubleNum.valueOf(x_new.dividedBy(x_old).doubleValue()).minus(one);
+                return x_new.dividedBy(x_old).minus(one);
             }
         };
 
@@ -72,12 +72,17 @@ public class Returns implements Indicator<Num> {
     /** The return rates */
     private List<Num> values;
 
+    /** Unit element for efficient arithmetic return computation */
+    private static Num one;
+
+
     /**
      * Constructor.
      * @param timeSeries the time series
      * @param trade a single trade
      */
     public Returns(TimeSeries timeSeries, Trade trade, ReturnType type) {
+        one = timeSeries.numOf(1);
         this.timeSeries = timeSeries;
         this.type = type;
         // at index 0, there is no return
@@ -93,6 +98,7 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
+        one = timeSeries.numOf(1);
         this.timeSeries = timeSeries;
         this.type = type;
         // at index 0, there is no return

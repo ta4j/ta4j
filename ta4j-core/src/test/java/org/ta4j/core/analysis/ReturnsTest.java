@@ -94,20 +94,23 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void returnsPrecision() {
-        // Return calculation is with double precision. Returns should be the same for PrecisionNum
-        DoubleNum x_new_double = DoubleNum.valueOf(1.2);
-        DoubleNum x_old_double = DoubleNum.valueOf(1.1);
+        TimeSeries doubleSeries = new MockTimeSeries(numFunction,1.2d, 1.1d);
+        TimeSeries precisionSeries = new MockTimeSeries(PrecisionNum::valueOf,1.2d, 1.1d);
 
-        PrecisionNum x_new_precision = PrecisionNum.valueOf(1.2);
-        PrecisionNum x_old_precision = PrecisionNum.valueOf(1.1);
+        TradingRecord fullRecord = new BaseTradingRecord();
+        fullRecord.enter(doubleSeries.getBeginIndex());
+        fullRecord.exit(doubleSeries.getEndIndex());
 
-        Num arithDouble = Returns.ReturnType.ARITHMETIC.calculate(x_new_double, x_old_double);
-        Num arithPrecision = Returns.ReturnType.ARITHMETIC.calculate(x_new_precision, x_old_precision);
+        // Return calculation DoubleNum vs PrecisionNum
+        Num arithDouble = new Returns(doubleSeries, fullRecord, Returns.ReturnType.ARITHMETIC).getValue(1);
+        Num arithPrecision = new Returns(precisionSeries, fullRecord, Returns.ReturnType.ARITHMETIC).getValue(1);
+        Num logDouble = new Returns(doubleSeries, fullRecord, Returns.ReturnType.LOG).getValue(1);
+        Num logPrecision = new Returns(precisionSeries, fullRecord, Returns.ReturnType.LOG).getValue(1);
 
-        Num logDouble = Returns.ReturnType.LOG.calculate(x_new_double, x_old_double);
-        Num logPrecision = Returns.ReturnType.LOG.calculate(x_new_precision, x_old_precision);
+        assertNumEquals(arithDouble, DoubleNum.valueOf(-0.08333333333333326));
+        assertNumEquals(arithPrecision, PrecisionNum.valueOf(1.1).dividedBy(PrecisionNum.valueOf(1.2)).minus(PrecisionNum.valueOf(1)));
 
-        assertNumEquals(arithDouble, arithPrecision);
-        assertNumEquals(logDouble, logPrecision);
+        assertNumEquals(logDouble, DoubleNum.valueOf(-0.08701137698962969));
+        assertNumEquals(logPrecision, PrecisionNum.valueOf(-0.08701137698962981));
     }
 }
