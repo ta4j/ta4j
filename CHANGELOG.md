@@ -7,6 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Fixed
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
+- **Fixed `java.lang.ClassCastException` in**: `DoubleNum.equals()`.
 
 ### Changed
 
