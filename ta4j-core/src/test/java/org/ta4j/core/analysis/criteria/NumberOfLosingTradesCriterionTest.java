@@ -1,7 +1,11 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
@@ -11,7 +15,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class NumberOfLosingTradesCriterionTest  extends AbstractCriterionTest{
+public class NumberOfLosingTradesCriterionTest extends AbstractCriterionTest {
 
     public NumberOfLosingTradesCriterionTest(Function<Number, Num> numFunction) {
         super((params) -> new NumberOfLosingTradesCriterion(), numFunction);
@@ -47,5 +51,10 @@ public class NumberOfLosingTradesCriterionTest  extends AbstractCriterionTest{
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(3), numOf(6)));
         assertFalse(criterion.betterThan(numOf(7), numOf(4)));
+    }
+
+    @Test
+    public void testCalculateOneOpenTradeShouldReturnZero() {
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }
