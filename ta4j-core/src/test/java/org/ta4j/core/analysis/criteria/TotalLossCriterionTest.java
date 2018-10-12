@@ -70,8 +70,8 @@ public class TotalLossCriterionTest extends AbstractCriterionTest {
 
         final AnalysisCriterion criterion = getCriterion();
 
-        final Num profit = criterion.calculate(series, trade);
+        final Num value = criterion.calculate(series, trade);
 
-        assertNumEquals(0, profit);
+        assertNumEquals(0, value);
     }
 }
