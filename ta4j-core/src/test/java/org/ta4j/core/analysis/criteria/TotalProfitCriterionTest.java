@@ -103,7 +103,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
+    public void testCalculateOneOpenTradeShouldReturnOne() {
         openedTradeUtils.testCalculateOneOpenTradeShouldReturnZero(numFunction, getCriterion(), 1);
     }
 }
