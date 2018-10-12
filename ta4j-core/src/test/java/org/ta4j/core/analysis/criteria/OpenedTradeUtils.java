@@ -12,7 +12,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class OpenedTradeUtils {
 
-    public void testCalculateOneOpenTradeShouldReturnZero(Function<Number, Num> numFunction, AnalysisCriterion criterion,
+    public void testCalculateOneOpenTradeShouldReturnExpectedValue(Function<Number, Num> numFunction, AnalysisCriterion criterion,
             int expectedValue) {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 

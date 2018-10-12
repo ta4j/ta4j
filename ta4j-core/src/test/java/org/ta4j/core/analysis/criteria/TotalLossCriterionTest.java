@@ -62,6 +62,6 @@ public class TotalLossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnZero(numFunction, getCriterion(), 0);
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

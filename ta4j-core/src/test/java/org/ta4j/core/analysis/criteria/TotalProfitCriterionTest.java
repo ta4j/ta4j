@@ -104,6 +104,6 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenTradeShouldReturnOne() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnZero(numFunction, getCriterion(), 1);
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 1);
     }
 }
