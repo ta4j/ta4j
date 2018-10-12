@@ -26,7 +26,7 @@ public class NumberOfLosingTradesCriterion extends AbstractAnalysisCriterion {
             Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
             Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-            return profit.isLessThan(series.numOf(0));
+            return profit.isNegative();
         }
         return false;
     }
