@@ -643,10 +643,10 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Num)) {
+        if (!(obj instanceof PrecisionNum)) {
             return false;
         }
-        return !((Num) obj).isNaN() && this.delegate.compareTo(((PrecisionNum) obj).delegate) == 0;
+        return this.delegate.compareTo(((PrecisionNum) obj).delegate) == 0;
     }
 
     @Override

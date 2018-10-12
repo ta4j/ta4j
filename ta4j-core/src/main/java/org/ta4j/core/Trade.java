@@ -174,6 +174,10 @@ public class Trade implements Serializable {
      * @return the profit or loss of the trade
      */
     public Num getProfit() {
-        return exit.getValue().minus(entry.getValue());
+        if(OrderType.BUY == startingType) {
+            return exit.getValue().minus(entry.getValue());
+        } else {
+            return entry.getValue().minus(exit.getValue());
+        }
     }
 }
