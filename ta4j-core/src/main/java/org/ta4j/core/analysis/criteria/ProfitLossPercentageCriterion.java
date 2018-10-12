@@ -8,7 +8,7 @@ import org.ta4j.core.num.Num;
 /**
  * Profit and loss in percentage criterion.
  * </p>
- * The profit or loss in percentage over the provided {@link TimeSeries series}.
+ * The profit or loss in percentage over the provided {@link Trade trade(s)}.
  * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
  */
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
@@ -16,14 +16,27 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .map(trade -> calculateProfitLossInPercentage(series, trade))
-                .reduce(series.numOf(0), (profit1, profit2) -> profit1.plus(profit2));
+                .filter(Trade::isClosed)
+                .map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * Calculates the profit or loss on a trade in percentage.
+     *
+     * @param series a time series
+     * @param trade  a trade
+     * @return the profit or loss on a trade
+     */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return calculateProfitLossInPercentage(series, trade);
+        if (trade.isClosed()) {
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+
+            return exitPrice.minus(entryPrice).dividedBy(entryPrice).multipliedBy(series.numOf(100));
+        }
+        return series.numOf(0);
     }
 
     @Override
@@ -31,16 +44,4 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /**
-     * Calculates the profit or loss of a sell trade in percentage.
-     * @param series a time series
-     * @param trade a trade
-     * @return the profit or loss of the trade
-     */
-    private Num calculateProfitLossInPercentage(TimeSeries series, Trade trade) {
-        Num pricePurchase = series.getBar(trade.getEntry().getIndex()).getClosePrice();
-        Num priceSold = series.getBar(trade.getExit().getIndex()).getClosePrice();
-
-        return priceSold.minus(pricePurchase).dividedBy(pricePurchase).multipliedBy(series.numOf(100));
-    }
 }

@@ -38,27 +38,29 @@ import java.util.function.Function;
 @RunWith(Parameterized.class)
 public abstract class AbstractCriterionTest {
 
-    private final CriterionFactory factory;
     protected final Function<Number, Num> numFunction;
+    protected final OpenedTradeUtils openedTradeUtils = new OpenedTradeUtils();
+    private final CriterionFactory factory;
 
-    @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
-    public static List<Function<Number, Num>> function(){
-        return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
-    }
     /**
      * Constructor.
-     * 
+     *
      * @param factory CriterionFactory for building an AnalysisCriterion given
-     *            parameters
+     *                parameters
      */
     public AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
         this.factory = factory;
         this.numFunction = numFunction;
     }
 
+    @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
+    public static List<Function<Number, Num>> function() {
+        return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
+    }
+
     /**
      * Generates an AnalysisCriterion given criterion parameters.
-     * 
+     *
      * @param params criterion parameters
      * @return AnalysisCriterion given parameters
      */
@@ -66,7 +68,7 @@ public abstract class AbstractCriterionTest {
         return factory.getCriterion(params);
     }
 
-    public Num numOf(Number n){
+    public Num numOf(Number n) {
         return numFunction.apply(n);
     }
 

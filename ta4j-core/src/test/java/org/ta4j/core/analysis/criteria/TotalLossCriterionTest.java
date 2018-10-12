@@ -4,7 +4,6 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
@@ -63,15 +62,6 @@ public class TotalLossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenTradeShouldReturnZero() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-
-        Trade trade = new Trade(Order.OrderType.BUY);
-        trade.operate(0, series.numOf(2.5), series.numOf(1));
-
-        final AnalysisCriterion criterion = getCriterion();
-
-        final Num value = criterion.calculate(series, trade);
-
-        assertNumEquals(0, value);
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnZero(numFunction, getCriterion(), 0);
     }
 }
