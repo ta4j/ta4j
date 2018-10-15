@@ -100,4 +100,12 @@ public class BarTest extends AbstractIndicatorTest {
 
         assertEquals(bar1, bar2);
     }
+
+    @Test
+    public void hashCode2() {
+        Bar bar1 = new BaseBar(Duration.ofHours(1), endTime, numFunction);
+        Bar bar2 = new BaseBar(Duration.ofHours(1), endTime, numFunction);
+
+        assertEquals(bar1.hashCode(), bar2.hashCode());
+    }
 }
