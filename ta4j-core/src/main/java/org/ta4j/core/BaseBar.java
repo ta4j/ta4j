@@ -348,4 +348,21 @@ public class BaseBar implements Bar {
         }
         return true;
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((amount == null) ? 0 : amount.hashCode());
+        result = prime * result + ((beginTime == null) ? 0 : beginTime.hashCode());
+        result = prime * result + ((closePrice == null) ? 0 : closePrice.hashCode());
+        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
+        result = prime * result + ((maxPrice == null) ? 0 : maxPrice.hashCode());
+        result = prime * result + ((minPrice == null) ? 0 : minPrice.hashCode());
+        result = prime * result + ((openPrice == null) ? 0 : openPrice.hashCode());
+        result = prime * result + ((timePeriod == null) ? 0 : timePeriod.hashCode());
+        result = prime * result + trades;
+        result = prime * result + ((volume == null) ? 0 : volume.hashCode());
+        return result;
+    }
 }
