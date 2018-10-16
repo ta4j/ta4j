@@ -53,4 +53,18 @@ public class OrRule extends AbstractRule {
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
+
+    /**
+     * @return first trading rule
+     */
+    public Rule getRule1() {
+        return rule1;
+    }
+
+    /**
+     * @return second trading rule
+     */
+    public Rule getRule2() {
+        return rule2;
+    }
 }
