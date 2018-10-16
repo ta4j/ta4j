@@ -73,4 +73,17 @@ public class CrossedUpIndicatorRule extends AbstractRule {
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
+
+    /**
+     * @return the initial lower indicator
+     */
+    public Indicator<Num> getLow() {
+        return cross.getLow();
+    }
+    /**
+     * @return the initial upper indicator
+     */
+    public Indicator<Num> getUp() {
+        return cross.getUp();
+    }
 }
