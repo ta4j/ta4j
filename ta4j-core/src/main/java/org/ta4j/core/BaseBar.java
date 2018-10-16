@@ -267,4 +267,102 @@ public class BaseBar implements Bar {
             throw new IllegalArgumentException("End time cannot be null");
         }
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof BaseBar)) {
+            return false;
+        }
+        BaseBar other = (BaseBar) obj;
+        if (amount == null) {
+            if (other.amount != null) {
+                return false;
+            }
+        } else if (!amount.equals(other.amount)) {
+            return false;
+        }
+        if (beginTime == null) {
+            if (other.beginTime != null) {
+                return false;
+            }
+        } else if (!beginTime.equals(other.beginTime)) {
+            return false;
+        }
+        if (closePrice == null) {
+            if (other.closePrice != null) {
+                return false;
+            }
+        } else if (!closePrice.equals(other.closePrice)) {
+            return false;
+        }
+        if (endTime == null) {
+            if (other.endTime != null) {
+                return false;
+            }
+        } else if (!endTime.equals(other.endTime)) {
+            return false;
+        }
+        if (maxPrice == null) {
+            if (other.maxPrice != null) {
+                return false;
+            }
+        } else if (!maxPrice.equals(other.maxPrice)) {
+            return false;
+        }
+        if (minPrice == null) {
+            if (other.minPrice != null) {
+                return false;
+            }
+        } else if (!minPrice.equals(other.minPrice)) {
+            return false;
+        }
+        if (openPrice == null) {
+            if (other.openPrice != null) {
+                return false;
+            }
+        } else if (!openPrice.equals(other.openPrice)) {
+            return false;
+        }
+        if (timePeriod == null) {
+            if (other.timePeriod != null) {
+                return false;
+            }
+        } else if (!timePeriod.equals(other.timePeriod)) {
+            return false;
+        }
+        if (trades != other.trades) {
+            return false;
+        }
+        if (volume == null) {
+            if (other.volume != null) {
+                return false;
+            }
+        } else if (!volume.equals(other.volume)) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((amount == null) ? 0 : amount.hashCode());
+        result = prime * result + ((beginTime == null) ? 0 : beginTime.hashCode());
+        result = prime * result + ((closePrice == null) ? 0 : closePrice.hashCode());
+        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
+        result = prime * result + ((maxPrice == null) ? 0 : maxPrice.hashCode());
+        result = prime * result + ((minPrice == null) ? 0 : minPrice.hashCode());
+        result = prime * result + ((openPrice == null) ? 0 : openPrice.hashCode());
+        result = prime * result + ((timePeriod == null) ? 0 : timePeriod.hashCode());
+        result = prime * result + trades;
+        result = prime * result + ((volume == null) ? 0 : volume.hashCode());
+        return result;
+    }
 }
