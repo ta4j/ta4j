@@ -53,4 +53,12 @@ public class XorRule extends AbstractRule {
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
+
+    public Rule getRule1() {
+        return rule1;
+    }
+
+    public Rule getRule2() {
+        return rule2;
+    }
 }

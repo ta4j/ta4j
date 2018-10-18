@@ -39,6 +39,7 @@ public class AndRule extends AbstractRule {
 
     /**
      * Constructor
+     *
      * @param rule1 a trading rule
      * @param rule2 another trading rule
      */
@@ -52,5 +53,13 @@ public class AndRule extends AbstractRule {
         final boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    public Rule getRule1() {
+        return rule1;
+    }
+
+    public Rule getRule2() {
+        return rule2;
     }
 }

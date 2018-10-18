@@ -34,21 +34,25 @@ import org.ta4j.core.TradingRecord;
  */
 public class NotRule extends AbstractRule {
 
-    private final Rule rule;
+    private final Rule ruleToNegate;
 
     /**
      * Constructor.
      *
-     * @param rule a trading rule
+     * @param ruleToNegate a trading rule to negate
      */
-    public NotRule(Rule rule) {
-        this.rule = rule;
+    public NotRule(Rule ruleToNegate) {
+        this.ruleToNegate = ruleToNegate;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = !rule.isSatisfied(index, tradingRecord);
+        final boolean satisfied = !ruleToNegate.isSatisfied(index, tradingRecord);
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    public Rule getRuleToNegate() {
+        return ruleToNegate;
     }
 }
