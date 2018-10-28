@@ -327,18 +327,18 @@ public class BaseBar implements Bar {
         } else if (!endTime.equals(other.endTime)) {
             return false;
         }
-        if (maxPrice == null) {
-            if (other.maxPrice != null) {
+        if (highPrice == null) {
+            if (other.highPrice != null) {
                 return false;
             }
-        } else if (!maxPrice.equals(other.maxPrice)) {
+        } else if (!highPrice.equals(other.highPrice)) {
             return false;
         }
-        if (minPrice == null) {
-            if (other.minPrice != null) {
+        if (lowPrice == null) {
+            if (other.lowPrice != null) {
                 return false;
             }
-        } else if (!minPrice.equals(other.minPrice)) {
+        } else if (!lowPrice.equals(other.lowPrice)) {
             return false;
         }
         if (openPrice == null) {
@@ -376,8 +376,8 @@ public class BaseBar implements Bar {
         result = prime * result + ((beginTime == null) ? 0 : beginTime.hashCode());
         result = prime * result + ((closePrice == null) ? 0 : closePrice.hashCode());
         result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
-        result = prime * result + ((maxPrice == null) ? 0 : maxPrice.hashCode());
-        result = prime * result + ((minPrice == null) ? 0 : minPrice.hashCode());
+        result = prime * result + ((highPrice == null) ? 0 : highPrice.hashCode());
+        result = prime * result + ((lowPrice == null) ? 0 : lowPrice.hashCode());
         result = prime * result + ((openPrice == null) ? 0 : openPrice.hashCode());
         result = prime * result + ((timePeriod == null) ? 0 : timePeriod.hashCode());
         result = prime * result + trades;
