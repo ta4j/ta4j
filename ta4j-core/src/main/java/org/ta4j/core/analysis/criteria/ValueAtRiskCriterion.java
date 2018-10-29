@@ -71,6 +71,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        // because it represents a loss, VaR is non-positive
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 }
