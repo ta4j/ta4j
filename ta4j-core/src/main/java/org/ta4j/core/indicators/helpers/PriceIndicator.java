@@ -1,7 +1,7 @@
 /*******************************************************************************
  *   The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization
  *   & respective authors (see AUTHORS)
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,14 +25,26 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
+
+import java.util.function.Function;
 
 /**
- * Close price indicator.
- * </p>
+ * Base class for price indicators
  */
-public class ClosePriceIndicator extends PriceIndicator {
+public abstract class PriceIndicator extends CachedIndicator<Num> {
 
-    public ClosePriceIndicator(TimeSeries series) {
-        super(series, Bar::getClosePrice);
+    private final Function<Bar, Num> priceFunction;
+
+    public PriceIndicator(TimeSeries series, Function<Bar, Num> priceFunction) {
+        super(series);
+        this.priceFunction = priceFunction;
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        final Bar bar = getTimeSeries().getBar(index);
+        return priceFunction.apply(bar);
     }
 }
