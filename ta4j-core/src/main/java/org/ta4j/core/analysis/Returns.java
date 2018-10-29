@@ -27,7 +27,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -45,23 +44,23 @@ public class Returns implements Indicator<Num> {
     public enum ReturnType {
         LOG {
             @Override
-            public Num calculate(Num x_new, Num x_old) {
+            public Num calculate(Num xNew, Num xOld) {
                 // r_i = ln(P_i/P_(i-1))
-                return x_new.numOf(DoubleNum.valueOf(x_new.dividedBy(x_old).doubleValue()).log().doubleValue());
+                return (xNew.dividedBy(xOld)).log();
             }
         },
         ARITHMETIC {
             @Override
-            public Num calculate(Num x_new, Num x_old) {
+            public Num calculate(Num xNew, Num xOld) {
                 // r_i = P_i/P_(i-1) - 1
-                return x_new.dividedBy(x_old).minus(one);
+                return xNew.dividedBy(xOld).minus(one);
             }
         };
 
         /**
          * @return calculate a single return rate
          */
-        public abstract Num calculate(Num x_new, Num x_old);
+        public abstract Num calculate(Num xNew, Num xOld);
     }
 
     private final ReturnType type;
@@ -167,10 +166,8 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
-        for (Trade trade : tradingRecord.getTrades()) {
-            // For each trade...
-            calculate(trade);
-        }
+        // For each trade...
+        tradingRecord.getTrades().forEach(this::calculate);
     }
 
     /**

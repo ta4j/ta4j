@@ -36,7 +36,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
+        if (trade != null && trade.isClosed()) {
             Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
             return calculateVaR(returns, confidence);
         }

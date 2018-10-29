@@ -9,6 +9,8 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -111,6 +113,6 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(arithPrecision, PrecisionNum.valueOf(1.1).dividedBy(PrecisionNum.valueOf(1.2)).minus(PrecisionNum.valueOf(1)));
 
         assertNumEquals(logDouble, DoubleNum.valueOf(-0.08701137698962969));
-        assertNumEquals(logPrecision, PrecisionNum.valueOf(-0.08701137698962981));
+        assertNumEquals(logPrecision, PrecisionNum.valueOf("-0.087011376989629766167765901873746"));
     }
 }

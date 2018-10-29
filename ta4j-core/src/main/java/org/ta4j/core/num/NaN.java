@@ -125,6 +125,11 @@ public class NaN implements Num {
     }
 
     @Override
+    public Num log() {
+        return this;
+    }
+
+    @Override
     public Num sqrt() {
         return this;
     }
