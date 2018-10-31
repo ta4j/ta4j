@@ -24,32 +24,36 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * A trailing stop-loss rule
  * <p></p>
- * Satisfied when the close price reaches the trailing loss threshold.
+ * Satisfied when the price reaches the trailing loss threshold.
  */
 public class TrailingStopLossRule extends AbstractRule {
 
     /**
-     * The close price indicator
+     * The price indicator
      */
-    private final ClosePriceIndicator closePrice;
+    private final PriceIndicator priceIndicator;
     /**
-     * the loss-distance as percentage
+     * the loss ratio multiplier for buy trades eg. for lossPercentage 5% this ratio will be: 0.95
      */
-    private final Num lossPercentage;
+    private final Num lossRatioBuyMultiplier;
+    /**
+     * the loss ratio multiplier for sell trades eg. for lossPercentage 5% this ratio will be: 1.05
+     */
+    private final Num lossRatioSellMultiplier;
     /**
      * the current price extremum
      */
     private Num currentExtremum = null;
     /**
-     * the current threshold
+     * the current stop loss price activation
      */
-    private Num threshold = null;
+    private Num currentStopLossLimitActivation = null;
     /**
      * the current trade
      */
@@ -58,12 +62,14 @@ public class TrailingStopLossRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param closePrice     the close price indicator
+     * @param priceIndicator the price indicator
      * @param lossPercentage the loss percentage
      */
-    public TrailingStopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
-        this.closePrice = closePrice;
-        this.lossPercentage = lossPercentage;
+    public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage) {
+        this.priceIndicator = priceIndicator;
+        final Num hundred = lossPercentage.numOf(100);
+        this.lossRatioBuyMultiplier = hundred.minus(lossPercentage).dividedBy(hundred);
+        this.lossRatioSellMultiplier = hundred.plus(lossPercentage).dividedBy(hundred);
     }
 
     @Override
@@ -76,9 +82,9 @@ public class TrailingStopLossRule extends AbstractRule {
                 if (!currentTrade.equals(supervisedTrade)) {
                     supervisedTrade = currentTrade;
                     currentExtremum = null;
-                    threshold = null;
+                    currentStopLossLimitActivation = null;
                 }
-                Num currentPrice = closePrice.getValue(index);
+                final Num currentPrice = priceIndicator.getValue(index);
                 if (currentTrade.getEntry().isBuy()) {
                     satisfied = isBuySatisfied(currentPrice);
                 } else {
@@ -91,34 +97,31 @@ public class TrailingStopLossRule extends AbstractRule {
     }
 
     private boolean isBuySatisfied(Num currentPrice) {
-        boolean satisfied = false;
-        if (currentExtremum == null) {
-            currentExtremum = currentPrice.numOf(Float.MIN_VALUE);
-        }
-        if (currentPrice.isGreaterThan(currentExtremum)) {
+        if (currentExtremum == null || currentPrice.isGreaterThan(currentExtremum)) {
             currentExtremum = currentPrice;
-            Num lossRatioThreshold = currentPrice.numOf(100).minus(lossPercentage).dividedBy(currentPrice.numOf(100));
-            threshold = currentExtremum.multipliedBy(lossRatioThreshold);
+            currentStopLossLimitActivation = currentExtremum.multipliedBy(lossRatioBuyMultiplier);
         }
-        if (threshold != null) {
-            satisfied = currentPrice.isLessThanOrEqual(threshold);
-        }
-        return satisfied;
+        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
     }
 
     private boolean isSellSatisfied(Num currentPrice) {
-        boolean satisfied = false;
-        if (currentExtremum == null) {
-            currentExtremum = currentPrice.numOf(Float.MAX_VALUE);
-        }
-        if (currentPrice.isLessThan(currentExtremum)) {
+        if (currentExtremum == null || currentPrice.isLessThan(currentExtremum)) {
             currentExtremum = currentPrice;
-            Num lossRatioThreshold = currentPrice.numOf(100).plus(lossPercentage).dividedBy(currentPrice.numOf(100));
-            threshold = currentExtremum.multipliedBy(lossRatioThreshold);
+            currentStopLossLimitActivation = currentExtremum.multipliedBy(lossRatioSellMultiplier);
         }
-        if (threshold != null) {
-            satisfied = currentPrice.isGreaterThanOrEqual(threshold);
+        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
+    }
+
+    public Num getCurrentStopLossLimitActivation() {
+        return currentStopLossLimitActivation;
+    }
+
+    @Override
+    protected void traceIsSatisfied(int index, boolean isSatisfied) {
+        if (log.isTraceEnabled()) {
+            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}", getClass().getSimpleName(), index, isSatisfied,
+                    priceIndicator.getValue(index), currentStopLossLimitActivation
+            );
         }
-        return satisfied;
     }
 }

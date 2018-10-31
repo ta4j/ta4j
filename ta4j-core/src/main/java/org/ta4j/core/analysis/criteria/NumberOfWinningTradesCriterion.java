@@ -12,18 +12,23 @@ public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-         long numberOfLosingTrades = tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .filter(trade -> isWinningTrade(series, trade)).count();
-         return series.numOf(numberOfLosingTrades);
+        long numberOfLosingTrades = tradingRecord.getTrades()
+                .stream()
+                .filter(Trade::isClosed)
+                .filter(trade -> isWinningTrade(series, trade))
+                .count();
+        return series.numOf(numberOfLosingTrades);
     }
 
     private boolean isWinningTrade(TimeSeries series, Trade trade) {
-        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+        if (trade.isClosed()) {
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
-        Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        return profit.isGreaterThan(series.numOf(0));
+            Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            return profit.isPositive();
+        }
+        return false;
     }
 
     @Override

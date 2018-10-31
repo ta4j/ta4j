@@ -39,32 +39,32 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream()
                 .filter(Trade::isClosed)
-                .map(trade -> calculateProfitLoss(series, trade))
+                .map(trade -> calculate(series, trade))
                 .reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * Calculates the profit or loss on the trade.
+     *
+     * @param series a time series
+     * @param trade  a trade
+     * @return the profit or loss on the trade
+     */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return calculateProfitLoss(series, trade);
+        if (trade.isClosed()) {
+            Num exitClosePrice = trade.getExit().getPrice().isNaN() ?
+                    series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
+            Num entryClosePrice = trade.getEntry().getPrice().isNaN() ?
+                    series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
+
+            return exitClosePrice.minus(entryClosePrice).multipliedBy(trade.getExit().getAmount());
+        }
+        return series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
-    /**
-     * Calculates the profit or loss of a sell trade.
-     * @param series a time series
-     * @param trade a trade
-     * @return the profit or loss of the trade
-     */
-    private Num calculateProfitLoss(TimeSeries series, Trade trade) {
-        Num exitClosePrice = trade.getExit().getPrice().isNaN() ?
-                series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getPrice();
-        Num entryClosePrice = trade.getEntry().getPrice().isNaN() ?
-                series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getPrice();
-
-        return exitClosePrice.minus(entryClosePrice).multipliedBy(trade.getExit().getAmount());
     }
 }

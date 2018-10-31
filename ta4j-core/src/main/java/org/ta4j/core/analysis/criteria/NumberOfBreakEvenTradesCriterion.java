@@ -12,18 +12,23 @@ public class NumberOfBreakEvenTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
-                .filter(trade -> isBreakEvenTrade(series, trade)).count();
+        long numberOfLosingTrades = tradingRecord.getTrades()
+                .stream()
+                .filter(Trade::isClosed)
+                .filter(trade -> isBreakEvenTrade(series, trade))
+                .count();
         return series.numOf(numberOfLosingTrades);
     }
 
     private boolean isBreakEvenTrade(TimeSeries series, Trade trade) {
-        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+        if (trade.isClosed()) {
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
-        Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        return profit.isEqual(series.numOf(0));
+            Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            return profit.isZero();
+        }
+        return false;
     }
 
     @Override

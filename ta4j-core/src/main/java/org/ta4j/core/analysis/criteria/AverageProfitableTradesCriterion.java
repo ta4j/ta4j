@@ -37,8 +37,15 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        Num result = calculateResult(series, trade);
-        return (result.isGreaterThan(series.numOf(1))) ? series.numOf(1) : series.numOf(0);
+        return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
+    }
+
+    private boolean isProfitableTrade(TimeSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            final Num result = calculateResult(series, trade);
+            return result.isGreaterThan(series.numOf(1));
+        }
+        return false;
     }
 
     private Num calculateResult(TimeSeries series, Trade trade) {
@@ -55,13 +62,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        int numberOfProfitable = 0;
-        for (Trade trade : tradingRecord.getTrades()) {
-            Num result = calculateResult(series, trade);
-            if (result.isGreaterThan(series.numOf(1))) {
-                numberOfProfitable++;
-            }
-        }
+        long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
         return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
     }
 

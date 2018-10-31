@@ -40,7 +40,7 @@ import java.util.function.Function;
 
 /**
  * Abstract test class to extend TimeSeries, Indicator an other test cases.
- * The extending class will be called twice. First time with {@link BigDecimalNum#valueOf},
+ * The extending class will be called twice. First time with {@link PrecisionNum#valueOf},
  * second time with {@link DoubleNum#valueOf} as <code>Function<Number, Num></></code> parameter.
  * This should ensure that the defined test case is valid for both data types.
  *
