@@ -28,8 +28,6 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
-import java.util.Objects;
-
 /**
  * Number of bars criterion.
  * </p>
@@ -39,20 +37,17 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        Num nBars = series.numOf(0);
-        for (Trade trade : tradingRecord.getTrades()) {
-            nBars = nBars.plus(calculate(series, trade));
-        }
-        return nBars;
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(t -> calculate(series, t)).reduce(series.numOf(0), Num::plus);
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        Objects.requireNonNull(series, "Series must be not null");
-
-        return
-            (series.numOf(1).plus(series.numOf(trade.getExit().getIndex())))
-            .minus(series.numOf(trade.getEntry().getIndex()));
+        if (trade.isClosed()) {
+            final int exitIndex = trade.getExit().getIndex();
+            final int entryIndex = trade.getEntry().getIndex();
+            return series.numOf(exitIndex - entryIndex + 1);
+        }
+        return series.numOf(0);
     }
 
     @Override
