@@ -1,7 +1,7 @@
 /*******************************************************************************
  *   The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization
  *   & respective authors (see AUTHORS)
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -21,45 +21,30 @@
  *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *******************************************************************************/
-package org.ta4j.core.trading.rules;
+package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.Rule;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Bar;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
+
+import java.util.function.Function;
 
 /**
- * An AND combination of two {@link Rule rules}.
- * </p>
- * Satisfied when the two provided rules are satisfied as well.<br>
- * Warning: the second rule is not tested if the first rule is not satisfied.
+ * Base class for price indicators
  */
-public class AndRule extends AbstractRule {
+public abstract class PriceIndicator extends CachedIndicator<Num> {
 
-    private final Rule rule1;
-    private final Rule rule2;
+    private final Function<Bar, Num> priceFunction;
 
-    /**
-     * Constructor
-     *
-     * @param rule1 a trading rule
-     * @param rule2 another trading rule
-     */
-    public AndRule(Rule rule1, Rule rule2) {
-        this.rule1 = rule1;
-        this.rule2 = rule2;
+    public PriceIndicator(TimeSeries series, Function<Bar, Num> priceFunction) {
+        super(series);
+        this.priceFunction = priceFunction;
     }
 
     @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
-    }
-
-    public Rule getRule1() {
-        return rule1;
-    }
-
-    public Rule getRule2() {
-        return rule2;
+    protected Num calculate(int index) {
+        final Bar bar = getTimeSeries().getBar(index);
+        return priceFunction.apply(bar);
     }
 }

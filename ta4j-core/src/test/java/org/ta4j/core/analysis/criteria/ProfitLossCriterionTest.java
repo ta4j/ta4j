@@ -47,4 +47,9 @@ public class ProfitLossCriterionTest  extends AbstractCriterionTest {
         assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));
     }
 
+    @Test
+    public void testCalculateOneOpenTradeShouldReturnZero() {
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    }
+
 }

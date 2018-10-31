@@ -101,6 +101,12 @@ public interface Num extends Comparable<Num>, Serializable {
     Num pow(Num n);
 
     /**
+     * Returns a {@code num} whose value is <tt>ln(this)</tt>.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    Num log();
+
+    /**
      * Returns a {@code num} whose value is <tt>√(this)</tt>.
      * @return <tt>this<sup>n</sup></tt>
      */

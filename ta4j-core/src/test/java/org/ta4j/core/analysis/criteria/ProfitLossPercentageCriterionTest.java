@@ -24,8 +24,8 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     public void calculateOnlyWithGainTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0,series), Order.sellAt(2,series),
-                Order.buyAt(3,series), Order.sellAt(5,series));
+                Order.buyAt(0, series), Order.sellAt(2, series),
+                Order.buyAt(3, series), Order.sellAt(5, series));
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
     }
@@ -34,8 +34,8 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     public void calculateOnlyWithLossTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0,series), Order.sellAt(1,series),
-                Order.buyAt(2,series), Order.sellAt(5,series));
+                Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(-5 + -30, profit.calculate(series, tradingRecord));
@@ -45,8 +45,8 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     public void calculateWithOneWinningAndOneLosingTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 195, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0,series), Order.sellAt(1,series),
-                Order.buyAt(2,series), Order.sellAt(5,series));
+                Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(95 + -30, profit.calculate(series, tradingRecord));
@@ -57,5 +57,10 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(50), numOf(45)));
         assertFalse(criterion.betterThan(numOf(45), numOf(50)));
+    }
+
+    @Test
+    public void testCalculateOneOpenTradeShouldReturnZero() {
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

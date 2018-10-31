@@ -32,6 +32,7 @@ import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import ta4jexamples.loaders.CsvTradesLoader;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -108,7 +109,7 @@ public class IndicatorsToCsv {
          */
         BufferedWriter writer = null;
         try {
-            writer = new BufferedWriter(new FileWriter("indicators.csv"));
+            writer = new BufferedWriter(new FileWriter(new File("target", "indicators.csv")));
             writer.write(sb.toString());
         } catch (IOException ioe) {
             Logger.getLogger(IndicatorsToCsv.class.getName()).log(Level.SEVERE, "Unable to write CSV file", ioe);
