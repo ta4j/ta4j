@@ -455,6 +455,42 @@ public final class PrecisionNum implements Num {
     }
 
     /**
+     * Returns a {@code Num} whose value is the natural logarithm
+     * of this {@code Num}.
+     *
+     * @return {@code log(this)}
+     */
+    public Num log() {
+        // Algorithm: http://functions.wolfram.com/ElementaryFunctions/Log/10/
+        // https://stackoverflow.com/a/6169691/6444586
+        Num logx;
+        if (isNegativeOrZero()) { return NaN; }
+
+        if (delegate.equals(BigDecimal.ONE)) {
+            logx = PrecisionNum.valueOf(BigDecimal.ZERO, mathContext.getPrecision());
+        }
+        else {
+            long ITER = 1000;
+            BigDecimal x = delegate.subtract(BigDecimal.ONE);
+            BigDecimal ret = new BigDecimal(ITER + 1);
+            for (long i = ITER; i >= 0; i--) {
+                BigDecimal N = new BigDecimal(i / 2 + 1).pow(2);
+                N = N.multiply(x, mathContext);
+                ret = N.divide(ret, mathContext);
+
+                N = new BigDecimal(i + 1);
+                ret = ret.add(N, mathContext);
+
+            }
+            ret = x.divide(ret, mathContext);
+
+            logx = PrecisionNum.valueOf(ret, mathContext.getPrecision());
+        }
+        return logx;
+    }
+
+
+    /**
      * Returns a {@code Num} whose value is the absolute value
      * of this {@code Num}.
      *
