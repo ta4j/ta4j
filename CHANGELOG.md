@@ -23,6 +23,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
 - :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
 - :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
+- :tada: **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
+for currentStopLossLimitActivation
 
 ### Removed/Deprecated
 
