@@ -26,9 +26,9 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * A manager for {@link TimeSeries} objects.
@@ -44,18 +44,35 @@ public class TimeSeriesManager {
     /** The managed time series */
     private TimeSeries timeSeries;
 
+    /** The trading cost models */
+    private CostModel transactionCostModel;
+    private CostModel holdingCostModel;
+
     /**
      * Constructor.
      */
     public TimeSeriesManager() {
-	}
+        this(null, new ZeroCostModel(), new ZeroCostModel());
+    }
 
     /**
      * Constructor.
      * @param timeSeries the time series to be managed
      */
     public TimeSeriesManager(TimeSeries timeSeries) {
-    	this.timeSeries = timeSeries;
+    	this(timeSeries, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
+     * @param timeSeries the time series to be managed
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
+     * */
+    public TimeSeriesManager(TimeSeries timeSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
+        this.timeSeries = timeSeries;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
     }
 
     /**
@@ -92,7 +109,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, OrderType.BUY, NaN, startIndex, finishIndex);
+        return run(strategy, OrderType.BUY, timeSeries.numOf(1), startIndex, finishIndex);
     }
 
     /**
@@ -104,7 +121,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType) {
-        return run(strategy, orderType, NaN);
+        return run(strategy, orderType, timeSeries.numOf(1));
     }
 
     /**
@@ -118,7 +135,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, int startIndex, int finishIndex) {
-        return run(strategy, orderType, NaN, startIndex, finishIndex);
+        return run(strategy, orderType, timeSeries.numOf(1), startIndex, finishIndex);
     }
 
     /**
@@ -149,7 +166,7 @@ public class TimeSeriesManager {
         int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());
 
         log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy, orderType);
-        TradingRecord tradingRecord = new BaseTradingRecord(orderType);
+        TradingRecord tradingRecord = new BaseTradingRecord(orderType, transactionCostModel, holdingCostModel);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {

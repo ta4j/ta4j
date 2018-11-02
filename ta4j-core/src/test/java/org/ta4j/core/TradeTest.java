@@ -28,16 +28,27 @@ import org.junit.Test;
 import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.LinearBorrowingCostModel;
+import org.ta4j.core.cost.LinearTransactionCostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.num.NaN.NaN;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TradeTest {
 
     private Trade newTrade, uncoveredTrade, trEquals1, trEquals2, trNotEquals1, trNotEquals2;
+
+    private CostModel transactionModel;
+    private CostModel holdingModel;
+    private Order enter;
+    private Order exitSameType;
+    private Order exitDifferentType;
 
     @Before
     public void setUp() {
@@ -59,6 +70,14 @@ public class TradeTest {
         trNotEquals2 = new Trade(OrderType.SELL);
         trNotEquals2.operate(1);
         trNotEquals2.operate(2);
+
+
+        transactionModel = new LinearTransactionCostModel(0.01);
+        holdingModel = new LinearBorrowingCostModel(0.001);
+
+        enter = Order.buyAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        exitSameType = Order.sellAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        exitDifferentType = Order.buyAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
     }
 
     @Test
@@ -196,5 +215,88 @@ public class TradeTest {
         final Num profit = trade.getProfit();
 
         assertEquals(DoubleNum.valueOf(4.0), profit);
+    }
+
+    @Test
+    public void testCostModelConsistencyTrue() {
+        Trade tradeSame = new Trade(enter, exitSameType, transactionModel, holdingModel);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testCostModelEntryInconsistent() {
+        Trade tradeEntryDifferent = new Trade(enter, exitDifferentType, new ZeroCostModel(), holdingModel);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testCostModelExitInconsistent() {
+        Trade tradeExitDifferent = new Trade(enter, exitDifferentType, transactionModel, holdingModel);
+    }
+
+    @Test
+    public void getProfitLongNoFinalBarTest() {
+        Trade closedTrade = new Trade(enter, exitSameType, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.BUY, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+
+        Num profitOfClosedTrade = closedTrade.getProfit();
+        Num proftOfOpenTrade = openTrade.getProfit();
+
+        assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedTrade);
+        assertNumEquals(DoubleNum.valueOf(0), proftOfOpenTrade);
+    }
+
+    @Test
+    public void getProfitLongWithFinalBarTest() {
+        Trade closedTrade = new Trade(enter, exitSameType, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.BUY, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+
+        Num profitOfClosedTrade = closedTrade.getProfit(10, DoubleNum.valueOf(12));
+        Num profitOfOpenTrade = openTrade.getProfit(10, DoubleNum.valueOf(12));
+
+        assertNumEquals(DoubleNum.valueOf(9.98), profitOfOpenTrade);
+        assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedTrade);
+    }
+
+    @Test
+    public void getProfitShortNoFinalBarTest() {
+        Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+
+        Trade closedTrade = new Trade(sell, buyBack, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.SELL, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+
+        Num profitOfClosedTrade = closedTrade.getProfit();
+        Num proftOfOpenTrade = openTrade.getProfit();
+
+        Num expectedHoldingCosts = DoubleNum.valueOf(2.0*9.0*0.001);
+        Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+
+        assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTrade);
+        assertNumEquals(DoubleNum.valueOf(0), proftOfOpenTrade);
+    }
+
+    @Test
+    public void getProfitShortWithFinalBarTest() {
+        Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+
+        Trade closedTrade = new Trade(sell, buyBack, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.SELL, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+
+        Num profitOfClosedTradeFinalAfter = closedTrade.getProfit(20, DoubleNum.valueOf(3));
+        Num profitOfOpenTradeFinalAfter = openTrade.getProfit(20, DoubleNum.valueOf(3));
+        Num profitOfClosedTradeFinalBefore = closedTrade.getProfit(5, DoubleNum.valueOf(3));
+        Num profitOfOpenTradeFinalBefore = openTrade.getProfit(5, DoubleNum.valueOf(3));
+
+        Num expectedHoldingCosts = DoubleNum.valueOf(2.0*9.0*0.001);
+        Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+
+        assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenTradeFinalAfter);
+        assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenTradeFinalBefore);
+        assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTradeFinalAfter);
+        assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTradeFinalBefore);
     }
 }

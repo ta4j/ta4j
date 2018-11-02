@@ -143,7 +143,7 @@ public class TradingBotOnMovingTimeSeries {
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex()
-                            + " (price=" + entry.getPrice().doubleValue()
+                            + " (price=" + entry.getNetPrice().doubleValue()
                             + ", amount=" + entry.getAmount().doubleValue() + ")");
                 }
             } else if (strategy.shouldExit(endIndex)) {
@@ -153,7 +153,7 @@ public class TradingBotOnMovingTimeSeries {
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex()
-                            + " (price=" + exit.getPrice().doubleValue()
+                            + " (price=" + exit.getNetPrice().doubleValue()
                             + ", amount=" + exit.getAmount().doubleValue() + ")");
                 }
             }
