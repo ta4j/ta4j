@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.tradereport;
 
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 
@@ -40,5 +41,5 @@ public interface ReportGenerator<T> {
      * @param series        a time series, not null
      * @return generated report
      */
-    T generate(TradingRecord tradingRecord, TimeSeries series);
+    T generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series);
 }

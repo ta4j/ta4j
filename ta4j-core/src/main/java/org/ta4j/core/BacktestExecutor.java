@@ -61,7 +61,7 @@ public class BacktestExecutor {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
         for (Strategy strategy : strategies) {
             final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
-            final TradingStatement tradingStatement = tradingStatementGenerator.generate(tradingRecord, seriesManager.getTimeSeries());
+            final TradingStatement tradingStatement = tradingStatementGenerator.generate(strategy, tradingRecord, seriesManager.getTimeSeries());
             tradingStatements.add(tradingStatement);
         }
         return tradingStatements;
