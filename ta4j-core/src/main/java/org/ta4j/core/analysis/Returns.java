@@ -135,22 +135,36 @@ public class Returns implements Indicator<Num> {
         return timeSeries.getBarCount() - 1;
     }
 
+    public void calculate(Trade trade) {
+        calculate(trade, timeSeries.getEndIndex());
+    }
+
     /**
-     * Calculates the return time-series during a single trade.
+     * Calculates the cash flow for a single trade (including accrued cashflow for open trades).
      * @param trade a single trade
+     * @param finalIndex index up until cash flow of open trades is considered
      */
-    private void calculate(Trade trade) {
-        final int entryIndex = trade.getEntry().getIndex();
+    public void calculate(Trade trade, int finalIndex) {
+        boolean isLongTrade = trade.getEntry().isBuy();
         Num minusOne = timeSeries.numOf(-1);
+        int endIndex = CashFlow.determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
+        final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            // fill returns since last trade with zeroes
             values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
         }
-        int end = trade.getExit().getIndex();
-        for (int i = Math.max(begin, 1); i <= end; i++) {
-            Num assetReturn = type.calculate(timeSeries.getBar(i).getClosePrice(),
-                    timeSeries.getBar(i-1).getClosePrice());
+
+        int startingIndex = Math.max(begin, 1);
+        int nPeriods = endIndex - entryIndex;
+        Num holdingCost = trade.getHoldingCost(endIndex);
+        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+
+        // returns are per period (iterative). Base price needs to be updated accordingly
+        Num lastPrice = trade.getEntry().getNetPrice();
+        for (int i = startingIndex; i < endIndex; i++) {
+            Num intermediateNetPrice = CashFlow.addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
+
             Num strategyReturn;
             if (trade.getEntry().isBuy()) {
                 strategyReturn = assetReturn;
@@ -158,7 +172,27 @@ public class Returns implements Indicator<Num> {
                 strategyReturn = assetReturn.multipliedBy(minusOne);
             }
             values.add(strategyReturn);
+            // update base price
+            lastPrice = timeSeries.getBar(i).getClosePrice();
         }
+
+        // add net return at exit trade
+        Num exitPrice;
+        if (trade.getExit() != null) {
+            exitPrice = trade.getExit().getNetPrice();
+        }
+        else {
+            exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+        }
+
+        Num strategyReturn;
+        Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        if (trade.getEntry().isBuy()) {
+            strategyReturn = assetReturn;
+        } else {
+            strategyReturn = assetReturn.multipliedBy(minusOne);
+        }
+        values.add(strategyReturn);
     }
 
     /**

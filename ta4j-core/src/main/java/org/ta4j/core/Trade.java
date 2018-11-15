@@ -24,6 +24,8 @@
 package org.ta4j.core;
 
 import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
@@ -52,6 +54,12 @@ public class Trade implements Serializable {
     /** The type of the entry order */
     private OrderType startingType;
 
+    /** The cost model for transactions of the asset */
+    private CostModel transactionCostModel;
+
+    /** The cost model for holding the asset */
+    private CostModel holdingCostModel;
+
     /**
      * Constructor.
      */
@@ -64,10 +72,22 @@ public class Trade implements Serializable {
      * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
      */
     public Trade(OrderType startingType) {
+        this(startingType, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
+     * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
+     * */
+    public Trade(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
         this.startingType = startingType;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
     }
 
     /**
@@ -76,12 +96,31 @@ public class Trade implements Serializable {
      * @param exit the exit {@link Order order}
      */
     public Trade(Order entry, Order exit) {
+        this(entry, exit, entry.getCostModel(), new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
+     * @param entry the entry {@link Order order}
+     * @param exit the exit {@link Order order}
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
+     */
+    public Trade(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
+
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both orders must have different types");
         }
+
+        if (!(entry.getCostModel().equals(transactionCostModel)) || !(exit.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
+        }
+
         this.startingType = entry.getType();
         this.entry = entry;
         this.exit = exit;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
     }
 
     /**
@@ -132,13 +171,13 @@ public class Trade implements Serializable {
     public Order operate(int index, Num price, Num amount) {
         Order order = null;
         if (isNew()) {
-            order = new Order(index, startingType, price, amount);
+            order = new Order(index, startingType, price, amount, transactionCostModel);
             entry = order;
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryOrder index");
             }
-            order = new Order(index, startingType.complementType(), price, amount);
+            order = new Order(index, startingType.complementType(), price, amount, transactionCostModel);
             exit = order;
         }
         return order;
@@ -171,13 +210,88 @@ public class Trade implements Serializable {
     }
 
     /**
+     * Calculate the profit of the trade if it is closed
      * @return the profit or loss of the trade
      */
     public Num getProfit() {
-        if(OrderType.BUY == startingType) {
-            return exit.getValue().minus(entry.getValue());
-        } else {
-            return entry.getValue().minus(exit.getValue());
+        Num profit;
+        if (isOpened()) {
+            profit = entry.getNetPrice().numOf(0);
         }
+        else {
+            profit = calculateGrossProfit(exit.getPricePerAsset()).minus(getTradeCost());
+        }
+        return profit;
+    }
+
+    /**
+     * Calculate the profit of the trade. If it is open, calculates the profit until the final bar.
+     * @param finalIndex the index of the final bar to be considered (if trade is open)
+     * @param finalPrice the price of the final bar to be considered (if trade is open)
+     * @return the profit or loss of the trade
+     */
+    public Num getProfit(int finalIndex, Num finalPrice) {
+        Num grossProfit = calculateGrossProfit(finalPrice);
+        // add trading costs
+        return grossProfit.minus(getTradeCost(finalIndex));
+    }
+
+    /**
+     * Calculate the gross (w/o trading costs) profit of the trade.
+     * @param finalPrice the price of the final bar to be considered (if trade is open)
+     * @return the profit or loss of the trade
+     */
+    private Num calculateGrossProfit(Num finalPrice) {
+        Num grossProfit;
+        if (isOpened()) {
+            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+        }
+        else {
+            grossProfit = exit.getValue().minus(entry.getValue());
+        }
+
+        // Profits of long position are losses of short
+        if (entry.getType().equals(OrderType.SELL)) {
+            grossProfit = grossProfit.multipliedBy(entry.getNetPrice().numOf(-1));
+        }
+        return grossProfit;
+    }
+
+    /**
+     * Calculates the total cost of the trade
+     * @param finalIndex the index of the final bar to be considered (if trade is open)
+     * @return the cost of the trade
+     */
+    public Num getTradeCost(int finalIndex) {
+        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
+        Num borrowingCost = getHoldingCost(finalIndex);
+        return transactionCost.plus(borrowingCost);
+    }
+
+    /**
+     * Calculates the total cost of the closed trade
+     * @return the cost of the trade
+     */
+    public Num getTradeCost() {
+        Num transactionCost = transactionCostModel.calculate(this);
+        Num borrowingCost = getHoldingCost();
+        return transactionCost.plus(borrowingCost);
+    }
+
+    /**
+     * Calculates the holding cost of the closed trade
+     * @return the cost of the trade
+     */
+    public Num getHoldingCost() {
+        return holdingCostModel.calculate(this);
+    }
+
+    /**
+     * Calculates the holding cost of the trade
+     * @param finalIndex the index of the final bar to be considered (if trade is open)
+     * @return the cost of the trade
+     */
+    public Num getHoldingCost(int finalIndex) {
+        return holdingCostModel.calculate(this, finalIndex);
     }
 }

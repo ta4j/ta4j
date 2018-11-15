@@ -99,15 +99,19 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         TimeSeries doubleSeries = new MockTimeSeries(numFunction,1.2d, 1.1d);
         TimeSeries precisionSeries = new MockTimeSeries(PrecisionNum::valueOf,1.2d, 1.1d);
 
-        TradingRecord fullRecord = new BaseTradingRecord();
-        fullRecord.enter(doubleSeries.getBeginIndex());
-        fullRecord.exit(doubleSeries.getEndIndex());
+        TradingRecord fullRecordDouble = new BaseTradingRecord();
+        fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).getClosePrice(), doubleSeries.numOf(1));
+        fullRecordDouble.exit(doubleSeries.getEndIndex(), doubleSeries.getBar(1).getClosePrice(), doubleSeries.numOf(1));
+
+        TradingRecord fullRecordPrecision = new BaseTradingRecord();
+        fullRecordPrecision.enter(precisionSeries.getBeginIndex(), precisionSeries.getBar(0).getClosePrice(), precisionSeries.numOf(1));
+        fullRecordPrecision.exit(precisionSeries.getEndIndex(), precisionSeries.getBar(1).getClosePrice(), precisionSeries.numOf(1));
 
         // Return calculation DoubleNum vs PrecisionNum
-        Num arithDouble = new Returns(doubleSeries, fullRecord, Returns.ReturnType.ARITHMETIC).getValue(1);
-        Num arithPrecision = new Returns(precisionSeries, fullRecord, Returns.ReturnType.ARITHMETIC).getValue(1);
-        Num logDouble = new Returns(doubleSeries, fullRecord, Returns.ReturnType.LOG).getValue(1);
-        Num logPrecision = new Returns(precisionSeries, fullRecord, Returns.ReturnType.LOG).getValue(1);
+        Num arithDouble = new Returns(doubleSeries, fullRecordDouble, Returns.ReturnType.ARITHMETIC).getValue(1);
+        Num arithPrecision = new Returns(precisionSeries, fullRecordPrecision, Returns.ReturnType.ARITHMETIC).getValue(1);
+        Num logDouble = new Returns(doubleSeries, fullRecordDouble, Returns.ReturnType.LOG).getValue(1);
+        Num logPrecision = new Returns(precisionSeries, fullRecordPrecision, Returns.ReturnType.LOG).getValue(1);
 
         assertNumEquals(arithDouble, DoubleNum.valueOf(-0.08333333333333326));
         assertNumEquals(arithPrecision, PrecisionNum.valueOf(1.1).dividedBy(PrecisionNum.valueOf(1.2)).minus(PrecisionNum.valueOf(1)));

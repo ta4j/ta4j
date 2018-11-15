@@ -44,7 +44,7 @@ public class CashFlow implements Indicator<Num> {
     private List<Num> values;
 
     /**
-     * Constructor.
+     * Constructor for cash flows of a closed trade.
      * @param timeSeries the time series
      * @param trade a single trade
      */
@@ -56,7 +56,7 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor for cash flows of closed trades of a trading record.
      * @param timeSeries the time series
      * @param tradingRecord the trading record
      */
@@ -64,6 +64,20 @@ public class CashFlow implements Indicator<Num> {
         this.timeSeries = timeSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(tradingRecord);
+
+        fillToTheEnd();
+    }
+
+    /**
+     * Constructor.
+     * @param timeSeries the time series
+     * @param tradingRecord the trading record
+     * @param finalIndex index up until cash flows of open trades are considered
+     */
+    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, int finalIndex) {
+        this.timeSeries = timeSeries;
+        values = new ArrayList<>(Collections.singletonList(numOf(1)));
+        calculate(tradingRecord, finalIndex);
 
         fillToTheEnd();
     }
@@ -95,41 +109,112 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Calculates the cash flow for a single trade.
+     * Calculates the cash flow for a single closed trade.
      * @param trade a single trade
      */
     private void calculate(Trade trade) {
+        if (trade.isOpened()) { throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided."); }
+        calculate(trade, trade.getExit().getIndex());
+    }
+
+    /**
+     * Calculates the cash flow for a single trade (including accrued cashflow for open trades).
+     * @param trade a single trade
+     * @param finalIndex index up until cash flow of open trades is considered
+     */
+    private void calculate(Trade trade, int finalIndex) {
+        boolean isLongTrade = trade.getEntry().isBuy();
+        int endIndex = determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
         final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
             Num lastValue = values.get(values.size() - 1);
             values.addAll(Collections.nCopies(begin - values.size(), lastValue));
         }
-        int end = trade.getExit().getIndex();
-        for (int i = Math.max(begin, 1); i <= end; i++) {
-            Num ratio;
-            if (trade.getEntry().isBuy()) {
-                ratio = getRatio(entryIndex, i);
-            } else {
-                ratio = getRatio(i, entryIndex);
+        // Trade is not valid if net balance at the entryIndex is negative
+        if (values.get(values.size() - 1).isGreaterThan(values.get(0).numOf(0))) {
+            int startingIndex = Math.max(begin, 1);
+
+            int nPeriods = endIndex - entryIndex;
+            Num holdingCost = trade.getHoldingCost(endIndex);
+            Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+
+            // Add intermediate cash flows during trade
+            Num netEntryPrice = trade.getEntry().getNetPrice();
+            for (int i = startingIndex; i < endIndex; i++) {
+                Num intermediateNetPrice = addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+                values.add(values.get(entryIndex).multipliedBy(ratio));
             }
+
+            // add net cash flow at exit trade
+            Num exitPrice;
+            if (trade.getExit() != null) {
+                exitPrice = trade.getExit().getNetPrice();
+            }
+            else {
+                exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+            }
+            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, addCost(exitPrice, avgCost, isLongTrade));
             values.add(values.get(entryIndex).multipliedBy(ratio));
         }
     }
 
-    private Num getRatio(int entryIndex, int exitIndex) {
-        return timeSeries.getBar(exitIndex).getClosePrice().dividedBy(timeSeries.getBar(entryIndex).getClosePrice());
+    /**
+     * Calculates the ratio of intermediate prices.
+     * @param isLongTrade true, if the entry order type is BUY
+     * @param entryPrice price ratio denominator
+     * @param exitPrice price ratio numerator
+     */
+    private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
+        Num ratio;
+        if (isLongTrade) {
+            ratio = exitPrice.dividedBy(entryPrice);
+        }
+        else {
+            ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
+        }
+        return ratio;
     }
 
     /**
-     * Calculates the cash flow for a trading record.
+     * Calculates the cash flow for the closed trades of a trading record.
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
-        for (Trade trade : tradingRecord.getTrades()) {
-            // For each trade...
-            calculate(trade);
+        // For each trade...
+        tradingRecord.getTrades().forEach(this::calculate);
+    }
+
+    /**
+     * Calculates the cash flow for all trades of a trading record, including accrued cash flow of an open trade.
+     * @param tradingRecord the trading record
+     * @param finalIndex index up until cash flows of open trades are considered
+     */
+    private void calculate(TradingRecord tradingRecord, int finalIndex) {
+        calculate(tradingRecord);
+
+        // Add accrued cash flow of open trade
+        if (tradingRecord.getCurrentTrade().isOpened()) {
+            calculate(tradingRecord.getCurrentTrade(), finalIndex);
         }
+    }
+
+    /**
+     * Adjusts (intermediate) price to incorporate trading costs.
+     * @param rawPrice the gross asset price
+     * @param holdingCost share of the holding cost per period
+     * @param isLongTrade true, if the entry order type is BUY
+     */
+    static Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
+        Num netPrice;
+        if (isLongTrade) {
+            netPrice = rawPrice.minus(holdingCost);
+        }
+        else {
+            netPrice = rawPrice.plus(holdingCost);
+        }
+        return netPrice;
     }
 
     /**
@@ -140,5 +225,22 @@ public class CashFlow implements Indicator<Num> {
             Num lastValue = values.get(values.size() - 1);
             values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, lastValue));
         }
+    }
+
+    /**
+     * Determines the the valid final index to be considered.
+     * @param trade the trade
+     * @param finalIndex index up until cash flows of open trades are considered
+     * @param maxIndex maximal valid index
+     * */
+    static int determineEndIndex(Trade trade, int finalIndex, int maxIndex) {
+        int idx = finalIndex;
+        // After closing of trade, no further accrual necessary
+        if (trade.getExit() != null) {
+            idx = Math.min(trade.getExit().getIndex(), finalIndex);
+        }
+        // Accrual at most until maximal index of asset data
+        if (idx > maxIndex) { idx = maxIndex; }
+        return idx;
     }
 }

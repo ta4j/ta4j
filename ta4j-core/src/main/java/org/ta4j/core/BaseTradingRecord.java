@@ -23,6 +23,8 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -77,6 +79,12 @@ public class BaseTradingRecord implements TradingRecord {
     private Trade currentTrade;
 
     /**
+     * Trading cost models
+     */
+    private CostModel transactionCostModel;
+    private CostModel holdingCostModel;
+
+    /**
      * Constructor.
      */
     public BaseTradingRecord() {
@@ -85,15 +93,26 @@ public class BaseTradingRecord implements TradingRecord {
 
     /**
      * Constructor.
+     */
+    public BaseTradingRecord(Order.OrderType orderType) {
+        this(orderType, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
      *
      * @param entryOrderType the {@link Order.OrderType order type} of entries in the trading session
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
      */
-    public BaseTradingRecord(Order.OrderType entryOrderType) {
+    public BaseTradingRecord(Order.OrderType entryOrderType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (entryOrderType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
         this.startingType = entryOrderType;
-        currentTrade = new Trade(entryOrderType);
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
+        currentTrade = new Trade(entryOrderType, transactionCostModel, holdingCostModel);
     }
 
     /**
@@ -102,7 +121,18 @@ public class BaseTradingRecord implements TradingRecord {
      * @param orders the orders to be recorded (cannot be empty)
      */
     public BaseTradingRecord(Order... orders) {
-        this(orders[0].getType());
+        this(new ZeroCostModel(), new ZeroCostModel(), orders);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
+     * @param orders the orders to be recorded (cannot be empty)
+     */
+    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Order... orders) {
+        this(orders[0].getType(), transactionCostModel, holdingCostModel);
         for (Order o : orders) {
             boolean newOrderWillBeAnEntry = currentTrade.isNew();
             if (newOrderWillBeAnEntry && o.getType() != startingType) {
@@ -111,9 +141,9 @@ public class BaseTradingRecord implements TradingRecord {
                 //    BUY, SELL,
                 //    SELL, BUY,
                 //    BUY, SELL
-                currentTrade = new Trade(o.getType());
+                currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Order newOrder = currentTrade.operate(o.getIndex(), o.getPrice(), o.getAmount());
+            Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
@@ -222,7 +252,7 @@ public class BaseTradingRecord implements TradingRecord {
         // Storing the trade if closed
         if (currentTrade.isClosed()) {
             trades.add(currentTrade);
-            currentTrade = new Trade(startingType);
+            currentTrade = new Trade(startingType, transactionCostModel, holdingCostModel);
         }
     }
 
