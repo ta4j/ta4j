@@ -104,7 +104,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 		final Bar currentBar = getTimeSeries().getBar(index);
 
         // step back while bar-1 in same period (day, week, etc):
-		while(index-1 >= getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == getPeriod(currentBar)){
+		while(index-1 > getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == getPeriod(currentBar)){
 			index--;
 		}
 
