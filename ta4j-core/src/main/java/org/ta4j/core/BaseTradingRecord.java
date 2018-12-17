@@ -41,7 +41,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded orders
      */
-    private List<Order> orders = new ArrayList<>();
+    private List<Order> orders;
 
     /**
      * The recorded BUY orders
@@ -120,7 +120,7 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param orders the orders to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(Order... orders) {
+    public BaseTradingRecord(List<Order> orders) {
         this(new ZeroCostModel(), new ZeroCostModel(), orders);
     }
 
@@ -131,8 +131,9 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
      * @param orders the orders to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Order... orders) {
-        this(orders[0].getType(), transactionCostModel, holdingCostModel);
+    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, List<Order> orders) {
+        this(orders.get(0).getType(), transactionCostModel, holdingCostModel);
+        this.orders = orders;
         for (Order o : orders) {
             boolean newOrderWillBeAnEntry = currentTrade.isNew();
             if (newOrderWillBeAnEntry && o.getType() != startingType) {
@@ -144,7 +145,7 @@ public class BaseTradingRecord implements TradingRecord {
                 currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
             }
             Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
-            recordOrder(newOrder, newOrderWillBeAnEntry);
+            recordOrder2(newOrder, newOrderWillBeAnEntry);
         }
     }
 
@@ -231,7 +232,11 @@ public class BaseTradingRecord implements TradingRecord {
         if (order == null) {
             throw new IllegalArgumentException("Order should not be null");
         }
+        orders.add(order);
+        recordOrder2(order, isEntry);
+    }
 
+    private void recordOrder2(Order order, boolean isEntry) {
         // Storing the new order in entries/exits lists
         if (isEntry) {
             entryOrders.add(order);
@@ -240,7 +245,6 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         // Storing the new order in orders list
-        orders.add(order);
         if (Order.OrderType.BUY.equals(order.getType())) {
             // Storing the new order in buy orders list
             buyOrders.add(order);
