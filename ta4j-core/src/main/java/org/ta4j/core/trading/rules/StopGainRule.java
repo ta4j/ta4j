@@ -23,6 +23,7 @@
  *******************************************************************************/
 package org.ta4j.core.trading.rules;
 
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -36,14 +37,19 @@ import org.ta4j.core.num.Num;
 public class StopGainRule extends AbstractRule {
 
     /**
+     * Constant value for 100
+     */
+    private final Num HUNDRED;
+
+    /**
      * The close price indicator
      */
     private final ClosePriceIndicator closePrice;
 
     /**
-     * The gain ratio threshold (e.g. 1.03 for 3%)
+     * The gain percentage
      */
-    private final Num gainRatioThreshold;
+    private final Num gainPercentage;
 
 
     /**
@@ -64,29 +70,42 @@ public class StopGainRule extends AbstractRule {
      */
     public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
         this.closePrice = closePrice;
-        Num HUNDRED = closePrice.numOf(100);
-        this.gainRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
+        this.gainPercentage = gainPercentage;
+        HUNDRED = closePrice.numOf(100);
     }
 
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
-        // No trading history or no trade opened, no gain
+        // No trading history or no trade opened, no loss
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if (currentTrade.isOpened()) {
+
                 Num entryPrice = currentTrade.getEntry().getNetPrice();
                 Num currentPrice = closePrice.getValue(index);
-                Num threshold = entryPrice.multipliedBy(gainRatioThreshold);
+
                 if (currentTrade.getEntry().isBuy()) {
-                    satisfied = currentPrice.isGreaterThanOrEqual(threshold);
+                    satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
                 } else {
-                    satisfied = currentPrice.isLessThanOrEqual(threshold);
+                    satisfied = isSellGainSatisfied(entryPrice, currentPrice);
                 }
             }
         }
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
+        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        return currentPrice.isLessThanOrEqual(threshold);
+    }
+
+    private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
+        Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        return currentPrice.isGreaterThanOrEqual(threshold);
     }
 }

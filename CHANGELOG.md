@@ -10,6 +10,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `java.lang.ClassCastException` in**: `DoubleNum.equals()`.
 - **Fixed `java.lang.NullPointerException` in**: `NumberOfBarsCriterion.calculate(TimeSeries, Trade)` for opened trade.
 - **Fixed `java.lang.NullPointerException` in**: `AverageProfitableTradesCriterion.calculate(TimeSeries, Trade)` for opened trade.
+- **StopGainRule**: now correctly handles stops for sell orders
+- **StopLossRule**: now correctly handles stops for sell orders
 
 ### Changed
 
