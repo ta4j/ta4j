@@ -57,7 +57,7 @@ public class StopGainRuleTest extends AbstractIndicatorTest {
     
     @Test
     public void isSatisfied() {
-        final Num tradedAmount = numOf(0);
+        final Num tradedAmount = numOf(1);
         
         // 30% stop-gain
         StopGainRule rule = new StopGainRule(closePrice, numOf(30));

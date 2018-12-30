@@ -86,7 +86,7 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
                 Order.buyAt(0,series), Order.sellAt(1,series),
                 Order.buyAt(3,series), Order.sellAt(4,series),
                 Order.sellAt(5,series), Order.buyAt(6,series));
-        assertNumEquals(.91, mdd.calculate(series, tradingRecord));
+        assertNumEquals(3.8d, mdd.calculate(series, tradingRecord));
     }
 
     @Test

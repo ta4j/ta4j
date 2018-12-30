@@ -25,6 +25,7 @@ package org.ta4j.core.analysis;
 
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.cost.LinearBorrowingCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;
@@ -76,7 +77,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals("0.5", cashFlow.getValue(3));
         assertNumEquals("0.6", cashFlow.getValue(4));
         assertNumEquals("0.6", cashFlow.getValue(5));
-        assertNumEquals("0.09", cashFlow.getValue(6));
+        assertNumEquals("-2.8", cashFlow.getValue(6));
     }
 
 
@@ -90,9 +91,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(1, cashFlow.getValue(1));
         assertNumEquals(1, cashFlow.getValue(2));
-        assertNumEquals("0.5", cashFlow.getValue(3));
-        assertNumEquals("0.5", cashFlow.getValue(4));
-        assertNumEquals("0.5", cashFlow.getValue(5));
+        assertNumEquals(0, cashFlow.getValue(3));
+        assertNumEquals(0, cashFlow.getValue(4));
+        assertNumEquals(0, cashFlow.getValue(5));
     }
 
     @Test
@@ -108,9 +109,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(2, cashFlow.getValue(1));
         assertNumEquals(4, cashFlow.getValue(2));
-        assertNumEquals(2, cashFlow.getValue(3));
-        assertNumEquals(1, cashFlow.getValue(4));
-        assertNumEquals(2, cashFlow.getValue(5));
+        assertNumEquals(0, cashFlow.getValue(3));
+        assertNumEquals(-8, cashFlow.getValue(4));
+        assertNumEquals(-8, cashFlow.getValue(5));
     }
 
     @Test

@@ -104,7 +104,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 		final Bar currentBar = getTimeSeries().getBar(index);
 
         // step back while bar-1 in same period (day, week, etc):
-		while(index-1 >= getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == getPeriod(currentBar)){
+		while(index-1 > getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == getPeriod(currentBar)){
 			index--;
 		}
 
@@ -122,7 +122,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
             case DAY: // return previous day
                 int prevCalendarDay =  bar.getEndTime().minusDays(1).getDayOfYear();
                 // skip weekend and holidays:
-                while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0) {
+                while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
                     prevCalendarDay--;
                 }
                 return prevCalendarDay;

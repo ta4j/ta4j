@@ -75,7 +75,7 @@ public class StopLossRule extends AbstractRule {
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if (currentTrade.isOpened()) {
-                Num entryPrice = currentTrade.getEntry().getPrice();
+                Num entryPrice = currentTrade.getEntry().getNetPrice();
                 Num currentPrice = closePrice.getValue(index);
                 Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
                 if (currentTrade.getEntry().isBuy()) {
