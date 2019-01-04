@@ -23,10 +23,10 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Commodity Channel Index (CCI) indicator.
@@ -46,10 +46,10 @@ public class CCIIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the time series
-     * @param barCount the time frame (normally 20)
+     * @param series   the bar series
+     * @param barCount the bar count (normally 20)
      */
-    public CCIIndicator(TimeSeries series, int barCount) {
+    public CCIIndicator(BarSeries series, int barCount) {
         super(series);
         FACTOR = numOf(0.015);
         typicalPriceInd = new TypicalPriceIndicator(series);

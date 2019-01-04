@@ -23,11 +23,11 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.indicators.helpers.DXIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * ADX indicator.
@@ -41,14 +41,14 @@ public class ADXIndicator extends CachedIndicator<Num> {
     private final int diBarCount;
     private final int adxBarCount;
 
-    public ADXIndicator(TimeSeries series, int diBarCount, int adxBarCount) {
+    public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
         super(series);
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
         this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
     }
 
-    public ADXIndicator(TimeSeries series, int barCount) {
+    public ADXIndicator(BarSeries series, int barCount) {
         this(series, barCount, barCount);
     }
 

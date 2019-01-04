@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low
+- classes and methods containing **TimeSeries** refactored to **BarSeries**
 
 ### Fixed
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.

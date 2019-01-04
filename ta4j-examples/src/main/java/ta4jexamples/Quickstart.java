@@ -47,7 +47,7 @@ public class Quickstart {
     public static void main(String[] args) {
 
         // Getting a time series (from any provider: CSV, web service, etc.)
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
 
         // Getting the close price of the bars
@@ -86,7 +86,7 @@ public class Quickstart {
                 .or(new StopGainRule(closePrice, series.numOf(2)));
 
         // Running our juicy trading strategy...
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(new BaseStrategy(buyingRule, sellingRule));
         System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 

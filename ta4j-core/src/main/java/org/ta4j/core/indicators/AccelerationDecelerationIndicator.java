@@ -23,9 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Acceleration-deceleration indicator.
@@ -37,13 +37,13 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
     
     private SMAIndicator sma5;
 
-    public AccelerationDecelerationIndicator(TimeSeries series, int barCountSma1, int barCountSma2) {
+    public AccelerationDecelerationIndicator(BarSeries series, int barCountSma1, int barCountSma2) {
         super(series);
         this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), barCountSma1, barCountSma2);
         this.sma5 = new SMAIndicator(awesome, barCountSma1);
     }
     
-    public AccelerationDecelerationIndicator(TimeSeries series) {
+    public AccelerationDecelerationIndicator(BarSeries series) {
         this(series, 5, 34);
     }
     

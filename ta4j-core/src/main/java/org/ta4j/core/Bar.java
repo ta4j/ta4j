@@ -135,7 +135,7 @@ public interface Bar extends Serializable {
      * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
-     * @deprecated use corresponding function of TimeSeries
+     * @deprecated use corresponding function of BarSeries
      */
     @Deprecated
     default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
@@ -146,7 +146,7 @@ public interface Bar extends Serializable {
      * Adds a trade at the end of bar period.
      * @param tradeVolume the traded volume
      * @param tradePrice the price
-     * @deprecated use corresponding function of TimeSeries
+     * @deprecated use corresponding function of BarSeries
      */
     @Deprecated
     default void addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction) {

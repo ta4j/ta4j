@@ -25,15 +25,15 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ConvergenceDivergenceIndicator.ConvergenceDivergenceStrictType;
 import org.ta4j.core.indicators.helpers.ConvergenceDivergenceIndicator.ConvergenceDivergenceType;
 import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.BarSeries;
 
 public class ConvergenceDivergenceIndicatorTest {
 
@@ -64,7 +64,7 @@ public class ConvergenceDivergenceIndicatorTest {
 
 	@Before
 	public void setUp() {
-		TimeSeries series = new BaseTimeSeries();
+		BarSeries series = new BaseBarSeries();
 		refPosCon = new FixedDecimalIndicator(series, 1, 2, 3, 4, 5, 8, 3, 2, -2, 1);
 		otherPosCon = new FixedDecimalIndicator(series, 10, 20, 30, 40, 50, 60, 7, 5, 3, 2);
 

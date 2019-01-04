@@ -39,7 +39,7 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param indicator the indicator
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

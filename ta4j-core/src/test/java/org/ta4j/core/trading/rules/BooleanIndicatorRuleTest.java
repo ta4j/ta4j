@@ -25,7 +25,7 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 
@@ -38,7 +38,7 @@ public class BooleanIndicatorRuleTest {
     
     @Before
     public void setUp() {
-        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseTimeSeries(),true, true, false, false, true);
+        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseBarSeries(),true, true, false, false, true);
         rule = new BooleanIndicatorRule(indicator);
     }
     

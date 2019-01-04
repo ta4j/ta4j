@@ -26,9 +26,8 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -36,6 +35,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 /**
  * The Class KAMAIndicatorTest.
@@ -45,7 +45,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
  */
 public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
 
-    private TimeSeries data;
+    private BarSeries data;
 
     public KAMAIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -55,7 +55,7 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     @Before
     public void setUp() {
 
-        data = new MockTimeSeries(numFunction,
+        data = new MockBarSeries(numFunction,
                 110.46, 109.80, 110.17, 109.82, 110.15,
                 109.31, 109.05, 107.94, 107.76, 109.24,
                 109.40, 108.50, 107.96, 108.55, 108.85,
@@ -119,7 +119,7 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void getValueOnDeepIndicesShouldNotCauseStackOverflow() {
-        TimeSeries series = new MockTimeSeries(numFunction);
+        BarSeries series = new MockBarSeries(numFunction);
         series.setMaximumBarCount(5000);
         assertEquals(5000, series.getBarCount());
 

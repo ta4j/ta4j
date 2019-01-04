@@ -57,7 +57,7 @@ public class BuyAndSellSignalsToChart {
      * @param name the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(BarSeries barseries, Indicator<Num> indicator, String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barseries.getBarCount(); i++) {
             Bar bar = barseries.getBar(i);
@@ -73,9 +73,9 @@ public class BuyAndSellSignalsToChart {
      * @param strategy a trading strategy
      * @param plot the plot
      */
-    private static void addBuySellSignals(TimeSeries series, Strategy strategy, XYPlot plot) {
+    private static void addBuySellSignals(BarSeries series, Strategy strategy, XYPlot plot) {
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         List<Trade> trades = seriesManager.run(strategy).getTrades();
         // Adding markers to plot
         for (Trade trade : trades) {
@@ -115,7 +115,7 @@ public class BuyAndSellSignalsToChart {
     public static void main(String[] args) {
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
 

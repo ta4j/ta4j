@@ -23,7 +23,6 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
@@ -31,6 +30,7 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.BarSeries;
 
 /**
  * Parabolic SAR indicator.
@@ -51,9 +51,9 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with default parameters
      *
-     * @param series the time series for this indicator
+     * @param series the bar series for this indicator
      */
-    public ParabolicSarIndicator(TimeSeries series) {
+    public ParabolicSarIndicator(BarSeries series) {
         this(series, series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
 
     }
@@ -61,23 +61,23 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with custom parameters and default increment value
      *
-     * @param series the time series for this indicator
+     * @param series the bar series for this indicator
      * @param aF     acceleration factor
      * @param maxA   maximum acceleration
      */
-    public ParabolicSarIndicator(TimeSeries series, Num aF, Num maxA) {
+    public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA) {
         this(series, aF, maxA, series.numOf(0.02));
     }
 
     /**
      * Constructor with custom parameters
      *
-     * @param series    the time series for this indicator
+     * @param series    the bar series for this indicator
      * @param aF        acceleration factor
      * @param maxA      maximum acceleration
      * @param increment the increment step
      */
-    public ParabolicSarIndicator(TimeSeries series, Num aF, Num maxA, Num increment) {
+    public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA, Num increment) {
         super(series);
         highPriceIndicator = new HighPriceIndicator(series);
         lowPriceIndicator = new LowPriceIndicator(series);
@@ -90,12 +90,12 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num sar = NaN;
-        if (index == getTimeSeries().getBeginIndex()) {
+        if (index == getBarSeries().getBeginIndex()) {
             return sar; // no trend detection possible for the first value
-        } else if (index == getTimeSeries().getBeginIndex() + 1) {// start trend detection
-            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex())
+        } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection
+            currentTrend = getBarSeries().getBar(getBarSeries().getBeginIndex())
                     .getClosePrice()
-                    .isLessThan(getTimeSeries().getBar(index).getClosePrice());
+                    .isLessThan(getBarSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
                 sar = highPriceIndicator.getValue(index); // put sar on max price of candlestick
                 currentExtremePoint = sar;
@@ -118,7 +118,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentTrend = false; // switch to down trend and reset values
                 startTrendIndex = index;
                 accelerationFactor = accelerationStart;
-                currentExtremePoint = getTimeSeries().getBar(index).getLowPrice(); // put point on max
+                currentExtremePoint = getBarSeries().getBar(index).getLowPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
                 currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex).getValue(index);
@@ -135,7 +135,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 sar = minMaxExtremePoint; // sar starts at the lowest extreme point of previous down trend
                 accelerationFactor = accelerationStart;
                 startTrendIndex = index;
-                currentExtremePoint = getTimeSeries().getBar(index).getHighPrice();
+                currentExtremePoint = getBarSeries().getBar(index).getHighPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
                 currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex).getValue(index);

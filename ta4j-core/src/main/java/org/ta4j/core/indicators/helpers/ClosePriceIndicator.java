@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 
 /**
  * Close price indicator.
@@ -32,7 +32,7 @@ import org.ta4j.core.TimeSeries;
  */
 public class ClosePriceIndicator extends PriceIndicator {
 
-    public ClosePriceIndicator(TimeSeries series) {
+    public ClosePriceIndicator(BarSeries series) {
         super(series, Bar::getClosePrice);
     }
 }

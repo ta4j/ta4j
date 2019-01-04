@@ -27,7 +27,6 @@ import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -36,8 +35,9 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+import org.ta4j.core.BarSeries;
 
-public class MinusDIIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
+public class MinusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private ExternalIndicatorTest xls;
 
@@ -48,20 +48,20 @@ public class MinusDIIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num>
 
     @Test
     public void xlsTest() throws Exception {
-        TimeSeries xlsSeries = xls.getSeries();
+        BarSeries xlsSeries = xls.getSeries();
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(0.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(0.0, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(21.0711, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(21.0711, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(20.9020, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
+        assertEquals(20.9020, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 
 }

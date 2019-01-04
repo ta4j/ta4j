@@ -23,12 +23,12 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * The "CHOP" index is used to indicate side-ways markets
@@ -48,7 +48,7 @@ import org.ta4j.core.num.Num;
 public class ChopIndicator extends CachedIndicator<Num> {
 
     private final ATRIndicator atrIndicator;
-    private final int timeFrame;
+    private final int barCount;
     private final Num LOG10n;
     private final HighestValueIndicator hvi;
     private final LowestValueIndicator lvi;
@@ -57,24 +57,24 @@ public class ChopIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param timeseries  the time series or @param timeseries the {@link TimeSeries}
-     * @param ciTimeFrame time-frame often something like '14'
+     * @param barSeries  the bar series or @param barSeries the {@link BarSeries}
+     * @param ciBarCount bar count often something like '14'
      * @param scaleTo     maximum value to scale this oscillator, usually '1' or '100'
      */
-    public ChopIndicator(TimeSeries timeseries, int ciTimeFrame, int scaleTo) {
-        super(timeseries);
-        this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new HighPriceIndicator(timeseries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new LowPriceIndicator(timeseries), ciTimeFrame);
-        this.timeFrame = ciTimeFrame;
-        this.LOG10n = numOf(Math.log10(ciTimeFrame));
+    public ChopIndicator(BarSeries barSeries, int ciBarCount, int scaleTo) {
+        super(barSeries);
+        this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
+        hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciBarCount);
+        lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciBarCount);
+        this.barCount = ciBarCount;
+        this.LOG10n = numOf(Math.log10(ciBarCount));
         this.scaleUpTo = numOf(scaleTo);
     }
 
     @Override
     public Num calculate(int index) {
         Num summ = atrIndicator.getValue(index);
-        for (int i = 1; i < timeFrame; ++i) {
+        for (int i = 1; i < barCount; ++i) {
             summ = summ.plus(atrIndicator.getValue(index - i));
         }
         Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));

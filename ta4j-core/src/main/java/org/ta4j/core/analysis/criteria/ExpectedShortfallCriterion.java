@@ -1,6 +1,5 @@
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
@@ -8,12 +7,13 @@ import org.ta4j.core.num.Num;
 
 import java.util.Collections;
 import java.util.List;
+import org.ta4j.core.BarSeries;
 /**
  * Expected Shortfall criterion.
  * </p>
  * @see <a href="https://en.wikipedia.org/wiki/Expected_shortfall">https://en.wikipedia.org/wiki/Expected_shortfall</a>
  *
- * Measures the expected shortfall of the strategy log-return time-series
+ * Measures the expected shortfall of the strategy log-return bar-series
  */
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /**
@@ -31,13 +31,13 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
         return calculateES(returns, confidence);
     }
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
             Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
             return calculateES(returns, confidence);

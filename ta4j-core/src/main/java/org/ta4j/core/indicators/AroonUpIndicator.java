@@ -24,12 +24,12 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.BarSeries;
 
 
 /**
@@ -49,7 +49,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
      * Constructor.
      * <p>
      * @param maxValueIndicator the indicator for the maximum price (default {@link HighPriceIndicator})
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public AroonUpIndicator(Indicator<Num> maxValueIndicator, int barCount) {
         super(maxValueIndicator);
@@ -63,16 +63,16 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     /**
      * Default Constructor that is using the maximum price
      * <p>
-     * @param series the time series
-     * @param barCount the time frame
+     * @param series the bar series
+     * @param barCount the bar count
      */
-    public AroonUpIndicator(TimeSeries series, int barCount) {
+    public AroonUpIndicator(BarSeries series, int barCount) {
         this(new HighPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (getTimeSeries().getBar(index).getHighPrice().isNaN())
+        if (getBarSeries().getBar(index).getHighPrice().isNaN())
             return NaN;
 
         // Getting the number of bars since the highest close price

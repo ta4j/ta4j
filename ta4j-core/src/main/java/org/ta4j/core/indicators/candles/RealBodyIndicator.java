@@ -24,9 +24,9 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Real (candle) body height indicator.
@@ -40,15 +40,15 @@ public class RealBodyIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param series a time series
+     * @param series a bar series
      */
-    public RealBodyIndicator(TimeSeries series) {
+    public RealBodyIndicator(BarSeries series) {
         super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-        Bar t = getTimeSeries().getBar(index);
+        Bar t = getBarSeries().getBar(index);
         return t.getClosePrice().minus(t.getOpenPrice());
     }
 }

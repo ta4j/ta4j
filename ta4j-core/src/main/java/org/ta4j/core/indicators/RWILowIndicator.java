@@ -23,9 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * The Class RandomWalkIndexLowIndicator.
@@ -40,16 +40,16 @@ public class RWILowIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series   the series
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
-    public RWILowIndicator(TimeSeries series, int barCount) {
+    public RWILowIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
+        if (index - barCount + 1 < getBarSeries().getBeginIndex()) {
             return NaN.NaN;
         }
 
@@ -62,7 +62,7 @@ public class RWILowIndicator extends CachedIndicator<Num> {
     }
 
     private Num calcRWIHFor(final int index, final int n) {
-        TimeSeries series = getTimeSeries();
+        BarSeries series = getBarSeries();
         Num low = series.getBar(index).getLowPrice();
         Num high_N = series.getBar(index + 1 - n).getHighPrice();
         Num atr_N = new ATRIndicator(series, n).getValue(index);

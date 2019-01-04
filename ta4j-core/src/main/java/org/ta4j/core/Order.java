@@ -35,7 +35,7 @@ import java.util.Objects;
  * </p>
  * The order is defined by:
  * <ul>
- *     <li>the index (in the {@link TimeSeries time series}) it is executed
+ *     <li>the index (in the {@link BarSeries bar series}) it is executed
  *     <li>a {@link OrderType type} (BUY or SELL)
  *     <li>a pricePerAsset (optional)
  *     <li>an amount to be (or that was) ordered (optional)
@@ -97,32 +97,32 @@ public class Order implements Serializable {
     /**
      * Constructor.
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param type the type of the order
      */
-    protected Order(int index, TimeSeries series, OrderType type) {
+    protected Order(int index, BarSeries series, OrderType type) {
         this(index, series, type, series.numOf(1));
     }
 
     /**
      * Constructor.
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param type the type of the order
      * @param amount the amount to be (or that was) ordered
      */
-    protected Order(int index, TimeSeries series, OrderType type, Num amount) {
+    protected Order(int index, BarSeries series, OrderType type, Num amount) {
         this(index, series, type, amount, new ZeroCostModel());
     }
 
     /**
      * Constructor.
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param type the type of the order
      * @param amount the amount to be (or that was) ordered
      */
-    protected Order(int index, TimeSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
+    protected Order(int index, BarSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
         this.type = type;
         this.index = index;
         this.amount = amount;
@@ -270,10 +270,10 @@ public class Order implements Serializable {
     
     /**
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @return a BUY order
      */
-    public static Order buyAt(int index, TimeSeries series) {
+    public static Order buyAt(int index, BarSeries series) {
         return new Order(index, series, OrderType.BUY);
     }
 
@@ -299,30 +299,30 @@ public class Order implements Serializable {
 
     /**
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param amount the amount to be (or that was) bought
      * @return a BUY order
      */
-    public static Order buyAt(int index, TimeSeries series, Num amount) {
+    public static Order buyAt(int index, BarSeries series, Num amount) {
         return new Order(index, series, OrderType.BUY, amount);
     }
 
     /**
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param amount the amount to be (or that was) bought
      * @return a BUY order
      */
-    public static Order buyAt(int index, TimeSeries series, Num amount, CostModel transactionCostModel) {
+    public static Order buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
         return new Order(index, series, OrderType.BUY, amount, transactionCostModel);
     }
 
     /**
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @return a SELL order
      */
-    public static Order sellAt(int index, TimeSeries series) {
+    public static Order sellAt(int index, BarSeries series) {
         return new Order(index, series, OrderType.SELL);
     }
 
@@ -348,21 +348,21 @@ public class Order implements Serializable {
 
     /**
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param amount the amount to be (or that was) bought
      * @return a SELL order
      */
-    public static Order sellAt(int index, TimeSeries series, Num amount) {
+    public static Order sellAt(int index, BarSeries series, Num amount) {
         return new Order(index, series, OrderType.SELL, amount);
     }
 
     /**
      * @param index the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @param amount the amount to be (or that was) bought
      * @return a SELL order
      */
-    public static Order sellAt(int index, TimeSeries series, Num amount, CostModel transactionCostModel) {
+    public static Order sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
         return new Order(index, series, OrderType.SELL, amount, transactionCostModel);
     }
 

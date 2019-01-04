@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -44,7 +44,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void externalData() throws Exception {
-        TimeSeries xlsSeries = xls.getSeries();
+        BarSeries xlsSeries = xls.getSeries();
         TradingRecord xlsTradingRecord = xls.getTradingRecord();
         Num value;
 
@@ -59,7 +59,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void dummyData() {
-        MockTimeSeries series = new MockTimeSeries(numFunction,100, 150, 200, 100, 50, 100);
+        MockBarSeries series = new MockBarSeries(numFunction,100, 150, 200, 100, 50, 100);
         TradingRecord tradingRecord = new BaseTradingRecord();
         Num criterion;
 
@@ -78,7 +78,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void fixedCost() {
-        MockTimeSeries series = new MockTimeSeries(numFunction,100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction,100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord();
         Num criterion;
 
@@ -97,7 +97,7 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void fixedCostWithOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade trade = new Trade();
         Num criterion;
 

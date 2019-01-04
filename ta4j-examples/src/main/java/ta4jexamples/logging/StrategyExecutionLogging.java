@@ -28,8 +28,8 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 
@@ -74,13 +74,13 @@ public class StrategyExecutionLogging {
         loadLoggerConfiguration();
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
 
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         seriesManager.run(strategy);
 
         // Unload the Logback configuration

@@ -25,14 +25,14 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.BarSeries;
 
 public class IsEqualRuleTest {
 
@@ -40,7 +40,7 @@ public class IsEqualRuleTest {
     
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 10, 0, -20);
         rule = new IsEqualRule(indicator, series.numOf(20));
     }

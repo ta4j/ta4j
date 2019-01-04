@@ -26,10 +26,9 @@ package org.ta4j.core.indicators.volume;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -37,6 +36,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class NVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -58,7 +58,7 @@ public class NVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         bars.add(new MockBar(1362.16, 3378.78,numFunction));
         bars.add(new MockBar(1365.51, 2417.59,numFunction));
         bars.add(new MockBar(1374.02, 1442.81,numFunction));
-        TimeSeries series = new MockTimeSeries(bars);
+        BarSeries series = new MockBarSeries(bars);
 
         NVIIndicator nvi = new NVIIndicator(series);
         assertNumEquals(1000, nvi.getValue(0));

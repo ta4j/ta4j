@@ -39,13 +39,13 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Abstract test class to extend TimeSeries, Indicator an other test cases.
+ * Abstract test class to extend BarSeries, Indicator an other test cases.
  * The extending class will be called twice. First time with {@link PrecisionNum#valueOf},
  * second time with {@link DoubleNum#valueOf} as <code>Function<Number, Num></></code> parameter.
  * This should ensure that the defined test case is valid for both data types.
  *
  * @param <D> Data source of test object, needed for Excel-Sheet validation
- *           (could be <code>Indicator<Num></code> or <code>TimeSeries</code>, ...)
+ *           (could be <code>Indicator<Num></code> or <code>BarSeries</code>, ...)
  * @param <I> The generic class of the test indicator (could be <code>Num</code>, <code>Boolean</code>, ...)
  */
 @RunWith(Parameterized.class)

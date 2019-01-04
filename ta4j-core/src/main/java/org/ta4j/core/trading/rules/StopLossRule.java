@@ -23,11 +23,11 @@
  *******************************************************************************/
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * A stop-loss rule.
@@ -64,7 +64,7 @@ public class StopLossRule extends AbstractRule {
      */
     public StopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
         this.closePrice = closePrice;
-        TimeSeries series = closePrice.getTimeSeries();
+        BarSeries series = closePrice.getBarSeries();
         this.lossRatioThreshold = series.numOf(100).minus(lossPercentage).dividedBy(series.numOf(100));
     }
 

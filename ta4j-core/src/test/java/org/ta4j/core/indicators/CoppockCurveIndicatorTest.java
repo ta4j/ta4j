@@ -25,14 +25,14 @@ package org.ta4j.core.indicators;
 
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class CoppockCurveIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -43,7 +43,7 @@ public class CoppockCurveIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void coppockCurveWithRoc14Roc11Wma10() {
         // Example from http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve
-        TimeSeries data = new MockTimeSeries(numFunction,
+        BarSeries data = new MockBarSeries(numFunction,
                 872.81, 919.14, 919.32, 987.48, 1020.62,
                 1057.08, 1036.19, 1095.63, 1115.1, 1073.87,
                 1104.49, 1169.43, 1186.69, 1089.41, 1030.71,

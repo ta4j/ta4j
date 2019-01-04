@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 
 /**
  * Open price indicator.
@@ -32,7 +32,7 @@ import org.ta4j.core.TimeSeries;
  */
 public class OpenPriceIndicator extends PriceIndicator {
 
-    public OpenPriceIndicator(TimeSeries series) {
+    public OpenPriceIndicator(BarSeries series) {
         super(series, Bar::getOpenPrice);
     }
 }

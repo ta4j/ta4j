@@ -24,10 +24,10 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Average profit criterion.
@@ -41,7 +41,7 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num bars = numberOfBars.calculate(series, tradingRecord);
         if (bars.isEqual(series.numOf(0))) {
             return series.numOf(1);
@@ -51,7 +51,7 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         Num bars = numberOfBars.calculate(series, trade);
         if (bars.isEqual(series.numOf(0))) {
             return series.numOf(1);

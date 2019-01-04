@@ -52,9 +52,9 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param indicator the indicator (usually close price)
-     * @param longRoCBarCount the time frame for long term RoC
-     * @param shortRoCBarCount the time frame for short term RoC
-     * @param wmaBarCount the time frame (for WMA)
+     * @param longRoCBarCount the bar count for long term RoC
+     * @param shortRoCBarCount the bar count for short term RoC
+     * @param wmaBarCount the bar count (for WMA)
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);

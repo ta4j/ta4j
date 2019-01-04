@@ -23,12 +23,12 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.indicators.helpers.MinusDMIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * -DI indicator.
@@ -44,7 +44,7 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
     private final ATRIndicator atrIndicator;
     private final int barCount;
 
-    public MinusDIIndicator(TimeSeries series, int barCount) {
+    public MinusDIIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
         this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);

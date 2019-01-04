@@ -25,11 +25,11 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class SumIndicatorTest {
 
@@ -37,7 +37,7 @@ public class SumIndicatorTest {
     
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, series.numOf(6));
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
                 series.numOf(-2.0),

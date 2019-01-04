@@ -1,7 +1,7 @@
-/*******************************************************************************
+/** *****************************************************************************
  *   The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
+ *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization
  *   & respective authors (see AUTHORS)
  *
  *   Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -20,38 +20,35 @@
  *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ ****************************************************************************** */
 package org.ta4j.core;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Order.OrderType;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockTimeSeries;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.FixedRule;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.trading.rules.FixedRule;
 
+public class BarSeriesManagerTest extends AbstractIndicatorTest {
 
-public class TimeSeriesManagerTest extends AbstractIndicatorTest {
+    private BarSeries seriesForRun;
 
-    private TimeSeries seriesForRun;
-
-    private TimeSeriesManager manager;
+    private BarSeriesManager manager;
 
     private Strategy strategy;
 
     private final Num HUNDRED = numOf(100);
 
-    public TimeSeriesManagerTest(Function<Number, Num> numFunction) {
+    public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -59,9 +56,9 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
     public void setUp() {
 
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
-        seriesForRun = new MockTimeSeries(numFunction,
-                new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
-                new ZonedDateTime[] {
+        seriesForRun = new MockBarSeries(numFunction,
+                new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d},
+                new ZonedDateTime[]{
                     ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
                     ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
                     ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf),
@@ -72,7 +69,7 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
                     ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
                     ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf)
                 });
-        manager = new TimeSeriesManager(seriesForRun);
+        manager = new BarSeriesManager(seriesForRun);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -80,16 +77,16 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
 
     @Test
     public void runOnWholeSeries() {
-        TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager.setTimeSeries(series);
+        BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        manager.setBarSeries(series);
         List<Trade> allTrades = manager.run(strategy).getTrades();
         assertEquals(2, allTrades.size());
     }
 
     @Test
     public void runOnWholeSeriesWithAmount() {
-        TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager.setTimeSeries(series);
+        BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        manager.setBarSeries(series);
         List<Trade> allTrades = manager.run(strategy, OrderType.BUY, HUNDRED).getTrades();
 
         assertEquals(2, allTrades.size());
@@ -148,18 +145,18 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
     }
 
     @Test
-    public void runOnSeriesSlices(){
+    public void runOnSeriesSlices() {
         ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
-        TimeSeries series = new MockTimeSeries(numFunction, new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
-                    new ZonedDateTime[]{dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001), dateTime.withYear(2001), dateTime.withYear(2002),
+        BarSeries series = new MockBarSeries(numFunction, new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
+                new ZonedDateTime[]{dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001), dateTime.withYear(2001), dateTime.withYear(2002),
                     dateTime.withYear(2002), dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004), dateTime.withYear(2005)});
-        manager.setTimeSeries(series);
+        manager.setBarSeries(series);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
         List<Trade> trades = manager.run(aStrategy, 0, 1).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)),trades.get(0).getEntry());
+        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)), trades.get(0).getEntry());
         assertEquals(Order.sellAt(2, series.getBar(2).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(aStrategy, 2, 3).getTrades();

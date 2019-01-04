@@ -6,7 +6,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Order;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -21,7 +21,7 @@ import java.util.List;
 public class SimpleMovingAverageRangeBacktest {
 
     public static void main(String[] args) {
-        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
 
         int start = 3;
@@ -37,13 +37,13 @@ public class SimpleMovingAverageRangeBacktest {
         backtestExecutor.execute(strategies, PrecisionNum.valueOf(50), Order.OrderType.BUY);
     }
 
-    private static Rule createEntryRule(TimeSeries series, int barCount) {
+    private static Rule createEntryRule(BarSeries series, int barCount) {
         Indicator<Num> closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, barCount);
         return new UnderIndicatorRule(sma, closePrice);
     }
 
-    private static Rule createExitRule(TimeSeries series, int barCount) {
+    private static Rule createExitRule(BarSeries series, int barCount) {
         Indicator<Num> closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, barCount);
         return new OverIndicatorRule(sma, closePrice);

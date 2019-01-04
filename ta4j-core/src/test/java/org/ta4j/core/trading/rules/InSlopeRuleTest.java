@@ -25,14 +25,14 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.BarSeries;
 
 public class InSlopeRuleTest {
 
@@ -41,7 +41,7 @@ public class InSlopeRuleTest {
     
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
         rulePositiveSlope = new InSlopeRule(indicator, series.numOf(20), series.numOf(30));
         ruleNegativeSlope = new InSlopeRule(indicator, series.numOf(-40), series.numOf(-20));

@@ -53,8 +53,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator
-     * @param shortBarCount the short time frame (normally 12)
-     * @param longBarCount the long time frame (normally 26)
+     * @param shortBarCount the short bar count (normally 12)
+     * @param longBarCount the long bar count (normally 26)
      */
     public MACDIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
         super(indicator);

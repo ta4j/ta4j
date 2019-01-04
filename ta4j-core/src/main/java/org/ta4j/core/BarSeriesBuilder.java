@@ -27,12 +27,12 @@ package org.ta4j.core;
 import java.io.Serializable;
 
 /**
- * Interface to build a time series
+ * Interface to build a bar series
  */
-public interface TimeSeriesBuilder extends Serializable {
+public interface BarSeriesBuilder extends Serializable {
     /**
-     * Builds the time series with corresponding parameters
+     * Builds the bar series with corresponding parameters
      * @return
      */
-    TimeSeries build();
+    BarSeries build();
 }

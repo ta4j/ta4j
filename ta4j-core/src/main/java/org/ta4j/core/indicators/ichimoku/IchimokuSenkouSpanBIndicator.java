@@ -23,7 +23,7 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
@@ -37,16 +37,16 @@ public class IchimokuSenkouSpanBIndicator extends AbstractIchimokuLineIndicator 
      * Constructor.
      * @param series the series
      */
-    public IchimokuSenkouSpanBIndicator(TimeSeries series) {
+    public IchimokuSenkouSpanBIndicator(BarSeries series) {
         super(series, 52);
     }
 
     /**
      * Constructor.
      * @param series the series
-     * @param barCount the time frame (usually 52)
+     * @param barCount the bar count (usually 52)
      */
-    public IchimokuSenkouSpanBIndicator(TimeSeries series, int barCount) {
+    public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount) {
         super(series, barCount);
     }
 

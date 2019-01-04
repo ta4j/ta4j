@@ -29,7 +29,7 @@ import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -48,7 +48,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
     @Before
     public void setUp() {
         double[] data = new double[]{10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80};
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, data));
+        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, data));
     }
 
     @Test
@@ -100,7 +100,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
     @Test
     public void calculateLinearRegression() {
         double[] values = new double[] { 1, 2, 1.3, 3.75, 2.25 };
-        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(numFunction, values));
+        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockBarSeries(numFunction, values));
         SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
         
         SimpleRegression origReg = buildSimpleRegression(values);

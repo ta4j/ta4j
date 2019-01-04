@@ -34,7 +34,7 @@ import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
@@ -59,7 +59,7 @@ public class IndicatorsToChart {
      * @param name the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(BarSeries barseries, Indicator<Num> indicator, String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barseries.getBarCount(); i++) {
             Bar bar = barseries.getBar(i);
@@ -91,7 +91,7 @@ public class IndicatorsToChart {
         /*
           Getting time series
          */
-        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         /*
           Creating indicators

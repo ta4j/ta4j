@@ -23,10 +23,10 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Chikou Span indicator
@@ -39,31 +39,31 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
     /** The close price */
     private final ClosePriceIndicator closePriceIndicator;
     
-    /** The time delay */
-    private final int timeDelay;
+    /** The bar delay */
+    private final int barDelay;
     
     /**
      * Constructor.
      * @param series the series
      */
-    public IchimokuChikouSpanIndicator(TimeSeries series) {
+    public IchimokuChikouSpanIndicator(BarSeries series) {
         this(series, 26);
     }
     
     /**
      * Constructor.
      * @param series the series
-     * @param timeDelay the time delay (usually 26)
+     * @param barDelay the bar delay (usually 26)
      */
-    public IchimokuChikouSpanIndicator(TimeSeries series, int timeDelay) {
+    public IchimokuChikouSpanIndicator(BarSeries series, int barDelay) {
         super(series);
         closePriceIndicator = new ClosePriceIndicator(series);
-        this.timeDelay = timeDelay;
+        this.barDelay = barDelay;
     }
 
     @Override
     protected Num calculate(int index) {
-        return closePriceIndicator.getValue(Math.max(0, index - timeDelay));
+        return closePriceIndicator.getValue(Math.max(0, index - barDelay));
     }
 
 }

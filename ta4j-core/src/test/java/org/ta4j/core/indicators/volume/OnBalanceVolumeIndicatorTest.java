@@ -28,7 +28,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
@@ -55,7 +55,7 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
         bars.add(new MockBar(now, 0, 7, 0, 0, 0, 6, 0,numFunction));
         bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0,numFunction));
 
-        OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockTimeSeries(bars));
+        OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockBarSeries(bars));
         assertNumEquals(0, obv.getValue(0));
         assertNumEquals(-2, obv.getValue(1));
         assertNumEquals(1, obv.getValue(2));
@@ -70,7 +70,7 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
         for (int i = 0; i < 10000; i++) {
             bigListOfBars.add(new MockBar(i,numFunction));
         }
-        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
+        MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);
         // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.

@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -41,7 +41,7 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 5, 20, 3);
+        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 5, 20, 3);
         AnalysisCriterion mdd = getCriterion();
 
         assertNumEquals(0d, mdd.calculate(series, new BaseTradingRecord()));
@@ -49,7 +49,7 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOnlyGains() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
+        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         AnalysisCriterion mdd = getCriterion();
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),
@@ -60,7 +60,7 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateShouldWork() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 5, 20, 3);
+        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 5, 20, 3);
         AnalysisCriterion mdd = getCriterion();
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),
@@ -73,14 +73,14 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNullSeriesSizeShouldReturn0() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, new double[] {});
+        MockBarSeries series = new MockBarSeries(numFunction, new double[] {});
         AnalysisCriterion mdd = getCriterion();
         assertNumEquals(0d, mdd.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void withTradesThatSellBeforeBuying() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
+        MockBarSeries series = new MockBarSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
         AnalysisCriterion mdd = getCriterion();
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),
@@ -91,7 +91,7 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void withSimpleTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 10, 5, 6, 1);
+        MockBarSeries series = new MockBarSeries(numFunction, 1, 10, 5, 6, 1);
         AnalysisCriterion mdd = getCriterion();
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Order.buyAt(0,series), Order.sellAt(1,series),

@@ -46,7 +46,7 @@ public class IsFallingRule extends AbstractRule {
 	 * Constructor.
 	 * 
 	 * @param ref the indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 */
 	public IsFallingRule(Indicator<Num> ref, int barCount) {
 		this(ref, barCount, 1.0);
@@ -56,7 +56,7 @@ public class IsFallingRule extends AbstractRule {
 	 * Constructor.
 	 * 
 	 * @param ref the indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 * @param minStrenght the minimum required falling strength (between '0' and '1', e.g. '1' for strict falling)
 	 */
 	public IsFallingRule(Indicator<Num> ref, int barCount, double minStrenght) {

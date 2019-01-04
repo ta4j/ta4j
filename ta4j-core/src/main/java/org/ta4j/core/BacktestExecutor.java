@@ -36,10 +36,10 @@ import java.util.List;
 public class BacktestExecutor {
 
     private final TradingStatementGenerator tradingStatementGenerator = new TradingStatementGenerator();
-    private final TimeSeriesManager seriesManager;
+    private final BarSeriesManager seriesManager;
 
-    public BacktestExecutor(TimeSeries series) {
-        this.seriesManager = new TimeSeriesManager(series);
+    public BacktestExecutor(BarSeries series) {
+        this.seriesManager = new BarSeriesManager(series);
     }
 
     /**
@@ -61,7 +61,7 @@ public class BacktestExecutor {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
         for (Strategy strategy : strategies) {
             final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
-            final TradingStatement tradingStatement = tradingStatementGenerator.generate(tradingRecord, seriesManager.getTimeSeries());
+            final TradingStatement tradingStatement = tradingStatementGenerator.generate(tradingRecord, seriesManager.getBarSeries());
             tradingStatements.add(tradingStatement);
         }
         return tradingStatements;

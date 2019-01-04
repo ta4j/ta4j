@@ -46,9 +46,9 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * @param price the price
-     * @param barCountEffectiveRatio the time frame of the effective ratio (usually 10)
-     * @param barCountFast the time frame fast (usually 2)
-     * @param barCountSlow the time frame slow (usually 30)
+     * @param barCountEffectiveRatio the bar count of the effective ratio (usually 10)
+     * @param barCountFast the bar count fast (usually 2)
+     * @param barCountSlow the bar count slow (usually 30)
      */
     public KAMAIndicator(Indicator<Num> price, int barCountEffectiveRatio, int barCountFast, int barCountSlow) {
         super(price);

@@ -25,14 +25,14 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class DifferenceIndicatorTest {
 
@@ -42,7 +42,7 @@ public class DifferenceIndicatorTest {
     public void setUp() {
         Function<Number, Num> numFunction = PrecisionNum::valueOf;
 
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
                 numFunction.apply(-2.0),
                 numFunction.apply(0.00),

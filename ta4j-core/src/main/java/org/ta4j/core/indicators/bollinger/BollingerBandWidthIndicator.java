@@ -47,7 +47,7 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
      * @param bbl the lower band Indicator.
      */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm, BollingerBandsLowerIndicator bbl) {
-        super(bbm.getTimeSeries());
+        super(bbm.getBarSeries());
         this.bbu = bbu;
         this.bbm = bbm;
         this.bbl = bbl;

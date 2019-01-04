@@ -25,18 +25,18 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class ConstantIndicatorTest {
     private ConstantIndicator<Num> constantIndicator;
 
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         constantIndicator = new ConstantIndicator<Num>(series, series.numOf(30.33));
     }
 

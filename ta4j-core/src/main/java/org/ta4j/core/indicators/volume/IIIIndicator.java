@@ -23,13 +23,13 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Intraday Intensity Index
@@ -47,7 +47,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
 
     private VolumeIndicator volumeIndicator;
 
-    public IIIIndicator(TimeSeries series) {
+    public IIIIndicator(BarSeries series) {
         super(series);
         closePriceIndicator = new ClosePriceIndicator(series);
         highPriceIndicator = new HighPriceIndicator(series);
@@ -57,7 +57,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
 
-        if (index == getTimeSeries().getBeginIndex()) {
+        if (index == getBarSeries().getBeginIndex()) {
             return numOf(0);
         }
         Num closePrice = numOf(2).multipliedBy(closePriceIndicator.getValue(index));

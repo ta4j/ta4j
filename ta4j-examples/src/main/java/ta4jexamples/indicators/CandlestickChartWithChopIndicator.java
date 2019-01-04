@@ -42,7 +42,7 @@ import org.jfree.data.xy.XYDataset;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import ta4jexamples.loaders.CsvTradesLoader;
 import java.awt.*;
@@ -65,13 +65,13 @@ public class CandlestickChartWithChopIndicator {
 	private static XYPlot indicatorXYPlot;
 	static Stroke dashedThinLineStyle = 
 			new BasicStroke(  0.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f, new float[] {8.0f, 4.0f}, 0.0f );
-	static TimeSeries series;
+	static BarSeries series;
 	/**
      * Builds a JFreeChart OHLC dataset from a ta4j time series.
      * @param series a time series
      * @return an Open-High-Low-Close dataset
      */
-    private static OHLCDataset createOHLCDataset(TimeSeries series) {
+    private static OHLCDataset createOHLCDataset(BarSeries series) {
         final int nbBars = series.getBarCount();
 
         Date[] dates = new Date[nbBars];
@@ -99,7 +99,7 @@ public class CandlestickChartWithChopIndicator {
      * @param series a time series
      * @return an additional dataset
      */
-    private static TimeSeriesCollection createAdditionalDataset(TimeSeries series) {
+    private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
@@ -111,7 +111,7 @@ public class CandlestickChartWithChopIndicator {
         return dataset;
     }
 
-    private static TimeSeriesCollection createChopDataset(TimeSeries series) {
+    private static TimeSeriesCollection createChopDataset(BarSeries series) {
 		ChopIndicator indicator = new ChopIndicator( series, CHOP_INDICATOR_TIMEFRAME, CHOP_SCALE_VALUE );
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("CHOP_14");

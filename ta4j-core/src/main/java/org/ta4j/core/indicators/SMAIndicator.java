@@ -45,13 +45,13 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = getTimeSeries().numOf(0);
+        Num sum = getBarSeries().numOf(0);
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
 
         final int realBarCount = Math.min(barCount, index + 1);
-        return sum.dividedBy(getTimeSeries().numOf(realBarCount));
+        return sum.dividedBy(getBarSeries().numOf(realBarCount));
     }
 
     @Override

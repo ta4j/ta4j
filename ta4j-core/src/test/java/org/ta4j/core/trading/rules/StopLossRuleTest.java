@@ -29,7 +29,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -49,7 +49,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest {
     @Before
     public void setUp() {
         tradingRecord = new BaseTradingRecord();
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction,
+        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction,
                 100, 105, 110, 120, 100, 150, 110, 100
         ));
     }

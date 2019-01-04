@@ -27,7 +27,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -46,7 +46,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     @Test
     public void isSatisfiedForBuy() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
@@ -81,7 +81,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     @Test
     public void isSatisfiedForSell() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
 
         // 10% trailing-stop-loss
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));

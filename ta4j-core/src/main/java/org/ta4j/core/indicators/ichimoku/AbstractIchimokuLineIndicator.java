@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * An abstract class for Ichimoku clouds indicators.
@@ -49,9 +49,9 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
     /**
      * Contructor.
      * @param series the series
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
-    public AbstractIchimokuLineIndicator(TimeSeries series, int barCount) {
+    public AbstractIchimokuLineIndicator(BarSeries series, int barCount) {
         super(series);
         periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
         periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);

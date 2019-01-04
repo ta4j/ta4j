@@ -24,9 +24,9 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * The Detrended Price Oscillator (DPO) indicator.
@@ -46,35 +46,35 @@ import org.ta4j.core.num.Num;
 public class DPOIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final int timeShift;
+    private final int barShift;
     private final Indicator<Num> price;
     private final SMAIndicator sma;
     
     /**
      * Constructor.
      * @param series the series
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
-    public DPOIndicator(TimeSeries series, int barCount) {
+    public DPOIndicator(BarSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
     }
     
     /**
      * Constructor.
      * @param price the price
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
         this.barCount = barCount;
-        timeShift = barCount / 2 + 1;
+        barShift = barCount / 2 + 1;
         this.price = price;
         sma = new SMAIndicator(price, this.barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return price.getValue(index).minus(sma.getValue(index-timeShift));
+        return price.getValue(index).minus(sma.getValue(index-barShift));
     }
     
     @Override

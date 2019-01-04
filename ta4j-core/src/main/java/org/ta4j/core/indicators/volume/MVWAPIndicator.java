@@ -40,7 +40,7 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param vwap the vwap
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);

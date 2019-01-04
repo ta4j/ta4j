@@ -32,7 +32,7 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Simple linear regression indicator.
  * </p>
- * A moving (i.e. over the time frame) simple linear regression (least squares).
+ * A moving (i.e. over the bar count) simple linear regression (least squares).
  * y = slope * x + intercept
  * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
@@ -55,7 +55,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 	 * Constructor for the y-values of the formula (y = slope * x + intercept).
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
 		this(indicator, barCount, SimpleLinearRegressionType.y);
@@ -65,7 +65,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 	 * Constructor.
 	 * 
 	 * @param indicator the indicator for the x-values of the formula.
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 * @param type the type of the outcome value (y, slope, intercept)
 	 */
 	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount,
@@ -98,8 +98,8 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
     
     /**
      * Calculates the regression line.
-     * @param startIndex the start index (inclusive) in the time series
-     * @param endIndex the end index (inclusive) in the time series
+     * @param startIndex the start index (inclusive) in the bar series
+     * @param endIndex the end index (inclusive) in the bar series
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar

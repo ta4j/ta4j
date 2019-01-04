@@ -49,7 +49,7 @@ public class IsHighestRule extends AbstractRule {
      * Constructor.
      *
      * @param ref      the indicator
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public IsHighestRule(Indicator<Num> ref, int barCount) {
         this.ref = ref;

@@ -39,32 +39,32 @@ import java.util.List;
 public interface AnalysisCriterion {
 
     /**
-     * @param series a time series, not null
+     * @param series a bar series, not null
      * @param trade a trade, not null
      * @return the criterion value for the trade
      */
-    Num calculate(TimeSeries series, Trade trade);
+    Num calculate(BarSeries series, Trade trade);
 
     /**
-     * @param series a time series, not null
+     * @param series a bar series, not null
      * @param tradingRecord a trading record, not null
      * @return the criterion value for the trades
      */
-    Num calculate(TimeSeries series, TradingRecord tradingRecord);
+    Num calculate(BarSeries series, TradingRecord tradingRecord);
 
     /**
-     * @param manager the time series manager
+     * @param manager the bar series manager
      * @param strategies a list of strategies
      * @return the best strategy (among the provided ones) according to the criterion
      */
-    default Strategy chooseBest(TimeSeriesManager manager, List<Strategy> strategies) {
+    default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies) {
 
         Strategy bestStrategy = strategies.get(0);
-        Num bestCriterionValue = calculate(manager.getTimeSeries(), manager.run(bestStrategy));
+        Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
 
         for (int i = 1; i < strategies.size(); i++) {
             Strategy currentStrategy = strategies.get(i);
-            Num currentCriterionValue = calculate(manager.getTimeSeries(), manager.run(currentStrategy));
+            Num currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy));
 
             if (betterThan(currentCriterionValue, bestCriterionValue)) {
                 bestStrategy = currentStrategy;

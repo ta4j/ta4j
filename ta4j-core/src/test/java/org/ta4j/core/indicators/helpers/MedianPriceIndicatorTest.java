@@ -27,10 +27,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -38,11 +37,12 @@ import java.util.List;
 import java.util.function.Function;
 
 import static junit.framework.TestCase.assertEquals;
+import org.ta4j.core.BarSeries;
 
 public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private MedianPriceIndicator average;
 
-    TimeSeries timeSeries;
+    BarSeries barSeries;
 
     public MedianPriceIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -64,16 +64,16 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         bars.add(new MockBar(0, 0, 9, 3,numFunction));
 
 
-        this.timeSeries = new MockTimeSeries(bars);
-        average = new MedianPriceIndicator(timeSeries);
+        this.barSeries = new MockBarSeries(bars);
+        average = new MedianPriceIndicator(barSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarClosePrice() {
         Num result;
         for (int i = 0; i < 10; i++) {
-            result = timeSeries.getBar(i).getHighPrice().plus(timeSeries.getBar(i).getLowPrice())
-                    .dividedBy(timeSeries.numOf(2));
+            result = barSeries.getBar(i).getHighPrice().plus(barSeries.getBar(i).getLowPrice())
+                    .dividedBy(barSeries.numOf(2));
             assertEquals(average.getValue(i), result);
         }
     }

@@ -38,11 +38,11 @@ import java.time.ZonedDateTime;
 public class SimpleMovingAverageBacktest {
 
     public static void main(String[] args) throws InterruptedException {
-        TimeSeries series = createTimeSeries();
+        BarSeries series = createBarSeries();
 
         Strategy strategy3DaySma = create3DaySmaStrategy(series);
 
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
         System.out.println(tradingRecord3DaySma);
 
@@ -58,8 +58,8 @@ public class SimpleMovingAverageBacktest {
         System.out.println(calculate2DaySma);
     }
 
-    private static TimeSeries createTimeSeries() {
-        TimeSeries series = new BaseTimeSeries();
+    private static BarSeries createBarSeries() {
+        BarSeries series = new BaseBarSeries();
         series.addBar(new BaseBar(CreateDay(1), 100.0, 100.0, 100.0, 100.0, 1060, PrecisionNum::valueOf));
         series.addBar(new BaseBar(CreateDay(2), 110.0, 110.0, 110.0, 110.0, 1070, PrecisionNum::valueOf));
         series.addBar(new BaseBar(CreateDay(3), 140.0, 140.0, 140.0, 140.0, 1080, PrecisionNum::valueOf));
@@ -75,7 +75,7 @@ public class SimpleMovingAverageBacktest {
         return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneId.systemDefault());
     }
 
-    private static Strategy create3DaySmaStrategy(TimeSeries series) {
+    private static Strategy create3DaySmaStrategy(BarSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, 3);
         return new BaseStrategy(
@@ -84,7 +84,7 @@ public class SimpleMovingAverageBacktest {
         );
     }
 
-    private static Strategy create2DaySmaStrategy(TimeSeries series) {
+    private static Strategy create2DaySmaStrategy(BarSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, 2);
         return new BaseStrategy(

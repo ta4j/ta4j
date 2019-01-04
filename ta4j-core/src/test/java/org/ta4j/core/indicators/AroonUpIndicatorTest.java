@@ -26,8 +26,7 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
@@ -35,15 +34,16 @@ import java.time.ZonedDateTime;
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.BarSeries;
 
 
 public class AroonUpIndicatorTest {
 
-    private TimeSeries data;
+    private BarSeries data;
 
     @Before
     public void init() {
-        data = new BaseTimeSeries();
+        data = new BaseBarSeries();
         data.addBar(ZonedDateTime.now().plusDays(1),168.28, 169.87, 167.15, 169.64, 0);
         data.addBar(ZonedDateTime.now().plusDays(2),168.84, 169.36, 168.2, 168.71, 0);
         data.addBar(ZonedDateTime.now().plusDays(3),168.88, 169.29, 166.41, 167.74, 0);
@@ -91,7 +91,7 @@ public class AroonUpIndicatorTest {
 
     @Test
     public void onlyNaNValues(){
-        BaseTimeSeries series = new BaseTimeSeries("NaN test");
+        BaseBarSeries series = new BaseBarSeries("NaN test");
         for (long i = 0; i<= 1000; i++){
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
@@ -105,7 +105,7 @@ public class AroonUpIndicatorTest {
 
     @Test
     public void naNValuesInIntervall(){
-        BaseTimeSeries series = new BaseTimeSeries("NaN test");
+        BaseBarSeries series = new BaseBarSeries("NaN test");
         for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
             Num maxPrice = i % 2 == 0 ? series.numOf(i): NaN;
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, maxPrice,NaN, NaN, NaN);

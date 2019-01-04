@@ -24,13 +24,13 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.BarSeries;
 
 
 /**
@@ -50,7 +50,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
      * Constructor.
      * <p>
      * @param minValueIndicator the indicator for the maximum price (default {@link HighPriceIndicator})
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public AroonDownIndicator(Indicator<Num> minValueIndicator, int barCount) {
         super(minValueIndicator);
@@ -64,16 +64,16 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
     /**
      * Default Constructor that is using the maximum price
      * <p>
-     * @param series the time series
-     * @param barCount the time frame
+     * @param series the bar series
+     * @param barCount the bar count
      */
-    public AroonDownIndicator(TimeSeries series, int barCount) {
+    public AroonDownIndicator(BarSeries series, int barCount) {
         this(new LowPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (getTimeSeries().getBar(index).getLowPrice().isNaN())
+        if (getBarSeries().getBar(index).getLowPrice().isNaN())
             return NaN;
 
         // Getting the number of bars since the lowest close price

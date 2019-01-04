@@ -23,10 +23,10 @@
  *******************************************************************************/
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Average profitable trades criterion.
@@ -36,11 +36,11 @@ import org.ta4j.core.num.Num;
 public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
     }
 
-    private boolean isProfitableTrade(TimeSeries series, Trade trade) {
+    private boolean isProfitableTrade(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
             final Num result = calculateResult(series, trade);
             return result.isGreaterThan(series.numOf(1));
@@ -48,7 +48,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
         return false;
     }
 
-    private Num calculateResult(TimeSeries series, Trade trade) {
+    private Num calculateResult(BarSeries series, Trade trade) {
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
         if (trade.getEntry().isBuy()) {
@@ -61,7 +61,7 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
     }
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
         return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
     }

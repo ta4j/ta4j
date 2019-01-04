@@ -23,7 +23,7 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Tenkan-sen (Conversion line) indicator
@@ -37,16 +37,16 @@ public class IchimokuTenkanSenIndicator extends AbstractIchimokuLineIndicator {
      * Constructor.
      * @param series the series
      */
-    public IchimokuTenkanSenIndicator(TimeSeries series) {
+    public IchimokuTenkanSenIndicator(BarSeries series) {
         this(series, 9);
     }
     
     /**
      * Constructor.
      * @param series the series
-     * @param barCount the time frame (usually 9)
+     * @param barCount the bar count (usually 9)
      */
-    public IchimokuTenkanSenIndicator(TimeSeries series, int barCount) {
+    public IchimokuTenkanSenIndicator(BarSeries series, int barCount) {
         super(series, barCount);
     }
 }

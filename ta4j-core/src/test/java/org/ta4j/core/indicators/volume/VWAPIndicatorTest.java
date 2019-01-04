@@ -27,10 +27,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -38,10 +37,11 @@ import java.util.List;
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    protected TimeSeries data;
+    protected BarSeries data;
 
     public VWAPIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -72,7 +72,7 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         bars.add(new MockBar(43.07, 43.55, 43.65, 43.06,numFunction));
         bars.add(new MockBar(43.56, 43.95, 43.99, 43.53,numFunction));
         bars.add(new MockBar(43.93, 44.47, 44.58, 43.93,numFunction));
-        data = new MockTimeSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test

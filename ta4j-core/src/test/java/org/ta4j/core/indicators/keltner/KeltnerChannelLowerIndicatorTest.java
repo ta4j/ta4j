@@ -27,11 +27,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -39,10 +38,11 @@ import java.util.List;
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class KeltnerChannelLowerIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num> {
 
-    private TimeSeries data;
+    private BarSeries data;
 
     public KeltnerChannelLowerIndicatorTest(Function<Number, Num> function) {
         super(function);
@@ -86,7 +86,7 @@ public class KeltnerChannelLowerIndicatorTest extends AbstractIndicatorTest<Indi
         bars.add(new MockBar(12287.72, 12318.14, 12331.31, 12253.24,numFunction));
         bars.add(new MockBar(12389.74, 12212.79, 12389.82, 12176.31,numFunction));
 
-        data = new MockTimeSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test

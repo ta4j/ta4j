@@ -23,9 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Average high-low indicator.
@@ -33,13 +33,13 @@ import org.ta4j.core.num.Num;
  */
 public class MedianPriceIndicator extends CachedIndicator<Num> {
 
-    public MedianPriceIndicator(TimeSeries series) {
+    public MedianPriceIndicator(BarSeries series) {
         super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-        return getTimeSeries().getBar(index).getHighPrice().plus(getTimeSeries().getBar(index).getLowPrice())
+        return getBarSeries().getBar(index).getHighPrice().plus(getBarSeries().getBar(index).getLowPrice())
                 .dividedBy(numOf(2));
     }
 }

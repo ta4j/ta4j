@@ -38,17 +38,17 @@ import static org.ta4j.core.num.NaN.NaN;
  * e.g. comparing the historical returns of stocks with bonds.
  *
  * This indicator has the following characteristics:
- *  - the calculation is timeframe dependendant. The timeframe corresponds to the
- *    number of trading events in a period, e. g. the timeframe for a US trading
+ *  - the calculation is barcount dependendant. The barcount corresponds to the
+ *    number of trading events in a period, e. g. the barcount for a US trading
  *    year for end of day bars would be '251' trading days
- *  - the result is a step function with a constant value within a timeframe
- *  - NaN values while index is smaller than timeframe, e.g. timeframe is year,
+ *  - the result is a step function with a constant value within a barcount
+ *  - NaN values while index is smaller than barcount, e.g. barcount is year,
  *    than no values are calculated before a full year is reached
- *  - NaN values for incomplete timeframes, e.g. timeframe is a year and your
- *    timeseries contains data for 11,3 years, than no values are calculated for
+ *  - NaN values for incomplete barcounts, e.g. barcount is a year and your
+ *    barSeries contains data for 11,3 years, than no values are calculated for
  *    the remaining 0,3 years
  *  - the method 'getTotalReturn' calculates the total return over all returns
- *    of the coresponding timeframes
+ *    of the coresponding barcounts
  *
  *
  * Further readings:
@@ -71,7 +71,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      * Example: use barCount = 251 and "end of day"-bars for annual behaviour
      * in the US (http://tradingsim.com/blog/trading-days-in-a-year/).
      * @param indicator the indicator
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public PeriodicalGrowthRateIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -90,9 +90,9 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
     public Num getTotalReturn() {
 
         Num totalProduct = ONE;
-        int completeTimeframes = (getTimeSeries().getBarCount() / barCount);
+        int completeBarCounts = (getBarSeries().getBarCount() / barCount);
 
-        for (int i = 1; i <= completeTimeframes; i++) {
+        for (int i = 1; i <= completeBarCounts; i++) {
             int index = i * barCount;
             Num currentReturn = getValue(index);
 
@@ -103,7 +103,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             }
         }
 
-        return totalProduct.pow(ONE.dividedBy(numOf(completeTimeframes)));
+        return totalProduct.pow(ONE.dividedBy(numOf(completeBarCounts)));
     }
 
     @Override
@@ -111,30 +111,30 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
         Num currentValue = indicator.getValue(index);
 
-        int helpPartialTimeframe = index % barCount;
+        int helpPartialBarCount = index % barCount;
         // TODO: implement Num.floor()
-        Num helpFullTimeframes = numOf(Math.floor(
-                numOf(indicator.getTimeSeries().getBarCount())
+        Num helpFullBarCounts = numOf(Math.floor(
+                numOf(indicator.getBarSeries().getBarCount())
                         .dividedBy(numOf(barCount))
                         .doubleValue()));
-        Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
+        Num helpIndexBarCounts = numOf(index).dividedBy(numOf(barCount));
 
-        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
-        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? ONE : helpPartialTimeframeHeld;
+        Num helpPartialBarCountHeld = numOf(helpPartialBarCount).dividedBy(numOf(barCount));
+        Num partialBarCountHeld = (helpPartialBarCountHeld.isZero()) ? ONE : helpPartialBarCountHeld;
 
         // Avoid calculations of returns:
-        // a.) if index number is below timeframe
-        // e.g. timeframe = 365, index = 5 => no calculation
-        // b.) if at the end of a series incomplete timeframes would remain
-        Num timeframedReturn = NaN;
-        if ((index >= barCount) /*(a)*/&& (helpIndexTimeframes.isLessThan(helpFullTimeframes)) /*(b)*/) {
+        // a.) if index number is below barcount
+        // e.g. barcount = 365, index = 5 => no calculation
+        // b.) if at the end of a series incomplete barcounts would remain
+        Num barcountdReturn = NaN;
+        if ((index >= barCount) /*(a)*/&& (helpIndexBarCounts.isLessThan(helpFullBarCounts)) /*(b)*/) {
             Num movingValue = indicator.getValue(index - barCount);
             Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
-            timeframedReturn = ONE.plus(movingSimpleReturn).pow(ONE.dividedBy(partialTimeframeHeld)).minus(ONE);
+            barcountdReturn = ONE.plus(movingSimpleReturn).pow(ONE.dividedBy(partialBarCountHeld)).minus(ONE);
         }
 
-        return timeframedReturn;
+        return barcountdReturn;
 
     }
 }

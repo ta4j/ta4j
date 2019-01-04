@@ -57,7 +57,7 @@ public class CashFlowToChart {
      * @param name the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(BarSeries barseries, Indicator<Num> indicator, String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barseries.getBarCount(); i++) {
             Bar bar = barseries.getBar(i);
@@ -103,11 +103,11 @@ public class CashFlowToChart {
     public static void main(String[] args) {
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, tradingRecord);

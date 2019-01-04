@@ -108,31 +108,31 @@ public class XlsTestsUtils {
     }
 
     /**
-     * Gets the TimeSeries from a file.
+     * Gets the BarSeries from a file.
      * 
      * @param clazz class containing the file resources
      * @param fileName file name of the file resource
-     * @return TimeSeries of the data
+     * @return BarSeries of the data
      * @throws IOException if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static TimeSeries getSeries(Class<?> clazz, String fileName,Function<Number, Num> numFunction) throws IOException, DataFormatException {
+    public static BarSeries getSeries(Class<?> clazz, String fileName,Function<Number, Num> numFunction) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         return getSeries(sheet, numFunction);
     }
 
     /**
-     * Gets a TimeSeries from the data section of a mutable Sheet. Data follows
+     * Gets a BarSeries from the data section of a mutable Sheet. Data follows
      * a data section header and appears in the first six columns to the end of
      * the file. Empty cells in the data are forbidden.
      * 
      * @param sheet mutable Sheet
-     * @return TimeSeries of the data
+     * @return BarSeries of the data
      * @throws DataFormatException if getData throws DataFormatException or if
      *             the data contains empty cells
      */
-    private static TimeSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+    private static BarSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
+        BarSeries series = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         int minInterval = Integer.MAX_VALUE;
@@ -155,7 +155,7 @@ public class XlsTestsUtils {
             for (int i = 0; i < 6; i++) {
                 // empty cells in the data section are forbidden
                 if (row.getCell(i) == null) {
-                    throw new DataFormatException("empty cell in xls time series data");
+                    throw new DataFormatException("empty cell in xls bar series data");
                 }
                 cellValues[i] = evaluator.evaluate(row.getCell(i));
             }

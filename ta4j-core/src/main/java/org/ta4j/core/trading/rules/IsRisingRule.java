@@ -46,7 +46,7 @@ public class IsRisingRule extends AbstractRule {
 	 * Constructor for strict rising.
 	 * 
 	 * @param ref the indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 */
 	public IsRisingRule(Indicator<Num> ref, int barCount) {
 		this(ref, barCount, 1);
@@ -56,7 +56,7 @@ public class IsRisingRule extends AbstractRule {
 	 * Constructor.
 	 * 
 	 * @param ref the indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 * @param minStrenght the minimum required rising strenght (between '0' and '1', e.g. '1' for strict rising)
 	 */
 	public IsRisingRule(Indicator<Num> ref, int barCount, double minStrenght) {

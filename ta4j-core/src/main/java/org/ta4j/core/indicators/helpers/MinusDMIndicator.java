@@ -23,9 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * -DM indicator.
@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  */
 public class MinusDMIndicator extends CachedIndicator<Num> {
 
-    public MinusDMIndicator(TimeSeries series) {
+    public MinusDMIndicator(BarSeries series) {
         super(series);
     }
 
@@ -42,8 +42,8 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return numOf(0);
         }
-        Num upMove = getTimeSeries().getBar(index).getHighPrice().minus(getTimeSeries().getBar(index - 1).getHighPrice());
-        Num downMove = getTimeSeries().getBar(index - 1).getLowPrice().minus(getTimeSeries().getBar(index).getLowPrice());
+        Num upMove = getBarSeries().getBar(index).getHighPrice().minus(getBarSeries().getBar(index - 1).getHighPrice());
+        Num downMove = getBarSeries().getBar(index - 1).getLowPrice().minus(getBarSeries().getBar(index).getLowPrice());
         if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(numOf(0))) {
             return downMove;
         } else {

@@ -159,7 +159,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 * @param type of convergence or divergence
 	 * @param minStrength the minimum required strength for convergence or divergence
 	 * @param minSlope the minimum required slope for convergence or divergence
@@ -181,7 +181,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 * @param type of convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
@@ -201,7 +201,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 	 * 
 	 * @param ref the indicator
 	 * @param other the other indicator
-	 * @param barCount the time frame
+	 * @param barCount the bar count
 	 * @param strictType of strict convergence or divergence
 	 */
 	public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,

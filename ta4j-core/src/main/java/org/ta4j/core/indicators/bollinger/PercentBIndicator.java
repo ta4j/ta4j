@@ -45,7 +45,7 @@ public class PercentBIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * @param indicator an indicator (usually close price)
-     * @param barCount the time frame
+     * @param barCount the bar count
      * @param k the K multiplier (usually 2.0)
      */
     public PercentBIndicator(Indicator<Num> indicator, int barCount, double k) {

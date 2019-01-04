@@ -25,18 +25,18 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
+import org.ta4j.core.BarSeries;
 
 public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     private Class<?> clazz;
     private String fileName;
     private int column;
-    private TimeSeries cachedSeries = null;
+    private BarSeries cachedSeries = null;
     private final Function<Number, Num> numFunction;
 
     /**
@@ -54,12 +54,12 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     }
 
     /**
-     * Gets the TimeSeries from the XLS file.
+     * Gets the BarSeries from the XLS file.
      * 
-     * @return TimeSeries from the file
+     * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
-    public TimeSeries getSeries() throws Exception {
+    public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
             cachedSeries = XlsTestsUtils.getSeries(clazz, fileName,numFunction);
         }

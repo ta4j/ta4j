@@ -39,15 +39,15 @@ public class TestUtilsTest extends AbstractIndicatorTest {
         diffNumInt = numOf(diffInt);
         numDouble = numOf(aDouble);
         diffNumDouble = numOf(diffDouble);
-        TimeSeries series = randomSeries();
-        TimeSeries diffSeries = randomSeries();
+        BarSeries series = randomSeries();
+        BarSeries diffSeries = randomSeries();
         indicator = new ClosePriceIndicator(series);
         diffIndicator = new ClosePriceIndicator(diffSeries);
     }
 
-    private TimeSeries randomSeries() {
-        BaseTimeSeries.SeriesBuilder builder = new BaseTimeSeries.SeriesBuilder();
-        TimeSeries series = builder.withNumTypeOf(numFunction).build();
+    private BarSeries randomSeries() {
+        BaseBarSeries.SeriesBuilder builder = new BaseBarSeries.SeriesBuilder();
+        BarSeries series = builder.withNumTypeOf(numFunction).build();
         ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
         for (int i = 0; i < 1000; i++) {

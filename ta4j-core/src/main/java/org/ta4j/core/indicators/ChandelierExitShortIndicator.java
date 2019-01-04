@@ -23,10 +23,10 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * The Chandelier Exit (short) Indicator.
@@ -41,19 +41,19 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param series the time series
+     * @param series the bar series
      */
-    public ChandelierExitShortIndicator(TimeSeries series) {
+    public ChandelierExitShortIndicator(BarSeries series) {
         this(series, 22, 3d);
     }
     
     /**
      * Constructor.
-     * @param series the time series
-     * @param barCount the time frame (usually 22)
+     * @param series the bar series
+     * @param barCount the bar count (usually 22)
      * @param k the K multiplier for ATR (usually 3.0)
      */
-    public ChandelierExitShortIndicator(TimeSeries series, int barCount, double k) {
+    public ChandelierExitShortIndicator(BarSeries series, int barCount, double k) {
         super(series);
         low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
         atr = new ATRIndicator(series, barCount);

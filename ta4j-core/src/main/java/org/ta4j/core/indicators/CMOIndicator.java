@@ -46,7 +46,7 @@ public class CMOIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator a price indicator
-     * @param barCount the time frame
+     * @param barCount the bar count
      */
     public CMOIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

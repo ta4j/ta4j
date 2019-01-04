@@ -26,19 +26,19 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
+import org.ta4j.core.BarSeries;
 
 public class TradeCountIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private TradeCountIndicator tradeIndicator;
 
-    TimeSeries timeSeries;
+    BarSeries barSeries;
 
     public TradeCountIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -46,14 +46,14 @@ public class TradeCountIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Before
     public void setUp() {
-        timeSeries = new MockTimeSeries(numFunction);
-        tradeIndicator = new TradeCountIndicator(timeSeries);
+        barSeries = new MockBarSeries(numFunction);
+        tradeIndicator = new TradeCountIndicator(barSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarTrade() {
         for (int i = 0; i < 10; i++) {
-            assertEquals((int) tradeIndicator.getValue(i), timeSeries.getBar(i).getTrades());
+            assertEquals((int) tradeIndicator.getValue(i), barSeries.getBar(i).getTrades());
         }
     }
 }

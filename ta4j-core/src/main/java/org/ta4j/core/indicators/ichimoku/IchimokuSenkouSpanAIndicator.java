@@ -23,9 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Senkou Span A (Leading Span A) indicator
@@ -45,17 +45,17 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * Constructor.
      * @param series the series
      */
-    public IchimokuSenkouSpanAIndicator(TimeSeries series) {
+    public IchimokuSenkouSpanAIndicator(BarSeries series) {
         this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
     }
     
     /**
      * Constructor.
      * @param series the series
-     * @param barCountConversionLine the time frame for the conversion line (usually 9)
-     * @param barCountBaseLine the time frame for the base line (usually 26)
+     * @param barCountConversionLine the bar count for the conversion line (usually 9)
+     * @param barCountBaseLine the bar count for the base line (usually 26)
      */
-    public IchimokuSenkouSpanAIndicator(TimeSeries series, int barCountConversionLine, int barCountBaseLine) {
+    public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
         this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine), new IchimokuKijunSenIndicator(series, barCountBaseLine));
     }
     
@@ -65,7 +65,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param conversionLine the conversion line
      * @param baseLine the base line
      */
-    public IchimokuSenkouSpanAIndicator(TimeSeries series, IchimokuTenkanSenIndicator conversionLine, IchimokuKijunSenIndicator baseLine) {
+    public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine, IchimokuKijunSenIndicator baseLine) {
         super(series);
         this.conversionLine = conversionLine;
         this.baseLine = baseLine;

@@ -47,19 +47,19 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 
 
-public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
+public class BarSeriesTest extends AbstractIndicatorTest<BarSeries,Num> {
 
-    private TimeSeries defaultSeries;
+    private BarSeries defaultSeries;
 
-    private TimeSeries subseries;
+    private BarSeries subseries;
 
-    private TimeSeries emptySeries;
+    private BarSeries emptySeries;
 
     private List<Bar> bars;
 
     private String defaultName;
 
-    public TimeSeriesTest(Function<Number, Num> numFunction) {
+    public BarSeriesTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -75,14 +75,14 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         
         defaultName = "Series Name";
 
-        defaultSeries = new BaseTimeSeries.SeriesBuilder()
+        defaultSeries = new BaseBarSeries.SeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName(defaultName)
                 .withBars(bars)
                 .build();
         
         subseries = defaultSeries.getSubSeries(2,5);
-        emptySeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        emptySeries = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -95,7 +95,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void replaceBarTest() {
-    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+    	BarSeries series = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
     	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
     	assertEquals(series.getBarCount(),1);
     	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
@@ -196,7 +196,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     @Test
     public void subSeriesCreation() {
-        TimeSeries subSeries = defaultSeries.getSubSeries(2, 5);
+        BarSeries subSeries = defaultSeries.getSubSeries(2, 5);
         assertEquals(defaultSeries.getName(), subSeries.getName());
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(defaultSeries.getBeginIndex(), subSeries.getBeginIndex());
@@ -250,7 +250,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     @Test
     public void addBar() {
-        defaultSeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        defaultSeries = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d,numFunction);
         Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d,numFunction);
 
@@ -297,11 +297,11 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
     }
     
     /**
-     * Tests if the {@link BaseTimeSeries#addTrade(Number, Number)} method works correct.
+     * Tests if the {@link BaseBarSeries#addTrade(Number, Number)} method works correct.
      */
     @Test
     public void addTradeTest() {
-    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+    	BarSeries series = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
     	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
     	series.addTrade(200, 11.5);
     	TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
@@ -314,13 +314,13 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDouble(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
+        BarSeries series = new BaseBarSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
         series.addBar(new BaseBar(ZonedDateTime.now(), 1, 1, 1, 1, 1, PrecisionNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimal(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
+        BarSeries series = new BaseBarSeries.SeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
         series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, DoubleNum::valueOf));
     }
 }

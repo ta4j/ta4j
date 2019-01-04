@@ -24,7 +24,6 @@
 package org.ta4j.core.indicators.pivotpoints;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -33,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.BarSeries;
 
 /**
  * Pivot Point indicator.
@@ -47,7 +47,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      * <p>
      * Calculates the pivot point based on the time level parameter.
-     * @param series the time series with adequate endTime of each bar for the given time level.
+     * @param series the bar series with adequate endTime of each bar for the given time level.
      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:
      *       <ul>
      *          <li>1-, 5-, 10- and 15-minute charts use the prior days high, low and close: <b>timeLevelId</b> = TimeLevel.DAY</li>
@@ -59,7 +59,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * The user has to make sure that there are enough previous bars to calculate correct pivots at the first bar that matters. For example for PIVOT_TIME_LEVEL_ID_MONTH
      * there will be only correct pivot point values (and reversals) after the first complete month
      */
-    public PivotPointIndicator(TimeSeries series, TimeLevel timeLevel) {
+    public PivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
         super(series);
         this.timeLevel = timeLevel;
     }
@@ -73,13 +73,13 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 	private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
             return NaN;
-        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
 		Num close = bar.getClosePrice();
 		Num high =  bar.getHighPrice();
 		Num low = bar.getLowPrice();
 		for(int i: barsOfPreviousPeriod){
-			high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
-			low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
+			high = (getBarSeries().getBar(i).getHighPrice()).max(high);
+			low = (getBarSeries().getBar(i).getLowPrice()).min(low);
 		}
 		return (high.plus(low).plus(close)).dividedBy(numOf(3));
 	}
@@ -101,16 +101,16 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
         }
 
 
-		final Bar currentBar = getTimeSeries().getBar(index);
+		final Bar currentBar = getBarSeries().getBar(index);
 
         // step back while bar-1 in same period (day, week, etc):
-		while(index-1 > getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == getPeriod(currentBar)){
+		while(index-1 > getBarSeries().getBeginIndex() && getPeriod(getBarSeries().getBar(index-1)) == getPeriod(currentBar)){
 			index--;
 		}
 
 		// index = last bar in same period, index-1 = first bar in previous period
         long previousPeriod = getPreviousPeriod(currentBar, index-1);
-		while(index-1 >= getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == previousPeriod){ // while bar-n in previous period
+		while(index-1 >= getBarSeries().getBeginIndex() && getPeriod(getBarSeries().getBar(index-1)) == previousPeriod){ // while bar-n in previous period
 			index--;
 			previousBars.add(index);
 		}
@@ -122,7 +122,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
             case DAY: // return previous day
                 int prevCalendarDay =  bar.getEndTime().minusDays(1).getDayOfYear();
                 // skip weekend and holidays:
-                while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
+                while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
                     prevCalendarDay--;
                 }
                 return prevCalendarDay;

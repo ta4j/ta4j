@@ -24,10 +24,10 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * William's R indicator.
@@ -41,9 +41,9 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
     private final LowPriceIndicator lowPriceIndicator;
     private final Num multiplier;
 
-    public WilliamsRIndicator(TimeSeries timeSeries, int barCount) {
-        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries), new LowPriceIndicator(
-                timeSeries));
+    public WilliamsRIndicator(BarSeries barSeries, int barCount) {
+        this(new ClosePriceIndicator(barSeries), barCount, new HighPriceIndicator(barSeries), new LowPriceIndicator(
+                barSeries));
     }
 
     public WilliamsRIndicator(Indicator<Num> indicator, int barCount,

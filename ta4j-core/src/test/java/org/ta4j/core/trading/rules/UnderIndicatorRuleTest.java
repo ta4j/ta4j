@@ -25,14 +25,14 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.BarSeries;
 
 public class UnderIndicatorRuleTest {
 
@@ -40,7 +40,7 @@ public class UnderIndicatorRuleTest {
     
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
         rule = new UnderIndicatorRule(indicator, series.numOf(5));
     }

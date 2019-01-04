@@ -51,8 +51,8 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param indicator the indicator
-     * @param shortBarCount the short time frame
-     * @param longBarCount the long time frame
+     * @param shortBarCount the short bar count
+     * @param longBarCount the long bar count
      */
     public PPOIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
         super(indicator);

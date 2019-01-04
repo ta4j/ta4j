@@ -25,9 +25,8 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -39,6 +38,7 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -50,7 +50,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
     @Before
     public void setUp() {
-        TimeSeries data = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries data = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
         int i = 20;
         // close, volume
         data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),6,100,numFunction));

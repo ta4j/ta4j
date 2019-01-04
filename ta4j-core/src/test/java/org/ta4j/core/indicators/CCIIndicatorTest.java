@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -47,7 +47,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         24.37, 24.41, 24.35, 23.75, 24.09
     };
 
-    private MockTimeSeries series;
+    private MockBarSeries series;
 
     /**
      * Constructor.
@@ -63,21 +63,21 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         for (Double price : typicalPrices) {
             bars.add(new MockBar(price, price, price, price,numFunction));
         }
-        series = new MockTimeSeries(bars);
+        series = new MockBarSeries(bars);
     }
 
     @Test
     public void getValueWhenBarCountIs20() {
         CCIIndicator cci = new CCIIndicator(series, 20);
 
-        // Incomplete time frame
+        // Incomplete bar count
         assertNumEquals(0, cci.getValue(0));
         assertNumEquals(-66.6667, cci.getValue(1));
         assertNumEquals(-100d, cci.getValue(2));
         assertNumEquals(14.365, cci.getValue(10));
         assertNumEquals(54.2544, cci.getValue(11));
 
-        // Complete time frame
+        // Complete bar count
         double[] results20to30 = new double[] { 101.9185, 31.1946, 6.5578, 33.6078, 34.9686, 13.6027,
             -10.6789, -11.471, -29.2567, -128.6, -72.7273 };
         for (int i = 0; i < results20to30.length; i++) {

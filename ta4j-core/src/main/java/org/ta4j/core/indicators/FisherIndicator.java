@@ -24,9 +24,9 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * The Fisher Indicator.
@@ -54,7 +54,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      *
      * @param series the series
      */
-    public FisherIndicator(TimeSeries series) {
+    public FisherIndicator(BarSeries series) {
         this(new MedianPriceIndicator(series), 10);
     }
 
@@ -62,7 +62,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
-     * @param barCount the time frame (usually 10)
+     * @param barCount the bar count (usually 10)
      */
     public FisherIndicator(Indicator<Num> price, int barCount) {
         this(price, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
@@ -72,7 +72,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor (with gamma 0.5, delta 0.5).
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
-     * @param barCount the time frame (usually 10)
+     * @param barCount the bar count (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 0.5 or)
      */
@@ -84,7 +84,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * @param price the price indicator (usually {@link MedianPriceIndicator})
-     * @param barCount the time frame (usually 10)
+     * @param barCount the bar count (usually 10)
      * @param alpha the alpha (usually 0.33 or 0.5)
      * @param beta the beta (usually 0.67 or 0.5)
      * @param gamma the gamma (usually 0.25 or 0.5)
@@ -98,7 +98,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param ref the indicator
-     * @param barCount the time frame (usually 10)
+     * @param barCount the bar count (usually 10)
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
     public FisherIndicator(Indicator<Num> ref, int barCount, boolean isPriceIndicator) {
@@ -109,7 +109,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor (with alpha 0.33, beta 0.67, gamma 0.5, delta 0.5).
      *
      * @param ref the indicator
-     * @param barCount the time frame (usually 10)
+     * @param barCount the bar count (usually 10)
      * @param densityFactor the density factor (usually 1.0)
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
@@ -121,7 +121,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor
      *
      * @param ref the indicator
-     * @param barCount the time frame (usually 10)
+     * @param barCount the bar count (usually 10)
      * @param alphaD the alpha (usually 0.33 or 0.5)
      * @param betaD the beta (usually 0.67 or 0.5)
      * @param gammaD the gamma (usually 0.25 or 0.5)
@@ -139,8 +139,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
         Num alpha = numOf(alphaD);
         Num beta = numOf(betaD);
-        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new HighPriceIndicator(ref.getTimeSeries()) : ref, barCount);
-        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new LowPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new HighPriceIndicator(ref.getBarSeries()) : ref, barCount);
+        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 

@@ -24,10 +24,10 @@
 package org.ta4j.core.indicators.volume;
 
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * Accumulation-distribution indicator.
@@ -37,7 +37,7 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
 
     private CloseLocationValueIndicator clvIndicator;
 
-    public AccumulationDistributionIndicator(TimeSeries series) {
+    public AccumulationDistributionIndicator(BarSeries series) {
         super(series);
         this.clvIndicator = new CloseLocationValueIndicator(series);
     }
@@ -52,7 +52,7 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
         Num moneyFlowMultiplier = clvIndicator.getValue(index);
 
         // Calculating the money flow volume
-        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getTimeSeries().getBar(index).getVolume());
+        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
 
         return moneyFlowVolume.plus(getValue(index - 1));
     }

@@ -24,11 +24,11 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.ta4j.core.BarSeries;
 
 /**
  * Cached {@link Indicator indicator}.
@@ -50,23 +50,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Constructor.
-     * @param series the related time series
+     * @param series the related bar series
      */
-    public CachedIndicator(TimeSeries series) {
+    public CachedIndicator(BarSeries series) {
         super(series);
     }
 
     /**
      * Constructor.
-     * @param indicator a related indicator (with a time series)
+     * @param indicator a related indicator (with a bar series)
      */
     public CachedIndicator(Indicator indicator) {
-        this(indicator.getTimeSeries());
+        this(indicator.getBarSeries());
     }
 
     @Override
     public T getValue(int index) {
-        TimeSeries series = getTimeSeries();
+        BarSeries series = getBarSeries();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.
             // (e.g. simple computation of the value)

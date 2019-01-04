@@ -9,10 +9,10 @@ import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 
 /**
@@ -21,8 +21,8 @@ import org.ta4j.core.num.Num;
  */
 public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>  {
 	
-	protected TimeSeries series;
-	protected final BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction);
+	protected BarSeries series;
+	protected final BaseBarSeries.SeriesBuilder barSeriesBuilder = new BaseBarSeries.SeriesBuilder().withNumTypeOf(numFunction);
     
 	public ChopIndicatorTest( Function<Number, Num> numFunction ) {
         super( numFunction );
@@ -33,7 +33,7 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 	 */
 	@Test
 	public void testChoppy() {
-        series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
+        series = barSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         for (int i = 0; i < 50; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
             series.addBar(date, 21.5, 21.5+1, 21.5 - 1, 21.5);
@@ -48,7 +48,7 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 	 */
 	@Test
     public void testTradeableTrend() {
-        series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
+        series = barSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
         float value = 21.5f;
         for (int i = 0; i < 50; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);

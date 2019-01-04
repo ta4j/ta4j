@@ -24,10 +24,10 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.Order;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * A linear transaction cost criterion.
@@ -69,12 +69,12 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         return getTradeCost(series, trade, series.numOf(initialAmount));
     }
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num totalCosts = series.numOf(0);
         Num tradedAmount = series.numOf(initialAmount);
         
@@ -118,12 +118,12 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * @param series the time series
+     * @param series the bar series
      * @param trade a trade
      * @param initialAmount the initially traded amount for the trade
      * @return the absolute total cost of all orders in the trade
      */
-    private Num getTradeCost(TimeSeries series, Trade trade, Num initialAmount) {
+    private Num getTradeCost(BarSeries series, Trade trade, Num initialAmount) {
         Num totalTradeCost = series.numOf(0);
         if (trade != null) {
             if (trade.getEntry() != null) {

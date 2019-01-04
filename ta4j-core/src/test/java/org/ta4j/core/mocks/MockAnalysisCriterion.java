@@ -24,25 +24,25 @@
 package org.ta4j.core.mocks;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 import java.util.List;
+import org.ta4j.core.BarSeries;
 
 public class MockAnalysisCriterion implements AnalysisCriterion {
 
-    TimeSeries series;
+    BarSeries series;
     List<Num> values;
 
     /**
      * Constructor.
      * 
-     * @param series TimeSeries of the AnalysisCriterion
+     * @param series BarSeries of the AnalysisCriterion
      * @param values AnalysisCriterion values
      */
-    public MockAnalysisCriterion(TimeSeries series, List<Num> values) {
+    public MockAnalysisCriterion(BarSeries series, List<Num> values) {
         this.series = series;
         this.values = values;
     }
@@ -50,20 +50,20 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Gets the final criterion value.
      * 
-     * @param series TimeSeries is ignored
+     * @param series BarSeries is ignored
      * @param trade is ignored
      */
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         return values.get(values.size() - 1);
     }
 
     /**
      * Gets the final criterion value.
      * 
-     * @param series TimeSeries is ignored
+     * @param series BarSeries is ignored
      * @param tradingRecord is ignored
      */
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return values.get(values.size() - 1);
     }
 

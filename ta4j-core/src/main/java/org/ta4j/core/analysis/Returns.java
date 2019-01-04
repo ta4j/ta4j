@@ -24,7 +24,6 @@
 package org.ta4j.core.analysis;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
@@ -33,11 +32,12 @@ import org.ta4j.core.num.Num;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.ta4j.core.BarSeries;
 
 /**
  * The return rates.
  * </p>
- * This class allows to compute the return rate of a price time-series
+ * This class allows to compute the return rate of a price bar-series
  */
 public class Returns implements Indicator<Num> {
 
@@ -65,8 +65,8 @@ public class Returns implements Indicator<Num> {
 
     private final ReturnType type;
 
-    /** The time series */
-    private final TimeSeries timeSeries;
+    /** The bar series */
+    private final BarSeries barSeries;
 
     /** The return rates */
     private List<Num> values;
@@ -77,12 +77,12 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Constructor.
-     * @param timeSeries the time series
+     * @param barSeries the bar series
      * @param trade a single trade
      */
-    public Returns(TimeSeries timeSeries, Trade trade, ReturnType type) {
-        one = timeSeries.numOf(1);
-        this.timeSeries = timeSeries;
+    public Returns(BarSeries barSeries, Trade trade, ReturnType type) {
+        one = barSeries.numOf(1);
+        this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
@@ -93,12 +93,12 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Constructor.
-     * @param timeSeries the time series
+     * @param barSeries the bar series
      * @param tradingRecord the trading record
      */
-    public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
-        one = timeSeries.numOf(1);
-        this.timeSeries = timeSeries;
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
+        one = barSeries.numOf(1);
+        this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
@@ -119,24 +119,24 @@ public class Returns implements Indicator<Num> {
     }
 
     @Override
-    public TimeSeries getTimeSeries() {
-        return timeSeries;
+    public BarSeries getBarSeries() {
+        return barSeries;
     }
 
     @Override
     public Num numOf(Number number) {
-        return timeSeries.numOf(number);
+        return barSeries.numOf(number);
     }
 
     /**
      * @return the size of the return series.
      */
     public int getSize() {
-        return timeSeries.getBarCount() - 1;
+        return barSeries.getBarCount() - 1;
     }
 
     public void calculate(Trade trade) {
-        calculate(trade, timeSeries.getEndIndex());
+        calculate(trade, barSeries.getEndIndex());
     }
 
     /**
@@ -146,12 +146,12 @@ public class Returns implements Indicator<Num> {
      */
     public void calculate(Trade trade, int finalIndex) {
         boolean isLongTrade = trade.getEntry().isBuy();
-        Num minusOne = timeSeries.numOf(-1);
-        int endIndex = CashFlow.determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
+        Num minusOne = barSeries.numOf(-1);
+        int endIndex = CashFlow.determineEndIndex(trade, finalIndex, barSeries.getEndIndex());
         final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
-            values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
+            values.addAll(Collections.nCopies(begin - values.size(), barSeries.numOf(0)));
         }
 
         int startingIndex = Math.max(begin, 1);
@@ -162,7 +162,7 @@ public class Returns implements Indicator<Num> {
         // returns are per period (iterative). Base price needs to be updated accordingly
         Num lastPrice = trade.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
-            Num intermediateNetPrice = CashFlow.addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
             Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
@@ -173,7 +173,7 @@ public class Returns implements Indicator<Num> {
             }
             values.add(strategyReturn);
             // update base price
-            lastPrice = timeSeries.getBar(i).getClosePrice();
+            lastPrice = barSeries.getBar(i).getClosePrice();
         }
 
         // add net return at exit trade
@@ -182,7 +182,7 @@ public class Returns implements Indicator<Num> {
             exitPrice = trade.getExit().getNetPrice();
         }
         else {
-            exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+            exitPrice = barSeries.getBar(endIndex).getClosePrice();
         }
 
         Num strategyReturn;
@@ -208,8 +208,8 @@ public class Returns implements Indicator<Num> {
      * Fills with zeroes until the end of the series.
      */
     private void fillToTheEnd() {
-        if (timeSeries.getEndIndex() >= values.size()) {
-            values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, timeSeries.numOf(0)));
+        if (barSeries.getEndIndex() >= values.size()) {
+            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.numOf(0)));
         }
     }
 }

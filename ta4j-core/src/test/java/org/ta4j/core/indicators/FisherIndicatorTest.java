@@ -25,9 +25,8 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 
@@ -35,11 +34,12 @@ import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 
 
 public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-protected TimeSeries series;
+protected BarSeries series;
 
     public FisherIndicatorTest(Function<Number, Num> numFunction) {
         super(null, numFunction);
@@ -48,7 +48,7 @@ protected TimeSeries series;
     @Before
     public void setUp() {
 
-        series = new BaseTimeSeries.SeriesBuilder()
+        series = new BaseBarSeries.SeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName("NaN test")
                 .build();

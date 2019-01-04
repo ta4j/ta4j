@@ -28,7 +28,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         List<Bar> bars = new ArrayList<Bar>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
-        MockTimeSeries series = new MockTimeSeries(bars);
+        MockBarSeries series = new MockBarSeries(bars);
         PlusDMIndicator dup = new PlusDMIndicator(series);
         assertNumEquals(0, dup.getValue(1));
     }
@@ -63,7 +63,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         List<Bar> bars = new ArrayList<Bar>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
-        MockTimeSeries series = new MockTimeSeries(bars);
+        MockBarSeries series = new MockBarSeries(bars);
         PlusDMIndicator dup = new PlusDMIndicator(series);
         assertNumEquals(0, dup.getValue(1));
     }
@@ -75,7 +75,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         List<Bar> bars = new ArrayList<Bar>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
-        MockTimeSeries series = new MockTimeSeries(bars);
+        MockBarSeries series = new MockBarSeries(bars);
         PlusDMIndicator dup = new PlusDMIndicator(series);
         assertNumEquals(0, dup.getValue(1));
     }
@@ -87,7 +87,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         List<Bar> bars = new ArrayList<Bar>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
-        MockTimeSeries series = new MockTimeSeries(bars);
+        MockBarSeries series = new MockBarSeries(bars);
         PlusDMIndicator dup = new PlusDMIndicator(series);
         assertNumEquals(6, dup.getValue(1));
     }

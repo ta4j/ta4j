@@ -23,10 +23,10 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeries;
 
 /**
  * The Chandelier Exit (long) Indicator.
@@ -41,19 +41,19 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param series the time series
+     * @param series the bar series
      */
-    public ChandelierExitLongIndicator(TimeSeries series) {
+    public ChandelierExitLongIndicator(BarSeries series) {
         this(series, 22, 3);
     }
     
     /**
      * Constructor.
-     * @param series the time series
-     * @param barCount the time frame (usually 22)
+     * @param series the bar series
+     * @param barCount the bar count (usually 22)
      * @param k the K multiplier for ATR (usually 3.0)
      */
-    public ChandelierExitLongIndicator(TimeSeries series, int barCount, double k) {
+    public ChandelierExitLongIndicator(BarSeries series, int barCount, double k) {
         super(series);
         high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
         atr = new ATRIndicator(series, barCount);

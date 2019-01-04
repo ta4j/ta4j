@@ -43,7 +43,7 @@ public class CCICorrectionStrategy {
      * @param series a time series
      * @return a CCI correction strategy
      */
-    public static Strategy buildStrategy(TimeSeries series) {
+    public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
             throw new IllegalArgumentException("Series cannot be null");
         }
@@ -67,13 +67,13 @@ public class CCICorrectionStrategy {
     public static void main(String[] args) {
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
