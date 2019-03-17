@@ -42,6 +42,7 @@ public class BuildTimeSeries {
      * could be created and how Bars could be added
      * @param args command line arguments (ignored)
      */
+    @SuppressWarnings("unused")
     public static void main(String[] args){
         TimeSeries a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());

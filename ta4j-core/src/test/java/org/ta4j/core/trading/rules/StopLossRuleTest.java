@@ -26,6 +26,7 @@ package org.ta4j.core.trading.rules;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -37,7 +38,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class StopLossRuleTest extends AbstractIndicatorTest {
+public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private TradingRecord tradingRecord;
     private ClosePriceIndicator closePrice;

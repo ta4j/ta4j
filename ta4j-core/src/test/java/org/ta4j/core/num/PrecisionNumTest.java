@@ -129,7 +129,6 @@ public class PrecisionNumTest {
         List<Bar> superPrecisionBarList = new ArrayList<Bar>();
         List<Bar> precisionBarList = new ArrayList<Bar>();
         List<Bar> precision32BarList = new ArrayList<Bar>();
-        List<Bar> bigDecimalBarList = new ArrayList<Bar>();
         List<Bar> doubleBarList = new ArrayList<Bar>();
         List<Bar> lowPrecisionBarList = new ArrayList<Bar>();
         Duration timePeriod = Duration.ofDays(1);

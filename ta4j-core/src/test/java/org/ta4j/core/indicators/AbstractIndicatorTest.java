@@ -51,12 +51,12 @@ import java.util.function.Function;
 @RunWith(Parameterized.class)
 public abstract class AbstractIndicatorTest<D, I> {
 
-        public final Function<Number, Num> numFunction;
+    public final Function<Number, Num> numFunction;
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
-        public static List<Function<Number, Num>> function(){
+    public static List<Function<Number, Num>> function(){
         return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
-        }
+    }
 
     private final IndicatorFactory<D, I> factory;
 
@@ -65,7 +65,7 @@ public abstract class AbstractIndicatorTest<D, I> {
      * 
      * @param factory IndicatorFactory for building an Indicator given data and
      *            parameters.
-     * @param numFunction the function to convert a Number into a Num implementation (automatically insertet by Junit)
+     * @param numFunction the function to convert a Number into a Num implementation (automatically inserted by JUnit)
      */
     public AbstractIndicatorTest(IndicatorFactory<D, I> factory, Function<Number, Num> numFunction) {
         this.numFunction = numFunction;
@@ -75,7 +75,7 @@ public abstract class AbstractIndicatorTest<D, I> {
     /**
      * Constructor<p/>
      *
-     * @param numFunction the function to convert a Number into a Num implementation (automatically insertet by Junit)
+     * @param numFunction the function to convert a Number into a Num implementation (automatically inserted by JUnit)
      */
     public AbstractIndicatorTest(Function<Number, Num> numFunction){
         this.numFunction = numFunction;

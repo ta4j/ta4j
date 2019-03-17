@@ -96,6 +96,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         }
     }
 
+    @SuppressWarnings("unused")
     @Test
     public void naNValuesInIntervall(){
         BaseTimeSeries series = new BaseTimeSeries("NaN test");

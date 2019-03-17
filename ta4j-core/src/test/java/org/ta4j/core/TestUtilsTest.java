@@ -1,5 +1,10 @@
 package org.ta4j.core;
 
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumNotEquals;
+
 import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -10,9 +15,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.TestUtils.*;
-
-public class TestUtilsTest extends AbstractIndicatorTest {
+public class TestUtilsTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private static final String stringDouble = "1234567890.12345";
     private static final String diffStringDouble = "1234567890.12346";

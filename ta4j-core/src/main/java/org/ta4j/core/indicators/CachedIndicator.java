@@ -37,9 +37,9 @@ import java.util.List;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-	private static final long serialVersionUID = 7505855220893125595L;
+    private static final long serialVersionUID = 7505855220893125595L;
 
-	/** List of cached results */
+    /** List of cached results */
     private final List<T> results = new ArrayList<T>();
 
     /**
@@ -60,7 +60,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Constructor.
      * @param indicator a related indicator (with a time series)
      */
-    public CachedIndicator(Indicator indicator) {
+    public CachedIndicator(Indicator<?> indicator) {
         this(indicator.getTimeSeries());
     }
 

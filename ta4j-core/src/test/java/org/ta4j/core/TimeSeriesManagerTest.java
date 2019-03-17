@@ -23,6 +23,16 @@
  *******************************************************************************/
 package org.ta4j.core;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.num.NaN.NaN;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Order.OrderType;
@@ -31,18 +41,8 @@ import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.FixedRule;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.num.NaN.NaN;
-
-
-public class TimeSeriesManagerTest extends AbstractIndicatorTest {
+public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private TimeSeries seriesForRun;
 

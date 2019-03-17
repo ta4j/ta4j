@@ -23,13 +23,9 @@
  *******************************************************************************/
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.TimeSeries;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 /**
  * The RandomWalkIndexHighIndicator. 
@@ -52,26 +48,26 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-    	if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
-    		return NaN.NaN;
-    	}
-    	
-    	Num maxRWIH = numOf(0);
-    	for(int n = 2; n <= barCount; n++) {
-    		maxRWIH = maxRWIH.max(calcRWIHFor(index, n));
-    	}
-    	
-    	return maxRWIH;
+        if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
+            return NaN.NaN;
+        }
+        
+        Num maxRWIH = numOf(0);
+        for(int n = 2; n <= barCount; n++) {
+            maxRWIH = maxRWIH.max(calcRWIHFor(index, n));
+        }
+        
+        return maxRWIH;
     }
     
     private Num calcRWIHFor(final int index, final int n) {
-    	TimeSeries series = getTimeSeries();
-    	Num high = series.getBar(index).getMaxPrice();
-    	Num low_N = series.getBar(index+1-n).getMinPrice();
-    	Num atr_N = new ATRIndicator(series, n).getValue(index);
-    	Num sqrt_N = numOf(n).sqrt();
-    	
-    	return high.minus(low_N).dividedBy(atr_N.multipliedBy(sqrt_N));
+        TimeSeries series = getTimeSeries();
+        Num high = series.getBar(index).getMaxPrice();
+        Num low_N = series.getBar(index+1-n).getMinPrice();
+        Num atr_N = new ATRIndicator(series, n).getValue(index);
+        Num sqrt_N = numOf(n).sqrt();
+        
+        return high.minus(low_N).dividedBy(atr_N.multipliedBy(sqrt_N));
     }
     
     @Override

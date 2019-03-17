@@ -36,7 +36,7 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class BarTest extends AbstractIndicatorTest {
+public class BarTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private Bar bar;
 
@@ -55,6 +55,7 @@ public class BarTest extends AbstractIndicatorTest {
         bar = new BaseBar(Duration.ofHours(1), endTime, numFunction);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void addTrades() {
 

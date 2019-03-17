@@ -56,7 +56,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * Constructor.
      * @param indicator a related indicator (with a time series)
      */
-    public RecursiveCachedIndicator(Indicator indicator) {
+    public RecursiveCachedIndicator(Indicator<?> indicator) {
         this(indicator.getTimeSeries());
     }
 
