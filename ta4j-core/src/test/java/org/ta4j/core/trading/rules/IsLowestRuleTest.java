@@ -40,22 +40,22 @@ public class IsLowestRuleTest {
     
     @Before
     public void setUp() {
-		TimeSeries series = new BaseTimeSeries();
+        TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 1, -5, 3, -6, 5, -7, 0, -1, 2, -8);
         rule = new IsLowestRule(indicator, 3);
     }
     
     @Test
     public void isSatisfied() {
-    		assertTrue(rule.isSatisfied(0));
-		assertTrue(rule.isSatisfied(1));
-		assertFalse(rule.isSatisfied(2));
-		assertTrue(rule.isSatisfied(3));
-		assertFalse(rule.isSatisfied(4));
-		assertTrue(rule.isSatisfied(5));
-		assertFalse(rule.isSatisfied(6));
-		assertFalse(rule.isSatisfied(7));
-		assertFalse(rule.isSatisfied(8));
-		assertTrue(rule.isSatisfied(9));
+            assertTrue(rule.isSatisfied(0));
+        assertTrue(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertTrue(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertTrue(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertFalse(rule.isSatisfied(7));
+        assertFalse(rule.isSatisfied(8));
+        assertTrue(rule.isSatisfied(9));
     }
 }

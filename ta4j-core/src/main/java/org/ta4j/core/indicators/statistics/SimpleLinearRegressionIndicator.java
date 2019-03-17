@@ -38,43 +38,43 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
-	 /**
-	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
-	 */
-	public enum SimpleLinearRegressionType {
-		y, slope, intercept
-	}
+     /**
+     * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
+     */
+    public enum SimpleLinearRegressionType {
+        y, slope, intercept
+    }
 
-	private Indicator<Num> indicator;
-	private int barCount;
-	private Num slope;
-	private Num intercept;
-	private SimpleLinearRegressionType type;
+    private Indicator<Num> indicator;
+    private int barCount;
+    private Num slope;
+    private Num intercept;
+    private SimpleLinearRegressionType type;
 
-	/**
-	 * Constructor for the y-values of the formula (y = slope * x + intercept).
-	 * 
-	 * @param indicator the indicator for the x-values of the formula.
-	 * @param barCount the time frame
-	 */
-	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
-		this(indicator, barCount, SimpleLinearRegressionType.y);
-	}
+    /**
+     * Constructor for the y-values of the formula (y = slope * x + intercept).
+     * 
+     * @param indicator the indicator for the x-values of the formula.
+     * @param barCount the time frame
+     */
+    public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
+        this(indicator, barCount, SimpleLinearRegressionType.y);
+    }
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param indicator the indicator for the x-values of the formula.
-	 * @param barCount the time frame
-	 * @param type the type of the outcome value (y, slope, intercept)
-	 */
-	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount,
-			SimpleLinearRegressionType type) {
-		super(indicator);
-		this.indicator = indicator;
-		this.barCount = barCount;
-		this.type = type;
-	}
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator for the x-values of the formula.
+     * @param barCount the time frame
+     * @param type the type of the outcome value (y, slope, intercept)
+     */
+    public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount,
+            SimpleLinearRegressionType type) {
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.type = type;
+    }
 
     @Override
     protected Num calculate(int index) {

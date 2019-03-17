@@ -75,7 +75,7 @@ public class InSlopeRule extends AbstractRule {
      * @param maxSlope maximum slope between value of reference and previous indicator
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num maxSlope) {
-    	this(ref, nthPrevious, NaN, maxSlope);
+        this(ref, nthPrevious, NaN, maxSlope);
     }
 
     /**
@@ -94,14 +94,14 @@ public class InSlopeRule extends AbstractRule {
 
    @Override
    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
-	Num val = diff.getValue(index);
-	boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
-	boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
-	boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
+    DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
+    Num val = diff.getValue(index);
+    boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
+    boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
+    boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
-	final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+    final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
+    traceIsSatisfied(index, satisfied);
+    return satisfied;
    }
 }

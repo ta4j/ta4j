@@ -128,44 +128,44 @@ public class TradeTest {
 
     @Test
     public void testEqualsForNewTrades() {
-    	assertEquals(newTrade, new Trade());
-    	assertNotEquals(newTrade, new Object());
-    	assertNotEquals(newTrade, null);
+        assertEquals(newTrade, new Trade());
+        assertNotEquals(newTrade, new Object());
+        assertNotEquals(newTrade, null);
     }
 
     @Test
     public void testEqualsForEntryOrders() {
-    	Trade trLeft = newTrade;
-    	Trade trRightEquals = new Trade();
-    	Trade trRightNotEquals = new Trade();
+        Trade trLeft = newTrade;
+        Trade trRightEquals = new Trade();
+        Trade trRightNotEquals = new Trade();
 
-    	assertEquals(OrderType.BUY, trRightNotEquals.operate(2).getType());
-    	assertNotEquals(trLeft, trRightNotEquals);
+        assertEquals(OrderType.BUY, trRightNotEquals.operate(2).getType());
+        assertNotEquals(trLeft, trRightNotEquals);
 
-    	assertEquals(OrderType.BUY, trLeft.operate(1).getType());
-    	assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
-    	assertEquals(trLeft, trRightEquals);
+        assertEquals(OrderType.BUY, trLeft.operate(1).getType());
+        assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(trLeft, trRightEquals);
 
-    	assertNotEquals(trLeft, trRightNotEquals);
+        assertNotEquals(trLeft, trRightNotEquals);
     }
 
     @Test
     public void testEqualsForExitOrders() {
-    	Trade trLeft = newTrade;
-    	Trade trRightEquals = new Trade();
-    	Trade trRightNotEquals = new Trade();
+        Trade trLeft = newTrade;
+        Trade trRightEquals = new Trade();
+        Trade trRightNotEquals = new Trade();
 
-    	assertEquals(OrderType.BUY, trLeft.operate(1).getType());
-    	assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
-    	assertEquals(OrderType.BUY, trRightNotEquals.operate(1).getType());
-    	
-    	assertEquals(OrderType.SELL, trRightNotEquals.operate(3).getType());
-    	assertNotEquals(trLeft, trRightNotEquals);
+        assertEquals(OrderType.BUY, trLeft.operate(1).getType());
+        assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(OrderType.BUY, trRightNotEquals.operate(1).getType());
+        
+        assertEquals(OrderType.SELL, trRightNotEquals.operate(3).getType());
+        assertNotEquals(trLeft, trRightNotEquals);
 
-    	assertEquals(OrderType.SELL, trLeft.operate(2).getType());
-    	assertEquals(OrderType.SELL, trRightEquals.operate(2).getType());
-    	assertEquals(trLeft, trRightEquals);
+        assertEquals(OrderType.SELL, trLeft.operate(2).getType());
+        assertEquals(OrderType.SELL, trRightEquals.operate(2).getType());
+        assertEquals(trLeft, trRightEquals);
 
-    	assertNotEquals(trLeft, trRightNotEquals);
+        assertNotEquals(trLeft, trRightNotEquals);
     }
 }

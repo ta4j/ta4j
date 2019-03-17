@@ -37,8 +37,8 @@ import java.util.function.Function;
  */
 public class BaseBar implements Bar {
 
-	private static final long serialVersionUID = 8038383777467488147L;
-	/** Time period (e.g. 1 day, 15 min, etc.) of the bar */
+    private static final long serialVersionUID = 8038383777467488147L;
+    /** Time period (e.g. 1 day, 15 min, etc.) of the bar */
     private Duration timePeriod;
     /** End time of the bar */
     private ZonedDateTime endTime;

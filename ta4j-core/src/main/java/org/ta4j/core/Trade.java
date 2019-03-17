@@ -41,9 +41,9 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class Trade implements Serializable {
 
-	private static final long serialVersionUID = -5484709075767220358L;
+    private static final long serialVersionUID = -5484709075767220358L;
 
-	/** The entry order */
+    /** The entry order */
     private Order entry;
 
     /** The exit order */
@@ -103,7 +103,7 @@ public class Trade implements Serializable {
         if (obj instanceof Trade) {
             Trade t = (Trade) obj;
             return (entry == null ? t.getEntry() == null : entry.equals(t.getEntry()))
-            		&& (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
+                    && (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
         }
         return false;
     }

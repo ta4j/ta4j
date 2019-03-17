@@ -95,18 +95,18 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void replaceBarTest() {
-    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
-    	assertEquals(series.getBarCount(),1);
-    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d,numFunction), false);
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d,numFunction), false);
-    	assertEquals(series.getBarCount(), 3);
-    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d,numFunction), true);
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d,numFunction), true);
-    	assertEquals(series.getBarCount(), 3);
-    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
+        assertEquals(series.getBarCount(),1);
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d,numFunction), false);
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d,numFunction), false);
+        assertEquals(series.getBarCount(), 3);
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d,numFunction), true);
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d,numFunction), true);
+        assertEquals(series.getBarCount(), 3);
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
     }
 
     @Test
@@ -301,14 +301,14 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void addTradeTest() {
-    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
-    	series.addTrade(200, 11.5);
-    	TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
-    	TestUtils.assertNumEquals(series.numOf(11.5),series.getLastBar().getClosePrice());
-    	series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
-    	TestUtils.assertNumEquals(series.numOf(400),series.getLastBar().getVolume());
-    	TestUtils.assertNumEquals(series.numOf(100),series.getLastBar().getClosePrice());
+        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
+        series.addTrade(200, 11.5);
+        TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
+        TestUtils.assertNumEquals(series.numOf(11.5),series.getLastBar().getClosePrice());
+        series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
+        TestUtils.assertNumEquals(series.numOf(400),series.getLastBar().getVolume());
+        TestUtils.assertNumEquals(series.numOf(100),series.getLastBar().getClosePrice());
     }
     
 

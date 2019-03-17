@@ -42,37 +42,37 @@ public interface Indicator<T> extends Serializable {
      */
     T getValue(int index);
 
-	/**
-	 * @return the related time series
-	 */
-	TimeSeries getTimeSeries();
+    /**
+     * @return the related time series
+     */
+    TimeSeries getTimeSeries();
 
-	/**
-	 * @return  the {@link Num Num extending class} for the given {@link Number}
-	 */
-	Num numOf(Number number);
+    /**
+     * @return  the {@link Num Num extending class} for the given {@link Number}
+     */
+    Num numOf(Number number);
 
-	 /**
-	 * Returns all values from an {@link Indicator} as an array of Doubles. The
-	 * returned doubles could have a minor loss of precise, if {@link Indicator}
-	 * was based on {@link Num Num}.
-	 *
-	 * @param ref the indicator
-	 * @param index the index
-	 * @param barCount the barCount
-	 * @return array of Doubles within the barCount
-	 */
-	static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
+     /**
+     * Returns all values from an {@link Indicator} as an array of Doubles. The
+     * returned doubles could have a minor loss of precise, if {@link Indicator}
+     * was based on {@link Num Num}.
+     *
+     * @param ref the indicator
+     * @param index the index
+     * @param barCount the barCount
+     * @return array of Doubles within the barCount
+     */
+    static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
 
-		Double[] all = new Double[barCount];
+        Double[] all = new Double[barCount];
 
-		int startIndex = Math.max(0, index - barCount + 1);
-		for (int i = 0; i < barCount; i++) {
-			Num number = ref.getValue(i + startIndex);
-			all[i] = number.doubleValue();
-		}
+        int startIndex = Math.max(0, index - barCount + 1);
+        for (int i = 0; i < barCount; i++) {
+            Num number = ref.getValue(i + startIndex);
+            all[i] = number.doubleValue();
+        }
 
-		return all;
-	}
+        return all;
+    }
 
 }

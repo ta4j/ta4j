@@ -81,25 +81,25 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         CovarianceIndicator covar = new CovarianceIndicator(close, volume, 5);
 
         assertNumEquals(0, covar.getValue(0));
-		assertNumEquals(26.25, covar.getValue(1));
-		assertNumEquals(63.3333, covar.getValue(2));
-		assertNumEquals(143.75, covar.getValue(3));
+        assertNumEquals(26.25, covar.getValue(1));
+        assertNumEquals(63.3333, covar.getValue(2));
+        assertNumEquals(143.75, covar.getValue(3));
         assertNumEquals(156, covar.getValue(4));
-		assertNumEquals(60.8, covar.getValue(5));
-		assertNumEquals(15.2, covar.getValue(6));
-		assertNumEquals(-17.6, covar.getValue(7));
+        assertNumEquals(60.8, covar.getValue(5));
+        assertNumEquals(15.2, covar.getValue(6));
+        assertNumEquals(-17.6, covar.getValue(7));
         assertNumEquals(4, covar.getValue(8));
-		assertNumEquals(11.6, covar.getValue(9));
-		assertNumEquals(-14.4, covar.getValue(10));
-		assertNumEquals(-100.2, covar.getValue(11));
-		assertNumEquals(-70.0, covar.getValue(12));
-		assertNumEquals(24.6, covar.getValue(13));
-		assertNumEquals(35.0, covar.getValue(14));
-		assertNumEquals(-19.0, covar.getValue(15));
-		assertNumEquals(-47.8, covar.getValue(16));
-		assertNumEquals(11.4, covar.getValue(17));
-		assertNumEquals(55.8, covar.getValue(18));
-		assertNumEquals(33.4, covar.getValue(19));
+        assertNumEquals(11.6, covar.getValue(9));
+        assertNumEquals(-14.4, covar.getValue(10));
+        assertNumEquals(-100.2, covar.getValue(11));
+        assertNumEquals(-70.0, covar.getValue(12));
+        assertNumEquals(24.6, covar.getValue(13));
+        assertNumEquals(35.0, covar.getValue(14));
+        assertNumEquals(-19.0, covar.getValue(15));
+        assertNumEquals(-47.8, covar.getValue(16));
+        assertNumEquals(11.4, covar.getValue(17));
+        assertNumEquals(55.8, covar.getValue(18));
+        assertNumEquals(33.4, covar.getValue(19));
     }
 
     @Test

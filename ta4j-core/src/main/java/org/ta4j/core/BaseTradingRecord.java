@@ -34,9 +34,9 @@ import java.util.List;
  */
 public class BaseTradingRecord implements TradingRecord {
 
-	private static final long serialVersionUID = -4436851731855891220L;
+    private static final long serialVersionUID = -4436851731855891220L;
 
-	/** The recorded orders */
+    /** The recorded orders */
     private List<Order> orders = new ArrayList<>();
     
     /** The recorded BUY orders */

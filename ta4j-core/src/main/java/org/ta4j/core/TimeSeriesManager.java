@@ -48,29 +48,29 @@ public class TimeSeriesManager {
      * Constructor.
      */
     public TimeSeriesManager() {
-	}
+    }
 
     /**
      * Constructor.
      * @param timeSeries the time series to be managed
      */
     public TimeSeriesManager(TimeSeries timeSeries) {
-    	this.timeSeries = timeSeries;
+        this.timeSeries = timeSeries;
     }
 
     /**
      * @param timeSeries the time series to be managed
      */
     public void setTimeSeries(TimeSeries timeSeries) {
-		this.timeSeries = timeSeries;
-	}
+        this.timeSeries = timeSeries;
+    }
 
     /**
      * @return the managed time series
      */
     public TimeSeries getTimeSeries() {
-		return timeSeries;
-	}
+        return timeSeries;
+    }
 
     /**
      * Runs the provided strategy over the managed series.
@@ -160,7 +160,7 @@ public class TimeSeriesManager {
         if (!tradingRecord.isClosed()) {
             // If the last trade is still opened, we search out of the run end index.
             // May works if the end index for this run was inferior to the actual number of bars
-        	int seriesMaxSize = Math.max(timeSeries.getEndIndex() + 1, timeSeries.getBarData().size());
+            int seriesMaxSize = Math.max(timeSeries.getEndIndex() + 1, timeSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last trade

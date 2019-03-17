@@ -41,7 +41,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-	TimeSeries series;
+    TimeSeries series;
 
     public ROCVIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -49,7 +49,7 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-    		List<Bar> bars = new ArrayList<Bar>();
+            List<Bar> bars = new ArrayList<Bar>();
         bars.add(new MockBar(1355.69, 1000,numFunction));
         bars.add(new MockBar(1325.51, 3000,numFunction));
         bars.add(new MockBar(1335.02, 3500,numFunction));

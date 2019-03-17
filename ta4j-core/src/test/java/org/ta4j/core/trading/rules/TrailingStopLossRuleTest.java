@@ -40,9 +40,9 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object,Objec
     public TrailingStopLossRuleTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
-	
-	@Test
-	public void isSatisfiedForBuy() {
+    
+    @Test
+    public void isSatisfiedForBuy() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction,
                 100, 110, 120, 130, 117.00, 130, 116.99
@@ -66,10 +66,10 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object,Objec
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
-	}
+    }
 
-	@Test
-	public void isSatisfiedForSell() {
+    @Test
+    public void isSatisfiedForSell() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction,
                 100, 90, 80, 70, 77.00, 120, 132.01
@@ -93,5 +93,5 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object,Objec
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
-	}
+    }
 }

@@ -146,7 +146,7 @@ public class BaseTimeSeries implements TimeSeries {
 
         this.bars = bars;
         if (bars.isEmpty()) {
-        	// Bar list empty
+            // Bar list empty
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
@@ -167,7 +167,7 @@ public class BaseTimeSeries implements TimeSeries {
             throw new IllegalArgumentException("End index must be >= to begin index - 1");
         }
         if (seriesEndIndex >= bars.size()) {
-        	throw new IllegalArgumentException("End index must be < to the bar list size");
+            throw new IllegalArgumentException("End index must be < to the bar list size");
         }
         this.seriesBeginIndex = seriesBeginIndex;
         this.seriesEndIndex = seriesEndIndex;
@@ -279,7 +279,7 @@ public class BaseTimeSeries implements TimeSeries {
 
     @Override
     public List<Bar> getBarData() {
-    	return bars;
+        return bars;
     }
 
     @Override

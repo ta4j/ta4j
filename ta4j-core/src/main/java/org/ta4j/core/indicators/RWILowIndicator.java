@@ -50,26 +50,26 @@ public class RWILowIndicator extends CachedIndicator<Num>{
 
     @Override
     protected Num calculate(int index) {
-    	if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
-    		return NaN.NaN;
-    	}
-    	
-    	Num minRWIL = numOf(0);
-    	for(int n = 2; n <= barCount; n++) {
-    		minRWIL = minRWIL.max(calcRWIHFor(index, n));
-    	}
-    	
-    	return minRWIL;
+        if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
+            return NaN.NaN;
+        }
+        
+        Num minRWIL = numOf(0);
+        for(int n = 2; n <= barCount; n++) {
+            minRWIL = minRWIL.max(calcRWIHFor(index, n));
+        }
+        
+        return minRWIL;
     }
     
     private Num calcRWIHFor(final int index, final int n) {
-    	TimeSeries series = getTimeSeries();
-    	Num low = series.getBar(index).getMinPrice();
-    	Num high_N = series.getBar(index+1-n).getMaxPrice();
-    	Num atr_N = new ATRIndicator(series, n).getValue(index);
-    	Num sqrt_N = numOf(n).sqrt();
-    	
-    	return high_N.minus(low).dividedBy(atr_N.multipliedBy(sqrt_N));
+        TimeSeries series = getTimeSeries();
+        Num low = series.getBar(index).getMinPrice();
+        Num high_N = series.getBar(index+1-n).getMaxPrice();
+        Num atr_N = new ATRIndicator(series, n).getValue(index);
+        Num sqrt_N = numOf(n).sqrt();
+        
+        return high_N.minus(low).dividedBy(atr_N.multipliedBy(sqrt_N));
     }
     
     @Override

@@ -79,7 +79,7 @@ public interface TimeSeries extends Serializable {
      * @return true if the series is empty, false otherwise
      */
     default boolean isEmpty() {
-    	return getBarCount() == 0;
+        return getBarCount() == 0;
     }
 
     /**
