@@ -43,7 +43,8 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
      * Constructor.
      * @param values the values to be returned by this indicator
      */
-    public FixedIndicator(TimeSeries series, T... values) {
+    @SafeVarargs
+	public FixedIndicator(TimeSeries series, T... values) {
         super(series);
         this.values.addAll(Arrays.asList(values));
     }

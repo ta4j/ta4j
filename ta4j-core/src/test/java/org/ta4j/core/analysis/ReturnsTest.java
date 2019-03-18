@@ -9,8 +9,6 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;

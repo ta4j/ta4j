@@ -46,7 +46,6 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
     @Test
     public void testDummy() throws Exception {
         TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
-        Bar a = (new MockBar(0, 12, 15, 8,numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(5), 0, 12, 15, 8, 0, 0, 0,numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(4), 0, 8, 11, 6, 0, 0, 0,numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(3), 0, 15, 17, 14, 0, 0, 0,numFunction));

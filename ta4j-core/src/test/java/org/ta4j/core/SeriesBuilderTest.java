@@ -36,7 +36,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
-public class SeriesBuilderTest extends AbstractIndicatorTest {
+public class SeriesBuilderTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     public SeriesBuilderTest(Function<Number, Num> numFunction){
         super(numFunction);

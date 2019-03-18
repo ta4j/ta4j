@@ -41,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 
-public class TimeSeriesManagerTest extends AbstractIndicatorTest {
+public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private TimeSeries seriesForRun;
 

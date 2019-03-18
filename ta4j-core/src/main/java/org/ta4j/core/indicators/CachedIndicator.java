@@ -60,7 +60,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Constructor.
      * @param indicator a related indicator (with a time series)
      */
-    public CachedIndicator(Indicator indicator) {
+    public CachedIndicator(Indicator<?> indicator) {
         this(indicator.getTimeSeries());
     }
 
