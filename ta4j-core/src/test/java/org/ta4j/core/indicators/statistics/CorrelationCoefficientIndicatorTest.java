@@ -85,23 +85,23 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         assertTrue(coef.getValue(0).isNaN());
 
         assertNumEquals(1, coef.getValue(1));
-		assertNumEquals(0.8773, coef.getValue(2));
-		assertNumEquals(0.9073, coef.getValue(3));
-		assertNumEquals(0.9219, coef.getValue(4));
-		assertNumEquals(0.9205, coef.getValue(5));
-		assertNumEquals(0.4565, coef.getValue(6));
-		assertNumEquals(-0.4622, coef.getValue(7));
-		assertNumEquals(0.05747, coef.getValue(8));
-		assertNumEquals(0.1442, coef.getValue(9));
-		assertNumEquals(-0.1263, coef.getValue(10));
-		assertNumEquals(-0.5345, coef.getValue(11));
-		assertNumEquals(-0.7275, coef.getValue(12));
-		assertNumEquals(0.1676, coef.getValue(13));
-		assertNumEquals(0.2506, coef.getValue(14));
-		assertNumEquals(-0.2938, coef.getValue(15));
-		assertNumEquals(-0.3586, coef.getValue(16));
-		assertNumEquals(0.1713, coef.getValue(17));
-		assertNumEquals(0.9841, coef.getValue(18));
-		assertNumEquals(0.9799, coef.getValue(19));
+        assertNumEquals(0.8773, coef.getValue(2));
+        assertNumEquals(0.9073, coef.getValue(3));
+        assertNumEquals(0.9219, coef.getValue(4));
+        assertNumEquals(0.9205, coef.getValue(5));
+        assertNumEquals(0.4565, coef.getValue(6));
+        assertNumEquals(-0.4622, coef.getValue(7));
+        assertNumEquals(0.05747, coef.getValue(8));
+        assertNumEquals(0.1442, coef.getValue(9));
+        assertNumEquals(-0.1263, coef.getValue(10));
+        assertNumEquals(-0.5345, coef.getValue(11));
+        assertNumEquals(-0.7275, coef.getValue(12));
+        assertNumEquals(0.1676, coef.getValue(13));
+        assertNumEquals(0.2506, coef.getValue(14));
+        assertNumEquals(-0.2938, coef.getValue(15));
+        assertNumEquals(-0.3586, coef.getValue(16));
+        assertNumEquals(0.1713, coef.getValue(17));
+        assertNumEquals(0.9841, coef.getValue(18));
+        assertNumEquals(0.9799, coef.getValue(19));
     }
 }

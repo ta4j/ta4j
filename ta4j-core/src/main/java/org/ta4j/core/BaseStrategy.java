@@ -95,7 +95,7 @@ public class BaseStrategy implements Strategy {
             throw new IllegalArgumentException("Rules cannot be null");
         }
         if (unstablePeriod < 0) {
-        	throw new IllegalArgumentException("Unstable period bar count must be >= 0");
+            throw new IllegalArgumentException("Unstable period bar count must be >= 0");
         }
         this.name = name;
         this.entryRule = entryRule;
@@ -105,22 +105,22 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public String getName() {
-    	return name;
+        return name;
     }
 
     @Override
     public Rule getEntryRule() {
-    	return entryRule;
+        return entryRule;
     }
 
     @Override
     public Rule getExitRule() {
-    	return exitRule;
+        return exitRule;
     }
 
     @Override
     public int getUnstablePeriod() {
-    	return unstablePeriod;
+        return unstablePeriod;
     }
 
     @Override

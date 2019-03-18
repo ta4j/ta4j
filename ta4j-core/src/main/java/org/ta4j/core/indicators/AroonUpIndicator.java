@@ -90,6 +90,6 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+    return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

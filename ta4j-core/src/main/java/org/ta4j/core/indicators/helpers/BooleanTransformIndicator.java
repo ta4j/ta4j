@@ -35,165 +35,165 @@ import org.ta4j.core.num.Num;
  */
 public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
-	private static final long serialVersionUID = -6196778603319962795L;
+    private static final long serialVersionUID = -6196778603319962795L;
 
-	/**
-	 * Select the type for transformation.
-	 */
-	public enum BooleanTransformType {
+    /**
+     * Select the type for transformation.
+     */
+    public enum BooleanTransformType {
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.equals(coefficient).
-		 */
-		equals,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.equals(coefficient).
+         */
+        equals,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isGreaterThan(coefficient).
-		 */
-		isGreaterThan,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isGreaterThan(coefficient).
+         */
+        isGreaterThan,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isGreaterThanOrEqual(coefficient).
-		 */
-		isGreaterThanOrEqual,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isGreaterThanOrEqual(coefficient).
+         */
+        isGreaterThanOrEqual,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isLessThan(coefficient).
-		 */
-		isLessThan,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isLessThan(coefficient).
+         */
+        isLessThan,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isLessThanOrEqual(coefficient).
-		 */
-		isLessThanOrEqual
-	}
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isLessThanOrEqual(coefficient).
+         */
+        isLessThanOrEqual
+    }
 
-	/**
-	 * Select the type for transformation.
-	 */
-	public enum BooleanTransformSimpleType {
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isNaN().
-		 */
-		isNaN,
+    /**
+     * Select the type for transformation.
+     */
+    public enum BooleanTransformSimpleType {
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isNaN().
+         */
+        isNaN,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isNegative().
-		 */
-		isNegative,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isNegative().
+         */
+        isNegative,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isNegativeOrZero().
-		 */
-		isNegativeOrZero,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isNegativeOrZero().
+         */
+        isNegativeOrZero,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isPositive().
-		 */
-		isPositive,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isPositive().
+         */
+        isPositive,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isPositiveOrZero().
-		 */
-		isPositiveOrZero,
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isPositiveOrZero().
+         */
+        isPositiveOrZero,
 
-		/**
-		 * Transforms the decimal indicator to a boolean indicator by
-		 * indicator.isZero().
-		 */
-		isZero
-	}
+        /**
+         * Transforms the decimal indicator to a boolean indicator by
+         * indicator.isZero().
+         */
+        isZero
+    }
 
-	private Indicator<Num> indicator;
-	private Num coefficient;
-	private BooleanTransformType type;
-	private BooleanTransformSimpleType simpleType;
+    private Indicator<Num> indicator;
+    private Num coefficient;
+    private BooleanTransformType type;
+    private BooleanTransformSimpleType simpleType;
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param indicator the indicator
-	 * @param coefficient the value for transformation
-	 * @param type the type of the transformation
-	 */
-	public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
-		super(indicator);
-		this.indicator = indicator;
-		this.coefficient = coefficient;
-		this.type = type;
-	}
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param coefficient the value for transformation
+     * @param type the type of the transformation
+     */
+    public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
+        super(indicator);
+        this.indicator = indicator;
+        this.coefficient = coefficient;
+        this.type = type;
+    }
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param indicator the indicator
-	 * @param type the type of the transformation
-	 */
-	public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
-		super(indicator);
-		this.indicator = indicator;
-		this.simpleType = type;
-	}
+    /**
+     * Constructor.
+     * 
+     * @param indicator the indicator
+     * @param type the type of the transformation
+     */
+    public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
+        super(indicator);
+        this.indicator = indicator;
+        this.simpleType = type;
+    }
 
-	@Override
-	protected Boolean calculate(int index) {
+    @Override
+    protected Boolean calculate(int index) {
 
-		Num val = indicator.getValue(index);
+        Num val = indicator.getValue(index);
 
-		if (type != null) {
-			switch (type) {
-			case equals:
-				return val.equals(coefficient);
-			case isGreaterThan:
-				return val.isGreaterThan(coefficient);
-			case isGreaterThanOrEqual:
-				return val.isGreaterThanOrEqual(coefficient);
-			case isLessThan:
-				return val.isLessThan(coefficient);
-			case isLessThanOrEqual:
-				return val.isLessThanOrEqual(coefficient);
-			default:
-				break;
-			}
-		}
+        if (type != null) {
+            switch (type) {
+            case equals:
+                return val.equals(coefficient);
+            case isGreaterThan:
+                return val.isGreaterThan(coefficient);
+            case isGreaterThanOrEqual:
+                return val.isGreaterThanOrEqual(coefficient);
+            case isLessThan:
+                return val.isLessThan(coefficient);
+            case isLessThanOrEqual:
+                return val.isLessThanOrEqual(coefficient);
+            default:
+                break;
+            }
+        }
 
-		else if (simpleType != null) {
-			switch (simpleType) {
-			case isNaN:
-				return val.isNaN();
-			case isNegative:
-				return val.isNegative();
-			case isNegativeOrZero:
-				return val.isNegativeOrZero();
-			case isPositive:
-				return val.isPositive();
-			case isPositiveOrZero:
-				return val.isPositiveOrZero();
-			case isZero:
-				return val.isZero();
-			default:
-				break;
-			}
-		}
+        else if (simpleType != null) {
+            switch (simpleType) {
+            case isNaN:
+                return val.isNaN();
+            case isNegative:
+                return val.isNegative();
+            case isNegativeOrZero:
+                return val.isNegativeOrZero();
+            case isPositive:
+                return val.isPositive();
+            case isPositiveOrZero:
+                return val.isPositiveOrZero();
+            case isZero:
+                return val.isZero();
+            default:
+                break;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	@Override
-	public String toString() {
-		if (type != null) {
-			return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
-		}
-		return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
-	}
+    @Override
+    public String toString() {
+        if (type != null) {
+            return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
+        }
+        return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
+    }
 }
