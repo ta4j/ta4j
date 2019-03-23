@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 
 ### Added
+- :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
 - :tada: **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
 - :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
 - :tada: **Enhancement** Implemented Expected Shortfall Analysis Criterion
