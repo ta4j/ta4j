@@ -100,7 +100,6 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void naNValuesInIntervall(){
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
         for (long i = 0; i<= 10; i++){ // (NaN, 1, NaN, 2, NaN, 3, NaN, 4, ...)
-            Num closePrice = i % 2 == 0 ?series.numOf(i):NaN;
             series.addBar(ZonedDateTime.now().plusDays(i),NaN,NaN,NaN,NaN,NaN);
         }
 

@@ -25,7 +25,6 @@ package org.ta4j.core.analysis;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.cost.LinearBorrowingCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockTimeSeries;

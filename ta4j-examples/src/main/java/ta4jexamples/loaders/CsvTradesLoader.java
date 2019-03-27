@@ -101,7 +101,8 @@ public class CsvTradesLoader {
      * @param lines the csv data returned by CSVReader.readAll()
      * @return the list of populated bars
      */
-    private static void buildSeries(TimeSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration, List<String[]> lines) {
+    @SuppressWarnings("deprecation")
+	private static void buildSeries(TimeSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration, List<String[]> lines) {
 
 
     	Duration barDuration = Duration.ofSeconds(duration);

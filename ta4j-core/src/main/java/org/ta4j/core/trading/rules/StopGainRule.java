@@ -23,7 +23,6 @@
  *******************************************************************************/
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;

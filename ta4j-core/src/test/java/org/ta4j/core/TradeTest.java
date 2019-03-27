@@ -219,17 +219,17 @@ public class TradeTest {
 
     @Test
     public void testCostModelConsistencyTrue() {
-        Trade tradeSame = new Trade(enter, exitSameType, transactionModel, holdingModel);
+        new Trade(enter, exitSameType, transactionModel, holdingModel);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testCostModelEntryInconsistent() {
-        Trade tradeEntryDifferent = new Trade(enter, exitDifferentType, new ZeroCostModel(), holdingModel);
+        new Trade(enter, exitDifferentType, new ZeroCostModel(), holdingModel);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testCostModelExitInconsistent() {
-        Trade tradeExitDifferent = new Trade(enter, exitDifferentType, transactionModel, holdingModel);
+        new Trade(enter, exitDifferentType, transactionModel, holdingModel);
     }
 
     @Test
