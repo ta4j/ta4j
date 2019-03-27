@@ -126,7 +126,7 @@ public interface Bar extends Serializable {
      * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
-    	Num openPrice = getOpenPrice();
+        Num openPrice = getOpenPrice();
         Num closePrice = getClosePrice();
         return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
     }

@@ -157,7 +157,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void cashFlowValue() {
-    	// First sample series
+        // First sample series
         TimeSeries sampleTimeSeries = new MockTimeSeries(numFunction,3d, 2d, 5d, 1000d, 5000d, 0.0001d, 4d, 7d,
                 6d, 7d, 8d, 5d, 6d);
         TradingRecord tradingRecord = new BaseTradingRecord(
@@ -183,11 +183,11 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         // Second sample series
         sampleTimeSeries = new MockTimeSeries(numFunction,5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
-		tradingRecord = new BaseTradingRecord(
-				Order.buyAt(4, sampleTimeSeries), Order.sellAt(5, sampleTimeSeries),
-				Order.buyAt(6, sampleTimeSeries), Order.sellAt(8, sampleTimeSeries));
+        tradingRecord = new BaseTradingRecord(
+                Order.buyAt(4, sampleTimeSeries), Order.sellAt(5, sampleTimeSeries),
+                Order.buyAt(6, sampleTimeSeries), Order.sellAt(8, sampleTimeSeries));
 
-		CashFlow flow = new CashFlow(sampleTimeSeries, tradingRecord);
+        CashFlow flow = new CashFlow(sampleTimeSeries, tradingRecord);
         assertNumEquals(1, flow.getValue(0));
         assertNumEquals(1, flow.getValue(1));
         assertNumEquals(1, flow.getValue(2));

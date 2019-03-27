@@ -44,9 +44,9 @@ import java.util.Objects;
  */
 public class Order implements Serializable {
 
-	private static final long serialVersionUID = -905474949010114150L;
+    private static final long serialVersionUID = -905474949010114150L;
 
-	/**
+    /**
      * The type of an {@link Order order}.
      * <p>
      * A BUY corresponds to a <i>BID</i> order.<p>

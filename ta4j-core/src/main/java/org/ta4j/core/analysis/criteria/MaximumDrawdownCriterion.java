@@ -65,18 +65,18 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
         Num maximumDrawdown = series.numOf(0);
         Num maxPeak = series.numOf(0);
         if (!series.isEmpty()) {
-        	// The series is not empty
-	        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-	            Num value = cashFlow.getValue(i);
-	            if (value.isGreaterThan(maxPeak)) {
-	                maxPeak = value;
-	            }
-	
-	            Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
-	            if (drawdown.isGreaterThan(maximumDrawdown)) {
-	                maximumDrawdown = drawdown;
-	            }
-	        }
+            // The series is not empty
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Num value = cashFlow.getValue(i);
+                if (value.isGreaterThan(maxPeak)) {
+                    maxPeak = value;
+                }
+    
+                Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
+                if (drawdown.isGreaterThan(maximumDrawdown)) {
+                    maximumDrawdown = drawdown;
+                }
+            }
         }
         return maximumDrawdown;
     }

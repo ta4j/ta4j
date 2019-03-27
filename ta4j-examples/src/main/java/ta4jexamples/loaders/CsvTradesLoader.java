@@ -87,7 +87,7 @@ public class CsvTradesLoader {
                 Collections.reverse(lines);
             }
             // build the list of populated bars
-           	buildSeries(series,beginTime, endTime, 300, lines);
+            buildSeries(series,beginTime, endTime, 300, lines);
         }
 
         return series;
@@ -105,38 +105,38 @@ public class CsvTradesLoader {
 	private static void buildSeries(TimeSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration, List<String[]> lines) {
 
 
-    	Duration barDuration = Duration.ofSeconds(duration);
-    	ZonedDateTime barEndTime = beginTime;
-    	// line number of trade data
-    	int i = 0;
-    	do {
-    		// build a bar
-    		barEndTime = barEndTime.plus(barDuration);
-    		Bar bar = new BaseBar(barDuration, barEndTime, series.function());
-    		do {
-    			// get a trade
-    			String[] tradeLine = lines.get(i);
-    			ZonedDateTime tradeTimeStamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000), ZoneId.systemDefault());
-    			// if the trade happened during the bar
-    			if (bar.inPeriod(tradeTimeStamp)) {
-    				// add the trade to the bar
-    				double tradePrice = Double.parseDouble(tradeLine[1]);
-    				double tradeVolume = Double.parseDouble(tradeLine[2]);
-    				bar.addTrade(tradeVolume, tradePrice, series.function());
-    			} else {
-    				// the trade happened after the end of the bar
-    				// go to the next bar but stay with the same trade (don't increment i)
-    				// this break will drop us after the inner "while", skipping the increment
-    				break;
-    			}
-    			i++;
-    		} while (i < lines.size());
-    		// if the bar has any trades add it to the bars list
-    		// this is where the break drops to
-    		if (bar.getTrades() > 0) {
-    			series.addBar(bar);
-    		}
-    	} while (barEndTime.isBefore(endTime));
+        Duration barDuration = Duration.ofSeconds(duration);
+        ZonedDateTime barEndTime = beginTime;
+        // line number of trade data
+        int i = 0;
+        do {
+            // build a bar
+            barEndTime = barEndTime.plus(barDuration);
+            Bar bar = new BaseBar(barDuration, barEndTime, series.function());
+            do {
+                // get a trade
+                String[] tradeLine = lines.get(i);
+                ZonedDateTime tradeTimeStamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(tradeLine[0]) * 1000), ZoneId.systemDefault());
+                // if the trade happened during the bar
+                if (bar.inPeriod(tradeTimeStamp)) {
+                    // add the trade to the bar
+                    double tradePrice = Double.parseDouble(tradeLine[1]);
+                    double tradeVolume = Double.parseDouble(tradeLine[2]);
+                    bar.addTrade(tradeVolume, tradePrice, series.function());
+                } else {
+                    // the trade happened after the end of the bar
+                    // go to the next bar but stay with the same trade (don't increment i)
+                    // this break will drop us after the inner "while", skipping the increment
+                    break;
+                }
+                i++;
+            } while (i < lines.size());
+            // if the bar has any trades add it to the bars list
+            // this is where the break drops to
+            if (bar.getTrades() > 0) {
+                series.addBar(bar);
+            }
+        } while (barEndTime.isBefore(endTime));
     }
 
     public static void main(String[] args) {
