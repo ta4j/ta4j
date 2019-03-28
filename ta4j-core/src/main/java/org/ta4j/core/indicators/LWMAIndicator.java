@@ -40,6 +40,9 @@ public class LWMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
 
+    private final Num zero = numOf(0);
+
+
     public LWMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.indicator = indicator;
@@ -48,15 +51,15 @@ public class LWMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = numOf(0);
-        Num denominator = numOf(0);
+        Num sum = zero;
+        Num denominator = zero;
         int count = 0;
 
         if ((index + 1) < barCount) {
-            return numOf(0);
+            return zero;
         }
 
-        int startIndex = Math.max(0, index - barCount + 1);
+        int startIndex = (index - barCount) + 1;
         for (int i = startIndex; i <= index; i++) {
             count++;
             denominator = denominator.plus(numOf(count));
