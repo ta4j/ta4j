@@ -52,15 +52,7 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num exitClosePrice = trade.getExit().getNetPrice().isNaN() ?
-                    series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getNetPrice();
-            Num entryClosePrice = trade.getEntry().getNetPrice().isNaN() ?
-                    series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getNetPrice();
-
-            return exitClosePrice.minus(entryClosePrice).multipliedBy(trade.getExit().getAmount());
-        }
-        return series.numOf(0);
+        return trade.getProfit();
     }
 
     @Override
