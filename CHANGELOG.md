@@ -12,11 +12,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `java.lang.NullPointerException` in**: `AverageProfitableTradesCriterion.calculate(TimeSeries, Trade)` for opened trade.
 - **StopGainRule**: now correctly handles stops for sell orders
 - **StopLossRule**: now correctly handles stops for sell orders
-- **ProfitLossCriterion*: fixed to work properly for short trades
+- **ProfitLossCriterion**: fixed to work properly for short trades
+- **PivotPointIndicator**: fixed possible npe if first bar is not in same period
 
 ### Changed
 
 ### Added
+- :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
 - :tada: **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
 - :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
 - :tada: **Enhancement** Implemented Expected Shortfall Analysis Criterion
