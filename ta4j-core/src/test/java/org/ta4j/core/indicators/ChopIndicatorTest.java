@@ -32,7 +32,7 @@ import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseTimeSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
@@ -45,7 +45,7 @@ import org.ta4j.core.num.Num;
 public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>  {
     
     protected TimeSeries series;
-    protected final BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction);
+    protected final BaseTimeSeriesBuilder timeSeriesBuilder = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction);
     
     public ChopIndicatorTest( Function<Number, Num> numFunction ) {
         super( numFunction );

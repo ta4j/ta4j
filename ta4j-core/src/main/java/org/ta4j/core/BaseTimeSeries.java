@@ -166,8 +166,8 @@ public class BaseTimeSeries implements TimeSeries {
      * @param constrained      true to constrain the time series (i.e. indexes cannot change), false otherwise
      * @param numFunction      a {@link Function} to convert a {@link Number} to a {@link Num Num implementation}
      */
-    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-            Function<Number, Num> numFunction) {
+    BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
+                   Function<Number, Num> numFunction) {
         this.name = name;
 
         this.bars = bars;
@@ -463,90 +463,4 @@ public class BaseTimeSeries implements TimeSeries {
         }
     }
 
-    public static class SeriesBuilder implements TimeSeriesBuilder {
-
-        private static final long serialVersionUID = 111164611841087550L;
-        /**
-         * Default Num type function
-         **/
-        private static Function<Number, Num> defaultFunction = PrecisionNum::valueOf;
-        private List<Bar> bars;
-        private String name;
-        private Function<Number, Num> numFunction;
-        private boolean constrained;
-        private int maxBarCount;
-
-        public SeriesBuilder() {
-            initValues();
-        }
-
-        public static void setDefaultFunction(Function<Number, Num> defaultFunction) {
-            SeriesBuilder.defaultFunction = defaultFunction;
-        }
-
-        private void initValues() {
-            this.bars = new ArrayList<>();
-            this.name = "unnamed_series";
-            this.numFunction = SeriesBuilder.defaultFunction;
-            this.constrained = false;
-            this.maxBarCount = Integer.MAX_VALUE;
-        }
-
-        @Override
-        public TimeSeries build() {
-            int beginIndex = -1;
-            int endIndex = -1;
-            if (!bars.isEmpty()) {
-                beginIndex = 0;
-                endIndex = bars.size() - 1;
-            }
-            TimeSeries series = new BaseTimeSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
-            series.setMaximumBarCount(maxBarCount);
-            initValues(); // reinitialize values for next series
-            return series;
-        }
-
-        public SeriesBuilder setConstrained(boolean constrained) {
-            this.constrained = constrained;
-            return this;
-        }
-
-        public SeriesBuilder withName(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public SeriesBuilder withBars(List<Bar> bars) {
-            this.bars = bars;
-            return this;
-        }
-
-        public SeriesBuilder withMaxBarCount(int maxBarCount) {
-            this.maxBarCount = maxBarCount;
-            return this;
-        }
-
-        public SeriesBuilder withNumTypeOf(Num type) {
-            numFunction = type.function();
-            return this;
-        }
-
-        public SeriesBuilder withNumTypeOf(Function<Number, Num> function) {
-            numFunction = function;
-            return this;
-        }
-
-        public SeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
-            if (abstractNumClass == PrecisionNum.class) {
-                numFunction = PrecisionNum::valueOf;
-                return this;
-            } else if (abstractNumClass == DoubleNum.class) {
-                numFunction = DoubleNum::valueOf;
-                return this;
-            }
-            numFunction = PrecisionNum::valueOf;
-            return this;
-        }
-
-    }
 }

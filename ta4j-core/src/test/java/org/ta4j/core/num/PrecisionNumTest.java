@@ -31,11 +31,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -152,15 +148,15 @@ public class PrecisionNumTest {
             endTime = endTime.plus(timePeriod);
             superPrecisionNum = superPrecisionNum.plus(PrecisionNum.valueOf(deltas[i % 6]));
         }
-        superPrecisionSeries = new BaseTimeSeries.SeriesBuilder()
+        superPrecisionSeries = new BaseTimeSeriesBuilder()
                 .withName("superPrecision").withNumTypeOf(superPrecisionFunc).withBars(superPrecisionBarList).build();
-        precisionSeries = new BaseTimeSeries.SeriesBuilder()
+        precisionSeries = new BaseTimeSeriesBuilder()
                 .withName("precision").withNumTypeOf(precisionFunc).withBars(precisionBarList).build();
-        precision32Series = new BaseTimeSeries.SeriesBuilder()
+        precision32Series = new BaseTimeSeriesBuilder()
                 .withName("precision32").withNumTypeOf(precision32Func).withBars(precision32BarList).build();
-        doubleSeries = new BaseTimeSeries.SeriesBuilder()
+        doubleSeries = new BaseTimeSeriesBuilder()
                 .withName("double").withNumTypeOf(doubleFunc).withBars(doubleBarList).build();
-        lowPrecisionSeries = new BaseTimeSeries.SeriesBuilder()
+        lowPrecisionSeries = new BaseTimeSeriesBuilder()
                 .withName("lowPrecision").withNumTypeOf(lowPrecisionFunc).withBars(lowPrecisionBarList).build();
     }
 

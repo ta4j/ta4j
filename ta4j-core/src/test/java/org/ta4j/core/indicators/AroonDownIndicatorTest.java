@@ -25,7 +25,7 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseTimeSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
@@ -47,7 +47,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void init() {
-        data = new BaseTimeSeries.SeriesBuilder()
+        data = new BaseTimeSeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName("Aroon data")
                 .build();
@@ -97,7 +97,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void onlyNaNValues(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder()
+        TimeSeries series = new BaseTimeSeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName("NaN test")
                 .build();
@@ -114,7 +114,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void naNValuesInIntervall(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder()
+        TimeSeries series = new BaseTimeSeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName("NaN test")
                 .build();

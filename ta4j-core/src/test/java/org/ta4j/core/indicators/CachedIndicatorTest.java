@@ -64,7 +64,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
     public void getValueWithNullTimeSeries() {
 
         ConstantIndicator<Num> constant =
-                new ConstantIndicator<>(new BaseTimeSeries.SeriesBuilder()
+                new ConstantIndicator<>(new BaseTimeSeriesBuilder()
                         .withNumTypeOf(numFunction).build(),numFunction.apply(10));
         assertEquals(numFunction.apply(10), constant.getValue(0));
         assertEquals(numFunction.apply(10), constant.getValue(100));

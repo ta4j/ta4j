@@ -42,7 +42,7 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<TimeSeries, Num> {
         super(numFunction);
     }
 
-    private final BaseTimeSeries.SeriesBuilder seriesBuilder = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction);
+    private final BaseTimeSeriesBuilder seriesBuilder = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction);
 
     @Test
     public void testBuilder(){

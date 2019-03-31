@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PivotPointIndicator**: fixed possible npe if first bar is not in same period
 
 ### Changed
+- **BaseTimeSeriesBuilder** moved from inner class to own class
 
 ### Added
 - :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator

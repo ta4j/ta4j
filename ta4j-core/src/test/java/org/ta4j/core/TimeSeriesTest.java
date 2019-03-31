@@ -75,14 +75,14 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         
         defaultName = "Series Name";
 
-        defaultSeries = new BaseTimeSeries.SeriesBuilder()
+        defaultSeries = new BaseTimeSeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName(defaultName)
                 .withBars(bars)
                 .build();
         
         subseries = defaultSeries.getSubSeries(2,5);
-        emptySeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        emptySeries = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -95,7 +95,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void replaceBarTest() {
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
         assertEquals(series.getBarCount(),1);
         TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
@@ -250,7 +250,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     @Test
     public void addBar() {
-        defaultSeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        defaultSeries = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d,numFunction);
         Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d,numFunction);
 
@@ -301,7 +301,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void addTradeTest() {
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
         series.addTrade(200, 11.5);
         TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
@@ -314,13 +314,13 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDouble(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(DoubleNum.class).build();
         series.addBar(new BaseBar(ZonedDateTime.now(), 1, 1, 1, 1, 1, PrecisionNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimal(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
         series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, DoubleNum::valueOf));
     }
 }
