@@ -46,7 +46,7 @@ public class CompareNumTypes {
     private static final int NUMBARS = 10000;
 
     public static void main(String args[]) {
-        BaseTimeSeries.SeriesBuilder timeSeriesBuilder = new BaseTimeSeries.SeriesBuilder();
+        BaseTimeSeriesBuilder timeSeriesBuilder = new BaseTimeSeriesBuilder();
         TimeSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf).build();
         TimeSeries seriesP = timeSeriesBuilder.withName("Sample Series PrecisionNum 32").withNumTypeOf(PrecisionNum::valueOf).build();
         TimeSeries seriesPH = timeSeriesBuilder.withName("Sample Series PrecisionNum 256").withNumTypeOf(number -> PrecisionNum.valueOf(number.toString(), 256)).build();

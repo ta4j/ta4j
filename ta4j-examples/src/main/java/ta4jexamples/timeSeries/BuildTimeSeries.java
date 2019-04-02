@@ -26,7 +26,7 @@ package ta4jexamples.timeSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.BaseTimeSeries.SeriesBuilder;
+import org.ta4j.core.BaseTimeSeriesBuilder;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
@@ -46,7 +46,7 @@ public class BuildTimeSeries {
 	public static void main(String[] args){
         TimeSeries a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-        SeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
+        BaseTimeSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
         a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
         TimeSeries b = buildWithDouble();
@@ -59,7 +59,7 @@ public class BuildTimeSeries {
 
 
     public static TimeSeries buildAndAddData(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withName("mySeries").build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -70,7 +70,7 @@ public class BuildTimeSeries {
     }
 
     public static TimeSeries buildWithDouble(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum.class).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum.class).build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -82,7 +82,7 @@ public class BuildTimeSeries {
     }
 
     public static TimeSeries buildWithBigDecimal(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -140,8 +140,7 @@ public class BuildTimeSeries {
         Bar b2 = new BaseBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234,DoubleNum::valueOf);
         Bar b3 = new BaseBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242, DoubleNum::valueOf);
         List<Bar> bars = Arrays.asList(b1, b2, b3);
-        TimeSeries series = new BaseTimeSeries
-                .SeriesBuilder()
+        TimeSeries series = new BaseTimeSeriesBuilder()
                 .withName("mySeries")
                 .withNumTypeOf(DoubleNum::valueOf)
                 .withMaxBarCount(5)
