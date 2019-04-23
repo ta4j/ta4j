@@ -43,7 +43,7 @@ public class BuildTimeSeries {
      * @param args command line arguments (ignored)
      */
     @SuppressWarnings("unused")
-	public static void main(String[] args){
+    public static void main(String[] args){
         TimeSeries a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
         BaseTimeSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
