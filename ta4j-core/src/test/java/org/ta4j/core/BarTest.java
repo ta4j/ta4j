@@ -56,7 +56,7 @@ public class BarTest extends AbstractIndicatorTest<TimeSeries, Num> {
     }
 
     @SuppressWarnings("deprecation")
-	@Test
+    @Test
     public void addTrades() {
 
         bar.addTrade(3.0, 200.0, numFunction);
