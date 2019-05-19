@@ -187,6 +187,17 @@ public interface TimeSeries extends Serializable {
                 numOf(amount));
     }
 
+    default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
+            Number volume){
+        this.addBar(timePeriod, endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), numOf(volume),numOf(0));
+    }
+
+    default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
+            Number volume, Number amount){
+        this.addBar(timePeriod, endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), numOf(volume),
+                numOf(amount));
+    }
+
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice){
         this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
                 numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(0),
