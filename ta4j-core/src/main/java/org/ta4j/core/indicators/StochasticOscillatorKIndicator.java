@@ -1,31 +1,32 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 
@@ -33,37 +34,36 @@ import org.ta4j.core.num.Num;
  * Stochastic oscillator K.
  * </p>
  * Receives timeSeries and barCount and calculates the StochasticOscillatorKIndicator
- * over ClosePriceIndicator, or receives an indicator, MaxPriceIndicator and
- * MinPriceIndicator and returns StochasticOsiclatorK over this indicator.
- * 
+ * over ClosePriceIndicator, or receives an indicator, HighPriceIndicator and
+ * LowPriceIndicator and returns StochasticOsiclatorK over this indicator.
  */
 public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
 
     private final int barCount;
 
-    private MaxPriceIndicator maxPriceIndicator;
+    private HighPriceIndicator highPriceIndicator;
 
-    private MinPriceIndicator minPriceIndicator;
+    private LowPriceIndicator lowPriceIndicator;
 
     public StochasticOscillatorKIndicator(TimeSeries timeSeries, int barCount) {
-        this(new ClosePriceIndicator(timeSeries), barCount, new MaxPriceIndicator(timeSeries), new MinPriceIndicator(
+        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries), new LowPriceIndicator(
                 timeSeries));
     }
 
     public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount,
-            MaxPriceIndicator maxPriceIndicator, MinPriceIndicator minPriceIndicator) {
+                                          HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.maxPriceIndicator = maxPriceIndicator;
-        this.minPriceIndicator = minPriceIndicator;
+        this.highPriceIndicator = highPriceIndicator;
+        this.lowPriceIndicator = lowPriceIndicator;
     }
 
     @Override
     protected Num calculate(int index) {
-        HighestValueIndicator highestHigh = new HighestValueIndicator(maxPriceIndicator, barCount);
-        LowestValueIndicator lowestMin = new LowestValueIndicator(minPriceIndicator, barCount);
+        HighestValueIndicator highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
+        LowestValueIndicator lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
 
         Num highestHighPrice = highestHigh.getValue(index);
         Num lowestLowPrice = lowestMin.getValue(index);

@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.num;
 
 import java.util.function.Function;
@@ -29,23 +29,46 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Representation of Double. High performance, lower precision.
+ *
  * @apiNote the delegate should never become a NaN value. No self NaN checks provided
  */
 public class DoubleNum implements Num {
 
     private static final long serialVersionUID = -2611177221813615070L;
-
+    private final static double EPS = 0.00001; // precision
     private final double delegate;
 
-    private final static double EPS = 0.00001; // precision
+    private DoubleNum(double val) {
+        delegate = val;
+    }
+
+    public static DoubleNum valueOf(int i) {
+        return new DoubleNum((double) i);
+    }
+
+    public static DoubleNum valueOf(long i) {
+        return new DoubleNum((double) i);
+    }
+
+    public static DoubleNum valueOf(short i) {
+        return new DoubleNum((double) i);
+    }
+
+    public static DoubleNum valueOf(float i) {
+        return new DoubleNum((double) i);
+    }
+
+    public static DoubleNum valueOf(String i) {
+        return new DoubleNum(Double.parseDouble(i));
+    }
+
+    public static DoubleNum valueOf(Number i) {
+        return new DoubleNum(Double.parseDouble(i.toString()));
+    }
 
     @Override
     public Function<Number, Num> function() {
         return DoubleNum::valueOf;
-    }
-
-    private DoubleNum(double val){
-        delegate = val;
     }
 
     @Override
@@ -60,41 +83,41 @@ public class DoubleNum implements Num {
 
     @Override
     public Num plus(Num augend) {
-        return augend.isNaN() ? NaN : new DoubleNum(delegate+((DoubleNum) augend).delegate);
+        return augend.isNaN() ? NaN : new DoubleNum(delegate + ((DoubleNum) augend).delegate);
     }
 
     @Override
     public Num minus(Num subtrahend) {
-        return subtrahend.isNaN() ? NaN : new DoubleNum(delegate-((DoubleNum)subtrahend).delegate);
+        return subtrahend.isNaN() ? NaN : new DoubleNum(delegate - ((DoubleNum) subtrahend).delegate);
     }
 
     @Override
     public Num multipliedBy(Num multiplicand) {
-        return multiplicand.isNaN() ? NaN : new DoubleNum(delegate*((DoubleNum) multiplicand).delegate);
+        return multiplicand.isNaN() ? NaN : new DoubleNum(delegate * ((DoubleNum) multiplicand).delegate);
     }
 
     @Override
     public Num dividedBy(Num divisor) {
-        if (divisor.isNaN()|| divisor.isZero()){
+        if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }
         DoubleNum divisorD = (DoubleNum) divisor;
-        return new DoubleNum(delegate/divisorD.delegate);
+        return new DoubleNum(delegate / divisorD.delegate);
     }
 
     @Override
     public Num remainder(Num divisor) {
-        return divisor.isNaN() ? NaN : new DoubleNum(delegate%((DoubleNum) divisor).delegate);
+        return divisor.isNaN() ? NaN : new DoubleNum(delegate % ((DoubleNum) divisor).delegate);
     }
 
     @Override
     public Num pow(int n) {
-        return new DoubleNum(Math.pow(delegate,n));
+        return new DoubleNum(Math.pow(delegate, n));
     }
 
     @Override
     public Num pow(Num n) {
-        return new DoubleNum(Math.pow(delegate,n.doubleValue()));
+        return new DoubleNum(Math.pow(delegate, n.doubleValue()));
     }
 
     @Override
@@ -145,8 +168,16 @@ public class DoubleNum implements Num {
         return !other.isNaN() && delegate == ((DoubleNum) other).delegate;
     }
 
+    public Num log() {
+        if (delegate <= 0) {
+            return NaN;
+        }
+        return new DoubleNum(Math.log(delegate));
+    }
+
     /**
      * Checks if this value is greater than another.
+     *
      * @param other the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
@@ -156,6 +187,7 @@ public class DoubleNum implements Num {
 
     /**
      * Checks if this value is greater than or equal to another.
+     *
      * @param other the other value, not null
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
@@ -165,6 +197,7 @@ public class DoubleNum implements Num {
 
     /**
      * Checks if this value is less than another.
+     *
      * @param other the other value, not null
      * @return true is this is less than the specified value, false otherwise
      */
@@ -179,14 +212,13 @@ public class DoubleNum implements Num {
 
     @Override
     public Num min(Num other) {
-        return other.isNaN() ? NaN : new DoubleNum(Math.min(delegate,((DoubleNum) other).delegate));
+        return other.isNaN() ? NaN : new DoubleNum(Math.min(delegate, ((DoubleNum) other).delegate));
     }
 
     @Override
     public Num max(Num other) {
-        return other.isNaN() ? NaN : new DoubleNum(Math.max(delegate,((DoubleNum)other).delegate));
+        return other.isNaN() ? NaN : new DoubleNum(Math.max(delegate, ((DoubleNum) other).delegate));
     }
-
 
     @Override
     public int hashCode() {
@@ -200,46 +232,20 @@ public class DoubleNum implements Num {
 
     @Override
     public boolean equals(Object obj) {
-        if(!(obj instanceof Num)){
+        if (!(obj instanceof DoubleNum)) {
             return false;
         }
-        if(obj == NaN){
-            return false;
-        }
+
         DoubleNum doubleNumObj = (DoubleNum) obj;
         return Math.abs(delegate - doubleNumObj.delegate) < EPS;
     }
 
     @Override
     public int compareTo(Num o) {
-        if (this == NaN || o == NaN){
+        if (this == NaN || o == NaN) {
             return 0;
         }
-        DoubleNum doubleNumO = (DoubleNum)o;
+        DoubleNum doubleNumO = (DoubleNum) o;
         return Double.compare(delegate, doubleNumO.delegate);
-    }
-
-    public static Num valueOf(int i) {
-        return new DoubleNum((double)i);
-    }
-
-    public static Num valueOf(long i) {
-        return new DoubleNum((double)i);
-    }
-
-    public static Num valueOf(short i) {
-        return new DoubleNum((double)i);
-    }
-
-    public static Num valueOf(float i) {
-        return new DoubleNum((double)i);
-    }
-
-    public static Num valueOf(String i) {
-        return new DoubleNum(Double.parseDouble(i));
-    }
-
-    public static Num valueOf(Number i) {
-        return new DoubleNum(Double.parseDouble(i.toString()));
     }
 }

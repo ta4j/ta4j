@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
@@ -39,8 +39,8 @@ public class PreviousValueIndicatorTest {
     private PreviousValueIndicator prevValueIndicator;
 
     private OpenPriceIndicator openPriceIndicator;
-    private MinPriceIndicator minPriceIndicator;
-    private MaxPriceIndicator maxPriceIndicator;
+    private LowPriceIndicator lowPriceIndicator;
+    private HighPriceIndicator highPriceIndicator;
 
     private VolumeIndicator volumeIndicator;
     private EMAIndicator emaIndicator;
@@ -62,8 +62,8 @@ public class PreviousValueIndicatorTest {
 
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
-        this.minPriceIndicator = new MinPriceIndicator(this.series);
-        this.maxPriceIndicator = new MaxPriceIndicator(this.series);
+        this.lowPriceIndicator = new LowPriceIndicator(this.series);
+        this.highPriceIndicator = new HighPriceIndicator(this.series);
         this.volumeIndicator = new VolumeIndicator(this.series);
         ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(this.series);
         this.emaIndicator = new EMAIndicator(closePriceIndicator, 20);
@@ -80,17 +80,17 @@ public class PreviousValueIndicatorTest {
         }
 
         //test 2 with minPrice-indicator
-        prevValueIndicator = new PreviousValueIndicator(minPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), minPriceIndicator.getValue(0));
+        prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
+        assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), minPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i-1));
         }
 
         //test 3 with maxPrice-indicator
-        prevValueIndicator = new PreviousValueIndicator(maxPriceIndicator);
-        assertEquals(prevValueIndicator.getValue(0), maxPriceIndicator.getValue(0));
+        prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
+        assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), maxPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), highPriceIndicator.getValue(i-1));
         }
     }
 
