@@ -134,7 +134,7 @@ public class BaseBar implements Bar {
      * @param volume the volume of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, Function<Number, Num> numFunction) {
-    	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, null, numFunction);
+    	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numFunction.apply(0), numFunction);
     }
     
     /**
