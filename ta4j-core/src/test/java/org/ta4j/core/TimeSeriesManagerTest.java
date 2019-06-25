@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core;
 
 import org.junit.Before;
@@ -39,10 +39,9 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.num.NaN.NaN;
 
 
-public class TimeSeriesManagerTest extends AbstractIndicatorTest {
+public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private TimeSeries seriesForRun;
 
@@ -104,11 +103,11 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
         List<Trade> trades = manager.run(strategy).getTrades();
         assertEquals(2, trades.size());
 
-        assertEquals(Order.buyAt(2, seriesForRun.getBar(2).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(4, seriesForRun.getBar(4).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
-        assertEquals(Order.buyAt(6, seriesForRun.getBar(6).getClosePrice(), NaN), trades.get(1).getEntry());
-        assertEquals(Order.sellAt(7, seriesForRun.getBar(7).getClosePrice(), NaN), trades.get(1).getExit());
+        assertEquals(Order.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), trades.get(1).getEntry());
+        assertEquals(Order.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), trades.get(1).getExit());
     }
 
     @Test
@@ -117,8 +116,8 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
         List<Trade> trades = manager.run(aStrategy, 0, 3).getTrades();
         assertEquals(1, trades.size());
 
-        assertEquals(Order.buyAt(1, seriesForRun.getBar(1).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(3, seriesForRun.getBar(3).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), trades.get(0).getExit());
     }
 
     @Test
@@ -127,8 +126,8 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
         List<Trade> trades = manager.run(aStrategy, OrderType.SELL, 0, 3).getTrades();
         assertEquals(1, trades.size());
 
-        assertEquals(Order.sellAt(1, seriesForRun.getBar(1).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.buyAt(3, seriesForRun.getBar(3).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), trades.get(0).getExit());
     }
 
     @Test
@@ -136,16 +135,16 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
 
         List<Trade> trades = manager.run(strategy, 0, 3).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(2, seriesForRun.getBar(2).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(4, seriesForRun.getBar(4).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(strategy, 4, 4).getTrades();
         assertTrue(trades.isEmpty());
 
         trades = manager.run(strategy, 5, 8).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(6, seriesForRun.getBar(6).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(7, seriesForRun.getBar(7).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), trades.get(0).getExit());
     }
 
     @Test
@@ -160,23 +159,23 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest {
 
         List<Trade> trades = manager.run(aStrategy, 0, 1).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), NaN),trades.get(0).getEntry());
-        assertEquals(Order.sellAt(2, series.getBar(2).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)),trades.get(0).getEntry());
+        assertEquals(Order.sellAt(2, series.getBar(2).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(aStrategy, 2, 3).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(3, series.getBar(3).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(4, series.getBar(4).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(3, series.getBar(3).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(4, series.getBar(4).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(aStrategy, 4, 6).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(5, series.getBar(5).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(6, series.getBar(6).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(aStrategy, 7, 7).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(7, series.getBar(7).getClosePrice(), NaN), trades.get(0).getEntry());
-        assertEquals(Order.sellAt(9, series.getBar(9).getClosePrice(), NaN), trades.get(0).getExit());
+        assertEquals(Order.buyAt(7, series.getBar(7).getClosePrice(), numOf(1)), trades.get(0).getEntry());
+        assertEquals(Order.sellAt(9, series.getBar(9).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(aStrategy, 8, 8).getTrades();
         assertTrue(trades.isEmpty());

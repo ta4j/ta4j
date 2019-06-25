@@ -1,34 +1,34 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.PrecisionNum;
@@ -75,14 +75,14 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
         
         defaultName = "Series Name";
 
-        defaultSeries = new BaseTimeSeries.SeriesBuilder()
+        defaultSeries = new BaseTimeSeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName(defaultName)
                 .withBars(bars)
                 .build();
         
         subseries = defaultSeries.getSubSeries(2,5);
-        emptySeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        emptySeries = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -95,18 +95,18 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void replaceBarTest() {
-    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
-    	assertEquals(series.getBarCount(),1);
-    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d,numFunction), false);
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d,numFunction), false);
-    	assertEquals(series.getBarCount(), 3);
-    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d,numFunction), true);
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d,numFunction), true);
-    	assertEquals(series.getBarCount(), 3);
-    	TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
+        assertEquals(series.getBarCount(),1);
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d,numFunction), false);
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d,numFunction), false);
+        assertEquals(series.getBarCount(), 3);
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d,numFunction), true);
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d,numFunction), true);
+        assertEquals(series.getBarCount(), 3);
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
     }
 
     @Test
@@ -250,7 +250,7 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
 
     @Test
     public void addBar() {
-        defaultSeries = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
+        defaultSeries = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d,numFunction);
         Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d,numFunction);
 
@@ -272,8 +272,8 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
     @Test
     public void addPriceTest(){
         ClosePriceIndicator cp = new ClosePriceIndicator(defaultSeries);
-        MaxPriceIndicator mxPrice = new MaxPriceIndicator(defaultSeries);
-        MinPriceIndicator mnPrice = new MinPriceIndicator(defaultSeries);
+        HighPriceIndicator mxPrice = new HighPriceIndicator(defaultSeries);
+        LowPriceIndicator mnPrice = new LowPriceIndicator(defaultSeries);
         PreviousValueIndicator prevValue = new PreviousValueIndicator(cp, 1);
 
         Num adding1 = numOf(100);
@@ -301,26 +301,26 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
      */
     @Test
     public void addTradeTest() {
-    	TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(numFunction).build();
-    	series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
-    	series.addTrade(200, 11.5);
-    	TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
-    	TestUtils.assertNumEquals(series.numOf(11.5),series.getLastBar().getClosePrice());
-    	series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
-    	TestUtils.assertNumEquals(series.numOf(400),series.getLastBar().getVolume());
-    	TestUtils.assertNumEquals(series.numOf(100),series.getLastBar().getClosePrice());
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+        series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction));
+        series.addTrade(200, 11.5);
+        TestUtils.assertNumEquals(series.numOf(200),series.getLastBar().getVolume());
+        TestUtils.assertNumEquals(series.numOf(11.5),series.getLastBar().getClosePrice());
+        series.addTrade(BigDecimal.valueOf(200), BigDecimal.valueOf(100));
+        TestUtils.assertNumEquals(series.numOf(400),series.getLastBar().getVolume());
+        TestUtils.assertNumEquals(series.numOf(100),series.getLastBar().getClosePrice());
     }
     
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDouble(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(DoubleNum.class).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(DoubleNum.class).build();
         series.addBar(new BaseBar(ZonedDateTime.now(), 1, 1, 1, 1, 1, PrecisionNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimal(){
-        TimeSeries series = new BaseTimeSeries.SeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
         series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, DoubleNum::valueOf));
     }
 }

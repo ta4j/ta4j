@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.num;
 
 import java.io.Serializable;
@@ -35,8 +35,7 @@ import java.util.function.Function;
  * @see Num
  * @see Num#function()
  * @see DoubleNum
- * @see BigDecimalNum
- * @See PrecisionNum
+ * @see PrecisionNum
 
  */
 public interface Num extends Comparable<Num>, Serializable {
@@ -100,6 +99,12 @@ public interface Num extends Comparable<Num>, Serializable {
      * @return <tt>this<sup>n</sup></tt>
      */
     Num pow(Num n);
+
+    /**
+     * Returns a {@code num} whose value is <tt>ln(this)</tt>.
+     * @return <tt>this<sup>n</sup></tt>
+     */
+    Num log();
 
     /**
      * Returns a {@code num} whose value is <tt>√(this)</tt>.
@@ -205,9 +210,8 @@ public interface Num extends Comparable<Num>, Serializable {
     Num max(Num other);
 
     /**
-     * Retruns the {@link Function} to convert a number instance to
-     * the corresponding Num instance
-     * @return
+     * Returns the {@link Function} to convert a number instance into the corresponding Num instance
+     * @return function which converts a number instance into the corresponding Num instance
      */
     Function<Number, Num> function();
 
@@ -228,9 +232,9 @@ public interface Num extends Comparable<Num>, Serializable {
      * @param precision the precision
      * @return the corresponding Num implementation of the <code>value</code>
      */
-    default Num numOf(String string, int precision) {
+    default Num numOf(String value, int precision) {
         MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-        return this.numOf(new BigDecimal(string, mathContext));
+        return this.numOf(new BigDecimal(value, mathContext));
     }
 
     /**
@@ -240,8 +244,6 @@ public interface Num extends Comparable<Num>, Serializable {
     default boolean isNaN(){
         return false;
     }
-
-
 
     /**
      * Converts this {@code num} to a {@code double}.
@@ -263,7 +265,6 @@ public interface Num extends Comparable<Num>, Serializable {
         return getDelegate().floatValue();
     }
 
-
     @Override
     int hashCode();
 
@@ -272,7 +273,6 @@ public interface Num extends Comparable<Num>, Serializable {
 
     /**
      * {@inheritDoc}
-     * @apiNote: This method should return true if `this` and `obj` are both NaN.
      */
     @Override
     boolean equals(Object obj);
