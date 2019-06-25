@@ -50,6 +50,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 - **Num**: added Num sqrt(int) and Num sqrt()
 - **pom.xml**: added support to generate ta4j-core OSGi artifact.
+- **BaseBar**: added constructor for BigDecimal
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
