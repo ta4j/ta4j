@@ -24,7 +24,6 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
-
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -64,6 +63,7 @@ public class BaseBar implements Bar {
      * Constructor.
      * @param timePeriod the time period
      * @param endTime the end time of the bar period
+     * @param numFunction the numbers precision 
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Function<Number, Num> numFunction) {
         checkTimeArguments(timePeriod, endTime);
@@ -82,6 +82,7 @@ public class BaseBar implements Bar {
      * @param lowPrice the lowest price of the bar period
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
+     * @param numFunction the numbers precision 
      */
     public BaseBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, Function<Number, Num> numFunction) {
         this(endTime, numFunction.apply(openPrice),
@@ -99,6 +100,7 @@ public class BaseBar implements Bar {
      * @param lowPrice the lowest price of the bar period
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
+     * @param numFunction the numbers precision 
      */
     public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, Function<Number, Num> numFunction) {
         this(endTime, numFunction.apply(new BigDecimal(openPrice)),
@@ -119,6 +121,46 @@ public class BaseBar implements Bar {
      */
     public BaseBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
         this(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount);
+    }
+    
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, Function<Number, Num> numFunction) {
+    	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, null, numFunction);
+    }
+    
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
+     * @param amount the amount of the bar period
+     * @param numFunction the numbers precision   
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, Function<Number, Num> numFunction) {
+        checkTimeArguments(timePeriod, endTime);
+        
+        this.timePeriod = timePeriod;
+        this.endTime = endTime;
+        this.beginTime = endTime.minus(timePeriod);
+        this.openPrice = numFunction.apply(openPrice);
+        this.maxPrice = numFunction.apply(highPrice);
+        this.minPrice = numFunction.apply(lowPrice);
+        this.closePrice = numFunction.apply(closePrice);
+        this.volume = numFunction.apply(volume);
+        this.amount = numFunction.apply(amount);
     }
 
 
@@ -230,23 +272,19 @@ public class BaseBar implements Bar {
     }
 
     @Override
-    public void addPrice(Num price) {
-        if (openPrice == null) {
-            openPrice = price;
-        }
+	public void addPrice(Num price) {
+		if (openPrice == null) {
+			openPrice = price;
+		}
 
-        closePrice = price;
-        if (maxPrice == null) {
-            maxPrice = price;
-        } else if(maxPrice.isLessThan(price)) {
-            maxPrice = price;
-        }
-        if (minPrice == null) {
-            minPrice = price;
-        } else if(minPrice.isGreaterThan(price)){
-            minPrice = price;
-        }
-    }
+		closePrice = price;
+		if (maxPrice == null || maxPrice.isLessThan(price)) {
+			maxPrice = price;
+		}
+		if (minPrice == null || minPrice.isGreaterThan(price)) {
+			minPrice = price;
+		}
+	}
 
     @Override
     public String toString() {
