@@ -1,5 +1,10 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## 0.13
+### Added
+- **BaseTimeSeries.aggregateTimeSeries**: aggregates BarData to a higher timeFrame
+- **BaseTimeSeries.aggregateBars**: aggregates list of bars to a higher timeFrame
+
 ## 0.12 (released September 10, 2018)
 
 ### Breaking: 
