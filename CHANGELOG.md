@@ -1,5 +1,11 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
+## 0.13
+
+### Added
+- **BaseBar**: added constructor for BigDecimal
+
+
 ## 0.12 (released September 10, 2018)
 
 ### Breaking: 
@@ -50,7 +56,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TrailingStopLossRule**: new rule that is satisfied if trailing stop loss is reached
 - **Num**: added Num sqrt(int) and Num sqrt()
 - **pom.xml**: added support to generate ta4j-core OSGi artifact.
-- **BaseBar**: added constructor for BigDecimal
 
 ### Removed/Deprecated
 - **Decimal**: _removed_. Replaced by `Num` interface
