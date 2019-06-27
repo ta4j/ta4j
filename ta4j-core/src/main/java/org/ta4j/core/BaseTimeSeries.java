@@ -456,7 +456,6 @@ public class BaseTimeSeries implements TimeSeries {
 	 * Aggregates a list of bars by <code>timePeriod</code>.The new
 	 * <code>timePeriod</code> must be a multiplication of the actual time period.
 	 * 
-	 * 
 	 * @param bars       the actual bars
 	 * @param timePeriod the new timePeriod
 	 * @return the aggregated bars with new <code>timePeriod</code>
@@ -483,9 +482,10 @@ public class BaseTimeSeries implements TimeSeries {
 			Num min = b1.getMinPrice();
 			
 			// set to ZERO
-			Num close = b1.getOpenPrice().numOf(0);
-			Num volume = b1.getOpenPrice().numOf(0);
-			Num amount = b1.getOpenPrice().numOf(0);
+			Num zero = b1.getOpenPrice().numOf(0);
+			Num close = zero;
+			Num volume = zero;
+			Num amount = zero;
 			Duration sumDur = Duration.ZERO;
 
 			while (sumDur.compareTo(timePeriod) < 0) {
