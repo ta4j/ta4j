@@ -474,6 +474,7 @@ public class BaseTimeSeries implements TimeSeries {
 		}
 
 		int i = 0;
+		Num zero = bars.iterator().next().getOpenPrice().numOf(0);
 		while (i < bars.size()) {
 			Bar b1 = bars.get(i);
 			ZonedDateTime beginTime = b1.getBeginTime();
@@ -482,7 +483,6 @@ public class BaseTimeSeries implements TimeSeries {
 			Num min = b1.getMinPrice();
 			
 			// set to ZERO
-			Num zero = b1.getOpenPrice().numOf(0);
 			Num close = zero;
 			Num volume = zero;
 			Num amount = zero;
