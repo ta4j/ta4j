@@ -108,7 +108,7 @@ public class TimeSeriesAggregationTest extends AbstractIndicatorTest<TimeSeries,
     	// must be 3 bars
     	assertEquals(3, bars.size());
     	
-    	// first bar must have ohlcv (1, 6, 4, 9, 25)
+    	// bar 1 must have ohlcv (1, 6, 4, 9, 25)
     	Bar bar1 = bars.get(0);
     	Num num1 = bar1.getOpenPrice();
     	TestUtils.assertNumEquals(num1.numOf(1),bar1.getOpenPrice());
@@ -117,7 +117,7 @@ public class TimeSeriesAggregationTest extends AbstractIndicatorTest<TimeSeries,
     	TestUtils.assertNumEquals(num1.numOf(9), bar1.getClosePrice());
     	TestUtils.assertNumEquals(num1.numOf(33), bar1.getVolume());
     	
-    	// second bar must have ohlcv (6, 91, 4, 10, 260)
+    	// bar 2 must have ohlcv (6, 91, 4, 10, 260)
     	Bar bar2 = bars.get(1);
     	Num num2 = bar2.getOpenPrice();
     	TestUtils.assertNumEquals(num2.numOf(6), bar2.getOpenPrice());
@@ -126,7 +126,7 @@ public class TimeSeriesAggregationTest extends AbstractIndicatorTest<TimeSeries,
     	TestUtils.assertNumEquals(num2.numOf(10), bar2.getClosePrice());
     	TestUtils.assertNumEquals(num2.numOf(260), bar2.getVolume());
     	
-    	// second bar must have ohlcv (1d, 6d, 4d, 9d, 25)
+    	// bar 3 must have ohlcv (1d, 6d, 4d, 9d, 25)
     	Bar bar3 = bars.get(2);
     	Num num3 = bar3.getOpenPrice();
     	TestUtils.assertNumEquals(num3.numOf(4), bar3.getOpenPrice());
@@ -147,7 +147,7 @@ public class TimeSeriesAggregationTest extends AbstractIndicatorTest<TimeSeries,
     	// must be 1 bars
     	assertEquals(1, bars.size());
     	
-    	// first bar must have ohlcv (1, 91, 4, 10, 293)
+    	// bar 1 must have ohlcv (1, 91, 4, 10, 293)
     	Bar bar1 = bars.get(0);
     	Num num1 = bar1.getOpenPrice();
     	TestUtils.assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
