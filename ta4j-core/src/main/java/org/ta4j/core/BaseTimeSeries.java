@@ -462,16 +462,10 @@ public class BaseTimeSeries implements TimeSeries {
 	 * @return the aggregated bars with new <code>timePeriod</code>
 	 */
 	public static List<Bar> aggregateBars(List<Bar> bars, Duration timePeriod) {
-
 		List<Bar> sumBars = new ArrayList<>();
-
-		if (bars.isEmpty()) {
-			return sumBars;
-		}
-
+		if (bars.isEmpty()) return sumBars;
 		// get the actual time period
 		Duration actualDur = bars.iterator().next().getTimePeriod();
-
 		// check if new timePeriod is a multiplication of actual time period
 		boolean isNotMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() != 0;
 		
