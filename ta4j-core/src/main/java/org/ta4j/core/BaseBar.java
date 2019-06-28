@@ -64,6 +64,7 @@ public class BaseBar implements Bar {
      * Constructor.
      * @param timePeriod the time period
      * @param endTime the end time of the bar period
+     * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Function<Number, Num> numFunction) {
         checkTimeArguments(timePeriod, endTime);
@@ -82,6 +83,7 @@ public class BaseBar implements Bar {
      * @param lowPrice the lowest price of the bar period
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
+     * @param numFunction the numbers precision
      */
     public BaseBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, Function<Number, Num> numFunction) {
         this(endTime, numFunction.apply(openPrice),
@@ -100,6 +102,7 @@ public class BaseBar implements Bar {
      * @param lowPrice the lowest price of the bar period
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
+     * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, Function<Number, Num> numFunction) {
     	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numFunction.apply(0), numFunction);
@@ -139,6 +142,7 @@ public class BaseBar implements Bar {
      * @param lowPrice the lowest price of the bar period
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
+     * @param numFunction the numbers precision
      */
     public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, Function<Number, Num> numFunction) {
         this(endTime, numFunction.apply(new BigDecimal(openPrice)),
@@ -157,6 +161,7 @@ public class BaseBar implements Bar {
      * @param closePrice the close price of the bar
      * @param volume the volume of the bar
      * @param value the value of the bar
+     * @param numFunction the numbers precision
      */
     public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, String value, Function<Number, Num> numFunction) {
         this(endTime, numFunction.apply(new BigDecimal(openPrice)),
