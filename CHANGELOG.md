@@ -3,7 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.13 (unreleased)
 
 ### Breaking
-- :boom: **Breaking** Refactored from Max/Min to High/Low
+- :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
 
 ### Fixed
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
@@ -19,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 
 ### Added
+- :tada: **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
 - :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
 - :tada: **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
 - :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
