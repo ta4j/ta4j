@@ -11,8 +11,6 @@ import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
-import org.ta4j.core.num.Num;
-
 public class BarAggregator {
 	
 	private BarAggregator() {}
