@@ -1,7 +1,7 @@
-/*******************************************************************************
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -20,7 +20,7 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ */
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.TimeSeries;
@@ -52,15 +52,7 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num exitClosePrice = trade.getExit().getNetPrice().isNaN() ?
-                    series.getBar(trade.getExit().getIndex()).getClosePrice() : trade.getExit().getNetPrice();
-            Num entryClosePrice = trade.getEntry().getNetPrice().isNaN() ?
-                    series.getBar(trade.getEntry().getIndex()).getClosePrice() : trade.getEntry().getNetPrice();
-
-            return exitClosePrice.minus(entryClosePrice).multipliedBy(trade.getExit().getAmount());
-        }
-        return series.numOf(0);
+        return trade.getProfit();
     }
 
     @Override
