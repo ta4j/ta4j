@@ -56,13 +56,12 @@ public class BarAggregator {
 		// check if new timePeriod is a multiple of actual time period
 		boolean isNotMultiple = timePeriod.getSeconds() % actualDur.getSeconds() != 0;
 
-		if (isNotMultiplication) {
-			throw new IllegalArgumentException(
-					"Cannot aggregate bars: the new timePeriod must be a multiple of the actual timePeriod.");
+		if (isNotMultiple) {
+			throw new IllegalArgumentException("Cannot aggregate bars: the new timePeriod must be a multiple of the actual timePeriod.");
 		}
 
 		int i = 0;
-		Num zero = bars.iterator().next().getOpenPrice().numOf(0);
+		final Num zero = bars.iterator().next().getOpenPrice().numOf(0);
 		while (i < bars.size()) {
 			Bar b1 = bars.get(i);
 			ZonedDateTime beginTime = b1.getBeginTime();
