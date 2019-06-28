@@ -112,7 +112,7 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
     	Bar bar1 = bars.get(0);
     	Num num1 = bar1.getOpenPrice();
     	TestUtils.assertNumEquals(num1.numOf(1),bar1.getOpenPrice());
-    	TestUtils.assertNumEquals(num1.numOf(6),bar1.getMaxPrice());
+    	TestUtils.assertNumEquals(num1.numOf(6),bar1.getHighPrice());
     	TestUtils.assertNumEquals(num1.numOf(4), bar1.getMinPrice());
     	TestUtils.assertNumEquals(num1.numOf(9), bar1.getClosePrice());
     	TestUtils.assertNumEquals(num1.numOf(33), bar1.getVolume());
@@ -121,8 +121,8 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
     	Bar bar2 = bars.get(1);
     	Num num2 = bar2.getOpenPrice();
     	TestUtils.assertNumEquals(num2.numOf(6), bar2.getOpenPrice());
-    	TestUtils.assertNumEquals(num2.numOf(91), bar2.getMaxPrice());
-    	TestUtils.assertNumEquals(num2.numOf(4), bar2.getMinPrice());
+    	TestUtils.assertNumEquals(num2.numOf(91), bar2.getHighPrice());
+    	TestUtils.assertNumEquals(num2.numOf(4), bar2.getLowPrice());
     	TestUtils.assertNumEquals(num2.numOf(10), bar2.getClosePrice());
     	TestUtils.assertNumEquals(num2.numOf(260), bar2.getVolume());
     	
@@ -130,8 +130,8 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
     	Bar bar3 = bars.get(2);
     	Num num3 = bar3.getOpenPrice();
     	TestUtils.assertNumEquals(num3.numOf(4), bar3.getOpenPrice());
-    	TestUtils.assertNumEquals(num3.numOf(991), bar3.getMaxPrice());
-    	TestUtils.assertNumEquals(num3.numOf(43), bar3.getMinPrice());
+    	TestUtils.assertNumEquals(num3.numOf(991), bar3.getHighPrice());
+    	TestUtils.assertNumEquals(num3.numOf(43), bar3.getLowPrice());
     	TestUtils.assertNumEquals(num3.numOf(10), bar3.getClosePrice());
     	TestUtils.assertNumEquals(num3.numOf(1010), bar3.getVolume());
     }
@@ -151,8 +151,8 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
     	Bar bar1 = bars.get(0);
     	Num num1 = bar1.getOpenPrice();
     	TestUtils.assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
-    	TestUtils.assertNumEquals(num1.numOf(91), bar1.getMaxPrice());
-    	TestUtils.assertNumEquals(num1.numOf(4), bar1.getMinPrice());
+    	TestUtils.assertNumEquals(num1.numOf(91), bar1.getHighPrice());
+    	TestUtils.assertNumEquals(num1.numOf(4), bar1.getLowPrice());
     	TestUtils.assertNumEquals(num1.numOf(10), bar1.getClosePrice());
     	TestUtils.assertNumEquals(num1.numOf(293), bar1.getVolume());
     }
