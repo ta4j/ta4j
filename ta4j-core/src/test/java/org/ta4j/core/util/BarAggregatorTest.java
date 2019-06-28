@@ -113,7 +113,7 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
     	Num num1 = bar1.getOpenPrice();
     	TestUtils.assertNumEquals(num1.numOf(1),bar1.getOpenPrice());
     	TestUtils.assertNumEquals(num1.numOf(6),bar1.getHighPrice());
-    	TestUtils.assertNumEquals(num1.numOf(4), bar1.getMinPrice());
+    	TestUtils.assertNumEquals(num1.numOf(4), bar1.getLowPrice());
     	TestUtils.assertNumEquals(num1.numOf(9), bar1.getClosePrice());
     	TestUtils.assertNumEquals(num1.numOf(33), bar1.getVolume());
     	
