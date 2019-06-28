@@ -18,9 +18,26 @@ public class DurationBarAggregator implements BarAggregator {
      * Target time period to aggregate
      */
     private final Duration timePeriod;
+    private final boolean onlyFinalBars;
 
+    /**
+     * Duration basing bar aggregator. Only bars with elapsed time (final bars) will be created.
+     *
+     * @param timePeriod time period to aggregate
+     */
     public DurationBarAggregator(Duration timePeriod) {
+        this(timePeriod, true);
+    }
+
+    /**
+     * Duration basing bar aggregator
+     *
+     * @param timePeriod    time period to aggregate
+     * @param onlyFinalBars if true only bars with elapsed time (final bars) will be created, otherwise also pending bars
+     */
+    public DurationBarAggregator(Duration timePeriod, boolean onlyFinalBars) {
         this.timePeriod = timePeriod;
+        this.onlyFinalBars = onlyFinalBars;
     }
 
     /**
@@ -32,9 +49,9 @@ public class DurationBarAggregator implements BarAggregator {
      */
     @Override
     public List<Bar> aggregate(List<Bar> bars) {
-        final List<Bar> sumBars = new ArrayList<>();
+        final List<Bar> aggregated = new ArrayList<>();
         if (bars.isEmpty()) {
-            return sumBars;
+            return aggregated;
         }
         // get the actual time period
         final Duration actualDur = bars.iterator().next().getTimePeriod();
@@ -48,43 +65,41 @@ public class DurationBarAggregator implements BarAggregator {
         int i = 0;
         final Num zero = bars.iterator().next().getOpenPrice().numOf(0);
         while (i < bars.size()) {
-            Bar b1 = bars.get(i);
-            ZonedDateTime beginTime = b1.getBeginTime();
-            Num open = b1.getOpenPrice();
-            Num max = b1.getHighPrice();
-            Num min = b1.getLowPrice();
+            Bar bar = bars.get(i);
+            final ZonedDateTime beginTime = bar.getBeginTime();
+            final Num open = bar.getOpenPrice();
+            Num high = bar.getHighPrice();
+            Num low = bar.getLowPrice();
 
-            // set to ZERO
-            Num close = zero;
+            Num close = null;
             Num volume = zero;
             Num amount = zero;
             Duration sumDur = Duration.ZERO;
 
             while (sumDur.compareTo(timePeriod) < 0) {
                 if (i < bars.size()) {
-                    Bar b2 = bars.get(i);
+                    bar = bars.get(i);
 
-                    if (b2.getHighPrice().isGreaterThan(max)) {
-                        max = b2.getHighPrice();
+                    if (high == null || bar.getHighPrice().isGreaterThan(high)) {
+                        high = bar.getHighPrice();
                     }
-                    if (b2.getLowPrice().isLessThan(min)) {
-                        min = b2.getLowPrice();
+                    if (low == null || bar.getLowPrice().isLessThan(low)) {
+                        low = bar.getLowPrice();
                     }
-                    close = b2.getClosePrice();
-                    volume = volume.plus(b2.getVolume());
-                    amount = amount.plus(b2.getAmount());
+                    close = bar.getClosePrice();
+                    volume = volume.plus(bar.getVolume());
+                    amount = amount.plus(bar.getAmount());
                 }
                 sumDur = sumDur.plus(actualDur);
                 i++;
             }
 
-            // add only bars with elapsed timePeriod
-            if (i <= bars.size()) {
-                final Bar b = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, max, min, close, volume, amount);
-                sumBars.add(b);
+            if (!onlyFinalBars || i <= bars.size()) {
+                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close, volume, amount);
+                aggregated.add(aggregatedBar);
             }
         }
 
-        return sumBars;
+        return aggregated;
     }
 }

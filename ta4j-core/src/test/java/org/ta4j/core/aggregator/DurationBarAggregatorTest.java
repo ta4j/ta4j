@@ -59,7 +59,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
      */
     @Test
     public void upscaledTo5DayBars() {
-        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(5));
+        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(5), true);
 
         final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
 
@@ -99,7 +99,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
      */
     @Test
     public void upscaledTo10DayBars() {
-        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10));
+        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), true);
         final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 1 bars
@@ -113,6 +113,18 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
         TestUtils.assertNumEquals(num1.numOf(4), bar1.getLowPrice());
         TestUtils.assertNumEquals(num1.numOf(10), bar1.getClosePrice());
         TestUtils.assertNumEquals(num1.numOf(293), bar1.getVolume());
+    }
+
+    /**
+     * Tests if the bars are upscaled correctly from 1day to 10day, allowed not final bars too
+     */
+    @Test
+    public void upscaledTo10DayBarsNotOnlyFinalBars() {
+        final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), false);
+        final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
+
+        // must be 1 bars
+        assertEquals(2, bars.size());
     }
 
 }
