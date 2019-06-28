@@ -253,7 +253,7 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * @return the whole traded amount of the period
+     * @return the whole traded amount of the period (tradePrice x tradeVolume)
      */
     public Num getAmount() {
         return amount;
