@@ -93,8 +93,8 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
                 .withBars(bars)
                 .build();
         
-        upscaledSeries = BaseTimeSeries.aggregateTimeSeries(defaultName, series, Duration.ofDays(5));
-        upscaledBars = BaseTimeSeries.aggregateBars(bars, Duration.ofDays(10));
+        upscaledSeries = BarAggregator.aggregateBarSeries(defaultName, series, Duration.ofDays(5));
+        upscaledBars = BarAggregator.aggregateBars(bars, Duration.ofDays(10));
     }
     
     /**
