@@ -1,4 +1,4 @@
-package org.ta4j.core;
+package org.ta4j.core.util;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
