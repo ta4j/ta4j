@@ -26,7 +26,7 @@ package org.ta4j.core.util;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseTimeSeriesBuilder;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -91,7 +91,7 @@ public class BarAggregatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
         
         defaultName = "Series Name";
 
-        series = new BaseTimeSeries.SeriesBuilder()
+        series = new BaseTimeSeriesBuilder()
                 .withNumTypeOf(numFunction)
                 .withName(defaultName)
                 .withBars(bars)
