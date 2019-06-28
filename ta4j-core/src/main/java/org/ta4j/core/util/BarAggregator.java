@@ -12,37 +12,37 @@ public class BarAggregator {
 	private BarAggregator() {}
 
 	/**
-	 * Aggregates the bars of the <code>timeSeries</code> by
+	 * Aggregates the bars of the <code>barSeries</code> by
 	 * <code>timePeriod</code>. The new <code>timePeriod</code> must be a
-	 * multiplication of the actual time period.
+	 * multiple of the actual time period.
 	 * 
-	 * @param timeSeries the actual TimeSeries
+	 * @param barSeries the actual TimeSeries
 	 * @param timePeriod the actual timePeriod
 	 * @return the aggregated TimeSeries
 	 */
-	public static TimeSeries aggregateBarSeries(TimeSeries timeSeries, Duration timePeriod) {
+	public static TimeSeries aggregateBarSeries(TimeSeries barSeries, Duration timePeriod) {
 		String name = timeSeries.getName() + "_upscaled_to_" + timePeriod;
 		return aggregateTimeSeries(name, timeSeries, timePeriod);
 	}
 
 	/**
-	 * Aggregates the bars of the <code>timeSeries</code> by
+	 * Aggregates the bars of the <code>barSeries</code> by
 	 * <code>timePeriod</code>. The new <code>timePeriod</code> must be a
-	 * multiplication of the actual time period.
+	 * multiple of the actual time period.
 	 * 
 	 * @param name       the name of the returned TimeSeries
-	 * @param timeSeries the actual TimeSeries
+	 * @param barSeries the actual TimeSeries
 	 * @param timePeriod the actual timePeriod
 	 * @return the aggregated TimeSeries
 	 */
-	public static TimeSeries aggregateTimeSeries(String name, TimeSeries timeSeries, Duration timePeriod) {
+	public static TimeSeries aggregateBarSeries(String name, TimeSeries barSeries, Duration timePeriod) {
 		List<Bar> sumBars = aggregateBars(timeSeries.getBarData(), timePeriod);
 		return new BaseTimeSeries(name, sumBars);
 	}
 
 	/**
 	 * Aggregates a list of bars by <code>timePeriod</code>.The new
-	 * <code>timePeriod</code> must be a multiplication of the actual time period.
+	 * <code>timePeriod</code> must be a multiple of the actual time period.
 	 * 
 	 * @param bars       the actual bars
 	 * @param timePeriod the new timePeriod
@@ -54,12 +54,12 @@ public class BarAggregator {
 			return sumBars;
 		// get the actual time period
 		Duration actualDur = bars.iterator().next().getTimePeriod();
-		// check if new timePeriod is a multiplication of actual time period
-		boolean isNotMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() != 0;
+		// check if new timePeriod is a multiple of actual time period
+		boolean isNotMultiple = timePeriod.getSeconds() % actualDur.getSeconds() != 0;
 
 		if (isNotMultiplication) {
 			throw new IllegalArgumentException(
-					"Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
+					"Cannot aggregate bars: the new timePeriod must be a multiple of the actual timePeriod.");
 		}
 
 		int i = 0;
