@@ -22,7 +22,7 @@ public class BarAggregator {
 	 */
 	public static TimeSeries aggregateBarSeries(TimeSeries barSeries, Duration timePeriod) {
 		String name = timeSeries.getName() + "_upscaled_to_" + timePeriod;
-		return aggregateTimeSeries(name, timeSeries, timePeriod);
+		return aggregateBarSeries(name, timeSeries, timePeriod);
 	}
 
 	/**
@@ -50,8 +50,7 @@ public class BarAggregator {
 	 */
 	public static List<Bar> aggregateBars(List<Bar> bars, Duration timePeriod) {
 		List<Bar> sumBars = new ArrayList<>();
-		if (bars.isEmpty())
-			return sumBars;
+		if (bars.isEmpty()) return sumBars;
 		// get the actual time period
 		Duration actualDur = bars.iterator().next().getTimePeriod();
 		// check if new timePeriod is a multiple of actual time period
