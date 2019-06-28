@@ -68,8 +68,8 @@ public class BarAggregator {
 			Bar b1 = bars.get(i);
 			ZonedDateTime beginTime = b1.getBeginTime();
 			Num open = b1.getOpenPrice();
-			Num max = b1.getMaxPrice();
-			Num min = b1.getMinPrice();
+			Num high = b1.getHighPrice();
+			Num low = b1.getLowPrice();
 
 			// set to ZERO
 			Num close = zero;
@@ -81,11 +81,11 @@ public class BarAggregator {
 				if (i < bars.size()) {
 					Bar b2 = bars.get(i);
 
-					if (b2.getMaxPrice().isGreaterThan(max)) {
-						max = b2.getMaxPrice();
+					if (b2.getHighPrice().isGreaterThan(high)) {
+						high = b2.getHighPrice();
 					}
-					if (b2.getMinPrice().isLessThan(min)) {
-						min = b2.getMinPrice();
+					if (b2.getLowPrice().isLessThan(low)) {
+						low = b2.getLowPrice();
 					}
 					close = b2.getClosePrice();
 					volume = volume.plus(b2.getVolume());
@@ -97,7 +97,7 @@ public class BarAggregator {
 
 			// add only bars with elapsed timePeriod
 			if (i <= bars.size()) {
-				Bar b = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, max, min, close, volume, amount);
+				Bar b = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close, volume, amount);
 				sumBars.add(b);
 			}
 		}
