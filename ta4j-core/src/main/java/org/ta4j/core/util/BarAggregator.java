@@ -5,6 +5,12 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.num.Num;
+
 import org.ta4j.core.num.Num;
 
 public class BarAggregator {
