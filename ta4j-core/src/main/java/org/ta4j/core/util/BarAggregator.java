@@ -21,8 +21,8 @@ public class BarAggregator {
 	 * @return the aggregated TimeSeries
 	 */
 	public static TimeSeries aggregateBarSeries(TimeSeries barSeries, Duration timePeriod) {
-		String name = timeSeries.getName() + "_upscaled_to_" + timePeriod;
-		return aggregateBarSeries(name, timeSeries, timePeriod);
+		String name = barSeries.getName() + "_upscaled_to_" + timePeriod;
+		return aggregateBarSeries(name, barSeries, timePeriod);
 	}
 
 	/**
@@ -36,7 +36,7 @@ public class BarAggregator {
 	 * @return the aggregated TimeSeries
 	 */
 	public static TimeSeries aggregateBarSeries(String name, TimeSeries barSeries, Duration timePeriod) {
-		List<Bar> sumBars = aggregateBars(timeSeries.getBarData(), timePeriod);
+		List<Bar> sumBars = aggregateBars(barSeries.getBarData(), timePeriod);
 		return new BaseTimeSeries(name, sumBars);
 	}
 
