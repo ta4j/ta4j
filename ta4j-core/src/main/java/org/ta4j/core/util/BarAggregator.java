@@ -20,7 +20,7 @@ public class BarAggregator {
 	 * @param timePeriod the actual timePeriod
 	 * @return the aggregated TimeSeries
 	 */
-	public static TimeSeries aggregateTimeSeries(TimeSeries timeSeries, Duration timePeriod) {
+	public static TimeSeries aggregateBarSeries(TimeSeries timeSeries, Duration timePeriod) {
 		String name = timeSeries.getName() + "_upscaled_to_" + timePeriod;
 		return aggregateTimeSeries(name, timeSeries, timePeriod);
 	}
