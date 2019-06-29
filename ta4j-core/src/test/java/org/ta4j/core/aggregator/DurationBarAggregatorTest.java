@@ -123,7 +123,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
         final DurationBarAggregator barAggregator = new DurationBarAggregator(Duration.ofDays(10), false);
         final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
 
-        // must be 1 bars
+        // must be 2 bars
         assertEquals(2, bars.size());
     }
 
