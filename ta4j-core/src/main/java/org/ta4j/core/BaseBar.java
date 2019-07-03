@@ -287,101 +287,27 @@ public class BaseBar implements Bar {
         }
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof BaseBar)) {
-            return false;
-        }
-        BaseBar other = (BaseBar) obj;
-        if (amount == null) {
-            if (other.amount != null) {
-                return false;
-            }
-        } else if (!amount.equals(other.amount)) {
-            return false;
-        }
-        if (beginTime == null) {
-            if (other.beginTime != null) {
-                return false;
-            }
-        } else if (!beginTime.equals(other.beginTime)) {
-            return false;
-        }
-        if (closePrice == null) {
-            if (other.closePrice != null) {
-                return false;
-            }
-        } else if (!closePrice.equals(other.closePrice)) {
-            return false;
-        }
-        if (endTime == null) {
-            if (other.endTime != null) {
-                return false;
-            }
-        } else if (!endTime.equals(other.endTime)) {
-            return false;
-        }
-        if (highPrice == null) {
-            if (other.highPrice != null) {
-                return false;
-            }
-        } else if (!highPrice.equals(other.highPrice)) {
-            return false;
-        }
-        if (lowPrice == null) {
-            if (other.lowPrice != null) {
-                return false;
-            }
-        } else if (!lowPrice.equals(other.lowPrice)) {
-            return false;
-        }
-        if (openPrice == null) {
-            if (other.openPrice != null) {
-                return false;
-            }
-        } else if (!openPrice.equals(other.openPrice)) {
-            return false;
-        }
-        if (timePeriod == null) {
-            if (other.timePeriod != null) {
-                return false;
-            }
-        } else if (!timePeriod.equals(other.timePeriod)) {
-            return false;
-        }
-        if (trades != other.trades) {
-            return false;
-        }
-        if (volume == null) {
-            if (other.volume != null) {
-                return false;
-            }
-        } else if (!volume.equals(other.volume)) {
-            return false;
-        }
-        return true;
-    }
+   @Override
+	public int hashCode() {
+		return Objects.hash(amount, beginTime, closePrice, endTime, highPrice, lowPrice, openPrice, timePeriod, trades, volume);
+	}
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((amount == null) ? 0 : amount.hashCode());
-        result = prime * result + ((beginTime == null) ? 0 : beginTime.hashCode());
-        result = prime * result + ((closePrice == null) ? 0 : closePrice.hashCode());
-        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
-        result = prime * result + ((highPrice == null) ? 0 : highPrice.hashCode());
-        result = prime * result + ((lowPrice == null) ? 0 : lowPrice.hashCode());
-        result = prime * result + ((openPrice == null) ? 0 : openPrice.hashCode());
-        result = prime * result + ((timePeriod == null) ? 0 : timePeriod.hashCode());
-        result = prime * result + trades;
-        result = prime * result + ((volume == null) ? 0 : volume.hashCode());
-        return result;
-    }
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!(obj instanceof BaseBar))
+			return false;
+		final BaseBar other = (BaseBar) obj;
+		return Objects.equals(amount, other.amount) 
+				&& Objects.equals(beginTime, other.beginTime)
+				&& Objects.equals(closePrice, other.closePrice) 
+				&& Objects.equals(endTime, other.endTime)
+				&& Objects.equals(highPrice, other.highPrice) 
+				&& Objects.equals(lowPrice, other.lowPrice)
+				&& Objects.equals(openPrice, other.openPrice) 
+				&& Objects.equals(timePeriod, other.timePeriod)
+				&& trades == other.trades 
+				&& Objects.equals(volume, other.volume);
+	}
 }
