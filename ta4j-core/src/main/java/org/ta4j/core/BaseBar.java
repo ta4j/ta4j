@@ -295,14 +295,14 @@ public class BaseBar implements Bar {
 		if (!(obj instanceof BaseBar)) return false;
 		final BaseBar other = (BaseBar) obj;
 		return Objects.equals(amount, other.amount) 
-		&& Objects.equals(beginTime, other.beginTime)
-		&& Objects.equals(closePrice, other.closePrice) 
-		&& Objects.equals(endTime, other.endTime)
-		&& Objects.equals(highPrice, other.highPrice) 
-		&& Objects.equals(lowPrice, other.lowPrice)
-		&& Objects.equals(openPrice, other.openPrice) 
-		&& Objects.equals(timePeriod, other.timePeriod)
-		&& trades == other.trades 
-		&& Objects.equals(volume, other.volume);
+		    && Objects.equals(beginTime, other.beginTime)
+		    && Objects.equals(closePrice, other.closePrice) 
+		    && Objects.equals(endTime, other.endTime)
+		    && Objects.equals(highPrice, other.highPrice) 
+		    && Objects.equals(lowPrice, other.lowPrice)
+		    && Objects.equals(openPrice, other.openPrice) 
+		    && Objects.equals(timePeriod, other.timePeriod)
+		    && trades == other.trades 
+		    && Objects.equals(volume, other.volume);
 	}
 }
