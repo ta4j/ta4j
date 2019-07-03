@@ -88,7 +88,7 @@ public class BaseBar implements Bar {
                 numFunction.apply(highPrice),
                 numFunction.apply(lowPrice),
                 numFunction.apply(closePrice),
-                numFunction.apply(volume),numFunction.apply(0));
+                numFunction.apply(volume), numFunction.apply(0));
     }
 
     /**
@@ -105,7 +105,7 @@ public class BaseBar implements Bar {
                 numFunction.apply(new BigDecimal(highPrice)),
                 numFunction.apply(new BigDecimal(lowPrice)),
                 numFunction.apply(new BigDecimal(closePrice)),
-                numFunction.apply(new BigDecimal(volume)),numFunction.apply(0));
+                numFunction.apply(new BigDecimal(volume)), numFunction.apply(0));
     }
 
     /**
@@ -163,6 +163,48 @@ public class BaseBar implements Bar {
         this.closePrice = closePrice;
         this.volume = volume;
         this.amount = amount;
+    }
+
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
+     * @param amount the amount of the bar period
+     * @param trades the trades count of the bar period
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount, int trades) {
+        checkTimeArguments(timePeriod, endTime);
+        this.timePeriod = timePeriod;
+        this.endTime = endTime;
+        this.beginTime = endTime.minus(timePeriod);
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.amount = amount;
+        this.trades = trades;
+    }
+
+    /**
+     * Returns BaseBarBuilder
+     * @return builder of class BaseBarBuilder
+     */
+    public static BaseBarBuilder builder() {
+        return new BaseBarBuilder();
+    }
+
+    /**
+     * Returns BaseBarBuilder
+     * @return builder of class BaseBarBuilder
+     */
+    public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {
+        return new ConvertibleBaseBarBuilder<>(conversionFunction);
     }
 
     /**
@@ -257,12 +299,12 @@ public class BaseBar implements Bar {
         closePrice = price;
         if (highPrice == null) {
             highPrice = price;
-        } else if(highPrice.isLessThan(price)) {
+        } else if (highPrice.isLessThan(price)) {
             highPrice = price;
         }
         if (lowPrice == null) {
             lowPrice = price;
-        } else if(lowPrice.isGreaterThan(price)){
+        } else if (lowPrice.isGreaterThan(price)) {
             lowPrice = price;
         }
     }
