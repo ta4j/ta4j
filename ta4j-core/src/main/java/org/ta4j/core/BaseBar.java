@@ -255,16 +255,12 @@ public class BaseBar implements Bar {
         }
 
         closePrice = price;
-        if (highPrice == null) {
-            highPrice = price;
-        } else if(highPrice.isLessThan(price)) {
-            highPrice = price;
-        }
-        if (lowPrice == null) {
-            lowPrice = price;
-        } else if(lowPrice.isGreaterThan(price)){
-            lowPrice = price;
-        }
+        if (highPrice == null || highPrice.isLessThan(price)) {
+		highPrice = price;
+	}
+	if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+		lowPrice = price;
+	}
     }
 
     @Override
