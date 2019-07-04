@@ -286,7 +286,7 @@ public class BaseBar implements Bar {
 
    @Override
 	public int hashCode() {
-		return Objects.hash(amount, beginTime, closePrice, endTime, highPrice, lowPrice, openPrice, timePeriod, trades, volume);
+		return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
 	}
 
 	@Override
@@ -294,15 +294,15 @@ public class BaseBar implements Bar {
 		if (this == obj) return true;
 		if (!(obj instanceof BaseBar)) return false;
 		final BaseBar other = (BaseBar) obj;
-		return Objects.equals(amount, other.amount) 
-		    && Objects.equals(beginTime, other.beginTime)
-		    && Objects.equals(closePrice, other.closePrice) 
+		return Objects.equals(beginTime, other.beginTime) 
 		    && Objects.equals(endTime, other.endTime)
+		    && Objects.equals(timePeriod, other.timePeriod)
+		    && Objects.equals(openPrice, other.openPrice) 
 		    && Objects.equals(highPrice, other.highPrice) 
 		    && Objects.equals(lowPrice, other.lowPrice)
-		    && Objects.equals(openPrice, other.openPrice) 
-		    && Objects.equals(timePeriod, other.timePeriod)
-		    && trades == other.trades 
-		    && Objects.equals(volume, other.volume);
+		    && Objects.equals(closePrice, other.closePrice) 
+		    && Objects.equals(volume, other.volume)
+		    && Objects.equals(amount, other.amount) 
+		    && trades == other.trades;
 	}
 }
