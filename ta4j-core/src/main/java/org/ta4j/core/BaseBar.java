@@ -104,7 +104,6 @@ public class BaseBar implements Bar {
      * @param lowPrice the lowest price of the bar period
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
-     * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume) {
     	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, BigDecimal.ZERO);
@@ -120,7 +119,6 @@ public class BaseBar implements Bar {
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
      * @param amount the amount of the bar period
-     * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount) {
         checkTimeArguments(timePeriod, endTime);
