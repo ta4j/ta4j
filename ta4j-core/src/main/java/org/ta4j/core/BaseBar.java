@@ -24,11 +24,13 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -104,8 +106,8 @@ public class BaseBar implements Bar {
      * @param volume the volume of the bar period
      * @param numFunction the numbers precision
      */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, Function<Number, Num> numFunction) {
-    	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numFunction.apply(0), numFunction);
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume) {
+    	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, BigDecimal.ZERO);
     }
     
     /**
@@ -118,20 +120,20 @@ public class BaseBar implements Bar {
      * @param closePrice the close price of the bar period
      * @param volume the volume of the bar period
      * @param amount the amount of the bar period
-     * @param numFunction the numbers precision   
+     * @param numFunction the numbers precision
      */
-    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, Function<Number, Num> numFunction) {
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount) {
         checkTimeArguments(timePeriod, endTime);
         
         this.timePeriod = timePeriod;
         this.endTime = endTime;
         this.beginTime = endTime.minus(timePeriod);
-        this.openPrice = numFunction.apply(openPrice);
-        this.highPrice = numFunction.apply(highPrice);
-        this.lowPrice = numFunction.apply(lowPrice);
-        this.closePrice = numFunction.apply(closePrice);
-        this.volume = numFunction.apply(volume);
-        this.amount = numFunction.apply(amount);
+        this.openPrice = PrecisionNum.valueOf(openPrice);
+        this.highPrice = PrecisionNum.valueOf(highPrice);
+        this.lowPrice = PrecisionNum.valueOf(lowPrice);
+        this.closePrice = PrecisionNum.valueOf(closePrice);
+        this.volume = PrecisionNum.valueOf(volume);
+        this.amount = PrecisionNum.valueOf(amount);
     }
 
     /**
@@ -293,24 +295,24 @@ public class BaseBar implements Bar {
         trades++;
     }
 
-    @Override
-    public void addPrice(Num price) {
-        if (openPrice == null) {
-            openPrice = price;
-        }
+	@Override
+	public void addPrice(Num price) {
+		if (openPrice == null) {
+			openPrice = price;
+		}
 
-        closePrice = price;
-	if (highPrice == null || highPrice.isLessThan(price)) {
-		highPrice = price;
+		closePrice = price;
+		if (highPrice == null || highPrice.isLessThan(price)) {
+			highPrice = price;
+		}
+		if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+			lowPrice = price;
+		}
 	}
-	if (lowPrice == null || lowPrice.isGreaterThan(price)) {
-		lowPrice = price;
-	}
-    }
 
     @Override
     public String toString() {
-        return String.format("{end time: %1s, close price: %2$f, open price: %3$f, low price: %4$f, high price: %5$f, volume: %6$f}",
+        return String.format("{end time: %1s, close price: %2$f, open price: %3$f, min price: %4$f, max price: %5$f, volume: %6$f}",
                 endTime.withZoneSameInstant(ZoneId.systemDefault()), closePrice.doubleValue(), openPrice.doubleValue(), lowPrice.doubleValue(), highPrice.doubleValue(), volume.doubleValue());
     }
 
@@ -328,101 +330,25 @@ public class BaseBar implements Bar {
         }
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof BaseBar)) {
-            return false;
-        }
-        BaseBar other = (BaseBar) obj;
-        if (amount == null) {
-            if (other.amount != null) {
-                return false;
-            }
-        } else if (!amount.equals(other.amount)) {
-            return false;
-        }
-        if (beginTime == null) {
-            if (other.beginTime != null) {
-                return false;
-            }
-        } else if (!beginTime.equals(other.beginTime)) {
-            return false;
-        }
-        if (closePrice == null) {
-            if (other.closePrice != null) {
-                return false;
-            }
-        } else if (!closePrice.equals(other.closePrice)) {
-            return false;
-        }
-        if (endTime == null) {
-            if (other.endTime != null) {
-                return false;
-            }
-        } else if (!endTime.equals(other.endTime)) {
-            return false;
-        }
-        if (highPrice == null) {
-            if (other.highPrice != null) {
-                return false;
-            }
-        } else if (!highPrice.equals(other.highPrice)) {
-            return false;
-        }
-        if (lowPrice == null) {
-            if (other.lowPrice != null) {
-                return false;
-            }
-        } else if (!lowPrice.equals(other.lowPrice)) {
-            return false;
-        }
-        if (openPrice == null) {
-            if (other.openPrice != null) {
-                return false;
-            }
-        } else if (!openPrice.equals(other.openPrice)) {
-            return false;
-        }
-        if (timePeriod == null) {
-            if (other.timePeriod != null) {
-                return false;
-            }
-        } else if (!timePeriod.equals(other.timePeriod)) {
-            return false;
-        }
-        if (trades != other.trades) {
-            return false;
-        }
-        if (volume == null) {
-            if (other.volume != null) {
-                return false;
-            }
-        } else if (!volume.equals(other.volume)) {
-            return false;
-        }
-        return true;
-    }
+   @Override
+	public int hashCode() {
+		return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+	}
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((amount == null) ? 0 : amount.hashCode());
-        result = prime * result + ((beginTime == null) ? 0 : beginTime.hashCode());
-        result = prime * result + ((closePrice == null) ? 0 : closePrice.hashCode());
-        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
-        result = prime * result + ((highPrice == null) ? 0 : highPrice.hashCode());
-        result = prime * result + ((lowPrice == null) ? 0 : lowPrice.hashCode());
-        result = prime * result + ((openPrice == null) ? 0 : openPrice.hashCode());
-        result = prime * result + ((timePeriod == null) ? 0 : timePeriod.hashCode());
-        result = prime * result + trades;
-        result = prime * result + ((volume == null) ? 0 : volume.hashCode());
-        return result;
-    }
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (!(obj instanceof BaseBar)) return false;
+		final BaseBar other = (BaseBar) obj;
+		return Objects.equals(beginTime, other.beginTime) 
+		    && Objects.equals(endTime, other.endTime)
+		    && Objects.equals(timePeriod, other.timePeriod)
+		    && Objects.equals(openPrice, other.openPrice) 
+		    && Objects.equals(highPrice, other.highPrice) 
+		    && Objects.equals(lowPrice, other.lowPrice)
+		    && Objects.equals(closePrice, other.closePrice) 
+		    && Objects.equals(volume, other.volume)
+		    && Objects.equals(amount, other.amount) 
+		    && trades == other.trades;
+	}
 }
