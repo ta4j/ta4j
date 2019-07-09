@@ -134,16 +134,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, double amount, Function<Number, Num> numFunction) {
-        checkTimeArguments(timePeriod, endTime);
-        this.timePeriod = timePeriod;
-        this.endTime = endTime;
-        this.beginTime = endTime.minus(timePeriod);
-        this.openPrice = numFunction.apply(openPrice);
-        this.highPrice = numFunction.apply(highPrice);
-        this.lowPrice = numFunction.apply(lowPrice);
-        this.closePrice = numFunction.apply(closePrice);
-        this.volume = numFunction.apply(volume);
-        this.amount = numFunction.apply(amount);
+		this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice), numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume), numFunction.apply(amount));
     }
     
     /**
@@ -188,16 +179,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, Function<Number, Num> numFunction) {
-        checkTimeArguments(timePeriod, endTime);
-        this.timePeriod = timePeriod;
-        this.endTime = endTime;
-        this.beginTime = endTime.minus(timePeriod);
-        this.openPrice = numFunction.apply(openPrice);
-        this.highPrice = numFunction.apply(highPrice);
-        this.lowPrice = numFunction.apply(lowPrice);
-        this.closePrice = numFunction.apply(closePrice);
-        this.volume = numFunction.apply(volume);
-        this.amount = numFunction.apply(amount);
+		this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice), numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume), numFunction.apply(amount));
     }
 
     /**
@@ -242,17 +224,14 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, String amount, Function<Number, Num> numFunction) {
-        checkTimeArguments(timePeriod, endTime);
-        this.timePeriod = timePeriod;
-        this.endTime = endTime;
-        this.beginTime = endTime.minus(timePeriod);
-        this.openPrice = numFunction.apply(new BigDecimal(openPrice));
-        this.highPrice = numFunction.apply(new BigDecimal(highPrice));
-        this.lowPrice = numFunction.apply(new BigDecimal(lowPrice));
-        this.closePrice = numFunction.apply(new BigDecimal(closePrice));
-        this.volume = numFunction.apply(new BigDecimal(volume));
-        this.amount = numFunction.apply(new BigDecimal(amount));
-    }
+		this(timePeriod, endTime,
+				numFunction.apply(new BigDecimal(openPrice)),
+				numFunction.apply(new BigDecimal(highPrice)),
+				numFunction.apply(new BigDecimal(lowPrice)),
+				numFunction.apply(new BigDecimal(closePrice)),
+				numFunction.apply(new BigDecimal(volume)),
+				numFunction.apply(new BigDecimal(amount)));
+	}
 
     /**
      * Constructor.
