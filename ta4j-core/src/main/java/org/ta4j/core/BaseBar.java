@@ -388,7 +388,7 @@ public class BaseBar implements Bar {
         }
     }
 
-   @Override
+    @Override
     public int hashCode() {
 	return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
     }
