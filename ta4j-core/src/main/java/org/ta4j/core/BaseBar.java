@@ -231,7 +231,7 @@ public class BaseBar implements Bar {
 		numFunction.apply(new BigDecimal(closePrice)),
 		numFunction.apply(new BigDecimal(volume)),
 		numFunction.apply(new BigDecimal(amount)));
-	}
+    }
 
     /**
      * Constructor.
@@ -354,20 +354,19 @@ public class BaseBar implements Bar {
         trades++;
     }
 
-	@Override
-	public void addPrice(Num price) {
-		if (openPrice == null) {
-			openPrice = price;
-		}
-
-		closePrice = price;
-		if (highPrice == null || highPrice.isLessThan(price)) {
-			highPrice = price;
-		}
-		if (lowPrice == null || lowPrice.isGreaterThan(price)) {
-			lowPrice = price;
-		}
-	}
+    @Override
+    public void addPrice(Num price) {
+      if (openPrice == null) {
+	  openPrice = price;
+      }
+      closePrice = price;
+      if (highPrice == null || highPrice.isLessThan(price)) {
+	  highPrice = price;
+      }
+      if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+	  lowPrice = price;
+      }
+    }
 
     @Override
     public String toString() {
@@ -390,24 +389,24 @@ public class BaseBar implements Bar {
     }
 
    @Override
-	public int hashCode() {
-		return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
-	}
+    public int hashCode() {
+	return Objects.hash(beginTime, endTime, timePeriod, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) return true;
-		if (!(obj instanceof BaseBar)) return false;
-		final BaseBar other = (BaseBar) obj;
-		return Objects.equals(beginTime, other.beginTime) 
-		    && Objects.equals(endTime, other.endTime)
-		    && Objects.equals(timePeriod, other.timePeriod)
-		    && Objects.equals(openPrice, other.openPrice) 
-		    && Objects.equals(highPrice, other.highPrice) 
-		    && Objects.equals(lowPrice, other.lowPrice)
-		    && Objects.equals(closePrice, other.closePrice) 
-		    && Objects.equals(volume, other.volume)
-		    && Objects.equals(amount, other.amount) 
-		    && trades == other.trades;
-	}
+    @Override
+    public boolean equals(Object obj) {
+	if (this == obj) return true;
+	if (!(obj instanceof BaseBar)) return false;
+	final BaseBar other = (BaseBar) obj;
+	return Objects.equals(beginTime, other.beginTime) 
+	    && Objects.equals(endTime, other.endTime)
+	    && Objects.equals(timePeriod, other.timePeriod)
+	    && Objects.equals(openPrice, other.openPrice) 
+	    && Objects.equals(highPrice, other.highPrice) 
+	    && Objects.equals(lowPrice, other.lowPrice)
+	    && Objects.equals(closePrice, other.closePrice) 
+	    && Objects.equals(volume, other.volume)
+	    && Objects.equals(amount, other.amount) 
+	    && trades == other.trades;
+    }
 }
