@@ -19,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 
 ### Added
+- :tada: **Enhancement** Added convenient constructors for BaseBar
 - :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
 - :tada: **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
 - :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
