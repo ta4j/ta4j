@@ -64,6 +64,23 @@ public class BaseBar implements Bar {
 
 
     /**
+     * Returns BaseBarBuilder
+     * @return builder of class BaseBarBuilder
+     */
+    public static BaseBarBuilder builder() {
+        return new BaseBarBuilder();
+    }
+
+    /**
+     * Returns BaseBarBuilder
+     * @return builder of class BaseBarBuilder
+     */
+    public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {
+        return new ConvertibleBaseBarBuilder<>(conversionFunction);
+    }
+
+
+    /**
      * Constructor.
      * @param timePeriod the time period
      * @param endTime the end time of the bar period
