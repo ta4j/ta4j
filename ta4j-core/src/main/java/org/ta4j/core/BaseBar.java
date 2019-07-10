@@ -212,6 +212,26 @@ public class BaseBar implements Bar {
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, String amount) {
         this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, "0", PrecisionNum::valueOf);
     }
+	
+     /**
+     * Constructor.
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
+     * @param numFunction the numbers precision
+     */
+    public BaseBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, Function<Number, Num> numFunction) {
+    	this(Duration.ofDays(1), endTime,
+    	     numFunction.apply(new BigDecimal(openPrice)),
+    	     numFunction.apply(new BigDecimal(highPrice)),
+    	     numFunction.apply(new BigDecimal(lowPrice)),
+    	     numFunction.apply(new BigDecimal(closePrice)),
+    	     numFunction.apply(new BigDecimal(volume)),
+    	     numFunction.apply(0));
+    }
     
     /**
      * Constructor.
