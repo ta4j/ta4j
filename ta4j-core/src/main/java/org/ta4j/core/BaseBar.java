@@ -121,7 +121,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, double amount, int trades, Function<Number, Num> numFunction) {
-		this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice), numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume), numFunction.apply(amount), trades);
+        this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice), numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume), numFunction.apply(amount), trades);
     }
     
     /**
@@ -167,7 +167,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, int trades, Function<Number, Num> numFunction) {
-		this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice), numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume), numFunction.apply(amount), trades);
+        this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice), numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume), numFunction.apply(amount), trades);
     }
 
     /**
@@ -214,13 +214,13 @@ public class BaseBar implements Bar {
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice, String volume, String amount, int trades, Function<Number, Num> numFunction) {
         this(timePeriod, endTime,
-        	numFunction.apply(new BigDecimal(openPrice)),
-        	numFunction.apply(new BigDecimal(highPrice)),
-        	numFunction.apply(new BigDecimal(lowPrice)),
-        	numFunction.apply(new BigDecimal(closePrice)),
-        	numFunction.apply(new BigDecimal(volume)),
-        	numFunction.apply(new BigDecimal(amount)), 
-        	trades);
+             numFunction.apply(new BigDecimal(openPrice)),
+             numFunction.apply(new BigDecimal(highPrice)),
+             numFunction.apply(new BigDecimal(lowPrice)),
+             numFunction.apply(new BigDecimal(closePrice)),
+             numFunction.apply(new BigDecimal(volume)),
+             numFunction.apply(new BigDecimal(amount)), 
+             trades);
     }
 
     /**
