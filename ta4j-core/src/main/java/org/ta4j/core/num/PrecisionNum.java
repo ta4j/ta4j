@@ -441,8 +441,7 @@ public final class PrecisionNum implements Num {
             try {
                 estimate = (BigDecimal) format.parse(estimateString);
             } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                log.error("PrecicionNum ParseException:", e);
             }
         }
         BigDecimal delta;
@@ -744,7 +743,7 @@ public final class PrecisionNum implements Num {
         // use double pow(double, double)
         double xpowb = Math.pow(delegate.doubleValue(), bDouble);
         // use PrecisionNum.multiply(PrecisionNum)
-        BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
+        BigDecimal result = xpowa.multiply(BigDecimal.valueOf(xpowb));
         return new PrecisionNum(result.toString());
     }
 
