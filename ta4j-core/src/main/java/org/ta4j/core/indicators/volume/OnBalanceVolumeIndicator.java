@@ -29,7 +29,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * On-balance volume indicator.
- * </p>
+ *
+ * @see <a href="https://www.investopedia.com/terms/o/onbalancevolume.asp">
+ * https://www.investopedia.com/terms/o/onbalancevolume.asp</a>
  */
 public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -44,14 +46,16 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
         if (index == 0) {
             return numOf(0);
         }
-        Num yesterdayClose = getTimeSeries().getBar(index - 1).getClosePrice();
-        Num todayClose = getTimeSeries().getBar(index).getClosePrice();
+        final Num prevClose = getTimeSeries().getBar(index - 1).getClosePrice();
+        final Num currentClose = getTimeSeries().getBar(index).getClosePrice();
 
-        if (yesterdayClose.isGreaterThan(todayClose)) {
-            return getValue(index - 1).minus(getTimeSeries().getBar(index).getVolume());
-        } else if (yesterdayClose.isLessThan(todayClose)) {
-            return getValue(index - 1).plus(getTimeSeries().getBar(index).getVolume());
+        final Num obvPrev = getValue(index - 1);
+        if (prevClose.isGreaterThan(currentClose)) {
+            return obvPrev.minus(getTimeSeries().getBar(index).getVolume());
+        } else if (prevClose.isLessThan(currentClose)) {
+            return obvPrev.plus(getTimeSeries().getBar(index).getVolume());
+        } else {
+            return obvPrev;
         }
-        return getValue(index - 1);
     }
 }

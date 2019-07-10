@@ -32,7 +32,7 @@ import java.util.Objects;
 
 /**
  * An order.
- * </p>
+ *
  * The order is defined by:
  * <ul>
  *     <li>the index (in the {@link TimeSeries time series}) it is executed
@@ -48,8 +48,8 @@ public class Order implements Serializable {
 
     /**
      * The type of an {@link Order order}.
-     * <p>
-     * A BUY corresponds to a <i>BID</i> order.<p>
+     *
+     * A BUY corresponds to a <i>BID</i> order.
      * A SELL corresponds to an <i>ASK</i> order.
      */
     public enum OrderType {

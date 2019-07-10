@@ -36,16 +36,16 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Pivot Point indicator.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school: pivotpoints</a>
  */
 public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final TimeLevel timeLevel ;
+    private final TimeLevel timeLevel;
 
     /**
      * Constructor.
-     * <p>
+     *
      * Calculates the pivot point based on the time level parameter.
      * @param series the time series with adequate endTime of each bar for the given time level.
      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:

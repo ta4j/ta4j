@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Simple boolean transform indicator.
- * </p>
+ *
  * Transforms any decimal indicator to a boolean indicator by using common
  * logical operators.
  */

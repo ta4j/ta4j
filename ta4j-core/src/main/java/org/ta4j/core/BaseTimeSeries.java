@@ -40,7 +40,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Base implementation of a {@link TimeSeries}.
- * </p>
+ *
  */
 public class BaseTimeSeries implements TimeSeries {
 
@@ -141,7 +141,7 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
-     * Constructor.<p/>
+     * Constructor.
      * Creates a BaseTimeSeries with default {@link PrecisionNum} as type for the data and all operations on it
      *
      * @param name             the name of the series

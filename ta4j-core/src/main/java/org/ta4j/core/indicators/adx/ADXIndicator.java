@@ -31,9 +31,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * ADX indicator.
- * Part of the Directional Movement System
- * <p>
- * </p>
+ * Part of the Directional Movement System.
+ *
+ * @see <a href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 

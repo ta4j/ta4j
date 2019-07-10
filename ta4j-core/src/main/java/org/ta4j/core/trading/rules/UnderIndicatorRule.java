@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-under-indicator rule.
- * </p>
+ *
  * Satisfied when the value of the first {@link Indicator indicator} is strictly lesser than the value of the second one.
  */
 public class UnderIndicatorRule extends AbstractRule {

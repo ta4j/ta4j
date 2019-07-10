@@ -106,11 +106,11 @@ public class LinearBorrowingCostModelTest {
         CostModel modelOther = new ZeroCostModel();
 
         boolean equality = model.equals(modelSameFee);
-        boolean inequality_1 = model.equals(modelSameClass);
-        boolean inequality_2 = model.equals(modelOther);
+        boolean inequality1 = model.equals(modelSameClass);
+        boolean inequality2 = model.equals(modelOther);
 
         assertTrue(equality);
-        assertFalse(inequality_1);
-        assertFalse(inequality_2);
+        assertFalse(inequality1);
+        assertFalse(inequality2);
     }
 }

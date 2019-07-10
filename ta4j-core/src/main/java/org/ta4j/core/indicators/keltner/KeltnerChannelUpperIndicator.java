@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Keltner Channel (upper line) indicator
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */

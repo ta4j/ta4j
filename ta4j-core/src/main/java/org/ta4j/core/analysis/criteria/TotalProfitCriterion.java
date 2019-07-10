@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Total profit criterion.
- * </p>
+ *
  * The total profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
  */
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {

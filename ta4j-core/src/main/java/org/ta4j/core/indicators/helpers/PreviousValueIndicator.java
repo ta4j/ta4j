@@ -28,11 +28,10 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 /**
  * Returns the previous (n-th) value of an indicator
- * </p>
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
-    private int n;
+    private final int n;
     private Indicator<Num> indicator;
 
     /**

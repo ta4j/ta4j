@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A stop-gain rule.
- * </p>
+ *
  * Satisfied when the close price reaches the gain threshold.
  */
 public class StopGainRule extends AbstractRule {

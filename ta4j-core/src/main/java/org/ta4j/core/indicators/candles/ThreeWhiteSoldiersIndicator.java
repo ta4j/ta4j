@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Three white soldiers indicator.
- * </p>
+ *
  * @see <a href="http://www.investopedia.com/terms/t/three_white_soldiers.asp">
  *     http://www.investopedia.com/terms/t/three_white_soldiers.asp</a>
  */

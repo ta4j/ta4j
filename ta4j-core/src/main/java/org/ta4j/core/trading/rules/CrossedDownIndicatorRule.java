@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Crossed-down indicator rule.
- * </p>
+ *
  * Satisfied when the value of the first {@link Indicator indicator} crosses-down the value of the second one.
  */
 public class CrossedDownIndicatorRule extends AbstractRule {

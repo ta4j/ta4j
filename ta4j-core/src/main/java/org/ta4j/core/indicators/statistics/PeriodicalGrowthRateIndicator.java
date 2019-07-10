@@ -62,9 +62,8 @@ import static org.ta4j.core.num.NaN.NaN;
 public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final int barCount;
-    private final Num ONE;
+    private final Num one;
 
     /**
      * Constructor.
@@ -77,7 +76,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        ONE = numOf(1);
+        one = numOf(1);
     }
 
     /**
@@ -89,21 +88,21 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      */
     public Num getTotalReturn() {
 
-        Num totalProduct = ONE;
-        int completeTimeframes = (getTimeSeries().getBarCount() / barCount);
+        Num totalProduct = one;
+        int completeTimeFrames = (getTimeSeries().getBarCount() / barCount);
 
-        for (int i = 1; i <= completeTimeframes; i++) {
+        for (int i = 1; i <= completeTimeFrames; i++) {
             int index = i * barCount;
             Num currentReturn = getValue(index);
 
             // Skip NaN at the end of a series
             if (currentReturn != NaN) {
-                currentReturn = currentReturn.plus(ONE);
+                currentReturn = currentReturn.plus(one);
                 totalProduct = totalProduct.multipliedBy(currentReturn);
             }
         }
 
-        return totalProduct.pow(ONE.dividedBy(numOf(completeTimeframes)));
+        return totalProduct.pow(one.dividedBy(numOf(completeTimeFrames)));
     }
 
     @Override
@@ -120,7 +119,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
 
         Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
-        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? ONE : helpPartialTimeframeHeld;
+        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:
         // a.) if index number is below timeframe
@@ -131,7 +130,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             Num movingValue = indicator.getValue(index - barCount);
             Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
 
-            timeframedReturn = ONE.plus(movingSimpleReturn).pow(ONE.dividedBy(partialTimeframeHeld)).minus(ONE);
+            timeframedReturn = one.plus(movingSimpleReturn).pow(one.dividedBy(partialTimeframeHeld)).minus(one);
         }
 
         return timeframedReturn;

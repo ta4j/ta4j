@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * An abstract class for Ichimoku clouds indicators.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */

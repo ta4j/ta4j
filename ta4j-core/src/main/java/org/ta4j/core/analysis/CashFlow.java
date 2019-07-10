@@ -32,7 +32,7 @@ import java.util.List;
 
 /**
  * The cash flow.
- * </p>
+ *
  * This class allows to follow the money cash flow involved by a list of trades over a time series.
  */
 public class CashFlow implements Indicator<Num> {
@@ -232,7 +232,7 @@ public class CashFlow implements Indicator<Num> {
      * @param trade the trade
      * @param finalIndex index up until cash flows of open trades are considered
      * @param maxIndex maximal valid index
-     * */
+     */
     static int determineEndIndex(Trade trade, int finalIndex, int maxIndex) {
         int idx = finalIndex;
         // After closing of trade, no further accrual necessary

@@ -34,7 +34,7 @@ import java.util.function.Function;
 
 /**
  * Base implementation of a {@link Bar}.
- * </p>
+ *
  */
 public class BaseBar implements Bar {
 
@@ -298,11 +298,11 @@ public class BaseBar implements Bar {
         }
         closePrice = price;
         if (highPrice == null || highPrice.isLessThan(price)) {
-		        highPrice = price;
-	      }
-	      if (lowPrice == null || lowPrice.isGreaterThan(price)) {
-		        lowPrice = price;
-	      }
+            highPrice = price;
+        }
+        if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+            lowPrice = price;
+        }
     }
 
     @Override
@@ -335,15 +335,15 @@ public class BaseBar implements Bar {
 		if (this == obj) return true;
 		if (!(obj instanceof BaseBar)) return false;
 		final BaseBar other = (BaseBar) obj;
-		return Objects.equals(beginTime, other.beginTime) 
+		return Objects.equals(beginTime, other.beginTime)
 		    && Objects.equals(endTime, other.endTime)
 		    && Objects.equals(timePeriod, other.timePeriod)
-		    && Objects.equals(openPrice, other.openPrice) 
-		    && Objects.equals(highPrice, other.highPrice) 
+		    && Objects.equals(openPrice, other.openPrice)
+		    && Objects.equals(highPrice, other.highPrice)
 		    && Objects.equals(lowPrice, other.lowPrice)
-		    && Objects.equals(closePrice, other.closePrice) 
+		    && Objects.equals(closePrice, other.closePrice)
 		    && Objects.equals(volume, other.volume)
-		    && Objects.equals(amount, other.amount) 
+		    && Objects.equals(amount, other.amount)
 		    && trades == other.trades;
 	}
 }

@@ -52,7 +52,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A trailing stop-loss rule
- * <p></p>
+ *
  * Satisfied when the price reaches the trailing loss threshold.
  */
 public class TrailingStopLossRule extends AbstractRule {

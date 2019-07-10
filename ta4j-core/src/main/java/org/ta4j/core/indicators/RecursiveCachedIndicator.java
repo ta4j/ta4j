@@ -28,7 +28,7 @@ import org.ta4j.core.TimeSeries;
 
 /**
  * Recursive cached {@link Indicator indicator}.
- * </p>
+ *
  * Recursive indicators should extend this class.<br>
  * This class is only here to avoid (OK, to postpone) the StackOverflowError that
  * may be thrown on the first getValue(int) call of a recursive indicator.
@@ -46,6 +46,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * Constructor.
+     *
      * @param series the related time series
      */
     public RecursiveCachedIndicator(TimeSeries series) {
@@ -54,6 +55,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * Constructor.
+     *
      * @param indicator a related indicator (with a time series)
      */
     public RecursiveCachedIndicator(Indicator<?> indicator) {

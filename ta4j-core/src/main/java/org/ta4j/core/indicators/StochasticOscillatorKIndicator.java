@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator K.
- * </p>
+ *
  * Receives timeSeries and barCount and calculates the StochasticOscillatorKIndicator
  * over ClosePriceIndicator, or receives an indicator, HighPriceIndicator and
  * LowPriceIndicator and returns StochasticOsiclatorK over this indicator.

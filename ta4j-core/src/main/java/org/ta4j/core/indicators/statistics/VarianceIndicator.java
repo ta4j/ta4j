@@ -27,17 +27,15 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
+
 /**
  * Variance indicator.
- * </p>
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> indicator;
-
-    private int barCount;
-
-    private SMAIndicator sma;
+    private final Indicator<Num> indicator;
+    private final int barCount;
+    private final SMAIndicator sma;
 
     /**
      * Constructor.
@@ -48,7 +46,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        sma = new SMAIndicator(indicator, barCount);
+        this.sma = new SMAIndicator(indicator, barCount);
     }
 
     @Override

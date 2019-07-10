@@ -33,7 +33,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * DeMark Reversal Indicator.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
@@ -41,7 +41,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     private final DeMarkPivotPointIndicator pivotPointIndicator;
     private final DeMarkPivotLevel level;
-    private final Num TWO;
+    private final Num two;
 
     public enum DeMarkPivotLevel{
         RESISTANCE,
@@ -50,7 +50,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Constructor.
-     * <p>
+     *
      * Calculates the DeMark reversal for the corresponding pivot level
      * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this reversal
      * @param level the {@link DeMarkPivotLevel} for this reversal (RESISTANT, SUPPORT)
@@ -59,7 +59,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
         this.level =level;
-        TWO = numOf(2);
+        this.two = numOf(2);
     }
 
     @Override
@@ -89,7 +89,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
             low = getTimeSeries().getBar(i).getLowPrice().min(low);
         }
 
-        return x.dividedBy(TWO).minus(low);
+        return x.dividedBy(two).minus(low);
     }
 
     private Num calculateSupport(Num x, int index){
@@ -103,6 +103,6 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
            high = getTimeSeries().getBar(i).getHighPrice().max(high);
        }
 
-       return x.dividedBy(TWO).minus(high);
+       return x.dividedBy(two).minus(high);
    }
 }

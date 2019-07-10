@@ -44,7 +44,7 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);
-        sma = new SMAIndicator(vwap, barCount);
+        this.sma = new SMAIndicator(vwap, barCount);
     }
 
     @Override

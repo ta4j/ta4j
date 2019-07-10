@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Three black crows indicator.
- * </p>
+ *
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
  *     http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
