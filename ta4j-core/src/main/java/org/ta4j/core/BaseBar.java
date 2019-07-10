@@ -91,6 +91,21 @@ public class BaseBar implements Bar {
     public BaseBar(ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, Function<Number, Num> numFunction) {
     	this(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, 0.0, 0, numFunction);
     }
+
+    /**
+     * Constructor.
+     * @param timePeriod the time period
+     * @param endTime the end time of the bar period
+     * @param openPrice the open price of the bar period
+     * @param highPrice the highest price of the bar period
+     * @param lowPrice the lowest price of the bar period
+     * @param closePrice the close price of the bar period
+     * @param volume the volume of the bar period
+     * @param numFunction the numbers precision
+     */
+    public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice, double closePrice, double volume, Function<Number, Num> numFunction) {
+    	this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, 0.0, 0, numFunction);
+    }
     
     /**
      * Constructor.
