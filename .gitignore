@@ -17,3 +17,6 @@ out/
 *.jar
 *.war
 *.ear
+
+# temp files #
+ta4j-examples/indicators.csv

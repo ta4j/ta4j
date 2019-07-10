@@ -1,3 +1,26 @@
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 /*
   The MIT License (MIT)
 
@@ -24,90 +47,104 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * A trailing stop-loss rule
  * <p></p>
- * Satisfied when the close price reaches the trailing loss threshold.
+ * Satisfied when the price reaches the trailing loss threshold.
  */
 public class TrailingStopLossRule extends AbstractRule {
 
-	/** The close price indicator */
-	private final ClosePriceIndicator closePrice;
-	/** the loss-distance as percentage */
-	private final Num lossPercentage;
-	/** the current price extremum */
-	private Num currentExtremum = null;
-	/** the current threshold */
-	private Num threshold = null;
-	/** the current trade */
-	private Trade supervisedTrade;
+    /**
+     * The price indicator
+     */
+    private final PriceIndicator priceIndicator;
+    /**
+     * the loss ratio multiplier for buy trades eg. for lossPercentage 5% this ratio will be: 0.95
+     */
+    private final Num lossRatioBuyMultiplier;
+    /**
+     * the loss ratio multiplier for sell trades eg. for lossPercentage 5% this ratio will be: 1.05
+     */
+    private final Num lossRatioSellMultiplier;
+    /**
+     * the current price extremum
+     */
+    private Num currentExtremum = null;
+    /**
+     * the current stop loss price activation
+     */
+    private Num currentStopLossLimitActivation = null;
+    /**
+     * the current trade
+     */
+    private Trade supervisedTrade;
 
-	/**
+    /**
      * Constructor.
-     * @param closePrice the close price indicator
-	 * @param lossPercentage the loss percentage
-	 */
-	public TrailingStopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
-		this.closePrice = closePrice;
-		this.lossPercentage = lossPercentage;
-	}
-	
-	@Override
-	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+     *
+     * @param priceIndicator the price indicator
+     * @param lossPercentage the loss percentage
+     */
+    public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage) {
+        this.priceIndicator = priceIndicator;
+        final Num hundred = lossPercentage.numOf(100);
+        this.lossRatioBuyMultiplier = hundred.minus(lossPercentage).dividedBy(hundred);
+        this.lossRatioSellMultiplier = hundred.plus(lossPercentage).dividedBy(hundred);
+    }
+
+    @Override
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
         // No trading history or no trade opened, no loss
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
-            if ( currentTrade.isOpened() ) {
-            	if ( ! currentTrade.equals(supervisedTrade) ) {
-            		supervisedTrade = currentTrade;
-                	currentExtremum = null;
-                	threshold = null;
-            	}
-            	Num currentPrice = closePrice.getValue(index);
-                if ( currentTrade.getEntry().isBuy() ) {
-                	satisfied = isBuySatisfied(currentPrice);
+            if (currentTrade.isOpened()) {
+                if (!currentTrade.equals(supervisedTrade)) {
+                    supervisedTrade = currentTrade;
+                    currentExtremum = null;
+                    currentStopLossLimitActivation = null;
+                }
+                final Num currentPrice = priceIndicator.getValue(index);
+                if (currentTrade.getEntry().isBuy()) {
+                    satisfied = isBuySatisfied(currentPrice);
                 } else {
-                	satisfied = isSellSatisfied(currentPrice);
+                    satisfied = isSellSatisfied(currentPrice);
                 }
             }
         }
         traceIsSatisfied(index, satisfied);
         return satisfied;
-	}
+    }
 
-	private boolean isBuySatisfied(Num currentPrice) {
-		boolean satisfied = false;
-		if ( currentExtremum == null ) {
-			currentExtremum = currentPrice.numOf(Float.MIN_VALUE);
-		}
-		if ( currentPrice.isGreaterThan(currentExtremum) ) {
-			currentExtremum = currentPrice;
-			Num lossRatioThreshold = currentPrice.numOf(100).minus(lossPercentage).dividedBy(currentPrice.numOf(100));
-			threshold = currentExtremum.multipliedBy(lossRatioThreshold);
-		}
-		if ( threshold != null ) {
-			satisfied = currentPrice.isLessThanOrEqual(threshold);
-		}
-		return satisfied;
-	}
+    private boolean isBuySatisfied(Num currentPrice) {
+        if (currentExtremum == null || currentPrice.isGreaterThan(currentExtremum)) {
+            currentExtremum = currentPrice;
+            currentStopLossLimitActivation = currentExtremum.multipliedBy(lossRatioBuyMultiplier);
+        }
+        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
+    }
 
-	private boolean isSellSatisfied(Num currentPrice) {
-		boolean satisfied = false;
-		if ( currentExtremum == null ) {
-			currentExtremum = currentPrice.numOf(Float.MAX_VALUE);
-		}
-		if ( currentPrice.isLessThan(currentExtremum) ) {
-			currentExtremum = currentPrice;
-			Num lossRatioThreshold = currentPrice.numOf(100).plus(lossPercentage).dividedBy(currentPrice.numOf(100));
-		    threshold = currentExtremum.multipliedBy(lossRatioThreshold);
-		}
-		if ( threshold != null ) {
-			satisfied = currentPrice.isGreaterThanOrEqual(threshold);
-		}
-		return satisfied;
-	}
+    private boolean isSellSatisfied(Num currentPrice) {
+        if (currentExtremum == null || currentPrice.isLessThan(currentExtremum)) {
+            currentExtremum = currentPrice;
+            currentStopLossLimitActivation = currentExtremum.multipliedBy(lossRatioSellMultiplier);
+        }
+        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
+    }
+
+    public Num getCurrentStopLossLimitActivation() {
+        return currentStopLossLimitActivation;
+    }
+
+    @Override
+    protected void traceIsSatisfied(int index, boolean isSatisfied) {
+        if (log.isTraceEnabled()) {
+            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}", getClass().getSimpleName(), index, isSatisfied,
+                    priceIndicator.getValue(index), currentStopLossLimitActivation
+            );
+        }
+    }
 }

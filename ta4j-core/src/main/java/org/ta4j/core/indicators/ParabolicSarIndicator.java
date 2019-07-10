@@ -1,91 +1,90 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.TimeSeries;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.MaxPriceIndicator;
-import org.ta4j.core.indicators.helpers.MinPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Parabolic SAR indicator.
- * team172011(Simon-Justus Wimmer), 18.09.2017
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
-    private Num accelerationFactor;
     private final Num maxAcceleration;
     private final Num accelerationIncrement;
-    private final Num accelarationStart;
-
-
-
+    private final Num accelerationStart;
+    private Num accelerationFactor;
     private boolean currentTrend; // true if uptrend, false otherwise
     private int startTrendIndex = 0; // index of start bar of the current trend
-    private MinPriceIndicator minPriceIndicator;
-    private MaxPriceIndicator maxPriceIndicator;
+    private LowPriceIndicator lowPriceIndicator;
+    private HighPriceIndicator highPriceIndicator;
     private Num currentExtremePoint; // the extreme point of the current calculation
     private Num minMaxExtremePoint; // depending on trend the maximum or minimum extreme point value of trend
 
     /**
      * Constructor with default parameters
+     *
      * @param series the time series for this indicator
      */
-    public ParabolicSarIndicator(TimeSeries series){
-        this(series,series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
+    public ParabolicSarIndicator(TimeSeries series) {
+        this(series, series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
 
     }
 
     /**
      * Constructor with custom parameters and default increment value
+     *
      * @param series the time series for this indicator
-     * @param aF acceleration factor
-     * @param maxA maximum acceleration
+     * @param aF     acceleration factor
+     * @param maxA   maximum acceleration
      */
-    public ParabolicSarIndicator(TimeSeries series, Num aF,Num maxA) {
+    public ParabolicSarIndicator(TimeSeries series, Num aF, Num maxA) {
         this(series, aF, maxA, series.numOf(0.02));
     }
 
     /**
      * Constructor with custom parameters
-     * @param series the time series for this indicator
-     * @param aF acceleration factor
-     * @param maxA maximum acceleration
+     *
+     * @param series    the time series for this indicator
+     * @param aF        acceleration factor
+     * @param maxA      maximum acceleration
      * @param increment the increment step
      */
-    public ParabolicSarIndicator(TimeSeries series, Num aF,Num maxA, Num increment) {
+    public ParabolicSarIndicator(TimeSeries series, Num aF, Num maxA, Num increment) {
         super(series);
-        maxPriceIndicator = new MaxPriceIndicator(series);
-        minPriceIndicator = new MinPriceIndicator(series);
+        highPriceIndicator = new HighPriceIndicator(series);
+        lowPriceIndicator = new LowPriceIndicator(series);
         maxAcceleration = maxA;
         accelerationFactor = aF;
         accelerationIncrement = increment;
-        accelarationStart = aF;
+        accelerationStart = aF;
     }
 
     @Override
@@ -94,13 +93,15 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         if (index == getTimeSeries().getBeginIndex()) {
             return sar; // no trend detection possible for the first value
         } else if (index == getTimeSeries().getBeginIndex() + 1) {// start trend detection
-            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex()).getClosePrice().isLessThan(getTimeSeries().getBar(index).getClosePrice());
+            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex())
+                    .getClosePrice()
+                    .isLessThan(getTimeSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
-                sar = maxPriceIndicator.getValue(index); // put sar on max price of candlestick
+                sar = highPriceIndicator.getValue(index); // put sar on max price of candlestick
                 currentExtremePoint = sar;
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend
-                sar = minPriceIndicator.getValue(index); // put sar on min price of candlestick
+                sar = lowPriceIndicator.getValue(index); // put sar on min price of candlestick
                 currentExtremePoint = sar;
                 minMaxExtremePoint = currentExtremePoint;
 
@@ -108,19 +109,19 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             return sar;
         }
 
-        Num priorSar = getValue(index-1);
+        Num priorSar = getValue(index - 1);
         if (currentTrend) { // if up trend
             sar = priorSar.plus(accelerationFactor.multipliedBy((currentExtremePoint.minus(priorSar))));
-            currentTrend = minPriceIndicator.getValue(index).isGreaterThan(sar);
+            currentTrend = lowPriceIndicator.getValue(index).isGreaterThan(sar);
             if (!currentTrend) { // check if sar touches the min price
                 sar = minMaxExtremePoint; // sar starts at the highest extreme point of previous up trend
                 currentTrend = false; // switch to down trend and reset values
                 startTrendIndex = index;
-                accelerationFactor = accelarationStart;
-                currentExtremePoint = getTimeSeries().getBar(index).getMinPrice(); // put point on max
+                accelerationFactor = accelerationStart;
+                currentExtremePoint = getTimeSeries().getBar(index).getLowPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
-                currentExtremePoint = new HighestValueIndicator(maxPriceIndicator, index - startTrendIndex).getValue(index);
+                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex).getValue(index);
                 if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
                     incrementAcceleration();
                     minMaxExtremePoint = currentExtremePoint;
@@ -129,15 +130,15 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             }
         } else { // downtrend
             sar = priorSar.minus(accelerationFactor.multipliedBy(((priorSar.minus(currentExtremePoint)))));
-            currentTrend = maxPriceIndicator.getValue(index).isGreaterThanOrEqual(sar);
+            currentTrend = highPriceIndicator.getValue(index).isGreaterThanOrEqual(sar);
             if (currentTrend) { // check if switch to up trend
                 sar = minMaxExtremePoint; // sar starts at the lowest extreme point of previous down trend
-                accelerationFactor = accelarationStart;
+                accelerationFactor = accelerationStart;
                 startTrendIndex = index;
-                currentExtremePoint = getTimeSeries().getBar(index).getMaxPrice();
+                currentExtremePoint = getTimeSeries().getBar(index).getHighPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
-                currentExtremePoint = new LowestValueIndicator(minPriceIndicator, index - startTrendIndex).getValue(index);
+                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex).getValue(index);
                 if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
                     incrementAcceleration();
                     minMaxExtremePoint = currentExtremePoint;
@@ -145,7 +146,6 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             }
         }
         return sar;
-
     }
 
     /**
