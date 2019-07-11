@@ -24,6 +24,8 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import java.time.Duration;
