@@ -130,20 +130,20 @@ public class PrecisionNumTest {
         double[] deltas = { 20.8, 30.1, -15.3, 10.2, -16.7, -9.8 };
         Num superPrecisionNum = FIRST_SUPER_PRECISION_NUM;
         for (int i = 0; i < NUMBARS; i++) {
-            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
-                    .toString(), "0", superPrecisionFunc);
+            bar = new BaseBar(Duration.ofDays(1), endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
+                    .toString(), "0", "0", "0", superPrecisionFunc);
             superPrecisionBarList.add(bar);
-            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
-                    .toString(), "0", precisionFunc);
+            bar = new BaseBar(Duration.ofDays(1), endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
+                    .toString(), "0", "0", "0", precisionFunc);
             precisionBarList.add(bar);
-            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
-                    .toString(), "0", precision32Func);
+            bar = new BaseBar(Duration.ofDays(1), endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
+                    .toString(), "0", "0", "0", precision32Func);
             precision32BarList.add(bar);
-            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
-                    .toString(), "0", doubleFunc);
+            bar = new BaseBar(Duration.ofDays(1), endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
+                    .toString(), "0", "0", "0", doubleFunc);
             doubleBarList.add(bar);
-            bar = new BaseBar(endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
-                    .toString(), "0", lowPrecisionFunc);
+            bar = new BaseBar(Duration.ofDays(1), endTime, superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum.toString(), superPrecisionNum
+                    .toString(),"0", "0", "0", lowPrecisionFunc);
             lowPrecisionBarList.add(bar);
             endTime = endTime.plus(timePeriod);
             superPrecisionNum = superPrecisionNum.plus(PrecisionNum.valueOf(deltas[i % 6]));
