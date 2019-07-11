@@ -406,23 +406,21 @@ public class BaseTimeSeries implements TimeSeries {
 
     @Override
     public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(new BaseBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
+        this.addBar(new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
     }
 
     @Override
     public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
-        this.addBar(new BaseBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
+        this.addBar(new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
     }
 
     @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume) {
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
     }
 
     @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume, Num amount) {
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
     }
 
