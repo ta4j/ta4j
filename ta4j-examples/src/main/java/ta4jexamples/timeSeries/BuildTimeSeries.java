@@ -124,9 +124,33 @@ public class BuildTimeSeries {
 
         // create bars and add them to the series. The bars must have the same Num type as the series
         ZonedDateTime endTime = ZonedDateTime.now();
-        Bar b1 = new BaseBar(Duration.ofDays(1), endTime, 105.42, 112.99, 104.01, 111.42, 1337, 0, 0, DoubleNum::valueOf);
-        Bar b2 = new BaseBar(Duration.ofDays(1), endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234, 0, 0, DoubleNum::valueOf);
-        Bar b3 = new BaseBar(Duration.ofDays(1), endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242, 0, 0, DoubleNum::valueOf);
+        		Bar b1 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+				.timePeriod(Duration.ofDays(1))
+				.endTime(endTime)
+				.openPrice(105.42)
+				.highPrice(112.99)
+				.lowPrice(104.01)
+				.closePrice(111.42)
+				.volume(1337.0)
+				.build();
+		Bar b2 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+				.timePeriod(Duration.ofDays(1))
+				.endTime(endTime.plusDays(1))
+				.openPrice(111.43)
+				.highPrice(112.83)
+				.lowPrice(107.77)
+				.closePrice(107.99)
+				.volume(1234.0)
+				.build();
+		Bar b3 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+				.timePeriod(Duration.ofDays(1))
+				.endTime(endTime.plusDays(2))
+				.openPrice(107.90)
+				.highPrice(117.50)
+				.lowPrice(107.90)
+				.closePrice(115.42)
+				.volume(4242.0)
+				.build();
         //...
 
         series.addBar(b1);
