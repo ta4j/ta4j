@@ -37,6 +37,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.FixedRule;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -97,15 +98,15 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
     public void replaceBarTest() {
         TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d,numFunction), true);
-        assertEquals(series.getBarCount(),1);
+        assertEquals(1, series.getBarCount());
         TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d,numFunction), false);
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d,numFunction), false);
-        assertEquals(series.getBarCount(), 3);
+        assertEquals(3, series.getBarCount());
         TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(3));
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(3), 4d,numFunction), true);
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(4), 5d,numFunction), true);
-        assertEquals(series.getBarCount(), 3);
+        assertEquals(3, series.getBarCount());
         TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(5));
     }
 
@@ -315,12 +316,12 @@ public class TimeSeriesTest extends AbstractIndicatorTest<TimeSeries,Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDouble(){
         TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(DoubleNum.class).build();
-        series.addBar(new BaseBar(ZonedDateTime.now(), 1, 1, 1, 1, 1, PrecisionNum::valueOf));
+        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, PrecisionNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimal(){
         TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
-        series.addBar(new BaseBar(ZonedDateTime.now(),1,1,1,1,1, DoubleNum::valueOf));
+        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(),1,1,1,1,1, 1, 1, DoubleNum::valueOf));
     }
 }
