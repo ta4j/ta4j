@@ -124,9 +124,9 @@ public class BuildTimeSeries {
 
         // create bars and add them to the series. The bars must have the same Num type as the series
         ZonedDateTime endTime = ZonedDateTime.now();
-        Bar b1 = new BaseBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337, DoubleNum::valueOf);
-        Bar b2 = new BaseBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234, DoubleNum::valueOf);
-        Bar b3 = new BaseBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242, DoubleNum::valueOf);
+        Bar b1 = new BaseBar(Duration.ofDays(1), endTime, 105.42, 112.99, 104.01, 111.42, 1337, 0, 0, DoubleNum::valueOf);
+        Bar b2 = new BaseBar(Duration.ofDays(1), endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234, 0, 0, DoubleNum::valueOf);
+        Bar b3 = new BaseBar(Duration.ofDays(1), endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242, 0, 0, DoubleNum::valueOf);
         //...
 
         series.addBar(b1);
