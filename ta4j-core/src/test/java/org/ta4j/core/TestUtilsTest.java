@@ -24,6 +24,7 @@
 package org.ta4j.core;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
@@ -76,7 +77,7 @@ public class TestUtilsTest extends AbstractIndicatorTest<TimeSeries, Num> {
         for (int i = 0; i < 1000; i++) {
             random = Math.random();
             time = time.plusDays(i);
-            series.addBar(new BaseBar(time, random, random, random, random, random, numFunction));
+            series.addBar(new BaseBar(Duration.ofDays(1), time, random, random, random, random, random, random, 0, numFunction));
         }
         return series;
     }
