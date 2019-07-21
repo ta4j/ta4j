@@ -136,7 +136,7 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(String val) {
-        if (val.toUpperCase().equals("NAN")) {
+        if (val.equalsIgnoreCase("NAN")) {
             throw new NumberFormatException();
         }
         return new PrecisionNum(val);
@@ -150,7 +150,7 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(String val, int precision) {
-        if (val.toUpperCase().equals("NAN")) {
+        if (val.equalsIgnoreCase("NAN")) {
             throw new NumberFormatException();
         }
         return new PrecisionNum(val, precision);
@@ -441,8 +441,7 @@ public final class PrecisionNum implements Num {
             try {
                 estimate = (BigDecimal) format.parse(estimateString);
             } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                log.error("PrecicionNum ParseException:", e);
             }
         }
         BigDecimal delta;
