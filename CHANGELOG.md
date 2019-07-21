@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BaseTimeSeriesBuilder** moved from inner class to own class
+- **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
