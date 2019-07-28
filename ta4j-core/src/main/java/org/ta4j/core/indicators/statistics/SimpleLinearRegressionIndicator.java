@@ -31,7 +31,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Simple linear regression indicator.
- * </p>
+ *
  * A moving (i.e. over the time frame) simple linear regression (least squares).
  * y = slope * x + intercept
  * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
@@ -42,7 +42,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
      */
     public enum SimpleLinearRegressionType {
-        y, slope, intercept
+        Y, SLOPE, INTERCEPT
     }
 
     private Indicator<Num> indicator;
@@ -58,7 +58,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
-        this(indicator, barCount, SimpleLinearRegressionType.y);
+        this(indicator, barCount, SimpleLinearRegressionType.Y);
     }
 
     /**
@@ -85,11 +85,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         }
         calculateRegressionLine(startIndex, index);
         
-        if (type == SimpleLinearRegressionType.slope) {
+        if (type == SimpleLinearRegressionType.SLOPE) {
             return slope;
         }
 
-        if (type == SimpleLinearRegressionType.intercept) {
+        if (type == SimpleLinearRegressionType.INTERCEPT) {
             return intercept;
         }
       

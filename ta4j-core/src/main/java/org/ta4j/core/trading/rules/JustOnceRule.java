@@ -27,7 +27,8 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
 /**
- * A one-shot rule.<p />
+ * A one-shot rule.
+ *
  * Satisfied the first time it's checked then never again.
  */
 public class JustOnceRule extends AbstractRule {
@@ -36,7 +37,8 @@ public class JustOnceRule extends AbstractRule {
     private boolean satisfied = false;
 
     /**
-     * Constructor.<p />
+     * Constructor.
+     *
      * Satisfied the first time the inner rule is satisfied then never again.
      *
      * @param rule the rule that should be satisfied only the first time
@@ -46,7 +48,8 @@ public class JustOnceRule extends AbstractRule {
     }
 
     /**
-     * Constructor.<p />
+     * Constructor.
+     *
      * Satisfied the first time it's checked then never again.
      */
     public JustOnceRule() {

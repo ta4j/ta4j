@@ -55,7 +55,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
     }
 
     @Test
-    public void isSatisfied_worksForBuy() {
+    public void isSatisfiedWorksForBuy() {
         final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
         final Num tradedAmount = numOf(1);
 
@@ -81,7 +81,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
     }
 
     @Test
-    public void isSatisfied_worksForSell() {
+    public void isSatisfiedWorksForSell() {
         final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.SELL);
         final Num tradedAmount = numOf(1);
 

@@ -26,14 +26,19 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Parabolic SAR indicator.
+ *
+ * @see <a href="https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
+ * https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
+ * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
+ * https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 

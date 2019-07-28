@@ -28,7 +28,8 @@ import org.ta4j.core.num.Num;
 
 /**
  * Exponential moving average indicator.
- * <p/>
+ *
+ * @see <a href="https://www.investopedia.com/terms/e/ema.asp">https://www.investopedia.com/terms/e/ema.asp</a>
  */
 public class EMAIndicator extends AbstractEMAIndicator {
 

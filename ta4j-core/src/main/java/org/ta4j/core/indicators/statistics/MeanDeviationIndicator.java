@@ -30,22 +30,21 @@ import org.ta4j.core.num.Num;
 
 /**
  * Mean deviation indicator.
- * <p/>
+ *
  * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
- *     http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
+ * http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
 public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> indicator;
+    private final Indicator<Num> indicator;
+    private final int barCount;
+    private final SMAIndicator sma;
 
-    private int barCount;
-
-    private SMAIndicator sma;
-    
     /**
      * Constructor.
+     *
      * @param indicator the indicator
-     * @param barCount the time frame
+     * @param barCount  the time frame
      */
     public MeanDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

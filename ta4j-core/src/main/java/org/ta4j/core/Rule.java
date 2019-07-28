@@ -30,7 +30,7 @@ import org.ta4j.core.trading.rules.XorRule;
 
 /**
  * A rule for strategy building.
- * </p>
+ *
  * A trading rule may be composed of a combination of other rules.
  *
  * A {@link Strategy trading strategy} is a pair of complementary (entry and exit) rules.
@@ -77,7 +77,7 @@ public interface Rule {
     }
 
     /**
-     * @param index the bar index
+     * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true if this rule is satisfied for the provided index, false otherwise
      */

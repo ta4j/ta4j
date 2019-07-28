@@ -27,7 +27,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A simple boolean rule.
- * </p>
+ *
  * Satisfied when it has been initialized with true.
  */
 public class BooleanRule extends AbstractRule {

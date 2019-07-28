@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Mass index indicator.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index</a>
  */

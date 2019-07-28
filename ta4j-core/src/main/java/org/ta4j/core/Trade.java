@@ -35,7 +35,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Pair of two {@link Order orders}.
- * </p>
+ *
  * The exit order has the complement type of the entry order.<br>
  * I.e.:
  *   entry == BUY --> exit == SELL
@@ -80,7 +80,7 @@ public class Trade implements Serializable {
      * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
-     * */
+     */
     public Trade(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");

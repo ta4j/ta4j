@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A manager for {@link TimeSeries} objects.
- * </p>
+ *
  * Used for backtesting.
  * Allows to run a {@link Strategy trading strategy} over the managed time series.
  */
@@ -68,7 +68,7 @@ public class TimeSeriesManager {
      * @param timeSeries the time series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
-     * */
+     */
     public TimeSeriesManager(TimeSeries timeSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
         this.timeSeries = timeSeries;
         this.transactionCostModel = transactionCostModel;
@@ -91,7 +91,7 @@ public class TimeSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series.
-     * <p>
+     *
      * Opens the trades with {@link OrderType} BUY order.
      * @return the trading record coming from the run
      */
@@ -101,7 +101,7 @@ public class TimeSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
-     * <p>
+     *
      * Opens the trades with {@link OrderType} BUY order.
      * @param strategy the trading strategy
      * @param startIndex the start index for the run (included)
@@ -114,7 +114,7 @@ public class TimeSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series.
-     * <p>
+     *
      * Opens the trades with the specified {@link OrderType orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
@@ -126,7 +126,7 @@ public class TimeSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
-     * <p>
+     *
      * Opens the trades with the specified {@link OrderType orderType} order.
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
@@ -140,7 +140,7 @@ public class TimeSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series.
-     * <p>
+     *
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param amount the amount used to open/close the trades
@@ -152,7 +152,7 @@ public class TimeSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to finishIndex).
-     * <p>
+     *
      * @param strategy the trading strategy
      * @param orderType the {@link OrderType} used to open the trades
      * @param amount the amount used to open/close the trades

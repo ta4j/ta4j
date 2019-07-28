@@ -36,17 +36,18 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * DeMark Pivot Point indicator.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
 public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private final TimeLevel timeLevel;
+    private final Num two;
 
     /**
      * Constructor.
-     * <p>
+     *
      * Calculates the deMark pivot point based on the time level parameter.
      * @param series the time series with adequate endTime of each bar for the given time level.
      * @param timeLevelId the corresponding time level for pivot calculation:
@@ -63,6 +64,7 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
     public DeMarkPivotPointIndicator(TimeSeries series, TimeLevel timeLevelId) {
         super(series);
         this.timeLevel = timeLevelId;
+        this.two = numOf(2);
     }
 
     @Override
@@ -86,15 +88,14 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         Num x;
-        Num TWO = numOf(2);
         if (close.isLessThan(open)){
-            x = high.plus(TWO.multipliedBy(low)).plus(close);
+            x = high.plus(two.multipliedBy(low)).plus(close);
         }
         else if (close.isGreaterThan(open)) {
-            x = TWO.multipliedBy(high).plus(low).plus(close);
+            x = two.multipliedBy(high).plus(low).plus(close);
         }
         else{
-            x = high.plus(low).plus(TWO.multipliedBy(close));
+            x = high.plus(low).plus(two.multipliedBy(close));
         }
 
         return x.dividedBy(numOf(4));

@@ -23,6 +23,6 @@
  */
 /**
  * The main module for trade reports
- * <p>
+ *
  */
 package org.ta4j.core.tradereport;

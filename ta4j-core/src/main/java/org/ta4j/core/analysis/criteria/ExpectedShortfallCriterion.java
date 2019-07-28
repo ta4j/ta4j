@@ -33,7 +33,7 @@ import java.util.Collections;
 import java.util.List;
 /**
  * Expected Shortfall criterion.
- * </p>
+ *
  * @see <a href="https://en.wikipedia.org/wiki/Expected_shortfall">https://en.wikipedia.org/wiki/Expected_shortfall</a>
  *
  * Measures the expected shortfall of the strategy log-return time-series

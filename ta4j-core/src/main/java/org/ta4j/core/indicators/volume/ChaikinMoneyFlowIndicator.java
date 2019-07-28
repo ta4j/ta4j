@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Chaikin Money Flow (CMF) indicator.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf"</a>
  * @see <a href="http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm">
@@ -40,11 +40,9 @@ import org.ta4j.core.num.Num;
  */
 public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
-    private CloseLocationValueIndicator clvIndicator;
-
-    private VolumeIndicator volumeIndicator;
-
-    private int barCount;
+    private final CloseLocationValueIndicator clvIndicator;
+    private final VolumeIndicator volumeIndicator;
+    private final int barCount;
 
     public ChaikinMoneyFlowIndicator(TimeSeries series, int barCount) {
         super(series);

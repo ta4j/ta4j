@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 /**
  * Bearish Harami pattern indicator.
- * </p>
+ *
  * @see <a href="http://www.investopedia.com/terms/b/bullishharami.asp">
  *     http://www.investopedia.com/terms/b/bullishharami.asp</a>
  */

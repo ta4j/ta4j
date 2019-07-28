@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Profit and loss criterion.
- * </p>
+ *
  * The profit or loss over the provided {@link TimeSeries series}.
  */
 public class ProfitLossCriterion extends AbstractAnalysisCriterion {

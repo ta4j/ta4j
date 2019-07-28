@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Positive Volume Index (PVI) indicator.
- * </p>
+ *
  * @see <a href="http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92">
  *     http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92</a>
  * @see <a href="http://www.investopedia.com/terms/p/pvi.asp">

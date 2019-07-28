@@ -31,7 +31,7 @@ import static org.ta4j.core.Order.OrderType;
 
 /**
  * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after an order.
- * </p>
+ *
  * Satisfied after a fixed number of bars since the last order.
  */
 public class WaitForRule extends AbstractRule {

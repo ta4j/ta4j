@@ -27,7 +27,6 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
-
 /**
  * Linearly Weighted Moving Average (LWMA).
  *
@@ -37,11 +36,8 @@ import org.ta4j.core.num.Num;
 public class LWMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final int barCount;
-
     private final Num zero = numOf(0);
-
 
     public LWMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -63,7 +59,7 @@ public class LWMAIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= index; i++) {
             count++;
             denominator = denominator.plus(numOf(count));
-            sum = sum.plus(indicator.getValue(i).multipliedBy(numOf((count) * 1)));
+            sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
         }
         return sum.dividedBy(denominator);
     }
