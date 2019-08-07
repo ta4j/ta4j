@@ -36,7 +36,7 @@ import java.util.function.Function;
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
@@ -46,11 +46,7 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,
-                10, 15, 20,
-                18, 17, 18,
-                15, 12, 10,
-                8, 5, 2);
+        data = new MockTimeSeries(numFunction, 10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2);
     }
 
     @Test
@@ -77,7 +73,7 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
             assertEquals(sma.getValue(i), zlema.getValue(i));
         }
     }
-    
+
     @Test
     public void smallBarCount() {
         ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);

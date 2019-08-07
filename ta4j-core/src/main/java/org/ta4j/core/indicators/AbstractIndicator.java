@@ -44,7 +44,8 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     /**
      * Constructor.
      *
-     * @param series the related time series
+     * @param series
+     *            the related time series
      */
     public AbstractIndicator(TimeSeries series) {
         this.series = series;

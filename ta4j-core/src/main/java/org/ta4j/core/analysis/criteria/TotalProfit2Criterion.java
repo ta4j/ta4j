@@ -37,14 +37,17 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade)).reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     /**
      * Calculates the gross profit value of given trade
      *
-     * @param series a time series
-     * @param trade  a trade to calculate profit
+     * @param series
+     *            a time series
+     * @param trade
+     *            a trade to calculate profit
      * @return the total profit
      */
     @Override
@@ -63,6 +66,5 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
-
 
 }

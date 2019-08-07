@@ -38,7 +38,7 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class UpperShadowIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num> {
+public class UpperShadowIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private TimeSeries series;
 
@@ -50,11 +50,11 @@ public class UpperShadowIndicatorTest extends AbstractIndicatorTest<TimeSeries,N
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
-        bars.add(new MockBar(10, 18, 20, 10,numFunction));
-        bars.add(new MockBar(17, 20, 21, 17,numFunction));
-        bars.add(new MockBar(15, 15, 16, 14,numFunction));
+        bars.add(new MockBar(10, 18, 20, 10, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(15, 15, 16, 14, numFunction));
         bars.add(new MockBar(15, 11, 15, 8, numFunction));
-        bars.add(new MockBar(11, 12, 12, 10,numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
         series = new MockTimeSeries(bars);
     }
 

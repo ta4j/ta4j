@@ -49,8 +49,10 @@ public class WaitForRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param orderType    the type of the order since we have to wait for
-     * @param numberOfBars the number of bars to wait for
+     * @param orderType
+     *            the type of the order since we have to wait for
+     * @param numberOfBars
+     *            the number of bars to wait for
      */
     public WaitForRule(OrderType orderType, int numberOfBars) {
         this.orderType = orderType;

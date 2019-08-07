@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
  * </p/>
  *
  * @see <a href="https://en.wikipedia.org/wiki/Double_exponential_moving_average">
- *         https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
+ *      https://en.wikipedia.org/wiki/Double_exponential_moving_average</a>
  */
 public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
@@ -44,8 +44,10 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator
+     *            the indicator
+     * @param barCount
+     *            the time frame
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

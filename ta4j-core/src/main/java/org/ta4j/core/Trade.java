@@ -37,9 +37,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * Pair of two {@link Order orders}.
  *
  * The exit order has the complement type of the entry order.<br>
- * I.e.:
- *   entry == BUY --> exit == SELL
- *   entry == SELL --> exit == BUY
+ * I.e.: entry == BUY --> exit == SELL entry == SELL --> exit == BUY
  */
 public class Trade implements Serializable {
 
@@ -69,7 +67,9 @@ public class Trade implements Serializable {
 
     /**
      * Constructor.
-     * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
+     * 
+     * @param startingType
+     *            the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
      */
     public Trade(OrderType startingType) {
         this(startingType, new ZeroCostModel(), new ZeroCostModel());
@@ -77,9 +77,13 @@ public class Trade implements Serializable {
 
     /**
      * Constructor.
-     * @param startingType the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
-     * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
+     * 
+     * @param startingType
+     *            the starting {@link OrderType order type} of the trade (i.e. type of the entry order)
+     * @param transactionCostModel
+     *            the cost model for transactions of the asset
+     * @param holdingCostModel
+     *            the cost model for holding asset (e.g. borrowing)
      */
     public Trade(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (startingType == null) {
@@ -92,8 +96,11 @@ public class Trade implements Serializable {
 
     /**
      * Constructor.
-     * @param entry the entry {@link Order order}
-     * @param exit the exit {@link Order order}
+     * 
+     * @param entry
+     *            the entry {@link Order order}
+     * @param exit
+     *            the exit {@link Order order}
      */
     public Trade(Order entry, Order exit) {
         this(entry, exit, entry.getCostModel(), new ZeroCostModel());
@@ -101,10 +108,15 @@ public class Trade implements Serializable {
 
     /**
      * Constructor.
-     * @param entry the entry {@link Order order}
-     * @param exit the exit {@link Order order}
-     * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel the cost model for holding asset (e.g. borrowing)
+     * 
+     * @param entry
+     *            the entry {@link Order order}
+     * @param exit
+     *            the exit {@link Order order}
+     * @param transactionCostModel
+     *            the cost model for transactions of the asset
+     * @param holdingCostModel
+     *            the cost model for holding asset (e.g. borrowing)
      */
     public Trade(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
 
@@ -112,7 +124,8 @@ public class Trade implements Serializable {
             throw new IllegalArgumentException("Both orders must have different types");
         }
 
-        if (!(entry.getCostModel().equals(transactionCostModel)) || !(exit.getCostModel().equals(transactionCostModel))) {
+        if (!(entry.getCostModel().equals(transactionCostModel))
+                || !(exit.getCostModel().equals(transactionCostModel))) {
             throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
         }
 
@@ -154,7 +167,9 @@ public class Trade implements Serializable {
 
     /**
      * Operates the trade at the index-th position
-     * @param index the bar index
+     * 
+     * @param index
+     *            the bar index
      * @return the order
      */
     public Order operate(int index) {
@@ -163,9 +178,13 @@ public class Trade implements Serializable {
 
     /**
      * Operates the trade at the index-th position
-     * @param index the bar index
-     * @param price the price
-     * @param amount the amount
+     * 
+     * @param index
+     *            the bar index
+     * @param price
+     *            the price
+     * @param amount
+     *            the amount
      * @return the order
      */
     public Order operate(int index, Num price, Num amount) {
@@ -211,14 +230,14 @@ public class Trade implements Serializable {
 
     /**
      * Calculate the profit of the trade if it is closed
+     * 
      * @return the profit or loss of the trade
      */
     public Num getProfit() {
         Num profit;
         if (isOpened()) {
             profit = entry.getNetPrice().numOf(0);
-        }
-        else {
+        } else {
             profit = calculateGrossProfit(exit.getPricePerAsset()).minus(getTradeCost());
         }
         return profit;
@@ -226,8 +245,11 @@ public class Trade implements Serializable {
 
     /**
      * Calculate the profit of the trade. If it is open, calculates the profit until the final bar.
-     * @param finalIndex the index of the final bar to be considered (if trade is open)
-     * @param finalPrice the price of the final bar to be considered (if trade is open)
+     * 
+     * @param finalIndex
+     *            the index of the final bar to be considered (if trade is open)
+     * @param finalPrice
+     *            the price of the final bar to be considered (if trade is open)
      * @return the profit or loss of the trade
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
@@ -238,15 +260,16 @@ public class Trade implements Serializable {
 
     /**
      * Calculate the gross (w/o trading costs) profit of the trade.
-     * @param finalPrice the price of the final bar to be considered (if trade is open)
+     * 
+     * @param finalPrice
+     *            the price of the final bar to be considered (if trade is open)
      * @return the profit or loss of the trade
      */
     private Num calculateGrossProfit(Num finalPrice) {
         Num grossProfit;
         if (isOpened()) {
             grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        }
-        else {
+        } else {
             grossProfit = exit.getValue().minus(entry.getValue());
         }
 
@@ -259,7 +282,9 @@ public class Trade implements Serializable {
 
     /**
      * Calculates the total cost of the trade
-     * @param finalIndex the index of the final bar to be considered (if trade is open)
+     * 
+     * @param finalIndex
+     *            the index of the final bar to be considered (if trade is open)
      * @return the cost of the trade
      */
     public Num getTradeCost(int finalIndex) {
@@ -270,6 +295,7 @@ public class Trade implements Serializable {
 
     /**
      * Calculates the total cost of the closed trade
+     * 
      * @return the cost of the trade
      */
     public Num getTradeCost() {
@@ -280,6 +306,7 @@ public class Trade implements Serializable {
 
     /**
      * Calculates the holding cost of the closed trade
+     * 
      * @return the cost of the trade
      */
     public Num getHoldingCost() {
@@ -288,7 +315,9 @@ public class Trade implements Serializable {
 
     /**
      * Calculates the holding cost of the trade
-     * @param finalIndex the index of the final bar to be considered (if trade is open)
+     * 
+     * @param finalIndex
+     *            the index of the final bar to be considered (if trade is open)
      * @return the cost of the trade
      */
     public Num getHoldingCost(int finalIndex) {

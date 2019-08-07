@@ -28,8 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Rate of change of volume (ROCVIndicator) indicator.
- * Aka. Momentum of Volume
+ * Rate of change of volume (ROCVIndicator) indicator. Aka. Momentum of Volume
  *
  * The ROCVIndicator calculation compares the current volume with the volume "n" periods ago.
  */
@@ -43,8 +42,10 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series the time series
-     * @param barCount the time frame
+     * @param series
+     *            the time series
+     * @param barCount
+     *            the time frame
      */
     public ROCVIndicator(TimeSeries series, int barCount) {
         super(series);

@@ -28,10 +28,12 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
+
 /**
  * Maximum drawdown criterion.
  *
- * @see <a href="http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
+ * @see <a href=
+ *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
  */
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
@@ -57,8 +59,11 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the maximum drawdown from a cash flow over a series.
-     * @param series the time series
-     * @param cashFlow the cash flow
+     * 
+     * @param series
+     *            the time series
+     * @param cashFlow
+     *            the cash flow
      * @return the maximum drawdown from a cash flow over a series
      */
     private Num calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
@@ -71,7 +76,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
                 if (value.isGreaterThan(maxPeak)) {
                     maxPeak = value;
                 }
-    
+
                 Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
                 if (drawdown.isGreaterThan(maximumDrawdown)) {
                     maximumDrawdown = drawdown;

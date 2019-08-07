@@ -32,12 +32,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * The volume-weighted average price (VWAP) Indicator.
+ * 
  * @see <a href="http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp">
- *     http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp</a>
+ *      http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp</a>
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:vwap_intraday">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:vwap_intraday</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:vwap_intraday</a>
  * @see <a href="https://en.wikipedia.org/wiki/Volume-weighted_average_price">
- *     https://en.wikipedia.org/wiki/Volume-weighted_average_price</a>
+ *      https://en.wikipedia.org/wiki/Volume-weighted_average_price</a>
  */
 public class VWAPIndicator extends CachedIndicator<Num> {
 
@@ -48,8 +49,11 @@ public class VWAPIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param series the series
-     * @param barCount the time frame
+     * 
+     * @param series
+     *            the series
+     * @param barCount
+     *            the time frame
      */
     public VWAPIndicator(TimeSeries series, int barCount) {
         super(series);

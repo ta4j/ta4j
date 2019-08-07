@@ -54,7 +54,8 @@ public class TradingBotOnMovingTimeSeries {
     /**
      * Builds a moving time series (i.e. keeping only the maxBarCount last bars)
      *
-     * @param maxBarCount the number of bars to keep in the time series (at maximum)
+     * @param maxBarCount
+     *            the number of bars to keep in the time series (at maximum)
      * @return a moving time series
      */
     private static TimeSeries initMovingTimeSeries(int maxBarCount) {
@@ -68,7 +69,8 @@ public class TradingBotOnMovingTimeSeries {
     }
 
     /**
-     * @param series a time series
+     * @param series
+     *            a time series
      * @return a dummy strategy
      */
     private static Strategy buildStrategy(TimeSeries series) {
@@ -82,18 +84,18 @@ public class TradingBotOnMovingTimeSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        Strategy buySellSignals = new BaseStrategy(
-                new OverIndicatorRule(sma, closePrice),
-                new UnderIndicatorRule(sma, closePrice)
-        );
+        Strategy buySellSignals = new BaseStrategy(new OverIndicatorRule(sma, closePrice),
+                new UnderIndicatorRule(sma, closePrice));
         return buySellSignals;
     }
 
     /**
      * Generates a random decimal number between min and max.
      *
-     * @param min the minimum bound
-     * @param max the maximum bound
+     * @param min
+     *            the minimum bound
+     * @param max
+     *            the maximum bound
      * @return a random decimal number between min and max
      */
     private static Num randDecimal(Num min, Num max) {
@@ -118,7 +120,8 @@ public class TradingBotOnMovingTimeSeries {
         Num maxPrice = openPrice.plus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
         Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
+        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, PrecisionNum.valueOf(1),
+                PrecisionNum.valueOf(1));
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -135,15 +138,15 @@ public class TradingBotOnMovingTimeSeries {
         System.out.println("************************************************************");
 
         /*
-          We run the strategy for the 50 next bars.
+         * We run the strategy for the 50 next bars.
          */
         for (int i = 0; i < 50; i++) {
 
             // New bar
             Thread.sleep(30); // I know...
             Bar newBar = generateRandomBar();
-            System.out.println("------------------------------------------------------\n"
-                    + "Bar " + i + " added, close price = " + newBar.getClosePrice().doubleValue());
+            System.out.println("------------------------------------------------------\n" + "Bar " + i
+                    + " added, close price = " + newBar.getClosePrice().doubleValue());
             series.addBar(newBar);
 
             int endIndex = series.getEndIndex();
@@ -153,8 +156,7 @@ public class TradingBotOnMovingTimeSeries {
                 boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), PrecisionNum.valueOf(10));
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
-                    System.out.println("Entered on " + entry.getIndex()
-                            + " (price=" + entry.getNetPrice().doubleValue()
+                    System.out.println("Entered on " + entry.getIndex() + " (price=" + entry.getNetPrice().doubleValue()
                             + ", amount=" + entry.getAmount().doubleValue() + ")");
                 }
             } else if (strategy.shouldExit(endIndex)) {
@@ -163,8 +165,7 @@ public class TradingBotOnMovingTimeSeries {
                 boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), PrecisionNum.valueOf(10));
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
-                    System.out.println("Exited on " + exit.getIndex()
-                            + " (price=" + exit.getNetPrice().doubleValue()
+                    System.out.println("Exited on " + exit.getIndex() + " (price=" + exit.getNetPrice().doubleValue()
                             + ", amount=" + exit.getAmount().doubleValue() + ")");
                 }
             }

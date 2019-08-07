@@ -37,17 +37,17 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream()
-                .filter(Trade::isClosed)
-                .map(trade -> calculate(series, trade))
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
                 .reduce(series.numOf(0), Num::plus);
     }
 
     /**
      * Calculates the profit or loss on the trade.
      *
-     * @param series a time series
-     * @param trade  a trade
+     * @param series
+     *            a time series
+     * @param trade
+     *            a trade
      * @return the profit or loss on the trade
      */
     @Override

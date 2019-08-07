@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
 /**
  * Testing the RWIHighIndicator
  */
-public class RWIHighIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>{
+public class RWIHighIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     /**
      * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel formula needed
@@ -48,7 +48,7 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>{
     }
 
     @Test
-    public void randomWalkIndexHigh() throws Exception{
+    public void randomWalkIndexHigh() throws Exception {
         TimeSeries series = xls.getSeries();
         RWIHighIndicator rwih = (RWIHighIndicator) getIndicator(series, 20);
         assertIndicatorEquals(getIndicator(series, 20), rwih);

@@ -31,8 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Indicator-lowest-indicator rule.
  *
- * Satisfied when the value of the {@link Indicator indicator} is the lowest
- * within the barCount.
+ * Satisfied when the value of the {@link Indicator indicator} is the lowest within the barCount.
  */
 public class IsLowestRule extends AbstractRule {
 
@@ -48,8 +47,10 @@ public class IsLowestRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param ref      the indicator
-     * @param barCount the time frame
+     * @param ref
+     *            the indicator
+     * @param barCount
+     *            the time frame
      */
     public IsLowestRule(Indicator<Num> ref, int barCount) {
         this.ref = ref;

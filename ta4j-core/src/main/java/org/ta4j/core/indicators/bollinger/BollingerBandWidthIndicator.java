@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
  * Bollinger BandWidth indicator.
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width">
- * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width</a>
  */
 public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
 
@@ -42,11 +42,15 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param bbu the upper band Indicator.
-     * @param bbm the middle band Indicator. Typically an SMAIndicator is used.
-     * @param bbl the lower band Indicator.
+     * @param bbu
+     *            the upper band Indicator.
+     * @param bbm
+     *            the middle band Indicator. Typically an SMAIndicator is used.
+     * @param bbl
+     *            the lower band Indicator.
      */
-    public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm, BollingerBandsLowerIndicator bbl) {
+    public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm,
+            BollingerBandsLowerIndicator bbl) {
         super(bbm.getTimeSeries());
         this.bbu = bbu;
         this.bbm = bbm;

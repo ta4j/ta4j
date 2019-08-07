@@ -54,7 +54,7 @@ public class StandardDeviationIndicatorTest extends AbstractIndicatorTest<Indica
 
         assertNumEquals(0, sdv.getValue(0));
         assertNumEquals(Math.sqrt(0.25), sdv.getValue(1));
-        assertNumEquals(Math.sqrt(2.0/3), sdv.getValue(2));
+        assertNumEquals(Math.sqrt(2.0 / 3), sdv.getValue(2));
         assertNumEquals(Math.sqrt(1.25), sdv.getValue(3));
         assertNumEquals(Math.sqrt(0.5), sdv.getValue(4));
         assertNumEquals(Math.sqrt(0.25), sdv.getValue(5));

@@ -28,16 +28,17 @@ import org.ta4j.core.num.Num;
 import java.io.Serializable;
 
 /**
- * Indicator over a {@link TimeSeries time series}.
- * <p/p>
- * For each index of the time series, returns a value of type <b>T</b>.
+ * Indicator over a {@link TimeSeries time series}. <p/p> For each index of the time series, returns a value of type
+ * <b>T</b>.
  *
- * @param <T> the type of returned value (Double, Boolean, etc.)
+ * @param <T>
+ *            the type of returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> extends Serializable {
 
     /**
-     * @param index the bar index
+     * @param index
+     *            the bar index
      * @return the value of the indicator
      */
     T getValue(int index);
@@ -48,18 +49,20 @@ public interface Indicator<T> extends Serializable {
     TimeSeries getTimeSeries();
 
     /**
-     * @return  the {@link Num Num extending class} for the given {@link Number}
+     * @return the {@link Num Num extending class} for the given {@link Number}
      */
     Num numOf(Number number);
 
-     /**
-     * Returns all values from an {@link Indicator} as an array of Doubles. The
-     * returned doubles could have a minor loss of precise, if {@link Indicator}
-     * was based on {@link Num Num}.
+    /**
+     * Returns all values from an {@link Indicator} as an array of Doubles. The returned doubles could have a minor loss
+     * of precise, if {@link Indicator} was based on {@link Num Num}.
      *
-     * @param ref the indicator
-     * @param index the index
-     * @param barCount the barCount
+     * @param ref
+     *            the indicator
+     * @param index
+     *            the index
+     * @param barCount
+     *            the barCount
      * @return array of Doubles within the barCount
      */
     static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {

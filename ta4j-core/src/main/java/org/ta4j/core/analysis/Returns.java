@@ -74,11 +74,13 @@ public class Returns implements Indicator<Num> {
     /** Unit element for efficient arithmetic return computation */
     private static Num one;
 
-
     /**
      * Constructor.
-     * @param timeSeries the time series
-     * @param trade a single trade
+     * 
+     * @param timeSeries
+     *            the time series
+     * @param trade
+     *            a single trade
      */
     public Returns(TimeSeries timeSeries, Trade trade, ReturnType type) {
         one = timeSeries.numOf(1);
@@ -93,8 +95,11 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Constructor.
-     * @param timeSeries the time series
-     * @param tradingRecord the trading record
+     * 
+     * @param timeSeries
+     *            the time series
+     * @param tradingRecord
+     *            the trading record
      */
     public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
         one = timeSeries.numOf(1);
@@ -107,10 +112,13 @@ public class Returns implements Indicator<Num> {
         fillToTheEnd();
     }
 
-    public List<Num> getValues() { return values; }
+    public List<Num> getValues() {
+        return values;
+    }
 
     /**
-     * @param index the bar index
+     * @param index
+     *            the bar index
      * @return the return rate value at the index-th position
      */
     @Override
@@ -141,8 +149,11 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Calculates the cash flow for a single trade (including accrued cashflow for open trades).
-     * @param trade a single trade
-     * @param finalIndex index up until cash flow of open trades is considered
+     * 
+     * @param trade
+     *            a single trade
+     * @param finalIndex
+     *            index up until cash flow of open trades is considered
      */
     public void calculate(Trade trade, int finalIndex) {
         boolean isLongTrade = trade.getEntry().isBuy();
@@ -180,8 +191,7 @@ public class Returns implements Indicator<Num> {
         Num exitPrice;
         if (trade.getExit() != null) {
             exitPrice = trade.getExit().getNetPrice();
-        }
-        else {
+        } else {
             exitPrice = timeSeries.getBar(endIndex).getClosePrice();
         }
 
@@ -197,7 +207,9 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Calculates the returns for a trading record.
-     * @param tradingRecord the trading record
+     * 
+     * @param tradingRecord
+     *            the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
         // For each trade...

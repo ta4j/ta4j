@@ -33,7 +33,7 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AverageProfitCriterionTest extends AbstractCriterionTest{
+public class AverageProfitCriterionTest extends AbstractCriterionTest {
     private MockTimeSeries series;
 
     public AverageProfitCriterionTest(Function<Number, Num> numFunction) {
@@ -42,9 +42,8 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void calculateOnlyWithGainTrades() {
-        series = new MockTimeSeries(numFunction,100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(2, series),
+        series = new MockTimeSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(1.0243, averageProfit.calculate(series, tradingRecord));
@@ -52,32 +51,32 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void calculateWithASimpleTrade() {
-        series = new MockTimeSeries(numFunction,100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0,series), Order.sellAt(2,series));
+        series = new MockTimeSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
         AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(numOf(110d/100).pow(numOf(1d/3)), averageProfit.calculate(series, tradingRecord));
+        assertNumEquals(numOf(110d / 100).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateOnlyWithLossTrades() {
-        series = new MockTimeSeries(numFunction,100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(1, series),
+        series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
         AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(numOf(95d/100 * 70d/100).pow(numOf(1d / 6)), averageProfit.calculate(series, tradingRecord));
+        assertNumEquals(numOf(95d / 100 * 70d / 100).pow(numOf(1d / 6)),
+                averageProfit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithNoBarsShouldReturn1() {
-        series = new MockTimeSeries(numFunction,100, 95, 100, 80, 85, 70);
+        series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(1, averageProfit.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOneTrade() {
-        series = new MockTimeSeries(numFunction,100, 105);
+        series = new MockTimeSeries(numFunction, 100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, trade));

@@ -38,7 +38,8 @@ import org.ta4j.core.trading.rules.XorRule;
 public interface Rule {
 
     /**
-     * @param rule another trading rule
+     * @param rule
+     *            another trading rule
      * @return a rule which is the AND combination of this rule with the provided one
      */
     default Rule and(Rule rule) {
@@ -46,7 +47,8 @@ public interface Rule {
     }
 
     /**
-     * @param rule another trading rule
+     * @param rule
+     *            another trading rule
      * @return a rule which is the OR combination of this rule with the provided one
      */
     default Rule or(Rule rule) {
@@ -54,7 +56,8 @@ public interface Rule {
     }
 
     /**
-     * @param rule another trading rule
+     * @param rule
+     *            another trading rule
      * @return a rule which is the XOR combination of this rule with the provided one
      */
     default Rule xor(Rule rule) {
@@ -69,7 +72,8 @@ public interface Rule {
     }
 
     /**
-     * @param index the bar index
+     * @param index
+     *            the bar index
      * @return true if this rule is satisfied for the provided index, false otherwise
      */
     default boolean isSatisfied(int index) {
@@ -77,8 +81,10 @@ public interface Rule {
     }
 
     /**
-     * @param index         the bar index
-     * @param tradingRecord the potentially needed trading history
+     * @param index
+     *            the bar index
+     * @param tradingRecord
+     *            the potentially needed trading history
      * @return true if this rule is satisfied for the provided index, false otherwise
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);

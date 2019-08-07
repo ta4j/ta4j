@@ -41,7 +41,8 @@ public class JustOnceRule extends AbstractRule {
      *
      * Satisfied the first time the inner rule is satisfied then never again.
      *
-     * @param rule the rule that should be satisfied only the first time
+     * @param rule
+     *            the rule that should be satisfied only the first time
      */
     public JustOnceRule(Rule rule) {
         this.rule = rule;

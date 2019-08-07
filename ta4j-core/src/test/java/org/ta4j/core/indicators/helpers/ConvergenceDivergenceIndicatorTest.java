@@ -42,25 +42,24 @@ public class ConvergenceDivergenceIndicatorTest {
 
     private Indicator<Num> refNegCon;
     private Indicator<Num> otherNegCon;
-    
+
     private Indicator<Num> refPosDiv;
     private Indicator<Num> otherNegDiv;
-    
+
     private Indicator<Num> refNegDig;
     private Indicator<Num> otherPosDiv;
 
     private ConvergenceDivergenceIndicator isPosCon;
     private ConvergenceDivergenceIndicator isNegCon;
-    
+
     private ConvergenceDivergenceIndicator isPosDiv;
     private ConvergenceDivergenceIndicator isNegDiv;
-    
+
     private ConvergenceDivergenceIndicator isPosConStrict;
     private ConvergenceDivergenceIndicator isNegConStrict;
-    
+
     private ConvergenceDivergenceIndicator isPosDivStrict;
     private ConvergenceDivergenceIndicator isNegDivStrict;
-    
 
     @Before
     public void setUp() {
@@ -70,36 +69,36 @@ public class ConvergenceDivergenceIndicatorTest {
 
         refNegCon = new FixedDecimalIndicator(series, 150, 60, 20, 10, -20, -60, -200, -1, -200, 100);
         otherNegCon = new FixedDecimalIndicator(series, 80, 50, 40, 20, 10, 0, -30, -50, -150, 7);
-        
+
         refPosDiv = new FixedDecimalIndicator(series, 1, 4, 8, 12, 15, 20, 3, 2, -2, 1);
         otherNegDiv = new FixedDecimalIndicator(series, 80, 50, 20, -10, 0, -100, -200, -2, 5, 7);
-        
+
         refNegDig = new FixedDecimalIndicator(series, 100, 30, 15, 4, 2, -10, -3, -100, -2, 100);
         otherPosDiv = new FixedDecimalIndicator(series, 20, 40, 70, 80, 90, 100, 200, 220, -50, 7);
 
         // for convergence and divergence
-        isPosCon = new ConvergenceDivergenceIndicator(refPosCon, otherPosCon, 3, 
+        isPosCon = new ConvergenceDivergenceIndicator(refPosCon, otherPosCon, 3,
                 ConvergenceDivergenceType.positiveConvergent);
-        
+
         isNegCon = new ConvergenceDivergenceIndicator(refNegCon, otherNegCon, 3,
                 ConvergenceDivergenceType.negativeConvergent);
-        
-        isPosDiv = new ConvergenceDivergenceIndicator(refPosDiv, otherNegDiv, 3, 
-                 ConvergenceDivergenceType.positiveDivergent);
-         
+
+        isPosDiv = new ConvergenceDivergenceIndicator(refPosDiv, otherNegDiv, 3,
+                ConvergenceDivergenceType.positiveDivergent);
+
         isNegDiv = new ConvergenceDivergenceIndicator(refNegDig, otherPosDiv, 3,
-                 ConvergenceDivergenceType.negativeDivergent);
-        
-        // for strict convergence and divergence 
+                ConvergenceDivergenceType.negativeDivergent);
+
+        // for strict convergence and divergence
         isPosConStrict = new ConvergenceDivergenceIndicator(refPosCon, otherPosDiv, 3,
                 ConvergenceDivergenceStrictType.positiveConvergentStrict);
-        
+
         isNegConStrict = new ConvergenceDivergenceIndicator(refNegDig, otherNegCon, 3,
                 ConvergenceDivergenceStrictType.negativeConvergentStrict);
-        
+
         isPosDivStrict = new ConvergenceDivergenceIndicator(otherPosDiv, refNegDig, 3,
                 ConvergenceDivergenceStrictType.positiveDivergentStrict);
-        
+
         isNegDivStrict = new ConvergenceDivergenceIndicator(refNegDig, otherPosDiv, 3,
                 ConvergenceDivergenceStrictType.negativeDivergentStrict);
 
@@ -113,13 +112,13 @@ public class ConvergenceDivergenceIndicatorTest {
         testPositiveDivergent();
         testNegativeDivergent();
 
-//      testPositiveConvergentStrict();
-//      testNegativeConvergentStrict();
-//      testPositiveDivergentStrict();
-//      testNegativeDivergentStrict();
-        
+        // testPositiveConvergentStrict();
+        // testNegativeConvergentStrict();
+        // testPositiveDivergentStrict();
+        // testNegativeDivergentStrict();
+
     }
-    
+
     public void testPositiveConvergent() {
         assertFalse(isPosCon.getValue(0));
         assertFalse(isPosCon.getValue(1));
@@ -132,7 +131,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertTrue(isPosCon.getValue(8));
         assertFalse(isPosCon.getValue(9));
     }
-    
+
     public void testNegativeConvergent() {
         assertFalse(isNegCon.getValue(0));
         assertFalse(isNegCon.getValue(1));
@@ -145,7 +144,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isNegCon.getValue(8));
         assertFalse(isNegCon.getValue(9));
     }
-    
+
     public void testPositiveDivergent() {
         assertFalse(isPosDiv.getValue(0));
         assertFalse(isPosDiv.getValue(1));
@@ -158,7 +157,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isPosDiv.getValue(8));
         assertFalse(isPosDiv.getValue(9));
     }
-    
+
     public void testNegativeDivergent() {
         assertFalse(isNegDiv.getValue(0));
         assertFalse(isNegDiv.getValue(1));
@@ -171,7 +170,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isNegDiv.getValue(8));
         assertFalse(isNegDiv.getValue(9));
     }
-    
+
     public void testPositiveConvergentStrict() {
         assertFalse(isPosConStrict.getValue(0));
         assertFalse(isPosConStrict.getValue(1));
@@ -184,7 +183,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertTrue(isPosConStrict.getValue(8));
         assertFalse(isPosConStrict.getValue(9));
     }
-    
+
     public void testNegativeConvergentStrict() {
         assertFalse(isNegConStrict.getValue(0));
         assertFalse(isNegConStrict.getValue(1));
@@ -197,7 +196,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isNegConStrict.getValue(8));
         assertFalse(isNegConStrict.getValue(9));
     }
-    
+
     public void testPositiveDivergentStrict() {
         assertFalse(isPosDivStrict.getValue(0));
         assertFalse(isPosDivStrict.getValue(1));
@@ -210,7 +209,7 @@ public class ConvergenceDivergenceIndicatorTest {
         assertFalse(isPosDivStrict.getValue(8));
         assertFalse(isPosDivStrict.getValue(9));
     }
-    
+
     public void testNegativeDivergentStrict() {
         assertFalse(isNegDivStrict.getValue(0));
         assertFalse(isNegDivStrict.getValue(1));

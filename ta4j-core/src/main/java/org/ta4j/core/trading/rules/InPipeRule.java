@@ -31,7 +31,8 @@ import org.ta4j.core.num.Num;
 /**
  * Indicator-between-indicators rule.
  *
- * Satisfied when the value of the {@link Indicator indicator} is between the values of the boundary (up/down) indicators.
+ * Satisfied when the value of the {@link Indicator indicator} is between the values of the boundary (up/down)
+ * indicators.
  */
 public class InPipeRule extends AbstractRule {
 
@@ -44,9 +45,13 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param ref the reference indicator
-     * @param upper the upper threshold
-     * @param lower the lower threshold
+     * 
+     * @param ref
+     *            the reference indicator
+     * @param upper
+     *            the upper threshold
+     * @param lower
+     *            the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Number upper, Number lower) {
         this(ref, ref.numOf(upper), ref.numOf(lower));
@@ -54,19 +59,28 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param ref the reference indicator
-     * @param upper the upper threshold
-     * @param lower the lower threshold
+     * 
+     * @param ref
+     *            the reference indicator
+     * @param upper
+     *            the upper threshold
+     * @param lower
+     *            the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
-        this(ref, new ConstantIndicator<>(ref.getTimeSeries(), upper), new ConstantIndicator<>(ref.getTimeSeries(), lower));
+        this(ref, new ConstantIndicator<>(ref.getTimeSeries(), upper),
+                new ConstantIndicator<>(ref.getTimeSeries(), lower));
     }
 
     /**
      * Constructor.
-     * @param ref the reference indicator
-     * @param upper the upper indicator
-     * @param lower the lower indicator
+     * 
+     * @param ref
+     *            the reference indicator
+     * @param upper
+     *            the upper indicator
+     * @param lower
+     *            the lower indicator
      */
     public InPipeRule(Indicator<Num> ref, Indicator<Num> upper, Indicator<Num> lower) {
         this.upper = upper;

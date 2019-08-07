@@ -37,7 +37,7 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num> {
+public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private DecimalTransformIndicator transPlus;
     private DecimalTransformIndicator transMinus;
@@ -45,7 +45,7 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     private DecimalTransformIndicator transDivide;
     private DecimalTransformIndicator transMax;
     private DecimalTransformIndicator transMin;
-    
+
     private DecimalTransformIndicator transAbs;
     private DecimalTransformIndicator transSqrt;
     private DecimalTransformIndicator transLog;
@@ -65,8 +65,9 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
         transDivide = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.divide);
         transMax = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.max);
         transMin = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.min);
-        
-        transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)), DecimalTransformSimpleType.abs);
+
+        transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)),
+                DecimalTransformSimpleType.abs);
         transSqrt = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.sqrt);
         transLog = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.log);
     }
@@ -79,7 +80,7 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
         assertNumEquals(0.4, transDivide.getValue(0));
         assertNumEquals(10, transMax.getValue(0));
         assertNumEquals(4, transMin.getValue(0));
-        
+
         assertNumEquals(4, transAbs.getValue(0));
         assertNumEquals(2, transSqrt.getValue(0));
         assertNumEquals(1.3862943611198906, transLog.getValue(0));

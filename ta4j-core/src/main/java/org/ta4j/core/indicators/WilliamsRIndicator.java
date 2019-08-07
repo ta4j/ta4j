@@ -36,7 +36,8 @@ import org.ta4j.core.num.Num;
  * William's R indicator.
  *
  *
- * @see <a href="https://www.investopedia.com/terms/w/williamsr.asp">https://www.investopedia.com/terms/w/williamsr.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/w/williamsr.asp">https://www.investopedia.com/terms/w/williamsr.asp</a>
  */
 public class WilliamsRIndicator extends CachedIndicator<Num> {
 
@@ -47,11 +48,12 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
     private final Num multiplier;
 
     public WilliamsRIndicator(TimeSeries timeSeries, int barCount) {
-        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries), new LowPriceIndicator(
-                timeSeries));
+        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries),
+                new LowPriceIndicator(timeSeries));
     }
 
-    public WilliamsRIndicator(ClosePriceIndicator closePriceIndicator, int barCount, HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
+    public WilliamsRIndicator(ClosePriceIndicator closePriceIndicator, int barCount,
+            HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
         super(closePriceIndicator);
         this.closePriceIndicator = closePriceIndicator;
         this.barCount = barCount;
@@ -69,8 +71,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
         Num lowestLowPrice = lowestMin.getValue(index);
 
         return ((highestHighPrice.minus(closePriceIndicator.getValue(index)))
-                .dividedBy(highestHighPrice.minus(lowestLowPrice)))
-                .multipliedBy(multiplier);
+                .dividedBy(highestHighPrice.minus(lowestLowPrice))).multipliedBy(multiplier);
     }
 
     @Override

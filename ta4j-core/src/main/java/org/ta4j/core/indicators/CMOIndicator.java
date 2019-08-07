@@ -32,9 +32,9 @@ import org.ta4j.core.num.Num;
  * Chande Momentum Oscillator indicator.
  *
  * @see <a href="http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/">
- *         http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/</a>
+ *      http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/</a>
  * @see <a href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp">
- *         href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp"</a>
+ *      href="http://www.investopedia.com/terms/c/chandemomentumoscillator.asp"</a>
  */
 public class CMOIndicator extends CachedIndicator<Num> {
 
@@ -45,8 +45,10 @@ public class CMOIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator a price indicator
-     * @param barCount  the time frame
+     * @param indicator
+     *            a price indicator
+     * @param barCount
+     *            the time frame
      */
     public CMOIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -65,8 +67,6 @@ public class CMOIndicator extends CachedIndicator<Num> {
         for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
             sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
         }
-        return sumOfGains.minus(sumOfLosses)
-                .dividedBy(sumOfGains.plus(sumOfLosses))
-                .multipliedBy(numOf(100));
+        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(numOf(100));
     }
 }

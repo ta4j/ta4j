@@ -31,8 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Hull moving average (HMA) indicator.
  *
- * @see <a href="http://alanhull.com/hull-moving-average">
- *         http://alanhull.com/hull-moving-average</a>
+ * @see <a href="http://alanhull.com/hull-moving-average"> http://alanhull.com/hull-moving-average</a>
  */
 public class HMAIndicator extends CachedIndicator<Num> {
 
