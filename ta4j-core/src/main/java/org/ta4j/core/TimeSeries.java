@@ -331,12 +331,12 @@ public interface TimeSeries extends Serializable {
     Bar replaceBarIfChanged(Bar newBar);
 	
      /**
-     * Finds potential missing bars. The returned list contains the
-     * <code>beginTime</code> of each missing bar. A bar is missing if: (1) the
+     * Finds possibly missing bars. The returned list contains the
+     * <code>beginTime</code> of each missing bar. A bar is possibly missing if: (1) the
      * subsequent bar starts not with the end time of the previous bar or (2) if any
      * open, high, low price is missing.
      * 
-     * @return the list of missing bars
+     * @return the list of possibly missing bars
      */
     List<ZonedDateTime> findMissingBars();
 	
