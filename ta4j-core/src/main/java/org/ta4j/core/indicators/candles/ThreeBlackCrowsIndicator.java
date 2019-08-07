@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Three black crows indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
- *     http://www.investopedia.com/terms/t/three_black_crows.asp</a>
+ *      http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
@@ -48,9 +48,13 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * @param series a time series
-     * @param barCount the number of bars used to calculate the average lower shadow
-     * @param factor the factor used when checking if a candle has a very short lower shadow
+     * 
+     * @param series
+     *            a time series
+     * @param barCount
+     *            the number of bars used to calculate the average lower shadow
+     * @param factor
+     *            the factor used when checking if a candle has a very short lower shadow
      */
     public ThreeBlackCrowsIndicator(TimeSeries series, int barCount, double factor) {
         super(series);
@@ -66,14 +70,13 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
             return false;
         }
         whiteCandleIndex = index - 3;
-        return getTimeSeries().getBar(whiteCandleIndex).isBullish()
-                && isBlackCrow(index - 2)
-                && isBlackCrow(index - 1)
+        return getTimeSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
                 && isBlackCrow(index);
     }
 
     /**
-     * @param index the bar/candle index
+     * @param index
+     *            the bar/candle index
      * @return true if the bar/candle has a very short lower shadow, false otherwise
      */
     private boolean hasVeryShortLowerShadow(int index) {
@@ -85,7 +88,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
     }
 
     /**
-     * @param index the current bar/candle index
+     * @param index
+     *            the current bar/candle index
      * @return true if the current bar/candle is declining, false otherwise
      */
     private boolean isDeclining(int index) {
@@ -98,12 +102,13 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
         // Opens within the body of the previous candle
         return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
-                // Closes below the previous close price
+        // Closes below the previous close price
                 && currClosePrice.isLessThan(prevClosePrice);
     }
 
     /**
-     * @param index the current bar/candle index
+     * @param index
+     *            the current bar/candle index
      * @return true if the current bar/candle is a black crow, false otherwise
      */
     private boolean isBlackCrow(int index) {
@@ -112,8 +117,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         if (currBar.isBearish()) {
             if (prevBar.isBullish()) {
                 // First crow case
-                return hasVeryShortLowerShadow(index)
-                        && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
+                return hasVeryShortLowerShadow(index) && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
             } else {
                 return hasVeryShortLowerShadow(index) && isDeclining(index);
             }

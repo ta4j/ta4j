@@ -35,9 +35,10 @@ public class LinearTransactionCostModel implements CostModel {
     private double feePerTrade;
 
     /**
-     * Constructor.
-     * (feePerTrade * x)
-     * @param feePerTrade the feePerTrade coefficient (e.g. 0.005 for 0.5% per {@link Order order})
+     * Constructor. (feePerTrade * x)
+     * 
+     * @param feePerTrade
+     *            the feePerTrade coefficient (e.g. 0.005 for 0.5% per {@link Order order})
      */
     public LinearTransactionCostModel(double feePerTrade) {
         this.feePerTrade = feePerTrade;
@@ -45,8 +46,11 @@ public class LinearTransactionCostModel implements CostModel {
 
     /**
      * Calculates the transaction cost of a trade.
-     * @param trade the trade
-     * @param currentIndex current bar index (irrelevant for the LinearTransactionCostModel)
+     * 
+     * @param trade
+     *            the trade
+     * @param currentIndex
+     *            current bar index (irrelevant for the LinearTransactionCostModel)
      * @return the absolute order cost
      */
     public Num calculate(Trade trade, int currentIndex) {
@@ -55,7 +59,9 @@ public class LinearTransactionCostModel implements CostModel {
 
     /**
      * Calculates the transaction cost of a trade.
-     * @param trade the trade
+     * 
+     * @param trade
+     *            the trade
      * @return the absolute order cost
      */
     public Num calculate(Trade trade) {
@@ -72,8 +78,10 @@ public class LinearTransactionCostModel implements CostModel {
     }
 
     /**
-     * @param price execution price
-     * @param amount order amount
+     * @param price
+     *            execution price
+     * @param amount
+     *            order amount
      * @return the absolute order transaction cost
      */
     public Num calculate(Num price, Num amount) {
@@ -82,7 +90,9 @@ public class LinearTransactionCostModel implements CostModel {
 
     /**
      * Evaluate if two models are equal
-     * @param otherModel model to compare with
+     * 
+     * @param otherModel
+     *            model to compare with
      */
     public boolean equals(CostModel otherModel) {
         boolean equality = false;

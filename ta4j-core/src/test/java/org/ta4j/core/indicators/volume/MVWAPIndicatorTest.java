@@ -39,8 +39,8 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
-protected TimeSeries data;
+public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+    protected TimeSeries data;
 
     public MVWAPIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -50,26 +50,26 @@ protected TimeSeries data;
     public void setUp() {
 
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, 1,numFunction));
-        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, 2,numFunction));
-        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, 1,numFunction));
-        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04, 3,numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10, 1,numFunction));
-        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10, 2,numFunction));
-        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07, 1,numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10, 5,numFunction));
-        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14, 1,numFunction));
-        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20, 1,numFunction));
-        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39, 1,numFunction));
-        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, 5,numFunction));
-        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, 7,numFunction));
-        bars.add(new MockBar(45.45, 45.01, 45.55, 44.80, 6,numFunction));
-        bars.add(new MockBar(45.03, 44.23, 45.04, 44.17, 1,numFunction));
-        bars.add(new MockBar(44.23, 43.95, 44.29, 43.81, 2,numFunction));
-        bars.add(new MockBar(43.91, 43.08, 43.99, 43.08, 1,numFunction));
-        bars.add(new MockBar(43.07, 43.55, 43.65, 43.06, 7,numFunction));
-        bars.add(new MockBar(43.56, 43.95, 43.99, 43.53, 6,numFunction));
-        bars.add(new MockBar(43.93, 44.47, 44.58, 43.93, 1,numFunction));
+        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, 1, numFunction));
+        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, 2, numFunction));
+        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, 1, numFunction));
+        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04, 3, numFunction));
+        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10, 1, numFunction));
+        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10, 2, numFunction));
+        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07, 1, numFunction));
+        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10, 5, numFunction));
+        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14, 1, numFunction));
+        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20, 1, numFunction));
+        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39, 1, numFunction));
+        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, 5, numFunction));
+        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, 7, numFunction));
+        bars.add(new MockBar(45.45, 45.01, 45.55, 44.80, 6, numFunction));
+        bars.add(new MockBar(45.03, 44.23, 45.04, 44.17, 1, numFunction));
+        bars.add(new MockBar(44.23, 43.95, 44.29, 43.81, 2, numFunction));
+        bars.add(new MockBar(43.91, 43.08, 43.99, 43.08, 1, numFunction));
+        bars.add(new MockBar(43.07, 43.55, 43.65, 43.06, 7, numFunction));
+        bars.add(new MockBar(43.56, 43.95, 43.99, 43.53, 6, numFunction));
+        bars.add(new MockBar(43.93, 44.47, 44.58, 43.93, 1, numFunction));
         data = new MockTimeSeries(bars);
     }
 

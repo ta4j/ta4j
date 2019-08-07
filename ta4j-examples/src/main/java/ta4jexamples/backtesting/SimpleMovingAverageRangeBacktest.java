@@ -46,14 +46,14 @@ public class SimpleMovingAverageRangeBacktest {
     public static void main(String[] args) {
         TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-
         int start = 3;
         int stop = 50;
         int step = 5;
 
         final List<Strategy> strategies = new ArrayList<>();
         for (int i = start; i <= stop; i += step) {
-            Strategy strategy = new BaseStrategy("Sma(" + i + ")", createEntryRule(series, i), createExitRule(series, i));
+            Strategy strategy = new BaseStrategy("Sma(" + i + ")", createEntryRule(series, i),
+                    createExitRule(series, i));
             strategies.add(strategy);
         }
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);

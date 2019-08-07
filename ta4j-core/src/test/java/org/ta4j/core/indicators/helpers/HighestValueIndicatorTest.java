@@ -80,34 +80,32 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
-    public void onlyNaNValues(){
+    public void onlyNaNValues() {
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
-        for (long i = 0; i<= 10000; i++){
-            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN,NaN, NaN, NaN);
+        for (long i = 0; i <= 10000; i++) {
+            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
 
-
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 5);
-        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
-            assertEquals(NaN.toString(),highestValue.getValue(i).toString());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertEquals(NaN.toString(), highestValue.getValue(i).toString());
         }
     }
 
     @Test
-    public void naNValuesInIntervall(){
+    public void naNValuesInIntervall() {
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
-        for (long i = 0; i<= 10; i++){ // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
-            Num closePrice = i % 2 == 0 ? series.numOf(i): NaN;
-            series.addBar(ZonedDateTime.now().plusDays(i),NaN, NaN,NaN, closePrice, NaN);
+        for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
+            Num closePrice = i % 2 == 0 ? series.numOf(i) : NaN;
+            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, closePrice, NaN);
         }
-
 
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
 
         // index is the biggest of (index, index-1)
-        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             if (i % 2 != 0) // current is NaN take the previous as highest
-                assertEquals(series.getBar(i-1).getClosePrice().toString(), highestValue.getValue(i).toString());
+                assertEquals(series.getBar(i - 1).getClosePrice().toString(), highestValue.getValue(i).toString());
             else // current is not NaN but previous, take the current
                 assertEquals(series.getBar(i).getClosePrice().toString(), highestValue.getValue(i).toString());
         }

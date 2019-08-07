@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Standard deviation indicator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
- * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility</a>
  */
 public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
@@ -40,8 +41,10 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator
+     *            the indicator
+     * @param barCount
+     *            the time frame
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

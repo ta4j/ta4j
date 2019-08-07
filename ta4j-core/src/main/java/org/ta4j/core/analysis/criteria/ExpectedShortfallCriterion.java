@@ -31,12 +31,13 @@ import org.ta4j.core.num.Num;
 
 import java.util.Collections;
 import java.util.List;
+
 /**
  * Expected Shortfall criterion.
  *
  * @see <a href="https://en.wikipedia.org/wiki/Expected_shortfall">https://en.wikipedia.org/wiki/Expected_shortfall</a>
  *
- * Measures the expected shortfall of the strategy log-return time-series
+ *      Measures the expected shortfall of the strategy log-return time-series
  */
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /**
@@ -47,7 +48,8 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor
      *
-     * @param confidence the confidence level
+     * @param confidence
+     *            the confidence level
      */
     public ExpectedShortfallCriterion(Double confidence) {
         this.confidence = confidence;
@@ -70,8 +72,11 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the Expected Shortfall on the return series
-     * @param returns the corresponding returns
-     * @param confidence the confidence level
+     * 
+     * @param returns
+     *            the corresponding returns
+     * @param confidence
+     *            the confidence level
      * @return the relative Expected Shortfall
      */
     private static Num calculateES(Returns returns, double confidence) {
@@ -88,7 +93,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             Collections.sort(returnRates);
             List<Num> tailEvents = returnRates.subList(0, nInTail);
             Num sum = zero;
-            for(int i=0; i < nInTail; i++) {
+            for (int i = 0; i < nInTail; i++) {
                 sum = sum.plus(tailEvents.get(i));
             }
             expectedShortfall = sum.dividedBy(returns.numOf(nInTail));

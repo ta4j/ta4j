@@ -41,8 +41,11 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param indicator the indicator
-     * @param threshold a threshold
+     * 
+     * @param indicator
+     *            the indicator
+     * @param threshold
+     *            a threshold
      */
     public CrossedDownIndicatorRule(Indicator<Num> indicator, Number threshold) {
         this(indicator, indicator.numOf(threshold));
@@ -50,17 +53,23 @@ public class CrossedDownIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param indicator the indicator
-     * @param threshold a threshold
+     * 
+     * @param indicator
+     *            the indicator
+     * @param threshold
+     *            a threshold
      */
     public CrossedDownIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(),threshold));
+        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), threshold));
     }
 
     /**
      * Constructor.
-     * @param first the first indicator
-     * @param second the second indicator
+     * 
+     * @param first
+     *            the first indicator
+     * @param second
+     *            the second indicator
      */
     public CrossedDownIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
         this.cross = new CrossIndicator(first, second);

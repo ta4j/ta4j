@@ -34,24 +34,23 @@ public class AndRuleTest {
 
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
-    
+
     @Before
     public void setUp() {
         satisfiedRule = new BooleanRule(true);
         unsatisfiedRule = new BooleanRule(false);
     }
-    
+
     @Test
     public void isSatisfied() {
         assertFalse(satisfiedRule.and(BooleanRule.FALSE).isSatisfied(0));
         assertFalse(BooleanRule.FALSE.and(satisfiedRule).isSatisfied(0));
         assertFalse(unsatisfiedRule.and(BooleanRule.FALSE).isSatisfied(0));
         assertFalse(BooleanRule.FALSE.and(unsatisfiedRule).isSatisfied(0));
-        
+
         assertTrue(satisfiedRule.and(BooleanRule.TRUE).isSatisfied(10));
         assertTrue(BooleanRule.TRUE.and(satisfiedRule).isSatisfied(10));
         assertFalse(unsatisfiedRule.and(BooleanRule.TRUE).isSatisfied(10));
         assertFalse(BooleanRule.TRUE.and(unsatisfiedRule).isSatisfied(10));
     }
 }
-        

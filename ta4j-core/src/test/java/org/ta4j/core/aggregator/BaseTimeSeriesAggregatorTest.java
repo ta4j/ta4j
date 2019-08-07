@@ -43,7 +43,8 @@ import static org.junit.Assert.assertSame;
 
 public class BaseTimeSeriesAggregatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
-    private BaseTimeSeriesAggregator baseTimeSeriesAggregator = new BaseTimeSeriesAggregator(new BarAggregatorForTest());
+    private BaseTimeSeriesAggregator baseTimeSeriesAggregator = new BaseTimeSeriesAggregator(
+            new BarAggregatorForTest());
 
     public BaseTimeSeriesAggregatorTest(Function<Number, Num> numFunction) {
         super(numFunction);

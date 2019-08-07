@@ -30,7 +30,8 @@ import org.ta4j.core.num.Num;
 /**
  * The RandomWalkIndexHighIndicator.
  *
- * @see <a href="http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source of formular</a>
+ * @see <a href="http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source of
+ *      formular</a>
  */
 public class RWIHighIndicator extends CachedIndicator<Num> {
 
@@ -39,8 +40,10 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the series
-     * @param barCount the time frame
+     * @param series
+     *            the series
+     * @param barCount
+     *            the time frame
      */
     public RWIHighIndicator(TimeSeries series, int barCount) {
         super(series);

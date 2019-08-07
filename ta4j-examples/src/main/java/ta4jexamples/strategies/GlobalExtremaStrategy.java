@@ -39,7 +39,8 @@ public class GlobalExtremaStrategy {
     private static final int NB_BARS_PER_WEEK = 12 * 24 * 7;
 
     /**
-     * @param series a time series
+     * @param series
+     *            a time series
      * @return a global extrema strategy
      */
     public static Strategy buildStrategy(TimeSeries series) {
@@ -81,6 +82,7 @@ public class GlobalExtremaStrategy {
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

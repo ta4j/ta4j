@@ -48,16 +48,16 @@ public class PVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void getValue() {
 
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(1355.69, 2739.55,numFunction));
-        bars.add(new MockBar(1325.51, 3119.46,numFunction));
-        bars.add(new MockBar(1335.02, 3466.88,numFunction));
-        bars.add(new MockBar(1313.72, 2577.12,numFunction));
-        bars.add(new MockBar(1319.99, 2480.45,numFunction));
-        bars.add(new MockBar(1331.85, 2329.79,numFunction));
-        bars.add(new MockBar(1329.04, 2793.07,numFunction));
-        bars.add(new MockBar(1362.16, 3378.78,numFunction));
-        bars.add(new MockBar(1365.51, 2417.59,numFunction));
-        bars.add(new MockBar(1374.02, 1442.81,numFunction));
+        bars.add(new MockBar(1355.69, 2739.55, numFunction));
+        bars.add(new MockBar(1325.51, 3119.46, numFunction));
+        bars.add(new MockBar(1335.02, 3466.88, numFunction));
+        bars.add(new MockBar(1313.72, 2577.12, numFunction));
+        bars.add(new MockBar(1319.99, 2480.45, numFunction));
+        bars.add(new MockBar(1331.85, 2329.79, numFunction));
+        bars.add(new MockBar(1329.04, 2793.07, numFunction));
+        bars.add(new MockBar(1362.16, 3378.78, numFunction));
+        bars.add(new MockBar(1365.51, 2417.59, numFunction));
+        bars.add(new MockBar(1374.02, 1442.81, numFunction));
         TimeSeries series = new MockTimeSeries(bars);
 
         PVIIndicator pvi = new PVIIndicator(series);

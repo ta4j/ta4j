@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 import java.util.Collections;
 import java.util.List;
+
 /**
  * Value at Risk criterion.
  *
@@ -45,7 +46,8 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor
      *
-     * @param confidence the confidence level
+     * @param confidence
+     *            the confidence level
      */
     public ValueAtRiskCriterion(Double confidence) {
         this.confidence = confidence;
@@ -68,8 +70,11 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the VaR on the return series
-     * @param returns the corresponding returns
-     * @param confidence the confidence level
+     * 
+     * @param returns
+     *            the corresponding returns
+     * @param confidence
+     *            the confidence level
      * @return the relative Value at Risk
      */
     private static Num calculateVaR(Returns returns, double confidence) {
@@ -84,10 +89,12 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
             // The series is not empty, nInTail > 0
             Collections.sort(returnRates);
-            var = returnRates.get(nInTail-1);
+            var = returnRates.get(nInTail - 1);
 
             // VaR is non-positive
-            if (var.isGreaterThan(zero)) { var = zero; }
+            if (var.isGreaterThan(zero)) {
+                var = zero;
+            }
         }
         return var;
     }

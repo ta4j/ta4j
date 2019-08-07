@@ -54,12 +54,11 @@ public class PreviousValueIndicatorTest {
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();
-            double max = Math.max(close+r.nextDouble(), open+r.nextDouble());
-            double min = Math.min(0, Math.min(close-r.nextDouble(), open-r.nextDouble()));
-            ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001-i);
+            double max = Math.max(close + r.nextDouble(), open + r.nextDouble());
+            double min = Math.min(0, Math.min(close - r.nextDouble(), open - r.nextDouble()));
+            ZonedDateTime dateTime = ZonedDateTime.now().minusSeconds(1001 - i);
             series.addBar(dateTime, open, close, max, min, i);
         }
-
 
         this.openPriceIndicator = new OpenPriceIndicator(this.series);
         this.lowPriceIndicator = new LowPriceIndicator(this.series);
@@ -72,25 +71,25 @@ public class PreviousValueIndicatorTest {
     @Test
     public void shouldBePreviousValueFromIndicator() {
 
-        //test 1 with openPrice-indicator
+        // test 1 with openPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), openPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i - 1));
         }
 
-        //test 2 with minPrice-indicator
+        // test 2 with minPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i - 1));
         }
 
-        //test 3 with maxPrice-indicator
+        // test 3 with maxPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), highPriceIndicator.getValue(i-1));
+            assertEquals(prevValueIndicator.getValue(i), highPriceIndicator.getValue(i - 1));
         }
     }
 
@@ -104,21 +103,21 @@ public class PreviousValueIndicatorTest {
     private void testWithN(int n) {
 
         // test 1 with volume-indicator
-        prevValueIndicator = new PreviousValueIndicator(volumeIndicator,n);
+        prevValueIndicator = new PreviousValueIndicator(volumeIndicator, n);
         for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(0));
         }
         for (int i = n; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(i-n));
+            assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(i - n));
         }
 
         // test 2 with ema-indicator
-        prevValueIndicator = new PreviousValueIndicator(emaIndicator,n);
+        prevValueIndicator = new PreviousValueIndicator(emaIndicator, n);
         for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(0));
         }
         for (int i = n; i < this.series.getBarCount(); i++) {
-            assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i-n));
+            assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i - n));
         }
     }
 }

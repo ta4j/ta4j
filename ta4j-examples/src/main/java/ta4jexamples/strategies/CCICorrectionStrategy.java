@@ -40,12 +40,13 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * CCI Correction Strategy
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction">
- *         http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
  */
 public class CCICorrectionStrategy {
 
     /**
-     * @param series a time series
+     * @param series
+     *            a time series
      * @return a CCI correction strategy
      */
     public static Strategy buildStrategy(TimeSeries series) {
@@ -83,6 +84,7 @@ public class CCICorrectionStrategy {
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

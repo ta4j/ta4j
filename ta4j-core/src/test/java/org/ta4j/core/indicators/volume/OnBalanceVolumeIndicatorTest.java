@@ -48,12 +48,12 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
     public void getValue() {
         ZonedDateTime now = ZonedDateTime.now();
         List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBar(now, 0, 10, 0, 0, 0, 4, 0,numFunction));
-        bars.add(new MockBar(now, 0, 5, 0, 0, 0, 2, 0,numFunction));
-        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 3, 0,numFunction));
-        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 8, 0,numFunction));
-        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 6, 0,numFunction));
-        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0,numFunction));
+        bars.add(new MockBar(now, 0, 10, 0, 0, 0, 4, 0, numFunction));
+        bars.add(new MockBar(now, 0, 5, 0, 0, 0, 2, 0, numFunction));
+        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 3, 0, numFunction));
+        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 8, 0, numFunction));
+        bars.add(new MockBar(now, 0, 7, 0, 0, 0, 6, 0, numFunction));
+        bars.add(new MockBar(now, 0, 6, 0, 0, 0, 10, 0, numFunction));
 
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(new MockTimeSeries(bars));
         assertNumEquals(0, obv.getValue(0));
@@ -68,7 +68,7 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
     public void stackOverflowError() {
         List<Bar> bigListOfBars = new ArrayList<Bar>();
         for (int i = 0; i < 10000; i++) {
-            bigListOfBars.add(new MockBar(i,numFunction));
+            bigListOfBars.add(new MockBar(i, numFunction));
         }
         MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);

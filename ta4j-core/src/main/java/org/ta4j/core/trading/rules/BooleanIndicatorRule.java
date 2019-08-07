@@ -38,7 +38,8 @@ public class BooleanIndicatorRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param indicator a boolean indicator
+     * @param indicator
+     *            a boolean indicator
      */
     public BooleanIndicatorRule(Indicator<Boolean> indicator) {
         this.indicator = indicator;

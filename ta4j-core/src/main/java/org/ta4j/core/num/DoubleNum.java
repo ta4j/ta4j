@@ -178,7 +178,8 @@ public class DoubleNum implements Num {
     /**
      * Checks if this value is greater than another.
      *
-     * @param other the other value, not null
+     * @param other
+     *            the other value, not null
      * @return true is this is greater than the specified value, false otherwise
      */
     public boolean isGreaterThan(Num other) {
@@ -188,7 +189,8 @@ public class DoubleNum implements Num {
     /**
      * Checks if this value is greater than or equal to another.
      *
-     * @param other the other value, not null
+     * @param other
+     *            the other value, not null
      * @return true is this is greater than or equal to the specified value, false otherwise
      */
     public boolean isGreaterThanOrEqual(Num other) {
@@ -198,7 +200,8 @@ public class DoubleNum implements Num {
     /**
      * Checks if this value is less than another.
      *
-     * @param other the other value, not null
+     * @param other
+     *            the other value, not null
      * @return true is this is less than the specified value, false otherwise
      */
     public boolean isLessThan(Num other) {

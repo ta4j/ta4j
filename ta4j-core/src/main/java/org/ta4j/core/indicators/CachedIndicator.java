@@ -45,15 +45,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final List<T> results = new ArrayList<T>();
 
     /**
-     * Should always be the index of the last result in the results list.
-     * I.E. the last calculated result.
+     * Should always be the index of the last result in the results list. I.E. the last calculated result.
      */
     protected int highestResultIndex = -1;
 
     /**
      * Constructor.
      *
-     * @param series the related time series
+     * @param series
+     *            the related time series
      */
     public CachedIndicator(TimeSeries series) {
         super(series);
@@ -62,7 +62,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Constructor.
      *
-     * @param indicator a related indicator (with a time series)
+     * @param indicator
+     *            a related indicator (with a time series)
      */
     public CachedIndicator(Indicator<?> indicator) {
         this(indicator.getTimeSeries());
@@ -125,7 +126,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * @param index the bar index
+     * @param index
+     *            the bar index
      * @return the value of the indicator
      */
     protected abstract T calculate(int index);
@@ -133,8 +135,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Increases the size of cached results buffer.
      *
-     * @param index     the index to increase length to
-     * @param maxLength the maximum length of the results buffer
+     * @param index
+     *            the index to increase length to
+     * @param maxLength
+     *            the maximum length of the results buffer
      */
     private void increaseLengthTo(int index, int maxLength) {
         if (highestResultIndex > -1) {
@@ -154,10 +158,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Removes the N first results which exceed the maximum bar count.
-     * (i.e. keeps only the last maximumResultCount results)
+     * Removes the N first results which exceed the maximum bar count. (i.e. keeps only the last maximumResultCount
+     * results)
      *
-     * @param maximumResultCount the number of results to keep
+     * @param maximumResultCount
+     *            the number of results to keep
      */
     private void removeExceedingResults(int maximumResultCount) {
         int resultCount = results.size();

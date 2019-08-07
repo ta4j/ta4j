@@ -76,7 +76,6 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
         return bars;
     }
 
-
     /**
      * Tests if the bars are upscaled correctly from 1day to 5day
      */

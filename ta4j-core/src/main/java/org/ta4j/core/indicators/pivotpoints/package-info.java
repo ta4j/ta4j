@@ -22,6 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 /**
- * Indicators for the realization of different 'Pivot Points' 
+ * Indicators for the realization of different 'Pivot Points'
  */
 package org.ta4j.core.indicators.pivotpoints;

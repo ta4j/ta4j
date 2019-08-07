@@ -34,7 +34,9 @@ public class FixedBooleanIndicator extends FixedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * @param values the values to be returned by this indicator
+     * 
+     * @param values
+     *            the values to be returned by this indicator
      */
     public FixedBooleanIndicator(TimeSeries series, Boolean... values) {
         super(series, values);

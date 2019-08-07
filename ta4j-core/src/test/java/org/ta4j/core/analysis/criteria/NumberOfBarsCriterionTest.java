@@ -55,8 +55,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(2, series),
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion numberOfBars = getCriterion();

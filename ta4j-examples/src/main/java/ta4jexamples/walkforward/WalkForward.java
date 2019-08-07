@@ -47,17 +47,19 @@ import java.util.Map;
  * Walk-forward optimization example.
  *
  * @see <a href="http://en.wikipedia.org/wiki/Walk_forward_optimization">
- *         http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
+ *      http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
  * @see <a href="http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk">
- *         http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
+ *      http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
  */
 public class WalkForward {
 
     /**
      * Builds a list of split indexes from splitDuration.
      *
-     * @param series        the time series to get split begin indexes of
-     * @param splitDuration the duration between 2 splits
+     * @param series
+     *            the time series to get split begin indexes of
+     * @param splitDuration
+     *            the duration between 2 splits
      * @return a list of begin indexes after split
      */
     public static List<Integer> getSplitBeginIndexes(TimeSeries series, Duration splitDuration) {
@@ -98,9 +100,12 @@ public class WalkForward {
      * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
      * The bar of the series are shared between the original time series and the returned one (i.e. no copy).
      *
-     * @param series     the time series to get a sub-series of
-     * @param beginIndex the begin index (inclusive) of the time series
-     * @param duration   the duration of the time series
+     * @param series
+     *            the time series to get a sub-series of
+     * @param beginIndex
+     *            the begin index (inclusive) of the time series
+     * @param duration
+     *            the duration of the time series
      * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
      */
     public static TimeSeries subseries(TimeSeries series, int beginIndex, Duration duration) {
@@ -132,15 +137,17 @@ public class WalkForward {
      * The current time series is splitted every splitDuration.<br>
      * The last sub-series may last less than sliceDuration.
      *
-     * @param series        the time series to split
-     * @param splitDuration the duration between 2 splits
-     * @param sliceDuration the duration of each sub-series
+     * @param series
+     *            the time series to split
+     * @param splitDuration
+     *            the duration between 2 splits
+     * @param sliceDuration
+     *            the duration of each sub-series
      * @return a list of sub-series
      */
     public static List<TimeSeries> splitSeries(TimeSeries series, Duration splitDuration, Duration sliceDuration) {
         ArrayList<TimeSeries> subseries = new ArrayList<>();
-        if (splitDuration != null && !splitDuration.isZero()
-                && sliceDuration != null && !sliceDuration.isZero()) {
+        if (splitDuration != null && !splitDuration.isZero() && sliceDuration != null && !sliceDuration.isZero()) {
 
             List<Integer> beginIndexes = getSplitBeginIndexes(series, splitDuration);
             for (Integer subseriesBegin : beginIndexes) {
@@ -151,7 +158,8 @@ public class WalkForward {
     }
 
     /**
-     * @param series the time series
+     * @param series
+     *            the time series
      * @return a map (key: strategy, value: name) of trading strategies
      */
     public static Map<Strategy, String> buildStrategiesMap(TimeSeries series) {
@@ -186,7 +194,8 @@ public class WalkForward {
                 Num profit = profitCriterion.calculate(slice, tradingRecord);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
-            Strategy bestStrategy = profitCriterion.chooseBest(sliceManager, new ArrayList<Strategy>(strategies.keySet()));
+            Strategy bestStrategy = profitCriterion.chooseBest(sliceManager,
+                    new ArrayList<Strategy>(strategies.keySet()));
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }
     }

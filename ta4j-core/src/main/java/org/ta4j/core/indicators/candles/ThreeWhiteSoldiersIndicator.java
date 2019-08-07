@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Three white soldiers indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/t/three_white_soldiers.asp">
- *     http://www.investopedia.com/terms/t/three_white_soldiers.asp</a>
+ *      http://www.investopedia.com/terms/t/three_white_soldiers.asp</a>
  */
 public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
@@ -48,9 +48,13 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * @param series a time series
-     * @param barCount the number of bars used to calculate the average upper shadow
-     * @param factor the factor used when checking if a candle has a very short upper shadow
+     * 
+     * @param series
+     *            a time series
+     * @param barCount
+     *            the number of bars used to calculate the average upper shadow
+     * @param factor
+     *            the factor used when checking if a candle has a very short upper shadow
      */
     public ThreeWhiteSoldiersIndicator(TimeSeries series, int barCount, Num factor) {
         super(series);
@@ -66,14 +70,13 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
             return false;
         }
         blackCandleIndex = index - 3;
-        return getTimeSeries().getBar(blackCandleIndex).isBearish()
-                && isWhiteSoldier(index - 2)
-                && isWhiteSoldier(index - 1)
-                && isWhiteSoldier(index);
+        return getTimeSeries().getBar(blackCandleIndex).isBearish() && isWhiteSoldier(index - 2)
+                && isWhiteSoldier(index - 1) && isWhiteSoldier(index);
     }
 
     /**
-     * @param index the bar/candle index
+     * @param index
+     *            the bar/candle index
      * @return true if the bar/candle has a very short upper shadow, false otherwise
      */
     private boolean hasVeryShortUpperShadow(int index) {
@@ -85,7 +88,8 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
     }
 
     /**
-     * @param index the current bar/candle index
+     * @param index
+     *            the current bar/candle index
      * @return true if the current bar/candle is growing, false otherwise
      */
     private boolean isGrowing(int index) {
@@ -98,12 +102,13 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
         // Opens within the body of the previous candle
         return currOpenPrice.isGreaterThan(prevOpenPrice) && currOpenPrice.isLessThan(prevClosePrice)
-                // Closes above the previous close price
+        // Closes above the previous close price
                 && currClosePrice.isGreaterThan(prevClosePrice);
     }
 
     /**
-     * @param index the current bar/candle index
+     * @param index
+     *            the current bar/candle index
      * @return true if the current bar/candle is a white soldier, false otherwise
      */
     private boolean isWhiteSoldier(int index) {
@@ -112,8 +117,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
         if (currBar.isBullish()) {
             if (prevBar.isBearish()) {
                 // First soldier case
-                return hasVeryShortUpperShadow(index)
-                        && currBar.getOpenPrice().isGreaterThan(prevBar.getLowPrice());
+                return hasVeryShortUpperShadow(index) && currBar.getOpenPrice().isGreaterThan(prevBar.getLowPrice());
             } else {
                 return hasVeryShortUpperShadow(index) && isGrowing(index);
             }
