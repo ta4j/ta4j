@@ -9,4 +9,4 @@ jdk:
   - openjdk8
 
 script:
-  -  mvn -B test
+  -  mvn -B test license:check formatter:validate
