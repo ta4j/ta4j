@@ -6,5 +6,4 @@ services:
   - xvfb
   
 jdk:
-  - oraclejdk8
-#  - openjdk8
+  - openjdk8
