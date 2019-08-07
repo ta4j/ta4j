@@ -144,5 +144,4 @@ public class TimeSeriesReplaceTest extends AbstractIndicatorTest<TimeSeries, Num
 		// there must be 1 bar with invalid data (e.g. price, volume)
 		assertEquals(missingBars.get(3), bar8.getBeginTime());
 	}
-
 }
