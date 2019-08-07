@@ -139,7 +139,7 @@ public class TimeSeriesReplaceTest extends AbstractIndicatorTest<TimeSeries, Num
 
 		System.out.println(missingBars);
 
-		// there must be 3 missing bar (bar2, bar3, bar6)
+		// there must be 3 missing bars (bar2, bar3, bar6)
 		assertEquals(missingBars.get(0), time.plusDays(2).minus(timePeriod));
 		assertEquals(missingBars.get(1), time.plusDays(3).minus(timePeriod));
 		assertEquals(missingBars.get(2), time.plusDays(6).minus(timePeriod));
