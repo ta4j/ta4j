@@ -167,6 +167,13 @@
 				</configuration>
 			</plugin>
 
+			<!-- Source formatter -->
+			<plugin>
+				<groupId>net.revelc.code.formatter</groupId>
+				<artifactId>formatter-maven-plugin</artifactId>
+				<version>2.10.0</version>
+			</plugin>
+
 			<!-- Releases -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
