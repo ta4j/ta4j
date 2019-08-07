@@ -518,7 +518,7 @@ public class BaseTimeSeries implements TimeSeries {
                         missingBars.add(bar.getBeginTime());
                 }
         }
-
+		
         return missingBars;
 	}
 }
