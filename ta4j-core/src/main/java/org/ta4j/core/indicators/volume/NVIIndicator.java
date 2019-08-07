@@ -32,11 +32,10 @@ import org.ta4j.core.num.Num;
  * Negative Volume Index (NVI) indicator.
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde</a>
  * @see <a href="http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75">
- *     http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75</a>
- * @see <a href="http://www.investopedia.com/terms/n/nvi.asp">
- *     http://www.investopedia.com/terms/n/nvi.asp</a>
+ *      http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75</a>
+ * @see <a href="http://www.investopedia.com/terms/n/nvi.asp"> http://www.investopedia.com/terms/n/nvi.asp</a>
  */
 public class NVIIndicator extends RecursiveCachedIndicator<Num> {
 

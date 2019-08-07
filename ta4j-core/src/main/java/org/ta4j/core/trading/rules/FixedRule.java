@@ -38,7 +38,9 @@ public class FixedRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param indexes a sequence of indexes
+     * 
+     * @param indexes
+     *            a sequence of indexes
      */
     public FixedRule(int... indexes) {
         this.indexes = Arrays.copyOf(indexes, indexes.length);

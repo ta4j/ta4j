@@ -26,14 +26,14 @@ package org.ta4j.core.cost;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
-
 public class ZeroCostModel implements CostModel {
 
     /**
      * Constructor for a trading cost-free model.
      *
      */
-    public ZeroCostModel() {}
+    public ZeroCostModel() {
+    }
 
     public Num calculate(Trade trade) {
         return calculate(trade, 0);
@@ -49,7 +49,9 @@ public class ZeroCostModel implements CostModel {
 
     /**
      * Evaluate if two models are equal
-     * @param otherModel model to compare with
+     * 
+     * @param otherModel
+     *            model to compare with
      */
     public boolean equals(CostModel otherModel) {
         boolean equality = false;

@@ -52,11 +52,13 @@ public class SimpleMovingAverageBacktest {
         Strategy strategy3DaySma = create3DaySmaStrategy(series);
 
         TimeSeriesManager seriesManager = new TimeSeriesManager(series);
-        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY,
+                PrecisionNum.valueOf(50));
         System.out.println(tradingRecord3DaySma);
 
         Strategy strategy2DaySma = create2DaySmaStrategy(series);
-        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY, PrecisionNum.valueOf(50));
+        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY,
+                PrecisionNum.valueOf(50));
         System.out.println(tradingRecord2DaySma);
 
         AnalysisCriterion criterion = new TotalProfitCriterion();
@@ -80,15 +82,10 @@ public class SimpleMovingAverageBacktest {
         return series;
     }
 
-    private static BaseBar createBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice, Number volume) {
-        return BaseBar.builder(PrecisionNum::valueOf, Number.class)
-                .timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
-                .openPrice(openPrice)
-                .highPrice(highPrice)
-                .lowPrice(lowPrice)
-                .closePrice(closePrice)
-                .volume(volume)
+    private static BaseBar createBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
+            Number closePrice, Number volume) {
+        return BaseBar.builder(PrecisionNum::valueOf, Number.class).timePeriod(Duration.ofDays(1)).endTime(endTime)
+                .openPrice(openPrice).highPrice(highPrice).lowPrice(lowPrice).closePrice(closePrice).volume(volume)
                 .build();
     }
 

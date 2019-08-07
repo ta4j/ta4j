@@ -23,7 +23,6 @@
  */
 package org.ta4j.core;
 
-
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
@@ -90,13 +89,13 @@ public interface Bar extends Serializable {
     ZonedDateTime getEndTime();
 
     /**
-     * @param timestamp a timestamp
-     * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
+     * @param timestamp
+     *            a timestamp
+     * @return true if the provided timestamp is between the begin time and the end time of the current period, false
+     *         otherwise
      */
     default boolean inPeriod(ZonedDateTime timestamp) {
-        return timestamp != null
-                && !timestamp.isBefore(getBeginTime())
-                && timestamp.isBefore(getEndTime());
+        return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
     }
 
     /**
@@ -133,19 +132,25 @@ public interface Bar extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
-     * @param tradeVolume the traded volume
-     * @param tradePrice the price
+     * 
+     * @param tradeVolume
+     *            the traded volume
+     * @param tradePrice
+     *            the price
      * @deprecated use corresponding function of TimeSeries
      */
     @Deprecated
     default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
-        addTrade(numFunction.apply(tradeVolume),numFunction.apply(tradePrice));
+        addTrade(numFunction.apply(tradeVolume), numFunction.apply(tradePrice));
     }
 
     /**
      * Adds a trade at the end of bar period.
-     * @param tradeVolume the traded volume
-     * @param tradePrice the price
+     * 
+     * @param tradeVolume
+     *            the traded volume
+     * @param tradePrice
+     *            the price
      * @deprecated use corresponding function of TimeSeries
      */
     @Deprecated
@@ -155,17 +160,19 @@ public interface Bar extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
-     * @param tradeVolume the traded volume
-     * @param tradePrice the price
+     * 
+     * @param tradeVolume
+     *            the traded volume
+     * @param tradePrice
+     *            the price
      */
     void addTrade(Num tradeVolume, Num tradePrice);
 
-
-    default void addPrice(String price, Function<Number, Num> numFunction){
+    default void addPrice(String price, Function<Number, Num> numFunction) {
         addPrice(numFunction.apply(new BigDecimal(price)));
     }
 
-    default void addPrice(Number price, Function<Number, Num> numFunction){
+    default void addPrice(Number price, Function<Number, Num> numFunction) {
         addPrice(numFunction.apply(price));
     }
 

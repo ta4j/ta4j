@@ -33,12 +33,13 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
+public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
 
     private ExternalCriterionTest xls;
 
     public LinearTransactionCostCriterionTest(Function<Number, Num> numFunction) throws Exception {
-        super((params) -> new LinearTransactionCostCriterion((double) params[0], (double) params[1], (double) params[2]),numFunction);
+        super((params) -> new LinearTransactionCostCriterion((double) params[0], (double) params[1],
+                (double) params[2]), numFunction);
         xls = new XLSCriterionTest(this.getClass(), "LTC.xls", 16, 6, numFunction);
     }
 
@@ -59,15 +60,17 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void dummyData() {
-        MockTimeSeries series = new MockTimeSeries(numFunction,100, 150, 200, 100, 50, 100);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 150, 200, 100, 50, 100);
         TradingRecord tradingRecord = new BaseTradingRecord();
         Num criterion;
 
-        tradingRecord.operate(0);  tradingRecord.operate(1);
+        tradingRecord.operate(0);
+        tradingRecord.operate(1);
         criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
         assertNumEquals(12.861, criterion);
 
-        tradingRecord.operate(2);  tradingRecord.operate(3);
+        tradingRecord.operate(2);
+        tradingRecord.operate(3);
         criterion = getCriterion(1000d, 0.005, 0.2).calculate(series, tradingRecord);
         assertNumEquals(24.3759, criterion);
 
@@ -78,15 +81,17 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void fixedCost() {
-        MockTimeSeries series = new MockTimeSeries(numFunction,100, 105, 110, 100, 95, 105);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord();
         Num criterion;
 
-        tradingRecord.operate(0);  tradingRecord.operate(1);
+        tradingRecord.operate(0);
+        tradingRecord.operate(1);
         criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
         assertNumEquals(2.6d, criterion);
 
-        tradingRecord.operate(2);  tradingRecord.operate(3);
+        tradingRecord.operate(2);
+        tradingRecord.operate(3);
         criterion = getCriterion(1000d, 0d, 1.3d).calculate(series, tradingRecord);
         assertNumEquals(5.2d, criterion);
 

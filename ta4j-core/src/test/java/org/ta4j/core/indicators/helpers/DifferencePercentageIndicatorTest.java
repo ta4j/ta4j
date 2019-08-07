@@ -45,15 +45,8 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void getValueWithoutThreshold() {
         TimeSeries series = new MockTimeSeries(numFunction);
-        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
-            numOf(100),
-            numOf(101),
-            numOf(98.98),
-            numOf(102.186952),
-            numOf(91.9682568),
-            numOf(100.5213046824),
-            numOf(101.526517729224)
-        );
+        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numOf(100), numOf(101), numOf(98.98),
+                numOf(102.186952), numOf(91.9682568), numOf(100.5213046824), numOf(101.526517729224));
 
         percentageChangeIndicator = new DifferencePercentage(mockIndicator);
         assertNumEquals(NaN.NaN, percentageChangeIndicator.getValue(0));
@@ -68,19 +61,9 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void getValueWithNumThreshold() {
         TimeSeries series = new MockTimeSeries(numFunction);
-        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
-            numOf(1000),
-            numOf(1010),
-            numOf(1020),
-            numOf(1050),
-            numOf(1060.5),
-            numOf(1081.5),
-            numOf(1102.5),
-            numOf(1091.475),
-            numOf(1113.525),
-            numOf(1036.35),
-            numOf(1067.4405)
-        );
+        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numOf(1000), numOf(1010), numOf(1020),
+                numOf(1050), numOf(1060.5), numOf(1081.5), numOf(1102.5), numOf(1091.475), numOf(1113.525),
+                numOf(1036.35), numOf(1067.4405));
 
         percentageChangeIndicator = new DifferencePercentage(mockIndicator, numOf(5));
         assertNumEquals(NaN.NaN, percentageChangeIndicator.getValue(0));
@@ -99,13 +82,8 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void getValueWithNumberThreshold() {
         TimeSeries series = new MockTimeSeries(numFunction);
-        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
-            numOf(1000),
-            numOf(1000),
-            numOf(1010),
-            numOf(1025),
-            numOf(1038.325)
-        );
+        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numOf(1000), numOf(1000), numOf(1010),
+                numOf(1025), numOf(1038.325));
 
         percentageChangeIndicator = new DifferencePercentage(mockIndicator, 1.5);
         assertNumEquals(NaN.NaN, percentageChangeIndicator.getValue(0));

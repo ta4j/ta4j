@@ -36,7 +36,7 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries data;
 
@@ -46,14 +46,14 @@ public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,1, 2, 3, 4, 5, 6);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 5, 6);
     }
 
     @Test
     public void test() {
-      
+
         SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
-      
+
         assertNumEquals(1.0, zScore.getValue(1));
         assertNumEquals(1.224744871391589, zScore.getValue(2));
         assertNumEquals(1.34164078649987387, zScore.getValue(3));

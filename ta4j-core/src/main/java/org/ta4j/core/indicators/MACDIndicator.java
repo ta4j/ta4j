@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
  * Moving average convergence divergence (MACDIndicator) indicator. <br/>
  * Aka. MACD Absolute Price Oscillator (APO).
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd</a>
  */
 public class MACDIndicator extends CachedIndicator<Num> {
 
@@ -43,7 +44,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
     /**
      * Constructor with shortBarCount "12" and longBarCount "26".
      *
-     * @param indicator the indicator
+     * @param indicator
+     *            the indicator
      */
     public MACDIndicator(Indicator<Num> indicator) {
         this(indicator, 12, 26);
@@ -52,9 +54,12 @@ public class MACDIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator     the indicator
-     * @param shortBarCount the short time frame (normally 12)
-     * @param longBarCount  the long time frame (normally 26)
+     * @param indicator
+     *            the indicator
+     * @param shortBarCount
+     *            the short time frame (normally 12)
+     * @param longBarCount
+     *            the long time frame (normally 26)
      */
     public MACDIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
         super(indicator);

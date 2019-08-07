@@ -78,7 +78,8 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(5.633, bbuSMA.getValue(8));
         assertNumEquals(4.2761, bbuSMA.getValue(9));
 
-        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation, numFunction.apply(1.5));
+        BollingerBandsUpperIndicator bbuSMAwithK = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation,
+                numFunction.apply(1.5));
 
         assertNumEquals(1.5, bbuSMAwithK.getK());
 

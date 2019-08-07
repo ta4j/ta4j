@@ -29,7 +29,6 @@ import org.ta4j.core.num.Num;
 
 import java.util.List;
 
-
 public class MockIndicator implements Indicator<Num> {
 
     private static final long serialVersionUID = -1083818948051189894L;
@@ -39,8 +38,10 @@ public class MockIndicator implements Indicator<Num> {
     /**
      * Constructor.
      * 
-     * @param series TimeSeries of the Indicator
-     * @param values Indicator values
+     * @param series
+     *            TimeSeries of the Indicator
+     * @param values
+     *            Indicator values
      */
     public MockIndicator(TimeSeries series, List<Num> values) {
         this.series = series;
@@ -50,7 +51,8 @@ public class MockIndicator implements Indicator<Num> {
     /**
      * Gets a value from the Indicator
      * 
-     * @param index Indicator value to get
+     * @param index
+     *            Indicator value to get
      * @return Num Indicator value at index
      */
     public Num getValue(int index) {

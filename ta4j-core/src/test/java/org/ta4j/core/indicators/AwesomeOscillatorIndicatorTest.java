@@ -56,11 +56,11 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
         List<Bar> bars = new ArrayList<Bar>();
 
-        bars.add(new MockBar(0, 0, 16, 8,numFunction));
-        bars.add(new MockBar(0, 0, 12, 6,numFunction));
-        bars.add(new MockBar(0, 0, 18, 14,numFunction));
-        bars.add(new MockBar(0, 0, 10, 6,numFunction));
-        bars.add(new MockBar(0, 0, 8, 4,numFunction));
+        bars.add(new MockBar(0, 0, 16, 8, numFunction));
+        bars.add(new MockBar(0, 0, 12, 6, numFunction));
+        bars.add(new MockBar(0, 0, 18, 14, numFunction));
+        bars.add(new MockBar(0, 0, 10, 6, numFunction));
+        bars.add(new MockBar(0, 0, 8, 4, numFunction));
 
         this.series = new MockTimeSeries(bars);
     }
@@ -71,7 +71,7 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
         assertNumEquals(0, awesome.getValue(0));
         assertNumEquals(0, awesome.getValue(1));
-        assertNumEquals(1d/6, awesome.getValue(2));
+        assertNumEquals(1d / 6, awesome.getValue(2));
         assertNumEquals(1, awesome.getValue(3));
         assertNumEquals(-3, awesome.getValue(4));
     }

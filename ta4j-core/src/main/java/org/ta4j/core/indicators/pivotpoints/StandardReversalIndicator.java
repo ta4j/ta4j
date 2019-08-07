@@ -35,7 +35,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * Pivot Reversal Indicator.
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
 public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -47,8 +47,10 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
      *
      * Calculates the (standard) reversal for the corresponding pivot level
      *
-     * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
-     * @param level               the {@link PivotLevel} for this reversal
+     * @param pivotPointIndicator
+     *            the {@link PivotPointIndicator} for this reversal
+     * @param level
+     *            the {@link PivotLevel} for this reversal
      */
     public StandardReversalIndicator(PivotPointIndicator pivotPointIndicator, PivotLevel level) {
         super(pivotPointIndicator);
@@ -63,20 +65,20 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
             return NaN;
         }
         switch (level) {
-            case RESISTANCE_3:
-                return calculateR3(barsOfPreviousPeriod, index);
-            case RESISTANCE_2:
-                return calculateR2(barsOfPreviousPeriod, index);
-            case RESISTANCE_1:
-                return calculateR1(barsOfPreviousPeriod, index);
-            case SUPPORT_1:
-                return calculateS1(barsOfPreviousPeriod, index);
-            case SUPPORT_2:
-                return calculateS2(barsOfPreviousPeriod, index);
-            case SUPPORT_3:
-                return calculateS3(barsOfPreviousPeriod, index);
-            default:
-                return NaN;
+        case RESISTANCE_3:
+            return calculateR3(barsOfPreviousPeriod, index);
+        case RESISTANCE_2:
+            return calculateR2(barsOfPreviousPeriod, index);
+        case RESISTANCE_1:
+            return calculateR1(barsOfPreviousPeriod, index);
+        case SUPPORT_1:
+            return calculateS1(barsOfPreviousPeriod, index);
+        case SUPPORT_2:
+            return calculateS2(barsOfPreviousPeriod, index);
+        case SUPPORT_3:
+            return calculateS3(barsOfPreviousPeriod, index);
+        default:
+            return NaN;
         }
 
     }

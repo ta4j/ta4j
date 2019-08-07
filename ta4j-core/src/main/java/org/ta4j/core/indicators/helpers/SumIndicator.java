@@ -35,11 +35,12 @@ import org.ta4j.core.num.Num;
 public class SumIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num>[] operands;
-    
+
     /**
-     * Constructor.
-     * (operand0 plus operand1 plus ... plus operandN)
-     * @param operands the operand indicators for the sum
+     * Constructor. (operand0 plus operand1 plus ... plus operandN)
+     * 
+     * @param operands
+     *            the operand indicators for the sum
      */
     @SafeVarargs
     public SumIndicator(Indicator<Num>... operands) {

@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.volume;
 
-
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
@@ -34,9 +33,9 @@ import org.ta4j.core.num.Num;
  * Chaikin Money Flow (CMF) indicator.
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf"</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf"</a>
  * @see <a href="http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm">
- *     http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm</a>
+ *      http://www.fmlabs.com/reference/default.htm?url=ChaikinMoneyFlow.htm</a>
  */
 public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
@@ -64,7 +63,8 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param index the bar index
+     * @param index
+     *            the bar index
      * @return the money flow volume for the i-th period/bar
      */
     private Num getMoneyFlowVolume(int index) {

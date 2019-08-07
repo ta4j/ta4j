@@ -37,14 +37,14 @@ import static org.junit.Assert.assertTrue;
 public class OverIndicatorRuleTest {
 
     private OverIndicatorRule rule;
-    
+
     @Before
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
         rule = new OverIndicatorRule(indicator, series.numOf(5));
     }
-    
+
     @Test
     public void isSatisfied() {
         assertTrue(rule.isSatisfied(0));
@@ -57,4 +57,3 @@ public class OverIndicatorRuleTest {
         assertTrue(rule.isSatisfied(7));
     }
 }
-        

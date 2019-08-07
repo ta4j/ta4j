@@ -37,7 +37,9 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param values the values to be returned by this indicator
+     * 
+     * @param values
+     *            the values to be returned by this indicator
      */
     public FixedDecimalIndicator(TimeSeries series, double... values) {
         super(series);
@@ -45,10 +47,12 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
             addValue(numOf(value));
         }
     }
-    
+
     /**
      * Constructor.
-     * @param values the values to be returned by this indicator
+     * 
+     * @param values
+     *            the values to be returned by this indicator
      */
     public FixedDecimalIndicator(TimeSeries series, String... values) {
         super(series);

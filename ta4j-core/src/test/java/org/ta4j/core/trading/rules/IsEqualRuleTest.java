@@ -37,14 +37,14 @@ import static org.junit.Assert.assertTrue;
 public class IsEqualRuleTest {
 
     private IsEqualRule rule;
-    
+
     @Before
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 10, 0, -20);
         rule = new IsEqualRule(indicator, series.numOf(20));
     }
-    
+
     @Test
     public void isSatisfied() {
         assertTrue(rule.isSatisfied(0));

@@ -30,8 +30,7 @@ import org.ta4j.core.num.Num;
 /**
  * Simple boolean transform indicator.
  *
- * Transforms any decimal indicator to a boolean indicator by using common
- * logical operators.
+ * Transforms any decimal indicator to a boolean indicator by using common logical operators.
  */
 public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
@@ -43,32 +42,27 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
     public enum BooleanTransformType {
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.equals(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.equals(coefficient).
          */
         equals,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isGreaterThan(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isGreaterThan(coefficient).
          */
         isGreaterThan,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isGreaterThanOrEqual(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isGreaterThanOrEqual(coefficient).
          */
         isGreaterThanOrEqual,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isLessThan(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isLessThan(coefficient).
          */
         isLessThan,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isLessThanOrEqual(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isLessThanOrEqual(coefficient).
          */
         isLessThanOrEqual
     }
@@ -78,38 +72,32 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      */
     public enum BooleanTransformSimpleType {
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isNaN().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNaN().
          */
         isNaN,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isNegative().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNegative().
          */
         isNegative,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isNegativeOrZero().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNegativeOrZero().
          */
         isNegativeOrZero,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isPositive().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isPositive().
          */
         isPositive,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isPositiveOrZero().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isPositiveOrZero().
          */
         isPositiveOrZero,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isZero().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isZero().
          */
         isZero
     }
@@ -122,9 +110,12 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param coefficient the value for transformation
-     * @param type the type of the transformation
+     * @param indicator
+     *            the indicator
+     * @param coefficient
+     *            the value for transformation
+     * @param type
+     *            the type of the transformation
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
         super(indicator);
@@ -136,8 +127,10 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param type the type of the transformation
+     * @param indicator
+     *            the indicator
+     * @param type
+     *            the type of the transformation
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
         super(indicator);

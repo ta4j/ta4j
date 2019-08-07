@@ -40,7 +40,6 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-
 public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private TimeSeries seriesForRun;
@@ -59,19 +58,16 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num
     public void setUp() {
 
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
-        seriesForRun = new MockTimeSeries(numFunction,
-                new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
-                new ZonedDateTime[] {
-                    ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2013-12-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2014-02-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2015-01-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
-                    ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf)
-                });
+        seriesForRun = new MockTimeSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
+                new ZonedDateTime[] { ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2013-12-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2014-02-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-01-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
+                        ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
         manager = new TimeSeriesManager(seriesForRun);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
@@ -148,18 +144,20 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num
     }
 
     @Test
-    public void runOnSeriesSlices(){
+    public void runOnSeriesSlices() {
         ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
-        TimeSeries series = new MockTimeSeries(numFunction, new double[]{1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d},
-                    new ZonedDateTime[]{dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001), dateTime.withYear(2001), dateTime.withYear(2002),
-                    dateTime.withYear(2002), dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004), dateTime.withYear(2005)});
+        TimeSeries series = new MockTimeSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d },
+                new ZonedDateTime[] { dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001),
+                        dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
+                        dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
+                        dateTime.withYear(2005) });
         manager.setTimeSeries(series);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
         List<Trade> trades = manager.run(aStrategy, 0, 1).getTrades();
         assertEquals(1, trades.size());
-        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)),trades.get(0).getEntry());
+        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)), trades.get(0).getEntry());
         assertEquals(Order.sellAt(2, series.getBar(2).getClosePrice(), numOf(1)), trades.get(0).getExit());
 
         trades = manager.run(aStrategy, 2, 3).getTrades();

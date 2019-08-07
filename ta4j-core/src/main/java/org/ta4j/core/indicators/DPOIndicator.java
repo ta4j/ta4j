@@ -31,17 +31,15 @@ import org.ta4j.core.num.Num;
 /**
  * The Detrended Price Oscillator (DPO) indicator.
  *
- * The Detrended Price Oscillator (DPO) is an indicator designed to remove trend
- * from price and make it easier to identify cycles. DPO does not extend to the
- * last date because it is based on a displaced moving average. However,
- * alignment with the most recent is not an issue because DPO is not a momentum
- * oscillator. Instead, DPO is used to identify cycles highs/lows and estimate
- * cycle length.
+ * The Detrended Price Oscillator (DPO) is an indicator designed to remove trend from price and make it easier to
+ * identify cycles. DPO does not extend to the last date because it is based on a displaced moving average. However,
+ * alignment with the most recent is not an issue because DPO is not a momentum oscillator. Instead, DPO is used to
+ * identify cycles highs/lows and estimate cycle length.
  *
  * In short, DPO(20) equals price 11 days ago less the 20-day SMA.
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
@@ -53,8 +51,10 @@ public class DPOIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the series
-     * @param barCount the time frame
+     * @param series
+     *            the series
+     * @param barCount
+     *            the time frame
      */
     public DPOIndicator(TimeSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
@@ -63,8 +63,10 @@ public class DPOIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param price    the price
-     * @param barCount the time frame
+     * @param price
+     *            the price
+     * @param barCount
+     *            the time frame
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);

@@ -33,7 +33,7 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
+public class NumberOfTradesCriterionTest extends AbstractCriterionTest {
 
     public NumberOfTradesCriterionTest(Function<Number, Num> numFunction) {
         super((params) -> new NumberOfTradesCriterion(), numFunction);
@@ -50,8 +50,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
     @Test
     public void calculateWithTwoTrades() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(2, series),
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion();

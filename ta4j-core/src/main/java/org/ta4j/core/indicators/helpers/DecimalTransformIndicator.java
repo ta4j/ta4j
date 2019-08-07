@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Simple decimal transform indicator.
  *
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num PrecisionNum} to to {@link Double double}
- * Transforms any indicator by using common math operations.
+ * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts
+ *          {@link Num PrecisionNum} to to {@link Double double} Transforms any indicator by using common math
+ *          operations.
  */
 public class DecimalTransformIndicator extends CachedIndicator<Num> {
 
@@ -43,38 +44,32 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
     public enum DecimalTransformType {
 
         /**
-         * Transforms the input indicator 
-         * by indicator.plus(coefficient).
+         * Transforms the input indicator by indicator.plus(coefficient).
          */
         plus,
 
         /**
-         * Transforms the input indicator 
-         * by indicator.minus(coefficient).
+         * Transforms the input indicator by indicator.minus(coefficient).
          */
         minus,
 
         /**
-         * Transforms the input indicator by
-         * indicator.multipliedBy(coefficient).
+         * Transforms the input indicator by indicator.multipliedBy(coefficient).
          */
         multiply,
 
         /**
-         * Transforms the input indicator 
-         * by indicator.dividedBy(coefficient).
+         * Transforms the input indicator by indicator.dividedBy(coefficient).
          */
         divide,
 
         /**
-         * Transforms the input indicator 
-         * by indicator.max(coefficient).
+         * Transforms the input indicator by indicator.max(coefficient).
          */
         max,
 
         /**
-         * Transforms the input indicator 
-         * by indicator.min(coefficient).
+         * Transforms the input indicator by indicator.min(coefficient).
          */
         min
     }
@@ -84,20 +79,17 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
      */
     public enum DecimalTransformSimpleType {
         /**
-         * Transforms the input indicator 
-         * by indicator.abs().
+         * Transforms the input indicator by indicator.abs().
          */
         abs,
 
         /**
-         * Transforms the input indicator 
-         * by indicator.sqrt().
+         * Transforms the input indicator by indicator.sqrt().
          */
         sqrt,
 
         /**
-         * Transforms the input indicator 
-         * by indicator.log().
+         * Transforms the input indicator by indicator.log().
          */
         log
     }
@@ -110,9 +102,12 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param coefficient the value for transformation
-     * @param type the type of the transformation
+     * @param indicator
+     *            the indicator
+     * @param coefficient
+     *            the value for transformation
+     * @param type
+     *            the type of the transformation
      */
     public DecimalTransformIndicator(Indicator<Num> indicator, double coefficient, DecimalTransformType type) {
         super(indicator);
@@ -124,8 +119,10 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param type the type of the transformation
+     * @param indicator
+     *            the indicator
+     * @param type
+     *            the type of the transformation
      */
     public DecimalTransformIndicator(Indicator<Num> indicator, DecimalTransformSimpleType type) {
         super(indicator);

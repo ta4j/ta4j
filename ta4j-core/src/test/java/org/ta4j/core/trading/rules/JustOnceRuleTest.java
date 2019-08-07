@@ -32,12 +32,12 @@ import static org.junit.Assert.assertTrue;
 public class JustOnceRuleTest {
 
     private JustOnceRule rule;
-    
+
     @Before
     public void setUp() {
         rule = new JustOnceRule();
     }
-    
+
     @Test
     public void isSatisfied() {
         assertTrue(rule.isSatisfied(10));
@@ -46,7 +46,7 @@ public class JustOnceRuleTest {
         assertFalse(rule.isSatisfied(13));
         assertFalse(rule.isSatisfied(14));
     }
-    
+
     @Test
     public void isSatisfiedInReverseOrder() {
         assertTrue(rule.isSatisfied(5));
@@ -85,4 +85,3 @@ public class JustOnceRuleTest {
         assertFalse(rule.isSatisfied(1));
     }
 }
-        

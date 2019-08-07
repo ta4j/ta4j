@@ -35,9 +35,7 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-
 public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
 
     private TimeSeries data;
 
@@ -47,9 +45,8 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,
-                37.08,36.7,36.11,35.85,35.71,36.04,36.41,37.67,38.01,37.79,36.83
-        );
+        data = new MockTimeSeries(numFunction, 37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79,
+                36.83);
     }
 
     @Test

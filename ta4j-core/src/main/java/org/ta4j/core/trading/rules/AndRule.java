@@ -40,8 +40,10 @@ public class AndRule extends AbstractRule {
     /**
      * Constructor
      *
-     * @param rule1 a trading rule
-     * @param rule2 another trading rule
+     * @param rule1
+     *            a trading rule
+     * @param rule2
+     *            another trading rule
      */
     public AndRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;

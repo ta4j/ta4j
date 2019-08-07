@@ -37,7 +37,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class PercentBIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class PercentBIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ClosePriceIndicator closePrice;
 
@@ -47,12 +47,8 @@ public class PercentBIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(numFunction,
-                10, 12, 15, 14, 17,
-                20, 21, 20, 20, 19,
-                20, 17, 12, 12, 9,
-                8, 9, 10, 9, 10
-        );
+        TimeSeries data = new MockTimeSeries(numFunction, 10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8,
+                9, 10, 9, 10);
         closePrice = new ClosePriceIndicator(data);
     }
 

@@ -35,11 +35,8 @@ public class NumberOfBreakEvenTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getTrades()
-                .stream()
-                .filter(Trade::isClosed)
-                .filter(trade -> isBreakEvenTrade(series, trade))
-                .count();
+        long numberOfLosingTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
+                .filter(trade -> isBreakEvenTrade(series, trade)).count();
         return series.numOf(numberOfLosingTrades);
     }
 

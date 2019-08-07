@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.volume;
 
-
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;

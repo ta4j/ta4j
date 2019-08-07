@@ -36,9 +36,9 @@ import static org.ta4j.core.num.NaN.NaN;
  * Parabolic SAR indicator.
  *
  * @see <a href="https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
- * https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
+ *      https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
  * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
- * https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
+ *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -56,7 +56,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with default parameters
      *
-     * @param series the time series for this indicator
+     * @param series
+     *            the time series for this indicator
      */
     public ParabolicSarIndicator(TimeSeries series) {
         this(series, series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
@@ -66,9 +67,12 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with custom parameters and default increment value
      *
-     * @param series the time series for this indicator
-     * @param aF     acceleration factor
-     * @param maxA   maximum acceleration
+     * @param series
+     *            the time series for this indicator
+     * @param aF
+     *            acceleration factor
+     * @param maxA
+     *            maximum acceleration
      */
     public ParabolicSarIndicator(TimeSeries series, Num aF, Num maxA) {
         this(series, aF, maxA, series.numOf(0.02));
@@ -77,10 +81,14 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with custom parameters
      *
-     * @param series    the time series for this indicator
-     * @param aF        acceleration factor
-     * @param maxA      maximum acceleration
-     * @param increment the increment step
+     * @param series
+     *            the time series for this indicator
+     * @param aF
+     *            acceleration factor
+     * @param maxA
+     *            maximum acceleration
+     * @param increment
+     *            the increment step
      */
     public ParabolicSarIndicator(TimeSeries series, Num aF, Num maxA, Num increment) {
         super(series);
@@ -98,8 +106,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         if (index == getTimeSeries().getBeginIndex()) {
             return sar; // no trend detection possible for the first value
         } else if (index == getTimeSeries().getBeginIndex() + 1) {// start trend detection
-            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex())
-                    .getClosePrice()
+            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex()).getClosePrice()
                     .isLessThan(getTimeSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
                 sar = highPriceIndicator.getValue(index); // put sar on max price of candlestick
@@ -126,7 +133,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getTimeSeries().getBar(index).getLowPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
-                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex).getValue(index);
+                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex)
+                        .getValue(index);
                 if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
                     incrementAcceleration();
                     minMaxExtremePoint = currentExtremePoint;
@@ -143,7 +151,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getTimeSeries().getBar(index).getHighPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
-                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex).getValue(index);
+                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex)
+                        .getValue(index);
                 if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
                     incrementAcceleration();
                     minMaxExtremePoint = currentExtremePoint;
