@@ -137,8 +137,6 @@ public class TimeSeriesReplaceTest extends AbstractIndicatorTest<TimeSeries, Num
 		// return the beginTime of each missing bar
 		List<ZonedDateTime> missingBars = series.findMissingBars();
 
-		System.out.println(missingBars);
-
 		// there must be 3 missing bars (bar2, bar3, bar6)
 		assertEquals(missingBars.get(0), time.plusDays(2).minus(timePeriod));
 		assertEquals(missingBars.get(1), time.plusDays(3).minus(timePeriod));
