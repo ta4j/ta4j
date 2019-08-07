@@ -352,5 +352,5 @@ public interface TimeSeries extends Serializable {
      * @return a function Number -> Num
      */
     Function<Number, Num> function();
-
+	
 }
