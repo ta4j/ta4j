@@ -315,30 +315,30 @@ public interface TimeSeries extends Serializable {
      */
     TimeSeries getSubSeries(int startIndex, int endIndex);
     
-	/**
-	 * We can assume that finalized bar data will be never changed afterwards by the
-	 * marketdata provider. It is rare, but depending on the exchange, they reserve
-	 * the right to make updates to finalized bars. This method founds and replaces
-	 * potential bar data that was changed afterwards by the marketdata provider. It
-	 * can also be uses to check bar data equality over different marketdata
-	 * providers. This method does <b>not</b> add missing bars but replaces an
-	 * existing bar with its new bar.
-	 * 
-	 * @param newBar the bar which has precedence over same existing bar
-	 * @return the previous bar replaced by newBar, or null if there was no
-	 *         replacement.
-	 */
-	Bar replaceBarIfChanged(Bar newBar);
+    /**
+     * We can assume that finalized bar data will be never changed afterwards by the
+     * marketdata provider. It is rare, but depending on the exchange, they reserve
+     * the right to make updates to finalized bars. This method founds and replaces
+     * potential bar data that was changed afterwards by the marketdata provider. It
+     * can also be uses to check bar data equality over different marketdata
+     * providers. This method does <b>not</b> add missing bars but replaces an
+     * existing bar with its new bar.
+     * 
+     * @param newBar the bar which has precedence over same existing bar
+     * @return the previous bar replaced by newBar, or null if there was no
+     *         replacement.
+     */
+    Bar replaceBarIfChanged(Bar newBar);
 	
-	/**
-	 * Finds potential missing bars. The returned list contains the
-	 * <code>beginTime</code> of each missing bar. A bar is missing if: (1) the
-	 * subsequent bar starts not with the end time of the previous bar or (2) if any
-	 * open, high, low price is missing.
-	 * 
-	 * @return the list of missing bars
-	 */
-	List<ZonedDateTime> findMissingBars();
+     /**
+     * Finds potential missing bars. The returned list contains the
+     * <code>beginTime</code> of each missing bar. A bar is missing if: (1) the
+     * subsequent bar starts not with the end time of the previous bar or (2) if any
+     * open, high, low price is missing.
+     * 
+     * @return the list of missing bars
+     */
+    List<ZonedDateTime> findMissingBars();
 	
 	/**
      * Transforms a {@link Number} into the {@link Num implementation} used by this time series
