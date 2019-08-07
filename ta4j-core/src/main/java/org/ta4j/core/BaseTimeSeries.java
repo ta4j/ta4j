@@ -464,8 +464,8 @@ public class BaseTimeSeries implements TimeSeries {
     
     @Override
     public Bar replaceBarIfChanged(Bar newBar) {
-		return replaceBarIfChanged(this.getBarData(), newBar);
-	}
+            return replaceBarIfChanged(this.getBarData(), newBar);
+    }
  
 	/**
 	 * @param bars   the existing bars
@@ -475,25 +475,23 @@ public class BaseTimeSeries implements TimeSeries {
 	 * @see #replaceBarIfChanged(Bar)
 	 */
 	private Bar replaceBarIfChanged(List<Bar> bars, Bar newBar) {
-		if (bars == null || bars.isEmpty()) return null;
-		for (int i = 0; i < bars.size(); i++) {
-			Bar bar = bars.get(i);
-			boolean isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
-					&& bar.getEndTime().isEqual(newBar.getEndTime())
-					&& bar.getTimePeriod().equals(newBar.getTimePeriod());
-			if (isSameBar && !bar.equals(newBar)) return bars.set(i, newBar);
-		}
+            if (bars == null || bars.isEmpty()) return null;
+            for (int i = 0; i < bars.size(); i++) {
+                Bar bar = bars.get(i);
+                boolean isSameBar = bar.getBeginTime().isEqual(newBar.getBeginTime())
+                && bar.getEndTime().isEqual(newBar.getEndTime())
+                && bar.getTimePeriod().equals(newBar.getTimePeriod());
+                if (isSameBar && !bar.equals(newBar)) return bars.set(i, newBar);
+            }
 		
-		return null;
+            return null;
 	}
 
-    
 	@Override
 	public List<ZonedDateTime> findMissingBars() {
-		return findMissingBars(this.getBarData());
+            return findMissingBars(this.getBarData());
 	}
 
-    
 	/**
 	 * Finds potential missing bars.
 	 * 
@@ -502,25 +500,25 @@ public class BaseTimeSeries implements TimeSeries {
 	 * @see #findMissingBars()
 	 */
 	private List<ZonedDateTime> findMissingBars(List<Bar> bars) {
-		if (bars == null || bars.isEmpty()) return List.of();
-		Duration duration = bars.iterator().next().getTimePeriod();
-		List<ZonedDateTime> missingBars = new ArrayList<>();
-		for (int i = 0; i < bars.size(); i++) {
-			Bar bar = bars.get(i);
-			Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
-			Duration incDuration = Duration.ZERO;
-			if (nextBar != null) {
-				while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
-					missingBars.add(bar.getEndTime().plus(incDuration));
-					incDuration = incDuration.plus(duration);
-				}
-			}
-			boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
-			if (noFullData) {
-				missingBars.add(bar.getBeginTime());
-			}
-		}
+            if (bars == null || bars.isEmpty()) return List.of();
+            Duration duration = bars.iterator().next().getTimePeriod();
+            List<ZonedDateTime> missingBars = new ArrayList<>();
+            for (int i = 0; i < bars.size(); i++) {
+                Bar bar = bars.get(i);
+                Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
+                Duration incDuration = Duration.ZERO;
+                if (nextBar != null) {
+                    while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
+                        missingBars.add(bar.getEndTime().plus(incDuration));
+                        incDuration = incDuration.plus(duration);
+                    }
+                }
+                boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
+                if (noFullData) {
+                        missingBars.add(bar.getBeginTime());
+                }
+            }
 
-		return missingBars;
+            return missingBars;
 	}
 }
