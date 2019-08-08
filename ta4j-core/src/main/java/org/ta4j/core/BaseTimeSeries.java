@@ -489,28 +489,37 @@ public class BaseTimeSeries implements TimeSeries {
 
     @Override
     public List<ZonedDateTime> findMissingBars() {
-        return findMissingBars(this.getBarData());
+        return findMissingBars(false);
+    }
+	
+    @Override
+    public List<ZonedDateTime> findMissingBars(boolean findOnlyNaNBars) {
+        return findMissingBars(this.getBarData(), findOnlyNaNBars);
     }
 
     /**
     * Finds potential missing bars.
     * 
     * @param bars the list of bars
+    * @param findOnlyNaNBars find only bars with undefined prices
     * @return the list of missing bars
     * @see #findMissingBars()
      */
-    private List<ZonedDateTime> findMissingBars(List<Bar> bars) {
+    private List<ZonedDateTime> findMissingBars(List<Bar> bars, boolean findOnlyNaNBars) {
         if (bars == null || bars.isEmpty()) return List.of();
         Duration duration = bars.iterator().next().getTimePeriod();
         List<ZonedDateTime> missingBars = new ArrayList<>();
         for (int i = 0; i < bars.size(); i++) {
           Bar bar = bars.get(i);
-          Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
-          Duration incDuration = Duration.ZERO;
-          if (nextBar != null) {
-              while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
-                  missingBars.add(bar.getEndTime().plus(incDuration));
-                  incDuration = incDuration.plus(duration);
+	  if(!findOnlyNaNBars) {
+              Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
+              Duration incDuration = Duration.ZERO;
+              if (nextBar != null) {
+                  // weekends and holidays are also treated as missing bars
+                  while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
+                      missingBars.add(bar.getEndTime().plus(incDuration));
+                      incDuration = incDuration.plus(duration);
+                  }
               }
           }
           boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
