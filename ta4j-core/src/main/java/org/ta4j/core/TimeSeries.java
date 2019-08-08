@@ -341,6 +341,15 @@ public interface TimeSeries extends Serializable {
     List<ZonedDateTime> findMissingBars();
 	
      /**
+     * Finds possibly missing bars.
+     * 
+     * @param findOnlyNaNBars find only bars with undefined prices
+     * @return the list of possibly missing bars
+     * @see #findMissingBars()
+     */
+    List<ZonedDateTime> findMissingBars(boolean findOnlyNaNBars);
+	
+     /**
      * Transforms a {@link Number} into the {@link Num implementation} used by this time series
      * @param number a {@link Number} implementing object.
      * @return the corresponding value as a Num implementing object
