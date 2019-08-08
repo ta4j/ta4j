@@ -316,11 +316,10 @@ public interface TimeSeries extends Serializable {
     TimeSeries getSubSeries(int startIndex, int endIndex);
     
     /**
-     * We can assume that finalized bar data will be never changed afterwards by the
-     * marketdata provider. It is rare, but depending on the exchange, they reserve
-     * the right to make updates to finalized bars. This method founds and replaces
-     * potential bar data that was changed afterwards by the marketdata provider. It
-     * can also be uses to check bar data equality over different marketdata
+     * This method founds and replaces potential bar data that was changed 
+     * afterwards by the marketdata provider. It is rare, but depending on 
+     * the exchange, they reserve the right to make updates to finalized bars. 
+     * It can also be uses to check bar data equality over different marketdata
      * providers. This method does <b>not</b> add missing bars but replaces an
      * existing bar with its new bar.
      * 
