@@ -138,10 +138,10 @@ public class TimeSeriesReplaceTest extends AbstractIndicatorTest<TimeSeries, Num
 		List<ZonedDateTime> missingBars = series.findMissingBars();
 
 		// there must be 3 missing bars (bar2, bar3, bar6)
-		assertEquals(missingBars.get(0), time.plusDays(2).minus(timePeriod));
-		assertEquals(missingBars.get(1), time.plusDays(3).minus(timePeriod));
-		assertEquals(missingBars.get(2), time.plusDays(6).minus(timePeriod));
+		assertEquals(missingBars.get(0), time.plusDays(2));
+		assertEquals(missingBars.get(1), time.plusDays(3));
+		assertEquals(missingBars.get(2), time.plusDays(6));
 		// there must be 1 bar with invalid data (e.g. price, volume)
-		assertEquals(missingBars.get(3), bar8.getBeginTime());
+		assertEquals(missingBars.get(3), bar8.getEndTime());
 	}
 }
