@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.tradereport;
 
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 
@@ -37,9 +38,9 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
     private final TradeStatsReportGenerator tradeStatsReportGenerator = new TradeStatsReportGenerator();
 
     @Override
-    public TradingStatement generate(TradingRecord tradingRecord, TimeSeries series) {
-        final PerformanceReport performanceReport = performanceReportGenerator.generate(tradingRecord, series);
-        final TradeStatsReport tradeStatsReport = tradeStatsReportGenerator.generate(tradingRecord, series);
-        return new TradingStatement(tradeStatsReport, performanceReport);
+    public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
+        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord, series);
+        final TradeStatsReport tradeStatsReport = tradeStatsReportGenerator.generate(strategy, tradingRecord, series);
+        return new TradingStatement(strategy, tradeStatsReport, performanceReport);
     }
 }
