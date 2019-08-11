@@ -498,12 +498,12 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
-    * Finds potential missing bars and returns a list containing
+    * Finds possibly missing bars and returns a list containing
     * the <code>endTime</code> of each missing bar.
     *     
     * @param bars the list of bars
     * @param findOnlyNaNBars find only bars with undefined prices
-    * @return the list of missing bars
+    * @return the list of possibly missing bars
     * @see #findMissingBars()
      */
     private List<ZonedDateTime> findMissingBars(List<Bar> bars, boolean findOnlyNaNBars) {
