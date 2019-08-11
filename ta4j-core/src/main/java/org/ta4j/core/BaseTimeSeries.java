@@ -498,8 +498,9 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
-    * Finds potential missing bars.
-    * 
+    * Finds potential missing bars and returns a list containing
+    * the <code>endTime</code> of each missing bar.
+    *     
     * @param bars the list of bars
     * @param findOnlyNaNBars find only bars with undefined prices
     * @return the list of missing bars
@@ -517,14 +518,14 @@ public class BaseTimeSeries implements TimeSeries {
               if (nextBar != null) {
                   // weekends and holidays are also treated as missing bars
                   while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
-                      missingBars.add(bar.getEndTime().plus(incDuration));
+                      missingBars.add(bar.getEndTime().plus(incDuration).plus(duration));
                       incDuration = incDuration.plus(duration);
                   }
               }
           }
           boolean noFullData = bar.getOpenPrice().isNaN() || bar.getHighPrice().isNaN() || bar.getLowPrice().isNaN();
           if (noFullData) {
-              missingBars.add(bar.getBeginTime());
+              missingBars.add(bar.getEndTime());
           }
         }
 		
