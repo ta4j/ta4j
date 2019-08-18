@@ -35,11 +35,12 @@ import java.util.List;
  */
 public class BacktestExecutor {
 
-    private final TradingStatementGenerator tradingStatementGenerator = new TradingStatementGenerator();
+    private final TradingStatementGenerator tradingStatementGenerator;
     private final TimeSeriesManager seriesManager;
 
     public BacktestExecutor(TimeSeries series) {
         this.seriesManager = new TimeSeriesManager(series);
+        this.tradingStatementGenerator = new TradingStatementGenerator();
     }
 
     /**
