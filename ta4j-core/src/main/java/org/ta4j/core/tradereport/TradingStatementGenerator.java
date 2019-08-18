@@ -38,8 +38,14 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
     private final TradeStatsReportGenerator tradeStatsReportGenerator;
 
     public TradingStatementGenerator() {
-        this.performanceReportGenerator = new PerformanceReportGenerator();
-        this.tradeStatsReportGenerator = new TradeStatsReportGenerator();
+        this(new PerformanceReportGenerator(), new TradeStatsReportGenerator());
+    }
+
+    public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
+            TradeStatsReportGenerator tradeStatsReportGenerator) {
+        super();
+        this.performanceReportGenerator = performanceReportGenerator;
+        this.tradeStatsReportGenerator = tradeStatsReportGenerator;
     }
 
     @Override
