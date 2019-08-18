@@ -39,8 +39,12 @@ public class BacktestExecutor {
     private final TimeSeriesManager seriesManager;
 
     public BacktestExecutor(TimeSeries series) {
+        this(series, new TradingStatementGenerator());
+    }
+
+    public BacktestExecutor(TimeSeries series, TradingStatementGenerator tradingStatementGenerator) {
         this.seriesManager = new TimeSeriesManager(series);
-        this.tradingStatementGenerator = new TradingStatementGenerator();
+        this.tradingStatementGenerator = tradingStatementGenerator;
     }
 
     /**
