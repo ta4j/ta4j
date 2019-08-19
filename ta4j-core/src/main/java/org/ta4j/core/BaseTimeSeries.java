@@ -482,8 +482,7 @@ public class BaseTimeSeries implements TimeSeries {
           && bar.getEndTime().isEqual(newBar.getEndTime())
           && bar.getTimePeriod().equals(newBar.getTimePeriod());
           if (isSameBar && !bar.equals(newBar)) return bars.set(i, newBar);
-        }
-		
+        }	
         return null;
     }
 
