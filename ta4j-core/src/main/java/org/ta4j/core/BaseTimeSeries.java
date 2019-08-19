@@ -506,7 +506,7 @@ public class BaseTimeSeries implements TimeSeries {
     * @see #findMissingBars()
      */
     private List<ZonedDateTime> findMissingBars(List<Bar> bars, boolean findOnlyNaNBars) {
-        if (bars == null || bars.isEmpty()) return List.of();
+        if (bars == null || bars.isEmpty()) return new ArrayList<>();
         Duration duration = bars.iterator().next().getTimePeriod();
         List<ZonedDateTime> missingBars = new ArrayList<>();
         for (int i = 0; i < bars.size(); i++) {
