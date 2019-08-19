@@ -19,7 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 
 ### Added
-- :tada: **Enhancement** Added replaceBarIfChanged() to replace invalidate Bars
+- :tada: **Enhancement** Added replaceBarIfChanged() to replace invalidated Bars
 - :tada: **Enhancement** Added findMissingBars() to check for incomplete BarSeries
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
 - :tada: **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
