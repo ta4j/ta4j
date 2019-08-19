@@ -39,12 +39,12 @@ import java.util.function.Function;
 
 import static org.junit.Assert.*;
 
-public class TimeSeriesReplaceTest extends AbstractIndicatorTest<TimeSeries, Num> {
+public class TimeSeriesVerifyTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
 	private TimeSeries series;
 	private ZonedDateTime time;
 
-	public TimeSeriesReplaceTest(Function<Number, Num> numFunction) {
+	public TimeSeriesVerifyTest(Function<Number, Num> numFunction) {
 		super(numFunction);
 	}
 
