@@ -34,8 +34,19 @@ import org.ta4j.core.TradingRecord;
  */
 public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
 
-    private final PerformanceReportGenerator performanceReportGenerator = new PerformanceReportGenerator();
-    private final TradeStatsReportGenerator tradeStatsReportGenerator = new TradeStatsReportGenerator();
+    private final PerformanceReportGenerator performanceReportGenerator;
+    private final TradeStatsReportGenerator tradeStatsReportGenerator;
+
+    public TradingStatementGenerator() {
+        this(new PerformanceReportGenerator(), new TradeStatsReportGenerator());
+    }
+
+    public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
+            TradeStatsReportGenerator tradeStatsReportGenerator) {
+        super();
+        this.performanceReportGenerator = performanceReportGenerator;
+        this.tradeStatsReportGenerator = tradeStatsReportGenerator;
+    }
 
     @Override
     public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
