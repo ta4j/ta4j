@@ -38,6 +38,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
 - :tada: **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
 for currentStopLossLimitActivation
+- :tada: **Enhancement** Added license checker goal on CI's pipeline
 
 ### Removed/Deprecated
 
