@@ -46,6 +46,15 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
         super(vwap);
         sma = new SMAIndicator(vwap, barCount);
     }
+    
+    /**
+     * Constructor.
+     * @param series the time series
+     * @param barCount the time frame
+     */
+    public MVWAPIndicator(TimeSeries series, int barCount) {
+       this(new VWAPIndicator(series, barCount), barCount);
+    }
 
     @Override
     protected Num calculate(int index) {
