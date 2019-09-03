@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Sum indicator.
- * </p>
+ *
  * I.e.: operand0 + operand1 + ... + operandN
  */
 public class SumIndicator extends CachedIndicator<Num> {

@@ -23,11 +23,18 @@
  */
 package ta4jexamples.bots;
 
-import org.ta4j.core.*;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -36,15 +43,17 @@ import java.time.ZonedDateTime;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
- * <p/>
  */
 public class TradingBotOnMovingTimeSeries {
 
-    /** Close price of the last bar */
+    /**
+     * Close price of the last bar
+     */
     private static Num LAST_BAR_CLOSE_PRICE;
 
     /**
      * Builds a moving time series (i.e. keeping only the maxBarCount last bars)
+     *
      * @param maxBarCount the number of bars to keep in the time series (at maximum)
      * @return a moving time series
      */
@@ -82,6 +91,7 @@ public class TradingBotOnMovingTimeSeries {
 
     /**
      * Generates a random decimal number between min and max.
+     *
      * @param min the minimum bound
      * @param max the maximum bound
      * @return a random decimal number between min and max
@@ -98,6 +108,7 @@ public class TradingBotOnMovingTimeSeries {
 
     /**
      * Generates a random bar.
+     *
      * @return a random bar
      */
     private static Bar generateRandomBar() {
@@ -132,7 +143,7 @@ public class TradingBotOnMovingTimeSeries {
             Thread.sleep(30); // I know...
             Bar newBar = generateRandomBar();
             System.out.println("------------------------------------------------------\n"
-                    + "Bar "+i+" added, close price = " + newBar.getClosePrice().doubleValue());
+                    + "Bar " + i + " added, close price = " + newBar.getClosePrice().doubleValue());
             series.addBar(newBar);
 
             int endIndex = series.getEndIndex();

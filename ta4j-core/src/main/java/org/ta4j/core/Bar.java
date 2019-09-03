@@ -35,7 +35,7 @@ import java.util.function.Function;
 
 /**
  * End bar of a time period.
- * </p>
+ *
  * Bar object is aggregated open/high/low/close/volume/etc. data over a time period.
  */
 public interface Bar extends Serializable {

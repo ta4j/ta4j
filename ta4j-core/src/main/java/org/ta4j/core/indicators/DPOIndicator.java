@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Detrended Price Oscillator (DPO) indicator.
- * <p>
+ *
  * The Detrended Price Oscillator (DPO) is an indicator designed to remove trend
  * from price and make it easier to identify cycles. DPO does not extend to the
  * last date because it is based on a displaced moving average. However,
@@ -39,9 +39,9 @@ import org.ta4j.core.num.Num;
  * cycle length.
  *
  * In short, DPO(20) equals price 11 days ago less the 20-day SMA.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
+ *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
@@ -49,19 +49,21 @@ public class DPOIndicator extends CachedIndicator<Num> {
     private final int timeShift;
     private final Indicator<Num> price;
     private final SMAIndicator sma;
-    
+
     /**
      * Constructor.
-     * @param series the series
+     *
+     * @param series   the series
      * @param barCount the time frame
      */
     public DPOIndicator(TimeSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
     }
-    
+
     /**
      * Constructor.
-     * @param price the price
+     *
+     * @param price    the price
      * @param barCount the time frame
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
@@ -74,9 +76,9 @@ public class DPOIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return price.getValue(index).minus(sma.getValue(index-timeShift));
+        return price.getValue(index).minus(sma.getValue(index - timeShift));
     }
-    
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;

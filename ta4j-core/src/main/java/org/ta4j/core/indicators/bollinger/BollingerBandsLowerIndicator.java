@@ -35,9 +35,7 @@ import org.ta4j.core.num.Num;
 public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-
     private final BollingerBandsMiddleIndicator bbm;
-
     private final Num k;
 
     /**

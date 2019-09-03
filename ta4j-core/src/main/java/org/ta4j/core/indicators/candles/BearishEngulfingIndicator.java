@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Bearish engulfing pattern indicator.
- * </p>
+ *
  * @see <a href="http://www.investopedia.com/terms/b/bearishengulfingp.asp">
  *     http://www.investopedia.com/terms/b/bearishengulfingp.asp</a>
  */

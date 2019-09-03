@@ -29,7 +29,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ulcer index indicator.
- * <p/>
  *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index">
  * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index</a>

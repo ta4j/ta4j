@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Cross indicator.
- * </p>
+ *
  * Boolean indicator which monitors two-indicators crossings.
  */
 public class CrossIndicator extends CachedIndicator<Boolean> {

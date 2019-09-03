@@ -36,7 +36,7 @@ import java.util.List;
 
 /**
  * The return rates.
- * </p>
+ *
  * This class allows to compute the return rate of a price time-series
  */
 public class Returns implements Indicator<Num> {

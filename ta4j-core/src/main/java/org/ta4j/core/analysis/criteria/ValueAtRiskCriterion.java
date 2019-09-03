@@ -33,7 +33,7 @@ import java.util.Collections;
 import java.util.List;
 /**
  * Value at Risk criterion.
- * </p>
+ *
  * @see <a href="https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>
  */
 public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {

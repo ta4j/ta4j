@@ -64,11 +64,11 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
     private Num calcRWIHFor(final int index, final int n) {
         TimeSeries series = getTimeSeries();
         Num high = series.getBar(index).getHighPrice();
-        Num low_N = series.getBar(index + 1 - n).getLowPrice();
-        Num atr_N = new ATRIndicator(series, n).getValue(index);
-        Num sqrt_N = numOf(n).sqrt();
+        Num lowN = series.getBar(index + 1 - n).getLowPrice();
+        Num atrN = new ATRIndicator(series, n).getValue(index);
+        Num sqrtN = numOf(n).sqrt();
 
-        return high.minus(low_N).dividedBy(atr_N.multipliedBy(sqrt_N));
+        return high.minus(lowN).dividedBy(atrN.multipliedBy(sqrtN));
     }
 
     @Override

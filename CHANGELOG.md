@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BaseTimeSeriesBuilder** moved from inner class to own class
+- **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
@@ -37,6 +38,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
 - :tada: **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
 for currentStopLossLimitActivation
+- :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
+- :tada: **Enhancement** Added license checker goal on CI's pipeline
+
 
 ### Removed/Deprecated
 

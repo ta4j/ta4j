@@ -28,12 +28,11 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * Constant indicator.
- * </p>
  */
 public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
     private static final long serialVersionUID = -186917236870375024L;
-    private T value;
+    private final T value;
 
     public ConstantIndicator(TimeSeries series, T t) {
         super(series);

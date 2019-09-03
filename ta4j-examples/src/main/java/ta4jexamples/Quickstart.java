@@ -23,7 +23,12 @@
  */
 package ta4jexamples;
 
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AverageProfitableTradesCriterion;
 import org.ta4j.core.analysis.criteria.RewardRiskRatioCriterion;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
@@ -39,7 +44,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * Quickstart for ta4j.
- * </p>
+ *
  * Global example.
  */
 public class Quickstart {

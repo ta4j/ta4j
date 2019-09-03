@@ -34,7 +34,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * A history/record of a trading session.
- * </p>
+ *
  * Holds the full trading record when running a {@link Strategy strategy}.
  * It is used to:
  * <ul>

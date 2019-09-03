@@ -72,7 +72,7 @@ public abstract class AbstractIndicatorTest<D, I> {
     }
 
     /**
-     * Constructor<p/>
+     * Constructor
      *
      * @param numFunction the function to convert a Number into a Num implementation (automatically inserted by Junit)
      */

@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-falling-indicator rule.
- * </p>
+ *
  * Satisfied when the values of the {@link Indicator indicator} decrease
  * within the barCount.
  */

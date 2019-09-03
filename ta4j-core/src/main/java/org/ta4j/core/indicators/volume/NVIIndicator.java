@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Negative Volume Index (NVI) indicator.
- * </p>
+ *
  * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde">
  *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde</a>
  * @see <a href="http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=75">

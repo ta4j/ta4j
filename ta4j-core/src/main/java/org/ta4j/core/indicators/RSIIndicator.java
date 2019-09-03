@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Relative strength index indicator.
- * <p>
+ *
  * Computed using original Welles Wilder formula.
  */
 public class RSIIndicator extends CachedIndicator<Num> {

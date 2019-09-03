@@ -28,7 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * WMA indicator.
- * </p>
+ *
  */
 public class WMAIndicator extends CachedIndicator<Num> {
 

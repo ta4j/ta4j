@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 /**
  * A trading strategy.
- * </p>
+ *
  * A strategy is a pair of complementary {@link Rule rules}. It may recommend to enter or to exit.
  * Recommendations are based respectively on the entry rule or on the exit rule.
  */

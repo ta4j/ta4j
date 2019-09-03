@@ -28,7 +28,6 @@ import org.ta4j.core.TimeSeries;
 
 /**
  * Close price indicator.
- * </p>
  */
 public class ClosePriceIndicator extends PriceIndicator {
 

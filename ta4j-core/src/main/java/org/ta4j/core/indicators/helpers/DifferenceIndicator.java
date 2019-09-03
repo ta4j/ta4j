@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Difference indicator.
- * </p>
+ *
  * I.e.: first - second
  */
 public class DifferenceIndicator extends CachedIndicator<Num> {
