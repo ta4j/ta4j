@@ -37,17 +37,17 @@ import org.ta4j.core.num.Num;
 public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
     public CloseLocationValueIndicator(TimeSeries series) {
-        super(series);
+	super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-        final Bar bar = getTimeSeries().getBar(index);
+	final Bar bar = getTimeSeries().getBar(index);
 
-        final Num close = bar.getClosePrice();
-        final Num low = bar.getLowPrice();
-        final Num high = bar.getHighPrice();
+	final Num close = bar.getClosePrice();
+	final Num low = bar.getLowPrice();
+	final Num high = bar.getHighPrice();
 
-        return ((close.minus(low)).minus(high.minus(close))).dividedBy(high.minus(low));
+	return ((close.minus(low)).minus(high.minus(close))).dividedBy(high.minus(low));
     }
 }

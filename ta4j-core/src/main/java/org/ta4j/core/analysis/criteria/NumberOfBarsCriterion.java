@@ -37,22 +37,22 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(t -> calculate(series, t))
-                .reduce(series.numOf(0), Num::plus);
+	return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(t -> calculate(series, t))
+		.reduce(series.numOf(0), Num::plus);
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            final int exitIndex = trade.getExit().getIndex();
-            final int entryIndex = trade.getEntry().getIndex();
-            return series.numOf(exitIndex - entryIndex + 1);
-        }
-        return series.numOf(0);
+	if (trade.isClosed()) {
+	    final int exitIndex = trade.getExit().getIndex();
+	    final int entryIndex = trade.getEntry().getIndex();
+	    return series.numOf(exitIndex - entryIndex + 1);
+	}
+	return series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+	return criterionValue1.isLessThan(criterionValue2);
     }
 }

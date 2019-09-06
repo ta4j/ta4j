@@ -35,8 +35,7 @@ public interface BarAggregator {
     /**
      * Aggregate bars.
      *
-     * @param bars
-     *            bars to aggregate bars
+     * @param bars bars to aggregate bars
      * @return aggregated bars
      */
     List<Bar> aggregate(List<Bar> bars);

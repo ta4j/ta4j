@@ -33,7 +33,8 @@ import java.util.List;
 /**
  * Cached {@link Indicator indicator}.
  *
- * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
+ * Caches the constructor of the indicator. Avoid to calculate the same index of
+ * the indicator twice.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
@@ -45,89 +46,87 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final List<T> results = new ArrayList<T>();
 
     /**
-     * Should always be the index of the last result in the results list. I.E. the last calculated result.
+     * Should always be the index of the last result in the results list. I.E. the
+     * last calculated result.
      */
     protected int highestResultIndex = -1;
 
     /**
      * Constructor.
      *
-     * @param series
-     *            the related time series
+     * @param series the related time series
      */
     public CachedIndicator(TimeSeries series) {
-        super(series);
+	super(series);
     }
 
     /**
      * Constructor.
      *
-     * @param indicator
-     *            a related indicator (with a time series)
+     * @param indicator a related indicator (with a time series)
      */
     public CachedIndicator(Indicator<?> indicator) {
-        this(indicator.getTimeSeries());
+	this(indicator.getTimeSeries());
     }
 
     @Override
     public T getValue(int index) {
-        TimeSeries series = getTimeSeries();
-        if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
-            return calculate(index);
-        }
+	TimeSeries series = getTimeSeries();
+	if (series == null) {
+	    // Series is null; the indicator doesn't need cache.
+	    // (e.g. simple computation of the value)
+	    // --> Calculating the value
+	    return calculate(index);
+	}
 
-        // Series is not null
+	// Series is not null
 
-        final int removedBarsCount = series.getRemovedBarsCount();
-        final int maximumResultCount = series.getMaximumBarCount();
+	final int removedBarsCount = series.getRemovedBarsCount();
+	final int maximumResultCount = series.getMaximumBarCount();
 
-        T result;
-        if (index < removedBarsCount) {
-            // Result already removed from cache
-            log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
-                    getClass().getSimpleName(), index, removedBarsCount);
-            increaseLengthTo(removedBarsCount, maximumResultCount);
-            highestResultIndex = removedBarsCount;
-            result = results.get(0);
-            if (result == null) {
-                // It should be "result = calculate(removedBarsCount);".
-                // We use "result = calculate(0);" as a workaround
-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
-                result = calculate(0);
-                results.set(0, result);
-            }
-        } else {
-            if (index == series.getEndIndex()) {
-                // Don't cache result if last bar
-                result = calculate(index);
-            } else {
-                increaseLengthTo(index, maximumResultCount);
-                if (index > highestResultIndex) {
-                    // Result not calculated yet
-                    highestResultIndex = index;
-                    result = calculate(index);
-                    results.set(results.size() - 1, result);
-                } else {
-                    // Result covered by current cache
-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
-                    result = results.get(resultInnerIndex);
-                    if (result == null) {
-                        result = calculate(index);
-                        results.set(resultInnerIndex, result);
-                    }
-                }
-            }
+	T result;
+	if (index < removedBarsCount) {
+	    // Result already removed from cache
+	    log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+		    getClass().getSimpleName(), index, removedBarsCount);
+	    increaseLengthTo(removedBarsCount, maximumResultCount);
+	    highestResultIndex = removedBarsCount;
+	    result = results.get(0);
+	    if (result == null) {
+		// It should be "result = calculate(removedBarsCount);".
+		// We use "result = calculate(0);" as a workaround
+		// to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
+		result = calculate(0);
+		results.set(0, result);
+	    }
+	} else {
+	    if (index == series.getEndIndex()) {
+		// Don't cache result if last bar
+		result = calculate(index);
+	    } else {
+		increaseLengthTo(index, maximumResultCount);
+		if (index > highestResultIndex) {
+		    // Result not calculated yet
+		    highestResultIndex = index;
+		    result = calculate(index);
+		    results.set(results.size() - 1, result);
+		} else {
+		    // Result covered by current cache
+		    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
+		    result = results.get(resultInnerIndex);
+		    if (result == null) {
+			result = calculate(index);
+			results.set(resultInnerIndex, result);
+		    }
+		}
+	    }
 
-        }
-        return result;
+	}
+	return result;
     }
 
     /**
-     * @param index
-     *            the bar index
+     * @param index the bar index
      * @return the value of the indicator
      */
     protected abstract T calculate(int index);
@@ -135,43 +134,40 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Increases the size of cached results buffer.
      *
-     * @param index
-     *            the index to increase length to
-     * @param maxLength
-     *            the maximum length of the results buffer
+     * @param index     the index to increase length to
+     * @param maxLength the maximum length of the results buffer
      */
     private void increaseLengthTo(int index, int maxLength) {
-        if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
-            if (newResultsCount == maxLength) {
-                results.clear();
-                results.addAll(Collections.nCopies(maxLength, null));
-            } else if (newResultsCount > 0) {
-                results.addAll(Collections.nCopies(newResultsCount, null));
-                removeExceedingResults(maxLength);
-            }
-        } else {
-            // First use of cache
-            assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
-        }
+	if (highestResultIndex > -1) {
+	    int newResultsCount = Math.min(index - highestResultIndex, maxLength);
+	    if (newResultsCount == maxLength) {
+		results.clear();
+		results.addAll(Collections.nCopies(maxLength, null));
+	    } else if (newResultsCount > 0) {
+		results.addAll(Collections.nCopies(newResultsCount, null));
+		removeExceedingResults(maxLength);
+	    }
+	} else {
+	    // First use of cache
+	    assert results.isEmpty() : "Cache results list should be empty";
+	    results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
+	}
     }
 
     /**
-     * Removes the N first results which exceed the maximum bar count. (i.e. keeps only the last maximumResultCount
-     * results)
+     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
+     * only the last maximumResultCount results)
      *
-     * @param maximumResultCount
-     *            the number of results to keep
+     * @param maximumResultCount the number of results to keep
      */
     private void removeExceedingResults(int maximumResultCount) {
-        int resultCount = results.size();
-        if (resultCount > maximumResultCount) {
-            // Removing old results
-            final int nbResultsToRemove = resultCount - maximumResultCount;
-            for (int i = 0; i < nbResultsToRemove; i++) {
-                results.remove(0);
-            }
-        }
+	int resultCount = results.size();
+	if (resultCount > maximumResultCount) {
+	    // Removing old results
+	    final int nbResultsToRemove = resultCount - maximumResultCount;
+	    for (int i = 0; i < nbResultsToRemove; i++) {
+		results.remove(0);
+	    }
+	}
     }
 }

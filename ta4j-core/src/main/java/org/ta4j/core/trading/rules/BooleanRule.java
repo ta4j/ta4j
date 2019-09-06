@@ -47,16 +47,16 @@ public class BooleanRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param satisfied
-     *            true for the rule to be always satisfied, false to be never satisfied
+     * @param satisfied true for the rule to be always satisfied, false to be never
+     *                  satisfied
      */
     public BooleanRule(boolean satisfied) {
-        this.satisfied = satisfied;
+	this.satisfied = satisfied;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 }

@@ -32,11 +32,11 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
 
     @Override
     public String toString() {
-        String[] tokens = getClass().getSimpleName().split("(?=\\p{Lu})", -1);
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < tokens.length - 1; i++) {
-            sb.append(tokens[i]).append(' ');
-        }
-        return sb.toString().trim();
+	String[] tokens = getClass().getSimpleName().split("(?=\\p{Lu})", -1);
+	StringBuilder sb = new StringBuilder();
+	for (int i = 0; i < tokens.length - 1; i++) {
+	    sb.append(tokens[i]).append(' ');
+	}
+	return sb.toString().trim();
     }
 }

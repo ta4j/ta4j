@@ -31,8 +31,8 @@ import org.ta4j.core.num.Num;
  *
  * a.k.a TRIX
  *
- * TEMA needs "3 * period - 2" of data to start producing values in contrast to the period samples needed by a regular
- * EMA.
+ * TEMA needs "3 * period - 2" of data to start producing values in contrast to
+ * the period samples needed by a regular EMA.
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
@@ -51,27 +51,25 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator
-     *            the indicator
-     * @param barCount
-     *            the time frame
+     * @param indicator the indicator
+     * @param barCount  the time frame
      */
     public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.barCount = barCount;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
-        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
+	super(indicator);
+	this.barCount = barCount;
+	this.ema = new EMAIndicator(indicator, barCount);
+	this.emaEma = new EMAIndicator(ema, barCount);
+	this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        // trix = 3 * ( ema - emaEma ) + emaEmaEma
-        return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
+	// trix = 3 * ( ema - emaEma ) + emaEmaEma
+	return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

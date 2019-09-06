@@ -32,7 +32,8 @@ import org.ta4j.core.num.Num;
 /**
  * Crossed-down indicator rule.
  *
- * Satisfied when the value of the first {@link Indicator indicator} crosses-down the value of the second one.
+ * Satisfied when the value of the first {@link Indicator indicator}
+ * crosses-down the value of the second one.
  */
 public class CrossedDownIndicatorRule extends AbstractRule {
 
@@ -42,43 +43,37 @@ public class CrossedDownIndicatorRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param indicator
-     *            the indicator
-     * @param threshold
-     *            a threshold
+     * @param indicator the indicator
+     * @param threshold a threshold
      */
     public CrossedDownIndicatorRule(Indicator<Num> indicator, Number threshold) {
-        this(indicator, indicator.numOf(threshold));
+	this(indicator, indicator.numOf(threshold));
     }
 
     /**
      * Constructor.
      * 
-     * @param indicator
-     *            the indicator
-     * @param threshold
-     *            a threshold
+     * @param indicator the indicator
+     * @param threshold a threshold
      */
     public CrossedDownIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), threshold));
+	this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), threshold));
     }
 
     /**
      * Constructor.
      * 
-     * @param first
-     *            the first indicator
-     * @param second
-     *            the second indicator
+     * @param first  the first indicator
+     * @param second the second indicator
      */
     public CrossedDownIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
-        this.cross = new CrossIndicator(first, second);
+	this.cross = new CrossIndicator(first, second);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = cross.getValue(index);
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+	final boolean satisfied = cross.getValue(index);
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 }

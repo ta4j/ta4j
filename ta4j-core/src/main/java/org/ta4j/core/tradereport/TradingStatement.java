@@ -26,7 +26,8 @@ package org.ta4j.core.tradereport;
 import org.ta4j.core.Strategy;
 
 /**
- * This class represents trading statement report which contains trade and performance statistics
+ * This class represents trading statement report which contains trade and
+ * performance statistics
  */
 public class TradingStatement {
 
@@ -35,20 +36,20 @@ public class TradingStatement {
     private final PerformanceReport performanceReport;
 
     public TradingStatement(Strategy strategy, TradeStatsReport tradeStatsReport, PerformanceReport performanceReport) {
-        this.strategy = strategy;
-        this.tradeStatsReport = tradeStatsReport;
-        this.performanceReport = performanceReport;
+	this.strategy = strategy;
+	this.tradeStatsReport = tradeStatsReport;
+	this.performanceReport = performanceReport;
     }
 
     public Strategy getStrategy() {
-        return strategy;
+	return strategy;
     }
 
     public TradeStatsReport getTradeStatsReport() {
-        return tradeStatsReport;
+	return tradeStatsReport;
     }
 
     public PerformanceReport getPerformanceReport() {
-        return performanceReport;
+	return performanceReport;
     }
 }

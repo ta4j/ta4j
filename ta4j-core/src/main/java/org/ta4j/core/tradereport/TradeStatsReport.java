@@ -35,21 +35,21 @@ public class TradeStatsReport {
     private final Num breakEvenTradeCount;
 
     public TradeStatsReport(Num profitTradeCount, Num lossTradeCount, Num breakEvenTradeCount) {
-        this.profitTradeCount = profitTradeCount;
-        this.lossTradeCount = lossTradeCount;
-        this.breakEvenTradeCount = breakEvenTradeCount;
+	this.profitTradeCount = profitTradeCount;
+	this.lossTradeCount = lossTradeCount;
+	this.breakEvenTradeCount = breakEvenTradeCount;
     }
 
     public Num getProfitTradeCount() {
-        return profitTradeCount;
+	return profitTradeCount;
     }
 
     public Num getLossTradeCount() {
-        return lossTradeCount;
+	return lossTradeCount;
     }
 
     public Num getBreakEvenTradeCount() {
-        return breakEvenTradeCount;
+	return breakEvenTradeCount;
     }
 
 }

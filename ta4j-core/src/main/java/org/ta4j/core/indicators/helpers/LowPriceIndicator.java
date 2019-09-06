@@ -32,7 +32,7 @@ import org.ta4j.core.TimeSeries;
 public class LowPriceIndicator extends PriceIndicator {
 
     public LowPriceIndicator(TimeSeries series) {
-        super(series, Bar::getLowPrice);
+	super(series, Bar::getLowPrice);
     }
 
 }

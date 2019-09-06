@@ -46,27 +46,25 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param ref
-     *            the indicator
-     * @param barCount
-     *            the time frame
+     * @param ref      the indicator
+     * @param barCount the time frame
      */
     public SigmaIndicator(Indicator<Num> ref, int barCount) {
-        super(ref);
-        this.ref = ref;
-        this.barCount = barCount;
-        mean = new SMAIndicator(ref, barCount);
-        sd = new StandardDeviationIndicator(ref, barCount);
+	super(ref);
+	this.ref = ref;
+	this.barCount = barCount;
+	mean = new SMAIndicator(ref, barCount);
+	sd = new StandardDeviationIndicator(ref, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        // z-score = (ref - mean) / sd
-        return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
+	// z-score = (ref - mean) / sd
+	return (ref.getValue(index).minus(mean.getValue(index))).dividedBy(sd.getValue(index));
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

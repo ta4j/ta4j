@@ -35,7 +35,8 @@ import org.ta4j.core.num.Num;
 /**
  * An abstract class for Ichimoku clouds indicators.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
 public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num> {
@@ -49,19 +50,17 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
     /**
      * Contructor.
      * 
-     * @param series
-     *            the series
-     * @param barCount
-     *            the time frame
+     * @param series   the series
+     * @param barCount the time frame
      */
     public AbstractIchimokuLineIndicator(TimeSeries series, int barCount) {
-        super(series);
-        periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-        periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+	super(series);
+	periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+	periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
+	return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
     }
 }

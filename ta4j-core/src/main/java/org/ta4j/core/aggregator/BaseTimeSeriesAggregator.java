@@ -37,12 +37,12 @@ public class BaseTimeSeriesAggregator implements TimeSeriesAggregator {
     private final BarAggregator barAggregator;
 
     public BaseTimeSeriesAggregator(BarAggregator barAggregator) {
-        this.barAggregator = barAggregator;
+	this.barAggregator = barAggregator;
     }
 
     @Override
     public TimeSeries aggregate(TimeSeries series, String aggregatedSeriesName) {
-        final List<Bar> aggregatedBars = barAggregator.aggregate(series.getBarData());
-        return new BaseTimeSeries(aggregatedSeriesName, aggregatedBars);
+	final List<Bar> aggregatedBars = barAggregator.aggregate(series.getBarData());
+	return new BaseTimeSeries(aggregatedSeriesName, aggregatedBars);
     }
 }

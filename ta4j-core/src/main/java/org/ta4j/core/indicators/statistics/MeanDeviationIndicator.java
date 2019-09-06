@@ -31,7 +31,8 @@ import org.ta4j.core.num.Num;
 /**
  * Mean deviation indicator.
  *
- * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
+ * @see <a href=
+ *      "http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
  *      http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
 public class MeanDeviationIndicator extends CachedIndicator<Num> {
@@ -43,35 +44,33 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator
-     *            the indicator
-     * @param barCount
-     *            the time frame
+     * @param indicator the indicator
+     * @param barCount  the time frame
      */
     public MeanDeviationIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        sma = new SMAIndicator(indicator, barCount);
+	super(indicator);
+	this.indicator = indicator;
+	this.barCount = barCount;
+	sma = new SMAIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        Num absoluteDeviations = numOf(0);
+	Num absoluteDeviations = numOf(0);
 
-        final Num average = sma.getValue(index);
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int nbValues = index - startIndex + 1;
+	final Num average = sma.getValue(index);
+	final int startIndex = Math.max(0, index - barCount + 1);
+	final int nbValues = index - startIndex + 1;
 
-        for (int i = startIndex; i <= index; i++) {
-            // For each period...
-            absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
-        }
-        return absoluteDeviations.dividedBy(numOf(nbValues));
+	for (int i = startIndex; i <= index; i++) {
+	    // For each period...
+	    absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
+	}
+	return absoluteDeviations.dividedBy(numOf(nbValues));
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

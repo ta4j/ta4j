@@ -37,37 +37,37 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-        return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
+	return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
     }
 
     private boolean isProfitableTrade(TimeSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            final Num result = calculateResult(series, trade);
-            return result.isGreaterThan(series.numOf(1));
-        }
-        return false;
+	if (trade.isClosed()) {
+	    final Num result = calculateResult(series, trade);
+	    return result.isGreaterThan(series.numOf(1));
+	}
+	return false;
     }
 
     private Num calculateResult(TimeSeries series, Trade trade) {
-        int entryIndex = trade.getEntry().getIndex();
-        int exitIndex = trade.getExit().getIndex();
-        if (trade.getEntry().isBuy()) {
-            // buy-then-sell trade
-            return series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
-        } else {
-            // sell-then-buy trade
-            return series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
-        }
+	int entryIndex = trade.getEntry().getIndex();
+	int exitIndex = trade.getExit().getIndex();
+	if (trade.getEntry().isBuy()) {
+	    // buy-then-sell trade
+	    return series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
+	} else {
+	    // sell-then-buy trade
+	    return series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
+	}
     }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
-        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
+	long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
+	return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+	return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

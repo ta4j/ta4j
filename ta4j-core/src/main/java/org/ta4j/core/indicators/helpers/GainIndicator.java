@@ -36,19 +36,19 @@ public class GainIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
 
     public GainIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.indicator = indicator;
+	super(indicator);
+	this.indicator = indicator;
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return numOf(0);
-        }
-        if (indicator.getValue(index).isGreaterThan(indicator.getValue(index - 1))) {
-            return indicator.getValue(index).minus(indicator.getValue(index - 1));
-        } else {
-            return numOf(0);
-        }
+	if (index == 0) {
+	    return numOf(0);
+	}
+	if (indicator.getValue(index).isGreaterThan(indicator.getValue(index - 1))) {
+	    return indicator.getValue(index).minus(indicator.getValue(index - 1));
+	} else {
+	    return numOf(0);
+	}
     }
 }

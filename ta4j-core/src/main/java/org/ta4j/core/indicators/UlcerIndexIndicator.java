@@ -30,9 +30,11 @@ import org.ta4j.core.num.Num;
 /**
  * Ulcer index indicator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index">
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ulcer_index</a>
- * @see <a href="https://en.wikipedia.org/wiki/Ulcer_index">https://en.wikipedia.org/wiki/Ulcer_index</a>
+ * @see <a href=
+ *      "https://en.wikipedia.org/wiki/Ulcer_index">https://en.wikipedia.org/wiki/Ulcer_index</a>
  */
 public class UlcerIndexIndicator extends CachedIndicator<Num> {
 
@@ -45,35 +47,33 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator
-     *            the indicator
-     * @param barCount
-     *            the time frame
+     * @param indicator the indicator
+     * @param barCount  the time frame
      */
     public UlcerIndexIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        highestValueInd = new HighestValueIndicator(indicator, barCount);
+	super(indicator);
+	this.indicator = indicator;
+	this.barCount = barCount;
+	highestValueInd = new HighestValueIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        Num squaredAverage = numOf(0);
-        for (int i = startIndex; i <= index; i++) {
-            Num currentValue = indicator.getValue(i);
-            Num highestValue = highestValueInd.getValue(i);
-            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(numOf(100));
-            squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
-        }
-        squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
-        return squaredAverage.sqrt();
+	final int startIndex = Math.max(0, index - barCount + 1);
+	final int numberOfObservations = index - startIndex + 1;
+	Num squaredAverage = numOf(0);
+	for (int i = startIndex; i <= index; i++) {
+	    Num currentValue = indicator.getValue(i);
+	    Num highestValue = highestValueInd.getValue(i);
+	    Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(numOf(100));
+	    squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
+	}
+	squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
+	return squaredAverage.sqrt();
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

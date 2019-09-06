@@ -48,34 +48,34 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
     private final Num multiplier;
 
     public WilliamsRIndicator(TimeSeries timeSeries, int barCount) {
-        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries),
-                new LowPriceIndicator(timeSeries));
+	this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries),
+		new LowPriceIndicator(timeSeries));
     }
 
     public WilliamsRIndicator(ClosePriceIndicator closePriceIndicator, int barCount,
-            HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
-        super(closePriceIndicator);
-        this.closePriceIndicator = closePriceIndicator;
-        this.barCount = barCount;
-        this.highPriceIndicator = highPriceIndicator;
-        this.lowPriceIndicator = lowPriceIndicator;
-        this.multiplier = numOf(-100);
+	    HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
+	super(closePriceIndicator);
+	this.closePriceIndicator = closePriceIndicator;
+	this.barCount = barCount;
+	this.highPriceIndicator = highPriceIndicator;
+	this.lowPriceIndicator = lowPriceIndicator;
+	this.multiplier = numOf(-100);
     }
 
     @Override
     protected Num calculate(int index) {
-        HighestValueIndicator highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
-        LowestValueIndicator lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
+	HighestValueIndicator highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
+	LowestValueIndicator lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
 
-        Num highestHighPrice = highestHigh.getValue(index);
-        Num lowestLowPrice = lowestMin.getValue(index);
+	Num highestHighPrice = highestHigh.getValue(index);
+	Num lowestLowPrice = lowestMin.getValue(index);
 
-        return ((highestHighPrice.minus(closePriceIndicator.getValue(index)))
-                .dividedBy(highestHighPrice.minus(lowestLowPrice))).multipliedBy(multiplier);
+	return ((highestHighPrice.minus(closePriceIndicator.getValue(index)))
+		.dividedBy(highestHighPrice.minus(lowestLowPrice))).multipliedBy(multiplier);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

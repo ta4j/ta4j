@@ -48,52 +48,49 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param minValueIndicator
-     *            the indicator for the maximum price (default {@link HighPriceIndicator})
-     * @param barCount
-     *            the time frame
+     * @param minValueIndicator the indicator for the maximum price (default
+     *                          {@link HighPriceIndicator})
+     * @param barCount          the time frame
      */
     public AroonDownIndicator(Indicator<Num> minValueIndicator, int barCount) {
-        super(minValueIndicator);
-        this.barCount = barCount;
-        this.minValueIndicator = minValueIndicator;
-        this.hundred = numOf(100);
-        // + 1 needed for last possible iteration in loop
-        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, barCount + 1);
+	super(minValueIndicator);
+	this.barCount = barCount;
+	this.minValueIndicator = minValueIndicator;
+	this.hundred = numOf(100);
+	// + 1 needed for last possible iteration in loop
+	lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, barCount + 1);
     }
 
     /**
      * Default Constructor that is using the maximum price
      *
-     * @param series
-     *            the time series
-     * @param barCount
-     *            the time frame
+     * @param series   the time series
+     * @param barCount the time frame
      */
     public AroonDownIndicator(TimeSeries series, int barCount) {
-        this(new LowPriceIndicator(series), barCount);
+	this(new LowPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (getTimeSeries().getBar(index).getLowPrice().isNaN())
-            return NaN;
+	if (getTimeSeries().getBar(index).getLowPrice().isNaN())
+	    return NaN;
 
-        // Getting the number of bars since the lowest close price
-        int endIndex = Math.max(0, index - barCount);
-        int nbBars = 0;
-        for (int i = index; i > endIndex; i--) {
-            if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
-                break;
-            }
-            nbBars++;
-        }
+	// Getting the number of bars since the lowest close price
+	int endIndex = Math.max(0, index - barCount);
+	int nbBars = 0;
+	for (int i = index; i > endIndex; i--) {
+	    if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
+		break;
+	    }
+	    nbBars++;
+	}
 
-        return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
+	return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

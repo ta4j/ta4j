@@ -36,18 +36,18 @@ public class MultiplierIndicator extends CachedIndicator<Num> {
     private final Num coefficient;
 
     public MultiplierIndicator(Indicator<Num> indicator, double coefficient) {
-        super(indicator);
-        this.indicator = indicator;
-        this.coefficient = numOf(coefficient);
+	super(indicator);
+	this.indicator = indicator;
+	this.coefficient = numOf(coefficient);
     }
 
     @Override
     protected Num calculate(int index) {
-        return indicator.getValue(index).multipliedBy(coefficient);
+	return indicator.getValue(index).multipliedBy(coefficient);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " Coefficient: " + coefficient;
+	return getClass().getSimpleName() + " Coefficient: " + coefficient;
     }
 }

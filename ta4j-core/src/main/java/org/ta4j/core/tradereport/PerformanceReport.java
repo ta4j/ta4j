@@ -36,26 +36,26 @@ public class PerformanceReport {
     private final Num totalLoss;
 
     public PerformanceReport(Num totalProfitLoss, Num totalProfitLossPercentage, Num totalProfit, Num totalLoss) {
-        this.totalProfitLoss = totalProfitLoss;
-        this.totalProfitLossPercentage = totalProfitLossPercentage;
-        this.totalProfit = totalProfit;
-        this.totalLoss = totalLoss;
+	this.totalProfitLoss = totalProfitLoss;
+	this.totalProfitLossPercentage = totalProfitLossPercentage;
+	this.totalProfit = totalProfit;
+	this.totalLoss = totalLoss;
     }
 
     public Num getTotalProfitLoss() {
-        return totalProfitLoss;
+	return totalProfitLoss;
     }
 
     public Num getTotalProfitLossPercentage() {
-        return totalProfitLossPercentage;
+	return totalProfitLossPercentage;
     }
 
     public Num getTotalProfit() {
-        return totalProfit;
+	return totalProfit;
     }
 
     public Num getTotalLoss() {
-        return totalLoss;
+	return totalLoss;
     }
 
 }

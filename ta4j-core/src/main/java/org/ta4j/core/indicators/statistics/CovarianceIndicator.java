@@ -42,39 +42,36 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator1
-     *            the first indicator
-     * @param indicator2
-     *            the second indicator
-     * @param barCount
-     *            the time frame
+     * @param indicator1 the first indicator
+     * @param indicator2 the second indicator
+     * @param barCount   the time frame
      */
     public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1);
-        this.indicator1 = indicator1;
-        this.indicator2 = indicator2;
-        this.barCount = barCount;
-        sma1 = new SMAIndicator(indicator1, barCount);
-        sma2 = new SMAIndicator(indicator2, barCount);
+	super(indicator1);
+	this.indicator1 = indicator1;
+	this.indicator2 = indicator2;
+	this.barCount = barCount;
+	sma1 = new SMAIndicator(indicator1, barCount);
+	sma2 = new SMAIndicator(indicator2, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        Num covariance = numOf(0);
-        Num average1 = sma1.getValue(index);
-        Num average2 = sma2.getValue(index);
-        for (int i = startIndex; i <= index; i++) {
-            Num mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
-            covariance = covariance.plus(mul);
-        }
-        covariance = covariance.dividedBy(numOf(numberOfObservations));
-        return covariance;
+	final int startIndex = Math.max(0, index - barCount + 1);
+	final int numberOfObservations = index - startIndex + 1;
+	Num covariance = numOf(0);
+	Num average1 = sma1.getValue(index);
+	Num average2 = sma2.getValue(index);
+	for (int i = startIndex; i <= index; i++) {
+	    Num mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
+	    covariance = covariance.plus(mul);
+	}
+	covariance = covariance.dividedBy(numOf(numberOfObservations));
+	return covariance;
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

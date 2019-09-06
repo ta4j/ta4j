@@ -32,6 +32,6 @@ import org.ta4j.core.TimeSeries;
 public class OpenPriceIndicator extends PriceIndicator {
 
     public OpenPriceIndicator(TimeSeries series) {
-        super(series, Bar::getOpenPrice);
+	super(series, Bar::getOpenPrice);
     }
 }

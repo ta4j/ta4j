@@ -34,11 +34,11 @@ import org.ta4j.core.num.Num;
 public class AmountIndicator extends CachedIndicator<Num> {
 
     public AmountIndicator(TimeSeries series) {
-        super(series);
+	super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-        return getTimeSeries().getBar(index).getAmount();
+	return getTimeSeries().getBar(index).getAmount();
     }
 }

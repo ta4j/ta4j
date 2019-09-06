@@ -26,8 +26,9 @@ package org.ta4j.core;
 /**
  * A trading strategy.
  *
- * A strategy is a pair of complementary {@link Rule rules}. It may recommend to enter or to exit. Recommendations are
- * based respectively on the entry rule or on the exit rule.
+ * A strategy is a pair of complementary {@link Rule rules}. It may recommend to
+ * enter or to exit. Recommendations are based respectively on the entry rule or
+ * on the exit rule.
  */
 public interface Strategy {
 
@@ -47,37 +48,29 @@ public interface Strategy {
     Rule getExitRule();
 
     /**
-     * @param strategy
-     *            the other strategy
+     * @param strategy the other strategy
      * @return the AND combination of two {@link Strategy strategies}
      */
     Strategy and(Strategy strategy);
 
     /**
-     * @param strategy
-     *            the other strategy
+     * @param strategy the other strategy
      * @return the OR combination of two {@link Strategy strategies}
      */
     Strategy or(Strategy strategy);
 
     /**
-     * @param name
-     *            the name of the strategy
-     * @param strategy
-     *            the other strategy
-     * @param unstablePeriod
-     *            number of bars that will be strip off for this strategy
+     * @param name           the name of the strategy
+     * @param strategy       the other strategy
+     * @param unstablePeriod number of bars that will be strip off for this strategy
      * @return the AND combination of two {@link Strategy strategies}
      */
     Strategy and(String name, Strategy strategy, int unstablePeriod);
 
     /**
-     * @param name
-     *            the name of the strategy
-     * @param strategy
-     *            the other strategy
-     * @param unstablePeriod
-     *            number of bars that will be strip off for this strategy
+     * @param name           the name of the strategy
+     * @param strategy       the other strategy
+     * @param unstablePeriod number of bars that will be strip off for this strategy
      * @return the OR combination of two {@link Strategy strategies}
      */
     Strategy or(String name, Strategy strategy, int unstablePeriod);
@@ -88,77 +81,69 @@ public interface Strategy {
     Strategy opposite();
 
     /**
-     * @param unstablePeriod
-     *            number of bars that will be strip off for this strategy
+     * @param unstablePeriod number of bars that will be strip off for this strategy
      */
     void setUnstablePeriod(int unstablePeriod);
 
     /**
-     * @return unstablePeriod number of bars that will be strip off for this strategy
+     * @return unstablePeriod number of bars that will be strip off for this
+     *         strategy
      */
     int getUnstablePeriod();
 
     /**
-     * @param index
-     *            a bar index
-     * @return true if this strategy is unstable at the provided index, false otherwise (stable)
+     * @param index a bar index
+     * @return true if this strategy is unstable at the provided index, false
+     *         otherwise (stable)
      */
     boolean isUnstableAt(int index);
 
     /**
-     * @param index
-     *            the bar index
-     * @param tradingRecord
-     *            the potentially needed trading history
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
      * @return true to recommend an order, false otherwise (no recommendation)
      */
     default boolean shouldOperate(int index, TradingRecord tradingRecord) {
-        Trade trade = tradingRecord.getCurrentTrade();
-        if (trade.isNew()) {
-            return shouldEnter(index, tradingRecord);
-        } else if (trade.isOpened()) {
-            return shouldExit(index, tradingRecord);
-        }
-        return false;
+	Trade trade = tradingRecord.getCurrentTrade();
+	if (trade.isNew()) {
+	    return shouldEnter(index, tradingRecord);
+	} else if (trade.isOpened()) {
+	    return shouldExit(index, tradingRecord);
+	}
+	return false;
     }
 
     /**
-     * @param index
-     *            the bar index
+     * @param index the bar index
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index) {
-        return shouldEnter(index, null);
+	return shouldEnter(index, null);
     }
 
     /**
-     * @param index
-     *            the bar index
-     * @param tradingRecord
-     *            the potentially needed trading history
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
+	return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
     }
 
     /**
-     * @param index
-     *            the bar index
+     * @param index the bar index
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index) {
-        return shouldExit(index, null);
+	return shouldExit(index, null);
     }
 
     /**
-     * @param index
-     *            the bar index
-     * @param tradingRecord
-     *            the potentially needed trading history
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index, TradingRecord tradingRecord) {
-        return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+	return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
     }
 }

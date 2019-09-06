@@ -38,17 +38,16 @@ public class BooleanIndicatorRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param indicator
-     *            a boolean indicator
+     * @param indicator a boolean indicator
      */
     public BooleanIndicatorRule(Indicator<Boolean> indicator) {
-        this.indicator = indicator;
+	this.indicator = indicator;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = indicator.getValue(index);
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+	final boolean satisfied = indicator.getValue(index);
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 }

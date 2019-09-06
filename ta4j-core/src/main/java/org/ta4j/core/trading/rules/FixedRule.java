@@ -39,23 +39,22 @@ public class FixedRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param indexes
-     *            a sequence of indexes
+     * @param indexes a sequence of indexes
      */
     public FixedRule(int... indexes) {
-        this.indexes = Arrays.copyOf(indexes, indexes.length);
+	this.indexes = Arrays.copyOf(indexes, indexes.length);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        for (int idx : indexes) {
-            if (idx == index) {
-                satisfied = true;
-                break;
-            }
-        }
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+	boolean satisfied = false;
+	for (int idx : indexes) {
+	    if (idx == index) {
+		satisfied = true;
+		break;
+	    }
+	}
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 }

@@ -34,11 +34,11 @@ public class TradeCountIndicator extends CachedIndicator<Integer> {
     private static final long serialVersionUID = -925772914642803594L;
 
     public TradeCountIndicator(TimeSeries series) {
-        super(series);
+	super(series);
     }
 
     @Override
     protected Integer calculate(int index) {
-        return getTimeSeries().getBar(index).getTrades();
+	return getTimeSeries().getBar(index).getTrades();
     }
 }

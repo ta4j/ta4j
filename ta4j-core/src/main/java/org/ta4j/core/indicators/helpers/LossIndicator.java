@@ -36,19 +36,19 @@ public class LossIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
 
     public LossIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.indicator = indicator;
+	super(indicator);
+	this.indicator = indicator;
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return numOf(0);
-        }
-        if (indicator.getValue(index).isLessThan(indicator.getValue(index - 1))) {
-            return indicator.getValue(index - 1).minus(indicator.getValue(index));
-        } else {
-            return numOf(0);
-        }
+	if (index == 0) {
+	    return numOf(0);
+	}
+	if (indicator.getValue(index).isLessThan(indicator.getValue(index - 1))) {
+	    return indicator.getValue(index - 1).minus(indicator.getValue(index));
+	} else {
+	    return numOf(0);
+	}
     }
 }

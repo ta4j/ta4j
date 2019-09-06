@@ -77,6 +77,7 @@ public interface AnalysisCriterion {
                 bestCriterionValue = currentCriterionValue;
             }
         }
+
         return bestStrategy;
     }
 
@@ -84,6 +85,8 @@ public interface AnalysisCriterion {
      * @param criterionValue1
      *            the first value
      * @param criterionValue2
+     * 
+     * 
      *            the second value
      * @return true if the first value is better than (according to the criterion) the second one, false otherwise
      */

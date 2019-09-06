@@ -33,7 +33,8 @@ import org.ta4j.core.analysis.criteria.TotalProfit2Criterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates PerformanceReport basis on provided trading report and time series
+ * This class generates PerformanceReport basis on provided trading report and
+ * time series
  *
  * @see PerformanceReport
  */
@@ -41,10 +42,10 @@ public class PerformanceReportGenerator implements ReportGenerator<PerformanceRe
 
     @Override
     public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
-        final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num totalProfit = new TotalProfit2Criterion().calculate(series, tradingRecord);
-        final Num totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
+	final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
+	final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
+	final Num totalProfit = new TotalProfit2Criterion().calculate(series, tradingRecord);
+	final Num totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
+	return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
     }
 }

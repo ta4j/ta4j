@@ -39,21 +39,19 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param indicator
-     *            the indicator
-     * @param barCount
-     *            the time frame
+     * @param indicator the indicator
+     * @param barCount  the time frame
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.barCount = barCount;
-        this.sdev = new StandardDeviationIndicator(indicator, barCount);
+	super(indicator);
+	this.barCount = barCount;
+	this.sdev = new StandardDeviationIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
-        return sdev.getValue(index).dividedBy(numOf(numberOfObservations).sqrt());
+	final int startIndex = Math.max(0, index - barCount + 1);
+	final int numberOfObservations = index - startIndex + 1;
+	return sdev.getValue(index).dividedBy(numOf(numberOfObservations).sqrt());
     }
 }

@@ -29,7 +29,8 @@ import org.ta4j.core.num.Num;
 /**
  * Rate of change (ROCIndicator) indicator. Aka. Momentum
  *
- * The ROCIndicator calculation compares the current value with the value "n" periods ago.
+ * The ROCIndicator calculation compares the current value with the value "n"
+ * periods ago.
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/pricerateofchange.asp">https://www.investopedia.com/terms/p/pricerateofchange.asp</a>
@@ -44,27 +45,25 @@ public class ROCIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator
-     *            the indicator
-     * @param barCount
-     *            the time frame
+     * @param indicator the indicator
+     * @param barCount  the time frame
      */
     public ROCIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
+	super(indicator);
+	this.indicator = indicator;
+	this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-        int nIndex = Math.max(index - barCount, 0);
-        Num nPeriodsAgoValue = indicator.getValue(nIndex);
-        Num currentValue = indicator.getValue(index);
-        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(numOf(100));
+	int nIndex = Math.max(index - barCount, 0);
+	Num nPeriodsAgoValue = indicator.getValue(nIndex);
+	Num currentValue = indicator.getValue(index);
+	return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(numOf(100));
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+	return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

@@ -40,34 +40,32 @@ public class OrRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param rule1
-     *            a trading rule
-     * @param rule2
-     *            another trading rule
+     * @param rule1 a trading rule
+     * @param rule2 another trading rule
      */
     public OrRule(Rule rule1, Rule rule2) {
-        this.rule1 = rule1;
-        this.rule2 = rule2;
+	this.rule1 = rule1;
+	this.rule2 = rule2;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) || rule2.isSatisfied(index, tradingRecord);
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+	final boolean satisfied = rule1.isSatisfied(index, tradingRecord) || rule2.isSatisfied(index, tradingRecord);
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 
     /**
      * @return first trading rule
      */
     public Rule getRule1() {
-        return rule1;
+	return rule1;
     }
 
     /**
      * @return second trading rule
      */
     public Rule getRule2() {
-        return rule2;
+	return rule2;
     }
 }

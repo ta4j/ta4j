@@ -88,191 +88,183 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      */
     public BaseTradingRecord() {
-        this(Order.OrderType.BUY);
+	this(Order.OrderType.BUY);
     }
 
     /**
      * Constructor.
      */
     public BaseTradingRecord(Order.OrderType orderType) {
-        this(orderType, new ZeroCostModel(), new ZeroCostModel());
+	this(orderType, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      *
-     * @param entryOrderType
-     *            the {@link Order.OrderType order type} of entries in the trading session
-     * @param transactionCostModel
-     *            the cost model for transactions of the asset
-     * @param holdingCostModel
-     *            the cost model for holding asset (e.g. borrowing)
+     * @param entryOrderType       the {@link Order.OrderType order type} of entries
+     *                             in the trading session
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public BaseTradingRecord(Order.OrderType entryOrderType, CostModel transactionCostModel,
-            CostModel holdingCostModel) {
-        if (entryOrderType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
-        }
-        this.startingType = entryOrderType;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
-        currentTrade = new Trade(entryOrderType, transactionCostModel, holdingCostModel);
+	    CostModel holdingCostModel) {
+	if (entryOrderType == null) {
+	    throw new IllegalArgumentException("Starting type must not be null");
+	}
+	this.startingType = entryOrderType;
+	this.transactionCostModel = transactionCostModel;
+	this.holdingCostModel = holdingCostModel;
+	currentTrade = new Trade(entryOrderType, transactionCostModel, holdingCostModel);
     }
 
     /**
      * Constructor.
      *
-     * @param orders
-     *            the orders to be recorded (cannot be empty)
+     * @param orders the orders to be recorded (cannot be empty)
      */
     public BaseTradingRecord(Order... orders) {
-        this(new ZeroCostModel(), new ZeroCostModel(), orders);
+	this(new ZeroCostModel(), new ZeroCostModel(), orders);
     }
 
     /**
      * Constructor.
      *
-     * @param transactionCostModel
-     *            the cost model for transactions of the asset
-     * @param holdingCostModel
-     *            the cost model for holding asset (e.g. borrowing)
-     * @param orders
-     *            the orders to be recorded (cannot be empty)
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param orders               the orders to be recorded (cannot be empty)
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Order... orders) {
-        this(orders[0].getType(), transactionCostModel, holdingCostModel);
-        for (Order o : orders) {
-            boolean newOrderWillBeAnEntry = currentTrade.isNew();
-            if (newOrderWillBeAnEntry && o.getType() != startingType) {
-                // Special case for entry/exit types reversal
-                // E.g.: BUY, SELL,
-                // BUY, SELL,
-                // SELL, BUY,
-                // BUY, SELL
-                currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
-            }
-            Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
-            recordOrder(newOrder, newOrderWillBeAnEntry);
-        }
+	this(orders[0].getType(), transactionCostModel, holdingCostModel);
+	for (Order o : orders) {
+	    boolean newOrderWillBeAnEntry = currentTrade.isNew();
+	    if (newOrderWillBeAnEntry && o.getType() != startingType) {
+		// Special case for entry/exit types reversal
+		// E.g.: BUY, SELL,
+		// BUY, SELL,
+		// SELL, BUY,
+		// BUY, SELL
+		currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
+	    }
+	    Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+	    recordOrder(newOrder, newOrderWillBeAnEntry);
+	}
     }
 
     @Override
     public Trade getCurrentTrade() {
-        return currentTrade;
+	return currentTrade;
     }
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        if (currentTrade.isClosed()) {
-            // Current trade closed, should not occur
-            throw new IllegalStateException("Current trade should not be closed");
-        }
-        boolean newOrderWillBeAnEntry = currentTrade.isNew();
-        Order newOrder = currentTrade.operate(index, price, amount);
-        recordOrder(newOrder, newOrderWillBeAnEntry);
+	if (currentTrade.isClosed()) {
+	    // Current trade closed, should not occur
+	    throw new IllegalStateException("Current trade should not be closed");
+	}
+	boolean newOrderWillBeAnEntry = currentTrade.isNew();
+	Order newOrder = currentTrade.operate(index, price, amount);
+	recordOrder(newOrder, newOrderWillBeAnEntry);
     }
 
     @Override
     public boolean enter(int index, Num price, Num amount) {
-        if (currentTrade.isNew()) {
-            operate(index, price, amount);
-            return true;
-        }
-        return false;
+	if (currentTrade.isNew()) {
+	    operate(index, price, amount);
+	    return true;
+	}
+	return false;
     }
 
     @Override
     public boolean exit(int index, Num price, Num amount) {
-        if (currentTrade.isOpened()) {
-            operate(index, price, amount);
-            return true;
-        }
-        return false;
+	if (currentTrade.isOpened()) {
+	    operate(index, price, amount);
+	    return true;
+	}
+	return false;
     }
 
     @Override
     public List<Trade> getTrades() {
-        return trades;
+	return trades;
     }
 
     @Override
     public Order getLastOrder() {
-        if (!orders.isEmpty()) {
-            return orders.get(orders.size() - 1);
-        }
-        return null;
+	if (!orders.isEmpty()) {
+	    return orders.get(orders.size() - 1);
+	}
+	return null;
     }
 
     @Override
     public Order getLastOrder(Order.OrderType orderType) {
-        if (Order.OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
-            return buyOrders.get(buyOrders.size() - 1);
-        } else if (Order.OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
-            return sellOrders.get(sellOrders.size() - 1);
-        }
-        return null;
+	if (Order.OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
+	    return buyOrders.get(buyOrders.size() - 1);
+	} else if (Order.OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
+	    return sellOrders.get(sellOrders.size() - 1);
+	}
+	return null;
     }
 
     @Override
     public Order getLastEntry() {
-        if (!entryOrders.isEmpty()) {
-            return entryOrders.get(entryOrders.size() - 1);
-        }
-        return null;
+	if (!entryOrders.isEmpty()) {
+	    return entryOrders.get(entryOrders.size() - 1);
+	}
+	return null;
     }
 
     @Override
     public Order getLastExit() {
-        if (!exitOrders.isEmpty()) {
-            return exitOrders.get(exitOrders.size() - 1);
-        }
-        return null;
+	if (!exitOrders.isEmpty()) {
+	    return exitOrders.get(exitOrders.size() - 1);
+	}
+	return null;
     }
 
     /**
      * Records an order and the corresponding trade (if closed).
      *
-     * @param order
-     *            the order to be recorded
-     * @param isEntry
-     *            true if the order is an entry, false otherwise (exit)
+     * @param order   the order to be recorded
+     * @param isEntry true if the order is an entry, false otherwise (exit)
      */
     private void recordOrder(Order order, boolean isEntry) {
-        if (order == null) {
-            throw new IllegalArgumentException("Order should not be null");
-        }
+	if (order == null) {
+	    throw new IllegalArgumentException("Order should not be null");
+	}
 
-        // Storing the new order in entries/exits lists
-        if (isEntry) {
-            entryOrders.add(order);
-        } else {
-            exitOrders.add(order);
-        }
+	// Storing the new order in entries/exits lists
+	if (isEntry) {
+	    entryOrders.add(order);
+	} else {
+	    exitOrders.add(order);
+	}
 
-        // Storing the new order in orders list
-        orders.add(order);
-        if (Order.OrderType.BUY.equals(order.getType())) {
-            // Storing the new order in buy orders list
-            buyOrders.add(order);
-        } else if (Order.OrderType.SELL.equals(order.getType())) {
-            // Storing the new order in sell orders list
-            sellOrders.add(order);
-        }
+	// Storing the new order in orders list
+	orders.add(order);
+	if (Order.OrderType.BUY.equals(order.getType())) {
+	    // Storing the new order in buy orders list
+	    buyOrders.add(order);
+	} else if (Order.OrderType.SELL.equals(order.getType())) {
+	    // Storing the new order in sell orders list
+	    sellOrders.add(order);
+	}
 
-        // Storing the trade if closed
-        if (currentTrade.isClosed()) {
-            trades.add(currentTrade);
-            currentTrade = new Trade(startingType, transactionCostModel, holdingCostModel);
-        }
+	// Storing the trade if closed
+	if (currentTrade.isClosed()) {
+	    trades.add(currentTrade);
+	    currentTrade = new Trade(startingType, transactionCostModel, holdingCostModel);
+	}
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord:\n");
-        for (Order order : orders) {
-            sb.append(order.toString()).append("\n");
-        }
-        return sb.toString();
+	StringBuilder sb = new StringBuilder();
+	sb.append("BaseTradingRecord:\n");
+	for (Order order : orders) {
+	    sb.append(order.toString()).append("\n");
+	}
+	return sb.toString();
     }
 }

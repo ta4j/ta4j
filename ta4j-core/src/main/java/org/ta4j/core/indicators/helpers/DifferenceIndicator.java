@@ -40,20 +40,18 @@ public class DifferenceIndicator extends CachedIndicator<Num> {
     /**
      * Constructor. (first minus second)
      * 
-     * @param first
-     *            the first indicator
-     * @param second
-     *            the second indicator
+     * @param first  the first indicator
+     * @param second the second indicator
      */
     public DifferenceIndicator(Indicator<Num> first, Indicator<Num> second) {
-        // TODO: check if first series is equal to second one
-        super(first);
-        this.first = first;
-        this.second = second;
+	// TODO: check if first series is equal to second one
+	super(first);
+	this.first = first;
+	this.second = second;
     }
 
     @Override
     protected Num calculate(int index) {
-        return first.getValue(index).minus(second.getValue(index));
+	return first.getValue(index).minus(second.getValue(index));
     }
 }

@@ -53,60 +53,56 @@ public class StopGainRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param closePrice
-     *            the close price indicator
-     * @param gainPercentage
-     *            the gain percentage
+     * @param closePrice     the close price indicator
+     * @param gainPercentage the gain percentage
      */
     public StopGainRule(ClosePriceIndicator closePrice, Number gainPercentage) {
-        this(closePrice, closePrice.numOf(gainPercentage));
+	this(closePrice, closePrice.numOf(gainPercentage));
     }
 
     /**
      * Constructor.
      *
-     * @param closePrice
-     *            the close price indicator
-     * @param gainPercentage
-     *            the gain percentage
+     * @param closePrice     the close price indicator
+     * @param gainPercentage the gain percentage
      */
     public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
-        this.closePrice = closePrice;
-        this.gainPercentage = gainPercentage;
-        HUNDRED = closePrice.numOf(100);
+	this.closePrice = closePrice;
+	this.gainPercentage = gainPercentage;
+	HUNDRED = closePrice.numOf(100);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no trade opened, no loss
-        if (tradingRecord != null) {
-            Trade currentTrade = tradingRecord.getCurrentTrade();
-            if (currentTrade.isOpened()) {
+	boolean satisfied = false;
+	// No trading history or no trade opened, no loss
+	if (tradingRecord != null) {
+	    Trade currentTrade = tradingRecord.getCurrentTrade();
+	    if (currentTrade.isOpened()) {
 
-                Num entryPrice = currentTrade.getEntry().getNetPrice();
-                Num currentPrice = closePrice.getValue(index);
+		Num entryPrice = currentTrade.getEntry().getNetPrice();
+		Num currentPrice = closePrice.getValue(index);
 
-                if (currentTrade.getEntry().isBuy()) {
-                    satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
-                } else {
-                    satisfied = isSellGainSatisfied(entryPrice, currentPrice);
-                }
-            }
-        }
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+		if (currentTrade.getEntry().isBuy()) {
+		    satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
+		} else {
+		    satisfied = isSellGainSatisfied(entryPrice, currentPrice);
+		}
+	    }
+	}
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 
     private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
-        return currentPrice.isLessThanOrEqual(threshold);
+	Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
+	Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+	return currentPrice.isLessThanOrEqual(threshold);
     }
 
     private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
-        return currentPrice.isGreaterThanOrEqual(threshold);
+	Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
+	Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+	return currentPrice.isGreaterThanOrEqual(threshold);
     }
 }

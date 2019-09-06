@@ -31,7 +31,8 @@ import org.ta4j.core.num.Num;
 /**
  * Chaikin Oscillator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator">
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator</a>
  */
 public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
@@ -43,31 +44,27 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series
-     *            the {@link TimeSeries}
-     * @param shortBarCount
-     *            (usually 3)
-     * @param longBarCount
-     *            (usually 10)
+     * @param series        the {@link TimeSeries}
+     * @param shortBarCount (usually 3)
+     * @param longBarCount  (usually 10)
      */
     public ChaikinOscillatorIndicator(TimeSeries series, int shortBarCount, int longBarCount) {
-        super(series);
-        this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
-        this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
+	super(series);
+	this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
+	this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
     }
 
     /**
      * Constructor.
      *
-     * @param series
-     *            the {@link TimeSeries}
+     * @param series the {@link TimeSeries}
      */
     public ChaikinOscillatorIndicator(TimeSeries series) {
-        this(series, 3, 10);
+	this(series, 3, 10);
     }
 
     @Override
     protected Num calculate(int index) {
-        return emaShort.getValue(index).minus(emaLong.getValue(index));
+	return emaShort.getValue(index).minus(emaLong.getValue(index));
     }
 }

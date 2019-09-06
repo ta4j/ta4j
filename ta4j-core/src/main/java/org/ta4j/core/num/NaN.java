@@ -26,7 +26,8 @@ package org.ta4j.core.num;
 import java.util.function.Function;
 
 /**
- * Representation of an undefined or unrepresentable value: NaN (not a number) <br>
+ * Representation of an undefined or unrepresentable value: NaN (not a number)
+ * <br>
  * Special behavior in methods such as:
  * <ul>
  * <li>{@link NaN#plus(Num)} => NaN</li>
@@ -36,7 +37,8 @@ import java.util.function.Function;
  * <li>{@link NaN#min(Num)} => NaN</li>
  * <li>{@link NaN#max(Num)} => NaN</li>
  * <li>{@link NaN#doubleValue()} => {@link Double#NaN}</li>
- * <li>{@link NaN#intValue()} => throws {@link UnsupportedOperationException}</li>
+ * <li>{@link NaN#intValue()} => throws
+ * {@link UnsupportedOperationException}</li>
  * </ul>
  */
 public class NaN implements Num {
@@ -51,173 +53,172 @@ public class NaN implements Num {
 
     @Override
     public int compareTo(Num o) {
-        return 0;
+	return 0;
     }
 
     @Override
     public int intValue() {
-        throw new UnsupportedOperationException("No NaN represantation for int");
+	throw new UnsupportedOperationException("No NaN represantation for int");
     }
 
     @Override
     public long longValue() {
-        throw new UnsupportedOperationException("No NaN represantation for long");
+	throw new UnsupportedOperationException("No NaN represantation for long");
     }
 
     @Override
     public float floatValue() {
-        return Float.NaN;
+	return Float.NaN;
     }
 
     @Override
     public double doubleValue() {
-        return Double.NaN;
+	return Double.NaN;
     }
 
     @Override
     public Number getDelegate() {
-        return null;
+	return null;
     }
 
     @Override
     public String getName() {
-        return toString();
+	return toString();
     }
 
     @Override
     public String toString() {
-        return "NaN";
+	return "NaN";
     }
 
     @Override
     public Num plus(Num augend) {
-        return this;
+	return this;
     }
 
     @Override
     public Num minus(Num subtrahend) {
-        return this;
+	return this;
     }
 
     @Override
     public Num multipliedBy(Num multiplicand) {
-        return this;
+	return this;
     }
 
     @Override
     public Num dividedBy(Num divisor) {
-        return this;
+	return this;
     }
 
     @Override
     public Num remainder(Num divisor) {
-        return this;
+	return this;
     }
 
     @Override
     public Num pow(int n) {
-        return this;
+	return this;
     }
 
     @Override
     public Num pow(Num n) {
-        return this;
+	return this;
     }
 
     @Override
     public Num log() {
-        return this;
+	return this;
     }
 
     @Override
     public Num sqrt() {
-        return this;
+	return this;
     }
 
     @Override
     public Num sqrt(int precision) {
-        return this;
+	return this;
     }
 
     @Override
     public Num abs() {
-        return this;
+	return this;
     }
 
     @Override
     public boolean isZero() {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isPositive() {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isPositiveOrZero() {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isNegative() {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isNegativeOrZero() {
-        return false;
+	return false;
     }
 
     /**
      * NaN.isEqual(NaN) -> true
      * 
-     * @param other
-     *            the other value, not null
+     * @param other the other value, not null
      * @return flase if both values are not NaN
      */
     @Override
     public boolean isEqual(Num other) {
-        return other != null && other.equals(NaN);
+	return other != null && other.equals(NaN);
     }
 
     @Override
     public boolean isGreaterThan(Num other) {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isGreaterThanOrEqual(Num other) {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isLessThan(Num other) {
-        return false;
+	return false;
     }
 
     @Override
     public boolean isLessThanOrEqual(Num other) {
-        return false;
+	return false;
     }
 
     @Override
     public Num min(Num other) {
-        return this;
+	return this;
     }
 
     @Override
     public Num max(Num other) {
-        return this;
+	return this;
     }
 
     @Override
     public Function<Number, Num> function() {
-        return number -> NaN;
+	return number -> NaN;
     }
 
     @Override
     public boolean isNaN() {
-        return true;
+	return true;
     }
 }

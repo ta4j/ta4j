@@ -32,7 +32,8 @@ import org.ta4j.core.num.Num;
 /**
  * ADX indicator. Part of the Directional Movement System.
  *
- * @see <a href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * @see <a
+ *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 
@@ -41,23 +42,23 @@ public class ADXIndicator extends CachedIndicator<Num> {
     private final int adxBarCount;
 
     public ADXIndicator(TimeSeries series, int diBarCount, int adxBarCount) {
-        super(series);
-        this.diBarCount = diBarCount;
-        this.adxBarCount = adxBarCount;
-        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
+	super(series);
+	this.diBarCount = diBarCount;
+	this.adxBarCount = adxBarCount;
+	this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
     }
 
     public ADXIndicator(TimeSeries series, int barCount) {
-        this(series, barCount, barCount);
+	this(series, barCount, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return averageDXIndicator.getValue(index);
+	return averageDXIndicator.getValue(index);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
+	return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
     }
 }

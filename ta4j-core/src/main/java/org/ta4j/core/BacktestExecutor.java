@@ -31,7 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class enables backtesting of multiple strategies and comparing them to see which is the best
+ * This class enables backtesting of multiple strategies and comparing them to
+ * see which is the best
  */
 public class BacktestExecutor {
 
@@ -39,40 +40,38 @@ public class BacktestExecutor {
     private final TimeSeriesManager seriesManager;
 
     public BacktestExecutor(TimeSeries series) {
-        this(series, new TradingStatementGenerator());
+	this(series, new TradingStatementGenerator());
     }
 
     public BacktestExecutor(TimeSeries series, TradingStatementGenerator tradingStatementGenerator) {
-        this.seriesManager = new TimeSeriesManager(series);
-        this.tradingStatementGenerator = tradingStatementGenerator;
+	this.seriesManager = new TimeSeriesManager(series);
+	this.tradingStatementGenerator = tradingStatementGenerator;
     }
 
     /**
      * Execute given strategies and return trading statements
      *
-     * @param amount
-     *            - The amount used to open/close the trades
+     * @param amount - The amount used to open/close the trades
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
-        return execute(strategies, amount, Order.OrderType.BUY);
+	return execute(strategies, amount, Order.OrderType.BUY);
     }
 
     /**
-     * Execute given strategies with specified order type to open trades and return trading statements
+     * Execute given strategies with specified order type to open trades and return
+     * trading statements
      *
-     * @param amount
-     *            - The amount used to open/close the trades
-     * @param orderType
-     *            the {@link Order.OrderType} used to open the trades
+     * @param amount    - The amount used to open/close the trades
+     * @param orderType the {@link Order.OrderType} used to open the trades
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Order.OrderType orderType) {
-        final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
-        for (Strategy strategy : strategies) {
-            final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
-            final TradingStatement tradingStatement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                    seriesManager.getTimeSeries());
-            tradingStatements.add(tradingStatement);
-        }
-        return tradingStatements;
+	final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
+	for (Strategy strategy : strategies) {
+	    final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
+	    final TradingStatement tradingStatement = tradingStatementGenerator.generate(strategy, tradingRecord,
+		    seriesManager.getTimeSeries());
+	    tradingStatements.add(tradingStatement);
+	}
+	return tradingStatements;
     }
 }

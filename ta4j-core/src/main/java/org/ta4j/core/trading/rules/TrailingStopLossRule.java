@@ -80,84 +80,79 @@ public class TrailingStopLossRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param closePrice
-     *            the close price indicator
-     * @param lossPercentage
-     *            the loss percentage
-     * @param barCount
-     *            number of bars to look back for the calculation
+     * @param closePrice     the close price indicator
+     * @param lossPercentage the loss percentage
+     * @param barCount       number of bars to look back for the calculation
      */
     public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage, int barCount) {
-        this.priceIndicator = priceIndicator;
-        this.barCount = barCount;
-        this.lossPercentage = lossPercentage;
+	this.priceIndicator = priceIndicator;
+	this.barCount = barCount;
+	this.lossPercentage = lossPercentage;
     }
 
     /**
      * Constructor.
      * 
-     * @param closePrice
-     *            the close price indicator
-     * @param lossPercentage
-     *            the loss percentage
+     * @param closePrice     the close price indicator
+     * @param lossPercentage the loss percentage
      */
     public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage) {
-        this(priceIndicator, lossPercentage, Integer.MAX_VALUE);
+	this(priceIndicator, lossPercentage, Integer.MAX_VALUE);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no trade opened, no loss
-        if (tradingRecord != null) {
-            Trade currentTrade = tradingRecord.getCurrentTrade();
-            if (currentTrade.isOpened()) {
-                Num currentPrice = priceIndicator.getValue(index);
-                int tradeIndex = currentTrade.getEntry().getIndex();
+	boolean satisfied = false;
+	// No trading history or no trade opened, no loss
+	if (tradingRecord != null) {
+	    Trade currentTrade = tradingRecord.getCurrentTrade();
+	    if (currentTrade.isOpened()) {
+		Num currentPrice = priceIndicator.getValue(index);
+		int tradeIndex = currentTrade.getEntry().getIndex();
 
-                if (currentTrade.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, tradeIndex);
-                } else {
-                    satisfied = isSellSatisfied(currentPrice, index, tradeIndex);
-                }
-            }
-        }
-        traceIsSatisfied(index, satisfied);
-        return satisfied;
+		if (currentTrade.getEntry().isBuy()) {
+		    satisfied = isBuySatisfied(currentPrice, index, tradeIndex);
+		} else {
+		    satisfied = isSellSatisfied(currentPrice, index, tradeIndex);
+		}
+	    }
+	}
+	traceIsSatisfied(index, satisfied);
+	return satisfied;
     }
 
     private boolean isBuySatisfied(Num currentPrice, int index, int tradeIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, tradeIndex));
-        Num highestCloseNum = highest.getValue(index);
-        Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
-        currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
-        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
+	HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
+		getValueIndicatorBarCount(index, tradeIndex));
+	Num highestCloseNum = highest.getValue(index);
+	Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
+	currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
+	return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
     }
 
     public Num getCurrentStopLossLimitActivation() {
-        return currentStopLossLimitActivation;
+	return currentStopLossLimitActivation;
     }
 
     private boolean isSellSatisfied(Num currentPrice, int index, int tradeIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, tradeIndex));
-        Num lowestCloseNum = lowest.getValue(index);
-        Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
-        currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
+	LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
+		getValueIndicatorBarCount(index, tradeIndex));
+	Num lowestCloseNum = lowest.getValue(index);
+	Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
+	currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
+	return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
     private int getValueIndicatorBarCount(int index, int tradeIndex) {
-        return Math.min(index - tradeIndex + 1, this.barCount);
+	return Math.min(index - tradeIndex + 1, this.barCount);
     }
 
     @Override
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}",
-                    getClass().getSimpleName(), index, isSatisfied, priceIndicator.getValue(index),
-                    currentStopLossLimitActivation);
-        }
+	if (log.isTraceEnabled()) {
+	    log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}",
+		    getClass().getSimpleName(), index, isSatisfied, priceIndicator.getValue(index),
+		    currentStopLossLimitActivation);
+	}
     }
 }
