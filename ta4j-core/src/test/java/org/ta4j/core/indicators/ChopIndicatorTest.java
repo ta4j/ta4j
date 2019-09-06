@@ -47,7 +47,7 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     protected final BaseTimeSeriesBuilder timeSeriesBuilder = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction);
 
     public ChopIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     /**
@@ -55,31 +55,32 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
      */
     @Test
     public void testChoppy() {
-        series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
-        for (int i = 0; i < 50; i++) {
-            ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
-            series.addBar(date, 21.5, 21.5 + 1, 21.5 - 1, 21.5);
-        }
-        ChopIndicator ci1 = new ChopIndicator(series, 14, 100);
-        int HIGH_CHOPPINESS_VALUE = 85;
-        assertTrue(ci1.getValue(series.getEndIndex()).doubleValue() > HIGH_CHOPPINESS_VALUE);
+	series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
+	for (int i = 0; i < 50; i++) {
+	    ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
+	    series.addBar(date, 21.5, 21.5 + 1, 21.5 - 1, 21.5);
+	}
+	ChopIndicator ci1 = new ChopIndicator(series, 14, 100);
+	int HIGH_CHOPPINESS_VALUE = 85;
+	assertTrue(ci1.getValue(series.getEndIndex()).doubleValue() > HIGH_CHOPPINESS_VALUE);
     }
 
     /**
-     * this will assert that choppiness is low if market price is trending significantly
+     * this will assert that choppiness is low if market price is trending
+     * significantly
      */
     @Test
     public void testTradeableTrend() {
-        series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
-        float value = 21.5f;
-        for (int i = 0; i < 50; i++) {
-            ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
-            series.addBar(date, value, value + 1, value - 1, value);
-            value += 2.0f;
-        }
-        ChopIndicator ci1 = new ChopIndicator(series, 14, 100);
-        int LOW_CHOPPINESS_VALUE = 30;
-        assertTrue(ci1.getValue(series.getEndIndex()).doubleValue() < LOW_CHOPPINESS_VALUE);
+	series = timeSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
+	float value = 21.5f;
+	for (int i = 0; i < 50; i++) {
+	    ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
+	    series.addBar(date, value, value + 1, value - 1, value);
+	    value += 2.0f;
+	}
+	ChopIndicator ci1 = new ChopIndicator(series, 14, 100);
+	int LOW_CHOPPINESS_VALUE = 30;
+	assertTrue(ci1.getValue(series.getEndIndex()).doubleValue() < LOW_CHOPPINESS_VALUE);
     }
 
     // TODO: this test class needs better cases

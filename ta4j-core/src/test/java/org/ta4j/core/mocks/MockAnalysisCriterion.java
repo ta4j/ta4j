@@ -39,51 +39,44 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Constructor.
      * 
-     * @param series
-     *            TimeSeries of the AnalysisCriterion
-     * @param values
-     *            AnalysisCriterion values
+     * @param series TimeSeries of the AnalysisCriterion
+     * @param values AnalysisCriterion values
      */
     public MockAnalysisCriterion(TimeSeries series, List<Num> values) {
-        this.series = series;
-        this.values = values;
+	this.series = series;
+	this.values = values;
     }
 
     /**
      * Gets the final criterion value.
      * 
-     * @param series
-     *            TimeSeries is ignored
-     * @param trade
-     *            is ignored
+     * @param series TimeSeries is ignored
+     * @param trade  is ignored
      */
     public Num calculate(TimeSeries series, Trade trade) {
-        return values.get(values.size() - 1);
+	return values.get(values.size() - 1);
     }
 
     /**
      * Gets the final criterion value.
      * 
-     * @param series
-     *            TimeSeries is ignored
-     * @param tradingRecord
-     *            is ignored
+     * @param series        TimeSeries is ignored
+     * @param tradingRecord is ignored
      */
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return values.get(values.size() - 1);
+	return values.get(values.size() - 1);
     }
 
     /**
-     * Compares two criterion values and returns true if first value is greater than second value, false otherwise.
+     * Compares two criterion values and returns true if first value is greater than
+     * second value, false otherwise.
      * 
-     * @param criterionValue1
-     *            first value
-     * @param criterionValue2
-     *            second value
+     * @param criterionValue1 first value
+     * @param criterionValue2 second value
      * @return boolean indicating first value is greater than second value
      */
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+	return criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

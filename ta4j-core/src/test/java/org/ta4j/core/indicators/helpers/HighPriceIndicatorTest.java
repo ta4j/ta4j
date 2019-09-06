@@ -41,20 +41,20 @@ public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     TimeSeries timeSeries;
 
     public HighPriceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     @Before
     public void setUp() {
-        timeSeries = new MockTimeSeries(numFunction);
-        highPriceIndicator = new HighPriceIndicator(timeSeries);
+	timeSeries = new MockTimeSeries(numFunction);
+	highPriceIndicator = new HighPriceIndicator(timeSeries);
 
     }
 
     @Test
     public void indicatorShouldRetrieveBarMaxPrice() {
-        for (int i = 0; i < 10; i++) {
-            assertEquals(highPriceIndicator.getValue(i), timeSeries.getBar(i).getHighPrice());
-        }
+	for (int i = 0; i < 10; i++) {
+	    assertEquals(highPriceIndicator.getValue(i), timeSeries.getBar(i).getHighPrice());
+	}
     }
 }

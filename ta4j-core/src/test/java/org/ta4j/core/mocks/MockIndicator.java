@@ -38,25 +38,22 @@ public class MockIndicator implements Indicator<Num> {
     /**
      * Constructor.
      * 
-     * @param series
-     *            TimeSeries of the Indicator
-     * @param values
-     *            Indicator values
+     * @param series TimeSeries of the Indicator
+     * @param values Indicator values
      */
     public MockIndicator(TimeSeries series, List<Num> values) {
-        this.series = series;
-        this.values = values;
+	this.series = series;
+	this.values = values;
     }
 
     /**
      * Gets a value from the Indicator
      * 
-     * @param index
-     *            Indicator value to get
+     * @param index Indicator value to get
      * @return Num Indicator value at index
      */
     public Num getValue(int index) {
-        return values.get(index);
+	return values.get(index);
     }
 
     /**
@@ -65,12 +62,12 @@ public class MockIndicator implements Indicator<Num> {
      * @return TimeSeries of the Indicator
      */
     public TimeSeries getTimeSeries() {
-        return series;
+	return series;
     }
 
     @Override
     public Num numOf(Number number) {
-        return series.numOf(number);
+	return series.numOf(number);
     }
 
 }

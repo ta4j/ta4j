@@ -31,11 +31,11 @@ import java.util.function.Function;
 public class TotalProfit2CriterionTest extends AbstractCriterionTest {
 
     public TotalProfit2CriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfit2Criterion(), numFunction);
+	super((params) -> new TotalProfit2Criterion(), numFunction);
     }
 
     @Test
     public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+	openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

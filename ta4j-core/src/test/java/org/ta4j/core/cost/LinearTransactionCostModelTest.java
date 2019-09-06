@@ -41,80 +41,80 @@ public class LinearTransactionCostModelTest {
 
     @Before
     public void setUp() throws Exception {
-        transactionModel = new LinearTransactionCostModel(0.01);
+	transactionModel = new LinearTransactionCostModel(0.01);
     }
 
     @Test
     public void calculateSingleOrderCost() {
-        // Price - Amount calculation Test
-        Num price = DoubleNum.valueOf(100);
-        Num amount = DoubleNum.valueOf(2);
-        Num cost = transactionModel.calculate(price, amount);
+	// Price - Amount calculation Test
+	Num price = DoubleNum.valueOf(100);
+	Num amount = DoubleNum.valueOf(2);
+	Num cost = transactionModel.calculate(price, amount);
 
-        assertNumEquals(DoubleNum.valueOf(2), cost);
+	assertNumEquals(DoubleNum.valueOf(2), cost);
     }
 
     @Test
     public void calculateBuyTrade() {
-        // Calculate the transaction costs of a closed long trade
-        int holdingPeriod = 2;
-        Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+	// Calculate the transaction costs of a closed long trade
+	int holdingPeriod = 2;
+	Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+	Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
-        Trade trade = new Trade(entry, exit, transactionModel, new ZeroCostModel());
+	Trade trade = new Trade(entry, exit, transactionModel, new ZeroCostModel());
 
-        Num costFromBuy = entry.getCost();
-        Num costFromSell = exit.getCost();
-        Num costsFromModel = transactionModel.calculate(trade, holdingPeriod);
+	Num costFromBuy = entry.getCost();
+	Num costFromSell = exit.getCost();
+	Num costsFromModel = transactionModel.calculate(trade, holdingPeriod);
 
-        assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
-        assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
-        assertNumEquals(costFromBuy, DoubleNum.valueOf(1));
+	assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
+	assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
+	assertNumEquals(costFromBuy, DoubleNum.valueOf(1));
     }
 
     @Test
     public void calculateSellTrade() {
-        // Calculate the transaction costs of a closed short trade
-        int holdingPeriod = 2;
-        Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+	// Calculate the transaction costs of a closed short trade
+	int holdingPeriod = 2;
+	Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+	Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
-        Trade trade = new Trade(entry, exit, transactionModel, new ZeroCostModel());
+	Trade trade = new Trade(entry, exit, transactionModel, new ZeroCostModel());
 
-        Num costFromBuy = entry.getCost();
-        Num costFromSell = exit.getCost();
-        Num costsFromModel = transactionModel.calculate(trade, holdingPeriod);
+	Num costFromBuy = entry.getCost();
+	Num costFromSell = exit.getCost();
+	Num costsFromModel = transactionModel.calculate(trade, holdingPeriod);
 
-        assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
-        assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
-        assertNumEquals(costFromBuy, DoubleNum.valueOf(1));
+	assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
+	assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
+	assertNumEquals(costFromBuy, DoubleNum.valueOf(1));
     }
 
     @Test
     public void calculateOpenSellTrade() {
-        // Calculate the transaction costs of an open trade
-        int currentIndex = 4;
-        Trade trade = new Trade(Order.OrderType.BUY, transactionModel, new ZeroCostModel());
-        trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+	// Calculate the transaction costs of an open trade
+	int currentIndex = 4;
+	Trade trade = new Trade(Order.OrderType.BUY, transactionModel, new ZeroCostModel());
+	trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num costsFromModel = transactionModel.calculate(trade, currentIndex);
+	Num costsFromModel = transactionModel.calculate(trade, currentIndex);
 
-        assertNumEquals(costsFromModel, DoubleNum.valueOf(1));
+	assertNumEquals(costsFromModel, DoubleNum.valueOf(1));
     }
 
     @Test
     public void testEquality() {
-        LinearTransactionCostModel model = new LinearTransactionCostModel(0.1);
-        CostModel modelSameClass = new LinearTransactionCostModel(0.2);
-        CostModel modelSameFee = new LinearTransactionCostModel(0.1);
-        CostModel modelOther = new ZeroCostModel();
+	LinearTransactionCostModel model = new LinearTransactionCostModel(0.1);
+	CostModel modelSameClass = new LinearTransactionCostModel(0.2);
+	CostModel modelSameFee = new LinearTransactionCostModel(0.1);
+	CostModel modelOther = new ZeroCostModel();
 
-        boolean equality = model.equals(modelSameFee);
-        boolean inequality1 = model.equals(modelSameClass);
-        boolean inequality2 = model.equals(modelOther);
+	boolean equality = model.equals(modelSameFee);
+	boolean inequality1 = model.equals(modelSameClass);
+	boolean inequality2 = model.equals(modelOther);
 
-        assertTrue(equality);
-        assertFalse(inequality1);
-        assertFalse(inequality2);
+	assertTrue(equality);
+	assertFalse(inequality1);
+	assertFalse(inequality2);
     }
 }

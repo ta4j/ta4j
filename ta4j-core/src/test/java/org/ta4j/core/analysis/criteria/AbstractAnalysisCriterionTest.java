@@ -48,42 +48,42 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfitCriterion(), numFunction);
+	super((params) -> new TotalProfitCriterion(), numFunction);
     }
 
     @Before
     public void setUp() {
-        alwaysStrategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
-        buyAndHoldStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(4));
-        strategies = new ArrayList<Strategy>();
-        strategies.add(alwaysStrategy);
-        strategies.add(buyAndHoldStrategy);
+	alwaysStrategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+	buyAndHoldStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(4));
+	strategies = new ArrayList<Strategy>();
+	strategies.add(alwaysStrategy);
+	strategies.add(buyAndHoldStrategy);
     }
 
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
-        TimeSeriesManager manager = new TimeSeriesManager(series);
-        Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
-        assertEquals(alwaysStrategy, bestStrategy);
+	MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
+	TimeSeriesManager manager = new TimeSeriesManager(series);
+	Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
+	assertEquals(alwaysStrategy, bestStrategy);
     }
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
-        TimeSeriesManager manager = new TimeSeriesManager(series);
-        Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
-        assertEquals(buyAndHoldStrategy, bestStrategy);
+	MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
+	TimeSeriesManager manager = new TimeSeriesManager(series);
+	Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
+	assertEquals(buyAndHoldStrategy, bestStrategy);
     }
 
     @Test
     public void toStringMethod() {
-        AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
-        assertEquals("Average Profit", c1.toString());
-        AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();
-        assertEquals("Buy And Hold", c2.toString());
-        AbstractAnalysisCriterion c3 = new RewardRiskRatioCriterion();
-        assertEquals("Reward Risk Ratio", c3.toString());
+	AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
+	assertEquals("Average Profit", c1.toString());
+	AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();
+	assertEquals("Buy And Hold", c2.toString());
+	AbstractAnalysisCriterion c3 = new RewardRiskRatioCriterion();
+	assertEquals("Reward Risk Ratio", c3.toString());
     }
 
 }

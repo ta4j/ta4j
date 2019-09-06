@@ -29,6 +29,6 @@ public class QuickstartTest {
 
     @Test
     public void test() {
-        Quickstart.main(null);
+	Quickstart.main(null);
     }
 }

@@ -63,134 +63,134 @@ import static org.junit.Assert.assertTrue;
 public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Object> {
 
     public TrailingStopLossRuleTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     @Test
     public void isSatisfiedForBuy() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(
-                new MockTimeSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
+	BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
+	ClosePriceIndicator closePrice = new ClosePriceIndicator(
+		new MockTimeSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
 
-        // 10% trailing-stop-loss
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+	// 10% trailing-stop-loss
+	TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
 
-        assertFalse(rule.isSatisfied(0, null));
-        assertNull(rule.getCurrentStopLossLimitActivation());
+	assertFalse(rule.isSatisfied(0, null));
+	assertNull(rule.getCurrentStopLossLimitActivation());
 
-        assertFalse(rule.isSatisfied(1, tradingRecord));
-        assertNull(rule.getCurrentStopLossLimitActivation());
+	assertFalse(rule.isSatisfied(1, tradingRecord));
+	assertNull(rule.getCurrentStopLossLimitActivation());
 
-        // Enter at 114
-        tradingRecord.enter(2, numOf(114), numOf(1));
-        assertFalse(rule.isSatisfied(2, tradingRecord));
-        assertEquals(numOf(120).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
+	// Enter at 114
+	tradingRecord.enter(2, numOf(114), numOf(1));
+	assertFalse(rule.isSatisfied(2, tradingRecord));
+	assertEquals(numOf(120).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
 
-        assertFalse(rule.isSatisfied(3, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
+	assertFalse(rule.isSatisfied(3, tradingRecord));
+	assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
 
-        assertTrue(rule.isSatisfied(4, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
-        // Exit
-        tradingRecord.exit(5);
+	assertTrue(rule.isSatisfied(4, tradingRecord));
+	assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
+	// Exit
+	tradingRecord.exit(5);
 
-        // Enter at 128
-        tradingRecord.enter(5, numOf(128), numOf(1));
-        assertFalse(rule.isSatisfied(5, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
-        assertTrue(rule.isSatisfied(6, tradingRecord));
-        assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
+	// Enter at 128
+	tradingRecord.enter(5, numOf(128), numOf(1));
+	assertFalse(rule.isSatisfied(5, tradingRecord));
+	assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
+	assertTrue(rule.isSatisfied(6, tradingRecord));
+	assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
     }
 
     @Test
     public void isSatisfiedForBuyForBarCount() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(
-                new MockTimeSeries(numFunction, 100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99));
+	BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
+	ClosePriceIndicator closePrice = new ClosePriceIndicator(
+		new MockTimeSeries(numFunction, 100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99));
 
-        // 10% trailing-stop-loss
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
+	// 10% trailing-stop-loss
+	TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
 
-        assertFalse(rule.isSatisfied(0, null));
-        assertFalse(rule.isSatisfied(1, tradingRecord));
+	assertFalse(rule.isSatisfied(0, null));
+	assertFalse(rule.isSatisfied(1, tradingRecord));
 
-        // Enter at 114
-        tradingRecord.enter(2, numOf(114), numOf(1));
-        assertFalse(rule.isSatisfied(2, tradingRecord));
-        assertFalse(rule.isSatisfied(3, tradingRecord));
-        assertFalse(rule.isSatisfied(4, tradingRecord));
-        assertTrue(rule.isSatisfied(5, tradingRecord));
-        assertFalse(rule.isSatisfied(6, tradingRecord));
-        // Exit
-        tradingRecord.exit(7);
+	// Enter at 114
+	tradingRecord.enter(2, numOf(114), numOf(1));
+	assertFalse(rule.isSatisfied(2, tradingRecord));
+	assertFalse(rule.isSatisfied(3, tradingRecord));
+	assertFalse(rule.isSatisfied(4, tradingRecord));
+	assertTrue(rule.isSatisfied(5, tradingRecord));
+	assertFalse(rule.isSatisfied(6, tradingRecord));
+	// Exit
+	tradingRecord.exit(7);
 
-        // Enter at 128
-        tradingRecord.enter(7, numOf(128), numOf(1));
-        assertFalse(rule.isSatisfied(7, tradingRecord));
-        assertTrue(rule.isSatisfied(8, tradingRecord));
+	// Enter at 128
+	tradingRecord.enter(7, numOf(128), numOf(1));
+	assertFalse(rule.isSatisfied(7, tradingRecord));
+	assertTrue(rule.isSatisfied(8, tradingRecord));
     }
 
     @Test
     public void isSatisfiedForSell() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(
-                new MockTimeSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
+	BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
+	ClosePriceIndicator closePrice = new ClosePriceIndicator(
+		new MockTimeSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
 
-        // 10% trailing-stop-loss
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+	// 10% trailing-stop-loss
+	TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
 
-        assertFalse(rule.isSatisfied(0, null));
-        assertNull(rule.getCurrentStopLossLimitActivation());
+	assertFalse(rule.isSatisfied(0, null));
+	assertNull(rule.getCurrentStopLossLimitActivation());
 
-        assertFalse(rule.isSatisfied(1, tradingRecord));
-        assertNull(rule.getCurrentStopLossLimitActivation());
+	assertFalse(rule.isSatisfied(1, tradingRecord));
+	assertNull(rule.getCurrentStopLossLimitActivation());
 
-        // Enter at 84
-        tradingRecord.enter(2, numOf(84), numOf(1));
-        assertFalse(rule.isSatisfied(2, tradingRecord));
-        assertEquals(numOf(80).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
+	// Enter at 84
+	tradingRecord.enter(2, numOf(84), numOf(1));
+	assertFalse(rule.isSatisfied(2, tradingRecord));
+	assertEquals(numOf(80).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
 
-        assertFalse(rule.isSatisfied(3, tradingRecord));
-        assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
+	assertFalse(rule.isSatisfied(3, tradingRecord));
+	assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
 
-        assertTrue(rule.isSatisfied(4, tradingRecord));
-        assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
-        // Exit
-        tradingRecord.exit(5);
+	assertTrue(rule.isSatisfied(4, tradingRecord));
+	assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
+	// Exit
+	tradingRecord.exit(5);
 
-        // Enter at 128
-        tradingRecord.enter(5, numOf(128), numOf(1));
-        assertFalse(rule.isSatisfied(5, tradingRecord));
-        assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
-        assertTrue(rule.isSatisfied(6, tradingRecord));
-        assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
+	// Enter at 128
+	tradingRecord.enter(5, numOf(128), numOf(1));
+	assertFalse(rule.isSatisfied(5, tradingRecord));
+	assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
+	assertTrue(rule.isSatisfied(6, tradingRecord));
+	assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
     }
 
     @Test
     public void isSatisfiedForSellForBarCount() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(
-                new MockTimeSeries(numFunction, 100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01));
+	BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
+	ClosePriceIndicator closePrice = new ClosePriceIndicator(
+		new MockTimeSeries(numFunction, 100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01));
 
-        // 10% trailing-stop-loss and 2 bars back
-        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
+	// 10% trailing-stop-loss and 2 bars back
+	TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
 
-        assertFalse(rule.isSatisfied(0, null));
-        assertFalse(rule.isSatisfied(1, tradingRecord));
+	assertFalse(rule.isSatisfied(0, null));
+	assertFalse(rule.isSatisfied(1, tradingRecord));
 
-        // Enter at 84
-        tradingRecord.enter(2, numOf(84), numOf(1));
-        assertFalse(rule.isSatisfied(2, tradingRecord));
-        assertFalse(rule.isSatisfied(3, tradingRecord));
-        assertFalse(rule.isSatisfied(4, tradingRecord));
-        assertFalse(rule.isSatisfied(5, tradingRecord));
-        assertTrue(rule.isSatisfied(6, tradingRecord));
-        // Exit
-        tradingRecord.exit(7);
+	// Enter at 84
+	tradingRecord.enter(2, numOf(84), numOf(1));
+	assertFalse(rule.isSatisfied(2, tradingRecord));
+	assertFalse(rule.isSatisfied(3, tradingRecord));
+	assertFalse(rule.isSatisfied(4, tradingRecord));
+	assertFalse(rule.isSatisfied(5, tradingRecord));
+	assertTrue(rule.isSatisfied(6, tradingRecord));
+	// Exit
+	tradingRecord.exit(7);
 
-        // Enter at 128
-        tradingRecord.enter(7, numOf(91), numOf(1));
-        assertFalse(rule.isSatisfied(7, tradingRecord));
-        assertTrue(rule.isSatisfied(8, tradingRecord));
+	// Enter at 128
+	tradingRecord.enter(7, numOf(91), numOf(1));
+	assertFalse(rule.isSatisfied(7, tradingRecord));
+	assertTrue(rule.isSatisfied(8, tradingRecord));
     }
 }

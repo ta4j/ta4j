@@ -29,6 +29,6 @@ public class SimpleMovingAverageBacktestTest {
 
     @Test
     public void test() throws InterruptedException {
-        SimpleMovingAverageBacktest.main(null);
+	SimpleMovingAverageBacktest.main(null);
     }
 }

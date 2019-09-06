@@ -31,20 +31,17 @@ public interface ExternalCriterionTest {
      * Gets the TimeSeries used by an external criterion calculator.
      * 
      * @return TimeSeries from the external criterion calculator
-     * @throws Exception
-     *             if the external calculator throws an Exception
+     * @throws Exception if the external calculator throws an Exception
      */
     TimeSeries getSeries() throws Exception;
 
     /**
-     * Sends criterion parameters to an external criterion calculator and returns the final value of the externally
-     * calculated criterion.
+     * Sends criterion parameters to an external criterion calculator and returns
+     * the final value of the externally calculated criterion.
      * 
-     * @param params
-     *            criterion parameters
+     * @param params criterion parameters
      * @return Num final criterion value
-     * @throws Exception
-     *             if the external calculator throws an Exception
+     * @throws Exception if the external calculator throws an Exception
      */
     Num getFinalCriterionValue(Object... params) throws Exception;
 
@@ -52,8 +49,7 @@ public interface ExternalCriterionTest {
      * Gets the trading record used by an external criterion calculator.
      * 
      * @return TradingRecord from the external criterion calculator
-     * @throws Exception
-     *             if the external calculator throws an Exception
+     * @throws Exception if the external calculator throws an Exception
      */
     TradingRecord getTradingRecord() throws Exception;
 

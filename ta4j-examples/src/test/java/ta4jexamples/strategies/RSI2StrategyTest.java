@@ -29,6 +29,6 @@ public class RSI2StrategyTest {
 
     @Test
     public void test() {
-        RSI2Strategy.main(null);
+	RSI2Strategy.main(null);
     }
 }

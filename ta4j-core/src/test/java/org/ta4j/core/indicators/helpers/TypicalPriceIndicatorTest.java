@@ -43,22 +43,22 @@ public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     TimeSeries timeSeries;
 
     public TypicalPriceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     @Before
     public void setUp() {
-        timeSeries = new MockTimeSeries(numFunction);
-        typicalPriceIndicator = new TypicalPriceIndicator(timeSeries);
+	timeSeries = new MockTimeSeries(numFunction);
+	typicalPriceIndicator = new TypicalPriceIndicator(timeSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarMaxPrice() {
-        for (int i = 0; i < 10; i++) {
-            Bar bar = timeSeries.getBar(i);
-            Num typicalPrice = bar.getHighPrice().plus(bar.getLowPrice()).plus(bar.getClosePrice())
-                    .dividedBy(timeSeries.numOf(3));
-            assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
-        }
+	for (int i = 0; i < 10; i++) {
+	    Bar bar = timeSeries.getBar(i);
+	    Num typicalPrice = bar.getHighPrice().plus(bar.getLowPrice()).plus(bar.getClosePrice())
+		    .dividedBy(timeSeries.numOf(3));
+	    assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
+	}
     }
 }

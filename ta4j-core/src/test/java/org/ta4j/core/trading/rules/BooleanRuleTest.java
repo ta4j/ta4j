@@ -36,20 +36,20 @@ public class BooleanRuleTest {
 
     @Before
     public void setUp() {
-        satisfiedRule = new BooleanRule(true);
-        unsatisfiedRule = new BooleanRule(false);
+	satisfiedRule = new BooleanRule(true);
+	unsatisfiedRule = new BooleanRule(false);
     }
 
     @Test
     public void isSatisfied() {
-        assertTrue(satisfiedRule.isSatisfied(0));
-        assertTrue(satisfiedRule.isSatisfied(1));
-        assertTrue(satisfiedRule.isSatisfied(2));
-        assertTrue(satisfiedRule.isSatisfied(10));
+	assertTrue(satisfiedRule.isSatisfied(0));
+	assertTrue(satisfiedRule.isSatisfied(1));
+	assertTrue(satisfiedRule.isSatisfied(2));
+	assertTrue(satisfiedRule.isSatisfied(10));
 
-        assertFalse(unsatisfiedRule.isSatisfied(0));
-        assertFalse(unsatisfiedRule.isSatisfied(1));
-        assertFalse(unsatisfiedRule.isSatisfied(2));
-        assertFalse(unsatisfiedRule.isSatisfied(10));
+	assertFalse(unsatisfiedRule.isSatisfied(0));
+	assertFalse(unsatisfiedRule.isSatisfied(1));
+	assertFalse(unsatisfiedRule.isSatisfied(2));
+	assertFalse(unsatisfiedRule.isSatisfied(10));
     }
 }

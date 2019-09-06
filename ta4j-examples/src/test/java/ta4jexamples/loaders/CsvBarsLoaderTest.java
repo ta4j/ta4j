@@ -29,6 +29,6 @@ public class CsvBarsLoaderTest {
 
     @Test
     public void test() {
-        CsvBarsLoader.main(null);
+	CsvBarsLoader.main(null);
     }
 }

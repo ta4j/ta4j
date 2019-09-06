@@ -29,6 +29,6 @@ public class MovingMomentumStrategyTest {
 
     @Test
     public void test() {
-        MovingMomentumStrategy.main(null);
+	MovingMomentumStrategy.main(null);
     }
 }

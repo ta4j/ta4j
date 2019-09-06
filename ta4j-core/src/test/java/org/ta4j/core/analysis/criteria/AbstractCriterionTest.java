@@ -45,32 +45,31 @@ public abstract class AbstractCriterionTest {
     /**
      * Constructor.
      *
-     * @param factory
-     *            CriterionFactory for building an AnalysisCriterion given parameters
+     * @param factory CriterionFactory for building an AnalysisCriterion given
+     *                parameters
      */
     public AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
-        this.factory = factory;
-        this.numFunction = numFunction;
+	this.factory = factory;
+	this.numFunction = numFunction;
     }
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
     public static List<Function<Number, Num>> function() {
-        return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
+	return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
     }
 
     /**
      * Generates an AnalysisCriterion given criterion parameters.
      *
-     * @param params
-     *            criterion parameters
+     * @param params criterion parameters
      * @return AnalysisCriterion given parameters
      */
     public AnalysisCriterion getCriterion(Object... params) {
-        return factory.getCriterion(params);
+	return factory.getCriterion(params);
     }
 
     public Num numOf(Number n) {
-        return numFunction.apply(n);
+	return numFunction.apply(n);
     }
 
 }

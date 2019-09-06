@@ -41,35 +41,35 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
     private TimeSeries data;
 
     public MeanDeviationIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction, 1, 2, 7, 6, 3, 4, 5, 11, 3, 0, 9);
+	data = new MockTimeSeries(numFunction, 1, 2, 7, 6, 3, 4, 5, 11, 3, 0, 9);
     }
 
     @Test
     public void meanDeviationUsingBarCount5UsingClosePrice() {
-        MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
+	MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
 
-        assertNumEquals(2.44444444444444, meanDeviation.getValue(2));
-        assertNumEquals(2.5, meanDeviation.getValue(3));
-        assertNumEquals(2.16, meanDeviation.getValue(7));
-        assertNumEquals(2.32, meanDeviation.getValue(8));
-        assertNumEquals(2.72, meanDeviation.getValue(9));
+	assertNumEquals(2.44444444444444, meanDeviation.getValue(2));
+	assertNumEquals(2.5, meanDeviation.getValue(3));
+	assertNumEquals(2.16, meanDeviation.getValue(7));
+	assertNumEquals(2.32, meanDeviation.getValue(8));
+	assertNumEquals(2.72, meanDeviation.getValue(9));
     }
 
     @Test
     public void firstValueShouldBeZero() {
-        MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals(0, meanDeviation.getValue(0));
+	MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 5);
+	assertNumEquals(0, meanDeviation.getValue(0));
     }
 
     @Test
     public void meanDeviationShouldBeZeroWhenBarCountIs1() {
-        MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
-        assertNumEquals(0, meanDeviation.getValue(2));
-        assertNumEquals(0, meanDeviation.getValue(7));
+	MeanDeviationIndicator meanDeviation = new MeanDeviationIndicator(new ClosePriceIndicator(data), 1);
+	assertNumEquals(0, meanDeviation.getValue(2));
+	assertNumEquals(0, meanDeviation.getValue(7));
     }
 }

@@ -41,44 +41,44 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfBarsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfBarsCriterion(), numFunction);
+	super((params) -> new NumberOfBarsCriterion(), numFunction);
     }
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-        AnalysisCriterion numberOfBars = getCriterion();
-        assertNumEquals(0, numberOfBars.calculate(series, new BaseTradingRecord()));
+	AnalysisCriterion numberOfBars = getCriterion();
+	assertNumEquals(0, numberOfBars.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithTwoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+	TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
+		Order.buyAt(3, series), Order.sellAt(5, series));
 
-        AnalysisCriterion numberOfBars = getCriterion();
-        assertNumEquals(6, numberOfBars.calculate(series, tradingRecord));
+	AnalysisCriterion numberOfBars = getCriterion();
+	assertNumEquals(6, numberOfBars.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        Trade t = new Trade(Order.buyAt(2, series), Order.sellAt(5, series));
-        AnalysisCriterion numberOfBars = getCriterion();
-        assertNumEquals(4, numberOfBars.calculate(series, t));
+	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+	Trade t = new Trade(Order.buyAt(2, series), Order.sellAt(5, series));
+	AnalysisCriterion numberOfBars = getCriterion();
+	assertNumEquals(4, numberOfBars.calculate(series, t));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(3), numOf(6)));
-        assertFalse(criterion.betterThan(numOf(6), numOf(2)));
+	AnalysisCriterion criterion = getCriterion();
+	assertTrue(criterion.betterThan(numOf(3), numOf(6)));
+	assertFalse(criterion.betterThan(numOf(6), numOf(2)));
     }
 
     @Test
     public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+	openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

@@ -29,6 +29,6 @@ public class CashFlowToChartTest {
 
     @Test
     public void test() {
-        CashFlowToChart.main(null);
+	CashFlowToChart.main(null);
     }
 }

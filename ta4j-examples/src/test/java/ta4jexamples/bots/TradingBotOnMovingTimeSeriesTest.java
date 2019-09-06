@@ -29,6 +29,6 @@ public class TradingBotOnMovingTimeSeriesTest {
 
     @Test
     public void test() throws InterruptedException {
-        TradingBotOnMovingTimeSeries.main(null);
+	TradingBotOnMovingTimeSeries.main(null);
     }
 }

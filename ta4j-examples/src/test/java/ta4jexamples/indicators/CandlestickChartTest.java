@@ -29,6 +29,6 @@ public class CandlestickChartTest {
 
     @Test
     public void test() {
-        CandlestickChart.main(null);
+	CandlestickChart.main(null);
     }
 }

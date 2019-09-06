@@ -29,6 +29,6 @@ public class StrategyExecutionLoggingTest {
 
     @Test
     public void test() {
-        StrategyExecutionLogging.main(null);
+	StrategyExecutionLogging.main(null);
     }
 }

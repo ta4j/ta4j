@@ -36,14 +36,14 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class OpenedTradeUtils {
 
     public void testCalculateOneOpenTradeShouldReturnExpectedValue(Function<Number, Num> numFunction,
-            AnalysisCriterion criterion, int expectedValue) {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+	    AnalysisCriterion criterion, int expectedValue) {
+	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-        Trade trade = new Trade(Order.OrderType.BUY);
-        trade.operate(0, series.numOf(2.5), series.numOf(1));
+	Trade trade = new Trade(Order.OrderType.BUY);
+	trade.operate(0, series.numOf(2.5), series.numOf(1));
 
-        final Num value = criterion.calculate(series, trade);
+	final Num value = criterion.calculate(series, trade);
 
-        assertNumEquals(expectedValue, value);
+	assertNumEquals(expectedValue, value);
     }
 }

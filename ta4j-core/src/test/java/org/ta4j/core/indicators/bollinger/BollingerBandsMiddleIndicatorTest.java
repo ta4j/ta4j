@@ -41,21 +41,21 @@ public class BollingerBandsMiddleIndicatorTest extends AbstractIndicatorTest<Ind
     private TimeSeries data;
 
     public BollingerBandsMiddleIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+	data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
     public void bollingerBandsMiddleUsingSMA() {
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
-        BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
+	SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 3);
+	BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
 
-        for (int i = 0; i < data.getBarCount(); i++) {
-            assertEquals(sma.getValue(i), bbmSMA.getValue(i));
-        }
+	for (int i = 0; i < data.getBarCount(); i++) {
+	    assertEquals(sma.getValue(i), bbmSMA.getValue(i));
+	}
     }
 }

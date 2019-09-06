@@ -51,38 +51,38 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     private DecimalTransformIndicator transLog;
 
     public DecimalTransformIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+	super(numFunction);
     }
 
     @Before
     public void setUp() {
-        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
-        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
+	TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+	ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
 
-        transPlus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.plus);
-        transMinus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.minus);
-        transMultiply = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.multiply);
-        transDivide = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.divide);
-        transMax = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.max);
-        transMin = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.min);
+	transPlus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.plus);
+	transMinus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.minus);
+	transMultiply = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.multiply);
+	transDivide = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.divide);
+	transMax = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.max);
+	transMin = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.min);
 
-        transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)),
-                DecimalTransformSimpleType.abs);
-        transSqrt = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.sqrt);
-        transLog = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.log);
+	transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)),
+		DecimalTransformSimpleType.abs);
+	transSqrt = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.sqrt);
+	transLog = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.log);
     }
 
     @Test
     public void getValue() {
-        assertNumEquals(14, transPlus.getValue(0));
-        assertNumEquals(-6, transMinus.getValue(0));
-        assertNumEquals(40, transMultiply.getValue(0));
-        assertNumEquals(0.4, transDivide.getValue(0));
-        assertNumEquals(10, transMax.getValue(0));
-        assertNumEquals(4, transMin.getValue(0));
+	assertNumEquals(14, transPlus.getValue(0));
+	assertNumEquals(-6, transMinus.getValue(0));
+	assertNumEquals(40, transMultiply.getValue(0));
+	assertNumEquals(0.4, transDivide.getValue(0));
+	assertNumEquals(10, transMax.getValue(0));
+	assertNumEquals(4, transMin.getValue(0));
 
-        assertNumEquals(4, transAbs.getValue(0));
-        assertNumEquals(2, transSqrt.getValue(0));
-        assertNumEquals(1.3862943611198906, transLog.getValue(0));
+	assertNumEquals(4, transAbs.getValue(0));
+	assertNumEquals(2, transSqrt.getValue(0));
+	assertNumEquals(1.3862943611198906, transLog.getValue(0));
     }
 }

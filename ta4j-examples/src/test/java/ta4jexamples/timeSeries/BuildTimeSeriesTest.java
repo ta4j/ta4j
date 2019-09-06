@@ -29,6 +29,6 @@ public class BuildTimeSeriesTest {
 
     @Test
     public void test() {
-        BuildTimeSeries.main(null);
+	BuildTimeSeries.main(null);
     }
 }

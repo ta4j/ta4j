@@ -29,6 +29,6 @@ public class CCICorrectionStrategyTest {
 
     @Test
     public void test() {
-        CCICorrectionStrategy.main(null);
+	CCICorrectionStrategy.main(null);
     }
 }
