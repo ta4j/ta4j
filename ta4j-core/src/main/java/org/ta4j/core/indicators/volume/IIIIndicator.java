@@ -46,26 +46,26 @@ public class IIIIndicator extends CachedIndicator<Num> {
     private final Num two;
 
     public IIIIndicator(TimeSeries series) {
-	super(series);
-	this.closePriceIndicator = new ClosePriceIndicator(series);
-	this.highPriceIndicator = new HighPriceIndicator(series);
-	this.lowPriceIndicator = new LowPriceIndicator(series);
-	this.volumeIndicator = new VolumeIndicator(series);
-	this.two = numOf(2);
+        super(series);
+        this.closePriceIndicator = new ClosePriceIndicator(series);
+        this.highPriceIndicator = new HighPriceIndicator(series);
+        this.lowPriceIndicator = new LowPriceIndicator(series);
+        this.volumeIndicator = new VolumeIndicator(series);
+        this.two = numOf(2);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index == getTimeSeries().getBeginIndex()) {
-	    return numOf(0);
-	}
-	final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
-	final Num high = highPriceIndicator.getValue(index);
-	final Num low = lowPriceIndicator.getValue(index);
-	final Num highMinusLow = high.minus(low);
-	final Num highPlusLow = high.plus(low);
+        if (index == getTimeSeries().getBeginIndex()) {
+            return numOf(0);
+        }
+        final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
+        final Num high = highPriceIndicator.getValue(index);
+        final Num low = lowPriceIndicator.getValue(index);
+        final Num highMinusLow = high.minus(low);
+        final Num highPlusLow = high.plus(low);
 
-	return doubledClosePrice.minus(highPlusLow)
-		.dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
+        return doubledClosePrice.minus(highPlusLow)
+                .dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
     }
 }

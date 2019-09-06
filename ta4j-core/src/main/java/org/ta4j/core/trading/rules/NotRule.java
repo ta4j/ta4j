@@ -42,17 +42,17 @@ public class NotRule extends AbstractRule {
      * @param ruleToNegate a trading rule to negate
      */
     public NotRule(Rule ruleToNegate) {
-	this.ruleToNegate = ruleToNegate;
+        this.ruleToNegate = ruleToNegate;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	final boolean satisfied = !ruleToNegate.isSatisfied(index, tradingRecord);
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = !ruleToNegate.isSatisfied(index, tradingRecord);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 
     public Rule getRuleToNegate() {
-	return ruleToNegate;
+        return ruleToNegate;
     }
 }

@@ -45,28 +45,28 @@ public class BearishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicat
     private TimeSeries series;
 
     public BearishEngulfingIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	List<Bar> bars = new ArrayList<Bar>();
-	// open, close, high, low
-	bars.add(new MockBar(10, 18, 20, 10, numFunction));
-	bars.add(new MockBar(17, 20, 21, 17, numFunction));
-	bars.add(new MockBar(21, 15, 22, 14, numFunction));
-	bars.add(new MockBar(15, 11, 15, 8, numFunction));
-	bars.add(new MockBar(11, 12, 12, 10, numFunction));
-	series = new MockTimeSeries(bars);
+        List<Bar> bars = new ArrayList<Bar>();
+        // open, close, high, low
+        bars.add(new MockBar(10, 18, 20, 10, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(21, 15, 22, 14, numFunction));
+        bars.add(new MockBar(15, 11, 15, 8, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
+        series = new MockTimeSeries(bars);
     }
 
     @Test
     public void getValue() {
-	BearishEngulfingIndicator bep = new BearishEngulfingIndicator(series);
-	assertFalse(bep.getValue(0));
-	assertFalse(bep.getValue(1));
-	assertTrue(bep.getValue(2));
-	assertFalse(bep.getValue(3));
-	assertFalse(bep.getValue(4));
+        BearishEngulfingIndicator bep = new BearishEngulfingIndicator(series);
+        assertFalse(bep.getValue(0));
+        assertFalse(bep.getValue(1));
+        assertTrue(bep.getValue(2));
+        assertFalse(bep.getValue(3));
+        assertFalse(bep.getValue(4));
     }
 }

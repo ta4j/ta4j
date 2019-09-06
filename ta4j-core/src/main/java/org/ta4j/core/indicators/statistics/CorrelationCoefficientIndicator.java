@@ -48,19 +48,19 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      * @param barCount   the time frame
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-	super(indicator1);
-	variance1 = new VarianceIndicator(indicator1, barCount);
-	variance2 = new VarianceIndicator(indicator2, barCount);
-	covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
+        super(indicator1);
+        variance1 = new VarianceIndicator(indicator1, barCount);
+        variance2 = new VarianceIndicator(indicator2, barCount);
+        covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num cov = covariance.getValue(index);
-	Num var1 = variance1.getValue(index);
-	Num var2 = variance2.getValue(index);
-	Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
-	return cov.dividedBy(multipliedSqrt);
+        Num cov = covariance.getValue(index);
+        Num var1 = variance1.getValue(index);
+        Num var2 = variance2.getValue(index);
+        Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
+        return cov.dividedBy(multipliedSqrt);
 
     }
 }

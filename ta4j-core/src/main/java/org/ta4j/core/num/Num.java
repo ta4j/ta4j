@@ -250,7 +250,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * @return the corresponding Num implementation of the <code>value</code>
      */
     default Num numOf(Number value) {
-	return function().apply(value);
+        return function().apply(value);
     }
 
     /**
@@ -262,8 +262,8 @@ public interface Num extends Comparable<Num>, Serializable {
      * @return the corresponding Num implementation of the <code>value</code>
      */
     default Num numOf(String value, int precision) {
-	MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-	return this.numOf(new BigDecimal(value, mathContext));
+        MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        return this.numOf(new BigDecimal(value, mathContext));
     }
 
     /**
@@ -272,7 +272,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * @return false if this implementation is not NaN
      */
     default boolean isNaN() {
-	return false;
+        return false;
     }
 
     /**
@@ -281,19 +281,19 @@ public interface Num extends Comparable<Num>, Serializable {
      * @return this {@code num} converted to a {@code double}
      */
     default double doubleValue() {
-	return getDelegate().doubleValue();
+        return getDelegate().doubleValue();
     }
 
     default int intValue() {
-	return getDelegate().intValue();
+        return getDelegate().intValue();
     }
 
     default long longValue() {
-	return getDelegate().longValue();
+        return getDelegate().longValue();
     }
 
     default float floatValue() {
-	return getDelegate().floatValue();
+        return getDelegate().floatValue();
     }
 
     @Override

@@ -40,20 +40,20 @@ public class OverIndicatorRuleTest {
 
     @Before
     public void setUp() {
-	TimeSeries series = new BaseTimeSeries();
-	Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
-	rule = new OverIndicatorRule(indicator, series.numOf(5));
+        TimeSeries series = new BaseTimeSeries();
+        Indicator<Num> indicator = new FixedDecimalIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
+        rule = new OverIndicatorRule(indicator, series.numOf(5));
     }
 
     @Test
     public void isSatisfied() {
-	assertTrue(rule.isSatisfied(0));
-	assertTrue(rule.isSatisfied(1));
-	assertTrue(rule.isSatisfied(2));
-	assertFalse(rule.isSatisfied(3));
-	assertFalse(rule.isSatisfied(4));
-	assertFalse(rule.isSatisfied(5));
-	assertFalse(rule.isSatisfied(6));
-	assertTrue(rule.isSatisfied(7));
+        assertTrue(rule.isSatisfied(0));
+        assertTrue(rule.isSatisfied(1));
+        assertTrue(rule.isSatisfied(2));
+        assertFalse(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertFalse(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertTrue(rule.isSatisfied(7));
     }
 }

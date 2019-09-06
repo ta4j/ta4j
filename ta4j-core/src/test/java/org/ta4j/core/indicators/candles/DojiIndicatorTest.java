@@ -45,39 +45,39 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     private TimeSeries series;
 
     public DojiIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	List<Bar> bars = new ArrayList<Bar>();
-	// open, close, high, low
-	bars.add(new MockBar(19, 19, 22, 16, numFunction));
-	bars.add(new MockBar(10, 18, 20, 10, numFunction));
-	bars.add(new MockBar(17, 20, 21, 17, numFunction));
-	bars.add(new MockBar(15, 15.1, 16, 14, numFunction));
-	bars.add(new MockBar(15, 11, 15, 8, numFunction));
-	bars.add(new MockBar(11, 12, 12, 10, numFunction));
-	series = new MockTimeSeries(bars);
+        List<Bar> bars = new ArrayList<Bar>();
+        // open, close, high, low
+        bars.add(new MockBar(19, 19, 22, 16, numFunction));
+        bars.add(new MockBar(10, 18, 20, 10, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(15, 15.1, 16, 14, numFunction));
+        bars.add(new MockBar(15, 11, 15, 8, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
+        series = new MockTimeSeries(bars);
     }
 
     @Test
     public void getValueAtIndex0() {
-	DojiIndicator doji = new DojiIndicator(new MockTimeSeries(numFunction, 0d), 10, 0.03);
-	assertTrue(doji.getValue(0));
+        DojiIndicator doji = new DojiIndicator(new MockTimeSeries(numFunction, 0d), 10, 0.03);
+        assertTrue(doji.getValue(0));
 
-	doji = new DojiIndicator(new MockTimeSeries(numFunction, 1d), 10, 0.03);
-	assertFalse(doji.getValue(0));
+        doji = new DojiIndicator(new MockTimeSeries(numFunction, 1d), 10, 0.03);
+        assertFalse(doji.getValue(0));
     }
 
     @Test
     public void getValue() {
-	DojiIndicator doji = new DojiIndicator(series, 3, 0.1);
-	assertTrue(doji.getValue(0));
-	assertFalse(doji.getValue(1));
-	assertFalse(doji.getValue(2));
-	assertTrue(doji.getValue(3));
-	assertFalse(doji.getValue(4));
-	assertFalse(doji.getValue(5));
+        DojiIndicator doji = new DojiIndicator(series, 3, 0.1);
+        assertTrue(doji.getValue(0));
+        assertFalse(doji.getValue(1));
+        assertFalse(doji.getValue(2));
+        assertTrue(doji.getValue(3));
+        assertFalse(doji.getValue(4));
+        assertFalse(doji.getValue(5));
     }
 }

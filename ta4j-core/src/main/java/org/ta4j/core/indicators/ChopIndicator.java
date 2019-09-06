@@ -64,23 +64,23 @@ public class ChopIndicator extends CachedIndicator<Num> {
      *                    '100'
      */
     public ChopIndicator(TimeSeries timeseries, int ciTimeFrame, int scaleTo) {
-	super(timeseries);
-	this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
-	hvi = new HighestValueIndicator(new HighPriceIndicator(timeseries), ciTimeFrame);
-	lvi = new LowestValueIndicator(new LowPriceIndicator(timeseries), ciTimeFrame);
-	this.timeFrame = ciTimeFrame;
-	this.LOG10n = numOf(Math.log10(ciTimeFrame));
-	this.scaleUpTo = numOf(scaleTo);
+        super(timeseries);
+        this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
+        hvi = new HighestValueIndicator(new HighPriceIndicator(timeseries), ciTimeFrame);
+        lvi = new LowestValueIndicator(new LowPriceIndicator(timeseries), ciTimeFrame);
+        this.timeFrame = ciTimeFrame;
+        this.LOG10n = numOf(Math.log10(ciTimeFrame));
+        this.scaleUpTo = numOf(scaleTo);
     }
 
     @Override
     public Num calculate(int index) {
-	Num summ = atrIndicator.getValue(index);
-	for (int i = 1; i < timeFrame; ++i) {
-	    summ = summ.plus(atrIndicator.getValue(index - i));
-	}
-	Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
-	// TODO: implement Num.log10(Num)
-	return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(LOG10n);
+        Num summ = atrIndicator.getValue(index);
+        for (int i = 1; i < timeFrame; ++i) {
+            summ = summ.plus(atrIndicator.getValue(index - i));
+        }
+        Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
+        // TODO: implement Num.log10(Num)
+        return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(LOG10n);
     }
 }

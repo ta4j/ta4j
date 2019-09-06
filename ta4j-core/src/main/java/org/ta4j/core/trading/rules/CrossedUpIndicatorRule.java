@@ -47,7 +47,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Number threshold) {
-	this(indicator, indicator.numOf(threshold));
+        this(indicator, indicator.numOf(threshold));
     }
 
     /**
@@ -57,7 +57,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
-	this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
     }
 
     /**
@@ -67,27 +67,27 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param second the second indicator
      */
     public CrossedUpIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
-	this.cross = new CrossIndicator(second, first);
+        this.cross = new CrossIndicator(second, first);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	final boolean satisfied = cross.getValue(index);
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = cross.getValue(index);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 
     /**
      * @return the initial lower indicator
      */
     public Indicator<Num> getLow() {
-	return cross.getLow();
+        return cross.getLow();
     }
 
     /**
      * @return the initial upper indicator
      */
     public Indicator<Num> getUp() {
-	return cross.getUp();
+        return cross.getUp();
     }
 }

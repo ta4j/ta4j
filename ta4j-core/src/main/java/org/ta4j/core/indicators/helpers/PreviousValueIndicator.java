@@ -42,7 +42,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
      *                  calculated
      */
     public PreviousValueIndicator(Indicator<Num> indicator) {
-	this(indicator, 1);
+        this(indicator, 1);
     }
 
     /**
@@ -53,13 +53,13 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
      * @param n         parameter defines the previous n-th value
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
-	super(indicator);
-	this.n = n;
-	this.indicator = indicator;
+        super(indicator);
+        this.n = n;
+        this.indicator = indicator;
     }
 
     protected Num calculate(int index) {
-	int previousValue = Math.max(0, (index - n));
-	return this.indicator.getValue(previousValue);
+        int previousValue = Math.max(0, (index - n));
+        return this.indicator.getValue(previousValue);
     }
 }

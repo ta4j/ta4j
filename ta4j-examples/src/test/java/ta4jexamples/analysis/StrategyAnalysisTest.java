@@ -29,6 +29,6 @@ public class StrategyAnalysisTest {
 
     @Test
     public void test() {
-	StrategyAnalysis.main(null);
+        StrategyAnalysis.main(null);
     }
 }

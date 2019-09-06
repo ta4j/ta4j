@@ -41,42 +41,42 @@ public class ZLEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     private TimeSeries data;
 
     public ZLEMAIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	data = new MockTimeSeries(numFunction, 10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2);
+        data = new MockTimeSeries(numFunction, 10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2);
     }
 
     @Test
     public void ZLEMAUsingBarCount10UsingClosePrice() {
-	ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
 
-	assertNumEquals(11.9091, zlema.getValue(9));
-	assertNumEquals(8.8347, zlema.getValue(10));
-	assertNumEquals(5.7739, zlema.getValue(11));
+        assertNumEquals(11.9091, zlema.getValue(9));
+        assertNumEquals(8.8347, zlema.getValue(10));
+        assertNumEquals(5.7739, zlema.getValue(11));
     }
 
     @Test
     public void ZLEMAFirstValueShouldBeEqualsToFirstDataValue() {
-	ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
-	assertNumEquals(10, zlema.getValue(0));
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        assertNumEquals(10, zlema.getValue(0));
     }
 
     @Test
     public void valuesLessThanBarCountMustBeEqualsToSMAValues() {
-	ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
-	SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 10);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(data), 10);
 
-	for (int i = 0; i < 9; i++) {
-	    assertEquals(sma.getValue(i), zlema.getValue(i));
-	}
+        for (int i = 0; i < 9; i++) {
+            assertEquals(sma.getValue(i), zlema.getValue(i));
+        }
     }
 
     @Test
     public void smallBarCount() {
-	ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
-	assertNumEquals(10, zlema.getValue(0));
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(data), 1);
+        assertNumEquals(10, zlema.getValue(0));
     }
 }

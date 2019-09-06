@@ -47,7 +47,7 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      */
     public CoppockCurveIndicator(Indicator<Num> indicator) {
-	this(indicator, 14, 11, 10);
+        this(indicator, 14, 11, 10);
     }
 
     /**
@@ -59,14 +59,14 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
      * @param wmaBarCount      the time frame (for WMA)
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
-	super(indicator);
-	SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
-		new ROCIndicator(indicator, shortRoCBarCount));
-	wma = new WMAIndicator(sum, wmaBarCount);
+        super(indicator);
+        SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
+                new ROCIndicator(indicator, shortRoCBarCount));
+        wma = new WMAIndicator(sum, wmaBarCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return wma.getValue(index);
+        return wma.getValue(index);
     }
 }

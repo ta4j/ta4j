@@ -35,16 +35,16 @@ public class NumberOfTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	return series.numOf(tradingRecord.getTradeCount());
+        return series.numOf(tradingRecord.getTradeCount());
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	return series.numOf(1);
+        return series.numOf(1);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isLessThan(criterionValue2);
     }
 }

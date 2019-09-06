@@ -56,31 +56,31 @@ public class VWAPIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public VWAPIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
-	this.typicalPrice = new TypicalPriceIndicator(series);
-	this.volume = new VolumeIndicator(series);
-	this.zero = numOf(0);
+        super(series);
+        this.barCount = barCount;
+        this.typicalPrice = new TypicalPriceIndicator(series);
+        this.volume = new VolumeIndicator(series);
+        this.zero = numOf(0);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index <= 0) {
-	    return typicalPrice.getValue(index);
-	}
-	int startIndex = Math.max(0, index - barCount + 1);
-	Num cumulativeTPV = zero;
-	Num cumulativeVolume = zero;
-	for (int i = startIndex; i <= index; i++) {
-	    Num currentVolume = volume.getValue(i);
-	    cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multipliedBy(currentVolume));
-	    cumulativeVolume = cumulativeVolume.plus(currentVolume);
-	}
-	return cumulativeTPV.dividedBy(cumulativeVolume);
+        if (index <= 0) {
+            return typicalPrice.getValue(index);
+        }
+        int startIndex = Math.max(0, index - barCount + 1);
+        Num cumulativeTPV = zero;
+        Num cumulativeVolume = zero;
+        for (int i = startIndex; i <= index; i++) {
+            Num currentVolume = volume.getValue(i);
+            cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multipliedBy(currentVolume));
+            cumulativeVolume = cumulativeVolume.plus(currentVolume);
+        }
+        return cumulativeTPV.dividedBy(cumulativeVolume);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

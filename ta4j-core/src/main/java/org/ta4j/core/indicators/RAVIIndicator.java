@@ -44,15 +44,15 @@ public class RAVIIndicator extends CachedIndicator<Num> {
      * @param longSmaBarCount  the time frame for the long SMA (usually 65)
      */
     public RAVIIndicator(Indicator<Num> price, int shortSmaBarCount, int longSmaBarCount) {
-	super(price);
-	shortSma = new SMAIndicator(price, shortSmaBarCount);
-	longSma = new SMAIndicator(price, longSmaBarCount);
+        super(price);
+        shortSma = new SMAIndicator(price, shortSmaBarCount);
+        longSma = new SMAIndicator(price, longSmaBarCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num shortMA = shortSma.getValue(index);
-	Num longMA = longSma.getValue(index);
-	return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(numOf(100));
+        Num shortMA = shortSma.getValue(index);
+        Num longMA = longSma.getValue(index);
+        return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(numOf(100));
     }
 }

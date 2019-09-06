@@ -50,7 +50,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * @param series the related time series
      */
     public RecursiveCachedIndicator(TimeSeries series) {
-	super(series);
+        super(series);
     }
 
     /**
@@ -59,28 +59,28 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * @param indicator a related indicator (with a time series)
      */
     public RecursiveCachedIndicator(Indicator<?> indicator) {
-	this(indicator.getTimeSeries());
+        this(indicator.getTimeSeries());
     }
 
     @Override
     public T getValue(int index) {
-	TimeSeries series = getTimeSeries();
-	if (series != null) {
-	    final int seriesEndIndex = series.getEndIndex();
-	    if (index <= seriesEndIndex) {
-		// We are not after the end of the series
-		final int removedBarsCount = series.getRemovedBarsCount();
-		int startIndex = Math.max(removedBarsCount, highestResultIndex);
-		if (index - startIndex > RECURSION_THRESHOLD) {
-		    // Too many uncalculated values; the risk for a StackOverflowError becomes high.
-		    // Calculating the previous values iteratively
-		    for (int prevIdx = startIndex; prevIdx < index; prevIdx++) {
-			super.getValue(prevIdx);
-		    }
-		}
-	    }
-	}
+        TimeSeries series = getTimeSeries();
+        if (series != null) {
+            final int seriesEndIndex = series.getEndIndex();
+            if (index <= seriesEndIndex) {
+                // We are not after the end of the series
+                final int removedBarsCount = series.getRemovedBarsCount();
+                int startIndex = Math.max(removedBarsCount, highestResultIndex);
+                if (index - startIndex > RECURSION_THRESHOLD) {
+                    // Too many uncalculated values; the risk for a StackOverflowError becomes high.
+                    // Calculating the previous values iteratively
+                    for (int prevIdx = startIndex; prevIdx < index; prevIdx++) {
+                        super.getValue(prevIdx);
+                    }
+                }
+            }
+        }
 
-	return super.getValue(index);
+        return super.getValue(index);
     }
 }

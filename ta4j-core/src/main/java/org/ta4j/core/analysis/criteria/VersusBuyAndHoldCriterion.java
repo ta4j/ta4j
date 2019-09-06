@@ -42,29 +42,29 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
      * @param criterion an analysis criterion to be compared
      */
     public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
-	this.criterion = criterion;
+        this.criterion = criterion;
     }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	TradingRecord fakeRecord = new BaseTradingRecord();
-	fakeRecord.enter(series.getBeginIndex());
-	fakeRecord.exit(series.getEndIndex());
+        TradingRecord fakeRecord = new BaseTradingRecord();
+        fakeRecord.enter(series.getBeginIndex());
+        fakeRecord.exit(series.getEndIndex());
 
-	return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	TradingRecord fakeRecord = new BaseTradingRecord();
-	fakeRecord.enter(series.getBeginIndex());
-	fakeRecord.exit(series.getEndIndex());
+        TradingRecord fakeRecord = new BaseTradingRecord();
+        fakeRecord.enter(series.getBeginIndex());
+        fakeRecord.exit(series.getEndIndex());
 
-	return criterion.calculate(series, trade).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, trade).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

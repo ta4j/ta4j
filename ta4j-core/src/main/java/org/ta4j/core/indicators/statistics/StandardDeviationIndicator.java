@@ -45,12 +45,12 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	variance = new VarianceIndicator(indicator, barCount);
+        super(indicator);
+        variance = new VarianceIndicator(indicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return variance.getValue(index).sqrt();
+        return variance.getValue(index).sqrt();
     }
 }

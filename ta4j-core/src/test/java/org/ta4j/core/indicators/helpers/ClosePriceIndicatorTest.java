@@ -41,19 +41,19 @@ public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     TimeSeries timeSeries;
 
     public ClosePriceIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	timeSeries = new MockTimeSeries(numFunction);
-	closePrice = new ClosePriceIndicator(timeSeries);
+        timeSeries = new MockTimeSeries(numFunction);
+        closePrice = new ClosePriceIndicator(timeSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarClosePrice() {
-	for (int i = 0; i < 10; i++) {
-	    assertEquals(closePrice.getValue(i), timeSeries.getBar(i).getClosePrice());
-	}
+        for (int i = 0; i < 10; i++) {
+            assertEquals(closePrice.getValue(i), timeSeries.getBar(i).getClosePrice());
+        }
     }
 }

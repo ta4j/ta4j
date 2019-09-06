@@ -45,63 +45,63 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
     private Indicator<Num> close, volume;
 
     public CorrelationCoefficientIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	TimeSeries data = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
-	int i = 20;
-	// close, volume
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 6, 100, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 7, 105, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 130, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 150, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 10, 130, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 95, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 13, 120, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 15, 180, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 150, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 200, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 150, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 85, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 70, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 5, 90, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 100, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 95, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 110, numFunction));
-	data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i), 10, 95, numFunction));
+        TimeSeries data = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+        int i = 20;
+        // close, volume
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 6, 100, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 7, 105, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 130, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 10, 130, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 95, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 13, 120, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 15, 180, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 200, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 85, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 70, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 5, 90, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 100, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 95, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 110, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i), 10, 95, numFunction));
 
-	close = new ClosePriceIndicator(data);
-	volume = new VolumeIndicator(data, 2);
+        close = new ClosePriceIndicator(data);
+        volume = new VolumeIndicator(data, 2);
     }
 
     @Test
     public void usingBarCount5UsingClosePriceAndVolume() {
-	CorrelationCoefficientIndicator coef = new CorrelationCoefficientIndicator(close, volume, 5);
+        CorrelationCoefficientIndicator coef = new CorrelationCoefficientIndicator(close, volume, 5);
 
-	assertTrue(coef.getValue(0).isNaN());
+        assertTrue(coef.getValue(0).isNaN());
 
-	assertNumEquals(1, coef.getValue(1));
-	assertNumEquals(0.8773, coef.getValue(2));
-	assertNumEquals(0.9073, coef.getValue(3));
-	assertNumEquals(0.9219, coef.getValue(4));
-	assertNumEquals(0.9205, coef.getValue(5));
-	assertNumEquals(0.4565, coef.getValue(6));
-	assertNumEquals(-0.4622, coef.getValue(7));
-	assertNumEquals(0.05747, coef.getValue(8));
-	assertNumEquals(0.1442, coef.getValue(9));
-	assertNumEquals(-0.1263, coef.getValue(10));
-	assertNumEquals(-0.5345, coef.getValue(11));
-	assertNumEquals(-0.7275, coef.getValue(12));
-	assertNumEquals(0.1676, coef.getValue(13));
-	assertNumEquals(0.2506, coef.getValue(14));
-	assertNumEquals(-0.2938, coef.getValue(15));
-	assertNumEquals(-0.3586, coef.getValue(16));
-	assertNumEquals(0.1713, coef.getValue(17));
-	assertNumEquals(0.9841, coef.getValue(18));
-	assertNumEquals(0.9799, coef.getValue(19));
+        assertNumEquals(1, coef.getValue(1));
+        assertNumEquals(0.8773, coef.getValue(2));
+        assertNumEquals(0.9073, coef.getValue(3));
+        assertNumEquals(0.9219, coef.getValue(4));
+        assertNumEquals(0.9205, coef.getValue(5));
+        assertNumEquals(0.4565, coef.getValue(6));
+        assertNumEquals(-0.4622, coef.getValue(7));
+        assertNumEquals(0.05747, coef.getValue(8));
+        assertNumEquals(0.1442, coef.getValue(9));
+        assertNumEquals(-0.1263, coef.getValue(10));
+        assertNumEquals(-0.5345, coef.getValue(11));
+        assertNumEquals(-0.7275, coef.getValue(12));
+        assertNumEquals(0.1676, coef.getValue(13));
+        assertNumEquals(0.2506, coef.getValue(14));
+        assertNumEquals(-0.2938, coef.getValue(15));
+        assertNumEquals(-0.3586, coef.getValue(16));
+        assertNumEquals(0.1713, coef.getValue(17));
+        assertNumEquals(0.9841, coef.getValue(18));
+        assertNumEquals(0.9799, coef.getValue(19));
     }
 }

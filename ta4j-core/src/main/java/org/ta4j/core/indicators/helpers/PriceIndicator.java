@@ -38,13 +38,13 @@ public abstract class PriceIndicator extends CachedIndicator<Num> {
     private final Function<Bar, Num> priceFunction;
 
     public PriceIndicator(TimeSeries series, Function<Bar, Num> priceFunction) {
-	super(series);
-	this.priceFunction = priceFunction;
+        super(series);
+        this.priceFunction = priceFunction;
     }
 
     @Override
     protected Num calculate(int index) {
-	final Bar bar = getTimeSeries().getBar(index);
-	return priceFunction.apply(bar);
+        final Bar bar = getTimeSeries().getBar(index);
+        return priceFunction.apply(bar);
     }
 }

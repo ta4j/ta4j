@@ -41,19 +41,19 @@ public class LowPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     TimeSeries timeSeries;
 
     public LowPriceIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	timeSeries = new MockTimeSeries(numFunction);
-	lowPriceIndicator = new LowPriceIndicator(timeSeries);
+        timeSeries = new MockTimeSeries(numFunction);
+        lowPriceIndicator = new LowPriceIndicator(timeSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarMinPrice() {
-	for (int i = 0; i < 10; i++) {
-	    assertEquals(lowPriceIndicator.getValue(i), timeSeries.getBar(i).getLowPrice());
-	}
+        for (int i = 0; i < 10; i++) {
+            assertEquals(lowPriceIndicator.getValue(i), timeSeries.getBar(i).getLowPrice());
+        }
     }
 }

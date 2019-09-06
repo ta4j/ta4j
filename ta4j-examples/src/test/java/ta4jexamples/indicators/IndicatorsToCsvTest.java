@@ -29,6 +29,6 @@ public class IndicatorsToCsvTest {
 
     @Test
     public void test() {
-	IndicatorsToCsv.main(null);
+        IndicatorsToCsv.main(null);
     }
 }

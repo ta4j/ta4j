@@ -54,51 +54,51 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     private BooleanTransformIndicator transIsZero;
 
     public BooleanTransformIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	Num FOUR = numFunction.apply(4);
-	Num minusFOUR = numFunction.apply(-4);
-	TimeSeries series = new BaseTimeSeries();
-	ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, FOUR);
+        Num FOUR = numFunction.apply(4);
+        Num minusFOUR = numFunction.apply(-4);
+        TimeSeries series = new BaseTimeSeries();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, FOUR);
 
-	transEquals = new BooleanTransformIndicator(constantIndicator, FOUR, BooleanTransformType.equals);
-	transIsGreaterThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(3),
-		BooleanTransformType.isGreaterThan);
-	transIsGreaterThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
-		BooleanTransformType.isGreaterThanOrEqual);
-	transIsLessThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(10),
-		BooleanTransformType.isLessThan);
-	transIsLessThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
-		BooleanTransformType.isLessThanOrEqual);
+        transEquals = new BooleanTransformIndicator(constantIndicator, FOUR, BooleanTransformType.equals);
+        transIsGreaterThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(3),
+                BooleanTransformType.isGreaterThan);
+        transIsGreaterThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
+                BooleanTransformType.isGreaterThanOrEqual);
+        transIsLessThan = new BooleanTransformIndicator(constantIndicator, numFunction.apply(10),
+                BooleanTransformType.isLessThan);
+        transIsLessThanOrEqual = new BooleanTransformIndicator(constantIndicator, FOUR,
+                BooleanTransformType.isLessThanOrEqual);
 
-	transIsNaN = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isNaN);
-	transIsNegative = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, minusFOUR),
-		BooleanTransformSimpleType.isNegative);
-	transIsNegativeOrZero = new BooleanTransformIndicator(constantIndicator,
-		BooleanTransformSimpleType.isNegativeOrZero);
-	transIsPositive = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isPositive);
-	transIsPositiveOrZero = new BooleanTransformIndicator(constantIndicator,
-		BooleanTransformSimpleType.isPositiveOrZero);
-	transIsZero = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)),
-		BooleanTransformSimpleType.isZero);
+        transIsNaN = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isNaN);
+        transIsNegative = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, minusFOUR),
+                BooleanTransformSimpleType.isNegative);
+        transIsNegativeOrZero = new BooleanTransformIndicator(constantIndicator,
+                BooleanTransformSimpleType.isNegativeOrZero);
+        transIsPositive = new BooleanTransformIndicator(constantIndicator, BooleanTransformSimpleType.isPositive);
+        transIsPositiveOrZero = new BooleanTransformIndicator(constantIndicator,
+                BooleanTransformSimpleType.isPositiveOrZero);
+        transIsZero = new BooleanTransformIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)),
+                BooleanTransformSimpleType.isZero);
     }
 
     @Test
     public void getValue() {
-	assertTrue(transEquals.getValue(0));
-	assertTrue(transIsGreaterThan.getValue(0));
-	assertTrue(transIsGreaterThanOrEqual.getValue(0));
-	assertTrue(transIsLessThan.getValue(0));
-	assertTrue(transIsLessThanOrEqual.getValue(0));
+        assertTrue(transEquals.getValue(0));
+        assertTrue(transIsGreaterThan.getValue(0));
+        assertTrue(transIsGreaterThanOrEqual.getValue(0));
+        assertTrue(transIsLessThan.getValue(0));
+        assertTrue(transIsLessThanOrEqual.getValue(0));
 
-	assertFalse(transIsNaN.getValue(0));
-	assertTrue(transIsNegative.getValue(0));
-	assertFalse(transIsNegativeOrZero.getValue(0));
-	assertTrue(transIsPositive.getValue(0));
-	assertTrue(transIsPositiveOrZero.getValue(0));
-	assertTrue(transIsZero.getValue(0));
+        assertFalse(transIsNaN.getValue(0));
+        assertTrue(transIsNegative.getValue(0));
+        assertFalse(transIsNegativeOrZero.getValue(0));
+        assertTrue(transIsPositive.getValue(0));
+        assertTrue(transIsPositiveOrZero.getValue(0));
+        assertTrue(transIsZero.getValue(0));
     }
 }

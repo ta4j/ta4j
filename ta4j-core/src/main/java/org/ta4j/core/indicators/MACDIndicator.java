@@ -47,7 +47,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      */
     public MACDIndicator(Indicator<Num> indicator) {
-	this(indicator, 12, 26);
+        this(indicator, 12, 26);
     }
 
     /**
@@ -58,16 +58,16 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the long time frame (normally 26)
      */
     public MACDIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
-	super(indicator);
-	if (shortBarCount > longBarCount) {
-	    throw new IllegalArgumentException("Long term period count must be greater than short term period count");
-	}
-	shortTermEma = new EMAIndicator(indicator, shortBarCount);
-	longTermEma = new EMAIndicator(indicator, longBarCount);
+        super(indicator);
+        if (shortBarCount > longBarCount) {
+            throw new IllegalArgumentException("Long term period count must be greater than short term period count");
+        }
+        shortTermEma = new EMAIndicator(indicator, shortBarCount);
+        longTermEma = new EMAIndicator(indicator, longBarCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
+        return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
 }

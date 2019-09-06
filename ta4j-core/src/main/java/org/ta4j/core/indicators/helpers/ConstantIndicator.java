@@ -35,17 +35,17 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
     private final T value;
 
     public ConstantIndicator(TimeSeries series, T t) {
-	super(series);
-	this.value = t;
+        super(series);
+        this.value = t;
     }
 
     @Override
     public T getValue(int index) {
-	return value;
+        return value;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " Value: " + value;
+        return getClass().getSimpleName() + " Value: " + value;
     }
 }

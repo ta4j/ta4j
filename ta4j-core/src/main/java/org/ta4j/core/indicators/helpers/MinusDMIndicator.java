@@ -34,23 +34,23 @@ import org.ta4j.core.num.Num;
 public class MinusDMIndicator extends CachedIndicator<Num> {
 
     public MinusDMIndicator(TimeSeries series) {
-	super(series);
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index == 0) {
-	    return numOf(0);
-	}
-	final Bar prevBar = getTimeSeries().getBar(index - 1);
-	final Bar currentBar = getTimeSeries().getBar(index);
+        if (index == 0) {
+            return numOf(0);
+        }
+        final Bar prevBar = getTimeSeries().getBar(index - 1);
+        final Bar currentBar = getTimeSeries().getBar(index);
 
-	final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
-	final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
-	if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(numOf(0))) {
-	    return downMove;
-	} else {
-	    return numOf(0);
-	}
+        final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
+        final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
+        if (downMove.isGreaterThan(upMove) && downMove.isGreaterThan(numOf(0))) {
+            return downMove;
+        } else {
+            return numOf(0);
+        }
     }
 }

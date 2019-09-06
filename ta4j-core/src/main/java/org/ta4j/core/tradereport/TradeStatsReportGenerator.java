@@ -41,9 +41,9 @@ public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsRepo
 
     @Override
     public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
-	final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
-	final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
-	final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
-	return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
+        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
+        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
+        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
+        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
     }
 }

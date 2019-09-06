@@ -40,20 +40,20 @@ public class CrossedDownIndicatorRuleTest {
 
     @Before
     public void setUp() {
-	TimeSeries series = new BaseTimeSeries();
-	Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
-	rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
+        TimeSeries series = new BaseTimeSeries();
+        Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
+        rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
     }
 
     @Test
     public void isSatisfied() {
-	assertFalse(rule.isSatisfied(0));
-	assertFalse(rule.isSatisfied(1));
-	assertFalse(rule.isSatisfied(2));
-	assertTrue(rule.isSatisfied(3));
-	assertFalse(rule.isSatisfied(4));
-	assertTrue(rule.isSatisfied(5));
-	assertFalse(rule.isSatisfied(6));
-	assertFalse(rule.isSatisfied(7));
+        assertFalse(rule.isSatisfied(0));
+        assertFalse(rule.isSatisfied(1));
+        assertFalse(rule.isSatisfied(2));
+        assertTrue(rule.isSatisfied(3));
+        assertFalse(rule.isSatisfied(4));
+        assertTrue(rule.isSatisfied(5));
+        assertFalse(rule.isSatisfied(6));
+        assertFalse(rule.isSatisfied(7));
     }
 }

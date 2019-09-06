@@ -49,9 +49,9 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * @param longBarCount  (usually 10)
      */
     public ChaikinOscillatorIndicator(TimeSeries series, int shortBarCount, int longBarCount) {
-	super(series);
-	this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
-	this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
+        super(series);
+        this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
+        this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
     }
 
     /**
@@ -60,11 +60,11 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * @param series the {@link TimeSeries}
      */
     public ChaikinOscillatorIndicator(TimeSeries series) {
-	this(series, 3, 10);
+        this(series, 3, 10);
     }
 
     @Override
     protected Num calculate(int index) {
-	return emaShort.getValue(index).minus(emaLong.getValue(index));
+        return emaShort.getValue(index).minus(emaLong.getValue(index));
     }
 }

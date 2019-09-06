@@ -35,12 +35,12 @@ public class AbsoluteIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
 
     public AbsoluteIndicator(Indicator<Num> indicator) {
-	super(indicator);
-	this.indicator = indicator;
+        super(indicator);
+        this.indicator = indicator;
     }
 
     @Override
     protected Num calculate(int index) {
-	return indicator.getValue(index).abs();
+        return indicator.getValue(index).abs();
     }
 }

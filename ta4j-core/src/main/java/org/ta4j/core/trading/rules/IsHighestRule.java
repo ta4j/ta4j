@@ -52,18 +52,18 @@ public class IsHighestRule extends AbstractRule {
      * @param barCount the time frame
      */
     public IsHighestRule(Indicator<Num> ref, int barCount) {
-	this.ref = ref;
-	this.barCount = barCount;
+        this.ref = ref;
+        this.barCount = barCount;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
-	Num highestVal = highest.getValue(index);
-	Num refVal = ref.getValue(index);
+        HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
+        Num highestVal = highest.getValue(index);
+        Num refVal = ref.getValue(index);
 
-	final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

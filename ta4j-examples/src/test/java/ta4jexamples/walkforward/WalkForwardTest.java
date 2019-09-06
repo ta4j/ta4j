@@ -29,6 +29,6 @@ public class WalkForwardTest {
 
     @Test
     public void test() {
-	WalkForward.main(null);
+        WalkForward.main(null);
     }
 }

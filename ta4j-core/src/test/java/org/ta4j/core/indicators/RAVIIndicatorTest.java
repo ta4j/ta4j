@@ -40,37 +40,37 @@ public class RAVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     private TimeSeries data;
 
     public RAVIIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
 
-	data = new MockTimeSeries(numFunction, 110.00, 109.27, 104.69, 107.07, 107.92, 107.95, 108.70, 107.97, 106.09,
-		106.03, 108.65, 109.54, 112.26, 114.38, 117.94
+        data = new MockTimeSeries(numFunction, 110.00, 109.27, 104.69, 107.07, 107.92, 107.95, 108.70, 107.97, 106.09,
+                106.03, 108.65, 109.54, 112.26, 114.38, 117.94
 
-	);
+        );
     }
 
     @Test
     public void ravi() {
-	ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
-	RAVIIndicator ravi = new RAVIIndicator(closePrice, 3, 8);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
+        RAVIIndicator ravi = new RAVIIndicator(closePrice, 3, 8);
 
-	assertNumEquals(0, ravi.getValue(0));
-	assertNumEquals(0, ravi.getValue(1));
-	assertNumEquals(0, ravi.getValue(2));
-	assertNumEquals(-0.6937, ravi.getValue(3));
-	assertNumEquals(-1.1411, ravi.getValue(4));
-	assertNumEquals(-0.1577, ravi.getValue(5));
-	assertNumEquals(0.229, ravi.getValue(6));
-	assertNumEquals(0.2412, ravi.getValue(7));
-	assertNumEquals(0.1202, ravi.getValue(8));
-	assertNumEquals(-0.3324, ravi.getValue(9));
-	assertNumEquals(-0.5804, ravi.getValue(10));
-	assertNumEquals(0.2013, ravi.getValue(11));
-	assertNumEquals(1.6156, ravi.getValue(12));
-	assertNumEquals(2.6167, ravi.getValue(13));
-	assertNumEquals(4.0799, ravi.getValue(14));
+        assertNumEquals(0, ravi.getValue(0));
+        assertNumEquals(0, ravi.getValue(1));
+        assertNumEquals(0, ravi.getValue(2));
+        assertNumEquals(-0.6937, ravi.getValue(3));
+        assertNumEquals(-1.1411, ravi.getValue(4));
+        assertNumEquals(-0.1577, ravi.getValue(5));
+        assertNumEquals(0.229, ravi.getValue(6));
+        assertNumEquals(0.2412, ravi.getValue(7));
+        assertNumEquals(0.1202, ravi.getValue(8));
+        assertNumEquals(-0.3324, ravi.getValue(9));
+        assertNumEquals(-0.5804, ravi.getValue(10));
+        assertNumEquals(0.2013, ravi.getValue(11));
+        assertNumEquals(1.6156, ravi.getValue(12));
+        assertNumEquals(2.6167, ravi.getValue(13));
+        assertNumEquals(4.0799, ravi.getValue(14));
     }
 }

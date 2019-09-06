@@ -40,12 +40,12 @@ public class LinearBorrowingCostModel implements CostModel {
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
-	this.feePerPeriod = feePerPeriod;
+        this.feePerPeriod = feePerPeriod;
     }
 
     public Num calculate(Num price, Num amount) {
-	// borrowing costs depend on borrowed period
-	return price.numOf(0);
+        // borrowing costs depend on borrowed period
+        return price.numOf(0);
     }
 
     /**
@@ -55,10 +55,10 @@ public class LinearBorrowingCostModel implements CostModel {
      * @return the absolute order cost
      */
     public Num calculate(Trade trade) {
-	if (trade.isOpened()) {
-	    throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
-	}
-	return calculate(trade, trade.getExit().getIndex());
+        if (trade.isOpened()) {
+            throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
+        }
+        return calculate(trade, trade.getExit().getIndex());
     }
 
     /**
@@ -69,21 +69,21 @@ public class LinearBorrowingCostModel implements CostModel {
      * @return the absolute order cost
      */
     public Num calculate(Trade trade, int currentIndex) {
-	Order entryOrder = trade.getEntry();
-	Order exitOrder = trade.getExit();
-	Num borrowingCost = trade.getEntry().getNetPrice().numOf(0);
+        Order entryOrder = trade.getEntry();
+        Order exitOrder = trade.getExit();
+        Num borrowingCost = trade.getEntry().getNetPrice().numOf(0);
 
-	// borrowing costs apply for short positions only
-	if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
-	    int tradingPeriods = 0;
-	    if (trade.isClosed()) {
-		tradingPeriods = exitOrder.getIndex() - entryOrder.getIndex();
-	    } else if (trade.isOpened()) {
-		tradingPeriods = currentIndex - entryOrder.getIndex();
-	    }
-	    borrowingCost = getHoldingCostForPeriods(tradingPeriods, trade.getEntry().getValue());
-	}
-	return borrowingCost;
+        // borrowing costs apply for short positions only
+        if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
+            int tradingPeriods = 0;
+            if (trade.isClosed()) {
+                tradingPeriods = exitOrder.getIndex() - entryOrder.getIndex();
+            } else if (trade.isOpened()) {
+                tradingPeriods = currentIndex - entryOrder.getIndex();
+            }
+            borrowingCost = getHoldingCostForPeriods(tradingPeriods, trade.getEntry().getValue());
+        }
+        return borrowingCost;
     }
 
     /**
@@ -92,8 +92,8 @@ public class LinearBorrowingCostModel implements CostModel {
      * @return the absolute borrowing cost
      */
     private Num getHoldingCostForPeriods(int tradingPeriods, Num tradedValue) {
-	return tradedValue
-		.multipliedBy(tradedValue.numOf(tradingPeriods).multipliedBy(tradedValue.numOf(feePerPeriod)));
+        return tradedValue
+                .multipliedBy(tradedValue.numOf(tradingPeriods).multipliedBy(tradedValue.numOf(feePerPeriod)));
     }
 
     /**
@@ -102,10 +102,10 @@ public class LinearBorrowingCostModel implements CostModel {
      * @param otherModel model to compare with
      */
     public boolean equals(CostModel otherModel) {
-	boolean equality = false;
-	if (this.getClass().equals(otherModel.getClass())) {
-	    equality = ((LinearBorrowingCostModel) otherModel).feePerPeriod == this.feePerPeriod;
-	}
-	return equality;
+        boolean equality = false;
+        if (this.getClass().equals(otherModel.getClass())) {
+            equality = ((LinearBorrowingCostModel) otherModel).feePerPeriod == this.feePerPeriod;
+        }
+        return equality;
     }
 }

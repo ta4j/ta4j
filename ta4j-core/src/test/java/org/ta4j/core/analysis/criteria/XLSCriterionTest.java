@@ -50,12 +50,12 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @param statesColumn    column number containing the trading record states
      */
     public XLSCriterionTest(Class<?> clazz, String fileName, int criterionColumn, int statesColumn,
-	    Function<Number, Num> numFunction) {
-	this.clazz = clazz;
-	this.fileName = fileName;
-	this.criterionColumn = criterionColumn;
-	this.statesColumn = statesColumn;
-	this.numFunction = numFunction;
+            Function<Number, Num> numFunction) {
+        this.clazz = clazz;
+        this.fileName = fileName;
+        this.criterionColumn = criterionColumn;
+        this.statesColumn = statesColumn;
+        this.numFunction = numFunction;
     }
 
     /**
@@ -66,10 +66,10 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
     public TimeSeries getSeries() throws Exception {
-	if (cachedSeries == null) {
-	    cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
-	}
-	return cachedSeries;
+        if (cachedSeries == null) {
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
+        }
+        return cachedSeries;
     }
 
     /**
@@ -81,7 +81,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      *                   DataFormatException
      */
     public Num getFinalCriterionValue(Object... params) throws Exception {
-	return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().function(), params);
+        return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().function(), params);
     }
 
     /**
@@ -90,7 +90,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @return TradingRecord from the file
      */
     public TradingRecord getTradingRecord() throws Exception {
-	return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().function());
+        return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().function());
     }
 
 }

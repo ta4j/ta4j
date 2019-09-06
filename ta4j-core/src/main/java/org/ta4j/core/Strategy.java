@@ -104,13 +104,13 @@ public interface Strategy {
      * @return true to recommend an order, false otherwise (no recommendation)
      */
     default boolean shouldOperate(int index, TradingRecord tradingRecord) {
-	Trade trade = tradingRecord.getCurrentTrade();
-	if (trade.isNew()) {
-	    return shouldEnter(index, tradingRecord);
-	} else if (trade.isOpened()) {
-	    return shouldExit(index, tradingRecord);
-	}
-	return false;
+        Trade trade = tradingRecord.getCurrentTrade();
+        if (trade.isNew()) {
+            return shouldEnter(index, tradingRecord);
+        } else if (trade.isOpened()) {
+            return shouldExit(index, tradingRecord);
+        }
+        return false;
     }
 
     /**
@@ -118,7 +118,7 @@ public interface Strategy {
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index) {
-	return shouldEnter(index, null);
+        return shouldEnter(index, null);
     }
 
     /**
@@ -127,7 +127,7 @@ public interface Strategy {
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index, TradingRecord tradingRecord) {
-	return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
+        return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
     }
 
     /**
@@ -135,7 +135,7 @@ public interface Strategy {
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index) {
-	return shouldExit(index, null);
+        return shouldExit(index, null);
     }
 
     /**
@@ -144,6 +144,6 @@ public interface Strategy {
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index, TradingRecord tradingRecord) {
-	return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+        return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
     }
 }

@@ -40,7 +40,7 @@ public class IchimokuKijunSenIndicator extends AbstractIchimokuLineIndicator {
      * @param series the series
      */
     public IchimokuKijunSenIndicator(TimeSeries series) {
-	super(series, 26);
+        super(series, 26);
     }
 
     /**
@@ -50,6 +50,6 @@ public class IchimokuKijunSenIndicator extends AbstractIchimokuLineIndicator {
      * @param barCount the time frame (usually 26)
      */
     public IchimokuKijunSenIndicator(TimeSeries series, int barCount) {
-	super(series, barCount);
+        super(series, barCount);
     }
 }

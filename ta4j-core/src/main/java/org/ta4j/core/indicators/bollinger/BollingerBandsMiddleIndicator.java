@@ -44,21 +44,21 @@ public class BollingerBandsMiddleIndicator extends CachedIndicator<Num> {
      *
      */
     public BollingerBandsMiddleIndicator(Indicator<Num> indicator) {
-	super(indicator);
-	this.indicator = indicator;
+        super(indicator);
+        this.indicator = indicator;
     }
 
     @Override
     protected Num calculate(int index) {
-	return indicator.getValue(index);
+        return indicator.getValue(index);
     }
 
     public Indicator<Num> getIndicator() {
-	return indicator;
+        return indicator;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " deviation: " + indicator;
+        return getClass().getSimpleName() + " deviation: " + indicator;
     }
 }

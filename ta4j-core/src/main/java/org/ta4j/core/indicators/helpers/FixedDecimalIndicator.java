@@ -41,10 +41,10 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * @param values the values to be returned by this indicator
      */
     public FixedDecimalIndicator(TimeSeries series, double... values) {
-	super(series);
-	for (double value : values) {
-	    addValue(numOf(value));
-	}
+        super(series);
+        for (double value : values) {
+            addValue(numOf(value));
+        }
     }
 
     /**
@@ -53,9 +53,9 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * @param values the values to be returned by this indicator
      */
     public FixedDecimalIndicator(TimeSeries series, String... values) {
-	super(series);
-	for (String value : values) {
-	    addValue(numOf(new BigDecimal(value)));
-	}
+        super(series);
+        for (String value : values) {
+            addValue(numOf(new BigDecimal(value)));
+        }
     }
 }

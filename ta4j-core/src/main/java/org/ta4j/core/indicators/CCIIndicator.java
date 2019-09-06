@@ -50,27 +50,27 @@ public class CCIIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame (normally 20)
      */
     public CCIIndicator(TimeSeries series, int barCount) {
-	super(series);
-	factor = numOf(0.015);
-	typicalPriceInd = new TypicalPriceIndicator(series);
-	smaInd = new SMAIndicator(typicalPriceInd, barCount);
-	meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
-	this.barCount = barCount;
+        super(series);
+        factor = numOf(0.015);
+        typicalPriceInd = new TypicalPriceIndicator(series);
+        smaInd = new SMAIndicator(typicalPriceInd, barCount);
+        meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	final Num typicalPrice = typicalPriceInd.getValue(index);
-	final Num typicalPriceAvg = smaInd.getValue(index);
-	final Num meanDeviation = meanDeviationInd.getValue(index);
-	if (meanDeviation.isZero()) {
-	    return numOf(0);
-	}
-	return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
+        final Num typicalPrice = typicalPriceInd.getValue(index);
+        final Num typicalPriceAvg = smaInd.getValue(index);
+        final Num meanDeviation = meanDeviationInd.getValue(index);
+        if (meanDeviation.isZero()) {
+            return numOf(0);
+        }
+        return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

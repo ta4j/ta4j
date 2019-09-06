@@ -47,112 +47,112 @@ public class BuildTimeSeries {
      */
     @SuppressWarnings("unused")
     public static void main(String[] args) {
-	TimeSeries a = buildAndAddData();
-	System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-	BaseTimeSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
-	a = buildAndAddData();
-	System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-	TimeSeries b = buildWithDouble();
-	TimeSeries c = buildWithBigDecimal();
-	TimeSeries d = buildManually();
-	TimeSeries e = buildManuallyDoubleNum();
-	TimeSeries f = buildManuallyAndAddBarManually();
-	TimeSeries g = buildAndAddBarsFromList();
+        TimeSeries a = buildAndAddData();
+        System.out.println("a: " + a.getBar(0).getClosePrice().getName());
+        BaseTimeSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
+        a = buildAndAddData();
+        System.out.println("a: " + a.getBar(0).getClosePrice().getName());
+        TimeSeries b = buildWithDouble();
+        TimeSeries c = buildWithBigDecimal();
+        TimeSeries d = buildManually();
+        TimeSeries e = buildManuallyDoubleNum();
+        TimeSeries f = buildManuallyAndAddBarManually();
+        TimeSeries g = buildAndAddBarsFromList();
     }
 
     private static TimeSeries buildAndAddData() {
-	TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").build();
 
-	ZonedDateTime endTime = ZonedDateTime.now();
-	series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
-	series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
-	series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
-	// ...
-	return series;
+        ZonedDateTime endTime = ZonedDateTime.now();
+        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
+        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
+        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
+        // ...
+        return series;
     }
 
     private static TimeSeries buildWithDouble() {
-	TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum.class).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum.class).build();
 
-	ZonedDateTime endTime = ZonedDateTime.now();
-	series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
-	series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
-	series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
-	// ...
+        ZonedDateTime endTime = ZonedDateTime.now();
+        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
+        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
+        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
+        // ...
 
-	return series;
+        return series;
     }
 
     private static TimeSeries buildWithBigDecimal() {
-	TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
 
-	ZonedDateTime endTime = ZonedDateTime.now();
-	series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
-	series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
-	series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
-	// ...
+        ZonedDateTime endTime = ZonedDateTime.now();
+        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
+        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
+        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
+        // ...
 
-	return series;
+        return series;
     }
 
     private static TimeSeries buildManually() {
-	TimeSeries series = new BaseTimeSeries("mySeries"); // uses BigDecimalNum
+        TimeSeries series = new BaseTimeSeries("mySeries"); // uses BigDecimalNum
 
-	ZonedDateTime endTime = ZonedDateTime.now();
-	series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
-	series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
-	series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
-	// ...
+        ZonedDateTime endTime = ZonedDateTime.now();
+        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
+        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
+        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
+        // ...
 
-	return series;
+        return series;
     }
 
     private static TimeSeries buildManuallyDoubleNum() {
-	TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
-	ZonedDateTime endTime = ZonedDateTime.now();
-	series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
-	series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
-	series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
-	// ...
+        TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        ZonedDateTime endTime = ZonedDateTime.now();
+        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
+        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
+        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
+        // ...
 
-	return series;
+        return series;
     }
 
     private static TimeSeries buildManuallyAndAddBarManually() {
-	TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
 
-	// create bars and add them to the series. The bars must have the same Num type
-	// as the series
-	ZonedDateTime endTime = ZonedDateTime.now();
-	Bar b1 = new BaseBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337, DoubleNum::valueOf);
-	Bar b2 = new BaseBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234, DoubleNum::valueOf);
-	Bar b3 = new BaseBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242, DoubleNum::valueOf);
-	// ...
+        // create bars and add them to the series. The bars must have the same Num type
+        // as the series
+        ZonedDateTime endTime = ZonedDateTime.now();
+        Bar b1 = new BaseBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337, DoubleNum::valueOf);
+        Bar b2 = new BaseBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234, DoubleNum::valueOf);
+        Bar b3 = new BaseBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242, DoubleNum::valueOf);
+        // ...
 
-	series.addBar(b1);
-	series.addBar(b2);
-	series.addBar(b3);
+        series.addBar(b1);
+        series.addBar(b2);
+        series.addBar(b3);
 
-	return series;
+        return series;
     }
 
     private static TimeSeries buildAndAddBarsFromList() {
-	// Store Bars in a list and add them later. The bars must have the same Num type
-	// as the series
-	ZonedDateTime endTime = ZonedDateTime.now();
-	Bar b1 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime).openPrice("105.42")
-		.highPrice("112.99").lowPrice("104.01").closePrice("111.42").volume("1337").build();
-	Bar b2 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime.plusDays(1)).openPrice("111.43")
-		.highPrice("112.83").lowPrice("107.77").closePrice("107.99").volume("1234").build();
-	Bar b3 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime.plusDays(2)).openPrice("107.90")
-		.highPrice("117.50").lowPrice("107.90").closePrice("115.42").volume("4242").build();
-	List<Bar> bars = Arrays.asList(b1, b2, b3);
+        // Store Bars in a list and add them later. The bars must have the same Num type
+        // as the series
+        ZonedDateTime endTime = ZonedDateTime.now();
+        Bar b1 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime).openPrice("105.42")
+                .highPrice("112.99").lowPrice("104.01").closePrice("111.42").volume("1337").build();
+        Bar b2 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime.plusDays(1)).openPrice("111.43")
+                .highPrice("112.83").lowPrice("107.77").closePrice("107.99").volume("1234").build();
+        Bar b3 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime.plusDays(2)).openPrice("107.90")
+                .highPrice("117.50").lowPrice("107.90").closePrice("115.42").volume("4242").build();
+        List<Bar> bars = Arrays.asList(b1, b2, b3);
 
-	return new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum::valueOf).withMaxBarCount(5)
-		.withBars(bars).build();
+        return new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum::valueOf).withMaxBarCount(5)
+                .withBars(bars).build();
     }
 
     private static ConvertibleBaseBarBuilder<String> barBuilderFromString() {
-	return BaseBar.builder(DoubleNum::valueOf, String.class);
+        return BaseBar.builder(DoubleNum::valueOf, String.class);
     }
 }

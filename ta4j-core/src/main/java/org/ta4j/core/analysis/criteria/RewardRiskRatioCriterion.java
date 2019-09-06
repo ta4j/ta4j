@@ -43,16 +43,16 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	return totalProfit.calculate(series, tradingRecord).dividedBy(maxDrawdown.calculate(series, tradingRecord));
+        return totalProfit.calculate(series, tradingRecord).dividedBy(maxDrawdown.calculate(series, tradingRecord));
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	return totalProfit.calculate(series, trade).dividedBy(maxDrawdown.calculate(series, trade));
+        return totalProfit.calculate(series, trade).dividedBy(maxDrawdown.calculate(series, trade));
     }
 }

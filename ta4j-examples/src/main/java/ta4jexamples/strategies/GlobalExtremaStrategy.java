@@ -44,45 +44,45 @@ public class GlobalExtremaStrategy {
      * @return a global extrema strategy
      */
     public static Strategy buildStrategy(TimeSeries series) {
-	if (series == null) {
-	    throw new IllegalArgumentException("Series cannot be null");
-	}
+        if (series == null) {
+            throw new IllegalArgumentException("Series cannot be null");
+        }
 
-	ClosePriceIndicator closePrices = new ClosePriceIndicator(series);
+        ClosePriceIndicator closePrices = new ClosePriceIndicator(series);
 
-	// Getting the max price over the past week
-	HighPriceIndicator maxPrices = new HighPriceIndicator(series);
-	HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_BARS_PER_WEEK);
-	// Getting the min price over the past week
-	LowPriceIndicator minPrices = new LowPriceIndicator(series);
-	LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_BARS_PER_WEEK);
+        // Getting the max price over the past week
+        HighPriceIndicator maxPrices = new HighPriceIndicator(series);
+        HighestValueIndicator weekMaxPrice = new HighestValueIndicator(maxPrices, NB_BARS_PER_WEEK);
+        // Getting the min price over the past week
+        LowPriceIndicator minPrices = new LowPriceIndicator(series);
+        LowestValueIndicator weekMinPrice = new LowestValueIndicator(minPrices, NB_BARS_PER_WEEK);
 
-	// Going long if the close price goes below the min price
-	MultiplierIndicator downWeek = new MultiplierIndicator(weekMinPrice, 1.004);
-	Rule buyingRule = new UnderIndicatorRule(closePrices, downWeek);
+        // Going long if the close price goes below the min price
+        MultiplierIndicator downWeek = new MultiplierIndicator(weekMinPrice, 1.004);
+        Rule buyingRule = new UnderIndicatorRule(closePrices, downWeek);
 
-	// Going short if the close price goes above the max price
-	MultiplierIndicator upWeek = new MultiplierIndicator(weekMaxPrice, 0.996);
-	Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
+        // Going short if the close price goes above the max price
+        MultiplierIndicator upWeek = new MultiplierIndicator(weekMaxPrice, 0.996);
+        Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
-	return new BaseStrategy(buyingRule, sellingRule);
+        return new BaseStrategy(buyingRule, sellingRule);
     }
 
     public static void main(String[] args) {
 
-	// Getting the time series
-	TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Getting the time series
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
-	// Building the trading strategy
-	Strategy strategy = buildStrategy(series);
+        // Building the trading strategy
+        Strategy strategy = buildStrategy(series);
 
-	// Running the strategy
-	TimeSeriesManager seriesManager = new TimeSeriesManager(series);
-	TradingRecord tradingRecord = seriesManager.run(strategy);
-	System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
+        // Running the strategy
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
+        System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
-	// Analysis
-	System.out.println(
-		"Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        // Analysis
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

@@ -42,19 +42,19 @@ public class AmountIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     TimeSeries timeSeries;
 
     public AmountIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	timeSeries = new MockTimeSeries(numFunction);
-	amountIndicator = new AmountIndicator(timeSeries);
+        timeSeries = new MockTimeSeries(numFunction);
+        amountIndicator = new AmountIndicator(timeSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarAmountPrice() {
-	for (int i = 0; i < 10; i++) {
-	    assertEquals(amountIndicator.getValue(i), timeSeries.getBar(i).getAmount());
-	}
+        for (int i = 0; i < 10; i++) {
+            assertEquals(amountIndicator.getValue(i), timeSeries.getBar(i).getAmount());
+        }
     }
 }

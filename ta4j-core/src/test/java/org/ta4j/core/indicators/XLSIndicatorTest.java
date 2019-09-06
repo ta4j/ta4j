@@ -47,10 +47,10 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @param column   column number containing the calculated indicator values
      */
     public XLSIndicatorTest(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) {
-	this.clazz = clazz;
-	this.fileName = fileName;
-	this.column = column;
-	this.numFunction = numFunction;
+        this.clazz = clazz;
+        this.fileName = fileName;
+        this.column = column;
+        this.numFunction = numFunction;
     }
 
     /**
@@ -60,10 +60,10 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
     public TimeSeries getSeries() throws Exception {
-	if (cachedSeries == null) {
-	    cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
-	}
-	return cachedSeries;
+        if (cachedSeries == null) {
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
+        }
+        return cachedSeries;
     }
 
     /**
@@ -74,7 +74,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * @throws Exception if getIndicator throws IOException or DataFormatException
      */
     public Indicator<Num> getIndicator(Object... params) throws Exception {
-	return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
+        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);
     }
 
 }

@@ -49,7 +49,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
      * @param series the series
      */
     public IchimokuChikouSpanIndicator(TimeSeries series) {
-	this(series, 26);
+        this(series, 26);
     }
 
     /**
@@ -59,14 +59,14 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
      * @param timeDelay the time delay (usually 26)
      */
     public IchimokuChikouSpanIndicator(TimeSeries series, int timeDelay) {
-	super(series);
-	closePriceIndicator = new ClosePriceIndicator(series);
-	this.timeDelay = timeDelay;
+        super(series);
+        closePriceIndicator = new ClosePriceIndicator(series);
+        this.timeDelay = timeDelay;
     }
 
     @Override
     protected Num calculate(int index) {
-	return closePriceIndicator.getValue(Math.max(0, index - timeDelay));
+        return closePriceIndicator.getValue(Math.max(0, index - timeDelay));
     }
 
 }

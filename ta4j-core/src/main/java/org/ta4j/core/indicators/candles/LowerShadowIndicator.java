@@ -46,20 +46,20 @@ public class LowerShadowIndicator extends CachedIndicator<Num> {
      * @param series a time series
      */
     public LowerShadowIndicator(TimeSeries series) {
-	super(series);
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-	Bar t = getTimeSeries().getBar(index);
-	final Num openPrice = t.getOpenPrice();
-	final Num closePrice = t.getClosePrice();
-	if (closePrice.isGreaterThan(openPrice)) {
-	    // Bullish
-	    return openPrice.minus(t.getLowPrice());
-	} else {
-	    // Bearish
-	    return closePrice.minus(t.getLowPrice());
-	}
+        Bar t = getTimeSeries().getBar(index);
+        final Num openPrice = t.getOpenPrice();
+        final Num closePrice = t.getClosePrice();
+        if (closePrice.isGreaterThan(openPrice)) {
+            // Bullish
+            return openPrice.minus(t.getLowPrice());
+        } else {
+            // Bearish
+            return closePrice.minus(t.getLowPrice());
+        }
     }
 }

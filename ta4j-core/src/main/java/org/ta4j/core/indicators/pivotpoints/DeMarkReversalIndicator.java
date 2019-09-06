@@ -45,7 +45,7 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
     private final Num two;
 
     public enum DeMarkPivotLevel {
-	RESISTANCE, SUPPORT,
+        RESISTANCE, SUPPORT,
     }
 
     /**
@@ -59,52 +59,52 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
      *                            (RESISTANT, SUPPORT)
      */
     public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
-	super(pivotPointIndicator);
-	this.pivotPointIndicator = pivotPointIndicator;
-	this.level = level;
-	this.two = numOf(2);
+        super(pivotPointIndicator);
+        this.pivotPointIndicator = pivotPointIndicator;
+        this.level = level;
+        this.two = numOf(2);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num x = pivotPointIndicator.getValue(index).multipliedBy(numOf(4));
-	Num result;
+        Num x = pivotPointIndicator.getValue(index).multipliedBy(numOf(4));
+        Num result;
 
-	if (level == DeMarkPivotLevel.SUPPORT) {
-	    result = calculateSupport(x, index);
-	} else {
-	    result = calculateResistance(x, index);
-	}
+        if (level == DeMarkPivotLevel.SUPPORT) {
+            result = calculateSupport(x, index);
+        } else {
+            result = calculateResistance(x, index);
+        }
 
-	return result;
+        return result;
 
     }
 
     private Num calculateResistance(Num x, int index) {
-	List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
-	if (barsOfPreviousPeriod.isEmpty()) {
-	    return NaN;
-	}
-	Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-	Num low = bar.getLowPrice();
-	for (int i : barsOfPreviousPeriod) {
-	    low = getTimeSeries().getBar(i).getLowPrice().min(low);
-	}
+        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        if (barsOfPreviousPeriod.isEmpty()) {
+            return NaN;
+        }
+        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Num low = bar.getLowPrice();
+        for (int i : barsOfPreviousPeriod) {
+            low = getTimeSeries().getBar(i).getLowPrice().min(low);
+        }
 
-	return x.dividedBy(two).minus(low);
+        return x.dividedBy(two).minus(low);
     }
 
     private Num calculateSupport(Num x, int index) {
-	List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
-	if (barsOfPreviousPeriod.isEmpty()) {
-	    return NaN;
-	}
-	Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-	Num high = bar.getHighPrice();
-	for (int i : barsOfPreviousPeriod) {
-	    high = getTimeSeries().getBar(i).getHighPrice().max(high);
-	}
+        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        if (barsOfPreviousPeriod.isEmpty()) {
+            return NaN;
+        }
+        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Num high = bar.getHighPrice();
+        for (int i : barsOfPreviousPeriod) {
+            high = getTimeSeries().getBar(i).getHighPrice().max(high);
+        }
 
-	return x.dividedBy(two).minus(high);
+        return x.dividedBy(two).minus(high);
     }
 }

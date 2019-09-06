@@ -40,25 +40,25 @@ public class SMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
 
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.indicator = indicator;
-	this.barCount = barCount;
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	Num sum = numOf(0);
-	for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-	    sum = sum.plus(indicator.getValue(i));
-	}
+        Num sum = numOf(0);
+        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
+            sum = sum.plus(indicator.getValue(i));
+        }
 
-	final int realBarCount = Math.min(barCount, index + 1);
-	return sum.dividedBy(numOf(realBarCount));
+        final int realBarCount = Math.min(barCount, index + 1);
+        return sum.dividedBy(numOf(realBarCount));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
 }

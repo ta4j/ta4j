@@ -38,24 +38,24 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
     private static final long serialVersionUID = -5870953997596403170L;
 
     public OnBalanceVolumeIndicator(TimeSeries series) {
-	super(series);
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index == 0) {
-	    return numOf(0);
-	}
-	final Num prevClose = getTimeSeries().getBar(index - 1).getClosePrice();
-	final Num currentClose = getTimeSeries().getBar(index).getClosePrice();
+        if (index == 0) {
+            return numOf(0);
+        }
+        final Num prevClose = getTimeSeries().getBar(index - 1).getClosePrice();
+        final Num currentClose = getTimeSeries().getBar(index).getClosePrice();
 
-	final Num obvPrev = getValue(index - 1);
-	if (prevClose.isGreaterThan(currentClose)) {
-	    return obvPrev.minus(getTimeSeries().getBar(index).getVolume());
-	} else if (prevClose.isLessThan(currentClose)) {
-	    return obvPrev.plus(getTimeSeries().getBar(index).getVolume());
-	} else {
-	    return obvPrev;
-	}
+        final Num obvPrev = getValue(index - 1);
+        if (prevClose.isGreaterThan(currentClose)) {
+            return obvPrev.minus(getTimeSeries().getBar(index).getVolume());
+        } else if (prevClose.isLessThan(currentClose)) {
+            return obvPrev.plus(getTimeSeries().getBar(index).getVolume());
+        } else {
+            return obvPrev;
+        }
     }
 }

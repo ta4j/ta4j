@@ -48,7 +48,7 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
      *                  Typically a StandardDeviationIndicator is used.
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator) {
-	this(bbm, indicator, bbm.getTimeSeries().numOf(2));
+        this(bbm, indicator, bbm.getTimeSeries().numOf(2));
     }
 
     /**
@@ -62,26 +62,26 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
      *                  2.
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator, Num k) {
-	super(indicator);
-	this.bbm = bbm;
-	this.indicator = indicator;
-	this.k = k;
+        super(indicator);
+        this.bbm = bbm;
+        this.indicator = indicator;
+        this.k = k;
     }
 
     @Override
     protected Num calculate(int index) {
-	return bbm.getValue(index).minus(indicator.getValue(index).multipliedBy(k));
+        return bbm.getValue(index).minus(indicator.getValue(index).multipliedBy(k));
     }
 
     /**
      * @return the K multiplier
      */
     public Num getK() {
-	return k;
+        return k;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + "k: " + k + "deviation: " + indicator + "series: " + bbm;
+        return getClass().getSimpleName() + "k: " + k + "deviation: " + indicator + "series: " + bbm;
     }
 }

@@ -74,27 +74,27 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      *                  after the first complete month
      */
     public PivotPointIndicator(TimeSeries series, TimeLevel timeLevel) {
-	super(series);
-	this.timeLevel = timeLevel;
+        super(series);
+        this.timeLevel = timeLevel;
     }
 
     @Override
     protected Num calculate(int index) {
-	return calcPivotPoint(getBarsOfPreviousPeriod(index));
+        return calcPivotPoint(getBarsOfPreviousPeriod(index));
     }
 
     private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
-	if (barsOfPreviousPeriod.isEmpty())
-	    return NaN;
-	Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-	Num close = bar.getClosePrice();
-	Num high = bar.getHighPrice();
-	Num low = bar.getLowPrice();
-	for (int i : barsOfPreviousPeriod) {
-	    high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
-	    low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
-	}
-	return (high.plus(low).plus(close)).dividedBy(numOf(3));
+        if (barsOfPreviousPeriod.isEmpty())
+            return NaN;
+        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Num close = bar.getClosePrice();
+        Num high = bar.getHighPrice();
+        Num low = bar.getLowPrice();
+        for (int i : barsOfPreviousPeriod) {
+            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
+        }
+        return (high.plus(low).plus(close)).dividedBy(numOf(3));
     }
 
     /**
@@ -104,64 +104,64 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * @return list of indices of the bars of the previous period
      */
     public List<Integer> getBarsOfPreviousPeriod(int index) {
-	List<Integer> previousBars = new ArrayList<>();
+        List<Integer> previousBars = new ArrayList<>();
 
-	if (timeLevel == TimeLevel.BARBASED) {
-	    previousBars.add(Math.max(0, index - 1));
-	    return previousBars;
-	}
-	if (index == 0) {
-	    return previousBars;
-	}
+        if (timeLevel == TimeLevel.BARBASED) {
+            previousBars.add(Math.max(0, index - 1));
+            return previousBars;
+        }
+        if (index == 0) {
+            return previousBars;
+        }
 
-	final Bar currentBar = getTimeSeries().getBar(index);
+        final Bar currentBar = getTimeSeries().getBar(index);
 
-	// step back while bar-1 in same period (day, week, etc):
-	while (index - 1 > getTimeSeries().getBeginIndex()
-		&& getPeriod(getTimeSeries().getBar(index - 1)) == getPeriod(currentBar)) {
-	    index--;
-	}
+        // step back while bar-1 in same period (day, week, etc):
+        while (index - 1 > getTimeSeries().getBeginIndex()
+                && getPeriod(getTimeSeries().getBar(index - 1)) == getPeriod(currentBar)) {
+            index--;
+        }
 
-	// index = last bar in same period, index-1 = first bar in previous period
-	long previousPeriod = getPreviousPeriod(currentBar, index - 1);
-	while (index - 1 >= getTimeSeries().getBeginIndex()
-		&& getPeriod(getTimeSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
-	    index--;
-	    previousBars.add(index);
-	}
-	return previousBars;
+        // index = last bar in same period, index-1 = first bar in previous period
+        long previousPeriod = getPreviousPeriod(currentBar, index - 1);
+        while (index - 1 >= getTimeSeries().getBeginIndex()
+                && getPeriod(getTimeSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
+            index--;
+            previousBars.add(index);
+        }
+        return previousBars;
     }
 
     private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
-	switch (timeLevel) {
-	case DAY: // return previous day
-	    int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
-	    // skip weekend and holidays:
-	    while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
-		    && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
-		prevCalendarDay--;
-	    }
-	    return prevCalendarDay;
-	case WEEK: // return previous week
-	    return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-	case MONTH: // return previous month
-	    return bar.getEndTime().minusMonths(1).getMonthValue();
-	default: // return previous year
-	    return bar.getEndTime().minusYears(1).getYear();
-	}
+        switch (timeLevel) {
+        case DAY: // return previous day
+            int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
+            // skip weekend and holidays:
+            while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
+                    && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
+                prevCalendarDay--;
+            }
+            return prevCalendarDay;
+        case WEEK: // return previous week
+            return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        case MONTH: // return previous month
+            return bar.getEndTime().minusMonths(1).getMonthValue();
+        default: // return previous year
+            return bar.getEndTime().minusYears(1).getYear();
+        }
     }
 
     private long getPeriod(Bar bar) {
-	switch (timeLevel) {
-	case DAY: // return previous day
-	    return bar.getEndTime().getDayOfYear();
-	case WEEK: // return previous week
-	    return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-	case MONTH: // return previous month
-	    return bar.getEndTime().getMonthValue();
-	default: // return previous year
-	    return bar.getEndTime().getYear();
-	}
+        switch (timeLevel) {
+        case DAY: // return previous day
+            return bar.getEndTime().getDayOfYear();
+        case WEEK: // return previous week
+            return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        case MONTH: // return previous month
+            return bar.getEndTime().getMonthValue();
+        default: // return previous year
+            return bar.getEndTime().getYear();
+        }
     }
 
 }

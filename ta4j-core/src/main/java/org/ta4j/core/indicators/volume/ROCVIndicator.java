@@ -47,21 +47,21 @@ public class ROCVIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public ROCVIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
-	this.hundred = numOf(100);
+        super(series);
+        this.barCount = barCount;
+        this.hundred = numOf(100);
     }
 
     @Override
     protected Num calculate(int index) {
-	int nIndex = Math.max(index - barCount, 0);
-	Num nPeriodsAgoValue = getTimeSeries().getBar(nIndex).getVolume();
-	Num currentValue = getTimeSeries().getBar(index).getVolume();
-	return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
+        int nIndex = Math.max(index - barCount, 0);
+        Num nPeriodsAgoValue = getTimeSeries().getBar(nIndex).getVolume();
+        Num currentValue = getTimeSeries().getBar(index).getVolume();
+        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

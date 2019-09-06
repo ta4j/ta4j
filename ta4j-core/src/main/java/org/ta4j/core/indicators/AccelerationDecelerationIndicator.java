@@ -36,17 +36,17 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
     private final SMAIndicator sma;
 
     public AccelerationDecelerationIndicator(TimeSeries series, int barCountSma1, int barCountSma2) {
-	super(series);
-	this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), barCountSma1, barCountSma2);
-	this.sma = new SMAIndicator(awesome, barCountSma1);
+        super(series);
+        this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), barCountSma1, barCountSma2);
+        this.sma = new SMAIndicator(awesome, barCountSma1);
     }
 
     public AccelerationDecelerationIndicator(TimeSeries series) {
-	this(series, 5, 34);
+        this(series, 5, 34);
     }
 
     @Override
     protected Num calculate(int index) {
-	return awesome.getValue(index).minus(sma.getValue(index));
+        return awesome.getValue(index).minus(sma.getValue(index));
     }
 }

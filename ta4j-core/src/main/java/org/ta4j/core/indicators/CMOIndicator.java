@@ -51,22 +51,22 @@ public class CMOIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public CMOIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.gainIndicator = new GainIndicator(indicator);
-	this.lossIndicator = new LossIndicator(indicator);
-	this.barCount = barCount;
+        super(indicator);
+        this.gainIndicator = new GainIndicator(indicator);
+        this.lossIndicator = new LossIndicator(indicator);
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	Num sumOfGains = numOf(0);
-	for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
-	    sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
-	}
-	Num sumOfLosses = numOf(0);
-	for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
-	    sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
-	}
-	return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(numOf(100));
+        Num sumOfGains = numOf(0);
+        for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
+            sumOfGains = sumOfGains.plus(gainIndicator.getValue(i));
+        }
+        Num sumOfLosses = numOf(0);
+        for (int i = Math.max(1, index - barCount + 1); i <= index; i++) {
+            sumOfLosses = sumOfLosses.plus(lossIndicator.getValue(i));
+        }
+        return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(numOf(100));
     }
 }

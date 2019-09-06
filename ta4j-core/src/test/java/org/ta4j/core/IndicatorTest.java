@@ -41,22 +41,22 @@ public class IndicatorTest {
 
     @Test
     public void toDouble() {
-	TimeSeries series = new BaseTimeSeries();
-	List<Num> values = new ArrayList<>();
-	for (int i = 0; i < 100; i++) {
-	    values.add(series.numOf(i));
-	}
-	Indicator<Num> indicator = new MockIndicator(series, values);
+        TimeSeries series = new BaseTimeSeries();
+        List<Num> values = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            values.add(series.numOf(i));
+        }
+        Indicator<Num> indicator = new MockIndicator(series, values);
 
-	int index = 10;
-	int barCount = 3;
+        int index = 10;
+        int barCount = 3;
 
-	Double[] doubles = Indicator.toDouble(indicator, index, barCount);
+        Double[] doubles = Indicator.toDouble(indicator, index, barCount);
 
-	assertTrue(doubles.length == barCount);
-	assertTrue(doubles[0] == 8d);
-	assertTrue(doubles[1] == 9d);
-	assertTrue(doubles[2] == 10d);
+        assertTrue(doubles.length == barCount);
+        assertTrue(doubles[0] == 8d);
+        assertTrue(doubles[1] == 9d);
+        assertTrue(doubles[2] == 10d);
     }
 
 }

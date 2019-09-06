@@ -43,8 +43,8 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param values AnalysisCriterion values
      */
     public MockAnalysisCriterion(TimeSeries series, List<Num> values) {
-	this.series = series;
-	this.values = values;
+        this.series = series;
+        this.values = values;
     }
 
     /**
@@ -54,7 +54,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param trade  is ignored
      */
     public Num calculate(TimeSeries series, Trade trade) {
-	return values.get(values.size() - 1);
+        return values.get(values.size() - 1);
     }
 
     /**
@@ -64,7 +64,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @param tradingRecord is ignored
      */
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	return values.get(values.size() - 1);
+        return values.get(values.size() - 1);
     }
 
     /**
@@ -76,7 +76,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * @return boolean indicating first value is greater than second value
      */
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

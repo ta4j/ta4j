@@ -49,7 +49,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public StochasticRSIIndicator(TimeSeries series, int barCount) {
-	this(new ClosePriceIndicator(series), barCount);
+        this(new ClosePriceIndicator(series), barCount);
     }
 
     /**
@@ -59,7 +59,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
-	this(new RSIIndicator(indicator, barCount), barCount);
+        this(new RSIIndicator(indicator, barCount), barCount);
     }
 
     /**
@@ -69,16 +69,16 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * @param barCount     the time frame
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
-	super(rsiIndicator);
-	this.rsi = rsiIndicator;
-	minRsi = new LowestValueIndicator(rsiIndicator, barCount);
-	maxRsi = new HighestValueIndicator(rsiIndicator, barCount);
+        super(rsiIndicator);
+        this.rsi = rsiIndicator;
+        minRsi = new LowestValueIndicator(rsiIndicator, barCount);
+        maxRsi = new HighestValueIndicator(rsiIndicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num minRsiValue = minRsi.getValue(index);
-	return rsi.getValue(index).minus(minRsiValue).dividedBy(maxRsi.getValue(index).minus(minRsiValue));
+        Num minRsiValue = minRsi.getValue(index);
+        return rsi.getValue(index).minus(minRsiValue).dividedBy(maxRsi.getValue(index).minus(minRsiValue));
     }
 
 }

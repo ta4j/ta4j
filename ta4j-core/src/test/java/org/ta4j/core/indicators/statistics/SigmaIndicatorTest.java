@@ -41,23 +41,23 @@ public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     private TimeSeries data;
 
     public SigmaIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 5, 6);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 5, 6);
     }
 
     @Test
     public void test() {
 
-	SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
+        SigmaIndicator zScore = new SigmaIndicator(new ClosePriceIndicator(data), 5);
 
-	assertNumEquals(1.0, zScore.getValue(1));
-	assertNumEquals(1.224744871391589, zScore.getValue(2));
-	assertNumEquals(1.34164078649987387, zScore.getValue(3));
-	assertNumEquals(1.414213562373095, zScore.getValue(4));
-	assertNumEquals(1.414213562373095, zScore.getValue(5));
+        assertNumEquals(1.0, zScore.getValue(1));
+        assertNumEquals(1.224744871391589, zScore.getValue(2));
+        assertNumEquals(1.34164078649987387, zScore.getValue(3));
+        assertNumEquals(1.414213562373095, zScore.getValue(4));
+        assertNumEquals(1.414213562373095, zScore.getValue(5));
     }
 }

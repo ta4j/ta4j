@@ -37,28 +37,28 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
     private final int barCount;
 
     public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.indicator = indicator;
-	this.barCount = barCount;
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	if (indicator.getValue(index).isNaN() && barCount != 1) {
-	    return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
-	}
-	int end = Math.max(0, index - barCount + 1);
-	Num highest = indicator.getValue(index);
-	for (int i = index - 1; i >= end; i--) {
-	    if (highest.isLessThan(indicator.getValue(i))) {
-		highest = indicator.getValue(i);
-	    }
-	}
-	return highest;
+        if (indicator.getValue(index).isNaN() && barCount != 1) {
+            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+        }
+        int end = Math.max(0, index - barCount + 1);
+        Num highest = indicator.getValue(index);
+        for (int i = index - 1; i >= end; i--) {
+            if (highest.isLessThan(indicator.getValue(i))) {
+                highest = indicator.getValue(i);
+            }
+        }
+        return highest;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

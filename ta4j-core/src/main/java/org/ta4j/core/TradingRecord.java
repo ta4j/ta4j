@@ -54,7 +54,7 @@ public interface TradingRecord extends Serializable {
      * @param index the index to operate the order
      */
     default void operate(int index) {
-	operate(index, NaN, NaN);
+        operate(index, NaN, NaN);
     }
 
     /**
@@ -73,7 +73,7 @@ public interface TradingRecord extends Serializable {
      * @return true if the entry has been operated, false otherwise
      */
     default boolean enter(int index) {
-	return enter(index, NaN, NaN);
+        return enter(index, NaN, NaN);
     }
 
     /**
@@ -93,7 +93,7 @@ public interface TradingRecord extends Serializable {
      * @return true if the exit has been operated, false otherwise
      */
     default boolean exit(int index) {
-	return exit(index, NaN, NaN);
+        return exit(index, NaN, NaN);
     }
 
     /**
@@ -110,7 +110,7 @@ public interface TradingRecord extends Serializable {
      * @return true if no trade is open, false otherwise
      */
     default boolean isClosed() {
-	return !getCurrentTrade().isOpened();
+        return !getCurrentTrade().isOpened();
     }
 
     /**
@@ -122,18 +122,18 @@ public interface TradingRecord extends Serializable {
      * @return the number of recorded trades
      */
     default int getTradeCount() {
-	return getTrades().size();
+        return getTrades().size();
     }
 
     /**
      * @return the last trade recorded
      */
     default Trade getLastTrade() {
-	List<Trade> trades = getTrades();
-	if (!trades.isEmpty()) {
-	    return trades.get(trades.size() - 1);
-	}
-	return null;
+        List<Trade> trades = getTrades();
+        if (!trades.isEmpty()) {
+            return trades.get(trades.size() - 1);
+        }
+        return null;
     }
 
     /**

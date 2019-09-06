@@ -52,22 +52,22 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
      * @param confidence the confidence level
      */
     public ExpectedShortfallCriterion(Double confidence) {
-	this.confidence = confidence;
+        this.confidence = confidence;
     }
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
-	return calculateES(returns, confidence);
+        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
+        return calculateES(returns, confidence);
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-	    Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
-	    return calculateES(returns, confidence);
-	}
-	return series.numOf(0);
+        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
+            Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
+            return calculateES(returns, confidence);
+        }
+        return series.numOf(0);
     }
 
     /**
@@ -78,34 +78,34 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
      * @return the relative Expected Shortfall
      */
     private static Num calculateES(Returns returns, double confidence) {
-	// select non-NaN returns
-	List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
-	Num zero = returns.numOf(0);
-	Num expectedShortfall = zero;
-	if (!returnRates.isEmpty()) {
-	    // F(x_var) >= alpha (=1-confidence)
-	    int nInBody = (int) (returns.getSize() * confidence);
-	    int nInTail = returns.getSize() - nInBody;
+        // select non-NaN returns
+        List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
+        Num zero = returns.numOf(0);
+        Num expectedShortfall = zero;
+        if (!returnRates.isEmpty()) {
+            // F(x_var) >= alpha (=1-confidence)
+            int nInBody = (int) (returns.getSize() * confidence);
+            int nInTail = returns.getSize() - nInBody;
 
-	    // calculate average tail loss
-	    Collections.sort(returnRates);
-	    List<Num> tailEvents = returnRates.subList(0, nInTail);
-	    Num sum = zero;
-	    for (int i = 0; i < nInTail; i++) {
-		sum = sum.plus(tailEvents.get(i));
-	    }
-	    expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
+            // calculate average tail loss
+            Collections.sort(returnRates);
+            List<Num> tailEvents = returnRates.subList(0, nInTail);
+            Num sum = zero;
+            for (int i = 0; i < nInTail; i++) {
+                sum = sum.plus(tailEvents.get(i));
+            }
+            expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
 
-	    // ES is non-positive
-	    if (expectedShortfall.isGreaterThan(zero)) {
-		expectedShortfall = zero;
-	    }
-	}
-	return expectedShortfall;
+            // ES is non-positive
+            if (expectedShortfall.isGreaterThan(zero)) {
+                expectedShortfall = zero;
+            }
+        }
+        return expectedShortfall;
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

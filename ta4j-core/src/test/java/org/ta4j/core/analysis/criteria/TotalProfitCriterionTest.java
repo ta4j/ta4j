@@ -41,66 +41,66 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     public TotalProfitCriterionTest(Function<Number, Num> numFunction) {
-	super((params) -> new TotalProfitCriterion(), numFunction);
+        super((params) -> new TotalProfitCriterion(), numFunction);
     }
 
     @Test
     public void calculateOnlyWithGainTrades() {
-	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-	TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-		Order.buyAt(3, series), Order.sellAt(5, series));
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
+                Order.buyAt(3, series), Order.sellAt(5, series));
 
-	AnalysisCriterion profit = getCriterion();
-	assertNumEquals(1.10 * 1.05, profit.calculate(series, tradingRecord));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(1.10 * 1.05, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateOnlyWithLossTrades() {
-	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
-	TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-		Order.buyAt(2, series), Order.sellAt(5, series));
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(5, series));
 
-	AnalysisCriterion profit = getCriterion();
-	assertNumEquals(0.95 * 0.7, profit.calculate(series, tradingRecord));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(0.95 * 0.7, profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateProfitWithTradesThatStartSelling() {
-	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
-	TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-		Order.sellAt(2, series), Order.buyAt(5, series));
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
+                Order.sellAt(2, series), Order.buyAt(5, series));
 
-	AnalysisCriterion profit = getCriterion();
-	assertNumEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateWithNoTradesShouldReturn1() {
-	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
-	AnalysisCriterion profit = getCriterion();
-	assertNumEquals(1d, profit.calculate(series, new BaseTradingRecord()));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(1d, profit.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOpenedTradeShouldReturn1() {
-	MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
-	AnalysisCriterion profit = getCriterion();
-	Trade trade = new Trade();
-	assertNumEquals(1d, profit.calculate(series, trade));
-	trade.operate(0);
-	assertNumEquals(1d, profit.calculate(series, trade));
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        AnalysisCriterion profit = getCriterion();
+        Trade trade = new Trade();
+        assertNumEquals(1d, profit.calculate(series, trade));
+        trade.operate(0);
+        assertNumEquals(1d, profit.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
-	AnalysisCriterion criterion = getCriterion();
-	assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
-	assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
+        AnalysisCriterion criterion = getCriterion();
+        assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
+        assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }
 
     @Test
     public void testCalculateOneOpenTradeShouldReturnOne() {
-	openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 1);
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 1);
     }
 }

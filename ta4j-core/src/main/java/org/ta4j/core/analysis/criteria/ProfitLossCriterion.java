@@ -37,8 +37,8 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-		.reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     /**
@@ -50,11 +50,11 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	return trade.getProfit();
+        return trade.getProfit();
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

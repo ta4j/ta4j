@@ -52,250 +52,250 @@ public class TradeTest {
 
     @Before
     public void setUp() {
-	this.newTrade = new Trade();
-	this.uncoveredTrade = new Trade(OrderType.SELL);
+        this.newTrade = new Trade();
+        this.uncoveredTrade = new Trade(OrderType.SELL);
 
-	trEquals1 = new Trade();
-	trEquals1.operate(1);
-	trEquals1.operate(2);
+        trEquals1 = new Trade();
+        trEquals1.operate(1);
+        trEquals1.operate(2);
 
-	trEquals2 = new Trade();
-	trEquals2.operate(1);
-	trEquals2.operate(2);
+        trEquals2 = new Trade();
+        trEquals2.operate(1);
+        trEquals2.operate(2);
 
-	trNotEquals1 = new Trade(OrderType.SELL);
-	trNotEquals1.operate(1);
-	trNotEquals1.operate(2);
+        trNotEquals1 = new Trade(OrderType.SELL);
+        trNotEquals1.operate(1);
+        trNotEquals1.operate(2);
 
-	trNotEquals2 = new Trade(OrderType.SELL);
-	trNotEquals2.operate(1);
-	trNotEquals2.operate(2);
+        trNotEquals2 = new Trade(OrderType.SELL);
+        trNotEquals2.operate(1);
+        trNotEquals2.operate(2);
 
-	transactionModel = new LinearTransactionCostModel(0.01);
-	holdingModel = new LinearBorrowingCostModel(0.001);
+        transactionModel = new LinearTransactionCostModel(0.01);
+        holdingModel = new LinearBorrowingCostModel(0.001);
 
-	enter = Order.buyAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-	exitSameType = Order.sellAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-	exitDifferentType = Order.buyAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+        enter = Order.buyAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        exitSameType = Order.sellAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        exitDifferentType = Order.buyAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
     }
 
     @Test
     public void whenNewShouldCreateBuyOrderWhenEntering() {
-	newTrade.operate(0);
-	assertEquals(Order.buyAt(0, NaN, NaN), newTrade.getEntry());
+        newTrade.operate(0);
+        assertEquals(Order.buyAt(0, NaN, NaN), newTrade.getEntry());
     }
 
     @Test
     public void whenNewShouldNotExit() {
-	assertFalse(newTrade.isOpened());
+        assertFalse(newTrade.isOpened());
     }
 
     @Test
     public void whenOpenedShouldCreateSellOrderWhenExiting() {
-	newTrade.operate(0);
-	newTrade.operate(1);
-	assertEquals(Order.sellAt(1, NaN, NaN), newTrade.getExit());
+        newTrade.operate(0);
+        newTrade.operate(1);
+        assertEquals(Order.sellAt(1, NaN, NaN), newTrade.getExit());
     }
 
     @Test
     public void whenClosedShouldNotEnter() {
-	newTrade.operate(0);
-	newTrade.operate(1);
-	assertTrue(newTrade.isClosed());
-	newTrade.operate(2);
-	assertTrue(newTrade.isClosed());
+        newTrade.operate(0);
+        newTrade.operate(1);
+        assertTrue(newTrade.isClosed());
+        newTrade.operate(2);
+        assertTrue(newTrade.isClosed());
     }
 
     @Test(expected = IllegalStateException.class)
     public void whenExitIndexIsLessThanEntryIndexShouldThrowException() {
-	newTrade.operate(3);
-	newTrade.operate(1);
+        newTrade.operate(3);
+        newTrade.operate(1);
     }
 
     @Test
     public void shouldCloseTradeOnSameIndex() {
-	newTrade.operate(3);
-	newTrade.operate(3);
-	assertTrue(newTrade.isClosed());
+        newTrade.operate(3);
+        newTrade.operate(3);
+        assertTrue(newTrade.isClosed());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrderTypeIsNull() {
-	new Trade(null);
+        new Trade(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
-	new Trade(Order.buyAt(0, NaN, NaN), Order.buyAt(1, NaN, NaN));
+        new Trade(Order.buyAt(0, NaN, NaN), Order.buyAt(1, NaN, NaN));
     }
 
     @Test
     public void whenNewShouldCreateSellOrderWhenEnteringUncovered() {
-	uncoveredTrade.operate(0);
-	assertEquals(Order.sellAt(0, NaN, NaN), uncoveredTrade.getEntry());
+        uncoveredTrade.operate(0);
+        assertEquals(Order.sellAt(0, NaN, NaN), uncoveredTrade.getEntry());
     }
 
     @Test
     public void whenOpenedShouldCreateBuyOrderWhenExitingUncovered() {
-	uncoveredTrade.operate(0);
-	uncoveredTrade.operate(1);
-	assertEquals(Order.buyAt(1, NaN, NaN), uncoveredTrade.getExit());
+        uncoveredTrade.operate(0);
+        uncoveredTrade.operate(1);
+        assertEquals(Order.buyAt(1, NaN, NaN), uncoveredTrade.getExit());
     }
 
     @Test
     public void overrideToString() {
-	assertEquals(trEquals1.toString(), trEquals2.toString());
-	assertNotEquals(trEquals1.toString(), trNotEquals1.toString());
-	assertNotEquals(trEquals1.toString(), trNotEquals2.toString());
+        assertEquals(trEquals1.toString(), trEquals2.toString());
+        assertNotEquals(trEquals1.toString(), trNotEquals1.toString());
+        assertNotEquals(trEquals1.toString(), trNotEquals2.toString());
     }
 
     @Test
     public void testEqualsForNewTrades() {
-	assertEquals(newTrade, new Trade());
-	assertNotEquals(newTrade, new Object());
-	assertNotEquals(newTrade, null);
+        assertEquals(newTrade, new Trade());
+        assertNotEquals(newTrade, new Object());
+        assertNotEquals(newTrade, null);
     }
 
     @Test
     public void testEqualsForEntryOrders() {
-	Trade trLeft = newTrade;
-	Trade trRightEquals = new Trade();
-	Trade trRightNotEquals = new Trade();
+        Trade trLeft = newTrade;
+        Trade trRightEquals = new Trade();
+        Trade trRightNotEquals = new Trade();
 
-	assertEquals(OrderType.BUY, trRightNotEquals.operate(2).getType());
-	assertNotEquals(trLeft, trRightNotEquals);
+        assertEquals(OrderType.BUY, trRightNotEquals.operate(2).getType());
+        assertNotEquals(trLeft, trRightNotEquals);
 
-	assertEquals(OrderType.BUY, trLeft.operate(1).getType());
-	assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
-	assertEquals(trLeft, trRightEquals);
+        assertEquals(OrderType.BUY, trLeft.operate(1).getType());
+        assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(trLeft, trRightEquals);
 
-	assertNotEquals(trLeft, trRightNotEquals);
+        assertNotEquals(trLeft, trRightNotEquals);
     }
 
     @Test
     public void testEqualsForExitOrders() {
-	Trade trLeft = newTrade;
-	Trade trRightEquals = new Trade();
-	Trade trRightNotEquals = new Trade();
+        Trade trLeft = newTrade;
+        Trade trRightEquals = new Trade();
+        Trade trRightNotEquals = new Trade();
 
-	assertEquals(OrderType.BUY, trLeft.operate(1).getType());
-	assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
-	assertEquals(OrderType.BUY, trRightNotEquals.operate(1).getType());
+        assertEquals(OrderType.BUY, trLeft.operate(1).getType());
+        assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(OrderType.BUY, trRightNotEquals.operate(1).getType());
 
-	assertEquals(OrderType.SELL, trRightNotEquals.operate(3).getType());
-	assertNotEquals(trLeft, trRightNotEquals);
+        assertEquals(OrderType.SELL, trRightNotEquals.operate(3).getType());
+        assertNotEquals(trLeft, trRightNotEquals);
 
-	assertEquals(OrderType.SELL, trLeft.operate(2).getType());
-	assertEquals(OrderType.SELL, trRightEquals.operate(2).getType());
-	assertEquals(trLeft, trRightEquals);
+        assertEquals(OrderType.SELL, trLeft.operate(2).getType());
+        assertEquals(OrderType.SELL, trRightEquals.operate(2).getType());
+        assertEquals(trLeft, trRightEquals);
 
-	assertNotEquals(trLeft, trRightNotEquals);
+        assertNotEquals(trLeft, trRightNotEquals);
     }
 
     @Test
     public void testGetProfitForBuyStartingType() {
-	Trade trade = new Trade(OrderType.BUY);
+        Trade trade = new Trade(OrderType.BUY);
 
-	trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
-	trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+        trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
 
-	final Num profit = trade.getProfit();
+        final Num profit = trade.getProfit();
 
-	assertEquals(DoubleNum.valueOf(4.0), profit);
+        assertEquals(DoubleNum.valueOf(4.0), profit);
     }
 
     @Test
     public void testGetProfitForSellStartingType() {
-	Trade trade = new Trade(OrderType.SELL);
+        Trade trade = new Trade(OrderType.SELL);
 
-	trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
-	trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+        trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
 
-	final Num profit = trade.getProfit();
+        final Num profit = trade.getProfit();
 
-	assertEquals(DoubleNum.valueOf(4.0), profit);
+        assertEquals(DoubleNum.valueOf(4.0), profit);
     }
 
     @Test
     public void testCostModelConsistencyTrue() {
-	new Trade(enter, exitSameType, transactionModel, holdingModel);
+        new Trade(enter, exitSameType, transactionModel, holdingModel);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testCostModelEntryInconsistent() {
-	new Trade(enter, exitDifferentType, new ZeroCostModel(), holdingModel);
+        new Trade(enter, exitDifferentType, new ZeroCostModel(), holdingModel);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testCostModelExitInconsistent() {
-	new Trade(enter, exitDifferentType, transactionModel, holdingModel);
+        new Trade(enter, exitDifferentType, transactionModel, holdingModel);
     }
 
     @Test
     public void getProfitLongNoFinalBarTest() {
-	Trade closedTrade = new Trade(enter, exitSameType, transactionModel, holdingModel);
-	Trade openTrade = new Trade(OrderType.BUY, transactionModel, holdingModel);
-	openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade closedTrade = new Trade(enter, exitSameType, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.BUY, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-	Num profitOfClosedTrade = closedTrade.getProfit();
-	Num proftOfOpenTrade = openTrade.getProfit();
+        Num profitOfClosedTrade = closedTrade.getProfit();
+        Num proftOfOpenTrade = openTrade.getProfit();
 
-	assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedTrade);
-	assertNumEquals(DoubleNum.valueOf(0), proftOfOpenTrade);
+        assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedTrade);
+        assertNumEquals(DoubleNum.valueOf(0), proftOfOpenTrade);
     }
 
     @Test
     public void getProfitLongWithFinalBarTest() {
-	Trade closedTrade = new Trade(enter, exitSameType, transactionModel, holdingModel);
-	Trade openTrade = new Trade(OrderType.BUY, transactionModel, holdingModel);
-	openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+        Trade closedTrade = new Trade(enter, exitSameType, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.BUY, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
-	Num profitOfClosedTrade = closedTrade.getProfit(10, DoubleNum.valueOf(12));
-	Num profitOfOpenTrade = openTrade.getProfit(10, DoubleNum.valueOf(12));
+        Num profitOfClosedTrade = closedTrade.getProfit(10, DoubleNum.valueOf(12));
+        Num profitOfOpenTrade = openTrade.getProfit(10, DoubleNum.valueOf(12));
 
-	assertNumEquals(DoubleNum.valueOf(9.98), profitOfOpenTrade);
-	assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedTrade);
+        assertNumEquals(DoubleNum.valueOf(9.98), profitOfOpenTrade);
+        assertNumEquals(DoubleNum.valueOf(-0.04), profitOfClosedTrade);
     }
 
     @Test
     public void getProfitShortNoFinalBarTest() {
-	Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-	Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
 
-	Trade closedTrade = new Trade(sell, buyBack, transactionModel, holdingModel);
-	Trade openTrade = new Trade(OrderType.SELL, transactionModel, holdingModel);
-	openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade closedTrade = new Trade(sell, buyBack, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.SELL, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-	Num profitOfClosedTrade = closedTrade.getProfit();
-	Num proftOfOpenTrade = openTrade.getProfit();
+        Num profitOfClosedTrade = closedTrade.getProfit();
+        Num proftOfOpenTrade = openTrade.getProfit();
 
-	Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
-	Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
+        Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
 
-	assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTrade);
-	assertNumEquals(DoubleNum.valueOf(0), proftOfOpenTrade);
+        assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTrade);
+        assertNumEquals(DoubleNum.valueOf(0), proftOfOpenTrade);
     }
 
     @Test
     public void getProfitShortWithFinalBarTest() {
-	Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-	Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
 
-	Trade closedTrade = new Trade(sell, buyBack, transactionModel, holdingModel);
-	Trade openTrade = new Trade(OrderType.SELL, transactionModel, holdingModel);
-	openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+        Trade closedTrade = new Trade(sell, buyBack, transactionModel, holdingModel);
+        Trade openTrade = new Trade(OrderType.SELL, transactionModel, holdingModel);
+        openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
-	Num profitOfClosedTradeFinalAfter = closedTrade.getProfit(20, DoubleNum.valueOf(3));
-	Num profitOfOpenTradeFinalAfter = openTrade.getProfit(20, DoubleNum.valueOf(3));
-	Num profitOfClosedTradeFinalBefore = closedTrade.getProfit(5, DoubleNum.valueOf(3));
-	Num profitOfOpenTradeFinalBefore = openTrade.getProfit(5, DoubleNum.valueOf(3));
+        Num profitOfClosedTradeFinalAfter = closedTrade.getProfit(20, DoubleNum.valueOf(3));
+        Num profitOfOpenTradeFinalAfter = openTrade.getProfit(20, DoubleNum.valueOf(3));
+        Num profitOfClosedTradeFinalBefore = closedTrade.getProfit(5, DoubleNum.valueOf(3));
+        Num profitOfOpenTradeFinalBefore = openTrade.getProfit(5, DoubleNum.valueOf(3));
 
-	Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
-	Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
+        Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
 
-	assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenTradeFinalAfter);
-	assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenTradeFinalBefore);
-	assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTradeFinalAfter);
-	assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTradeFinalBefore);
+        assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenTradeFinalAfter);
+        assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenTradeFinalBefore);
+        assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTradeFinalAfter);
+        assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTradeFinalBefore);
     }
 }

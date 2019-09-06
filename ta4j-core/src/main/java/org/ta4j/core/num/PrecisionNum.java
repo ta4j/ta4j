@@ -84,9 +84,9 @@ public final class PrecisionNum implements Num {
      * @param val the string representation of the Num value
      */
     private PrecisionNum(String val) {
-	delegate = new BigDecimal(val);
-	int precision = Math.max(delegate.precision(), DEFAULT_PRECISION);
-	mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        delegate = new BigDecimal(val);
+        int precision = Math.max(delegate.precision(), DEFAULT_PRECISION);
+        mathContext = new MathContext(precision, RoundingMode.HALF_UP);
     }
 
     /**
@@ -97,38 +97,38 @@ public final class PrecisionNum implements Num {
      * @param precision the int precision of the Num value
      */
     private PrecisionNum(String val, int precision) {
-	mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-	delegate = new BigDecimal(val, new MathContext(precision, RoundingMode.HALF_UP));
+        mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        delegate = new BigDecimal(val, new MathContext(precision, RoundingMode.HALF_UP));
     }
 
     private PrecisionNum(short val) {
-	mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
-	delegate = new BigDecimal(val, mathContext);
+        mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
+        delegate = new BigDecimal(val, mathContext);
     }
 
     private PrecisionNum(int val) {
-	mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
-	delegate = BigDecimal.valueOf(val);
+        mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private PrecisionNum(long val) {
-	mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
-	delegate = BigDecimal.valueOf(val);
+        mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private PrecisionNum(float val) {
-	mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
-	delegate = new BigDecimal(val, mathContext);
+        mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
+        delegate = new BigDecimal(val, mathContext);
     }
 
     private PrecisionNum(double val) {
-	mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
-	delegate = BigDecimal.valueOf(val);
+        mathContext = new MathContext(DEFAULT_PRECISION, RoundingMode.HALF_UP);
+        delegate = BigDecimal.valueOf(val);
     }
 
     private PrecisionNum(BigDecimal val, int precision) {
-	mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-	delegate = Objects.requireNonNull(val);
+        mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        delegate = Objects.requireNonNull(val);
     }
 
     /**
@@ -138,10 +138,10 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(String val) {
-	if (val.equalsIgnoreCase("NAN")) {
-	    throw new NumberFormatException();
-	}
-	return new PrecisionNum(val);
+        if (val.equalsIgnoreCase("NAN")) {
+            throw new NumberFormatException();
+        }
+        return new PrecisionNum(val);
     }
 
     /**
@@ -153,10 +153,10 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(String val, int precision) {
-	if (val.equalsIgnoreCase("NAN")) {
-	    throw new NumberFormatException();
-	}
-	return new PrecisionNum(val, precision);
+        if (val.equalsIgnoreCase("NAN")) {
+            throw new NumberFormatException();
+        }
+        return new PrecisionNum(val, precision);
     }
 
     /**
@@ -166,7 +166,7 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(short val) {
-	return new PrecisionNum(val);
+        return new PrecisionNum(val);
     }
 
     /**
@@ -176,7 +176,7 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(int val) {
-	return new PrecisionNum(val);
+        return new PrecisionNum(val);
     }
 
     /**
@@ -186,7 +186,7 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(long val) {
-	return new PrecisionNum(val);
+        return new PrecisionNum(val);
     }
 
     /**
@@ -196,18 +196,18 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(float val) {
-	if (Float.isNaN(val)) {
-	    throw new NumberFormatException();
-	}
-	return new PrecisionNum(val);
+        if (Float.isNaN(val)) {
+            throw new NumberFormatException();
+        }
+        return new PrecisionNum(val);
     }
 
     public static PrecisionNum valueOf(BigDecimal val) {
-	return new PrecisionNum(val, val.precision());
+        return new PrecisionNum(val, val.precision());
     }
 
     public static PrecisionNum valueOf(BigDecimal val, int precision) {
-	return new PrecisionNum(val, precision);
+        return new PrecisionNum(val, precision);
     }
 
     /**
@@ -217,10 +217,10 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(double val) {
-	if (Double.isNaN(val)) {
-	    throw new NumberFormatException();
-	}
-	return new PrecisionNum(val);
+        if (Double.isNaN(val)) {
+            throw new NumberFormatException();
+        }
+        return new PrecisionNum(val);
     }
 
     /**
@@ -230,7 +230,7 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(PrecisionNum val) {
-	return val;
+        return val;
     }
 
     /**
@@ -241,12 +241,12 @@ public final class PrecisionNum implements Num {
      * @return the {@code Num}
      */
     public static PrecisionNum valueOf(Number val) {
-	return new PrecisionNum(val.toString());
+        return new PrecisionNum(val.toString());
     }
 
     @Override
     public Function<Number, Num> function() {
-	return (number -> PrecisionNum.valueOf(number.toString(), mathContext.getPrecision()));
+        return (number -> PrecisionNum.valueOf(number.toString(), mathContext.getPrecision()));
     }
 
     /**
@@ -256,7 +256,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Number getDelegate() {
-	return delegate;
+        return delegate;
     }
 
     /**
@@ -265,23 +265,23 @@ public final class PrecisionNum implements Num {
      * @return MathContext of this instance
      */
     public MathContext getMathContext() {
-	return mathContext;
+        return mathContext;
     }
 
     @Override
     public String getName() {
-	return this.getClass().getSimpleName();
+        return this.getClass().getSimpleName();
     }
 
     @Override
     public Num plus(Num augend) {
-	if (augend.isNaN()) {
-	    return NaN;
-	}
-	BigDecimal bigDecimal = ((PrecisionNum) augend).delegate;
-	int precision = mathContext.getPrecision();
-	BigDecimal result = delegate.add(bigDecimal, mathContext);
-	return new PrecisionNum(result, precision);
+        if (augend.isNaN()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) augend).delegate;
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.add(bigDecimal, mathContext);
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -294,13 +294,13 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num minus(Num subtrahend) {
-	if (subtrahend.isNaN()) {
-	    return NaN;
-	}
-	BigDecimal bigDecimal = ((PrecisionNum) subtrahend).delegate;
-	int precision = mathContext.getPrecision();
-	BigDecimal result = delegate.subtract(bigDecimal, mathContext);
-	return new PrecisionNum(result, precision);
+        if (subtrahend.isNaN()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) subtrahend).delegate;
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.subtract(bigDecimal, mathContext);
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -313,13 +313,13 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num multipliedBy(Num multiplicand) {
-	if (multiplicand.isNaN()) {
-	    return NaN;
-	}
-	BigDecimal bigDecimal = ((PrecisionNum) multiplicand).delegate;
-	int precision = mathContext.getPrecision();
-	BigDecimal result = delegate.multiply(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
-	return new PrecisionNum(result, precision);
+        if (multiplicand.isNaN()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) multiplicand).delegate;
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.multiply(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -332,13 +332,13 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num dividedBy(Num divisor) {
-	if (divisor.isNaN() || divisor.isZero()) {
-	    return NaN;
-	}
-	BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
-	int precision = mathContext.getPrecision();
-	BigDecimal result = delegate.divide(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
-	return new PrecisionNum(result, precision);
+        if (divisor.isNaN() || divisor.isZero()) {
+            return NaN;
+        }
+        BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.divide(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -351,10 +351,10 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num remainder(Num divisor) {
-	BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
-	int precision = mathContext.getPrecision();
-	BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
-	return new PrecisionNum(result, precision);
+        BigDecimal bigDecimal = ((PrecisionNum) divisor).delegate;
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -364,8 +364,8 @@ public final class PrecisionNum implements Num {
      * @return <tt>this<sup>n</sup></tt>
      */
     public Num floor() {
-	int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
-	return new PrecisionNum(delegate.setScale(0, RoundingMode.FLOOR), precision);
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        return new PrecisionNum(delegate.setScale(0, RoundingMode.FLOOR), precision);
     }
 
     /**
@@ -374,8 +374,8 @@ public final class PrecisionNum implements Num {
      * @return <tt>this<sup>n</sup></tt>
      */
     public Num ceil() {
-	int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
-	return new PrecisionNum(delegate.setScale(0, RoundingMode.CEILING), precision);
+        int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
+        return new PrecisionNum(delegate.setScale(0, RoundingMode.CEILING), precision);
     }
 
     /**
@@ -387,9 +387,9 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num pow(int n) {
-	int precision = mathContext.getPrecision();
-	BigDecimal result = delegate.pow(n, new MathContext(precision, RoundingMode.HALF_UP));
-	return new PrecisionNum(result, precision);
+        int precision = mathContext.getPrecision();
+        BigDecimal result = delegate.pow(n, new MathContext(precision, RoundingMode.HALF_UP));
+        return new PrecisionNum(result, precision);
     }
 
     /**
@@ -400,7 +400,7 @@ public final class PrecisionNum implements Num {
      * @see PrecisionNum#sqrt(int)
      */
     public Num sqrt() {
-	return sqrt(DEFAULT_PRECISION);
+        return sqrt(DEFAULT_PRECISION);
     }
 
     /**
@@ -411,71 +411,71 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num sqrt(int precision) {
-	log.trace("delegate {}", delegate);
-	int comparedToZero = delegate.compareTo(BigDecimal.ZERO);
-	switch (comparedToZero) {
-	case -1:
-	    return NaN;
+        log.trace("delegate {}", delegate);
+        int comparedToZero = delegate.compareTo(BigDecimal.ZERO);
+        switch (comparedToZero) {
+        case -1:
+            return NaN;
 
-	case 0:
-	    return PrecisionNum.valueOf(0);
-	}
+        case 0:
+            return PrecisionNum.valueOf(0);
+        }
 
-	// Direct implementation of the example in:
-	// https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
-	MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
-	BigDecimal estimate = new BigDecimal(delegate.toString(), precisionContext);
-	String string = String.format(Locale.ROOT, "%1.1e", estimate);
-	log.trace("scientific notation {}", string);
-	if (string.contains("e")) {
-	    String[] parts = string.split("e");
-	    BigDecimal mantissa = new BigDecimal(parts[0]);
-	    BigDecimal exponent = new BigDecimal(parts[1]);
-	    if (exponent.remainder(new BigDecimal(2)).compareTo(BigDecimal.ZERO) > 0) {
-		exponent = exponent.subtract(BigDecimal.ONE);
-		mantissa = mantissa.multiply(BigDecimal.TEN);
-		log.trace("modified notatation {}e{}", mantissa, exponent);
-	    }
-	    BigDecimal estimatedMantissa = mantissa.compareTo(BigDecimal.TEN) < 0 ? new BigDecimal(2)
-		    : new BigDecimal(6);
-	    BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
-	    String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
-	    log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
-	    DecimalFormat format = new DecimalFormat();
-	    format.setParseBigDecimal(true);
-	    try {
-		estimate = (BigDecimal) format.parse(estimateString);
-	    } catch (ParseException e) {
-		log.error("PrecicionNum ParseException:", e);
-	    }
-	}
-	BigDecimal delta;
-	BigDecimal test;
-	BigDecimal sum;
-	BigDecimal newEstimate;
-	BigDecimal two = new BigDecimal(2);
-	String estimateString;
-	int endIndex;
-	int frontEndIndex;
-	int backStartIndex;
-	int i = 1;
-	do {
-	    test = delegate.divide(estimate, precisionContext);
-	    sum = estimate.add(test);
-	    newEstimate = sum.divide(two, precisionContext);
-	    delta = newEstimate.subtract(estimate).abs();
-	    estimate = newEstimate;
-	    if (log.isTraceEnabled()) {
-		estimateString = String.format("%1." + precision + "e", estimate);
-		endIndex = estimateString.length();
-		frontEndIndex = 20 > endIndex ? endIndex : 20;
-		backStartIndex = 20 > endIndex ? 0 : endIndex - 20;
-		log.trace("x[{}] = {}..{}, delta = {}", i, estimateString.substring(0, frontEndIndex),
-			estimateString.substring(backStartIndex, endIndex), String.format("%1.1e", delta));
-		i++;
-	    }
-	} while (delta.compareTo(BigDecimal.ZERO) > 0);
-	return PrecisionNum.valueOf(estimate, precision);
+        // Direct implementation of the example in:
+        // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+        MathContext precisionContext = new MathContext(precision, RoundingMode.HALF_UP);
+        BigDecimal estimate = new BigDecimal(delegate.toString(), precisionContext);
+        String string = String.format(Locale.ROOT, "%1.1e", estimate);
+        log.trace("scientific notation {}", string);
+        if (string.contains("e")) {
+            String[] parts = string.split("e");
+            BigDecimal mantissa = new BigDecimal(parts[0]);
+            BigDecimal exponent = new BigDecimal(parts[1]);
+            if (exponent.remainder(new BigDecimal(2)).compareTo(BigDecimal.ZERO) > 0) {
+                exponent = exponent.subtract(BigDecimal.ONE);
+                mantissa = mantissa.multiply(BigDecimal.TEN);
+                log.trace("modified notatation {}e{}", mantissa, exponent);
+            }
+            BigDecimal estimatedMantissa = mantissa.compareTo(BigDecimal.TEN) < 0 ? new BigDecimal(2)
+                    : new BigDecimal(6);
+            BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
+            String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
+            log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            DecimalFormat format = new DecimalFormat();
+            format.setParseBigDecimal(true);
+            try {
+                estimate = (BigDecimal) format.parse(estimateString);
+            } catch (ParseException e) {
+                log.error("PrecicionNum ParseException:", e);
+            }
+        }
+        BigDecimal delta;
+        BigDecimal test;
+        BigDecimal sum;
+        BigDecimal newEstimate;
+        BigDecimal two = new BigDecimal(2);
+        String estimateString;
+        int endIndex;
+        int frontEndIndex;
+        int backStartIndex;
+        int i = 1;
+        do {
+            test = delegate.divide(estimate, precisionContext);
+            sum = estimate.add(test);
+            newEstimate = sum.divide(two, precisionContext);
+            delta = newEstimate.subtract(estimate).abs();
+            estimate = newEstimate;
+            if (log.isTraceEnabled()) {
+                estimateString = String.format("%1." + precision + "e", estimate);
+                endIndex = estimateString.length();
+                frontEndIndex = 20 > endIndex ? endIndex : 20;
+                backStartIndex = 20 > endIndex ? 0 : endIndex - 20;
+                log.trace("x[{}] = {}..{}, delta = {}", i, estimateString.substring(0, frontEndIndex),
+                        estimateString.substring(backStartIndex, endIndex), String.format("%1.1e", delta));
+                i++;
+            }
+        } while (delta.compareTo(BigDecimal.ZERO) > 0);
+        return PrecisionNum.valueOf(estimate, precision);
     }
 
     /**
@@ -485,33 +485,33 @@ public final class PrecisionNum implements Num {
      * @return {@code log(this)}
      */
     public Num log() {
-	// Algorithm: http://functions.wolfram.com/ElementaryFunctions/Log/10/
-	// https://stackoverflow.com/a/6169691/6444586
-	Num logx;
-	if (isNegativeOrZero()) {
-	    return NaN;
-	}
+        // Algorithm: http://functions.wolfram.com/ElementaryFunctions/Log/10/
+        // https://stackoverflow.com/a/6169691/6444586
+        Num logx;
+        if (isNegativeOrZero()) {
+            return NaN;
+        }
 
-	if (delegate.equals(BigDecimal.ONE)) {
-	    logx = PrecisionNum.valueOf(BigDecimal.ZERO, mathContext.getPrecision());
-	} else {
-	    long ITER = 1000;
-	    BigDecimal x = delegate.subtract(BigDecimal.ONE);
-	    BigDecimal ret = new BigDecimal(ITER + 1);
-	    for (long i = ITER; i >= 0; i--) {
-		BigDecimal N = new BigDecimal(i / 2 + 1).pow(2);
-		N = N.multiply(x, mathContext);
-		ret = N.divide(ret, mathContext);
+        if (delegate.equals(BigDecimal.ONE)) {
+            logx = PrecisionNum.valueOf(BigDecimal.ZERO, mathContext.getPrecision());
+        } else {
+            long ITER = 1000;
+            BigDecimal x = delegate.subtract(BigDecimal.ONE);
+            BigDecimal ret = new BigDecimal(ITER + 1);
+            for (long i = ITER; i >= 0; i--) {
+                BigDecimal N = new BigDecimal(i / 2 + 1).pow(2);
+                N = N.multiply(x, mathContext);
+                ret = N.divide(ret, mathContext);
 
-		N = new BigDecimal(i + 1);
-		ret = ret.add(N, mathContext);
+                N = new BigDecimal(i + 1);
+                ret = ret.add(N, mathContext);
 
-	    }
-	    ret = x.divide(ret, mathContext);
+            }
+            ret = x.divide(ret, mathContext);
 
-	    logx = PrecisionNum.valueOf(ret, mathContext.getPrecision());
-	}
-	return logx;
+            logx = PrecisionNum.valueOf(ret, mathContext.getPrecision());
+        }
+        return logx;
     }
 
     /**
@@ -521,7 +521,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num abs() {
-	return new PrecisionNum(delegate.abs(), mathContext.getPrecision());
+        return new PrecisionNum(delegate.abs(), mathContext.getPrecision());
     }
 
     /**
@@ -531,7 +531,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isZero() {
-	return compareTo(PrecisionNum.valueOf(0)) == 0;
+        return compareTo(PrecisionNum.valueOf(0)) == 0;
     }
 
     /**
@@ -541,7 +541,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isPositive() {
-	return compareTo(PrecisionNum.valueOf(0)) > 0;
+        return compareTo(PrecisionNum.valueOf(0)) > 0;
     }
 
     /**
@@ -551,7 +551,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isPositiveOrZero() {
-	return compareTo(PrecisionNum.valueOf(0)) >= 0;
+        return compareTo(PrecisionNum.valueOf(0)) >= 0;
     }
 
     /**
@@ -561,7 +561,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isNegative() {
-	return compareTo(function().apply(0)) < 0;
+        return compareTo(function().apply(0)) < 0;
     }
 
     /**
@@ -571,7 +571,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isNegativeOrZero() {
-	return compareTo(PrecisionNum.valueOf(0)) <= 0;
+        return compareTo(PrecisionNum.valueOf(0)) <= 0;
     }
 
     /**
@@ -582,7 +582,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isEqual(Num other) {
-	return !other.isNaN() && compareTo(other) == 0;
+        return !other.isNaN() && compareTo(other) == 0;
     }
 
     /**
@@ -594,14 +594,14 @@ public final class PrecisionNum implements Num {
      *         otherwise
      */
     public boolean matches(Num other, int precision) {
-	Num otherNum = PrecisionNum.valueOf(other.toString(), precision);
-	Num thisNum = PrecisionNum.valueOf(this.toString(), precision);
-	if (thisNum.toString().equals(otherNum.toString())) {
-	    return true;
-	}
-	log.debug("{} from {} does not match", thisNum, this);
-	log.debug("{} from {} to precision {}", otherNum, other, precision);
-	return false;
+        Num otherNum = PrecisionNum.valueOf(other.toString(), precision);
+        Num thisNum = PrecisionNum.valueOf(this.toString(), precision);
+        if (thisNum.toString().equals(otherNum.toString())) {
+            return true;
+        }
+        log.debug("{} from {} does not match", thisNum, this);
+        log.debug("{} from {} to precision {}", otherNum, other, precision);
+        return false;
     }
 
     /**
@@ -613,13 +613,13 @@ public final class PrecisionNum implements Num {
      *         otherwise
      */
     public boolean matches(Num other, Num delta) {
-	Num result = this.minus(other);
-	if (!result.isGreaterThan(delta)) {
-	    return true;
-	}
-	log.debug("{} does not match", this);
-	log.debug("{} within offset {}", other, delta);
-	return false;
+        Num result = this.minus(other);
+        if (!result.isGreaterThan(delta)) {
+            return true;
+        }
+        log.debug("{} does not match", this);
+        log.debug("{} within offset {}", other, delta);
+        return false;
     }
 
     /**
@@ -630,7 +630,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isGreaterThan(Num other) {
-	return !other.isNaN() && compareTo(other) > 0;
+        return !other.isNaN() && compareTo(other) > 0;
     }
 
     /**
@@ -642,7 +642,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isGreaterThanOrEqual(Num other) {
-	return !other.isNaN() && compareTo(other) > -1;
+        return !other.isNaN() && compareTo(other) > -1;
     }
 
     /**
@@ -653,17 +653,17 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isLessThan(Num other) {
-	return !other.isNaN() && compareTo(other) < 0;
+        return !other.isNaN() && compareTo(other) < 0;
     }
 
     @Override
     public boolean isLessThanOrEqual(Num other) {
-	return !other.isNaN() && delegate.compareTo(((PrecisionNum) other).delegate) < 1;
+        return !other.isNaN() && delegate.compareTo(((PrecisionNum) other).delegate) < 1;
     }
 
     @Override
     public int compareTo(Num other) {
-	return other.isNaN() ? 0 : delegate.compareTo(((PrecisionNum) other).delegate);
+        return other.isNaN() ? 0 : delegate.compareTo(((PrecisionNum) other).delegate);
     }
 
     /**
@@ -676,7 +676,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num min(Num other) {
-	return other.isNaN() ? NaN : (compareTo(other) <= 0 ? this : other);
+        return other.isNaN() ? NaN : (compareTo(other) <= 0 ? this : other);
     }
 
     /**
@@ -689,12 +689,12 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public Num max(Num other) {
-	return other.isNaN() ? NaN : (compareTo(other) >= 0 ? this : other);
+        return other.isNaN() ? NaN : (compareTo(other) >= 0 ? this : other);
     }
 
     @Override
     public int hashCode() {
-	return Objects.hash(delegate);
+        return Objects.hash(delegate);
     }
 
     /**
@@ -703,51 +703,51 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean equals(Object obj) {
-	if (!(obj instanceof PrecisionNum)) {
-	    return false;
-	}
-	return this.delegate.compareTo(((PrecisionNum) obj).delegate) == 0;
+        if (!(obj instanceof PrecisionNum)) {
+            return false;
+        }
+        return this.delegate.compareTo(((PrecisionNum) obj).delegate) == 0;
     }
 
     @Override
     public String toString() {
-	return delegate.toString();
+        return delegate.toString();
     }
 
     @Override
     public Num pow(Num n) {
-	// There is no BigDecimal.pow(BigDecimal). We could do:
-	// double Math.pow(double delegate.doubleValue(), double n)
-	// But that could overflow any of the three doubles.
-	// Instead perform:
-	// x^(a+b) = x^a * x^b
-	// Where:
-	// n = a+b
-	// a is a whole number (make sure it doesn't overflow int)
-	// remainder 0 <= b < 1
-	// So:
-	// x^a uses PrecisionNum ((PrecisionNum) x).pow(int a) cannot overflow Num
-	// x^b uses double Math.pow(double x, double b) cannot overflow double because b
-	// < 1.
-	// As suggested: https://stackoverflow.com/a/3590314
+        // There is no BigDecimal.pow(BigDecimal). We could do:
+        // double Math.pow(double delegate.doubleValue(), double n)
+        // But that could overflow any of the three doubles.
+        // Instead perform:
+        // x^(a+b) = x^a * x^b
+        // Where:
+        // n = a+b
+        // a is a whole number (make sure it doesn't overflow int)
+        // remainder 0 <= b < 1
+        // So:
+        // x^a uses PrecisionNum ((PrecisionNum) x).pow(int a) cannot overflow Num
+        // x^b uses double Math.pow(double x, double b) cannot overflow double because b
+        // < 1.
+        // As suggested: https://stackoverflow.com/a/3590314
 
-	// get n = a+b, same precision as n
-	BigDecimal aplusb = (((PrecisionNum) n).delegate);
-	// get the remainder 0 <= b < 1, looses precision as double
-	BigDecimal b = aplusb.remainder(BigDecimal.ONE);
-	// bDouble looses precision
-	double bDouble = b.doubleValue();
-	// get the whole number a
-	BigDecimal a = aplusb.subtract(b);
-	// convert a to an int, fails on overflow
-	int aInt = a.intValueExact();
-	// use BigDecimal pow(int)
-	BigDecimal xpowa = delegate.pow(aInt);
-	// use double pow(double, double)
-	double xpowb = Math.pow(delegate.doubleValue(), bDouble);
-	// use PrecisionNum.multiply(PrecisionNum)
-	BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
-	return new PrecisionNum(result.toString());
+        // get n = a+b, same precision as n
+        BigDecimal aplusb = (((PrecisionNum) n).delegate);
+        // get the remainder 0 <= b < 1, looses precision as double
+        BigDecimal b = aplusb.remainder(BigDecimal.ONE);
+        // bDouble looses precision
+        double bDouble = b.doubleValue();
+        // get the whole number a
+        BigDecimal a = aplusb.subtract(b);
+        // convert a to an int, fails on overflow
+        int aInt = a.intValueExact();
+        // use BigDecimal pow(int)
+        BigDecimal xpowa = delegate.pow(aInt);
+        // use double pow(double, double)
+        double xpowb = Math.pow(delegate.doubleValue(), bDouble);
+        // use PrecisionNum.multiply(PrecisionNum)
+        BigDecimal result = xpowa.multiply(new BigDecimal(xpowb));
+        return new PrecisionNum(result.toString());
     }
 
 }

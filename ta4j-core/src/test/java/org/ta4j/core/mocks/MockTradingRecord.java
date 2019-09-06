@@ -40,14 +40,14 @@ public class MockTradingRecord extends BaseTradingRecord {
      * @param states List<Num> of state values
      */
     public MockTradingRecord(List<Num> states) {
-	super();
-	double lastState = 0d;
-	for (int i = 0; i < states.size(); i++) {
-	    double state = states.get(i).doubleValue();
-	    if (state != lastState) {
-		this.operate(i);
-	    }
-	    lastState = state;
-	}
+        super();
+        double lastState = 0d;
+        for (int i = 0; i < states.size(); i++) {
+            double state = states.get(i).doubleValue();
+            if (state != lastState) {
+                this.operate(i);
+            }
+            lastState = state;
+        }
     }
 }

@@ -63,14 +63,14 @@ public class XlsTestsUtils {
      *                     close throws IOException
      */
     private static Sheet getSheet(Class<?> clazz, String fileName) throws IOException {
-	InputStream inputStream = clazz.getResourceAsStream(fileName);
-	if (inputStream == null) {
-	    throw new IOException("Null InputStream for file " + fileName);
-	}
-	HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
-	Sheet sheet = workbook.getSheetAt(0);
-	workbook.close();
-	return sheet;
+        InputStream inputStream = clazz.getResourceAsStream(fileName);
+        if (inputStream == null) {
+            throw new IOException("Null InputStream for file " + fileName);
+        }
+        HSSFWorkbook workbook = new HSSFWorkbook(inputStream);
+        Sheet sheet = workbook.getSheetAt(0);
+        workbook.close();
+        return sheet;
     }
 
     /**
@@ -85,25 +85,25 @@ public class XlsTestsUtils {
      * @throws DataFormatException if the parameters section header is not found
      */
     private static void setParams(Sheet sheet, Num... params) throws DataFormatException {
-	FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-	Iterator<Row> iterator = sheet.rowIterator();
-	while (iterator.hasNext()) {
-	    Row row = iterator.next();
-	    // skip rows with an empty first cell
-	    if (row.getCell(0) == null) {
-		continue;
-	    }
-	    // parameters section header is first row with "Param" in first cell
-	    if (evaluator.evaluate(row.getCell(0)).formatAsString().contains("Param")) {
-		// stream parameters into the second column of subsequent rows
-		// overwrites data section if there is not a large enough gap
-		Arrays.stream(params).mapToDouble(Num::doubleValue)
-			.forEach(d -> iterator.next().getCell(1).setCellValue(d));
-		return;
-	    }
-	}
-	// the parameters section header was not found
-	throw new DataFormatException("\"Param\" header row not found");
+        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        Iterator<Row> iterator = sheet.rowIterator();
+        while (iterator.hasNext()) {
+            Row row = iterator.next();
+            // skip rows with an empty first cell
+            if (row.getCell(0) == null) {
+                continue;
+            }
+            // parameters section header is first row with "Param" in first cell
+            if (evaluator.evaluate(row.getCell(0)).formatAsString().contains("Param")) {
+                // stream parameters into the second column of subsequent rows
+                // overwrites data section if there is not a large enough gap
+                Arrays.stream(params).mapToDouble(Num::doubleValue)
+                        .forEach(d -> iterator.next().getCell(1).setCellValue(d));
+                return;
+            }
+        }
+        // the parameters section header was not found
+        throw new DataFormatException("\"Param\" header row not found");
     }
 
     /**
@@ -116,9 +116,9 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getSeries throws DataFormatException
      */
     public static TimeSeries getSeries(Class<?> clazz, String fileName, Function<Number, Num> numFunction)
-	    throws IOException, DataFormatException {
-	Sheet sheet = getSheet(clazz, fileName);
-	return getSeries(sheet, numFunction);
+            throws IOException, DataFormatException {
+        Sheet sheet = getSheet(clazz, fileName);
+        return getSeries(sheet, numFunction);
     }
 
     /**
@@ -132,46 +132,46 @@ public class XlsTestsUtils {
      *                             data contains empty cells
      */
     private static TimeSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
-	TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
-	FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-	List<Row> rows = getData(sheet);
-	int minInterval = Integer.MAX_VALUE;
-	int previousNumber = Integer.MAX_VALUE;
-	// find the minimum interval in days
-	for (Row row : rows) {
-	    int currentNumber = (int) evaluator.evaluate(row.getCell(0)).getNumberValue();
-	    if (previousNumber != Integer.MAX_VALUE) {
-		int interval = currentNumber - previousNumber;
-		if (interval < minInterval) {
-		    minInterval = interval;
-		}
-	    }
-	    previousNumber = currentNumber;
-	}
-	Duration duration = Duration.ofDays(minInterval);
-	// parse the bars from the data section
-	for (Row row : rows) {
-	    CellValue[] cellValues = new CellValue[6];
-	    for (int i = 0; i < 6; i++) {
-		// empty cells in the data section are forbidden
-		if (row.getCell(i) == null) {
-		    throw new DataFormatException("empty cell in xls time series data");
-		}
-		cellValues[i] = evaluator.evaluate(row.getCell(i));
-	    }
-	    // add a bar to the series
-	    Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
-	    ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()),
-		    ZoneId.systemDefault());
-	    series.addBar(duration, endDateTime,
-		    // open, high, low, close, volume
-		    numFunction.apply(new BigDecimal(cellValues[1].formatAsString())),
-		    numFunction.apply(new BigDecimal(cellValues[2].formatAsString())),
-		    numFunction.apply(new BigDecimal(cellValues[3].formatAsString())),
-		    numFunction.apply(new BigDecimal(cellValues[4].formatAsString())),
-		    numFunction.apply(new BigDecimal(cellValues[5].formatAsString())), numFunction.apply(0));
-	}
-	return series;
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        List<Row> rows = getData(sheet);
+        int minInterval = Integer.MAX_VALUE;
+        int previousNumber = Integer.MAX_VALUE;
+        // find the minimum interval in days
+        for (Row row : rows) {
+            int currentNumber = (int) evaluator.evaluate(row.getCell(0)).getNumberValue();
+            if (previousNumber != Integer.MAX_VALUE) {
+                int interval = currentNumber - previousNumber;
+                if (interval < minInterval) {
+                    minInterval = interval;
+                }
+            }
+            previousNumber = currentNumber;
+        }
+        Duration duration = Duration.ofDays(minInterval);
+        // parse the bars from the data section
+        for (Row row : rows) {
+            CellValue[] cellValues = new CellValue[6];
+            for (int i = 0; i < 6; i++) {
+                // empty cells in the data section are forbidden
+                if (row.getCell(i) == null) {
+                    throw new DataFormatException("empty cell in xls time series data");
+                }
+                cellValues[i] = evaluator.evaluate(row.getCell(i));
+            }
+            // add a bar to the series
+            Date endDate = DateUtil.getJavaDate(cellValues[0].getNumberValue());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endDate.getTime()),
+                    ZoneId.systemDefault());
+            series.addBar(duration, endDateTime,
+                    // open, high, low, close, volume
+                    numFunction.apply(new BigDecimal(cellValues[1].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[2].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[3].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[4].formatAsString())),
+                    numFunction.apply(new BigDecimal(cellValues[5].formatAsString())), numFunction.apply(0));
+        }
+        return series;
     }
 
     /**
@@ -185,10 +185,10 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getValues returns DataFormatException
      */
     private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction, Object... params)
-	    throws DataFormatException {
-	Num[] NumParams = Arrays.stream(params).map(p -> numFunction.apply(new BigDecimal(p.toString())))
-		.toArray(Num[]::new);
-	return getValues(sheet, column, numFunction, NumParams);
+            throws DataFormatException {
+        Num[] NumParams = Arrays.stream(params).map(p -> numFunction.apply(new BigDecimal(p.toString())))
+                .toArray(Num[]::new);
+        return getValues(sheet, column, numFunction, NumParams);
     }
 
     /**
@@ -204,9 +204,9 @@ public class XlsTestsUtils {
      *                             DataFormatException
      */
     private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction, Num... params)
-	    throws DataFormatException {
-	setParams(sheet, params);
-	return getValues(sheet, column, numFunction);
+            throws DataFormatException {
+        setParams(sheet, params);
+        return getValues(sheet, column, numFunction);
     }
 
     /**
@@ -219,24 +219,24 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getData throws DataFormatException
      */
     private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction)
-	    throws DataFormatException {
-	List<Num> values = new ArrayList<>();
-	FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-	// get all of the data from the data section of the sheet
-	List<Row> rows = getData(sheet);
-	for (Row row : rows) {
-	    // skip rows where the first cell is empty
-	    if (row.getCell(column) == null) {
-		continue;
-	    }
-	    String s = evaluator.evaluate(row.getCell(column)).formatAsString();
-	    if (s.equals("#DIV/0!")) {
-		values.add(NaN.NaN);
-	    } else {
-		values.add(numFunction.apply(new BigDecimal(s)));
-	    }
-	}
-	return values;
+            throws DataFormatException {
+        List<Num> values = new ArrayList<>();
+        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        // get all of the data from the data section of the sheet
+        List<Row> rows = getData(sheet);
+        for (Row row : rows) {
+            // skip rows where the first cell is empty
+            if (row.getCell(column) == null) {
+                continue;
+            }
+            String s = evaluator.evaluate(row.getCell(column)).formatAsString();
+            if (s.equals("#DIV/0!")) {
+                values.add(NaN.NaN);
+            } else {
+                values.add(numFunction.apply(new BigDecimal(s)));
+            }
+        }
+        return values;
     }
 
     /**
@@ -248,35 +248,35 @@ public class XlsTestsUtils {
      * @throws DataFormatException if the data section header is not found.
      */
     private static List<Row> getData(Sheet sheet) throws DataFormatException {
-	FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
-	Iterator<Row> iterator = sheet.rowIterator();
-	boolean noHeader = true;
-	List<Row> rows = new ArrayList<Row>();
-	// iterate through all rows of the sheet
-	while (iterator.hasNext()) {
-	    Row row = iterator.next();
-	    // skip rows with an empty first cell
-	    if (row.getCell(0) == null) {
-		continue;
-	    }
-	    // after the data section header is found, add all rows that don't
-	    // have "//" in the first cell
-	    if (!noHeader) {
-		if (evaluator.evaluate(row.getCell(0)).formatAsString().compareTo("\"//\"") != 0) {
-		    rows.add(row);
-		}
-	    }
-	    // if the data section header is not found and this row has "Date"
-	    // in its first cell, then mark the header as found
-	    if (noHeader && evaluator.evaluate(row.getCell(0)).formatAsString().contains("Date")) {
-		noHeader = false;
-	    }
-	}
-	// if the header was not found throw an exception
-	if (noHeader) {
-	    throw new DataFormatException("\"Date\" header row not found");
-	}
-	return rows;
+        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+        Iterator<Row> iterator = sheet.rowIterator();
+        boolean noHeader = true;
+        List<Row> rows = new ArrayList<Row>();
+        // iterate through all rows of the sheet
+        while (iterator.hasNext()) {
+            Row row = iterator.next();
+            // skip rows with an empty first cell
+            if (row.getCell(0) == null) {
+                continue;
+            }
+            // after the data section header is found, add all rows that don't
+            // have "//" in the first cell
+            if (!noHeader) {
+                if (evaluator.evaluate(row.getCell(0)).formatAsString().compareTo("\"//\"") != 0) {
+                    rows.add(row);
+                }
+            }
+            // if the data section header is not found and this row has "Date"
+            // in its first cell, then mark the header as found
+            if (noHeader && evaluator.evaluate(row.getCell(0)).formatAsString().contains("Date")) {
+                noHeader = false;
+            }
+        }
+        // if the header was not found throw an exception
+        if (noHeader) {
+            throw new DataFormatException("\"Date\" header row not found");
+        }
+        return rows;
     }
 
     /**
@@ -292,9 +292,9 @@ public class XlsTestsUtils {
      *                             DataFormatException
      */
     public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column,
-	    Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
-	Sheet sheet = getSheet(clazz, fileName);
-	return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
+            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+        Sheet sheet = getSheet(clazz, fileName);
+        return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
     }
 
     /**
@@ -310,10 +310,10 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getValues throws DataFormatException
      */
     public static Num getFinalCriterionValue(Class<?> clazz, String fileName, int column,
-	    Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
-	Sheet sheet = getSheet(clazz, fileName);
-	List<Num> values = getValues(sheet, column, numFunction, params);
-	return values.get(values.size() - 1);
+            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+        Sheet sheet = getSheet(clazz, fileName);
+        List<Num> values = getValues(sheet, column, numFunction, params);
+        return values.get(values.size() - 1);
     }
 
     /**
@@ -327,9 +327,9 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getValues throws DataFormatException
      */
     public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column,
-	    Function<Number, Num> numFunction) throws IOException, DataFormatException {
-	Sheet sheet = getSheet(clazz, fileName);
-	return new MockTradingRecord(getValues(sheet, column, numFunction));
+            Function<Number, Num> numFunction) throws IOException, DataFormatException {
+        Sheet sheet = getSheet(clazz, fileName);
+        return new MockTradingRecord(getValues(sheet, column, numFunction));
     }
 
 }

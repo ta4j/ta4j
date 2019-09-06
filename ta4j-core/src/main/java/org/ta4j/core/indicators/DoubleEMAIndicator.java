@@ -49,19 +49,19 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.barCount = barCount;
-	this.ema = new EMAIndicator(indicator, barCount);
-	this.emaEma = new EMAIndicator(ema, barCount);
+        super(indicator);
+        this.barCount = barCount;
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return ema.getValue(index).multipliedBy(numOf(2)).minus(emaEma.getValue(index));
+        return ema.getValue(index).multipliedBy(numOf(2)).minus(emaEma.getValue(index));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

@@ -32,6 +32,6 @@ import org.ta4j.core.TimeSeries;
 public class ClosePriceIndicator extends PriceIndicator {
 
     public ClosePriceIndicator(TimeSeries series) {
-	super(series, Bar::getClosePrice);
+        super(series, Bar::getClosePrice);
     }
 }

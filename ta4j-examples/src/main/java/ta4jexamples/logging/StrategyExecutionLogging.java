@@ -43,7 +43,7 @@ import java.util.logging.Logger;
 public class StrategyExecutionLogging {
 
     private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader()
-	    .getResource("logback-traces.xml");
+            .getResource("logback-traces.xml");
 
     /**
      * Loads the Logback configuration from a resource file. Only here to avoid
@@ -51,41 +51,41 @@ public class StrategyExecutionLogging {
      * file in the resource folder.
      */
     private static void loadLoggerConfiguration() {
-	LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-	context.reset();
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        context.reset();
 
-	JoranConfigurator configurator = new JoranConfigurator();
-	configurator.setContext(context);
-	try {
-	    configurator.doConfigure(LOGBACK_CONF_FILE);
-	} catch (JoranException je) {
-	    Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE,
-		    "Unable to load Logback configuration", je);
-	}
+        JoranConfigurator configurator = new JoranConfigurator();
+        configurator.setContext(context);
+        try {
+            configurator.doConfigure(LOGBACK_CONF_FILE);
+        } catch (JoranException je) {
+            Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE,
+                    "Unable to load Logback configuration", je);
+        }
     }
 
     private static void unloadLoggerConfiguration() {
-	LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-	context.reset();
-	JoranConfigurator configurator = new JoranConfigurator();
-	configurator.setContext(context);
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        context.reset();
+        JoranConfigurator configurator = new JoranConfigurator();
+        configurator.setContext(context);
     }
 
     public static void main(String[] args) {
-	// Loading the Logback configuration
-	loadLoggerConfiguration();
+        // Loading the Logback configuration
+        loadLoggerConfiguration();
 
-	// Getting the time series
-	TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Getting the time series
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
-	// Building the trading strategy
-	Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
+        // Building the trading strategy
+        Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
 
-	// Running the strategy
-	TimeSeriesManager seriesManager = new TimeSeriesManager(series);
-	seriesManager.run(strategy);
+        // Running the strategy
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        seriesManager.run(strategy);
 
-	// Unload the Logback configuration
-	unloadLoggerConfiguration();
+        // Unload the Logback configuration
+        unloadLoggerConfiguration();
     }
 }

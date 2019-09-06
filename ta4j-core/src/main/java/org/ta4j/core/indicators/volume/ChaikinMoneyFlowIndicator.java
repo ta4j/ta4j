@@ -46,22 +46,22 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     private final int barCount;
 
     public ChaikinMoneyFlowIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
-	this.clvIndicator = new CloseLocationValueIndicator(series);
-	this.volumeIndicator = new VolumeIndicator(series, barCount);
+        super(series);
+        this.barCount = barCount;
+        this.clvIndicator = new CloseLocationValueIndicator(series);
+        this.volumeIndicator = new VolumeIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	int startIndex = Math.max(0, index - barCount + 1);
-	Num sumOfMoneyFlowVolume = numOf(0);
-	for (int i = startIndex; i <= index; i++) {
-	    sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
-	}
-	Num sumOfVolume = volumeIndicator.getValue(index);
+        int startIndex = Math.max(0, index - barCount + 1);
+        Num sumOfMoneyFlowVolume = numOf(0);
+        for (int i = startIndex; i <= index; i++) {
+            sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
+        }
+        Num sumOfVolume = volumeIndicator.getValue(index);
 
-	return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
+        return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
     }
 
     /**
@@ -69,11 +69,11 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
      * @return the money flow volume for the i-th period/bar
      */
     private Num getMoneyFlowVolume(int index) {
-	return clvIndicator.getValue(index).multipliedBy(getTimeSeries().getBar(index).getVolume());
+        return clvIndicator.getValue(index).multipliedBy(getTimeSeries().getBar(index).getVolume());
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

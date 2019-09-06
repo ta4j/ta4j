@@ -47,22 +47,22 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
      * @param series the related time series
      */
     public AbstractIndicator(TimeSeries series) {
-	this.series = series;
+        this.series = series;
     }
 
     @Override
     public TimeSeries getTimeSeries() {
-	return series;
+        return series;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName();
+        return getClass().getSimpleName();
     }
 
     @Override
     public Num numOf(Number number) {
-	return series.numOf(number);
+        return series.numOf(number);
     }
 
 }

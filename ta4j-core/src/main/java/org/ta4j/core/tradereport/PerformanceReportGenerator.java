@@ -42,10 +42,10 @@ public class PerformanceReportGenerator implements ReportGenerator<PerformanceRe
 
     @Override
     public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
-	final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
-	final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-	final Num totalProfit = new TotalProfit2Criterion().calculate(series, tradingRecord);
-	final Num totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
-	return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
+        final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
+        final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
+        final Num totalProfit = new TotalProfit2Criterion().calculate(series, tradingRecord);
+        final Num totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
+        return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
     }
 }

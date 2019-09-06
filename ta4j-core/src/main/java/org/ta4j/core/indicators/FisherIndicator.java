@@ -64,7 +64,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param series the series
      */
     public FisherIndicator(TimeSeries series) {
-	this(new MedianPriceIndicator(series), 10);
+        this(new MedianPriceIndicator(series), 10);
     }
 
     /**
@@ -74,7 +74,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCount the time frame (usually 10)
      */
     public FisherIndicator(Indicator<Num> price, int barCount) {
-	this(price, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
+        this(price, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
     }
 
     /**
@@ -86,7 +86,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param beta     the beta (usually 0.67 0.5 or)
      */
     public FisherIndicator(Indicator<Num> price, int barCount, double alpha, double beta) {
-	this(price, barCount, alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
+        this(price, barCount, alpha, beta, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, true);
     }
 
     /**
@@ -100,7 +100,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param delta    the delta (usually 0.5)
      */
     public FisherIndicator(Indicator<Num> price, int barCount, double alpha, double beta, double gamma, double delta) {
-	this(price, barCount, alpha, beta, gamma, delta, 1, true);
+        this(price, barCount, alpha, beta, gamma, delta, 1, true);
     }
 
     /**
@@ -111,7 +111,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
     public FisherIndicator(Indicator<Num> ref, int barCount, boolean isPriceIndicator) {
-	this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, isPriceIndicator);
+        this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, 1, isPriceIndicator);
     }
 
     /**
@@ -123,7 +123,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
     public FisherIndicator(Indicator<Num> ref, int barCount, double densityFactor, boolean isPriceIndicator) {
-	this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, densityFactor, isPriceIndicator);
+        this(ref, barCount, 0.33, 0.67, ZERO_DOT_FIVE, ZERO_DOT_FIVE, densityFactor, isPriceIndicator);
     }
 
     /**
@@ -139,61 +139,61 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
     public FisherIndicator(Indicator<Num> ref, int barCount, final double alphaD, final double betaD,
-	    final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
-	super(ref);
-	this.ref = ref;
-	this.gamma = numOf(gammaD);
-	this.delta = numOf(deltaD);
-	this.densityFactor = numOf(densityFactorD);
+            final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
+        super(ref);
+        this.ref = ref;
+        this.gamma = numOf(gammaD);
+        this.delta = numOf(deltaD);
+        this.densityFactor = numOf(densityFactorD);
 
-	Num alpha = numOf(alphaD);
-	Num beta = numOf(betaD);
-	final Indicator<Num> periodHigh = new HighestValueIndicator(
-		isPriceIndicator ? new HighPriceIndicator(ref.getTimeSeries()) : ref, barCount);
-	final Indicator<Num> periodLow = new LowestValueIndicator(
-		isPriceIndicator ? new LowPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        Num alpha = numOf(alphaD);
+        Num beta = numOf(betaD);
+        final Indicator<Num> periodHigh = new HighestValueIndicator(
+                isPriceIndicator ? new HighPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodLow = new LowestValueIndicator(
+                isPriceIndicator ? new LowPriceIndicator(ref.getTimeSeries()) : ref, barCount);
 
-	intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
+        intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 
-	    private static final long serialVersionUID = 1242564751445450654L;
+            private static final long serialVersionUID = 1242564751445450654L;
 
-	    @Override
-	    protected Num calculate(int index) {
-		if (index <= 0) {
-		    return numOf(0);
-		}
+            @Override
+            protected Num calculate(int index) {
+                if (index <= 0) {
+                    return numOf(0);
+                }
 
-		// Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta *
-		// priorValue) / densityFactor
-		Num currentRef = FisherIndicator.this.ref.getValue(index);
-		Num minL = periodLow.getValue(index);
-		Num maxH = periodHigh.getValue(index);
-		Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(numOf(ZERO_DOT_FIVE));
-		Num term2 = alpha.multipliedBy(numOf(2)).multipliedBy(term1);
-		Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
-		return term3.dividedBy(FisherIndicator.this.densityFactor);
-	    }
-	};
+                // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta *
+                // priorValue) / densityFactor
+                Num currentRef = FisherIndicator.this.ref.getValue(index);
+                Num minL = periodLow.getValue(index);
+                Num maxH = periodHigh.getValue(index);
+                Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(numOf(ZERO_DOT_FIVE));
+                Num term2 = alpha.multipliedBy(numOf(2)).multipliedBy(term1);
+                Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
+                return term3.dividedBy(FisherIndicator.this.densityFactor);
+            }
+        };
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index <= 0) {
-	    return numOf(0);
-	}
+        if (index <= 0) {
+            return numOf(0);
+        }
 
-	Num value = intermediateValue.getValue(index);
+        Num value = intermediateValue.getValue(index);
 
-	if (value.isGreaterThan(numOf(VALUE_MAX))) {
-	    value = numOf(VALUE_MAX);
-	} else if (value.isLessThan(numOf(VALUE_MIN))) {
-	    value = numOf(VALUE_MIN);
-	}
+        if (value.isGreaterThan(numOf(VALUE_MAX))) {
+            value = numOf(VALUE_MAX);
+        } else if (value.isLessThan(numOf(VALUE_MIN))) {
+            value = numOf(VALUE_MIN);
+        }
 
-	// Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
-	Num term1 = numOf((Math.log(numOf(1).plus(value).dividedBy(numOf(1).minus(value)).doubleValue())));
-	Num term2 = getValue(index - 1);
-	return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
+        // Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
+        Num term1 = numOf((Math.log(numOf(1).plus(value).dividedBy(numOf(1).minus(value)).doubleValue())));
+        Num term2 = getValue(index - 1);
+        return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
     }
 
 }

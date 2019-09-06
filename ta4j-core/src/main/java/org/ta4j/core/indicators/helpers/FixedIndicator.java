@@ -47,17 +47,17 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
      */
     @SafeVarargs
     public FixedIndicator(TimeSeries series, T... values) {
-	super(series);
-	this.values.addAll(Arrays.asList(values));
+        super(series);
+        this.values.addAll(Arrays.asList(values));
     }
 
     public void addValue(T value) {
-	this.values.add(value);
+        this.values.add(value);
     }
 
     @Override
     public T getValue(int index) {
-	return values.get(index);
+        return values.get(index);
     }
 
 }

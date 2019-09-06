@@ -36,22 +36,22 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
     private final CloseLocationValueIndicator clvIndicator;
 
     public AccumulationDistributionIndicator(TimeSeries series) {
-	super(series);
-	this.clvIndicator = new CloseLocationValueIndicator(series);
+        super(series);
+        this.clvIndicator = new CloseLocationValueIndicator(series);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index == 0) {
-	    return numOf(0);
-	}
+        if (index == 0) {
+            return numOf(0);
+        }
 
-	// Calculating the money flow multiplier
-	Num moneyFlowMultiplier = clvIndicator.getValue(index);
+        // Calculating the money flow multiplier
+        Num moneyFlowMultiplier = clvIndicator.getValue(index);
 
-	// Calculating the money flow volume
-	Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getTimeSeries().getBar(index).getVolume());
+        // Calculating the money flow volume
+        Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getTimeSeries().getBar(index).getVolume());
 
-	return moneyFlowVolume.plus(getValue(index - 1));
+        return moneyFlowVolume.plus(getValue(index - 1));
     }
 }

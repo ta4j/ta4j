@@ -38,8 +38,8 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-		.reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     /**
@@ -51,18 +51,18 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	if (trade.isClosed()) {
-	    Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
-	    Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+        if (trade.isClosed()) {
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
 
-	    return exitPrice.minus(entryPrice).dividedBy(entryPrice).multipliedBy(series.numOf(100));
-	}
-	return series.numOf(0);
+            return exitPrice.minus(entryPrice).dividedBy(entryPrice).multipliedBy(series.numOf(100));
+        }
+        return series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

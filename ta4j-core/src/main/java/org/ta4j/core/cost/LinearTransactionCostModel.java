@@ -41,7 +41,7 @@ public class LinearTransactionCostModel implements CostModel {
      *                    {@link Order order})
      */
     public LinearTransactionCostModel(double feePerTrade) {
-	this.feePerTrade = feePerTrade;
+        this.feePerTrade = feePerTrade;
     }
 
     /**
@@ -53,7 +53,7 @@ public class LinearTransactionCostModel implements CostModel {
      * @return the absolute order cost
      */
     public Num calculate(Trade trade, int currentIndex) {
-	return this.calculate(trade);
+        return this.calculate(trade);
     }
 
     /**
@@ -63,16 +63,16 @@ public class LinearTransactionCostModel implements CostModel {
      * @return the absolute order cost
      */
     public Num calculate(Trade trade) {
-	Num totalTradeCost = null;
-	Order entryOrder = trade.getEntry();
-	if (entryOrder != null) {
-	    // transaction costs of entry order
-	    totalTradeCost = entryOrder.getCost();
-	    if (trade.getExit() != null) {
-		totalTradeCost = totalTradeCost.plus(trade.getExit().getCost());
-	    }
-	}
-	return totalTradeCost;
+        Num totalTradeCost = null;
+        Order entryOrder = trade.getEntry();
+        if (entryOrder != null) {
+            // transaction costs of entry order
+            totalTradeCost = entryOrder.getCost();
+            if (trade.getExit() != null) {
+                totalTradeCost = totalTradeCost.plus(trade.getExit().getCost());
+            }
+        }
+        return totalTradeCost;
     }
 
     /**
@@ -81,7 +81,7 @@ public class LinearTransactionCostModel implements CostModel {
      * @return the absolute order transaction cost
      */
     public Num calculate(Num price, Num amount) {
-	return amount.numOf(feePerTrade).multipliedBy(price).multipliedBy(amount);
+        return amount.numOf(feePerTrade).multipliedBy(price).multipliedBy(amount);
     }
 
     /**
@@ -90,10 +90,10 @@ public class LinearTransactionCostModel implements CostModel {
      * @param otherModel model to compare with
      */
     public boolean equals(CostModel otherModel) {
-	boolean equality = false;
-	if (this.getClass().equals(otherModel.getClass())) {
-	    equality = ((LinearTransactionCostModel) otherModel).feePerTrade == this.feePerTrade;
-	}
-	return equality;
+        boolean equality = false;
+        if (this.getClass().equals(otherModel.getClass())) {
+            equality = ((LinearTransactionCostModel) otherModel).feePerTrade == this.feePerTrade;
+        }
+        return equality;
     }
 }

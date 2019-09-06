@@ -95,39 +95,39 @@ public interface Bar extends Serializable {
      *         time of the current period, false otherwise
      */
     default boolean inPeriod(ZonedDateTime timestamp) {
-	return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
+        return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
     }
 
     /**
      * @return a human-friendly string of the end timestamp
      */
     default String getDateName() {
-	return getEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
+        return getEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
     }
 
     /**
      * @return a even more human-friendly string of the end timestamp
      */
     default String getSimpleDateName() {
-	return getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        return getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     /**
      * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
-	Num openPrice = getOpenPrice();
-	Num closePrice = getClosePrice();
-	return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
+        Num openPrice = getOpenPrice();
+        Num closePrice = getClosePrice();
+        return (openPrice != null) && (closePrice != null) && closePrice.isLessThan(openPrice);
     }
 
     /**
      * @return true if this is a bullish bar, false otherwise
      */
     default boolean isBullish() {
-	Num openPrice = getOpenPrice();
-	Num closePrice = getClosePrice();
-	return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
+        Num openPrice = getOpenPrice();
+        Num closePrice = getClosePrice();
+        return (openPrice != null) && (closePrice != null) && openPrice.isLessThan(closePrice);
     }
 
     /**
@@ -139,7 +139,7 @@ public interface Bar extends Serializable {
      */
     @Deprecated
     default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
-	addTrade(numFunction.apply(tradeVolume), numFunction.apply(tradePrice));
+        addTrade(numFunction.apply(tradeVolume), numFunction.apply(tradePrice));
     }
 
     /**
@@ -151,7 +151,7 @@ public interface Bar extends Serializable {
      */
     @Deprecated
     default void addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction) {
-	addTrade(numFunction.apply(new BigDecimal(tradeVolume)), numFunction.apply(new BigDecimal(tradePrice)));
+        addTrade(numFunction.apply(new BigDecimal(tradeVolume)), numFunction.apply(new BigDecimal(tradePrice)));
     }
 
     /**
@@ -163,11 +163,11 @@ public interface Bar extends Serializable {
     void addTrade(Num tradeVolume, Num tradePrice);
 
     default void addPrice(String price, Function<Number, Num> numFunction) {
-	addPrice(numFunction.apply(new BigDecimal(price)));
+        addPrice(numFunction.apply(new BigDecimal(price)));
     }
 
     default void addPrice(Number price, Function<Number, Num> numFunction) {
-	addPrice(numFunction.apply(price));
+        addPrice(numFunction.apply(price));
     }
 
     void addPrice(Num price);

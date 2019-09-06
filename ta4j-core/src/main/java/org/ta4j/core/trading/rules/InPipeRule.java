@@ -51,7 +51,7 @@ public class InPipeRule extends AbstractRule {
      * @param lower the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Number upper, Number lower) {
-	this(ref, ref.numOf(upper), ref.numOf(lower));
+        this(ref, ref.numOf(upper), ref.numOf(lower));
     }
 
     /**
@@ -62,8 +62,8 @@ public class InPipeRule extends AbstractRule {
      * @param lower the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
-	this(ref, new ConstantIndicator<>(ref.getTimeSeries(), upper),
-		new ConstantIndicator<>(ref.getTimeSeries(), lower));
+        this(ref, new ConstantIndicator<>(ref.getTimeSeries(), upper),
+                new ConstantIndicator<>(ref.getTimeSeries(), lower));
     }
 
     /**
@@ -74,16 +74,16 @@ public class InPipeRule extends AbstractRule {
      * @param lower the lower indicator
      */
     public InPipeRule(Indicator<Num> ref, Indicator<Num> upper, Indicator<Num> lower) {
-	this.upper = upper;
-	this.lower = lower;
-	this.ref = ref;
+        this.upper = upper;
+        this.lower = lower;
+        this.ref = ref;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	final boolean satisfied = ref.getValue(index).isLessThanOrEqual(upper.getValue(index))
-		&& ref.getValue(index).isGreaterThanOrEqual(lower.getValue(index));
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = ref.getValue(index).isLessThanOrEqual(upper.getValue(index))
+                && ref.getValue(index).isGreaterThanOrEqual(lower.getValue(index));
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

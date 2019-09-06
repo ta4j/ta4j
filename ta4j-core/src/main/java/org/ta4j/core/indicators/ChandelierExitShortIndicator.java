@@ -47,7 +47,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
      * @param series the time series
      */
     public ChandelierExitShortIndicator(TimeSeries series) {
-	this(series, 22, 3d);
+        this(series, 22, 3d);
     }
 
     /**
@@ -58,14 +58,14 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
      * @param k        the K multiplier for ATR (usually 3.0)
      */
     public ChandelierExitShortIndicator(TimeSeries series, int barCount, double k) {
-	super(series);
-	low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
-	atr = new ATRIndicator(series, barCount);
-	this.k = numOf(k);
+        super(series);
+        low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+        atr = new ATRIndicator(series, barCount);
+        this.k = numOf(k);
     }
 
     @Override
     protected Num calculate(int index) {
-	return low.getValue(index).plus(atr.getValue(index).multipliedBy(k));
+        return low.getValue(index).plus(atr.getValue(index).multipliedBy(k));
     }
 }

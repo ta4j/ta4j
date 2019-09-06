@@ -52,7 +52,7 @@ public class OverIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public OverIndicatorRule(Indicator<Num> indicator, Number threshold) {
-	this(indicator, indicator.numOf(threshold));
+        this(indicator, indicator.numOf(threshold));
     }
 
     /**
@@ -62,7 +62,7 @@ public class OverIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public OverIndicatorRule(Indicator<Num> indicator, Num threshold) {
-	this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
     }
 
     /**
@@ -72,14 +72,14 @@ public class OverIndicatorRule extends AbstractRule {
      * @param second the second indicator
      */
     public OverIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
-	this.first = first;
-	this.second = second;
+        this.first = first;
+        this.second = second;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	final boolean satisfied = first.getValue(index).isGreaterThan(second.getValue(index));
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = first.getValue(index).isGreaterThan(second.getValue(index));
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

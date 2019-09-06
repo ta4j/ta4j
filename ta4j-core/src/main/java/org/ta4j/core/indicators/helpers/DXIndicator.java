@@ -39,24 +39,24 @@ public class DXIndicator extends CachedIndicator<Num> {
     private final MinusDIIndicator minusDIIndicator;
 
     public DXIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
-	plusDIIndicator = new PlusDIIndicator(series, barCount);
-	minusDIIndicator = new MinusDIIndicator(series, barCount);
+        super(series);
+        this.barCount = barCount;
+        plusDIIndicator = new PlusDIIndicator(series, barCount);
+        minusDIIndicator = new MinusDIIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num pdiValue = plusDIIndicator.getValue(index);
-	Num mdiValue = minusDIIndicator.getValue(index);
-	if (pdiValue.plus(mdiValue).equals(numOf(0))) {
-	    return numOf(0);
-	}
-	return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
+        Num pdiValue = plusDIIndicator.getValue(index);
+        Num mdiValue = minusDIIndicator.getValue(index);
+        if (pdiValue.plus(mdiValue).equals(numOf(0))) {
+            return numOf(0);
+        }
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

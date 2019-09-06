@@ -40,19 +40,19 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
     private final int barCount;
 
     public AroonOscillatorIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
-	aroonDownIndicator = new AroonDownIndicator(series, barCount);
-	aroonUpIndicator = new AroonUpIndicator(series, barCount);
+        super(series);
+        this.barCount = barCount;
+        aroonDownIndicator = new AroonDownIndicator(series, barCount);
+        aroonUpIndicator = new AroonUpIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return aroonUpIndicator.getValue(index).minus(aroonDownIndicator.getValue(index));
+        return aroonUpIndicator.getValue(index).minus(aroonDownIndicator.getValue(index));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

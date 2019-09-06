@@ -44,51 +44,51 @@ public class BaseBarBuilder {
     }
 
     public BaseBarBuilder timePeriod(Duration timePeriod) {
-	this.timePeriod = timePeriod;
-	return this;
+        this.timePeriod = timePeriod;
+        return this;
     }
 
     public BaseBarBuilder endTime(ZonedDateTime endTime) {
-	this.endTime = endTime;
-	return this;
+        this.endTime = endTime;
+        return this;
     }
 
     public BaseBarBuilder openPrice(Num openPrice) {
-	this.openPrice = openPrice;
-	return this;
+        this.openPrice = openPrice;
+        return this;
     }
 
     public BaseBarBuilder closePrice(Num closePrice) {
-	this.closePrice = closePrice;
-	return this;
+        this.closePrice = closePrice;
+        return this;
     }
 
     public BaseBarBuilder highPrice(Num highPrice) {
-	this.highPrice = highPrice;
-	return this;
+        this.highPrice = highPrice;
+        return this;
     }
 
     public BaseBarBuilder lowPrice(Num lowPrice) {
-	this.lowPrice = lowPrice;
-	return this;
+        this.lowPrice = lowPrice;
+        return this;
     }
 
     public BaseBarBuilder amount(Num amount) {
-	this.amount = amount;
-	return this;
+        this.amount = amount;
+        return this;
     }
 
     public BaseBarBuilder volume(Num volume) {
-	this.volume = volume;
-	return this;
+        this.volume = volume;
+        return this;
     }
 
     public BaseBarBuilder trades(int trades) {
-	this.trades = trades;
-	return this;
+        this.trades = trades;
+        return this;
     }
 
     public BaseBar build() {
-	return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
+        return new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
     }
 }

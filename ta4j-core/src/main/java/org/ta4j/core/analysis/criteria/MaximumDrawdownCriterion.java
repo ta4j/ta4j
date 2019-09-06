@@ -39,22 +39,22 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	CashFlow cashFlow = new CashFlow(series, tradingRecord);
-	return calculateMaximumDrawdown(series, cashFlow);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        return calculateMaximumDrawdown(series, cashFlow);
     }
 
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-	    CashFlow cashFlow = new CashFlow(series, trade);
-	    return calculateMaximumDrawdown(series, cashFlow);
-	}
-	return series.numOf(0);
+        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
+            CashFlow cashFlow = new CashFlow(series, trade);
+            return calculateMaximumDrawdown(series, cashFlow);
+        }
+        return series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isLessThan(criterionValue2);
     }
 
     /**
@@ -65,22 +65,22 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      * @return the maximum drawdown from a cash flow over a series
      */
     private Num calculateMaximumDrawdown(TimeSeries series, CashFlow cashFlow) {
-	Num maximumDrawdown = series.numOf(0);
-	Num maxPeak = series.numOf(0);
-	if (!series.isEmpty()) {
-	    // The series is not empty
-	    for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-		Num value = cashFlow.getValue(i);
-		if (value.isGreaterThan(maxPeak)) {
-		    maxPeak = value;
-		}
+        Num maximumDrawdown = series.numOf(0);
+        Num maxPeak = series.numOf(0);
+        if (!series.isEmpty()) {
+            // The series is not empty
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Num value = cashFlow.getValue(i);
+                if (value.isGreaterThan(maxPeak)) {
+                    maxPeak = value;
+                }
 
-		Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
-		if (drawdown.isGreaterThan(maximumDrawdown)) {
-		    maximumDrawdown = drawdown;
-		}
-	    }
-	}
-	return maximumDrawdown;
+                Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
+                if (drawdown.isGreaterThan(maximumDrawdown)) {
+                    maximumDrawdown = drawdown;
+                }
+            }
+        }
+        return maximumDrawdown;
     }
 }

@@ -29,6 +29,6 @@ public class CsvTradesLoaderTest {
 
     @Test
     public void test() {
-	CsvTradesLoader.main(null);
+        CsvTradesLoader.main(null);
     }
 }

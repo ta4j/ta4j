@@ -35,12 +35,12 @@ public class ATRIndicator extends CachedIndicator<Num> {
     private final MMAIndicator averageTrueRangeIndicator;
 
     public ATRIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), barCount);
+        super(series);
+        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return averageTrueRangeIndicator.getValue(index);
+        return averageTrueRangeIndicator.getValue(index);
     }
 }

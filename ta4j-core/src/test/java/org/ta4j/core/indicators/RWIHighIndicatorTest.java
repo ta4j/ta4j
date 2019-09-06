@@ -44,14 +44,14 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num>
     private ExternalIndicatorTest xls;
 
     public RWIHighIndicatorTest(Function<Number, Num> numFunction) {
-	super((data, params) -> new RWIHighIndicator(data, (int) params[0]), numFunction);
-	xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 8, numFunction);
+        super((data, params) -> new RWIHighIndicator(data, (int) params[0]), numFunction);
+        xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 8, numFunction);
     }
 
     @Test
     public void randomWalkIndexHigh() throws Exception {
-	TimeSeries series = xls.getSeries();
-	RWIHighIndicator rwih = (RWIHighIndicator) getIndicator(series, 20);
-	assertIndicatorEquals(getIndicator(series, 20), rwih);
+        TimeSeries series = xls.getSeries();
+        RWIHighIndicator rwih = (RWIHighIndicator) getIndicator(series, 20);
+        assertIndicatorEquals(getIndicator(series, 20), rwih);
     }
 }

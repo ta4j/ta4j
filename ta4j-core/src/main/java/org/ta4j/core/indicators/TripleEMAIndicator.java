@@ -55,21 +55,21 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.barCount = barCount;
-	this.ema = new EMAIndicator(indicator, barCount);
-	this.emaEma = new EMAIndicator(ema, barCount);
-	this.emaEmaEma = new EMAIndicator(emaEma, barCount);
+        super(indicator);
+        this.barCount = barCount;
+        this.ema = new EMAIndicator(indicator, barCount);
+        this.emaEma = new EMAIndicator(ema, barCount);
+        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	// trix = 3 * ( ema - emaEma ) + emaEmaEma
-	return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
+        // trix = 3 * ( ema - emaEma ) + emaEmaEma
+        return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

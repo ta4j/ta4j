@@ -36,15 +36,15 @@ public class ConstantIndicatorTest {
 
     @Before
     public void setUp() {
-	TimeSeries series = new BaseTimeSeries();
-	constantIndicator = new ConstantIndicator<Num>(series, series.numOf(30.33));
+        TimeSeries series = new BaseTimeSeries();
+        constantIndicator = new ConstantIndicator<Num>(series, series.numOf(30.33));
     }
 
     @Test
     public void constantIndicator() {
-	assertNumEquals("30.33", constantIndicator.getValue(0));
-	assertNumEquals("30.33", constantIndicator.getValue(1));
-	assertNumEquals("30.33", constantIndicator.getValue(10));
-	assertNumEquals("30.33", constantIndicator.getValue(30));
+        assertNumEquals("30.33", constantIndicator.getValue(0));
+        assertNumEquals("30.33", constantIndicator.getValue(1));
+        assertNumEquals("30.33", constantIndicator.getValue(10));
+        assertNumEquals("30.33", constantIndicator.getValue(30));
     }
 }

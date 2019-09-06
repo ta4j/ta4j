@@ -55,21 +55,21 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      *                 lower shadow
      */
     public ThreeBlackCrowsIndicator(TimeSeries series, int barCount, double factor) {
-	super(series);
-	lowerShadowInd = new LowerShadowIndicator(series);
-	averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
-	this.factor = numOf(factor);
+        super(series);
+        lowerShadowInd = new LowerShadowIndicator(series);
+        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
+        this.factor = numOf(factor);
     }
 
     @Override
     protected Boolean calculate(int index) {
-	if (index < 3) {
-	    // We need 4 candles: 1 white, 3 black
-	    return false;
-	}
-	whiteCandleIndex = index - 3;
-	return getTimeSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
-		&& isBlackCrow(index);
+        if (index < 3) {
+            // We need 4 candles: 1 white, 3 black
+            return false;
+        }
+        whiteCandleIndex = index - 3;
+        return getTimeSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
+                && isBlackCrow(index);
     }
 
     /**
@@ -77,11 +77,11 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the bar/candle has a very short lower shadow, false otherwise
      */
     private boolean hasVeryShortLowerShadow(int index) {
-	Num currentLowerShadow = lowerShadowInd.getValue(index);
-	// We use the white candle index to remove to bias of the previous crows
-	Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
+        Num currentLowerShadow = lowerShadowInd.getValue(index);
+        // We use the white candle index to remove to bias of the previous crows
+        Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
 
-	return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
+        return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
     }
 
     /**
@@ -89,17 +89,17 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is declining, false otherwise
      */
     private boolean isDeclining(int index) {
-	Bar prevBar = getTimeSeries().getBar(index - 1);
-	Bar currBar = getTimeSeries().getBar(index);
-	final Num prevOpenPrice = prevBar.getOpenPrice();
-	final Num prevClosePrice = prevBar.getClosePrice();
-	final Num currOpenPrice = currBar.getOpenPrice();
-	final Num currClosePrice = currBar.getClosePrice();
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
+        final Num prevOpenPrice = prevBar.getOpenPrice();
+        final Num prevClosePrice = prevBar.getClosePrice();
+        final Num currOpenPrice = currBar.getOpenPrice();
+        final Num currClosePrice = currBar.getClosePrice();
 
-	// Opens within the body of the previous candle
-	return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
-	// Closes below the previous close price
-		&& currClosePrice.isLessThan(prevClosePrice);
+        // Opens within the body of the previous candle
+        return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
+        // Closes below the previous close price
+                && currClosePrice.isLessThan(prevClosePrice);
     }
 
     /**
@@ -107,16 +107,16 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is a black crow, false otherwise
      */
     private boolean isBlackCrow(int index) {
-	Bar prevBar = getTimeSeries().getBar(index - 1);
-	Bar currBar = getTimeSeries().getBar(index);
-	if (currBar.isBearish()) {
-	    if (prevBar.isBullish()) {
-		// First crow case
-		return hasVeryShortLowerShadow(index) && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
-	    } else {
-		return hasVeryShortLowerShadow(index) && isDeclining(index);
-	    }
-	}
-	return false;
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
+        if (currBar.isBearish()) {
+            if (prevBar.isBullish()) {
+                // First crow case
+                return hasVeryShortLowerShadow(index) && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
+            } else {
+                return hasVeryShortLowerShadow(index) && isDeclining(index);
+            }
+        }
+        return false;
     }
 }

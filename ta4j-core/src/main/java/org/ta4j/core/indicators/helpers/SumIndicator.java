@@ -43,17 +43,17 @@ public class SumIndicator extends CachedIndicator<Num> {
      */
     @SafeVarargs
     public SumIndicator(Indicator<Num>... operands) {
-	// TODO: check if first series is equal to the other ones
-	super(operands[0]);
-	this.operands = operands;
+        // TODO: check if first series is equal to the other ones
+        super(operands[0]);
+        this.operands = operands;
     }
 
     @Override
     protected Num calculate(int index) {
-	Num sum = numOf(0);
-	for (Indicator<Num> operand : operands) {
-	    sum = sum.plus(operand.getValue(index));
-	}
-	return sum;
+        Num sum = numOf(0);
+        for (Indicator<Num> operand : operands) {
+            sum = sum.plus(operand.getValue(index));
+        }
+        return sum;
     }
 }

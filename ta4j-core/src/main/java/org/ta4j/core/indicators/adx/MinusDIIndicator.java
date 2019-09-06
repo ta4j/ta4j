@@ -46,19 +46,19 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
     private final int barCount;
 
     public MinusDIIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
-	this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
-	this.atrIndicator = new ATRIndicator(series, barCount);
+        super(series);
+        this.barCount = barCount;
+        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
+        this.atrIndicator = new ATRIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(numOf(100));
+        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(numOf(100));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

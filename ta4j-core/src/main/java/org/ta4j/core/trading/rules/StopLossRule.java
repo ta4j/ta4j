@@ -57,7 +57,7 @@ public class StopLossRule extends AbstractRule {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(ClosePriceIndicator closePrice, Number lossPercentage) {
-	this(closePrice, closePrice.numOf(lossPercentage));
+        this(closePrice, closePrice.numOf(lossPercentage));
     }
 
     /**
@@ -67,42 +67,42 @@ public class StopLossRule extends AbstractRule {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(ClosePriceIndicator closePrice, Num lossPercentage) {
-	this.closePrice = closePrice;
-	this.lossPercentage = lossPercentage;
-	this.HUNDRED = closePrice.numOf(100);
+        this.closePrice = closePrice;
+        this.lossPercentage = lossPercentage;
+        this.HUNDRED = closePrice.numOf(100);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	boolean satisfied = false;
-	// No trading history or no trade opened, no loss
-	if (tradingRecord != null) {
-	    Trade currentTrade = tradingRecord.getCurrentTrade();
-	    if (currentTrade.isOpened()) {
+        boolean satisfied = false;
+        // No trading history or no trade opened, no loss
+        if (tradingRecord != null) {
+            Trade currentTrade = tradingRecord.getCurrentTrade();
+            if (currentTrade.isOpened()) {
 
-		Num entryPrice = currentTrade.getEntry().getNetPrice();
-		Num currentPrice = closePrice.getValue(index);
+                Num entryPrice = currentTrade.getEntry().getNetPrice();
+                Num currentPrice = closePrice.getValue(index);
 
-		if (currentTrade.getEntry().isBuy()) {
-		    satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
-		} else {
-		    satisfied = isSellStopSatisfied(entryPrice, currentPrice);
-		}
-	    }
-	}
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+                if (currentTrade.getEntry().isBuy()) {
+                    satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
+                } else {
+                    satisfied = isSellStopSatisfied(entryPrice, currentPrice);
+                }
+            }
+        }
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 
     private boolean isSellStopSatisfied(Num entryPrice, Num currentPrice) {
-	Num lossRatioThreshold = HUNDRED.plus(lossPercentage).dividedBy(HUNDRED);
-	Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
-	return currentPrice.isGreaterThanOrEqual(threshold);
+        Num lossRatioThreshold = HUNDRED.plus(lossPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        return currentPrice.isGreaterThanOrEqual(threshold);
     }
 
     private boolean isBuyStopSatisfied(Num entryPrice, Num currentPrice) {
-	Num lossRatioThreshold = HUNDRED.minus(lossPercentage).dividedBy(HUNDRED);
-	Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
-	return currentPrice.isLessThanOrEqual(threshold);
+        Num lossRatioThreshold = HUNDRED.minus(lossPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        return currentPrice.isLessThanOrEqual(threshold);
     }
 }

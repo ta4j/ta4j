@@ -40,53 +40,53 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     private TimeSeries data;
 
     public VarianceIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9);
     }
 
     @Test
     public void varianceUsingBarCount4UsingClosePrice() {
-	VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
+        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
 
-	assertNumEquals(0, var.getValue(0));
-	assertNumEquals(0.25, var.getValue(1));
-	assertNumEquals(2.0 / 3, var.getValue(2));
-	assertNumEquals(1.25, var.getValue(3));
-	assertNumEquals(0.5, var.getValue(4));
-	assertNumEquals(0.25, var.getValue(5));
-	assertNumEquals(0.5, var.getValue(6));
-	assertNumEquals(0.5, var.getValue(7));
-	assertNumEquals(0.5, var.getValue(8));
-	assertNumEquals(3.5, var.getValue(9));
-	assertNumEquals(10.5, var.getValue(10));
+        assertNumEquals(0, var.getValue(0));
+        assertNumEquals(0.25, var.getValue(1));
+        assertNumEquals(2.0 / 3, var.getValue(2));
+        assertNumEquals(1.25, var.getValue(3));
+        assertNumEquals(0.5, var.getValue(4));
+        assertNumEquals(0.25, var.getValue(5));
+        assertNumEquals(0.5, var.getValue(6));
+        assertNumEquals(0.5, var.getValue(7));
+        assertNumEquals(0.5, var.getValue(8));
+        assertNumEquals(3.5, var.getValue(9));
+        assertNumEquals(10.5, var.getValue(10));
     }
 
     @Test
     public void firstValueShouldBeZero() {
-	VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
-	assertNumEquals(0, var.getValue(0));
+        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 4);
+        assertNumEquals(0, var.getValue(0));
     }
 
     @Test
     public void varianceShouldBeZeroWhenBarCountIs1() {
-	VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
-	assertNumEquals(0, var.getValue(3));
-	assertNumEquals(0, var.getValue(8));
+        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 1);
+        assertNumEquals(0, var.getValue(3));
+        assertNumEquals(0, var.getValue(8));
     }
 
     @Test
     public void varianceUsingBarCount2UsingClosePrice() {
-	VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
+        VarianceIndicator var = new VarianceIndicator(new ClosePriceIndicator(data), 2);
 
-	assertNumEquals(0, var.getValue(0));
-	assertNumEquals(0.25, var.getValue(1));
-	assertNumEquals(0.25, var.getValue(2));
-	assertNumEquals(0.25, var.getValue(3));
-	assertNumEquals(2.25, var.getValue(9));
-	assertNumEquals(20.25, var.getValue(10));
+        assertNumEquals(0, var.getValue(0));
+        assertNumEquals(0.25, var.getValue(1));
+        assertNumEquals(0.25, var.getValue(2));
+        assertNumEquals(0.25, var.getValue(3));
+        assertNumEquals(2.25, var.getValue(9));
+        assertNumEquals(20.25, var.getValue(10));
     }
 }

@@ -52,12 +52,12 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
      * @param barCount          the time frame
      */
     public AroonUpIndicator(Indicator<Num> maxValueIndicator, int barCount) {
-	super(maxValueIndicator);
-	this.barCount = barCount;
-	this.maxValueIndicator = maxValueIndicator;
-	this.hundred = numOf(100);
-	// + 1 needed for last possible iteration in loop
-	highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, barCount + 1);
+        super(maxValueIndicator);
+        this.barCount = barCount;
+        this.maxValueIndicator = maxValueIndicator;
+        this.hundred = numOf(100);
+        // + 1 needed for last possible iteration in loop
+        highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, barCount + 1);
     }
 
     /**
@@ -67,29 +67,29 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public AroonUpIndicator(TimeSeries series, int barCount) {
-	this(new HighPriceIndicator(series), barCount);
+        this(new HighPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (getTimeSeries().getBar(index).getHighPrice().isNaN())
-	    return NaN;
+        if (getTimeSeries().getBar(index).getHighPrice().isNaN())
+            return NaN;
 
-	// Getting the number of bars since the highest close price
-	int endIndex = Math.max(0, index - barCount);
-	int nbBars = 0;
-	for (int i = index; i > endIndex; i--) {
-	    if (maxValueIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
-		break;
-	    }
-	    nbBars++;
-	}
+        // Getting the number of bars since the highest close price
+        int endIndex = Math.max(0, index - barCount);
+        int nbBars = 0;
+        for (int i = index; i > endIndex; i--) {
+            if (maxValueIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
+                break;
+            }
+            nbBars++;
+        }
 
-	return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
+        return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

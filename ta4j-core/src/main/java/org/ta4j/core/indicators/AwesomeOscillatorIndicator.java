@@ -47,9 +47,9 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * @param barCountSma2 (normally 34)
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator, int barCountSma1, int barCountSma2) {
-	super(indicator);
-	this.sma5 = new SMAIndicator(indicator, barCountSma1);
-	this.sma34 = new SMAIndicator(indicator, barCountSma2);
+        super(indicator);
+        this.sma5 = new SMAIndicator(indicator, barCountSma1);
+        this.sma34 = new SMAIndicator(indicator, barCountSma2);
     }
 
     /**
@@ -58,7 +58,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * @param indicator (normally {@link MedianPriceIndicator})
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator) {
-	this(indicator, 5, 34);
+        this(indicator, 5, 34);
     }
 
     /**
@@ -67,11 +67,11 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * @param series the timeSeries
      */
     public AwesomeOscillatorIndicator(TimeSeries series) {
-	this(new MedianPriceIndicator(series), 5, 34);
+        this(new MedianPriceIndicator(series), 5, 34);
     }
 
     @Override
     protected Num calculate(int index) {
-	return sma5.getValue(index).minus(sma34.getValue(index));
+        return sma5.getValue(index).minus(sma34.getValue(index));
     }
 }

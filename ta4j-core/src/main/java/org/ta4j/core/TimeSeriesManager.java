@@ -52,7 +52,7 @@ public class TimeSeriesManager {
      * Constructor.
      */
     public TimeSeriesManager() {
-	this(null, new ZeroCostModel(), new ZeroCostModel());
+        this(null, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
@@ -61,7 +61,7 @@ public class TimeSeriesManager {
      * @param timeSeries the time series to be managed
      */
     public TimeSeriesManager(TimeSeries timeSeries) {
-	this(timeSeries, new ZeroCostModel(), new ZeroCostModel());
+        this(timeSeries, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
@@ -72,23 +72,23 @@ public class TimeSeriesManager {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public TimeSeriesManager(TimeSeries timeSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
-	this.timeSeries = timeSeries;
-	this.transactionCostModel = transactionCostModel;
-	this.holdingCostModel = holdingCostModel;
+        this.timeSeries = timeSeries;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
     }
 
     /**
      * @param timeSeries the time series to be managed
      */
     public void setTimeSeries(TimeSeries timeSeries) {
-	this.timeSeries = timeSeries;
+        this.timeSeries = timeSeries;
     }
 
     /**
      * @return the managed time series
      */
     public TimeSeries getTimeSeries() {
-	return timeSeries;
+        return timeSeries;
     }
 
     /**
@@ -99,7 +99,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
-	return run(strategy, OrderType.BUY);
+        return run(strategy, OrderType.BUY);
     }
 
     /**
@@ -114,7 +114,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-	return run(strategy, OrderType.BUY, timeSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, OrderType.BUY, timeSeries.numOf(1), startIndex, finishIndex);
     }
 
     /**
@@ -127,7 +127,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType) {
-	return run(strategy, orderType, timeSeries.numOf(1));
+        return run(strategy, orderType, timeSeries.numOf(1));
     }
 
     /**
@@ -143,7 +143,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, int startIndex, int finishIndex) {
-	return run(strategy, orderType, timeSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, orderType, timeSeries.numOf(1), startIndex, finishIndex);
     }
 
     /**
@@ -155,7 +155,7 @@ public class TimeSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, Num amount) {
-	return run(strategy, orderType, amount, timeSeries.getBeginIndex(), timeSeries.getEndIndex());
+        return run(strategy, orderType, amount, timeSeries.getBeginIndex(), timeSeries.getEndIndex());
     }
 
     /**
@@ -171,34 +171,34 @@ public class TimeSeriesManager {
      */
     public TradingRecord run(Strategy strategy, OrderType orderType, Num amount, int startIndex, int finishIndex) {
 
-	int runBeginIndex = Math.max(startIndex, timeSeries.getBeginIndex());
-	int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());
+        int runBeginIndex = Math.max(startIndex, timeSeries.getBeginIndex());
+        int runEndIndex = Math.min(finishIndex, timeSeries.getEndIndex());
 
-	log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy,
-		orderType);
-	TradingRecord tradingRecord = new BaseTradingRecord(orderType, transactionCostModel, holdingCostModel);
-	for (int i = runBeginIndex; i <= runEndIndex; i++) {
-	    // For each bar between both indexes...
-	    if (strategy.shouldOperate(i, tradingRecord)) {
-		tradingRecord.operate(i, timeSeries.getBar(i).getClosePrice(), amount);
-	    }
-	}
+        log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy,
+                orderType);
+        TradingRecord tradingRecord = new BaseTradingRecord(orderType, transactionCostModel, holdingCostModel);
+        for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            // For each bar between both indexes...
+            if (strategy.shouldOperate(i, tradingRecord)) {
+                tradingRecord.operate(i, timeSeries.getBar(i).getClosePrice(), amount);
+            }
+        }
 
-	if (!tradingRecord.isClosed()) {
-	    // If the last trade is still opened, we search out of the run end index.
-	    // May works if the end index for this run was inferior to the actual number of
-	    // bars
-	    int seriesMaxSize = Math.max(timeSeries.getEndIndex() + 1, timeSeries.getBarData().size());
-	    for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-		// For each bar after the end index of this run...
-		// --> Trying to close the last trade
-		if (strategy.shouldOperate(i, tradingRecord)) {
-		    tradingRecord.operate(i, timeSeries.getBar(i).getClosePrice(), amount);
-		    break;
-		}
-	    }
-	}
-	return tradingRecord;
+        if (!tradingRecord.isClosed()) {
+            // If the last trade is still opened, we search out of the run end index.
+            // May works if the end index for this run was inferior to the actual number of
+            // bars
+            int seriesMaxSize = Math.max(timeSeries.getEndIndex() + 1, timeSeries.getBarData().size());
+            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                // For each bar after the end index of this run...
+                // --> Trying to close the last trade
+                if (strategy.shouldOperate(i, tradingRecord)) {
+                    tradingRecord.operate(i, timeSeries.getBar(i).getClosePrice(), amount);
+                    break;
+                }
+            }
+        }
+        return tradingRecord;
     }
 
 }

@@ -50,7 +50,7 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
      *                  Typically a StandardDeviationIndicator is used.
      */
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> deviation) {
-	this(bbm, deviation, bbm.getTimeSeries().numOf(2));
+        this(bbm, deviation, bbm.getTimeSeries().numOf(2));
     }
 
     /**
@@ -64,26 +64,26 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
      *                  2.
      */
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> deviation, Num k) {
-	super(deviation);
-	this.bbm = bbm;
-	this.deviation = deviation;
-	this.k = k;
+        super(deviation);
+        this.bbm = bbm;
+        this.deviation = deviation;
+        this.k = k;
     }
 
     @Override
     protected Num calculate(int index) {
-	return bbm.getValue(index).plus(deviation.getValue(index).multipliedBy(k));
+        return bbm.getValue(index).plus(deviation.getValue(index).multipliedBy(k));
     }
 
     /**
      * @return the K multiplier
      */
     public Num getK() {
-	return k;
+        return k;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + "k: " + k + "deviation: " + deviation + "series" + bbm;
+        return getClass().getSimpleName() + "k: " + k + "deviation: " + deviation + "series" + bbm;
     }
 }

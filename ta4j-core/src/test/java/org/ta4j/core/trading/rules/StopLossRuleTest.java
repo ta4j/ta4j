@@ -44,64 +44,64 @@ public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
     private ClosePriceIndicator closePrice;
 
     public StopLossRuleTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
     }
 
     @Test
     public void isSatisfiedWorksForBuy() {
-	final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
-	final Num tradedAmount = numOf(1);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
+        final Num tradedAmount = numOf(1);
 
-	// 5% stop-loss
-	StopLossRule rule = new StopLossRule(closePrice, numOf(5));
+        // 5% stop-loss
+        StopLossRule rule = new StopLossRule(closePrice, numOf(5));
 
-	assertFalse(rule.isSatisfied(0, null));
-	assertFalse(rule.isSatisfied(1, tradingRecord));
+        assertFalse(rule.isSatisfied(0, null));
+        assertFalse(rule.isSatisfied(1, tradingRecord));
 
-	// Enter at 114
-	tradingRecord.enter(2, numOf(114), tradedAmount);
-	assertFalse(rule.isSatisfied(2, tradingRecord));
-	assertFalse(rule.isSatisfied(3, tradingRecord));
-	assertTrue(rule.isSatisfied(4, tradingRecord));
-	// Exit
-	tradingRecord.exit(5);
+        // Enter at 114
+        tradingRecord.enter(2, numOf(114), tradedAmount);
+        assertFalse(rule.isSatisfied(2, tradingRecord));
+        assertFalse(rule.isSatisfied(3, tradingRecord));
+        assertTrue(rule.isSatisfied(4, tradingRecord));
+        // Exit
+        tradingRecord.exit(5);
 
-	// Enter at 128
-	tradingRecord.enter(5, numOf(128), tradedAmount);
-	assertFalse(rule.isSatisfied(5, tradingRecord));
-	assertTrue(rule.isSatisfied(6, tradingRecord));
-	assertTrue(rule.isSatisfied(7, tradingRecord));
+        // Enter at 128
+        tradingRecord.enter(5, numOf(128), tradedAmount);
+        assertFalse(rule.isSatisfied(5, tradingRecord));
+        assertTrue(rule.isSatisfied(6, tradingRecord));
+        assertTrue(rule.isSatisfied(7, tradingRecord));
     }
 
     @Test
     public void isSatisfiedWorksForSell() {
-	final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.SELL);
-	final Num tradedAmount = numOf(1);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.SELL);
+        final Num tradedAmount = numOf(1);
 
-	// 5% stop-loss
-	StopLossRule rule = new StopLossRule(closePrice, numOf(5));
+        // 5% stop-loss
+        StopLossRule rule = new StopLossRule(closePrice, numOf(5));
 
-	assertFalse(rule.isSatisfied(0, null));
-	assertFalse(rule.isSatisfied(1, tradingRecord));
+        assertFalse(rule.isSatisfied(0, null));
+        assertFalse(rule.isSatisfied(1, tradingRecord));
 
-	// Enter at 108
-	tradingRecord.enter(1, numOf(108), tradedAmount);
-	assertFalse(rule.isSatisfied(1, tradingRecord));
-	assertFalse(rule.isSatisfied(2, tradingRecord));
-	assertTrue(rule.isSatisfied(3, tradingRecord));
-	// Exit
-	tradingRecord.exit(4);
+        // Enter at 108
+        tradingRecord.enter(1, numOf(108), tradedAmount);
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+        assertFalse(rule.isSatisfied(2, tradingRecord));
+        assertTrue(rule.isSatisfied(3, tradingRecord));
+        // Exit
+        tradingRecord.exit(4);
 
-	// Enter at 114
-	tradingRecord.enter(2, numOf(114), tradedAmount);
-	assertFalse(rule.isSatisfied(2, tradingRecord));
-	assertTrue(rule.isSatisfied(3, tradingRecord));
-	assertFalse(rule.isSatisfied(4, tradingRecord));
-	assertTrue(rule.isSatisfied(5, tradingRecord));
+        // Enter at 114
+        tradingRecord.enter(2, numOf(114), tradedAmount);
+        assertFalse(rule.isSatisfied(2, tradingRecord));
+        assertTrue(rule.isSatisfied(3, tradingRecord));
+        assertFalse(rule.isSatisfied(4, tradingRecord));
+        assertTrue(rule.isSatisfied(5, tradingRecord));
     }
 }

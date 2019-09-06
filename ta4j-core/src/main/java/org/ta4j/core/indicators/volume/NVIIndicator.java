@@ -43,26 +43,26 @@ import org.ta4j.core.num.Num;
 public class NVIIndicator extends RecursiveCachedIndicator<Num> {
 
     public NVIIndicator(TimeSeries series) {
-	super(series);
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index == 0) {
-	    return numOf(1000);
-	}
+        if (index == 0) {
+            return numOf(1000);
+        }
 
-	Bar currentBar = getTimeSeries().getBar(index);
-	Bar previousBar = getTimeSeries().getBar(index - 1);
-	Num previousValue = getValue(index - 1);
+        Bar currentBar = getTimeSeries().getBar(index);
+        Bar previousBar = getTimeSeries().getBar(index - 1);
+        Num previousValue = getValue(index - 1);
 
-	if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
-	    Num currentPrice = currentBar.getClosePrice();
-	    Num previousPrice = previousBar.getClosePrice();
-	    Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
-	    return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
-	}
-	return previousValue;
+        if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
+            Num currentPrice = currentBar.getClosePrice();
+            Num previousPrice = previousBar.getClosePrice();
+            Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
+            return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
+        }
+        return previousValue;
     }
 
 }

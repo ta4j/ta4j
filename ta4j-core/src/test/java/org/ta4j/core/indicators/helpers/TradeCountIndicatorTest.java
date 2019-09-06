@@ -41,19 +41,19 @@ public class TradeCountIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     TimeSeries timeSeries;
 
     public TradeCountIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	timeSeries = new MockTimeSeries(numFunction);
-	tradeIndicator = new TradeCountIndicator(timeSeries);
+        timeSeries = new MockTimeSeries(numFunction);
+        tradeIndicator = new TradeCountIndicator(timeSeries);
     }
 
     @Test
     public void indicatorShouldRetrieveBarTrade() {
-	for (int i = 0; i < 10; i++) {
-	    assertEquals((int) tradeIndicator.getValue(i), timeSeries.getBar(i).getTrades());
-	}
+        for (int i = 0; i < 10; i++) {
+            assertEquals((int) tradeIndicator.getValue(i), timeSeries.getBar(i).getTrades());
+        }
     }
 }

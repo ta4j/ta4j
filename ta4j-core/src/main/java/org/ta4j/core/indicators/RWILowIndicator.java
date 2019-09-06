@@ -45,36 +45,36 @@ public class RWILowIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public RWILowIndicator(TimeSeries series, int barCount) {
-	super(series);
-	this.barCount = barCount;
+        super(series);
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
-	    return NaN.NaN;
-	}
+        if (index - barCount + 1 < getTimeSeries().getBeginIndex()) {
+            return NaN.NaN;
+        }
 
-	Num minRWIL = numOf(0);
-	for (int n = 2; n <= barCount; n++) {
-	    minRWIL = minRWIL.max(calcRWIHFor(index, n));
-	}
+        Num minRWIL = numOf(0);
+        for (int n = 2; n <= barCount; n++) {
+            minRWIL = minRWIL.max(calcRWIHFor(index, n));
+        }
 
-	return minRWIL;
+        return minRWIL;
     }
 
     private Num calcRWIHFor(final int index, final int n) {
-	TimeSeries series = getTimeSeries();
-	Num low = series.getBar(index).getLowPrice();
-	Num highN = series.getBar(index + 1 - n).getHighPrice();
-	Num atrN = new ATRIndicator(series, n).getValue(index);
-	Num sqrtN = numOf(n).sqrt();
+        TimeSeries series = getTimeSeries();
+        Num low = series.getBar(index).getLowPrice();
+        Num highN = series.getBar(index + 1 - n).getHighPrice();
+        Num atrN = new ATRIndicator(series, n).getValue(index);
+        Num sqrtN = numOf(n).sqrt();
 
-	return highN.minus(low).dividedBy(atrN.multipliedBy(sqrtN));
+        return highN.minus(low).dividedBy(atrN.multipliedBy(sqrtN));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

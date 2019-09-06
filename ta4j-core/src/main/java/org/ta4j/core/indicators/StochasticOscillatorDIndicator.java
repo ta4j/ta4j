@@ -37,21 +37,21 @@ public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
     private Indicator<Num> indicator;
 
     public StochasticOscillatorDIndicator(StochasticOscillatorKIndicator k) {
-	this(new SMAIndicator(k, 3));
+        this(new SMAIndicator(k, 3));
     }
 
     public StochasticOscillatorDIndicator(Indicator<Num> indicator) {
-	super(indicator);
-	this.indicator = indicator;
+        super(indicator);
+        this.indicator = indicator;
     }
 
     @Override
     protected Num calculate(int index) {
-	return indicator.getValue(index);
+        return indicator.getValue(index);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " " + indicator;
+        return getClass().getSimpleName() + " " + indicator;
     }
 }

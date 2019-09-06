@@ -42,23 +42,23 @@ public class ADXIndicator extends CachedIndicator<Num> {
     private final int adxBarCount;
 
     public ADXIndicator(TimeSeries series, int diBarCount, int adxBarCount) {
-	super(series);
-	this.diBarCount = diBarCount;
-	this.adxBarCount = adxBarCount;
-	this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
+        super(series);
+        this.diBarCount = diBarCount;
+        this.adxBarCount = adxBarCount;
+        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
     }
 
     public ADXIndicator(TimeSeries series, int barCount) {
-	this(series, barCount, barCount);
+        this(series, barCount, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return averageDXIndicator.getValue(index);
+        return averageDXIndicator.getValue(index);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
+        return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
     }
 }

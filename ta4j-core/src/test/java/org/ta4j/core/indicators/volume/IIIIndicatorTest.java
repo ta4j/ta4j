@@ -41,25 +41,25 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class IIIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     public IIIIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Test
     public void intradayIntensityIndex() {
-	ZonedDateTime now = ZonedDateTime.now();
-	List<Bar> bars = new ArrayList<>();
-	bars.add(new MockBar(now, 0d, 10d, 12d, 8d, 0d, 200d, 0, numFunction));// 2-2 * 200 / 4
-	bars.add(new MockBar(now, 0d, 8d, 10d, 7d, 0d, 100d, 0, numFunction));// 1-2 *100 / 3
-	bars.add(new MockBar(now, 0d, 9d, 15d, 6d, 0d, 300d, 0, numFunction));// 3-6 *300 /9
-	bars.add(new MockBar(now, 0d, 20d, 40d, 5d, 0d, 50d, 0, numFunction));// 15-20 *50 / 35
-	bars.add(new MockBar(now, 0d, 30d, 30d, 3d, 0d, 600d, 0, numFunction));// 27-0 *600 /27
+        ZonedDateTime now = ZonedDateTime.now();
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(now, 0d, 10d, 12d, 8d, 0d, 200d, 0, numFunction));// 2-2 * 200 / 4
+        bars.add(new MockBar(now, 0d, 8d, 10d, 7d, 0d, 100d, 0, numFunction));// 1-2 *100 / 3
+        bars.add(new MockBar(now, 0d, 9d, 15d, 6d, 0d, 300d, 0, numFunction));// 3-6 *300 /9
+        bars.add(new MockBar(now, 0d, 20d, 40d, 5d, 0d, 50d, 0, numFunction));// 15-20 *50 / 35
+        bars.add(new MockBar(now, 0d, 30d, 30d, 3d, 0d, 600d, 0, numFunction));// 27-0 *600 /27
 
-	TimeSeries series = new MockTimeSeries(bars);
-	IIIIndicator iiiIndicator = new IIIIndicator(series);
-	assertNumEquals(0, iiiIndicator.getValue(0));
-	assertNumEquals((2 * 8d - 10d - 7d) / ((10d - 7d) * 100d), iiiIndicator.getValue(1));
-	assertNumEquals((2 * 9d - 15d - 6d) / ((15d - 6d) * 300d), iiiIndicator.getValue(2));
-	assertNumEquals((2 * 20d - 40d - 5d) / ((40d - 5d) * 50d), iiiIndicator.getValue(3));
-	assertNumEquals((2 * 30d - 30d - 3d) / ((30d - 3d) * 600d), iiiIndicator.getValue(4));
+        TimeSeries series = new MockTimeSeries(bars);
+        IIIIndicator iiiIndicator = new IIIIndicator(series);
+        assertNumEquals(0, iiiIndicator.getValue(0));
+        assertNumEquals((2 * 8d - 10d - 7d) / ((10d - 7d) * 100d), iiiIndicator.getValue(1));
+        assertNumEquals((2 * 9d - 15d - 6d) / ((15d - 6d) * 300d), iiiIndicator.getValue(2));
+        assertNumEquals((2 * 20d - 40d - 5d) / ((40d - 5d) * 50d), iiiIndicator.getValue(3));
+        assertNumEquals((2 * 30d - 30d - 3d) / ((30d - 3d) * 600d), iiiIndicator.getValue(4));
     }
 }

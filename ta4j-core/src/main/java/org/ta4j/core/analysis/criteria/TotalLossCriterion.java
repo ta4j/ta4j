@@ -32,8 +32,8 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-	return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-		.reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     /**
@@ -45,20 +45,20 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(TimeSeries series, Trade trade) {
-	if (trade.isClosed()) {
-	    Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-	    Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+        if (trade.isClosed()) {
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
-	    Num loss = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-	    return loss.isNegative() ? loss : series.numOf(0);
+            Num loss = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            return loss.isNegative() ? loss : series.numOf(0);
 
-	}
-	return series.numOf(0);
+        }
+        return series.numOf(0);
 
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-	return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

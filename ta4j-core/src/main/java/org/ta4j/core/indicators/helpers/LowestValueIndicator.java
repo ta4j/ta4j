@@ -37,28 +37,28 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
     private final int barCount;
 
     public LowestValueIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.indicator = indicator;
-	this.barCount = barCount;
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	if (indicator.getValue(index).isNaN() && barCount != 1) {
-	    return new LowestValueIndicator(indicator, barCount - 1).getValue(index - 1);
-	}
-	int end = Math.max(0, index - barCount + 1);
-	Num lowest = indicator.getValue(index);
-	for (int i = index - 1; i >= end; i--) {
-	    if (lowest.isGreaterThan(indicator.getValue(i))) {
-		lowest = indicator.getValue(i);
-	    }
-	}
-	return lowest;
+        if (indicator.getValue(index).isNaN() && barCount != 1) {
+            return new LowestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+        }
+        int end = Math.max(0, index - barCount + 1);
+        Num lowest = indicator.getValue(index);
+        for (int i = index - 1; i >= end; i--) {
+            if (lowest.isGreaterThan(indicator.getValue(i))) {
+                lowest = indicator.getValue(i);
+            }
+        }
+        return lowest;
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

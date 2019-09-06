@@ -48,7 +48,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param series the series
      */
     public IchimokuSenkouSpanAIndicator(TimeSeries series) {
-	this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
+        this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
     }
 
     /**
@@ -60,8 +60,8 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param barCountBaseLine       the time frame for the base line (usually 26)
      */
     public IchimokuSenkouSpanAIndicator(TimeSeries series, int barCountConversionLine, int barCountBaseLine) {
-	this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
-		new IchimokuKijunSenIndicator(series, barCountBaseLine));
+        this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
+                new IchimokuKijunSenIndicator(series, barCountBaseLine));
     }
 
     /**
@@ -72,14 +72,14 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param baseLine       the base line
      */
     public IchimokuSenkouSpanAIndicator(TimeSeries series, IchimokuTenkanSenIndicator conversionLine,
-	    IchimokuKijunSenIndicator baseLine) {
-	super(series);
-	this.conversionLine = conversionLine;
-	this.baseLine = baseLine;
+            IchimokuKijunSenIndicator baseLine) {
+        super(series);
+        this.conversionLine = conversionLine;
+        this.baseLine = baseLine;
     }
 
     @Override
     protected Num calculate(int index) {
-	return conversionLine.getValue(index).plus(baseLine.getValue(index)).dividedBy(numOf(2));
+        return conversionLine.getValue(index).plus(baseLine.getValue(index)).dividedBy(numOf(2));
     }
 }

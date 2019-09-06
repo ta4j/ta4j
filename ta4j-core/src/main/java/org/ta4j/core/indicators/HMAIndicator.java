@@ -41,24 +41,24 @@ public class HMAIndicator extends CachedIndicator<Num> {
     private final WMAIndicator sqrtWma;
 
     public HMAIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.barCount = barCount;
+        super(indicator);
+        this.barCount = barCount;
 
-	WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
-	WMAIndicator origWma = new WMAIndicator(indicator, barCount);
+        WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
+        WMAIndicator origWma = new WMAIndicator(indicator, barCount);
 
-	Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(new MultiplierIndicator(halfWma, 2), origWma);
-	sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
+        Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(new MultiplierIndicator(halfWma, 2), origWma);
+        sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
     }
 
     @Override
     protected Num calculate(int index) {
-	return sqrtWma.getValue(index);
+        return sqrtWma.getValue(index);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
 }

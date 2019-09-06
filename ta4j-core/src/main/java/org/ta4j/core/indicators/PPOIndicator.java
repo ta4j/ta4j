@@ -46,7 +46,7 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      */
     public PPOIndicator(Indicator<Num> indicator) {
-	this(indicator, 12, 26);
+        this(indicator, 12, 26);
     }
 
     /**
@@ -57,18 +57,18 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the long time frame
      */
     public PPOIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
-	super(indicator);
-	if (shortBarCount > longBarCount) {
-	    throw new IllegalArgumentException("Long term period count must be greater than short term period count");
-	}
-	this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
-	this.longTermEma = new EMAIndicator(indicator, longBarCount);
+        super(indicator);
+        if (shortBarCount > longBarCount) {
+            throw new IllegalArgumentException("Long term period count must be greater than short term period count");
+        }
+        this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
+        this.longTermEma = new EMAIndicator(indicator, longBarCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num shortEmaValue = shortTermEma.getValue(index);
-	Num longEmaValue = longTermEma.getValue(index);
-	return shortEmaValue.minus(longEmaValue).dividedBy(longEmaValue).multipliedBy(numOf(100));
+        Num shortEmaValue = shortTermEma.getValue(index);
+        Num longEmaValue = longTermEma.getValue(index);
+        return shortEmaValue.minus(longEmaValue).dividedBy(longEmaValue).multipliedBy(numOf(100));
     }
 }

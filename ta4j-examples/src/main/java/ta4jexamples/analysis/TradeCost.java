@@ -43,43 +43,43 @@ public class TradeCost {
 
     public static void main(String[] args) {
 
-	// Getting the time series
-	TimeSeries series = CsvTradesLoader.loadBitstampSeries();
-	// Building the short selling trading strategy
-	Strategy strategy = buildShortSellingMomentumStrategy(series);
+        // Getting the time series
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Building the short selling trading strategy
+        Strategy strategy = buildShortSellingMomentumStrategy(series);
 
-	// Setting the trading cost models
-	double feePerTrade = 0.0005;
-	double borrowingFee = 0.00001;
-	CostModel transactionCostModel = new LinearTransactionCostModel(feePerTrade);
-	CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
+        // Setting the trading cost models
+        double feePerTrade = 0.0005;
+        double borrowingFee = 0.00001;
+        CostModel transactionCostModel = new LinearTransactionCostModel(feePerTrade);
+        CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
 
-	// Running the strategy
-	TimeSeriesManager seriesManager = new TimeSeriesManager(series, transactionCostModel, borrowingCostModel);
-	Order.OrderType entryOrder = Order.OrderType.SELL;
-	TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
+        // Running the strategy
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series, transactionCostModel, borrowingCostModel);
+        Order.OrderType entryOrder = Order.OrderType.SELL;
+        TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
 
-	DecimalFormat df = new DecimalFormat("##.##");
-	System.out.println("------------ Borrowing Costs ------------");
-	tradingRecord.getTrades()
-		.forEach(trade -> System.out.println(
-			"Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
-				+ " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
-	System.out.println("------------ Transaction Costs ------------");
-	tradingRecord.getTrades()
-		.forEach(trade -> System.out.println("Transaction cost for selling: "
-			+ df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
-			+ df.format(trade.getExit().getCost().doubleValue())));
+        DecimalFormat df = new DecimalFormat("##.##");
+        System.out.println("------------ Borrowing Costs ------------");
+        tradingRecord.getTrades()
+                .forEach(trade -> System.out.println(
+                        "Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
+                                + " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
+        System.out.println("------------ Transaction Costs ------------");
+        tradingRecord.getTrades()
+                .forEach(trade -> System.out.println("Transaction cost for selling: "
+                        + df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
+                        + df.format(trade.getExit().getCost().doubleValue())));
     }
 
     private static Strategy buildShortSellingMomentumStrategy(TimeSeries series) {
-	Indicator<Num> closingPrices = new ClosePriceIndicator(series);
-	SMAIndicator shortEma = new SMAIndicator(closingPrices, 10);
-	SMAIndicator longEma = new SMAIndicator(closingPrices, 50);
-	Rule shortOverLongRule = new OverIndicatorRule(shortEma, longEma);
-	Rule shortUnderLongRule = new UnderIndicatorRule(shortEma, longEma);
+        Indicator<Num> closingPrices = new ClosePriceIndicator(series);
+        SMAIndicator shortEma = new SMAIndicator(closingPrices, 10);
+        SMAIndicator longEma = new SMAIndicator(closingPrices, 50);
+        Rule shortOverLongRule = new OverIndicatorRule(shortEma, longEma);
+        Rule shortUnderLongRule = new UnderIndicatorRule(shortEma, longEma);
 
-	String strategyName = "Momentum short-selling strategy";
-	return new BaseStrategy(strategyName, shortOverLongRule, shortUnderLongRule);
+        String strategyName = "Momentum short-selling strategy";
+        return new BaseStrategy(strategyName, shortOverLongRule, shortUnderLongRule);
     }
 }

@@ -46,39 +46,39 @@ public class DifferencePercentage extends CachedIndicator<Num> {
     private Num lastNotification;
 
     public DifferencePercentage(Indicator<Num> indicator) {
-	this(indicator, indicator.numOf(0));
+        this(indicator, indicator.numOf(0));
     }
 
     public DifferencePercentage(Indicator<Num> indicator, Number percentageThreshold) {
-	this(indicator, indicator.numOf(percentageThreshold));
+        this(indicator, indicator.numOf(percentageThreshold));
     }
 
     public DifferencePercentage(Indicator<Num> indicator, Num percentageThreshold) {
-	super(indicator);
-	this.indicator = indicator;
-	this.percentageThreshold = percentageThreshold;
-	hundred = numOf(100);
+        super(indicator);
+        this.indicator = indicator;
+        this.percentageThreshold = percentageThreshold;
+        hundred = numOf(100);
     }
 
     @Override
     protected Num calculate(int index) {
-	Num value = indicator.getValue((index));
-	if (lastNotification == null) {
-	    lastNotification = value;
-	    return NaN.NaN;
-	}
+        Num value = indicator.getValue((index));
+        if (lastNotification == null) {
+            lastNotification = value;
+            return NaN.NaN;
+        }
 
-	Num changeFraction = value.dividedBy(lastNotification);
-	Num changePercentage = fractionToPercentage(changeFraction);
+        Num changeFraction = value.dividedBy(lastNotification);
+        Num changePercentage = fractionToPercentage(changeFraction);
 
-	if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
-	    lastNotification = value;
-	}
+        if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
+            lastNotification = value;
+        }
 
-	return changePercentage;
+        return changePercentage;
     }
 
     private Num fractionToPercentage(Num changeFraction) {
-	return changeFraction.multipliedBy(hundred).minus(hundred);
+        return changeFraction.multipliedBy(hundred).minus(hundred);
     }
 }

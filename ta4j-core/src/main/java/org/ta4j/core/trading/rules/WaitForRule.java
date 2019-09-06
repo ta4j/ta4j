@@ -54,22 +54,22 @@ public class WaitForRule extends AbstractRule {
      * @param numberOfBars the number of bars to wait for
      */
     public WaitForRule(OrderType orderType, int numberOfBars) {
-	this.orderType = orderType;
-	this.numberOfBars = numberOfBars;
+        this.orderType = orderType;
+        this.numberOfBars = numberOfBars;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	boolean satisfied = false;
-	// No trading history, no need to wait
-	if (tradingRecord != null) {
-	    Order lastOrder = tradingRecord.getLastOrder(orderType);
-	    if (lastOrder != null) {
-		int currentNumberOfBars = index - lastOrder.getIndex();
-		satisfied = currentNumberOfBars >= numberOfBars;
-	    }
-	}
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        boolean satisfied = false;
+        // No trading history, no need to wait
+        if (tradingRecord != null) {
+            Order lastOrder = tradingRecord.getLastOrder(orderType);
+            if (lastOrder != null) {
+                int currentNumberOfBars = index - lastOrder.getIndex();
+                satisfied = currentNumberOfBars >= numberOfBars;
+            }
+        }
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

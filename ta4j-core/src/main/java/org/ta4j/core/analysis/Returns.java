@@ -42,25 +42,25 @@ import java.util.List;
 public class Returns implements Indicator<Num> {
 
     public enum ReturnType {
-	LOG {
-	    @Override
-	    public Num calculate(Num xNew, Num xOld) {
-		// r_i = ln(P_i/P_(i-1))
-		return (xNew.dividedBy(xOld)).log();
-	    }
-	},
-	ARITHMETIC {
-	    @Override
-	    public Num calculate(Num xNew, Num xOld) {
-		// r_i = P_i/P_(i-1) - 1
-		return xNew.dividedBy(xOld).minus(one);
-	    }
-	};
+        LOG {
+            @Override
+            public Num calculate(Num xNew, Num xOld) {
+                // r_i = ln(P_i/P_(i-1))
+                return (xNew.dividedBy(xOld)).log();
+            }
+        },
+        ARITHMETIC {
+            @Override
+            public Num calculate(Num xNew, Num xOld) {
+                // r_i = P_i/P_(i-1) - 1
+                return xNew.dividedBy(xOld).minus(one);
+            }
+        };
 
-	/**
-	 * @return calculate a single return rate
-	 */
-	public abstract Num calculate(Num xNew, Num xOld);
+        /**
+         * @return calculate a single return rate
+         */
+        public abstract Num calculate(Num xNew, Num xOld);
     }
 
     private final ReturnType type;
@@ -81,14 +81,14 @@ public class Returns implements Indicator<Num> {
      * @param trade      a single trade
      */
     public Returns(TimeSeries timeSeries, Trade trade, ReturnType type) {
-	one = timeSeries.numOf(1);
-	this.timeSeries = timeSeries;
-	this.type = type;
-	// at index 0, there is no return
-	values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-	calculate(trade);
+        one = timeSeries.numOf(1);
+        this.timeSeries = timeSeries;
+        this.type = type;
+        // at index 0, there is no return
+        values = new ArrayList<>(Collections.singletonList(NaN.NaN));
+        calculate(trade);
 
-	fillToTheEnd();
+        fillToTheEnd();
     }
 
     /**
@@ -98,18 +98,18 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
-	one = timeSeries.numOf(1);
-	this.timeSeries = timeSeries;
-	this.type = type;
-	// at index 0, there is no return
-	values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-	calculate(tradingRecord);
+        one = timeSeries.numOf(1);
+        this.timeSeries = timeSeries;
+        this.type = type;
+        // at index 0, there is no return
+        values = new ArrayList<>(Collections.singletonList(NaN.NaN));
+        calculate(tradingRecord);
 
-	fillToTheEnd();
+        fillToTheEnd();
     }
 
     public List<Num> getValues() {
-	return values;
+        return values;
     }
 
     /**
@@ -118,28 +118,28 @@ public class Returns implements Indicator<Num> {
      */
     @Override
     public Num getValue(int index) {
-	return values.get(index);
+        return values.get(index);
     }
 
     @Override
     public TimeSeries getTimeSeries() {
-	return timeSeries;
+        return timeSeries;
     }
 
     @Override
     public Num numOf(Number number) {
-	return timeSeries.numOf(number);
+        return timeSeries.numOf(number);
     }
 
     /**
      * @return the size of the return series.
      */
     public int getSize() {
-	return timeSeries.getBarCount() - 1;
+        return timeSeries.getBarCount() - 1;
     }
 
     public void calculate(Trade trade) {
-	calculate(trade, timeSeries.getEndIndex());
+        calculate(trade, timeSeries.getEndIndex());
     }
 
     /**
@@ -150,54 +150,54 @@ public class Returns implements Indicator<Num> {
      * @param finalIndex index up until cash flow of open trades is considered
      */
     public void calculate(Trade trade, int finalIndex) {
-	boolean isLongTrade = trade.getEntry().isBuy();
-	Num minusOne = timeSeries.numOf(-1);
-	int endIndex = CashFlow.determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
-	final int entryIndex = trade.getEntry().getIndex();
-	int begin = entryIndex + 1;
-	if (begin > values.size()) {
-	    values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
-	}
+        boolean isLongTrade = trade.getEntry().isBuy();
+        Num minusOne = timeSeries.numOf(-1);
+        int endIndex = CashFlow.determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
+        final int entryIndex = trade.getEntry().getIndex();
+        int begin = entryIndex + 1;
+        if (begin > values.size()) {
+            values.addAll(Collections.nCopies(begin - values.size(), timeSeries.numOf(0)));
+        }
 
-	int startingIndex = Math.max(begin, 1);
-	int nPeriods = endIndex - entryIndex;
-	Num holdingCost = trade.getHoldingCost(endIndex);
-	Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+        int startingIndex = Math.max(begin, 1);
+        int nPeriods = endIndex - entryIndex;
+        Num holdingCost = trade.getHoldingCost(endIndex);
+        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
 
-	// returns are per period (iterative). Base price needs to be updated
-	// accordingly
-	Num lastPrice = trade.getEntry().getNetPrice();
-	for (int i = startingIndex; i < endIndex; i++) {
-	    Num intermediateNetPrice = CashFlow.addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
-	    Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
+        // returns are per period (iterative). Base price needs to be updated
+        // accordingly
+        Num lastPrice = trade.getEntry().getNetPrice();
+        for (int i = startingIndex; i < endIndex; i++) {
+            Num intermediateNetPrice = CashFlow.addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+            Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
-	    Num strategyReturn;
-	    if (trade.getEntry().isBuy()) {
-		strategyReturn = assetReturn;
-	    } else {
-		strategyReturn = assetReturn.multipliedBy(minusOne);
-	    }
-	    values.add(strategyReturn);
-	    // update base price
-	    lastPrice = timeSeries.getBar(i).getClosePrice();
-	}
+            Num strategyReturn;
+            if (trade.getEntry().isBuy()) {
+                strategyReturn = assetReturn;
+            } else {
+                strategyReturn = assetReturn.multipliedBy(minusOne);
+            }
+            values.add(strategyReturn);
+            // update base price
+            lastPrice = timeSeries.getBar(i).getClosePrice();
+        }
 
-	// add net return at exit trade
-	Num exitPrice;
-	if (trade.getExit() != null) {
-	    exitPrice = trade.getExit().getNetPrice();
-	} else {
-	    exitPrice = timeSeries.getBar(endIndex).getClosePrice();
-	}
+        // add net return at exit trade
+        Num exitPrice;
+        if (trade.getExit() != null) {
+            exitPrice = trade.getExit().getNetPrice();
+        } else {
+            exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+        }
 
-	Num strategyReturn;
-	Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
-	if (trade.getEntry().isBuy()) {
-	    strategyReturn = assetReturn;
-	} else {
-	    strategyReturn = assetReturn.multipliedBy(minusOne);
-	}
-	values.add(strategyReturn);
+        Num strategyReturn;
+        Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+        if (trade.getEntry().isBuy()) {
+            strategyReturn = assetReturn;
+        } else {
+            strategyReturn = assetReturn.multipliedBy(minusOne);
+        }
+        values.add(strategyReturn);
     }
 
     /**
@@ -206,16 +206,16 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
-	// For each trade...
-	tradingRecord.getTrades().forEach(this::calculate);
+        // For each trade...
+        tradingRecord.getTrades().forEach(this::calculate);
     }
 
     /**
      * Fills with zeroes until the end of the series.
      */
     private void fillToTheEnd() {
-	if (timeSeries.getEndIndex() >= values.size()) {
-	    values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, timeSeries.numOf(0)));
-	}
+        if (timeSeries.getEndIndex() >= values.size()) {
+            values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, timeSeries.numOf(0)));
+        }
     }
 }

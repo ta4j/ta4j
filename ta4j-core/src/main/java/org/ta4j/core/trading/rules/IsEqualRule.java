@@ -52,7 +52,7 @@ public class IsEqualRule extends AbstractRule {
      * @param value     the value to check
      */
     public IsEqualRule(Indicator<Num> indicator, Number value) {
-	this(indicator, indicator.numOf(value));
+        this(indicator, indicator.numOf(value));
     }
 
     /**
@@ -62,7 +62,7 @@ public class IsEqualRule extends AbstractRule {
      * @param value     the value to check
      */
     public IsEqualRule(Indicator<Num> indicator, Num value) {
-	this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), value));
+        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), value));
     }
 
     /**
@@ -72,14 +72,14 @@ public class IsEqualRule extends AbstractRule {
      * @param second the second indicator
      */
     public IsEqualRule(Indicator<Num> first, Indicator<Num> second) {
-	this.first = first;
-	this.second = second;
+        this.first = first;
+        this.second = second;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	final boolean satisfied = first.getValue(index).isEqual(second.getValue(index));
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = first.getValue(index).isEqual(second.getValue(index));
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }

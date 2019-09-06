@@ -40,21 +40,21 @@ public class MultiplierIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     private MultiplierIndicator multiplierIndicator;
 
     public MultiplierIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
-	ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
-	multiplierIndicator = new MultiplierIndicator(constantIndicator, 0.75);
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
+        multiplierIndicator = new MultiplierIndicator(constantIndicator, 0.75);
     }
 
     @Test
     public void constantIndicator() {
-	assertNumEquals("4.5", multiplierIndicator.getValue(10));
-	assertNumEquals("4.5", multiplierIndicator.getValue(1));
-	assertNumEquals("4.5", multiplierIndicator.getValue(0));
-	assertNumEquals("4.5", multiplierIndicator.getValue(30));
+        assertNumEquals("4.5", multiplierIndicator.getValue(10));
+        assertNumEquals("4.5", multiplierIndicator.getValue(1));
+        assertNumEquals("4.5", multiplierIndicator.getValue(0));
+        assertNumEquals("4.5", multiplierIndicator.getValue(30));
     }
 }

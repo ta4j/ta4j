@@ -46,12 +46,12 @@ public class RealBodyIndicator extends CachedIndicator<Num> {
      * @param series a time series
      */
     public RealBodyIndicator(TimeSeries series) {
-	super(series);
+        super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-	Bar t = getTimeSeries().getBar(index);
-	return t.getClosePrice().minus(t.getOpenPrice());
+        Bar t = getTimeSeries().getBar(index);
+        return t.getClosePrice().minus(t.getOpenPrice());
     }
 }

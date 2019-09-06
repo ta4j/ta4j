@@ -29,6 +29,6 @@ public class GlobalExtremaStrategyTest {
 
     @Test
     public void test() {
-	GlobalExtremaStrategy.main(null);
+        GlobalExtremaStrategy.main(null);
     }
 }

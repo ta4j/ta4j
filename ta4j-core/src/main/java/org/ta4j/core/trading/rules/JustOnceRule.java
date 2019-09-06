@@ -44,7 +44,7 @@ public class JustOnceRule extends AbstractRule {
      * @param rule the rule that should be satisfied only the first time
      */
     public JustOnceRule(Rule rule) {
-	this.rule = rule;
+        this.rule = rule;
     }
 
     /**
@@ -53,19 +53,19 @@ public class JustOnceRule extends AbstractRule {
      * Satisfied the first time it's checked then never again.
      */
     public JustOnceRule() {
-	this.rule = null;
+        this.rule = null;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	if (satisfied) {
-	    return false;
-	} else if (rule == null) {
-	    satisfied = true;
-	    traceIsSatisfied(index, true);
-	    return true;
-	}
-	this.satisfied = this.rule.isSatisfied(index, tradingRecord);
-	return this.satisfied;
+        if (satisfied) {
+            return false;
+        } else if (rule == null) {
+            satisfied = true;
+            traceIsSatisfied(index, true);
+            return true;
+        }
+        this.satisfied = this.rule.isSatisfied(index, tradingRecord);
+        return this.satisfied;
     }
 }

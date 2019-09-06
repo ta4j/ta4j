@@ -58,7 +58,7 @@ public class DPOIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public DPOIndicator(TimeSeries series, int barCount) {
-	this(new ClosePriceIndicator(series), barCount);
+        this(new ClosePriceIndicator(series), barCount);
     }
 
     /**
@@ -68,20 +68,20 @@ public class DPOIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
-	super(price);
-	this.barCount = barCount;
-	timeShift = barCount / 2 + 1;
-	this.price = price;
-	sma = new SMAIndicator(price, this.barCount);
+        super(price);
+        this.barCount = barCount;
+        timeShift = barCount / 2 + 1;
+        this.price = price;
+        sma = new SMAIndicator(price, this.barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return price.getValue(index).minus(sma.getValue(index - timeShift));
+        return price.getValue(index).minus(sma.getValue(index - timeShift));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

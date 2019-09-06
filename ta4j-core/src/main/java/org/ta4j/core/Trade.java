@@ -62,7 +62,7 @@ public class Trade implements Serializable {
      * Constructor.
      */
     public Trade() {
-	this(OrderType.BUY);
+        this(OrderType.BUY);
     }
 
     /**
@@ -72,7 +72,7 @@ public class Trade implements Serializable {
      *                     (i.e. type of the entry order)
      */
     public Trade(OrderType startingType) {
-	this(startingType, new ZeroCostModel(), new ZeroCostModel());
+        this(startingType, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
@@ -84,12 +84,12 @@ public class Trade implements Serializable {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public Trade(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
-	if (startingType == null) {
-	    throw new IllegalArgumentException("Starting type must not be null");
-	}
-	this.startingType = startingType;
-	this.transactionCostModel = transactionCostModel;
-	this.holdingCostModel = holdingCostModel;
+        if (startingType == null) {
+            throw new IllegalArgumentException("Starting type must not be null");
+        }
+        this.startingType = startingType;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
     }
 
     /**
@@ -99,7 +99,7 @@ public class Trade implements Serializable {
      * @param exit  the exit {@link Order order}
      */
     public Trade(Order entry, Order exit) {
-	this(entry, exit, entry.getCostModel(), new ZeroCostModel());
+        this(entry, exit, entry.getCostModel(), new ZeroCostModel());
     }
 
     /**
@@ -112,49 +112,49 @@ public class Trade implements Serializable {
      */
     public Trade(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
 
-	if (entry.getType().equals(exit.getType())) {
-	    throw new IllegalArgumentException("Both orders must have different types");
-	}
+        if (entry.getType().equals(exit.getType())) {
+            throw new IllegalArgumentException("Both orders must have different types");
+        }
 
-	if (!(entry.getCostModel().equals(transactionCostModel))
-		|| !(exit.getCostModel().equals(transactionCostModel))) {
-	    throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
-	}
+        if (!(entry.getCostModel().equals(transactionCostModel))
+                || !(exit.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
+        }
 
-	this.startingType = entry.getType();
-	this.entry = entry;
-	this.exit = exit;
-	this.transactionCostModel = transactionCostModel;
-	this.holdingCostModel = holdingCostModel;
+        this.startingType = entry.getType();
+        this.entry = entry;
+        this.exit = exit;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
     }
 
     /**
      * @return the entry {@link Order order} of the trade
      */
     public Order getEntry() {
-	return entry;
+        return entry;
     }
 
     /**
      * @return the exit {@link Order order} of the trade
      */
     public Order getExit() {
-	return exit;
+        return exit;
     }
 
     @Override
     public boolean equals(Object obj) {
-	if (obj instanceof Trade) {
-	    Trade t = (Trade) obj;
-	    return (entry == null ? t.getEntry() == null : entry.equals(t.getEntry()))
-		    && (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
-	}
-	return false;
+        if (obj instanceof Trade) {
+            Trade t = (Trade) obj;
+            return (entry == null ? t.getEntry() == null : entry.equals(t.getEntry()))
+                    && (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
+        }
+        return false;
     }
 
     @Override
     public int hashCode() {
-	return Objects.hash(entry, exit);
+        return Objects.hash(entry, exit);
     }
 
     /**
@@ -164,7 +164,7 @@ public class Trade implements Serializable {
      * @return the order
      */
     public Order operate(int index) {
-	return operate(index, NaN, NaN);
+        return operate(index, NaN, NaN);
     }
 
     /**
@@ -176,44 +176,44 @@ public class Trade implements Serializable {
      * @return the order
      */
     public Order operate(int index, Num price, Num amount) {
-	Order order = null;
-	if (isNew()) {
-	    order = new Order(index, startingType, price, amount, transactionCostModel);
-	    entry = order;
-	} else if (isOpened()) {
-	    if (index < entry.getIndex()) {
-		throw new IllegalStateException("The index i is less than the entryOrder index");
-	    }
-	    order = new Order(index, startingType.complementType(), price, amount, transactionCostModel);
-	    exit = order;
-	}
-	return order;
+        Order order = null;
+        if (isNew()) {
+            order = new Order(index, startingType, price, amount, transactionCostModel);
+            entry = order;
+        } else if (isOpened()) {
+            if (index < entry.getIndex()) {
+                throw new IllegalStateException("The index i is less than the entryOrder index");
+            }
+            order = new Order(index, startingType.complementType(), price, amount, transactionCostModel);
+            exit = order;
+        }
+        return order;
     }
 
     /**
      * @return true if the trade is closed, false otherwise
      */
     public boolean isClosed() {
-	return (entry != null) && (exit != null);
+        return (entry != null) && (exit != null);
     }
 
     /**
      * @return true if the trade is opened, false otherwise
      */
     public boolean isOpened() {
-	return (entry != null) && (exit == null);
+        return (entry != null) && (exit == null);
     }
 
     /**
      * @return true if the trade is new, false otherwise
      */
     public boolean isNew() {
-	return (entry == null) && (exit == null);
+        return (entry == null) && (exit == null);
     }
 
     @Override
     public String toString() {
-	return "Entry: " + entry + " exit: " + exit;
+        return "Entry: " + entry + " exit: " + exit;
     }
 
     /**
@@ -222,13 +222,13 @@ public class Trade implements Serializable {
      * @return the profit or loss of the trade
      */
     public Num getProfit() {
-	Num profit;
-	if (isOpened()) {
-	    profit = entry.getNetPrice().numOf(0);
-	} else {
-	    profit = calculateGrossProfit(exit.getPricePerAsset()).minus(getTradeCost());
-	}
-	return profit;
+        Num profit;
+        if (isOpened()) {
+            profit = entry.getNetPrice().numOf(0);
+        } else {
+            profit = calculateGrossProfit(exit.getPricePerAsset()).minus(getTradeCost());
+        }
+        return profit;
     }
 
     /**
@@ -242,9 +242,9 @@ public class Trade implements Serializable {
      * @return the profit or loss of the trade
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
-	Num grossProfit = calculateGrossProfit(finalPrice);
-	// add trading costs
-	return grossProfit.minus(getTradeCost(finalIndex));
+        Num grossProfit = calculateGrossProfit(finalPrice);
+        // add trading costs
+        return grossProfit.minus(getTradeCost(finalIndex));
     }
 
     /**
@@ -255,18 +255,18 @@ public class Trade implements Serializable {
      * @return the profit or loss of the trade
      */
     private Num calculateGrossProfit(Num finalPrice) {
-	Num grossProfit;
-	if (isOpened()) {
-	    grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-	} else {
-	    grossProfit = exit.getValue().minus(entry.getValue());
-	}
+        Num grossProfit;
+        if (isOpened()) {
+            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+        } else {
+            grossProfit = exit.getValue().minus(entry.getValue());
+        }
 
-	// Profits of long position are losses of short
-	if (entry.getType().equals(OrderType.SELL)) {
-	    grossProfit = grossProfit.multipliedBy(entry.getNetPrice().numOf(-1));
-	}
-	return grossProfit;
+        // Profits of long position are losses of short
+        if (entry.getType().equals(OrderType.SELL)) {
+            grossProfit = grossProfit.multipliedBy(entry.getNetPrice().numOf(-1));
+        }
+        return grossProfit;
     }
 
     /**
@@ -277,9 +277,9 @@ public class Trade implements Serializable {
      * @return the cost of the trade
      */
     public Num getTradeCost(int finalIndex) {
-	Num transactionCost = transactionCostModel.calculate(this, finalIndex);
-	Num borrowingCost = getHoldingCost(finalIndex);
-	return transactionCost.plus(borrowingCost);
+        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
+        Num borrowingCost = getHoldingCost(finalIndex);
+        return transactionCost.plus(borrowingCost);
     }
 
     /**
@@ -288,9 +288,9 @@ public class Trade implements Serializable {
      * @return the cost of the trade
      */
     public Num getTradeCost() {
-	Num transactionCost = transactionCostModel.calculate(this);
-	Num borrowingCost = getHoldingCost();
-	return transactionCost.plus(borrowingCost);
+        Num transactionCost = transactionCostModel.calculate(this);
+        Num borrowingCost = getHoldingCost();
+        return transactionCost.plus(borrowingCost);
     }
 
     /**
@@ -299,7 +299,7 @@ public class Trade implements Serializable {
      * @return the cost of the trade
      */
     public Num getHoldingCost() {
-	return holdingCostModel.calculate(this);
+        return holdingCostModel.calculate(this);
     }
 
     /**
@@ -310,6 +310,6 @@ public class Trade implements Serializable {
      * @return the cost of the trade
      */
     public Num getHoldingCost(int finalIndex) {
-	return holdingCostModel.calculate(this, finalIndex);
+        return holdingCostModel.calculate(this, finalIndex);
     }
 }

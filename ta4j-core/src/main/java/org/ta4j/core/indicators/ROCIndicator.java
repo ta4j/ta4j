@@ -49,21 +49,21 @@ public class ROCIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public ROCIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.indicator = indicator;
-	this.barCount = barCount;
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	int nIndex = Math.max(index - barCount, 0);
-	Num nPeriodsAgoValue = indicator.getValue(nIndex);
-	Num currentValue = indicator.getValue(index);
-	return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(numOf(100));
+        int nIndex = Math.max(index - barCount, 0);
+        Num nPeriodsAgoValue = indicator.getValue(nIndex);
+        Num currentValue = indicator.getValue(index);
+        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(numOf(100));
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

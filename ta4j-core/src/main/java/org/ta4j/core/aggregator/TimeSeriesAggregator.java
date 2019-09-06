@@ -37,7 +37,7 @@ public interface TimeSeriesAggregator {
      * @return aggregated series
      */
     default TimeSeries aggregate(TimeSeries series) {
-	return aggregate(series, series.getName());
+        return aggregate(series, series.getName());
     }
 
     /**

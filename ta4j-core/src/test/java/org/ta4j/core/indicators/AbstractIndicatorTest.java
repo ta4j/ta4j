@@ -58,7 +58,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
     public static List<Function<Number, Num>> function() {
-	return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
+        return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
     }
 
     private final IndicatorFactory<D, I> factory;
@@ -72,8 +72,8 @@ public abstract class AbstractIndicatorTest<D, I> {
      *                    (automatically inserted by Junit)
      */
     public AbstractIndicatorTest(IndicatorFactory<D, I> factory, Function<Number, Num> numFunction) {
-	this.numFunction = numFunction;
-	this.factory = factory;
+        this.numFunction = numFunction;
+        this.factory = factory;
     }
 
     /**
@@ -83,8 +83,8 @@ public abstract class AbstractIndicatorTest<D, I> {
      *                    (automatically inserted by Junit)
      */
     public AbstractIndicatorTest(Function<Number, Num> numFunction) {
-	this.numFunction = numFunction;
-	this.factory = null;
+        this.numFunction = numFunction;
+        this.factory = null;
     }
 
     /**
@@ -95,17 +95,17 @@ public abstract class AbstractIndicatorTest<D, I> {
      * @return Indicator<I> from data given parameters
      */
     public Indicator<I> getIndicator(D data, Object... params) {
-	assert factory != null;
-	return factory.getIndicator(data, params);
+        assert factory != null;
+        return factory.getIndicator(data, params);
     }
 
     protected Num numOf(Number n) {
-	return numFunction.apply(n);
+        return numFunction.apply(n);
     }
 
     public Num numOf(String string, int precision) {
-	MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
-	return this.numOf(new BigDecimal(string, mathContext));
+        MathContext mathContext = new MathContext(precision, RoundingMode.HALF_UP);
+        return this.numOf(new BigDecimal(string, mathContext));
     }
 
 }

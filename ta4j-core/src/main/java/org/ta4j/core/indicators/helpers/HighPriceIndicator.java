@@ -32,6 +32,6 @@ import org.ta4j.core.TimeSeries;
 public class HighPriceIndicator extends PriceIndicator {
 
     public HighPriceIndicator(TimeSeries series) {
-	super(series, Bar::getHighPrice);
+        super(series, Bar::getHighPrice);
     }
 }

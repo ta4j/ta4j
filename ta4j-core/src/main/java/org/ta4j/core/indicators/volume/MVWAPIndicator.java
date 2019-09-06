@@ -46,13 +46,13 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
-	super(vwap);
-	this.sma = new SMAIndicator(vwap, barCount);
+        super(vwap);
+        this.sma = new SMAIndicator(vwap, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return sma.getValue(index);
+        return sma.getValue(index);
     }
 
 }

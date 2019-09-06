@@ -58,21 +58,21 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      * @param bodyFactor the factor used when checking if a candle is Doji
      */
     public DojiIndicator(TimeSeries series, int barCount, double bodyFactor) {
-	super(series);
-	bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
-	averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
-	factor = numOf(bodyFactor);
+        super(series);
+        bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
+        averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
+        factor = numOf(bodyFactor);
     }
 
     @Override
     protected Boolean calculate(int index) {
-	if (index < 1) {
-	    return bodyHeightInd.getValue(index).isZero();
-	}
+        if (index < 1) {
+            return bodyHeightInd.getValue(index).isZero();
+        }
 
-	Num averageBodyHeight = averageBodyHeightInd.getValue(index - 1);
-	Num currentBodyHeight = bodyHeightInd.getValue(index);
+        Num averageBodyHeight = averageBodyHeightInd.getValue(index - 1);
+        Num currentBodyHeight = bodyHeightInd.getValue(index);
 
-	return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));
+        return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));
     }
 }

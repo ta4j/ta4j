@@ -40,32 +40,32 @@ public class LWMAIndicator extends CachedIndicator<Num> {
     private final Num zero = numOf(0);
 
     public LWMAIndicator(Indicator<Num> indicator, int barCount) {
-	super(indicator);
-	this.indicator = indicator;
-	this.barCount = barCount;
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
-	Num sum = zero;
-	Num denominator = zero;
-	int count = 0;
+        Num sum = zero;
+        Num denominator = zero;
+        int count = 0;
 
-	if ((index + 1) < barCount) {
-	    return zero;
-	}
+        if ((index + 1) < barCount) {
+            return zero;
+        }
 
-	int startIndex = (index - barCount) + 1;
-	for (int i = startIndex; i <= index; i++) {
-	    count++;
-	    denominator = denominator.plus(numOf(count));
-	    sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
-	}
-	return sum.dividedBy(denominator);
+        int startIndex = (index - barCount) + 1;
+        for (int i = startIndex; i <= index; i++) {
+            count++;
+            denominator = denominator.plus(numOf(count));
+            sum = sum.plus(indicator.getValue(i).multipliedBy(numOf(count)));
+        }
+        return sum.dividedBy(denominator);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

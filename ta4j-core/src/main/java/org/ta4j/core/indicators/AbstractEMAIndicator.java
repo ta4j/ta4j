@@ -38,23 +38,23 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     private final Num multiplier;
 
     public AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
-	super(indicator);
-	this.indicator = indicator;
-	this.barCount = barCount;
-	this.multiplier = numOf(multiplier);
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.multiplier = numOf(multiplier);
     }
 
     @Override
     protected Num calculate(int index) {
-	if (index == 0) {
-	    return indicator.getValue(0);
-	}
-	Num prevValue = getValue(index - 1);
-	return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+        if (index == 0) {
+            return indicator.getValue(0);
+        }
+        Num prevValue = getValue(index - 1);
+        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
     }
 
     @Override
     public String toString() {
-	return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

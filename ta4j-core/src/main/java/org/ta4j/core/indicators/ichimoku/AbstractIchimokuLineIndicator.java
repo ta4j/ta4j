@@ -54,13 +54,13 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
      * @param barCount the time frame
      */
     public AbstractIchimokuLineIndicator(TimeSeries series, int barCount) {
-	super(series);
-	periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-	periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+        super(series);
+        periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+        periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-	return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
+        return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
     }
 }

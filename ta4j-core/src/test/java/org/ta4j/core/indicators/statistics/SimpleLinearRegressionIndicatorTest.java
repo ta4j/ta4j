@@ -42,69 +42,69 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
     private Indicator<Num> closePrice;
 
     public SimpleLinearRegressionIndicatorTest(Function<Number, Num> numFunction) {
-	super(numFunction);
+        super(numFunction);
     }
 
     @Before
     public void setUp() {
-	double[] data = new double[] { 10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80 };
-	closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, data));
+        double[] data = new double[] { 10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80 };
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, data));
     }
 
     @Test
     public void notComputedLinearRegression() {
 
-	SimpleLinearRegressionIndicator linearReg = new SimpleLinearRegressionIndicator(closePrice, 0);
-	assertTrue(linearReg.getValue(0).isNaN());
-	assertTrue(linearReg.getValue(1).isNaN());
-	assertTrue(linearReg.getValue(2).isNaN());
+        SimpleLinearRegressionIndicator linearReg = new SimpleLinearRegressionIndicator(closePrice, 0);
+        assertTrue(linearReg.getValue(0).isNaN());
+        assertTrue(linearReg.getValue(1).isNaN());
+        assertTrue(linearReg.getValue(2).isNaN());
 
-	linearReg = new SimpleLinearRegressionIndicator(closePrice, 1);
-	assertTrue(linearReg.getValue(0).isNaN());
-	assertTrue(linearReg.getValue(1).isNaN());
-	assertTrue(linearReg.getValue(2).isNaN());
+        linearReg = new SimpleLinearRegressionIndicator(closePrice, 1);
+        assertTrue(linearReg.getValue(0).isNaN());
+        assertTrue(linearReg.getValue(1).isNaN());
+        assertTrue(linearReg.getValue(2).isNaN());
     }
 
     @Test
     public void calculateLinearRegressionWithLessThan2ObservationsReturnsNaN() {
-	SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 0);
-	assertTrue(reg.getValue(0).isNaN());
-	assertTrue(reg.getValue(3).isNaN());
-	assertTrue(reg.getValue(6).isNaN());
-	assertTrue(reg.getValue(9).isNaN());
-	reg = new SimpleLinearRegressionIndicator(closePrice, 1);
-	assertTrue(reg.getValue(0).isNaN());
-	assertTrue(reg.getValue(3).isNaN());
-	assertTrue(reg.getValue(6).isNaN());
-	assertTrue(reg.getValue(9).isNaN());
+        SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 0);
+        assertTrue(reg.getValue(0).isNaN());
+        assertTrue(reg.getValue(3).isNaN());
+        assertTrue(reg.getValue(6).isNaN());
+        assertTrue(reg.getValue(9).isNaN());
+        reg = new SimpleLinearRegressionIndicator(closePrice, 1);
+        assertTrue(reg.getValue(0).isNaN());
+        assertTrue(reg.getValue(3).isNaN());
+        assertTrue(reg.getValue(6).isNaN());
+        assertTrue(reg.getValue(9).isNaN());
     }
 
     @Test
     public void calculateLinearRegressionOn4Observations() {
 
-	SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 4);
-	assertNumEquals(20, reg.getValue(1));
-	assertNumEquals(30, reg.getValue(2));
+        SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(closePrice, 4);
+        assertNumEquals(20, reg.getValue(1));
+        assertNumEquals(30, reg.getValue(2));
 
-	SimpleRegression origReg = buildSimpleRegression(10, 20, 30, 40);
-	assertNumEquals(40, reg.getValue(3));
-	assertNumEquals(origReg.predict(3), reg.getValue(3));
+        SimpleRegression origReg = buildSimpleRegression(10, 20, 30, 40);
+        assertNumEquals(40, reg.getValue(3));
+        assertNumEquals(origReg.predict(3), reg.getValue(3));
 
-	origReg = buildSimpleRegression(30, 40, 30, 40);
-	assertNumEquals(origReg.predict(3), reg.getValue(5));
+        origReg = buildSimpleRegression(30, 40, 30, 40);
+        assertNumEquals(origReg.predict(3), reg.getValue(5));
 
-	origReg = buildSimpleRegression(30, 20, 30, 50);
-	assertNumEquals(origReg.predict(3), reg.getValue(9));
+        origReg = buildSimpleRegression(30, 20, 30, 50);
+        assertNumEquals(origReg.predict(3), reg.getValue(9));
     }
 
     @Test
     public void calculateLinearRegression() {
-	double[] values = new double[] { 1, 2, 1.3, 3.75, 2.25 };
-	ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(numFunction, values));
-	SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
+        double[] values = new double[] { 1, 2, 1.3, 3.75, 2.25 };
+        ClosePriceIndicator indicator = new ClosePriceIndicator(new MockTimeSeries(numFunction, values));
+        SimpleLinearRegressionIndicator reg = new SimpleLinearRegressionIndicator(indicator, 5);
 
-	SimpleRegression origReg = buildSimpleRegression(values);
-	assertNumEquals(origReg.predict(4), reg.getValue(4));
+        SimpleRegression origReg = buildSimpleRegression(values);
+        assertNumEquals(origReg.predict(4), reg.getValue(4));
     }
 
     /**
@@ -112,10 +112,10 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
      * @return a simple linear regression based on provided values
      */
     private static SimpleRegression buildSimpleRegression(double... values) {
-	SimpleRegression simpleReg = new SimpleRegression();
-	for (int i = 0; i < values.length; i++) {
-	    simpleReg.addData(i, values[i]);
-	}
-	return simpleReg;
+        SimpleRegression simpleReg = new SimpleRegression();
+        for (int i = 0; i < values.length; i++) {
+            simpleReg.addData(i, values[i]);
+        }
+        return simpleReg;
     }
 }

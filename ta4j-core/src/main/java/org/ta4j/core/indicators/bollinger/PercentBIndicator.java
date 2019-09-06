@@ -52,19 +52,19 @@ public class PercentBIndicator extends CachedIndicator<Num> {
      * @param k         the K multiplier (usually 2.0)
      */
     public PercentBIndicator(Indicator<Num> indicator, int barCount, double k) {
-	super(indicator);
-	this.indicator = indicator;
-	BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, barCount));
-	StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, barCount);
-	this.bbu = new BollingerBandsUpperIndicator(bbm, sd, numOf(k));
-	this.bbl = new BollingerBandsLowerIndicator(bbm, sd, numOf(k));
+        super(indicator);
+        this.indicator = indicator;
+        BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, barCount));
+        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, barCount);
+        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, numOf(k));
+        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, numOf(k));
     }
 
     @Override
     protected Num calculate(int index) {
-	Num value = indicator.getValue(index);
-	Num upValue = bbu.getValue(index);
-	Num lowValue = bbl.getValue(index);
-	return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
+        Num value = indicator.getValue(index);
+        Num upValue = bbu.getValue(index);
+        Num lowValue = bbl.getValue(index);
+        return value.minus(lowValue).dividedBy(upValue.minus(lowValue));
     }
 }

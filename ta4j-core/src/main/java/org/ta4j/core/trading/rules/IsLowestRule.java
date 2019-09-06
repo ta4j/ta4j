@@ -52,18 +52,18 @@ public class IsLowestRule extends AbstractRule {
      * @param barCount the time frame
      */
     public IsLowestRule(Indicator<Num> ref, int barCount) {
-	this.ref = ref;
-	this.barCount = barCount;
+        this.ref = ref;
+        this.barCount = barCount;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	LowestValueIndicator lowest = new LowestValueIndicator(ref, barCount);
-	Num lowestVal = lowest.getValue(index);
-	Num refVal = ref.getValue(index);
+        LowestValueIndicator lowest = new LowestValueIndicator(ref, barCount);
+        Num lowestVal = lowest.getValue(index);
+        Num refVal = ref.getValue(index);
 
-	final boolean satisfied = !refVal.isNaN() && !lowestVal.isNaN() && refVal.equals(lowestVal);
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
+        final boolean satisfied = !refVal.isNaN() && !lowestVal.isNaN() && refVal.equals(lowestVal);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 }
