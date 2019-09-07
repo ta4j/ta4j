@@ -60,20 +60,20 @@ public interface AnalysisCriterion {
      */
     default Strategy chooseBest(TimeSeriesManager manager, List<Strategy> strategies) {
 
-	Strategy bestStrategy = strategies.get(0);
-	Num bestCriterionValue = calculate(manager.getTimeSeries(), manager.run(bestStrategy));
+        Strategy bestStrategy = strategies.get(0);
+        Num bestCriterionValue = calculate(manager.getTimeSeries(), manager.run(bestStrategy));
 
-	for (int i = 1; i < strategies.size(); i++) {
-	    Strategy currentStrategy = strategies.get(i);
-	    Num currentCriterionValue = calculate(manager.getTimeSeries(), manager.run(currentStrategy));
+        for (int i = 1; i < strategies.size(); i++) {
+            Strategy currentStrategy = strategies.get(i);
+            Num currentCriterionValue = calculate(manager.getTimeSeries(), manager.run(currentStrategy));
 
-	    if (betterThan(currentCriterionValue, bestCriterionValue)) {
-		bestStrategy = currentStrategy;
-		bestCriterionValue = currentCriterionValue;
-	    }
-	}
+            if (betterThan(currentCriterionValue, bestCriterionValue)) {
+                bestStrategy = currentStrategy;
+                bestCriterionValue = currentCriterionValue;
+            }
+        }
 
-	return bestStrategy;
+        return bestStrategy;
     }
 
     /**
