@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Coppock Curve indicator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve</a>
  */
 public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
@@ -51,14 +52,16 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param indicator the indicator (usually close price)
-     * @param longRoCBarCount the time frame for long term RoC
+     * 
+     * @param indicator        the indicator (usually close price)
+     * @param longRoCBarCount  the time frame for long term RoC
      * @param shortRoCBarCount the time frame for short term RoC
-     * @param wmaBarCount the time frame (for WMA)
+     * @param wmaBarCount      the time frame (for WMA)
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);
-        SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount), new ROCIndicator(indicator, shortRoCBarCount));
+        SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
+                new ROCIndicator(indicator, shortRoCBarCount));
         wma = new WMAIndicator(sum, wmaBarCount);
     }
 

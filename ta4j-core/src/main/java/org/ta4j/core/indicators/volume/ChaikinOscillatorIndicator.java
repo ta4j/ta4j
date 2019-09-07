@@ -31,8 +31,9 @@ import org.ta4j.core.num.Num;
 /**
  * Chaikin Oscillator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator</a>
  */
 public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
 

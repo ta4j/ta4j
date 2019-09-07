@@ -35,12 +35,14 @@ import org.ta4j.core.num.Num;
 /**
  * The Fisher Indicator.
  *
- * @apiNote Minimal deviations in last Num places possible. During the calculations this indicator converts {@link Num Num} to
- *         {@link Double double}
- * @see <a href="http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf">
- *         http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf</a>
+ * @apiNote Minimal deviations in last Num places possible. During the
+ *          calculations this indicator converts {@link Num Num} to
+ *          {@link Double double}
+ * @see <a href=
+ *      "http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf">
+ *      http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf</a>
  * @see <a href="https://www.investopedia.com/terms/f/fisher-transform.asp">
- *         https://www.investopedia.com/terms/f/fisher-transform.asp</a>
+ *      https://www.investopedia.com/terms/f/fisher-transform.asp</a>
  */
 public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -137,7 +139,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param isPriceIndicator use true, if "ref" is a price indicator
      */
     public FisherIndicator(Indicator<Num> ref, int barCount, final double alphaD, final double betaD,
-                           final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
+            final double gammaD, final double deltaD, double densityFactorD, boolean isPriceIndicator) {
         super(ref);
         this.ref = ref;
         this.gamma = numOf(gammaD);
@@ -146,8 +148,10 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
         Num alpha = numOf(alphaD);
         Num beta = numOf(betaD);
-        final Indicator<Num> periodHigh = new HighestValueIndicator(isPriceIndicator ? new HighPriceIndicator(ref.getTimeSeries()) : ref, barCount);
-        final Indicator<Num> periodLow = new LowestValueIndicator(isPriceIndicator ? new LowPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodHigh = new HighestValueIndicator(
+                isPriceIndicator ? new HighPriceIndicator(ref.getTimeSeries()) : ref, barCount);
+        final Indicator<Num> periodLow = new LowestValueIndicator(
+                isPriceIndicator ? new LowPriceIndicator(ref.getTimeSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 
@@ -159,7 +163,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                     return numOf(0);
                 }
 
-                // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta * priorValue) / densityFactor
+                // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta *
+                // priorValue) / densityFactor
                 Num currentRef = FisherIndicator.this.ref.getValue(index);
                 Num minL = periodLow.getValue(index);
                 Num maxH = periodHigh.getValue(index);
@@ -192,4 +197,3 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     }
 
 }
-

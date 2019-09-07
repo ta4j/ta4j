@@ -39,6 +39,7 @@ public class OrRule extends AbstractRule {
 
     /**
      * Constructor.
+     * 
      * @param rule1 a trading rule
      * @param rule2 another trading rule
      */

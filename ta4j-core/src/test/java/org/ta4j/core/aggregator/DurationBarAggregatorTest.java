@@ -76,7 +76,6 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
         return bars;
     }
 
-
     /**
      * Tests if the bars are upscaled correctly from 1day to 5day
      */
@@ -139,7 +138,8 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries,
     }
 
     /**
-     * Tests if the bars are upscaled correctly from 1day to 10day, allowed not final bars too
+     * Tests if the bars are upscaled correctly from 1day to 10day, allowed not
+     * final bars too
      */
     @Test
     public void upscaledTo10DayBarsNotOnlyFinalBars() {

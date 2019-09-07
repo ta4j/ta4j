@@ -42,8 +42,9 @@ import ta4jexamples.loaders.CsvTradesLoader;
 /**
  * 2-Period RSI Strategy
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
- *         http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
  */
 public class RSI2Strategy {
 
@@ -95,7 +96,8 @@ public class RSI2Strategy {
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 
 }

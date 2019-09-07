@@ -35,7 +35,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class GlobalExtremaStrategy {
 
-    // We assume that there were at least one trade every 5 minutes during the whole week
+    // We assume that there were at least one trade every 5 minutes during the whole
+    // week
     private static final int NB_BARS_PER_WEEK = 12 * 24 * 7;
 
     /**
@@ -81,6 +82,7 @@ public class GlobalExtremaStrategy {
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

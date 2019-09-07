@@ -45,7 +45,8 @@ public class SigmaIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param ref the indicator
+     * 
+     * @param ref      the indicator
      * @param barCount the time frame
      */
     public SigmaIndicator(Indicator<Num> ref, int barCount) {

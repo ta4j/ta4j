@@ -31,12 +31,13 @@ import org.ta4j.core.indicators.helpers.MinusDMIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * -DI indicator.
- * Part of the Directional Movement System
+ * -DI indicator. Part of the Directional Movement System
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
- * @see <a href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
+ * @see <a
+ *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class MinusDIIndicator extends CachedIndicator<Num> {
 

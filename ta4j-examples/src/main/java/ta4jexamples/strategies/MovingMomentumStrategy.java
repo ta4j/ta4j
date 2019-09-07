@@ -43,8 +43,9 @@ import ta4jexamples.loaders.CsvTradesLoader;
 /**
  * Moving momentum strategy.
  *
- * @see <a href="http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum">
- *         http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
+ * @see <a href=
+ *      "http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum">
+ *      http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
  */
 public class MovingMomentumStrategy {
 
@@ -59,8 +60,10 @@ public class MovingMomentumStrategy {
 
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
 
-        // The bias is bullish when the shorter-moving average moves above the longer moving average.
-        // The bias is bearish when the shorter-moving average moves below the longer moving average.
+        // The bias is bullish when the shorter-moving average moves above the longer
+        // moving average.
+        // The bias is bearish when the shorter-moving average moves below the longer
+        // moving average.
         EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
         EMAIndicator longEma = new EMAIndicator(closePrice, 26);
 
@@ -96,6 +99,7 @@ public class MovingMomentumStrategy {
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

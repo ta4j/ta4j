@@ -31,8 +31,9 @@ import org.ta4j.core.num.Num;
 /**
  * Mean deviation indicator.
  *
- * @see <a href="http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
- * http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
+ * @see <a href=
+ *      "http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
+ *      http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation</a>
  */
 public class MeanDeviationIndicator extends CachedIndicator<Num> {
 

@@ -34,20 +34,19 @@ public class NotRuleTest {
 
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
-    
+
     @Before
     public void setUp() {
         satisfiedRule = new BooleanRule(true);
         unsatisfiedRule = new BooleanRule(false);
     }
-    
+
     @Test
     public void isSatisfied() {
         assertFalse(satisfiedRule.negation().isSatisfied(0));
         assertTrue(unsatisfiedRule.negation().isSatisfied(0));
-        
+
         assertFalse(satisfiedRule.negation().isSatisfied(10));
         assertTrue(unsatisfiedRule.negation().isSatisfied(10));
     }
 }
-        

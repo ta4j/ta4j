@@ -28,8 +28,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Buy - Occurs when the price line crosses from below to above the Lower Bollinger Band.
- * Sell - Occurs when the price line crosses from above to below the Upper Bollinger Band.
+ * Buy - Occurs when the price line crosses from below to above the Lower
+ * Bollinger Band. Sell - Occurs when the price line crosses from above to below
+ * the Upper Bollinger Band.
  * 
  */
 public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
@@ -41,10 +42,12 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
     private final Num k;
 
     /**
-     * Constructor.  Defaults k value to 2.
-     * @param bbm the middle band Indicator.  Typically an SMAIndicator is used.
+     * Constructor. Defaults k value to 2.
+     * 
+     * @param bbm       the middle band Indicator. Typically an SMAIndicator is
+     *                  used.
      * @param deviation the deviation above and below the middle, factored by k.
-     *      Typically a StandardDeviationIndicator is used.
+     *                  Typically a StandardDeviationIndicator is used.
      */
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> deviation) {
         this(bbm, deviation, bbm.getTimeSeries().numOf(2));
@@ -52,10 +55,13 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * @param bbm the middle band Indicator.  Typically an SMAIndicator is used.
+     * 
+     * @param bbm       the middle band Indicator. Typically an SMAIndicator is
+     *                  used.
      * @param deviation the deviation above and below the middle, factored by k.
-     *      Typically a StandardDeviationIndicator is used.
-     * @param k the scaling factor to multiply the deviation by.  Typically 2.
+     *                  Typically a StandardDeviationIndicator is used.
+     * @param k         the scaling factor to multiply the deviation by. Typically
+     *                  2.
      */
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> deviation, Num k) {
         super(deviation);

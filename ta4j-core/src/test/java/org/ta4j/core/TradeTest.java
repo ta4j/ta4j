@@ -71,7 +71,6 @@ public class TradeTest {
         trNotEquals2.operate(1);
         trNotEquals2.operate(2);
 
-
         transactionModel = new LinearTransactionCostModel(0.01);
         holdingModel = new LinearBorrowingCostModel(0.001);
 
@@ -270,7 +269,7 @@ public class TradeTest {
         Num profitOfClosedTrade = closedTrade.getProfit();
         Num proftOfOpenTrade = openTrade.getProfit();
 
-        Num expectedHoldingCosts = DoubleNum.valueOf(2.0*9.0*0.001);
+        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
         Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
 
         assertNumEquals(expectedProfitOfClosedTrade, profitOfClosedTrade);
@@ -291,7 +290,7 @@ public class TradeTest {
         Num profitOfClosedTradeFinalBefore = closedTrade.getProfit(5, DoubleNum.valueOf(3));
         Num profitOfOpenTradeFinalBefore = openTrade.getProfit(5, DoubleNum.valueOf(3));
 
-        Num expectedHoldingCosts = DoubleNum.valueOf(2.0*9.0*0.001);
+        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
         Num expectedProfitOfClosedTrade = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
 
         assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenTradeFinalAfter);

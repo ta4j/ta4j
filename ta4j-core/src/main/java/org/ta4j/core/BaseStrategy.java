@@ -26,7 +26,6 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * Base implementation of a {@link Strategy}.
  */
@@ -49,25 +48,29 @@ public class BaseStrategy implements Strategy {
 
     /**
      * The unstable period (number of bars).<br>
-     * During the unstable period of the strategy any order placement will be cancelled.<br>
+     * During the unstable period of the strategy any order placement will be
+     * cancelled.<br>
      * I.e. no entry/exit signal will be fired before index == unstablePeriod.
      */
     private int unstablePeriod;
 
     /**
      * Constructor.
+     * 
      * @param entryRule the entry rule
-     * @param exitRule the exit rule
+     * @param exitRule  the exit rule
      */
     public BaseStrategy(Rule entryRule, Rule exitRule) {
         this(null, entryRule, exitRule, 0);
     }
 
-     /**
+    /**
      * Constructor.
-     * @param entryRule the entry rule
-     * @param exitRule the exit rule
-     * @param unstablePeriod strategy will ignore possible signals at <code>index</code> < <code>unstablePeriod</code>
+     * 
+     * @param entryRule      the entry rule
+     * @param exitRule       the exit rule
+     * @param unstablePeriod strategy will ignore possible signals at
+     *                       <code>index</code> < <code>unstablePeriod</code>
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
         this(null, entryRule, exitRule, unstablePeriod);
@@ -75,9 +78,10 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * @param name the name of the strategy
+     * 
+     * @param name      the name of the strategy
      * @param entryRule the entry rule
-     * @param exitRule the exit rule
+     * @param exitRule  the exit rule
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
         this(name, entryRule, exitRule, 0);
@@ -85,10 +89,12 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * @param name the name of the strategy
-     * @param entryRule the entry rule
-     * @param exitRule the exit rule
-     * @param unstablePeriod strategy will ignore possible signals at <code>index</code> < <code>unstablePeriod</code>
+     * 
+     * @param name           the name of the strategy
+     * @param entryRule      the entry rule
+     * @param exitRule       the exit rule
+     * @param unstablePeriod strategy will ignore possible signals at
+     *                       <code>index</code> < <code>unstablePeriod</code>
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {
@@ -168,16 +174,19 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public Strategy and(String name, Strategy strategy, int unstablePeriod) {
-        return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()), unstablePeriod);
+        return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()),
+                unstablePeriod);
     }
 
     @Override
     public Strategy or(String name, Strategy strategy, int unstablePeriod) {
-        return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()), unstablePeriod);
+        return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()),
+                unstablePeriod);
     }
 
     /**
      * Traces the shouldEnter() method calls.
+     * 
      * @param index the bar index
      * @param enter true if the strategy should enter, false otherwise
      */
@@ -187,8 +196,9 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Traces the shouldExit() method calls.
+     * 
      * @param index the bar index
-     * @param exit true if the strategy should exit, false otherwise
+     * @param exit  true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
         log.trace(">>> {}#shouldExit({}): {}", className, index, exit);

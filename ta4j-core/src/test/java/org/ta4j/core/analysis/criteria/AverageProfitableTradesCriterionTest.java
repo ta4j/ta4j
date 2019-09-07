@@ -48,10 +48,8 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
     @Test
     public void calculate() {
         TimeSeries series = new MockTimeSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(3, series),
-                Order.buyAt(4, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(3, series), Order.buyAt(4, series), Order.sellAt(5, series));
 
         AnalysisCriterion average = getCriterion();
 

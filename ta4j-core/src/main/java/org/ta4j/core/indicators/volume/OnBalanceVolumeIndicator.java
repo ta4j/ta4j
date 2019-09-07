@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
  * On-balance volume indicator.
  *
  * @see <a href="https://www.investopedia.com/terms/o/onbalancevolume.asp">
- * https://www.investopedia.com/terms/o/onbalancevolume.asp</a>
+ *      https://www.investopedia.com/terms/o/onbalancevolume.asp</a>
  */
 public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
 

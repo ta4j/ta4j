@@ -33,8 +33,9 @@ import org.ta4j.core.num.Num;
 /**
  * Keltner Channel (middle line) indicator
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
 public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
 

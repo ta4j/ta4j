@@ -40,7 +40,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-
     private int barCount;
 
     private ClosePriceIndicator closePrice;
@@ -48,7 +47,7 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
     private SMAIndicator sma;
 
     public BollingerBandsLowerIndicatorTest(Function<Number, Num> numFunction) {
-        super(null,numFunction);
+        super(null, numFunction);
     }
 
     @Before
@@ -76,7 +75,8 @@ public class BollingerBandsLowerIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(2.7239, bblSMA.getValue(5));
         assertNumEquals(2.367, bblSMA.getValue(6));
 
-        BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation, numFunction.apply(1.5));
+        BollingerBandsLowerIndicator bblSMAwithK = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation,
+                numFunction.apply(1.5));
 
         assertNumEquals(1.5, bblSMAwithK.getK());
 

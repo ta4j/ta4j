@@ -37,14 +37,14 @@ import static org.junit.Assert.assertTrue;
 public class CrossedDownIndicatorRuleTest {
 
     private CrossedDownIndicatorRule rule;
-    
+
     @Before
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> evaluatedIndicator = new FixedDecimalIndicator(series, 12, 11, 10, 9, 11, 8, 7, 6);
         rule = new CrossedDownIndicatorRule(evaluatedIndicator, 10);
     }
-    
+
     @Test
     public void isSatisfied() {
         assertFalse(rule.isSatisfied(0));
@@ -57,4 +57,3 @@ public class CrossedDownIndicatorRuleTest {
         assertFalse(rule.isSatisfied(7));
     }
 }
-        

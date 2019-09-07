@@ -37,14 +37,14 @@ import static org.junit.Assert.assertTrue;
 public class UnderIndicatorRuleTest {
 
     private UnderIndicatorRule rule;
-    
+
     @Before
     public void setUp() {
         TimeSeries series = new BaseTimeSeries();
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
         rule = new UnderIndicatorRule(indicator, series.numOf(5));
     }
-    
+
     @Test
     public void isSatisfied() {
         assertTrue(rule.isSatisfied(0));
@@ -57,4 +57,3 @@ public class UnderIndicatorRuleTest {
         assertFalse(rule.isSatisfied(7));
     }
 }
-        

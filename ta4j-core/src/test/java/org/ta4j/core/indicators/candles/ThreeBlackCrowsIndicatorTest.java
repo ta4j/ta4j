@@ -52,14 +52,14 @@ public class ThreeBlackCrowsIndicatorTest extends AbstractIndicatorTest<Indicato
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
-        bars.add(new MockBar(19, 19, 22, 15,numFunction));
-        bars.add(new MockBar(10, 18, 20, 8,numFunction));
-        bars.add(new MockBar(17, 20, 21, 17,numFunction));
-        bars.add(new MockBar(19, 17, 20, 16.9,numFunction));
-        bars.add(new MockBar(17.5, 14, 18, 13.9,numFunction));
-        bars.add(new MockBar(15, 11, 15, 11,numFunction));
-        bars.add(new MockBar(12, 14, 15, 8,numFunction));
-        bars.add(new MockBar(13, 16, 16, 11,numFunction));
+        bars.add(new MockBar(19, 19, 22, 15, numFunction));
+        bars.add(new MockBar(10, 18, 20, 8, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(19, 17, 20, 16.9, numFunction));
+        bars.add(new MockBar(17.5, 14, 18, 13.9, numFunction));
+        bars.add(new MockBar(15, 11, 15, 11, numFunction));
+        bars.add(new MockBar(12, 14, 15, 8, numFunction));
+        bars.add(new MockBar(13, 16, 16, 11, numFunction));
         series = new MockTimeSeries(bars);
     }
 

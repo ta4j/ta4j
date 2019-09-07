@@ -31,13 +31,15 @@ import org.ta4j.core.num.Num;
 /**
  * Buy and hold criterion.
  *
- * @see <a href="http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
+ * @see <a href=
+ *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
  */
 public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return series.getBar(series.getEndIndex()).getClosePrice().dividedBy(series.getBar(series.getBeginIndex()).getClosePrice());
+        return series.getBar(series.getEndIndex()).getClosePrice()
+                .dividedBy(series.getBar(series.getBeginIndex()).getClosePrice());
     }
 
     @Override

@@ -28,13 +28,15 @@ import org.ta4j.core.TimeSeries;
 /**
  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
 public class IchimokuSenkouSpanBIndicator extends AbstractIchimokuLineIndicator {
 
     /**
      * Constructor.
+     * 
      * @param series the series
      */
     public IchimokuSenkouSpanBIndicator(TimeSeries series) {
@@ -43,7 +45,8 @@ public class IchimokuSenkouSpanBIndicator extends AbstractIchimokuLineIndicator 
 
     /**
      * Constructor.
-     * @param series the series
+     * 
+     * @param series   the series
      * @param barCount the time frame (usually 52)
      */
     public IchimokuSenkouSpanBIndicator(TimeSeries series, int barCount) {

@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Correlation coefficient indicator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
- * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici</a>
  */
 public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
@@ -60,7 +61,6 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
         Num var2 = variance2.getValue(index);
         Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
         return cov.dividedBy(multipliedSqrt);
-
 
     }
 }

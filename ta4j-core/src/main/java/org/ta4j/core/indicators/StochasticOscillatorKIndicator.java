@@ -29,13 +29,13 @@ import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
-
 /**
  * Stochastic oscillator K.
  *
- * Receives timeSeries and barCount and calculates the StochasticOscillatorKIndicator
- * over ClosePriceIndicator, or receives an indicator, HighPriceIndicator and
- * LowPriceIndicator and returns StochasticOsiclatorK over this indicator.
+ * Receives timeSeries and barCount and calculates the
+ * StochasticOscillatorKIndicator over ClosePriceIndicator, or receives an
+ * indicator, HighPriceIndicator and LowPriceIndicator and returns
+ * StochasticOsiclatorK over this indicator.
  */
 public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
@@ -47,12 +47,12 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
     private LowPriceIndicator lowPriceIndicator;
 
     public StochasticOscillatorKIndicator(TimeSeries timeSeries, int barCount) {
-        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries), new LowPriceIndicator(
-                timeSeries));
+        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries),
+                new LowPriceIndicator(timeSeries));
     }
 
-    public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount,
-                                          HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
+    public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, HighPriceIndicator highPriceIndicator,
+            LowPriceIndicator lowPriceIndicator) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
@@ -68,8 +68,7 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
         Num highestHighPrice = highestHigh.getValue(index);
         Num lowestLowPrice = lowestMin.getValue(index);
 
-        return indicator.getValue(index).minus(lowestLowPrice)
-                .dividedBy(highestHighPrice.minus(lowestLowPrice))
+        return indicator.getValue(index).minus(lowestLowPrice).dividedBy(highestHighPrice.minus(lowestLowPrice))
                 .multipliedBy(numOf(100));
     }
 

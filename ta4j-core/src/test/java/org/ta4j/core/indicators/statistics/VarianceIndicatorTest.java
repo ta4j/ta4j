@@ -54,7 +54,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
         assertNumEquals(0, var.getValue(0));
         assertNumEquals(0.25, var.getValue(1));
-        assertNumEquals(2.0/3, var.getValue(2));
+        assertNumEquals(2.0 / 3, var.getValue(2));
         assertNumEquals(1.25, var.getValue(3));
         assertNumEquals(0.5, var.getValue(4));
         assertNumEquals(0.25, var.getValue(5));

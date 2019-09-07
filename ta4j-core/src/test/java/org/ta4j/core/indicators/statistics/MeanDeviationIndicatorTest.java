@@ -46,7 +46,7 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,1, 2, 7, 6, 3, 4, 5, 11, 3, 0, 9);
+        data = new MockTimeSeries(numFunction, 1, 2, 7, 6, 3, 4, 5, 11, 3, 0, 9);
     }
 
     @Test

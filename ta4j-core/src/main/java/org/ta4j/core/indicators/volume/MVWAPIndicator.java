@@ -30,16 +30,19 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Moving volume weighted average price (MVWAP) Indicator.
- * @see <a href="http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp">
- *     http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp</a>
+ * 
+ * @see <a href=
+ *      "http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp">
+ *      http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp</a>
  */
 public class MVWAPIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> sma;
-    
+
     /**
      * Constructor.
-     * @param vwap the vwap
+     * 
+     * @param vwap     the vwap
      * @param barCount the time frame
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {

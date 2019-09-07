@@ -37,21 +37,15 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 public class DifferenceIndicatorTest {
 
     private DifferenceIndicator differenceIndicator;
-    
+
     @Before
     public void setUp() {
         Function<Number, Num> numFunction = PrecisionNum::valueOf;
 
         TimeSeries series = new BaseTimeSeries();
-        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series,
-                numFunction.apply(-2.0),
-                numFunction.apply(0.00),
-                numFunction.apply(1.00),
-                numFunction.apply(2.53),
-                numFunction.apply(5.87),
-                numFunction.apply(6.00),
-                numFunction.apply(10.0)
-        );
+        FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numFunction.apply(-2.0),
+                numFunction.apply(0.00), numFunction.apply(1.00), numFunction.apply(2.53), numFunction.apply(5.87),
+                numFunction.apply(6.00), numFunction.apply(10.0));
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
         differenceIndicator = new DifferenceIndicator(constantIndicator, mockIndicator);
     }
