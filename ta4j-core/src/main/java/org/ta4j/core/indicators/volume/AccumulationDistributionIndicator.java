@@ -34,6 +34,7 @@ import org.ta4j.core.num.Num;
 public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
     private final CloseLocationValueIndicator clvIndicator;
+    private final Num zero = numOf(0);
 
     public AccumulationDistributionIndicator(TimeSeries series) {
         super(series);
@@ -48,6 +49,10 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
 
         // Calculating the money flow multiplier
         Num moneyFlowMultiplier = clvIndicator.getValue(index);
+
+        if (moneyFlowMultiplier.isNaN()) {
+            moneyFlowMultiplier = zero;
+        }
 
         // Calculating the money flow volume
         Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getTimeSeries().getBar(index).getVolume());

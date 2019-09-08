@@ -44,6 +44,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     private final CloseLocationValueIndicator clvIndicator;
     private final VolumeIndicator volumeIndicator;
     private final int barCount;
+    private final Num zero = numOf(0);
 
     public ChaikinMoneyFlowIndicator(TimeSeries series, int barCount) {
         super(series);
@@ -55,7 +56,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int startIndex = Math.max(0, index - barCount + 1);
-        Num sumOfMoneyFlowVolume = numOf(0);
+        Num sumOfMoneyFlowVolume = zero;
         for (int i = startIndex; i <= index; i++) {
             sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
         }
@@ -69,7 +70,9 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
      * @return the money flow volume for the i-th period/bar
      */
     private Num getMoneyFlowVolume(int index) {
-        return clvIndicator.getValue(index).multipliedBy(getTimeSeries().getBar(index).getVolume());
+        Num clv = clvIndicator.getValue(index);
+        Num volume = getTimeSeries().getBar(index).getVolume();
+        return clv.isNaN() ? zero : clv.multipliedBy(volume);
     }
 
     @Override

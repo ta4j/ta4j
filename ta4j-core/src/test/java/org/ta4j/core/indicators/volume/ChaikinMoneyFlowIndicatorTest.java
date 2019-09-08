@@ -33,12 +33,12 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ChaikinMoneyFlowIndicatorTest {
 
+    ZonedDateTime now = ZonedDateTime.now();
+    int sec = 1000;
+
     @Test
     public void getValue() {
-
-        ZonedDateTime now = ZonedDateTime.now();
         TimeSeries series = new BaseTimeSeries();
-        int sec = 1000;
         series.addBar(now.minusSeconds(sec--), "0", "62.34", "61.37", "62.15", "7849.025");
         series.addBar(now.minusSeconds(sec--), "0", "62.05", "60.69", "60.81", "11692.075");
         series.addBar(now.minusSeconds(sec--), "0", "62.27", "60.10", "60.45", "10575.307");
@@ -86,5 +86,19 @@ public class ChaikinMoneyFlowIndicatorTest {
         assertNumEquals(-0.005, cmf.getValue(27));
         assertNumEquals(-0.0574, cmf.getValue(28));
         assertNumEquals(-0.0148, cmf.getValue(29));
+    }
+
+    @Test
+    public void testCVLIndicatorReturningNaN() {
+        TimeSeries series = new BaseTimeSeries();
+        series.addBar(now.minusSeconds(sec--), "20", "20", "20", "20", "7849.025");
+        series.addBar(now.minusSeconds(sec--), "20", "20", "20", "20", "7849.025");
+        series.addBar(now.minusSeconds(sec--), "20", "40", "10", "20", "7849.025");
+        series.addBar(now.minusSeconds(sec--), "20", "40", "10", "20", "7849.025");
+        ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 3);
+        assertNumEquals(0.0, cmf.getValue(0));
+        assertNumEquals(0.0, cmf.getValue(1));
+        assertNumEquals(-0.1111111111111111, cmf.getValue(2));
+        assertNumEquals(-0.2222222222222222, cmf.getValue(3));
     }
 }
