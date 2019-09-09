@@ -43,9 +43,11 @@ public class AbsoluteIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     @Test
     public void constantIndicators() {
         TimeSeries series = new BaseTimeSeries();
-        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(1337)));
+        AbsoluteIndicator positiveInd = new AbsoluteIndicator(
+                new ConstantIndicator<Num>(series, numFunction.apply(1337)));
         AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)));
-        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(-42.42)));
+        AbsoluteIndicator negativeInd = new AbsoluteIndicator(
+                new ConstantIndicator<Num>(series, numFunction.apply(-42.42)));
         for (int i = 0; i < 10; i++) {
             assertNumEquals(1337, positiveInd.getValue(i));
             assertNumEquals(0, zeroInd.getValue(i));

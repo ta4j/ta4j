@@ -29,8 +29,9 @@ import org.ta4j.core.num.Num;
 /**
  * Zero-lag exponential moving average indicator.
  *
- * @see <a href="http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
- * http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
+ * @see <a href=
+ *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
+ *      http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm</a>
  */
 public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
 

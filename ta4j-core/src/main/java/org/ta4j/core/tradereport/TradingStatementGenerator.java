@@ -28,7 +28,8 @@ import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 
 /**
- * This class generates TradingStatement basis on provided trading report and time series
+ * This class generates TradingStatement basis on provided trading report and
+ * time series
  *
  * @see TradingStatement
  */
@@ -50,7 +51,8 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
 
     @Override
     public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, TimeSeries series) {
-        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord, series);
+        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
+                series);
         final TradeStatsReport tradeStatsReport = tradeStatsReportGenerator.generate(strategy, tradingRecord, series);
         return new TradingStatement(strategy, tradeStatsReport, performanceReport);
     }

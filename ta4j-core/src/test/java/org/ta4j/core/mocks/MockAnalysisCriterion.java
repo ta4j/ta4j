@@ -51,7 +51,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * Gets the final criterion value.
      * 
      * @param series TimeSeries is ignored
-     * @param trade is ignored
+     * @param trade  is ignored
      */
     public Num calculate(TimeSeries series, Trade trade) {
         return values.get(values.size() - 1);
@@ -60,7 +60,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Gets the final criterion value.
      * 
-     * @param series TimeSeries is ignored
+     * @param series        TimeSeries is ignored
      * @param tradingRecord is ignored
      */
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
@@ -68,8 +68,8 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     }
 
     /**
-     * Compares two criterion values and returns true if first value is greater
-     * than second value, false otherwise.
+     * Compares two criterion values and returns true if first value is greater than
+     * second value, false otherwise.
      * 
      * @param criterionValue1 first value
      * @param criterionValue2 second value

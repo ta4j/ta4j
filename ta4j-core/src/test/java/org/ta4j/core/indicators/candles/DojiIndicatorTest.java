@@ -52,12 +52,12 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
-        bars.add(new MockBar(19, 19, 22, 16,numFunction));
-        bars.add(new MockBar(10, 18, 20, 10,numFunction));
-        bars.add(new MockBar(17, 20, 21, 17,numFunction));
-        bars.add(new MockBar(15, 15.1, 16, 14,numFunction));
-        bars.add(new MockBar(15, 11, 15, 8,numFunction));
-        bars.add(new MockBar(11, 12, 12, 10,numFunction));
+        bars.add(new MockBar(19, 19, 22, 16, numFunction));
+        bars.add(new MockBar(10, 18, 20, 10, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(15, 15.1, 16, 14, numFunction));
+        bars.add(new MockBar(15, 11, 15, 8, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
         series = new MockTimeSeries(bars);
     }
 

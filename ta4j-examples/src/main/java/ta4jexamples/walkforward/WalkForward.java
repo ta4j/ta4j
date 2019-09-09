@@ -47,9 +47,10 @@ import java.util.Map;
  * Walk-forward optimization example.
  *
  * @see <a href="http://en.wikipedia.org/wiki/Walk_forward_optimization">
- *         http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
- * @see <a href="http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk">
- *         http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
+ *      http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
+ * @see <a href=
+ *      "http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk">
+ *      http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
  */
 public class WalkForward {
 
@@ -95,13 +96,16 @@ public class WalkForward {
     /**
      * Returns a new time series which is a view of a subset of the current series.
      *
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The bar of the series are shared between the original time series and the returned one (i.e. no copy).
+     * The new series has begin and end indexes which correspond to the bounds of
+     * the sub-set into the full series.<br>
+     * The bar of the series are shared between the original time series and the
+     * returned one (i.e. no copy).
      *
      * @param series     the time series to get a sub-series of
      * @param beginIndex the begin index (inclusive) of the time series
      * @param duration   the duration of the time series
-     * @return a constrained {@link TimeSeries time series} which is a sub-set of the current series
+     * @return a constrained {@link TimeSeries time series} which is a sub-set of
+     *         the current series
      */
     public static TimeSeries subseries(TimeSeries series, int beginIndex, Duration duration) {
 
@@ -139,8 +143,7 @@ public class WalkForward {
      */
     public static List<TimeSeries> splitSeries(TimeSeries series, Duration splitDuration, Duration sliceDuration) {
         ArrayList<TimeSeries> subseries = new ArrayList<>();
-        if (splitDuration != null && !splitDuration.isZero()
-                && sliceDuration != null && !sliceDuration.isZero()) {
+        if (splitDuration != null && !splitDuration.isZero() && sliceDuration != null && !sliceDuration.isZero()) {
 
             List<Integer> beginIndexes = getSplitBeginIndexes(series, splitDuration);
             for (Integer subseriesBegin : beginIndexes) {
@@ -186,7 +189,8 @@ public class WalkForward {
                 Num profit = profitCriterion.calculate(slice, tradingRecord);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
-            Strategy bestStrategy = profitCriterion.chooseBest(sliceManager, new ArrayList<Strategy>(strategies.keySet()));
+            Strategy bestStrategy = profitCriterion.chooseBest(sliceManager,
+                    new ArrayList<Strategy>(strategies.keySet()));
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }
     }

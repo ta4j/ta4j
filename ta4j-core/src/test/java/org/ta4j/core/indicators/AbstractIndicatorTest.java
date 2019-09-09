@@ -39,14 +39,17 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Abstract test class to extend TimeSeries, Indicator an other test cases.
- * The extending class will be called twice. First time with {@link PrecisionNum#valueOf},
- * second time with {@link DoubleNum#valueOf} as <code>Function<Number, Num></></code> parameter.
- * This should ensure that the defined test case is valid for both data types.
+ * Abstract test class to extend TimeSeries, Indicator an other test cases. The
+ * extending class will be called twice. First time with
+ * {@link PrecisionNum#valueOf}, second time with {@link DoubleNum#valueOf} as
+ * <code>Function<Number, Num></></code> parameter. This should ensure that the
+ * defined test case is valid for both data types.
  *
  * @param <D> Data source of test object, needed for Excel-Sheet validation
- *           (could be <code>Indicator<Num></code> or <code>TimeSeries</code>, ...)
- * @param <I> The generic class of the test indicator (could be <code>Num</code>, <code>Boolean</code>, ...)
+ *            (could be <code>Indicator<Num></code> or <code>TimeSeries</code>,
+ *            ...)
+ * @param <I> The generic class of the test indicator (could be
+ *            <code>Num</code>, <code>Boolean</code>, ...)
  */
 @RunWith(Parameterized.class)
 public abstract class AbstractIndicatorTest<D, I> {
@@ -54,7 +57,7 @@ public abstract class AbstractIndicatorTest<D, I> {
     public final Function<Number, Num> numFunction;
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
-    public static List<Function<Number, Num>> function(){
+    public static List<Function<Number, Num>> function() {
         return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
     }
 
@@ -63,8 +66,10 @@ public abstract class AbstractIndicatorTest<D, I> {
     /**
      * Constructor.
      * 
-     * @param factory IndicatorFactory for building an Indicator given data and parameters.
-     * @param numFunction the function to convert a Number into a Num implementation (automatically inserted by Junit)
+     * @param factory     IndicatorFactory for building an Indicator given data and
+     *                    parameters.
+     * @param numFunction the function to convert a Number into a Num implementation
+     *                    (automatically inserted by Junit)
      */
     public AbstractIndicatorTest(IndicatorFactory<D, I> factory, Function<Number, Num> numFunction) {
         this.numFunction = numFunction;
@@ -74,9 +79,10 @@ public abstract class AbstractIndicatorTest<D, I> {
     /**
      * Constructor
      *
-     * @param numFunction the function to convert a Number into a Num implementation (automatically inserted by Junit)
+     * @param numFunction the function to convert a Number into a Num implementation
+     *                    (automatically inserted by Junit)
      */
-    public AbstractIndicatorTest(Function<Number, Num> numFunction){
+    public AbstractIndicatorTest(Function<Number, Num> numFunction) {
         this.numFunction = numFunction;
         this.factory = null;
     }
@@ -84,7 +90,7 @@ public abstract class AbstractIndicatorTest<D, I> {
     /**
      * Generates an Indicator from data and parameters.
      * 
-     * @param data indicator data
+     * @param data   indicator data
      * @param params indicator parameters
      * @return Indicator<I> from data given parameters
      */
@@ -93,7 +99,7 @@ public abstract class AbstractIndicatorTest<D, I> {
         return factory.getIndicator(data, params);
     }
 
-    protected Num numOf(Number n){
+    protected Num numOf(Number n) {
         return numFunction.apply(n);
     }
 

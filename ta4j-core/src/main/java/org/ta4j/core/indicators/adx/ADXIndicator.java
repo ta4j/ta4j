@@ -30,10 +30,10 @@ import org.ta4j.core.indicators.helpers.DXIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * ADX indicator.
- * Part of the Directional Movement System.
+ * ADX indicator. Part of the Directional Movement System.
  *
- * @see <a href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * @see <a
+ *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 

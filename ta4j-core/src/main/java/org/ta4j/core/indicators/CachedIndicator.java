@@ -33,7 +33,8 @@ import java.util.List;
 /**
  * Cached {@link Indicator indicator}.
  *
- * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
+ * Caches the constructor of the indicator. Avoid to calculate the same index of
+ * the indicator twice.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
@@ -45,8 +46,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final List<T> results = new ArrayList<T>();
 
     /**
-     * Should always be the index of the last result in the results list.
-     * I.E. the last calculated result.
+     * Should always be the index of the last result in the results list. I.E. the
+     * last calculated result.
      */
     protected int highestResultIndex = -1;
 
@@ -154,8 +155,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Removes the N first results which exceed the maximum bar count.
-     * (i.e. keeps only the last maximumResultCount results)
+     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
+     * only the last maximumResultCount results)
      *
      * @param maximumResultCount the number of results to keep
      */

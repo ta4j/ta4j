@@ -52,6 +52,7 @@ public class CandlestickChart {
 
     /**
      * Builds a JFreeChart OHLC dataset from a ta4j time series.
+     * 
      * @param series a time series
      * @return an Open-High-Low-Close dataset
      */
@@ -80,6 +81,7 @@ public class CandlestickChart {
 
     /**
      * Builds an additional JFreeChart dataset from a ta4j time series.
+     * 
      * @param series a time series
      * @return an additional dataset
      */
@@ -89,7 +91,8 @@ public class CandlestickChart {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries("Btc price");
         for (int i = 0; i < series.getBarCount(); i++) {
             Bar bar = series.getBar(i);
-            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).doubleValue());
+            chartTimeSeries.add(new Second(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+                    indicator.getValue(i).doubleValue());
         }
         dataset.addSeries(chartTimeSeries);
         return dataset;
@@ -97,6 +100,7 @@ public class CandlestickChart {
 
     /**
      * Displays a chart in a frame.
+     * 
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -115,29 +119,24 @@ public class CandlestickChart {
 
     public static void main(String[] args) {
         /*
-          Getting time series
+         * Getting time series
          */
         TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
         /*
-          Creating the OHLC dataset
+         * Creating the OHLC dataset
          */
         OHLCDataset ohlcDataset = createOHLCDataset(series);
 
         /*
-          Creating the additional dataset
+         * Creating the additional dataset
          */
         TimeSeriesCollection xyDataset = createAdditionalDataset(series);
 
         /*
-          Creating the chart
+         * Creating the chart
          */
-        JFreeChart chart = ChartFactory.createCandlestickChart(
-                "Bitstamp BTC price",
-                "Time",
-                "USD",
-                ohlcDataset,
-                true);
+        JFreeChart chart = ChartFactory.createCandlestickChart("Bitstamp BTC price", "Time", "USD", ohlcDataset, true);
         // Candlestick rendering
         CandlestickRenderer renderer = new CandlestickRenderer();
         renderer.setAutoWidthMethod(CandlestickRenderer.WIDTHMETHOD_SMALLEST);
@@ -158,7 +157,7 @@ public class CandlestickChart {
         plot.setDatasetRenderingOrder(DatasetRenderingOrder.FORWARD);
 
         /*
-          Displaying the chart
+         * Displaying the chart
          */
         displayChart(chart);
     }

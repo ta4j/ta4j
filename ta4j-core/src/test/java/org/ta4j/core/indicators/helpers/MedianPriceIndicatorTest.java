@@ -52,17 +52,16 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
 
-        bars.add(new MockBar(0, 0, 16, 8,numFunction));
-        bars.add(new MockBar(0, 0, 12, 6,numFunction));
-        bars.add(new MockBar(0, 0, 18, 14,numFunction));
-        bars.add(new MockBar(0, 0, 10, 6,numFunction));
-        bars.add(new MockBar(0, 0, 32, 6,numFunction));
-        bars.add(new MockBar(0, 0, 2, 2,numFunction));
-        bars.add(new MockBar(0, 0, 0, 0,numFunction));
-        bars.add(new MockBar(0, 0, 8, 1,numFunction));
-        bars.add(new MockBar(0, 0, 83, 32,numFunction));
-        bars.add(new MockBar(0, 0, 9, 3,numFunction));
-
+        bars.add(new MockBar(0, 0, 16, 8, numFunction));
+        bars.add(new MockBar(0, 0, 12, 6, numFunction));
+        bars.add(new MockBar(0, 0, 18, 14, numFunction));
+        bars.add(new MockBar(0, 0, 10, 6, numFunction));
+        bars.add(new MockBar(0, 0, 32, 6, numFunction));
+        bars.add(new MockBar(0, 0, 2, 2, numFunction));
+        bars.add(new MockBar(0, 0, 0, 0, numFunction));
+        bars.add(new MockBar(0, 0, 8, 1, numFunction));
+        bars.add(new MockBar(0, 0, 83, 32, numFunction));
+        bars.add(new MockBar(0, 0, 9, 3, numFunction));
 
         this.timeSeries = new MockTimeSeries(bars);
         average = new MedianPriceIndicator(timeSeries);

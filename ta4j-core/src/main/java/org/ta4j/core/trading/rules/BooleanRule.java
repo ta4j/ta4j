@@ -47,7 +47,8 @@ public class BooleanRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param satisfied true for the rule to be always satisfied, false to be never satisfied
+     * @param satisfied true for the rule to be always satisfied, false to be never
+     *                  satisfied
      */
     public BooleanRule(boolean satisfied) {
         this.satisfied = satisfied;

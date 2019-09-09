@@ -40,8 +40,9 @@ import org.ta4j.core.num.Num;
  *
  * In short, DPO(20) equals price 11 days ago less the 20-day SMA.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci</a>
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 

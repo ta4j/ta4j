@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * Keltner Channel (upper line) indicator
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
 public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
@@ -41,7 +42,8 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final Num ratio;
 
-    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, double ratio, int barCountATR) {
+    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, double ratio,
+            int barCountATR) {
         super(keltnerMiddleIndicator);
         this.ratio = numOf(ratio);
         this.keltnerMiddleIndicator = keltnerMiddleIndicator;
@@ -50,7 +52,8 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return keltnerMiddleIndicator.getValue(index).plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
+        return keltnerMiddleIndicator.getValue(index)
+                .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
 
 }

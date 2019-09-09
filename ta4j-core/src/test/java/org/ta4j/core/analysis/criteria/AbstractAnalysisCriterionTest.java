@@ -62,7 +62,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
-        MockTimeSeries series = new MockTimeSeries(numFunction,6.0, 9.0, 6.0, 6.0);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
         TimeSeriesManager manager = new TimeSeriesManager(series);
         Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
         assertEquals(alwaysStrategy, bestStrategy);
@@ -70,7 +70,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
-        MockTimeSeries series = new MockTimeSeries(numFunction,6.0, 3.0, 6.0, 6.0);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
         TimeSeriesManager manager = new TimeSeriesManager(series);
         Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);

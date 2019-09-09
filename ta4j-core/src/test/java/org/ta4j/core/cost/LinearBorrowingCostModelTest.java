@@ -86,7 +86,8 @@ public class LinearBorrowingCostModelTest {
 
     @Test
     public void calculateOpenSellTrade() {
-        // Short selling incurs borrowing costs. Since trade is still open, accounted for until current index
+        // Short selling incurs borrowing costs. Since trade is still open, accounted
+        // for until current index
         int currentIndex = 4;
         Trade trade = new Trade(Order.OrderType.SELL, new ZeroCostModel(), borrowingModel);
         trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));

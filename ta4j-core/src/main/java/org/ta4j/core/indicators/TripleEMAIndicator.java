@@ -31,10 +31,13 @@ import org.ta4j.core.num.Num;
  *
  * a.k.a TRIX
  *
- * TEMA needs "3 * period - 2" of data to start producing values in contrast to the period samples needed by a regular EMA.
+ * TEMA needs "3 * period - 2" of data to start producing values in contrast to
+ * the period samples needed by a regular EMA.
  *
- * @see <a href="https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
- * @see <a href="https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
+ * @see <a href=
+ *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp">https://www.investopedia.com/terms/t/triple-exponential-moving-average.asp</a>
  */
 public class TripleEMAIndicator extends CachedIndicator<Num> {
 

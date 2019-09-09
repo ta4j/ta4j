@@ -37,8 +37,9 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * DeMark Pivot Point indicator.
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
 public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -49,17 +50,32 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates the deMark pivot point based on the time level parameter.
-     * @param series the time series with adequate endTime of each bar for the given time level.
+     * 
+     * @param series      the time series with adequate endTime of each bar for the
+     *                    given time level.
      * @param timeLevelId the corresponding time level for pivot calculation:
-     *       <ul>
-     *          <li>1-, 5-, 10- and 15-minute charts use the prior days high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_DAY (= 1)</li>
-     *          <li>30- 60- and 120-minute charts use the prior week's high, low, and close: <b>timeLevelId</b> =  PIVOT_TIME_LEVEL_ID_WEEK (= 2)</li>
-     *          <li>Pivot Points for daily charts use the prior month's high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_MONTH (= 3)</li>
-     *          <li>Pivot Points for weekly and monthly charts use the prior year's high, low and close: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_YEAR (= 4)</li>
-     *          <li> If you want to use just the last bar data: <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_BARBASED (= 0)</li>
-     *      </ul>
-     * The user has to make sure that there are enough previous bars to calculate correct pivots at the first bar that matters. For example for PIVOT_TIME_LEVEL_ID_MONTH
-     * there will be only correct pivot point values (and reversals) after the first complete month
+     *                    <ul>
+     *                    <li>1-, 5-, 10- and 15-minute charts use the prior days
+     *                    high, low and close: <b>timeLevelId</b> =
+     *                    PIVOT_TIME_LEVEL_ID_DAY (= 1)</li>
+     *                    <li>30- 60- and 120-minute charts use the prior week's
+     *                    high, low, and close: <b>timeLevelId</b> =
+     *                    PIVOT_TIME_LEVEL_ID_WEEK (= 2)</li>
+     *                    <li>Pivot Points for daily charts use the prior month's
+     *                    high, low and close: <b>timeLevelId</b> =
+     *                    PIVOT_TIME_LEVEL_ID_MONTH (= 3)</li>
+     *                    <li>Pivot Points for weekly and monthly charts use the
+     *                    prior year's high, low and close: <b>timeLevelId</b> =
+     *                    PIVOT_TIME_LEVEL_ID_YEAR (= 4)</li>
+     *                    <li>If you want to use just the last bar data:
+     *                    <b>timeLevelId</b> = PIVOT_TIME_LEVEL_ID_BARBASED (=
+     *                    0)</li>
+     *                    </ul>
+     *                    The user has to make sure that there are enough previous
+     *                    bars to calculate correct pivots at the first bar that
+     *                    matters. For example for PIVOT_TIME_LEVEL_ID_MONTH there
+     *                    will be only correct pivot point values (and reversals)
+     *                    after the first complete month
      */
     public DeMarkPivotPointIndicator(TimeSeries series, TimeLevel timeLevelId) {
         super(series);
@@ -72,29 +88,26 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
         return calcPivotPoint(getBarsOfPreviousPeriod(index));
     }
 
-
     private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
             return NaN;
         Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-        Num open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size()-1)).getOpenPrice();
+        Num open = getTimeSeries().getBar(barsOfPreviousPeriod.get(barsOfPreviousPeriod.size() - 1)).getOpenPrice();
         Num close = bar.getClosePrice();
-        Num high =  bar.getHighPrice();
+        Num high = bar.getHighPrice();
         Num low = bar.getLowPrice();
 
-        for(int i: barsOfPreviousPeriod){
+        for (int i : barsOfPreviousPeriod) {
             high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
             low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
         }
 
         Num x;
-        if (close.isLessThan(open)){
+        if (close.isLessThan(open)) {
             x = high.plus(two.multipliedBy(low)).plus(close);
-        }
-        else if (close.isGreaterThan(open)) {
+        } else if (close.isGreaterThan(open)) {
             x = two.multipliedBy(high).plus(low).plus(close);
-        }
-        else{
+        } else {
             x = high.plus(low).plus(two.multipliedBy(close));
         }
 
@@ -103,31 +116,33 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Calculates the indices of the bars of the previous period
+     * 
      * @param index index of the current bar
      * @return list of indices of the bars of the previous period
      */
     public List<Integer> getBarsOfPreviousPeriod(int index) {
         List<Integer> previousBars = new ArrayList<>();
 
-        if(timeLevel == TimeLevel.BARBASED){
-            previousBars.add(Math.max(0, index-1));
+        if (timeLevel == TimeLevel.BARBASED) {
+            previousBars.add(Math.max(0, index - 1));
             return previousBars;
         }
         if (index == 0) {
             return previousBars;
         }
 
-
         final Bar currentBar = getTimeSeries().getBar(index);
 
         // step back while bar-1 in same period (day, week, etc):
-        while(index-1 > getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == getPeriod(currentBar)){
+        while (index - 1 > getTimeSeries().getBeginIndex()
+                && getPeriod(getTimeSeries().getBar(index - 1)) == getPeriod(currentBar)) {
             index--;
         }
 
         // index = last bar in same period, index-1 = first bar in previous period
-        long previousPeriod = getPreviousPeriod(currentBar, index-1);
-        while(index-1 > getTimeSeries().getBeginIndex() && getPeriod(getTimeSeries().getBar(index-1)) == previousPeriod){ // while bar-n in previous period
+        long previousPeriod = getPreviousPeriod(currentBar, index - 1);
+        while (index - 1 > getTimeSeries().getBeginIndex()
+                && getPeriod(getTimeSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
             index--;
             previousBars.add(index);
         }
@@ -136,32 +151,33 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
         switch (timeLevel) {
-            case DAY: // return previous day
-                int prevCalendarDay =  bar.getEndTime().minusDays(1).getDayOfYear();
-                // skip weekend and holidays:
-                while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay && indexOfPreviousBar > 0) {
-                    prevCalendarDay--;
-                }
-                return prevCalendarDay;
-            case WEEK: // return previous week
-                return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-            case MONTH: // return previous month
-                return bar.getEndTime().minusMonths(1).getMonthValue();
-            default: // return previous year
-                return bar.getEndTime().minusYears(1).getYear();
+        case DAY: // return previous day
+            int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
+            // skip weekend and holidays:
+            while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
+                    && indexOfPreviousBar > 0) {
+                prevCalendarDay--;
+            }
+            return prevCalendarDay;
+        case WEEK: // return previous week
+            return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        case MONTH: // return previous month
+            return bar.getEndTime().minusMonths(1).getMonthValue();
+        default: // return previous year
+            return bar.getEndTime().minusYears(1).getYear();
         }
     }
 
     private long getPeriod(Bar bar) {
         switch (timeLevel) {
-            case DAY: // return previous day
-                return bar.getEndTime().getDayOfYear();
-            case WEEK: // return previous week
-                return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-            case MONTH: // return previous month
-                return bar.getEndTime().getMonthValue();
-            default: // return previous year
-                return bar.getEndTime().getYear();
+        case DAY: // return previous day
+            return bar.getEndTime().getDayOfYear();
+        case WEEK: // return previous week
+            return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        case MONTH: // return previous month
+            return bar.getEndTime().getMonthValue();
+        default: // return previous year
+            return bar.getEndTime().getYear();
         }
     }
 

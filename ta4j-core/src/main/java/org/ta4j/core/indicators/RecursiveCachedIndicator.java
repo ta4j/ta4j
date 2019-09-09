@@ -30,17 +30,17 @@ import org.ta4j.core.TimeSeries;
  * Recursive cached {@link Indicator indicator}.
  *
  * Recursive indicators should extend this class.<br>
- * This class is only here to avoid (OK, to postpone) the StackOverflowError that
- * may be thrown on the first getValue(int) call of a recursive indicator.
- * Concretely when an index value is asked, if the last cached value is too old/far,
- * the computation of all the values between the last cached and the asked one
- * is executed iteratively.
+ * This class is only here to avoid (OK, to postpone) the StackOverflowError
+ * that may be thrown on the first getValue(int) call of a recursive indicator.
+ * Concretely when an index value is asked, if the last cached value is too
+ * old/far, the computation of all the values between the last cached and the
+ * asked one is executed iteratively.
  */
 public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
-     * The recursion threshold for which an iterative calculation is executed.
-     * TODO Should be variable (depending on the sub-indicators used in this indicator)
+     * The recursion threshold for which an iterative calculation is executed. TODO
+     * Should be variable (depending on the sub-indicators used in this indicator)
      */
     private static final int RECURSION_THRESHOLD = 100;
 

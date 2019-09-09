@@ -36,8 +36,8 @@ public interface ExternalCriterionTest {
     TimeSeries getSeries() throws Exception;
 
     /**
-     * Sends criterion parameters to an external criterion calculator and
-     * returns the final value of the externally calculated criterion.
+     * Sends criterion parameters to an external criterion calculator and returns
+     * the final value of the externally calculated criterion.
      * 
      * @param params criterion parameters
      * @return Num final criterion value

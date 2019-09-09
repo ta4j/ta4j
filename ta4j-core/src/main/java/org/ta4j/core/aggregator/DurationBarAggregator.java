@@ -44,7 +44,8 @@ public class DurationBarAggregator implements BarAggregator {
     private final boolean onlyFinalBars;
 
     /**
-     * Duration basing bar aggregator. Only bars with elapsed time (final bars) will be created.
+     * Duration basing bar aggregator. Only bars with elapsed time (final bars) will
+     * be created.
      *
      * @param timePeriod time period to aggregate
      */
@@ -56,7 +57,8 @@ public class DurationBarAggregator implements BarAggregator {
      * Duration basing bar aggregator
      *
      * @param timePeriod    time period to aggregate
-     * @param onlyFinalBars if true only bars with elapsed time (final bars) will be created, otherwise also pending bars
+     * @param onlyFinalBars if true only bars with elapsed time (final bars) will be
+     *                      created, otherwise also pending bars
      */
     public DurationBarAggregator(Duration timePeriod, boolean onlyFinalBars) {
         this.timePeriod = timePeriod;
@@ -64,8 +66,8 @@ public class DurationBarAggregator implements BarAggregator {
     }
 
     /**
-     * Aggregates a list of bars by <code>timePeriod</code>.The new <code>timePeriod</code> must be a multiplication of the actual time
-     * period.
+     * Aggregates a list of bars by <code>timePeriod</code>.The new
+     * <code>timePeriod</code> must be a multiplication of the actual time period.
      *
      * @param bars the actual bars
      * @return the aggregated bars with new <code>timePeriod</code>
@@ -118,7 +120,8 @@ public class DurationBarAggregator implements BarAggregator {
             }
 
             if (!onlyFinalBars || i <= bars.size()) {
-                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close, volume, amount);
+                final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
+                        volume, amount);
                 aggregated.add(aggregatedBar);
             }
         }

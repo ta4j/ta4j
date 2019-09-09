@@ -39,7 +39,6 @@ import java.util.function.Function;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-
 public class StopGainRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private ClosePriceIndicator closePrice;
@@ -50,22 +49,21 @@ public class StopGainRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction,
-                100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104
-        ));
+        closePrice = new ClosePriceIndicator(
+                new MockTimeSeries(numFunction, 100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104));
     }
-    
+
     @Test
     public void isSatisfiedWorksForBuy() {
         final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
         final Num tradedAmount = numOf(1);
-        
+
         // 30% stop-gain
         StopGainRule rule = new StopGainRule(closePrice, numOf(30));
-        
+
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
-        
+
         // Enter at 108
         tradingRecord.enter(2, numOf(108), tradedAmount);
         assertFalse(rule.isSatisfied(2, tradingRecord));
@@ -73,7 +71,7 @@ public class StopGainRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
         assertTrue(rule.isSatisfied(4, tradingRecord));
         // Exit
         tradingRecord.exit(5);
-        
+
         // Enter at 118
         tradingRecord.enter(5, numOf(118), tradedAmount);
         assertFalse(rule.isSatisfied(5, tradingRecord));
@@ -108,4 +106,3 @@ public class StopGainRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
         assertTrue(rule.isSatisfied(10, tradingRecord));
     }
 }
-        

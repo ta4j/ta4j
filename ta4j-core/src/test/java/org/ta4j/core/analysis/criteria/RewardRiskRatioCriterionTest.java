@@ -34,7 +34,7 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
+public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
 
     private AnalysisCriterion rrc;
 
@@ -50,12 +50,8 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
     @Test
     public void rewardRiskRatioCriterion() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(4, series),
-                Order.buyAt(5, series), Order.sellAt(7, series));
-
-
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(4, series), Order.buyAt(5, series), Order.sellAt(7, series));
 
         double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
         double peak = (105d / 100) * (100d / 95);
@@ -67,8 +63,7 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
         MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(1, series),
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
         assertTrue(rrc.calculate(series, tradingRecord).isNaN());
     }
@@ -85,7 +80,7 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest{
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
         AnalysisCriterion ratioCriterion = getCriterion();
-        assertNumEquals((95d/100) / ((1d - 0.95d)), ratioCriterion.calculate(series, trade));
+        assertNumEquals((95d / 100) / ((1d - 0.95d)), ratioCriterion.calculate(series, trade));
     }
 
     @Test

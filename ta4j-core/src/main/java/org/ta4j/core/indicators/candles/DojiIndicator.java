@@ -33,9 +33,12 @@ import org.ta4j.core.num.Num;
 /**
  * Doji indicator.
  *
- * A candle/bar is considered Doji if its body height is lower than the average multiplied by a factor.
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
- *     http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
+ * A candle/bar is considered Doji if its body height is lower than the average
+ * multiplied by a factor.
+ * 
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
 public class DojiIndicator extends CachedIndicator<Boolean> {
 
@@ -48,8 +51,10 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * @param series a time series
-     * @param barCount the number of bars used to calculate the average body height
+     * 
+     * @param series     a time series
+     * @param barCount   the number of bars used to calculate the average body
+     *                   height
      * @param bodyFactor the factor used when checking if a candle is Doji
      */
     public DojiIndicator(TimeSeries series, int barCount, double bodyFactor) {
@@ -65,7 +70,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
             return bodyHeightInd.getValue(index).isZero();
         }
 
-        Num averageBodyHeight = averageBodyHeightInd.getValue(index-1);
+        Num averageBodyHeight = averageBodyHeightInd.getValue(index - 1);
         Num currentBodyHeight = bodyHeightInd.getValue(index);
 
         return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));

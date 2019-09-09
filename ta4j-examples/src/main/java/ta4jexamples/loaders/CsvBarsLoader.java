@@ -56,9 +56,10 @@ public class CsvBarsLoader {
 
         InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
-        TimeSeries series =  new BaseTimeSeries("apple_bars");
+        TimeSeries series = new BaseTimeSeries("apple_bars");
 
-        try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"', 1)) {
+        try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"',
+                1)) {
             String[] line;
             while ((line = csvReader.readNext()) != null) {
                 ZonedDateTime date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneId.systemDefault());
@@ -83,9 +84,7 @@ public class CsvBarsLoader {
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n"
-                + "\tVolume: " + series.getBar(0).getVolume() + "\n"
-                + "\tOpen price: " + series.getBar(0).getOpenPrice()+ "\n"
-                + "\tClose price: " + series.getBar(0).getClosePrice());
+        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
+                + series.getBar(0).getOpenPrice() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
     }
 }

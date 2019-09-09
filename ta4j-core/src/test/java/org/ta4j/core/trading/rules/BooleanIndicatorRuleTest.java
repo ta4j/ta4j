@@ -35,13 +35,14 @@ import static org.junit.Assert.assertTrue;
 public class BooleanIndicatorRuleTest {
 
     private BooleanIndicatorRule rule;
-    
+
     @Before
     public void setUp() {
-        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseTimeSeries(),true, true, false, false, true);
+        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseTimeSeries(), true, true, false, false,
+                true);
         rule = new BooleanIndicatorRule(indicator);
     }
-    
+
     @Test
     public void isSatisfied() {
         assertTrue(rule.isSatisfied(0));
@@ -51,4 +52,3 @@ public class BooleanIndicatorRuleTest {
         assertTrue(rule.isSatisfied(4));
     }
 }
-        

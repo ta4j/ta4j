@@ -26,7 +26,8 @@ package org.ta4j.core.tradereport;
 import org.ta4j.core.Strategy;
 
 /**
- * This class represents trading statement report which contains trade and performance statistics
+ * This class represents trading statement report which contains trade and
+ * performance statistics
  */
 public class TradingStatement {
 

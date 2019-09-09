@@ -34,7 +34,8 @@ import org.ta4j.core.num.Num;
 /**
  * Intraday Intensity Index
  *
- * @see <a href="https://www.investopedia.com/terms/i/intradayintensityindex.asp">https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/i/intradayintensityindex.asp">https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
  */
 public class IIIIndicator extends CachedIndicator<Num> {
 
@@ -64,6 +65,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
         final Num highMinusLow = high.minus(low);
         final Num highPlusLow = high.plus(low);
 
-        return doubledClosePrice.minus(highPlusLow).dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
+        return doubledClosePrice.minus(highPlusLow)
+                .dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
     }
 }

@@ -43,7 +43,8 @@ import static org.junit.Assert.assertSame;
 
 public class BaseTimeSeriesAggregatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
-    private BaseTimeSeriesAggregator baseTimeSeriesAggregator = new BaseTimeSeriesAggregator(new BarAggregatorForTest());
+    private BaseTimeSeriesAggregator baseTimeSeriesAggregator = new BaseTimeSeriesAggregator(
+            new BarAggregatorForTest());
 
     public BaseTimeSeriesAggregatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -94,7 +95,8 @@ public class BaseTimeSeriesAggregatorTest extends AbstractIndicatorTest<TimeSeri
     }
 
     /**
-     * This bar aggregator created only for test purposes is returning first and last bar.
+     * This bar aggregator created only for test purposes is returning first and
+     * last bar.
      */
     private static class BarAggregatorForTest implements BarAggregator {
         @Override
