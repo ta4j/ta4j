@@ -49,7 +49,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1);
+        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1);
     }
 
     @Test
@@ -83,33 +83,32 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void onlyNaNValues(){
+    public void onlyNaNValues() {
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
-        for (long i = 0; i<= 10000; i++){
-            series.addBar(ZonedDateTime.now().plusDays(i),NaN,NaN,NaN,NaN,NaN);
+        for (long i = 0; i <= 10000; i++) {
+            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
 
-
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 5);
-        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
-            assertEquals(NaN.toString(),lowestValue.getValue(i).toString());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertEquals(NaN.toString(), lowestValue.getValue(i).toString());
         }
     }
 
     @Test
-    public void naNValuesInIntervall(){
+    public void naNValuesInIntervall() {
         BaseTimeSeries series = new BaseTimeSeries("NaN test");
-        for (long i = 0; i<= 10; i++){ // (NaN, 1, NaN, 2, NaN, 3, NaN, 4, ...)
-            series.addBar(ZonedDateTime.now().plusDays(i),NaN,NaN,NaN,NaN,NaN);
+        for (long i = 0; i <= 10; i++) { // (NaN, 1, NaN, 2, NaN, 3, NaN, 4, ...)
+            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
 
-
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 2);
-        for (int i = series.getBeginIndex(); i<= series.getEndIndex(); i++){
-            if (i % 2 != 0){
-                assertEquals(series.getBar(i-1).getClosePrice().toString(),lowestValue.getValue(i).toString());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            if (i % 2 != 0) {
+                assertEquals(series.getBar(i - 1).getClosePrice().toString(), lowestValue.getValue(i).toString());
             } else
-            assertEquals(series.getBar(Math.max(0,i-1)).getClosePrice().toString(),lowestValue.getValue(i).toString());
+                assertEquals(series.getBar(Math.max(0, i - 1)).getClosePrice().toString(),
+                        lowestValue.getValue(i).toString());
         }
     }
 }

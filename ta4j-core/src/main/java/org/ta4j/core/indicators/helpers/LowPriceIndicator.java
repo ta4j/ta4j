@@ -28,7 +28,6 @@ import org.ta4j.core.TimeSeries;
 
 /**
  * Low price indicator.
- * </p>
  */
 public class LowPriceIndicator extends PriceIndicator {
 

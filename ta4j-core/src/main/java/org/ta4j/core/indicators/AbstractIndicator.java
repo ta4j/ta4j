@@ -31,17 +31,19 @@ import org.ta4j.core.num.Num;
 
 /**
  * Abstract {@link Indicator indicator}.
- * </p>
  */
 public abstract class AbstractIndicator<T> implements Indicator<T> {
 
-    /** The logger */
+    /**
+     * The logger
+     */
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private TimeSeries series;
+    private final TimeSeries series;
 
     /**
      * Constructor.
+     *
      * @param series the related time series
      */
     public AbstractIndicator(TimeSeries series) {
@@ -53,17 +55,14 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         return series;
     }
 
-
-
     @Override
     public String toString() {
         return getClass().getSimpleName();
     }
 
     @Override
-    public Num numOf(Number number){
+    public Num numOf(Number number) {
         return series.numOf(number);
     }
-
 
 }

@@ -49,17 +49,17 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-            List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(1355.69, 1000,numFunction));
-        bars.add(new MockBar(1325.51, 3000,numFunction));
-        bars.add(new MockBar(1335.02, 3500,numFunction));
-        bars.add(new MockBar(1313.72, 2200,numFunction));
-        bars.add(new MockBar(1319.99, 2300,numFunction));
-        bars.add(new MockBar(1331.85, 200,numFunction));
-        bars.add(new MockBar(1329.04, 2700,numFunction));
-        bars.add(new MockBar(1362.16, 5000,numFunction));
-        bars.add(new MockBar(1365.51, 1000,numFunction));
-        bars.add(new MockBar(1374.02, 2500,numFunction));
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(1355.69, 1000, numFunction));
+        bars.add(new MockBar(1325.51, 3000, numFunction));
+        bars.add(new MockBar(1335.02, 3500, numFunction));
+        bars.add(new MockBar(1313.72, 2200, numFunction));
+        bars.add(new MockBar(1319.99, 2300, numFunction));
+        bars.add(new MockBar(1331.85, 200, numFunction));
+        bars.add(new MockBar(1329.04, 2700, numFunction));
+        bars.add(new MockBar(1362.16, 5000, numFunction));
+        bars.add(new MockBar(1365.51, 1000, numFunction));
+        bars.add(new MockBar(1374.02, 2500, numFunction));
         series = new MockTimeSeries(bars);
     }
 

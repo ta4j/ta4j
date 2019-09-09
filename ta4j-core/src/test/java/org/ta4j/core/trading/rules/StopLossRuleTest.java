@@ -49,13 +49,11 @@ public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction,
-                100, 105, 110, 120, 100, 150, 110, 100
-        ));
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
     }
 
     @Test
-    public void isSatisfied_worksForBuy() {
+    public void isSatisfiedWorksForBuy() {
         final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
         final Num tradedAmount = numOf(1);
 
@@ -81,7 +79,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
     }
 
     @Test
-    public void isSatisfied_worksForSell() {
+    public void isSatisfiedWorksForSell() {
         final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.SELL);
         final Num tradedAmount = numOf(1);
 
@@ -107,4 +105,3 @@ public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
         assertTrue(rule.isSatisfied(5, tradingRecord));
     }
 }
-        

@@ -27,8 +27,7 @@ package org.ta4j.core;
 public interface CriterionFactory {
 
     /**
-     * Applies parameters to a CriterionFactory and returns the
-     * AnalysisCriterion.
+     * Applies parameters to a CriterionFactory and returns the AnalysisCriterion.
      * 
      * @param params criteria parameters
      * @return AnalysisCriterion with the parameters applied

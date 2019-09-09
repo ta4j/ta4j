@@ -46,19 +46,17 @@ public class RAVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     @Before
     public void setUp() {
 
-        data = new MockTimeSeries(numFunction,
-                110.00, 109.27, 104.69, 107.07, 107.92,
-                107.95, 108.70, 107.97, 106.09, 106.03,
-                108.65, 109.54, 112.26, 114.38, 117.94
-            
+        data = new MockTimeSeries(numFunction, 110.00, 109.27, 104.69, 107.07, 107.92, 107.95, 108.70, 107.97, 106.09,
+                106.03, 108.65, 109.54, 112.26, 114.38, 117.94
+
         );
     }
-    
+
     @Test
     public void ravi() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         RAVIIndicator ravi = new RAVIIndicator(closePrice, 3, 8);
-        
+
         assertNumEquals(0, ravi.getValue(0));
         assertNumEquals(0, ravi.getValue(1));
         assertNumEquals(0, ravi.getValue(2));

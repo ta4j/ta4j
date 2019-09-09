@@ -35,7 +35,7 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private ClosePriceIndicator closePrice;
 
@@ -45,11 +45,8 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(numFunction,
-                0.73, 0.72, 0.86, 0.72, 0.62,
-                0.76, 0.84, 0.69, 0.65, 0.71,
-                0.53, 0.73, 0.77, 0.67, 0.68
-        );
+        TimeSeries data = new MockTimeSeries(numFunction, 0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71,
+                0.53, 0.73, 0.77, 0.67, 0.68);
         closePrice = new ClosePriceIndicator(data);
     }
 

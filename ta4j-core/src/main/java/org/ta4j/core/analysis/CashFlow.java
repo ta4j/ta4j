@@ -32,8 +32,9 @@ import java.util.List;
 
 /**
  * The cash flow.
- * </p>
- * This class allows to follow the money cash flow involved by a list of trades over a time series.
+ *
+ * This class allows to follow the money cash flow involved by a list of trades
+ * over a time series.
  */
 public class CashFlow implements Indicator<Num> {
 
@@ -45,8 +46,9 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Constructor for cash flows of a closed trade.
+     * 
      * @param timeSeries the time series
-     * @param trade a single trade
+     * @param trade      a single trade
      */
     public CashFlow(TimeSeries timeSeries, Trade trade) {
         this.timeSeries = timeSeries;
@@ -57,7 +59,8 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Constructor for cash flows of closed trades of a trading record.
-     * @param timeSeries the time series
+     * 
+     * @param timeSeries    the time series
      * @param tradingRecord the trading record
      */
     public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
@@ -70,9 +73,10 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Constructor.
-     * @param timeSeries the time series
+     * 
+     * @param timeSeries    the time series
      * @param tradingRecord the trading record
-     * @param finalIndex index up until cash flows of open trades are considered
+     * @param finalIndex    index up until cash flows of open trades are considered
      */
     public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, int finalIndex) {
         this.timeSeries = timeSeries;
@@ -110,16 +114,21 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Calculates the cash flow for a single closed trade.
+     * 
      * @param trade a single trade
      */
     private void calculate(Trade trade) {
-        if (trade.isOpened()) { throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided."); }
+        if (trade.isOpened()) {
+            throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
+        }
         calculate(trade, trade.getExit().getIndex());
     }
 
     /**
-     * Calculates the cash flow for a single trade (including accrued cashflow for open trades).
-     * @param trade a single trade
+     * Calculates the cash flow for a single trade (including accrued cashflow for
+     * open trades).
+     * 
+     * @param trade      a single trade
      * @param finalIndex index up until cash flow of open trades is considered
      */
     private void calculate(Trade trade, int finalIndex) {
@@ -151,8 +160,7 @@ public class CashFlow implements Indicator<Num> {
             Num exitPrice;
             if (trade.getExit() != null) {
                 exitPrice = trade.getExit().getNetPrice();
-            }
-            else {
+            } else {
                 exitPrice = timeSeries.getBar(endIndex).getClosePrice();
             }
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, addCost(exitPrice, avgCost, isLongTrade));
@@ -162,16 +170,16 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Calculates the ratio of intermediate prices.
+     * 
      * @param isLongTrade true, if the entry order type is BUY
-     * @param entryPrice price ratio denominator
-     * @param exitPrice price ratio numerator
+     * @param entryPrice  price ratio denominator
+     * @param exitPrice   price ratio numerator
      */
     private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
         Num ratio;
         if (isLongTrade) {
             ratio = exitPrice.dividedBy(entryPrice);
-        }
-        else {
+        } else {
             ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
         }
         return ratio;
@@ -179,6 +187,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Calculates the cash flow for the closed trades of a trading record.
+     * 
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
@@ -187,9 +196,11 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Calculates the cash flow for all trades of a trading record, including accrued cash flow of an open trade.
+     * Calculates the cash flow for all trades of a trading record, including
+     * accrued cash flow of an open trade.
+     * 
      * @param tradingRecord the trading record
-     * @param finalIndex index up until cash flows of open trades are considered
+     * @param finalIndex    index up until cash flows of open trades are considered
      */
     private void calculate(TradingRecord tradingRecord, int finalIndex) {
         calculate(tradingRecord);
@@ -202,7 +213,8 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Adjusts (intermediate) price to incorporate trading costs.
-     * @param rawPrice the gross asset price
+     * 
+     * @param rawPrice    the gross asset price
      * @param holdingCost share of the holding cost per period
      * @param isLongTrade true, if the entry order type is BUY
      */
@@ -210,8 +222,7 @@ public class CashFlow implements Indicator<Num> {
         Num netPrice;
         if (isLongTrade) {
             netPrice = rawPrice.minus(holdingCost);
-        }
-        else {
+        } else {
             netPrice = rawPrice.plus(holdingCost);
         }
         return netPrice;
@@ -229,10 +240,11 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Determines the the valid final index to be considered.
-     * @param trade the trade
+     * 
+     * @param trade      the trade
      * @param finalIndex index up until cash flows of open trades are considered
-     * @param maxIndex maximal valid index
-     * */
+     * @param maxIndex   maximal valid index
+     */
     static int determineEndIndex(Trade trade, int finalIndex, int maxIndex) {
         int idx = finalIndex;
         // After closing of trade, no further accrual necessary
@@ -240,7 +252,9 @@ public class CashFlow implements Indicator<Num> {
             idx = Math.min(trade.getExit().getIndex(), finalIndex);
         }
         // Accrual at most until maximal index of asset data
-        if (idx > maxIndex) { idx = maxIndex; }
+        if (idx > maxIndex) {
+            idx = maxIndex;
+        }
         return idx;
     }
 }

@@ -29,7 +29,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average true range indicator.
- * <p/>
  */
 public class ATRIndicator extends CachedIndicator<Num> {
 

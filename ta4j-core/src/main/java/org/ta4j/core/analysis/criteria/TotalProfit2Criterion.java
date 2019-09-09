@@ -30,14 +30,16 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gross profit criterion.
- * </p>
- * The gross profit of the provided {@link Trade trade(s)} over the provided {@link TimeSeries series}.
+ *
+ * The gross profit of the provided {@link Trade trade(s)} over the provided
+ * {@link TimeSeries series}.
  */
 public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade)).reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     /**
@@ -63,6 +65,5 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
-
 
 }

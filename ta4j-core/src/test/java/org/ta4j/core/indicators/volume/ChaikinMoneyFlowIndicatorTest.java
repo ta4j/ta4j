@@ -71,7 +71,6 @@ public class ChaikinMoneyFlowIndicatorTest {
         series.addBar(now.minusSeconds(sec--), "0", "63.18", "61.11", "61.55", "8926.512");
         series.addBar(now.minusSeconds(sec--), "0", "62.70", "61.25", "62.69", "7459.575");
 
-
         ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 20);
 
         assertNumEquals(0.6082, cmf.getValue(0));

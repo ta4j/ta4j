@@ -26,14 +26,20 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Parabolic SAR indicator.
+ *
+ * @see <a href=
+ *      "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
+ *      https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
+ * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
+ *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -93,8 +99,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         if (index == getTimeSeries().getBeginIndex()) {
             return sar; // no trend detection possible for the first value
         } else if (index == getTimeSeries().getBeginIndex() + 1) {// start trend detection
-            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex())
-                    .getClosePrice()
+            currentTrend = getTimeSeries().getBar(getTimeSeries().getBeginIndex()).getClosePrice()
                     .isLessThan(getTimeSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
                 sar = highPriceIndicator.getValue(index); // put sar on max price of candlestick
@@ -121,7 +126,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getTimeSeries().getBar(index).getLowPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
-                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex).getValue(index);
+                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex)
+                        .getValue(index);
                 if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
                     incrementAcceleration();
                     minMaxExtremePoint = currentExtremePoint;
@@ -138,7 +144,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getTimeSeries().getBar(index).getHighPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
-                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex).getValue(index);
+                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex)
+                        .getValue(index);
                 if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
                     incrementAcceleration();
                     minMaxExtremePoint = currentExtremePoint;

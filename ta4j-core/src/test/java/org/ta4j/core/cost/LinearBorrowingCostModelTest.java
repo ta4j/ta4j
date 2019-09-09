@@ -86,7 +86,8 @@ public class LinearBorrowingCostModelTest {
 
     @Test
     public void calculateOpenSellTrade() {
-        // Short selling incurs borrowing costs. Since trade is still open, accounted for until current index
+        // Short selling incurs borrowing costs. Since trade is still open, accounted
+        // for until current index
         int currentIndex = 4;
         Trade trade = new Trade(Order.OrderType.SELL, new ZeroCostModel(), borrowingModel);
         trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
@@ -106,11 +107,11 @@ public class LinearBorrowingCostModelTest {
         CostModel modelOther = new ZeroCostModel();
 
         boolean equality = model.equals(modelSameFee);
-        boolean inequality_1 = model.equals(modelSameClass);
-        boolean inequality_2 = model.equals(modelOther);
+        boolean inequality1 = model.equals(modelSameClass);
+        boolean inequality2 = model.equals(modelOther);
 
         assertTrue(equality);
-        assertFalse(inequality_1);
-        assertFalse(inequality_2);
+        assertFalse(inequality1);
+        assertFalse(inequality2);
     }
 }

@@ -30,8 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Chandelier Exit (short) Indicator.
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
+ * 
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
  */
 public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
@@ -41,17 +43,19 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 
      * @param series the time series
      */
     public ChandelierExitShortIndicator(TimeSeries series) {
         this(series, 22, 3d);
     }
-    
+
     /**
      * Constructor.
-     * @param series the time series
+     * 
+     * @param series   the time series
      * @param barCount the time frame (usually 22)
-     * @param k the K multiplier for ATR (usually 3.0)
+     * @param k        the K multiplier for ATR (usually 3.0)
      */
     public ChandelierExitShortIndicator(TimeSeries series, int barCount, double k) {
         super(series);

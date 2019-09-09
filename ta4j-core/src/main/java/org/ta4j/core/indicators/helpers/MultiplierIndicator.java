@@ -29,13 +29,12 @@ import org.ta4j.core.num.Num;
 
 /**
  * Simple multiplier indicator.
- * </p>
  */
 public class MultiplierIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num coefficient;
-    
+
     public MultiplierIndicator(Indicator<Num> indicator, double coefficient) {
         super(indicator);
         this.indicator = indicator;

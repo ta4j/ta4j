@@ -30,7 +30,9 @@ import org.ta4j.core.num.Num;
 /**
  * The RandomWalkIndexHighIndicator.
  *
- * @see <a href="http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source of formular</a>
+ * @see <a href=
+ *      "http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source
+ *      of formular</a>
  */
 public class RWIHighIndicator extends CachedIndicator<Num> {
 
@@ -64,11 +66,11 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
     private Num calcRWIHFor(final int index, final int n) {
         TimeSeries series = getTimeSeries();
         Num high = series.getBar(index).getHighPrice();
-        Num low_N = series.getBar(index + 1 - n).getLowPrice();
-        Num atr_N = new ATRIndicator(series, n).getValue(index);
-        Num sqrt_N = numOf(n).sqrt();
+        Num lowN = series.getBar(index + 1 - n).getLowPrice();
+        Num atrN = new ATRIndicator(series, n).getValue(index);
+        Num sqrtN = numOf(n).sqrt();
 
-        return high.minus(low_N).dividedBy(atr_N.multipliedBy(sqrt_N));
+        return high.minus(lowN).dividedBy(atrN.multipliedBy(sqrtN));
     }
 
     @Override

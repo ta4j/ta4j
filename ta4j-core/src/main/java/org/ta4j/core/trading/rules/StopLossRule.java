@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A stop-loss rule.
- * </p>
+ *
  * Satisfied when the close price reaches the loss threshold.
  */
 public class StopLossRule extends AbstractRule {

@@ -45,20 +45,14 @@ public class HMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction,
-                84.53, 87.39, 84.55,
-                82.83, 82.58, 83.74,
-                83.33, 84.57, 86.98,
-                87.10, 83.11, 83.60,
-                83.66, 82.76, 79.22,
-                79.03, 78.18, 77.42,
-                74.65, 77.48, 76.87
-        );
+        data = new MockTimeSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98, 87.10,
+                83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);
     }
 
     @Test
     public void hmaUsingBarCount9UsingClosePrice() {
-        // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
+        // Example from
+        // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
         HMAIndicator hma = new HMAIndicator(new ClosePriceIndicator(data), 9);
         assertNumEquals(86.3204, hma.getValue(10));
         assertNumEquals(85.3705, hma.getValue(11));

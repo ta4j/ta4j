@@ -32,24 +32,28 @@ import java.util.List;
 
 /**
  * Cached {@link Indicator indicator}.
- * </p>
- * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
+ *
+ * Caches the constructor of the indicator. Avoid to calculate the same index of
+ * the indicator twice.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private static final long serialVersionUID = 7505855220893125595L;
 
-    /** List of cached results */
+    /**
+     * List of cached results
+     */
     private final List<T> results = new ArrayList<T>();
 
     /**
-     * Should always be the index of the last result in the results list.
-     * I.E. the last calculated result.
+     * Should always be the index of the last result in the results list. I.E. the
+     * last calculated result.
      */
     protected int highestResultIndex = -1;
 
     /**
      * Constructor.
+     *
      * @param series the related time series
      */
     public CachedIndicator(TimeSeries series) {
@@ -58,6 +62,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Constructor.
+     *
      * @param indicator a related indicator (with a time series)
      */
     public CachedIndicator(Indicator<?> indicator) {
@@ -104,7 +109,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     // Result not calculated yet
                     highestResultIndex = index;
                     result = calculate(index);
-                    results.set(results.size()-1, result);
+                    results.set(results.size() - 1, result);
                 } else {
                     // Result covered by current cache
                     int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
@@ -128,12 +133,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Increases the size of cached results buffer.
-     * @param index the index to increase length to
+     *
+     * @param index     the index to increase length to
      * @param maxLength the maximum length of the results buffer
      */
     private void increaseLengthTo(int index, int maxLength) {
         if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index-highestResultIndex, maxLength);
+            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
             if (newResultsCount == maxLength) {
                 results.clear();
                 results.addAll(Collections.nCopies(maxLength, null));
@@ -144,13 +150,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         } else {
             // First use of cache
             assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index+1, maxLength), null));
+            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
         }
     }
 
     /**
-     * Removes the N first results which exceed the maximum bar count.
-     * (i.e. keeps only the last maximumResultCount results)
+     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
+     * only the last maximumResultCount results)
+     *
      * @param maximumResultCount the number of results to keep
      */
     private void removeExceedingResults(int maximumResultCount) {

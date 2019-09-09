@@ -30,11 +30,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Difference Change Indicator.
- * <p>
- * Get the difference in percentage from the last time the threshold was reached.
- * <p>
- * Or if you don't pass the threshold you will always just get the difference percentage from the precious value.
- * </p>
+ *
+ * Get the difference in percentage from the last time the threshold was
+ * reached.
+ *
+ * Or if you don't pass the threshold you will always just get the difference
+ * percentage from the precious value.
+ *
  */
 public class DifferencePercentage extends CachedIndicator<Num> {
 
