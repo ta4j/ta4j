@@ -26,26 +26,30 @@ package org.ta4j.core.indicators.ichimoku;
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
  * Ichimoku clouds: Chikou Span indicator
  *
- * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
+ * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
+ *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
 public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
-    /** The close price */
+    /**
+     * The close price
+     */
     private final ClosePriceIndicator closePriceIndicator;
 
-    /** The time delay */
+    /**
+     * The time delay
+     */
     private final int timeDelay;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the series
      */
     public IchimokuChikouSpanIndicator(TimeSeries series) {
@@ -54,19 +58,24 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series    the series
      * @param timeDelay the time delay (usually 26)
      */
     public IchimokuChikouSpanIndicator(TimeSeries series, int timeDelay) {
         super(series);
-        closePriceIndicator = new ClosePriceIndicator(series);
+        this.closePriceIndicator = new ClosePriceIndicator(series);
         this.timeDelay = timeDelay;
     }
 
     @Override
     protected Num calculate(int index) {
-        return closePriceIndicator.getValue(Math.max(0, index - timeDelay));
+        int spanIndex = index + timeDelay;
+        if (spanIndex <= getTimeSeries().getEndIndex()) {
+            return closePriceIndicator.getValue(spanIndex);
+        } else {
+            return NaN.NaN;
+        }
     }
 
 }
