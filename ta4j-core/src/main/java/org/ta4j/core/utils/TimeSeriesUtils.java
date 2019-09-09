@@ -59,7 +59,7 @@ public final class TimeSeriesUtils {
 	/**
 	 * We can assume that finalized bar data will be never changed afterwards by the
 	 * marketdata provider. It is rare, but depending on the exchange, they reserve
-	 * the right to make updates to finalized bars. This method founds and replaces
+	 * the right to make updates to finalized bars. This method finds and replaces
 	 * potential bar data that was changed afterwards by the marketdata provider. It
 	 * can also be uses to check bar data equality over different marketdata
 	 * providers. This method does <b>not</b> add missing bars but replaces an
@@ -86,7 +86,7 @@ public final class TimeSeriesUtils {
 	/**
 	 * Finds possibly missing bars. The returned list contains the
 	 * <code>endTime</code> of each missing bar. A bar is possibly missing if: (1)
-	 * the subsequent bar starts not with the end time of the previous bar or (2) if
+	 * the subsequent bar ends not with the end time of the previous bar or (2) if
 	 * any open, high, low price is missing.
 	 * 
 	 * @param barSeries       the barSeries
