@@ -19,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 
 ### Added
+- :tada: **Enhancement** Added TimeSeriesUtils with various helper methods
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
 - :tada: **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
 - :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
