@@ -49,11 +49,11 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
      */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm,
             BollingerBandsLowerIndicator bbl) {
-        super(bbm.getBarSeries());
+        super(bbm.getTimeSeries());
         this.bbu = bbu;
         this.bbm = bbm;
         this.bbl = bbl;
-        this.hundred = bbm.getBarSeries().numOf(100);
+        this.hundred = bbm.getTimeSeries().numOf(100);
     }
 
     @Override

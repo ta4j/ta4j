@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 
 import java.time.ZonedDateTime;
@@ -45,12 +45,12 @@ public class PreviousValueIndicatorTest {
     private VolumeIndicator volumeIndicator;
     private EMAIndicator emaIndicator;
 
-    private BarSeries series;
+    private TimeSeries series;
 
     @Before
     public void setUp() {
         Random r = new Random();
-        this.series = new BaseBarSeries("test");
+        this.series = new BaseTimeSeries("test");
         for (int i = 0; i < 1000; i++) {
             double open = r.nextDouble();
             double close = r.nextDouble();

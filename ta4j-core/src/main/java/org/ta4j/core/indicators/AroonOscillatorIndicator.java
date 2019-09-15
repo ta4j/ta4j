@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,7 +39,7 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
     private final AroonUpIndicator aroonUpIndicator;
     private final int barCount;
 
-    public AroonOscillatorIndicator(BarSeries series, int barCount) {
+    public AroonOscillatorIndicator(TimeSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
         aroonDownIndicator = new AroonDownIndicator(series, barCount);

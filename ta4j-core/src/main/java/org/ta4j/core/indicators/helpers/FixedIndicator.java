@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
      * @param values the values to be returned by this indicator
      */
     @SafeVarargs
-    public FixedIndicator(BarSeries series, T... values) {
+    public FixedIndicator(TimeSeries series, T... values) {
         super(series);
         this.values.addAll(Arrays.asList(values));
     }

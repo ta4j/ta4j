@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.num.Num;
@@ -44,11 +44,11 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series        the {@link BarSeries}
+     * @param series        the {@link TimeSeries}
      * @param shortBarCount (usually 3)
      * @param longBarCount  (usually 10)
      */
-    public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
+    public ChaikinOscillatorIndicator(TimeSeries series, int shortBarCount, int longBarCount) {
         super(series);
         this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
         this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
@@ -57,9 +57,9 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series the {@link BarSeries}
+     * @param series the {@link TimeSeries}
      */
-    public ChaikinOscillatorIndicator(BarSeries series) {
+    public ChaikinOscillatorIndicator(TimeSeries series) {
         this(series, 3, 10);
     }
 

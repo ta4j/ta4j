@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
@@ -57,7 +57,7 @@ public class DPOIndicator extends CachedIndicator<Num> {
      * @param series   the series
      * @param barCount the time frame
      */
-    public DPOIndicator(BarSeries series, int barCount) {
+    public DPOIndicator(TimeSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
     }
 

@@ -35,7 +35,7 @@ import java.util.Objects;
  *
  * The order is defined by:
  * <ul>
- * <li>the index (in the {@link BarSeries time series}) it is executed
+ * <li>the index (in the {@link TimeSeries time series}) it is executed
  * <li>a {@link OrderType type} (BUY or SELL)
  * <li>a pricePerAsset (optional)
  * <li>an amount to be (or that was) ordered (optional)
@@ -101,7 +101,7 @@ public class Order implements Serializable {
      * @param series the time series
      * @param type   the type of the order
      */
-    protected Order(int index, BarSeries series, OrderType type) {
+    protected Order(int index, TimeSeries series, OrderType type) {
         this(index, series, type, series.numOf(1));
     }
 
@@ -113,7 +113,7 @@ public class Order implements Serializable {
      * @param type   the type of the order
      * @param amount the amount to be (or that was) ordered
      */
-    protected Order(int index, BarSeries series, OrderType type, Num amount) {
+    protected Order(int index, TimeSeries series, OrderType type, Num amount) {
         this(index, series, type, amount, new ZeroCostModel());
     }
 
@@ -125,7 +125,7 @@ public class Order implements Serializable {
      * @param type   the type of the order
      * @param amount the amount to be (or that was) ordered
      */
-    protected Order(int index, BarSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
+    protected Order(int index, TimeSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
         this.type = type;
         this.index = index;
         this.amount = amount;
@@ -286,7 +286,7 @@ public class Order implements Serializable {
      * @param series the time series
      * @return a BUY order
      */
-    public static Order buyAt(int index, BarSeries series) {
+    public static Order buyAt(int index, TimeSeries series) {
         return new Order(index, series, OrderType.BUY);
     }
 
@@ -316,7 +316,7 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a BUY order
      */
-    public static Order buyAt(int index, BarSeries series, Num amount) {
+    public static Order buyAt(int index, TimeSeries series, Num amount) {
         return new Order(index, series, OrderType.BUY, amount);
     }
 
@@ -326,7 +326,7 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a BUY order
      */
-    public static Order buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+    public static Order buyAt(int index, TimeSeries series, Num amount, CostModel transactionCostModel) {
         return new Order(index, series, OrderType.BUY, amount, transactionCostModel);
     }
 
@@ -335,7 +335,7 @@ public class Order implements Serializable {
      * @param series the time series
      * @return a SELL order
      */
-    public static Order sellAt(int index, BarSeries series) {
+    public static Order sellAt(int index, TimeSeries series) {
         return new Order(index, series, OrderType.SELL);
     }
 
@@ -365,7 +365,7 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a SELL order
      */
-    public static Order sellAt(int index, BarSeries series, Num amount) {
+    public static Order sellAt(int index, TimeSeries series, Num amount) {
         return new Order(index, series, OrderType.SELL, amount);
     }
 
@@ -375,7 +375,7 @@ public class Order implements Serializable {
      * @param amount the amount to be (or that was) bought
      * @return a SELL order
      */
-    public static Order sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+    public static Order sellAt(int index, TimeSeries series, Num amount, CostModel transactionCostModel) {
         return new Order(index, series, OrderType.SELL, amount, transactionCostModel);
     }
 

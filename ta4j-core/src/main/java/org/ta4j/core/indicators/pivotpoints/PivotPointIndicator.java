@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.pivotpoints;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -73,7 +73,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      *                  will be only correct pivot point values (and reversals)
      *                  after the first complete month
      */
-    public PivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
+    public PivotPointIndicator(TimeSeries series, TimeLevel timeLevel) {
         super(series);
         this.timeLevel = timeLevel;
     }
@@ -86,13 +86,13 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
     private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
             return NaN;
-        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
         Num close = bar.getClosePrice();
         Num high = bar.getHighPrice();
         Num low = bar.getLowPrice();
         for (int i : barsOfPreviousPeriod) {
-            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
-            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
+            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
         }
         return (high.plus(low).plus(close)).dividedBy(numOf(3));
     }
@@ -114,18 +114,18 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
             return previousBars;
         }
 
-        final Bar currentBar = getBarSeries().getBar(index);
+        final Bar currentBar = getTimeSeries().getBar(index);
 
         // step back while bar-1 in same period (day, week, etc):
-        while (index - 1 > getBarSeries().getBeginIndex()
-                && getPeriod(getBarSeries().getBar(index - 1)) == getPeriod(currentBar)) {
+        while (index - 1 > getTimeSeries().getBeginIndex()
+                && getPeriod(getTimeSeries().getBar(index - 1)) == getPeriod(currentBar)) {
             index--;
         }
 
         // index = last bar in same period, index-1 = first bar in previous period
         long previousPeriod = getPreviousPeriod(currentBar, index - 1);
-        while (index - 1 >= getBarSeries().getBeginIndex()
-                && getPeriod(getBarSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
+        while (index - 1 >= getTimeSeries().getBeginIndex()
+                && getPeriod(getTimeSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
             index--;
             previousBars.add(index);
         }
@@ -137,7 +137,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
         case DAY: // return previous day
             int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
             // skip weekend and holidays:
-            while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
+            while (getTimeSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
                     && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
                 prevCalendarDay--;
             }

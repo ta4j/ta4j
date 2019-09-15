@@ -58,15 +58,15 @@ public class CashFlowToChart {
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barseries, Indicator<Num> indicator,
-                                                                       String name) {
-        org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator,
+            String name) {
+        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barseries.getBarCount(); i++) {
             Bar bar = barseries.getBar(i);
-            chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+            chartTimeSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
                     indicator.getValue(i).doubleValue());
         }
-        return chartBarSeries;
+        return chartTimeSeries;
     }
 
     /**
@@ -108,11 +108,11 @@ public class CashFlowToChart {
     public static void main(String[] args) {
 
         // Getting the time series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
@@ -121,9 +121,9 @@ public class CashFlowToChart {
          * Building chart datasets
          */
         TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
-        datasetAxis1.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
+        datasetAxis1.addSeries(buildChartTimeSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
         TimeSeriesCollection datasetAxis2 = new TimeSeriesCollection();
-        datasetAxis2.addSeries(buildChartBarSeries(series, cashFlow, "Cash Flow"));
+        datasetAxis2.addSeries(buildChartTimeSeries(series, cashFlow, "Cash Flow"));
 
         /*
          * Creating the chart

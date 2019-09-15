@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-public class BaseBarSeriesBuilder implements BarSeriesBuilder {
+public class BaseTimeSeriesBuilder implements TimeSeriesBuilder {
 
     private static final long serialVersionUID = 111164611841087550L;
     /**
@@ -44,67 +44,67 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private boolean constrained;
     private int maxBarCount;
 
-    public BaseBarSeriesBuilder() {
+    public BaseTimeSeriesBuilder() {
         initValues();
     }
 
     public static void setDefaultFunction(Function<Number, Num> defaultFunction) {
-        BaseBarSeriesBuilder.defaultFunction = defaultFunction;
+        BaseTimeSeriesBuilder.defaultFunction = defaultFunction;
     }
 
     private void initValues() {
         this.bars = new ArrayList<>();
         this.name = "unnamed_series";
-        this.numFunction = BaseBarSeriesBuilder.defaultFunction;
+        this.numFunction = BaseTimeSeriesBuilder.defaultFunction;
         this.constrained = false;
         this.maxBarCount = Integer.MAX_VALUE;
     }
 
     @Override
-    public BarSeries build() {
+    public TimeSeries build() {
         int beginIndex = -1;
         int endIndex = -1;
         if (!bars.isEmpty()) {
             beginIndex = 0;
             endIndex = bars.size() - 1;
         }
-        BarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
+        TimeSeries series = new BaseTimeSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
         series.setMaximumBarCount(maxBarCount);
         initValues(); // reinitialize values for next series
         return series;
     }
 
-    public BaseBarSeriesBuilder setConstrained(boolean constrained) {
+    public BaseTimeSeriesBuilder setConstrained(boolean constrained) {
         this.constrained = constrained;
         return this;
     }
 
-    public BaseBarSeriesBuilder withName(String name) {
+    public BaseTimeSeriesBuilder withName(String name) {
         this.name = name;
         return this;
     }
 
-    public BaseBarSeriesBuilder withBars(List<Bar> bars) {
+    public BaseTimeSeriesBuilder withBars(List<Bar> bars) {
         this.bars = bars;
         return this;
     }
 
-    public BaseBarSeriesBuilder withMaxBarCount(int maxBarCount) {
+    public BaseTimeSeriesBuilder withMaxBarCount(int maxBarCount) {
         this.maxBarCount = maxBarCount;
         return this;
     }
 
-    public BaseBarSeriesBuilder withNumTypeOf(Num type) {
+    public BaseTimeSeriesBuilder withNumTypeOf(Num type) {
         numFunction = type.function();
         return this;
     }
 
-    public BaseBarSeriesBuilder withNumTypeOf(Function<Number, Num> function) {
+    public BaseTimeSeriesBuilder withNumTypeOf(Function<Number, Num> function) {
         numFunction = function;
         return this;
     }
 
-    public BaseBarSeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
+    public BaseTimeSeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
         if (abstractNumClass == PrecisionNum.class) {
             numFunction = PrecisionNum::valueOf;
             return this;

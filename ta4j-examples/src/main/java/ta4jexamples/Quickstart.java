@@ -23,8 +23,12 @@
  */
 package ta4jexamples;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AverageProfitableTradesCriterion;
 import org.ta4j.core.analysis.criteria.RewardRiskRatioCriterion;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
@@ -48,7 +52,7 @@ public class Quickstart {
     public static void main(String[] args) {
 
         // Getting a time series (from any provider: CSV, web service, etc.)
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Getting the close price of the bars
         Num firstClosePrice = series.getBar(0).getClosePrice();
@@ -85,7 +89,7 @@ public class Quickstart {
                 .or(new StopLossRule(closePrice, series.numOf(3))).or(new StopGainRule(closePrice, series.numOf(2)));
 
         // Running our juicy trading strategy...
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(new BaseStrategy(buyingRule, sellingRule));
         System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
 

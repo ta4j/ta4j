@@ -62,7 +62,7 @@ public class OverIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public OverIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getBarSeries(), threshold));
+        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
     }
 
     /**

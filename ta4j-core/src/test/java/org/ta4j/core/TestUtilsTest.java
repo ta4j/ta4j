@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.TestUtils.*;
 
-public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class TestUtilsTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private static final String stringDouble = "1234567890.12345";
     private static final String diffStringDouble = "1234567890.12346";
@@ -63,15 +63,15 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         diffNumInt = numOf(diffInt);
         numDouble = numOf(aDouble);
         diffNumDouble = numOf(diffDouble);
-        BarSeries series = randomSeries();
-        BarSeries diffSeries = randomSeries();
+        TimeSeries series = randomSeries();
+        TimeSeries diffSeries = randomSeries();
         indicator = new ClosePriceIndicator(series);
         diffIndicator = new ClosePriceIndicator(diffSeries);
     }
 
-    private BarSeries randomSeries() {
-        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder();
-        BarSeries series = builder.withNumTypeOf(numFunction).build();
+    private TimeSeries randomSeries() {
+        BaseTimeSeriesBuilder builder = new BaseTimeSeriesBuilder();
+        TimeSeries series = builder.withNumTypeOf(numFunction).build();
         ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
         for (int i = 0; i < 1000; i++) {

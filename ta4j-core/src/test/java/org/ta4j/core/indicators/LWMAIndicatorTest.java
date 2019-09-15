@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -37,7 +37,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+    private TimeSeries data;
 
     public LWMAIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -45,7 +45,7 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-        data = new MockBarSeries(numFunction, 37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79,
+        data = new MockTimeSeries(numFunction, 37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79,
                 36.83);
     }
 

@@ -23,8 +23,15 @@
  */
 package ta4jexamples.backtesting;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Order;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -40,11 +47,11 @@ import java.time.ZonedDateTime;
 public class SimpleMovingAverageBacktest {
 
     public static void main(String[] args) throws InterruptedException {
-        BarSeries series = createBarSeries();
+        TimeSeries series = createTimeSeries();
 
         Strategy strategy3DaySma = create3DaySmaStrategy(series);
 
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY,
                 PrecisionNum.valueOf(50));
         System.out.println(tradingRecord3DaySma);
@@ -62,8 +69,8 @@ public class SimpleMovingAverageBacktest {
         System.out.println(calculate2DaySma);
     }
 
-    private static BarSeries createBarSeries() {
-        BarSeries series = new BaseBarSeries();
+    private static TimeSeries createTimeSeries() {
+        TimeSeries series = new BaseTimeSeries();
         series.addBar(createBar(CreateDay(1), 100.0, 100.0, 100.0, 100.0, 1060));
         series.addBar(createBar(CreateDay(2), 110.0, 110.0, 110.0, 110.0, 1070));
         series.addBar(createBar(CreateDay(3), 140.0, 140.0, 140.0, 140.0, 1080));
@@ -86,13 +93,13 @@ public class SimpleMovingAverageBacktest {
         return ZonedDateTime.of(2018, 01, day, 12, 0, 0, 0, ZoneId.systemDefault());
     }
 
-    private static Strategy create3DaySmaStrategy(BarSeries series) {
+    private static Strategy create3DaySmaStrategy(TimeSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, 3);
         return new BaseStrategy(new UnderIndicatorRule(sma, closePrice), new OverIndicatorRule(sma, closePrice));
     }
 
-    private static Strategy create2DaySmaStrategy(BarSeries series) {
+    private static Strategy create2DaySmaStrategy(TimeSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(closePrice, 2);
         return new BaseStrategy(new UnderIndicatorRule(sma, closePrice), new OverIndicatorRule(sma, closePrice));

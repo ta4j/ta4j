@@ -26,7 +26,7 @@ package org.ta4j.core.analysis.criteria;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -49,7 +49,7 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterion() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(4, series), Order.buyAt(5, series), Order.sellAt(7, series));
 
@@ -62,7 +62,7 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
         assertTrue(rrc.calculate(series, tradingRecord).isNaN());
@@ -70,13 +70,13 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void rewardRiskRatioCriterionWithNoTrades() {
-        MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         assertTrue(rrc.calculate(series, new BaseTradingRecord()).isNaN());
     }
 
     @Test
     public void withOneTrade() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
+        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
         AnalysisCriterion ratioCriterion = getCriterion();

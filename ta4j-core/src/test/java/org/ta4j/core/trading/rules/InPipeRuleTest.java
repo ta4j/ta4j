@@ -25,9 +25,9 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
 import org.ta4j.core.num.Num;
 
@@ -40,7 +40,7 @@ public class InPipeRuleTest {
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeries("I am empty");
+        TimeSeries series = new BaseTimeSeries("I am empty");
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 50d, 70d, 80d, 90d, 99d, 60d, 30d, 20d, 10d, 0d);
         rule = new InPipeRule(indicator, series.numOf(80), series.numOf(20));
     }

@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
@@ -53,7 +53,7 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
      * @param series   the series
      * @param barCount the time frame
      */
-    public AbstractIchimokuLineIndicator(BarSeries series, int barCount) {
+    public AbstractIchimokuLineIndicator(TimeSeries series, int barCount) {
         super(series);
         periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
         periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);

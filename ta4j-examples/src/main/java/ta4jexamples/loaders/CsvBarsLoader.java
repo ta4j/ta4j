@@ -24,8 +24,8 @@
 package ta4jexamples.loaders;
 
 import com.opencsv.CSVReader;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,15 +48,15 @@ public class CsvBarsLoader {
     /**
      * @return a time series from Apple Inc. bars.
      */
-    public static BarSeries loadAppleIncSeries() {
+    public static TimeSeries loadAppleIncSeries() {
         return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
     }
 
-    public static BarSeries loadCsvSeries(String filename) {
+    public static TimeSeries loadCsvSeries(String filename) {
 
         InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
-        BarSeries series = new BaseBarSeries("apple_bars");
+        TimeSeries series = new BaseTimeSeries("apple_bars");
 
         try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"',
                 1)) {
@@ -80,7 +80,7 @@ public class CsvBarsLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());

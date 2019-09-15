@@ -24,14 +24,14 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 
 /**
  * Low price indicator.
  */
 public class LowPriceIndicator extends PriceIndicator {
 
-    public LowPriceIndicator(BarSeries series) {
+    public LowPriceIndicator(TimeSeries series) {
         super(series, Bar::getLowPrice);
     }
 

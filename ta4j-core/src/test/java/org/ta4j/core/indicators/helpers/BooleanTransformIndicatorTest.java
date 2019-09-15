@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator.BooleanTransformSimpleType;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator.BooleanTransformType;
@@ -61,7 +61,7 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
     public void setUp() {
         Num FOUR = numFunction.apply(4);
         Num minusFOUR = numFunction.apply(-4);
-        BarSeries series = new BaseBarSeries();
+        TimeSeries series = new BaseTimeSeries();
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, FOUR);
 
         transEquals = new BooleanTransformIndicator(constantIndicator, FOUR, BooleanTransformType.equals);

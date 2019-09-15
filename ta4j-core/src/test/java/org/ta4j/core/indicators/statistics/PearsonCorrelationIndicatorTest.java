@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseTimeSeriesBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -49,7 +49,7 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
     @Before
     public void setUp() {
-        BarSeries data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        TimeSeries data = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         int i = 20;
         // close, volume
         data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 6, 100, numFunction));

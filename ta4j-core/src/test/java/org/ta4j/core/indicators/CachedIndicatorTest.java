@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
@@ -41,7 +41,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries series;
+    private TimeSeries series;
 
     public CachedIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -49,7 +49,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Before
     public void setUp() {
-        series = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        series = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
@@ -61,25 +61,25 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test // should be not null
-    public void getValueWithNullBarSeries() {
+    public void getValueWithNullTimeSeries() {
 
         ConstantIndicator<Num> constant = new ConstantIndicator<>(
-                new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build(), numFunction.apply(10));
+                new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build(), numFunction.apply(10));
         assertEquals(numFunction.apply(10), constant.getValue(0));
         assertEquals(numFunction.apply(10), constant.getValue(100));
-        assertNotNull(constant.getBarSeries());
+        assertNotNull(constant.getTimeSeries());
 
         SMAIndicator sma = new SMAIndicator(constant, 10);
         assertEquals(numFunction.apply(10), sma.getValue(0));
         assertEquals(numFunction.apply(10), sma.getValue(100));
-        assertNotNull(sma.getBarSeries());
+        assertNotNull(sma.getTimeSeries());
     }
 
     @Test
     public void getValueWithCacheLengthIncrease() {
         double[] data = new double[200];
         Arrays.fill(data, 10);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockBarSeries(numFunction, data)), 100);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(numFunction, data)), 100);
         assertNumEquals(10, sma.getValue(105));
     }
 
@@ -87,20 +87,20 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void getValueWithOldResultsRemoval() {
         double[] data = new double[20];
         Arrays.fill(data, 1);
-        BarSeries barSeries = new MockBarSeries(numFunction, data);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 10);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction, data);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
         assertNumEquals(1, sma.getValue(5));
         assertNumEquals(1, sma.getValue(10));
-        barSeries.setMaximumBarCount(12);
+        timeSeries.setMaximumBarCount(12);
         assertNumEquals(1, sma.getValue(19));
     }
 
     @Test
-    public void strategyExecutionOnCachedIndicatorAndLimitedBarSeries() {
-        BarSeries barSeries = new MockBarSeries(numFunction, 0, 1, 2, 3, 4, 5, 6, 7);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
+    public void strategyExecutionOnCachedIndicatorAndLimitedTimeSeries() {
+        TimeSeries timeSeries = new MockTimeSeries(numFunction, 0, 1, 2, 3, 4, 5, 6, 7);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
-        barSeries.setMaximumBarCount(6);
+        timeSeries.setMaximumBarCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
 
         Strategy strategy = new BaseStrategy(new OverIndicatorRule(sma, sma.numOf(3)),
@@ -138,21 +138,21 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void getValueOnResultsCalculatedFromRemovedBarsShouldReturnFirstRemainingResult() {
-        BarSeries barSeries = new MockBarSeries(numFunction, 1, 1, 1, 1, 1);
-        barSeries.setMaximumBarCount(3);
-        assertEquals(2, barSeries.getRemovedBarsCount());
+        TimeSeries timeSeries = new MockTimeSeries(numFunction, 1, 1, 1, 1, 1);
+        timeSeries.setMaximumBarCount(3);
+        assertEquals(2, timeSeries.getRemovedBarsCount());
 
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         for (int i = 0; i < 5; i++) {
             assertNumEquals(1, sma.getValue(i));
         }
     }
 
     @Test
-    public void recursiveCachedIndicatorOnMovingBarSeriesShouldNotCauseStackOverflow() {
+    public void recursiveCachedIndicatorOnMovingTimeSeriesShouldNotCauseStackOverflow() {
         // Added to check issue #120: https://github.com/mdeverdelhan/ta4j/issues/120
         // See also: CachedIndicator#getValue(int index)
-        series = new MockBarSeries(numFunction);
+        series = new MockTimeSeries(numFunction);
         series.setMaximumBarCount(5);
         assertEquals(5, series.getBarCount());
 
@@ -166,22 +166,22 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void leaveLastBarUncached() {
-        BarSeries barSeries = new MockBarSeries(numFunction);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertNumEquals(5000, closePrice.getValue(barSeries.getEndIndex()));
-        barSeries.getLastBar().addTrade(numOf(10), numOf(5));
-        assertNumEquals(5, closePrice.getValue(barSeries.getEndIndex()));
+        TimeSeries timeSeries = new MockTimeSeries(numFunction);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
+        assertNumEquals(5000, closePrice.getValue(timeSeries.getEndIndex()));
+        timeSeries.getLastBar().addTrade(numOf(10), numOf(5));
+        assertNumEquals(5, closePrice.getValue(timeSeries.getEndIndex()));
 
     }
 
     @Test
     public void leaveBarsBeforeLastBarCached() {
-        BarSeries barSeries = new MockBarSeries(numFunction);
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(timeSeries);
 
         // Add a forgotten trade, should be ignored in the cached indicator
         assertNumEquals(2, closePrice.getValue(1));
-        barSeries.getBar(1).addTrade(numOf(10), numOf(5));
+        timeSeries.getBar(1).addTrade(numOf(10), numOf(5));
         assertNumEquals(2, closePrice.getValue(1));
     }
 

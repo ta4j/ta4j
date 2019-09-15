@@ -25,14 +25,14 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -42,7 +42,7 @@ import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+    private TimeSeries data;
     private ExternalIndicatorTest xls;
     // private ExternalIndicatorTest sql;
 
@@ -55,7 +55,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Before
     public void setUp() throws Exception {
-        data = new MockBarSeries(numFunction, 50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07,
+        data = new MockTimeSeries(numFunction, 50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07,
                 50.01, 50.14, 50.22, 50.43, 50.50, 50.56, 50.52, 50.70, 50.55, 50.62, 50.90, 50.82, 50.86, 51.20, 51.30,
                 51.10);
     }
@@ -103,17 +103,17 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         indicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(100.0, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+        assertEquals(100.0, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(67.0453, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+        assertEquals(67.0453, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(52.5876, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+        assertEquals(52.5876, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }
 
@@ -122,7 +122,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // from
         // http://cns.bu.edu/~gsc/CN710/fincast/Technical%20_indicators/Relative%20Strength%20Index%20(RSI).htm
         // which uses a different calculation of RSI than ta4j
-        BarSeries series = new MockBarSeries(numFunction, 46.1250, 47.1250, 46.4375, 46.9375, 44.9375, 44.2500,
+        TimeSeries series = new MockTimeSeries(numFunction, 46.1250, 47.1250, 46.4375, 46.9375, 44.9375, 44.2500,
                 44.6250, 45.7500, 47.8125, 47.5625, 47.0000, 44.5625, 46.3125, 47.6875, 46.6875, 45.6875, 43.0625,
                 43.5625, 44.8750, 43.6875);
         // ta4j RSI uses MMA for average gain and loss

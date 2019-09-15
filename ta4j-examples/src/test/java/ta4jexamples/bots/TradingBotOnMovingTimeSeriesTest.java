@@ -25,10 +25,10 @@ package ta4jexamples.bots;
 
 import org.junit.Test;
 
-public class TradingBotOnMovingBarSeriesTest {
+public class TradingBotOnMovingTimeSeriesTest {
 
     @Test
     public void test() throws InterruptedException {
-        TradingBotOnMovingBarSeries.main(null);
+        TradingBotOnMovingTimeSeries.main(null);
     }
 }

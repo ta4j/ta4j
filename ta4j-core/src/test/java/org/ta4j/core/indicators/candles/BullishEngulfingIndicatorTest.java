@@ -26,11 +26,11 @@ package org.ta4j.core.indicators.candles;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -42,7 +42,7 @@ import static org.junit.Assert.assertTrue;
 
 public class BullishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries series;
+    private TimeSeries series;
 
     public BullishEngulfingIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -57,7 +57,7 @@ public class BullishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicat
         bars.add(new MockBar(15, 18, 19, 14, numFunction));
         bars.add(new MockBar(15, 11, 15, 8, numFunction));
         bars.add(new MockBar(11, 12, 12, 10, numFunction));
-        series = new MockBarSeries(bars);
+        series = new MockTimeSeries(bars);
     }
 
     @Test

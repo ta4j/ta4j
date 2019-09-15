@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
@@ -53,7 +53,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
      *
      * @param series the series
      */
-    public IchimokuChikouSpanIndicator(BarSeries series) {
+    public IchimokuChikouSpanIndicator(TimeSeries series) {
         this(series, 26);
     }
 
@@ -63,7 +63,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
      * @param series    the series
      * @param timeDelay the time delay (usually 26)
      */
-    public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
+    public IchimokuChikouSpanIndicator(TimeSeries series, int timeDelay) {
         super(series);
         this.closePriceIndicator = new ClosePriceIndicator(series);
         this.timeDelay = timeDelay;
@@ -72,7 +72,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int spanIndex = index + timeDelay;
-        if (spanIndex <= getBarSeries().getEndIndex()) {
+        if (spanIndex <= getTimeSeries().getEndIndex()) {
             return closePriceIndicator.getValue(spanIndex);
         } else {
             return NaN.NaN;

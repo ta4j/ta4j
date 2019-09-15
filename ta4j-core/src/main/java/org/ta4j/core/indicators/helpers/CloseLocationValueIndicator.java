@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -38,13 +38,13 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
     private final Num zero = numOf(0);
 
-    public CloseLocationValueIndicator(BarSeries series) {
+    public CloseLocationValueIndicator(TimeSeries series) {
         super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-        final Bar bar = getBarSeries().getBar(index);
+        final Bar bar = getTimeSeries().getBar(index);
         final Num low = bar.getLowPrice();
         final Num high = bar.getHighPrice();
         final Num close = bar.getClosePrice();

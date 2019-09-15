@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.*;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
@@ -46,9 +46,9 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     private LowPriceIndicator lowPriceIndicator;
 
-    public StochasticOscillatorKIndicator(BarSeries barSeries, int barCount) {
-        this(new ClosePriceIndicator(barSeries), barCount, new HighPriceIndicator(barSeries),
-                new LowPriceIndicator(barSeries));
+    public StochasticOscillatorKIndicator(TimeSeries timeSeries, int barCount) {
+        this(new ClosePriceIndicator(timeSeries), barCount, new HighPriceIndicator(timeSeries),
+                new LowPriceIndicator(timeSeries));
     }
 
     public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, HighPriceIndicator highPriceIndicator,

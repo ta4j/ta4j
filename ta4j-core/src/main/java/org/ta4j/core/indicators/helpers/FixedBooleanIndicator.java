@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 
 /**
  * A fixed boolean indicator.
@@ -37,7 +37,7 @@ public class FixedBooleanIndicator extends FixedIndicator<Boolean> {
      * 
      * @param values the values to be returned by this indicator
      */
-    public FixedBooleanIndicator(BarSeries series, Boolean... values) {
+    public FixedBooleanIndicator(TimeSeries series, Boolean... values) {
         super(series, values);
     }
 }

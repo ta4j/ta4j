@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -42,7 +42,7 @@ import java.util.function.Function;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private BarSeries data;
+    private TimeSeries data;
 
     public WilliamsRIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -66,7 +66,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, numFunction));
         bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new BaseTimeSeries(bars);
     }
 
     @Test

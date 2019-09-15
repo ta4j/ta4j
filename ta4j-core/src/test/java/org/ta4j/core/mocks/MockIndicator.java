@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.mocks;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.List;
@@ -32,7 +32,7 @@ import java.util.List;
 public class MockIndicator implements Indicator<Num> {
 
     private static final long serialVersionUID = -1083818948051189894L;
-    private BarSeries series;
+    private TimeSeries series;
     private List<Num> values;
 
     /**
@@ -41,7 +41,7 @@ public class MockIndicator implements Indicator<Num> {
      * @param series TimeSeries of the Indicator
      * @param values Indicator values
      */
-    public MockIndicator(BarSeries series, List<Num> values) {
+    public MockIndicator(TimeSeries series, List<Num> values) {
         this.series = series;
         this.values = values;
     }
@@ -61,7 +61,7 @@ public class MockIndicator implements Indicator<Num> {
      * 
      * @return TimeSeries of the Indicator
      */
-    public BarSeries getBarSeries() {
+    public TimeSeries getTimeSeries() {
         return series;
     }
 

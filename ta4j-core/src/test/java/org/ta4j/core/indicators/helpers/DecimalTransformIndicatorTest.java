@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseTimeSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformSimpleType;
 import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformType;
@@ -56,7 +56,7 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
 
         transPlus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.plus);

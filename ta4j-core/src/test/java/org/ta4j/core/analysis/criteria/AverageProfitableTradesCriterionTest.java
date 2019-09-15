@@ -24,9 +24,13 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -43,7 +47,7 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
 
     @Test
     public void calculate() {
-        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+        TimeSeries series = new MockTimeSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(3, series), Order.buyAt(4, series), Order.sellAt(5, series));
 
@@ -54,7 +58,7 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
 
     @Test
     public void calculateWithOneTrade() {
-        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+        TimeSeries series = new MockTimeSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
         AnalysisCriterion average = getCriterion();

@@ -33,8 +33,8 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
@@ -60,8 +60,8 @@ public class IndicatorsToChart {
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barseries, Indicator<Num> indicator,
-                                                                       String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator,
+            String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barseries.getBarCount(); i++) {
             Bar bar = barseries.getBar(i);
@@ -94,7 +94,7 @@ public class IndicatorsToChart {
         /*
          * Getting time series
          */
-        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         /*
          * Creating indicators
@@ -113,9 +113,9 @@ public class IndicatorsToChart {
          * Building chart dataset
          */
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        dataset.addSeries(buildChartBarSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
-        dataset.addSeries(buildChartBarSeries(series, lowBBand, "Low Bollinger Band"));
-        dataset.addSeries(buildChartBarSeries(series, upBBand, "High Bollinger Band"));
+        dataset.addSeries(buildChartTimeSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
+        dataset.addSeries(buildChartTimeSeries(series, lowBBand, "Low Bollinger Band"));
+        dataset.addSeries(buildChartTimeSeries(series, upBBand, "High Bollinger Band"));
 
         /*
          * Creating the chart

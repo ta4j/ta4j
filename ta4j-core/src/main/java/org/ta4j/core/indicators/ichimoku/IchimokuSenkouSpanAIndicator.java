@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -47,7 +47,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * 
      * @param series the series
      */
-    public IchimokuSenkouSpanAIndicator(BarSeries series) {
+    public IchimokuSenkouSpanAIndicator(TimeSeries series) {
         this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
     }
 
@@ -59,7 +59,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      *                               9)
      * @param barCountBaseLine       the time frame for the base line (usually 26)
      */
-    public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
+    public IchimokuSenkouSpanAIndicator(TimeSeries series, int barCountConversionLine, int barCountBaseLine) {
         this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
                 new IchimokuKijunSenIndicator(series, barCountBaseLine));
     }
@@ -71,8 +71,8 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param conversionLine the conversion line
      * @param baseLine       the base line
      */
-    public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
-                                        IchimokuKijunSenIndicator baseLine) {
+    public IchimokuSenkouSpanAIndicator(TimeSeries series, IchimokuTenkanSenIndicator conversionLine,
+            IchimokuKijunSenIndicator baseLine) {
         super(series);
         this.conversionLine = conversionLine;
         this.baseLine = baseLine;

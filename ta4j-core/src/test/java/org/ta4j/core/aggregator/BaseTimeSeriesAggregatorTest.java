@@ -25,8 +25,8 @@ package org.ta4j.core.aggregator;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
@@ -41,12 +41,12 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BaseTimeSeriesAggregatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
-    private BaseBarSeriesAggregator baseBarSeriesAggregator = new BaseBarSeriesAggregator(
+    private BaseTimeSeriesAggregator baseTimeSeriesAggregator = new BaseTimeSeriesAggregator(
             new BarAggregatorForTest());
 
-    public BaseBarSeriesAggregatorTest(Function<Number, Num> numFunction) {
+    public BaseTimeSeriesAggregatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -62,9 +62,9 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
         bars.add(bar1);
         bars.add(bar2);
 
-        final BarSeries barSeries = new BaseBarSeries("name", bars);
+        final TimeSeries timeSeries = new BaseTimeSeries("name", bars);
 
-        final BarSeries aggregated = baseBarSeriesAggregator.aggregate(barSeries, "newName");
+        final TimeSeries aggregated = baseTimeSeriesAggregator.aggregate(timeSeries, "newName");
 
         assertEquals("newName", aggregated.getName());
         assertEquals(2, aggregated.getBarCount());
@@ -84,9 +84,9 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
         bars.add(bar1);
         bars.add(bar2);
 
-        final BarSeries barSeries = new BaseBarSeries("name", bars);
+        final TimeSeries timeSeries = new BaseTimeSeries("name", bars);
 
-        final BarSeries aggregated = baseBarSeriesAggregator.aggregate(barSeries);
+        final TimeSeries aggregated = baseTimeSeriesAggregator.aggregate(timeSeries);
 
         assertEquals("name", aggregated.getName());
         assertEquals(2, aggregated.getBarCount());

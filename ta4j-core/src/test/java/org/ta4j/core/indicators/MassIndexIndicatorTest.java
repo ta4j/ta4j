@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 
@@ -40,7 +40,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+    private TimeSeries data;
 
     public MassIndexIndicatorTest(Function<Number, Num> function) {
         super(function);
@@ -71,7 +71,7 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         bars.add(new MockBar(43.56, 43.95, 43.99, 43.53, numFunction));
         bars.add(new MockBar(43.93, 44.47, 44.58, 43.93, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new BaseTimeSeries(bars);
     }
 
     @Test

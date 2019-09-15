@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -37,13 +37,13 @@ import org.ta4j.core.num.Num;
 public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         return series.getBar(series.getEndIndex()).getClosePrice()
                 .dividedBy(series.getBar(series.getBeginIndex()).getClosePrice());
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
+    public Num calculate(TimeSeries series, Trade trade) {
         int entryIndex = trade.getEntry().getIndex();
         int exitIndex = trade.getExit().getIndex();
 

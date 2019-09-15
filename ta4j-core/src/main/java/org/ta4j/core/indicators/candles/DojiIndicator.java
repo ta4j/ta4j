@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.AbsoluteIndicator;
@@ -57,7 +57,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      *                   height
      * @param bodyFactor the factor used when checking if a candle is Doji
      */
-    public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
+    public DojiIndicator(TimeSeries series, int barCount, double bodyFactor) {
         super(series);
         bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
         averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);

@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
@@ -66,7 +66,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      *
      * @param series the timeSeries
      */
-    public AwesomeOscillatorIndicator(BarSeries series) {
+    public AwesomeOscillatorIndicator(TimeSeries series) {
         this(new MedianPriceIndicator(series), 5, 34);
     }
 

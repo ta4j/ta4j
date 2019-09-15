@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -45,7 +45,7 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void setUp() {
-        BarSeries data = new MockBarSeries(numFunction, 0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71,
+        TimeSeries data = new MockTimeSeries(numFunction, 0.73, 0.72, 0.86, 0.72, 0.62, 0.76, 0.84, 0.69, 0.65, 0.71,
                 0.53, 0.73, 0.77, 0.67, 0.68);
         closePrice = new ClosePriceIndicator(data);
     }

@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -32,18 +32,18 @@ import org.ta4j.core.num.Num;
  * Total profit criterion.
  *
  * The total profit of the provided {@link Trade trade(s)} over the provided
- * {@link BarSeries series}.
+ * {@link TimeSeries series}.
  */
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
                 Num::multipliedBy);
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
+    public Num calculate(TimeSeries series, Trade trade) {
         return calculateProfit(series, trade);
     }
 
@@ -59,7 +59,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @param trade  a trade
      * @return the profit of the trade
      */
-    private Num calculateProfit(BarSeries series, Trade trade) {
+    private Num calculateProfit(TimeSeries series, Trade trade) {
         Num profit = series.numOf(1);
         if (trade.isClosed()) {
             // use price of entry/exit order, if NaN use close price of underlying time

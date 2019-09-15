@@ -115,7 +115,7 @@ public class XlsTestsUtils {
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static BarSeries getSeries(Class<?> clazz, String fileName, Function<Number, Num> numFunction)
+    public static TimeSeries getSeries(Class<?> clazz, String fileName, Function<Number, Num> numFunction)
             throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         return getSeries(sheet, numFunction);
@@ -131,8 +131,8 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getData throws DataFormatException or if the
      *                             data contains empty cells
      */
-    private static BarSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+    private static TimeSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         int minInterval = Integer.MAX_VALUE;

@@ -25,11 +25,11 @@ package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
@@ -54,7 +54,7 @@ public class IIIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         bars.add(new MockBar(now, 0d, 20d, 40d, 5d, 0d, 50d, 0, numFunction));// 15-20 *50 / 35
         bars.add(new MockBar(now, 0d, 30d, 30d, 3d, 0d, 600d, 0, numFunction));// 27-0 *600 /27
 
-        BarSeries series = new MockBarSeries(bars);
+        TimeSeries series = new MockTimeSeries(bars);
         IIIIndicator iiiIndicator = new IIIIndicator(series);
         assertNumEquals(0, iiiIndicator.getValue(0));
         assertNumEquals((2 * 8d - 10d - 7d) / ((10d - 7d) * 100d), iiiIndicator.getValue(1));

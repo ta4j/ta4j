@@ -43,7 +43,7 @@ public class GlobalExtremaStrategy {
      * @param series a time series
      * @return a global extrema strategy
      */
-    public static Strategy buildStrategy(BarSeries series) {
+    public static Strategy buildStrategy(TimeSeries series) {
         if (series == null) {
             throw new IllegalArgumentException("Series cannot be null");
         }
@@ -71,13 +71,13 @@ public class GlobalExtremaStrategy {
     public static void main(String[] args) {
 
         // Getting the time series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 

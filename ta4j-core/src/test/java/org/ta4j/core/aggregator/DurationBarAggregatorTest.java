@@ -25,8 +25,8 @@ package org.ta4j.core.aggregator;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
@@ -40,7 +40,7 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 
-public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class DurationBarAggregatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     public DurationBarAggregatorTest(Function<Number, Num> numFunction) {
         super(numFunction);

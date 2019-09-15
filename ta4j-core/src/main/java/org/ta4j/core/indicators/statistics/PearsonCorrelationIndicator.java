@@ -69,7 +69,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         Num Syy = numOf(0);
         Num Sxy = numOf(0);
 
-        for (int i = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
+        for (int i = Math.max(getTimeSeries().getBeginIndex(), index - barCount + 1); i <= index; i++) {
 
             Num x = indicator1.getValue(i);
             Num y = indicator2.getValue(i);

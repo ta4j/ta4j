@@ -62,7 +62,7 @@ public class IsEqualRule extends AbstractRule {
      * @param value     the value to check
      */
     public IsEqualRule(Indicator<Num> indicator, Num value) {
-        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), value));
+        this(indicator, new ConstantIndicator<>(indicator.getTimeSeries(), value));
     }
 
     /**

@@ -27,11 +27,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.mocks.MockTimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -39,7 +39,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class StopLossRuleTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private ClosePriceIndicator closePrice;
 
@@ -49,7 +49,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
+        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, 100, 105, 110, 120, 100, 150, 110, 100));
     }
 
     @Test

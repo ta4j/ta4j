@@ -33,7 +33,7 @@ public interface ExternalIndicatorTest {
      * @return TimeSeries from the external indicator calculator
      * @throws Exception if the external calculator throws an Exception
      */
-    BarSeries getSeries() throws Exception;
+    TimeSeries getSeries() throws Exception;
 
     /**
      * Sends indicator parameters to an external indicator calculator and returns

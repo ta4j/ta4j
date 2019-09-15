@@ -34,7 +34,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
-public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class ATRIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     private ExternalIndicatorTest xls;
 
@@ -45,7 +45,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testDummy() throws Exception {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(5), 0, 12, 15, 8, 0, 0, 0, numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(4), 0, 8, 11, 6, 0, 0, 0, numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(3), 0, 15, 17, 14, 0, 0, 0, numFunction));
@@ -66,22 +66,22 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testXls() throws Exception {
-        BarSeries xlsSeries = xls.getSeries();
+        TimeSeries xlsSeries = xls.getSeries();
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);
         assertIndicatorEquals(xls.getIndicator(1), indicator);
-        assertEquals(4.8, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+        assertEquals(4.8, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 3);
         assertIndicatorEquals(xls.getIndicator(3), indicator);
-        assertEquals(7.4225, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+        assertEquals(7.4225, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 13);
         assertIndicatorEquals(xls.getIndicator(13), indicator);
-        assertEquals(8.8082, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
+        assertEquals(8.8082, indicator.getValue(indicator.getTimeSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }
 

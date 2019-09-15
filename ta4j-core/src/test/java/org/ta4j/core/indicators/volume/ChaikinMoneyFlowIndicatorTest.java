@@ -24,8 +24,8 @@
 package org.ta4j.core.indicators.volume;
 
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 
 import java.time.ZonedDateTime;
 
@@ -37,7 +37,7 @@ public class ChaikinMoneyFlowIndicatorTest {
     public void getValue() {
 
         ZonedDateTime now = ZonedDateTime.now();
-        BarSeries series = new BaseBarSeries();
+        TimeSeries series = new BaseTimeSeries();
         int sec = 1000;
         series.addBar(now.minusSeconds(sec--), "0", "62.34", "61.37", "62.15", "7849.025");
         series.addBar(now.minusSeconds(sec--), "0", "62.05", "60.69", "60.81", "11692.075");

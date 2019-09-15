@@ -36,24 +36,24 @@ import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
-public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class SeriesBuilderTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     public SeriesBuilderTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
-    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction);
+    private final BaseTimeSeriesBuilder seriesBuilder = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction);
 
     @Test
     public void testBuilder() {
 
-        BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed time series using BigDecimal as
+        TimeSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed time series using BigDecimal as
         // delegate
-        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty unnamed time
+        TimeSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty unnamed time
         // series using BigDecimal as delegate
-        BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class)
+        TimeSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class)
                 .withName("useDouble").build();
-        BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(PrecisionNum.class)
+        TimeSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(PrecisionNum.class)
                 .withName("useBigDecimal").build();
 
         for (int i = 1000; i >= 0; i--) {
@@ -73,16 +73,16 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void testNumFunctions() {
 
-        BarSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
+        TimeSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
         assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
 
-        BarSeries seriesB = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
+        TimeSeries seriesB = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
         assertNumEquals(seriesB.numOf(12), PrecisionNum.valueOf(12));
     }
 
     @Test
     public void testWrongNumType() {
-        BarSeries series = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
+        TimeSeries series = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
         assertNumNotEquals(series.numOf(12), DoubleNum.valueOf(12));
     }
 }

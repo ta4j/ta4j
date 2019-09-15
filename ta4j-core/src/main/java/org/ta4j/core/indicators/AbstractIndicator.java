@@ -25,8 +25,8 @@ package org.ta4j.core.indicators;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,19 +39,19 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
      */
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final BarSeries series;
+    private final TimeSeries series;
 
     /**
      * Constructor.
      *
      * @param series the related time series
      */
-    public AbstractIndicator(BarSeries series) {
+    public AbstractIndicator(TimeSeries series) {
         this.series = series;
     }
 
     @Override
-    public BarSeries getBarSeries() {
+    public TimeSeries getTimeSeries() {
         return series;
     }
 

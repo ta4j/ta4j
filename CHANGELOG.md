@@ -5,7 +5,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
 - :boom: **Breaking** Removed redundant constructors from BaseBar class
-- :boom: **Breaking** Renamed `TimeSeries` to `BarSeries`
 
 ### Fixed
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.

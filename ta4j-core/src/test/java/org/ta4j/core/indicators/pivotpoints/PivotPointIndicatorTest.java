@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.pivotpoints;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -49,10 +49,10 @@ import static org.ta4j.core.num.NaN.NaN;
 
 public class PivotPointIndicatorTest {
 
-    private BarSeries series5Minutes;
-    private BarSeries series1Hours;
-    private BarSeries series1Days;
-    private BarSeries series1Weeks;
+    private TimeSeries series5Minutes;
+    private TimeSeries series1Hours;
+    private TimeSeries series1Days;
+    private TimeSeries series1Weeks;
 
     @Before
     public void initDataForDailyBarCount() {
@@ -605,8 +605,8 @@ public class PivotPointIndicatorTest {
                 + "2017-10-06,21:55:00,171.95,172.25,171.95,172.24,287810,0\n"
                 + "2017-10-06,22:00:00,172.24,172.37,172.16,172.23,1062537,0";
         String[] dataLine = rawData5Minutes.split("\n");
-        series5Minutes = new BaseBarSeries("FB_5_minutes");
-        series5Minutes = new BaseBarSeries("FB_5_minutes");
+        series5Minutes = new BaseTimeSeries("FB_5_minutes");
+        series5Minutes = new BaseTimeSeries("FB_5_minutes");
         for (String aDataLine : dataLine) {
             String[] barData = aDataLine.split(",");
             ZonedDateTime date = ZonedDateTime.parse(barData[0] + " " + barData[1] + " PST",
@@ -800,7 +800,7 @@ public class PivotPointIndicatorTest {
                 + "2017-10-06,21:00:00,171.68,171.71,171.36,171.6728,569716,0\n"
                 + "2017-10-06,22:00:00,171.67,172.37,171.55,172.23,2317180,0";
         String[] dataLine = rawData1Hours.split("\n");
-        series1Hours = new BaseBarSeries("FB_1_hours");
+        series1Hours = new BaseTimeSeries("FB_1_hours");
         for (String aDataLine : dataLine) {
             String[] barData = aDataLine.split(",");
             ZonedDateTime date = ZonedDateTime.parse(barData[0] + " " + barData[1] + " PST",
@@ -977,7 +977,7 @@ public class PivotPointIndicatorTest {
                 + "2017/01/04,118.6900,19594560.0000,117.5500,119.6600,117.2900\n"
                 + "2017/01/03,116.8600,20635600.0000,116.0300,117.8400,115.5100";
         String[] dataLine = rawData1Days.split("\n");
-        series1Days = new BaseBarSeries("FB_daily");
+        series1Days = new BaseTimeSeries("FB_daily");
         for (int i = dataLine.length - 1; i >= 0; i--) {
             String[] barData = dataLine[i].split(",");
             ZonedDateTime date = LocalDate.parse(barData[0], DateTimeFormatter.ofPattern("yyyy/MM/dd"))
@@ -1277,7 +1277,7 @@ public class PivotPointIndicatorTest {
                 + "2017-09-25,169.240005,171.660004,161.559998,170.869995,170.869995,111376500\n"
                 + "2017-10-02,171.389999,172.369995,168.289993,172.229996,172.229996,60993900";
         String[] dataLine = rawData1Week.split("\n");
-        series1Weeks = new BaseBarSeries("FB_daily");
+        series1Weeks = new BaseTimeSeries("FB_daily");
         for (String aDataLine : dataLine) {
             String[] barData = aDataLine.split(",");
             ZonedDateTime date = LocalDate.parse(barData[0], DateTimeFormatter.ofPattern("yyyy-MM-dd"))

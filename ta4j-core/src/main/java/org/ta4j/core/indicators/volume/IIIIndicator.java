@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -45,7 +45,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
     private final VolumeIndicator volumeIndicator;
     private final Num two;
 
-    public IIIIndicator(BarSeries series) {
+    public IIIIndicator(TimeSeries series) {
         super(series);
         this.closePriceIndicator = new ClosePriceIndicator(series);
         this.highPriceIndicator = new HighPriceIndicator(series);
@@ -56,7 +56,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index == getBarSeries().getBeginIndex()) {
+        if (index == getTimeSeries().getBeginIndex()) {
             return numOf(0);
         }
         final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));

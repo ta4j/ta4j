@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -42,7 +42,7 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
      * 
      * @param series a time series
      */
-    public BullishEngulfingIndicator(BarSeries series) {
+    public BullishEngulfingIndicator(TimeSeries series) {
         super(series);
     }
 
@@ -52,8 +52,8 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
             // Engulfing is a 2-candle pattern
             return false;
         }
-        Bar prevBar = getBarSeries().getBar(index - 1);
-        Bar currBar = getBarSeries().getBar(index);
+        Bar prevBar = getTimeSeries().getBar(index - 1);
+        Bar currBar = getTimeSeries().getBar(index);
         if (prevBar.isBearish() && currBar.isBullish()) {
             final Num prevOpenPrice = prevBar.getOpenPrice();
             final Num prevClosePrice = prevBar.getClosePrice();

@@ -88,7 +88,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
     public Num getTotalReturn() {
 
         Num totalProduct = one;
-        int completeTimeFrames = (getBarSeries().getBarCount() / barCount);
+        int completeTimeFrames = (getTimeSeries().getBarCount() / barCount);
 
         for (int i = 1; i <= completeTimeFrames; i++) {
             int index = i * barCount;
@@ -112,7 +112,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         int helpPartialTimeframe = index % barCount;
         // TODO: implement Num.floor()
         Num helpFullTimeframes = numOf(
-                Math.floor(numOf(indicator.getBarSeries().getBarCount()).dividedBy(numOf(barCount)).doubleValue()));
+                Math.floor(numOf(indicator.getTimeSeries().getBarCount()).dividedBy(numOf(barCount)).doubleValue()));
         Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
 
         Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));

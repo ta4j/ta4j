@@ -23,9 +23,9 @@
  */
 package ta4jexamples.analysis;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.*;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -40,11 +40,11 @@ public class StrategyAnalysis {
     public static void main(String[] args) {
 
         // Getting the time series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
 
         /*

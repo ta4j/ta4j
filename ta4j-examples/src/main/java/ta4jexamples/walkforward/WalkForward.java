@@ -23,8 +23,11 @@
  */
 package ta4jexamples.walkforward;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.num.Num;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -58,7 +61,7 @@ public class WalkForward {
      * @param splitDuration the duration between 2 splits
      * @return a list of begin indexes after split
      */
-    public static List<Integer> getSplitBeginIndexes(BarSeries series, Duration splitDuration) {
+    public static List<Integer> getSplitBeginIndexes(TimeSeries series, Duration splitDuration) {
         ArrayList<Integer> beginIndexes = new ArrayList<>();
 
         int beginIndex = series.getBeginIndex();
@@ -101,10 +104,10 @@ public class WalkForward {
      * @param series     the time series to get a sub-series of
      * @param beginIndex the begin index (inclusive) of the time series
      * @param duration   the duration of the time series
-     * @return a constrained {@link BarSeries time series} which is a sub-set of
+     * @return a constrained {@link TimeSeries time series} which is a sub-set of
      *         the current series
      */
-    public static BarSeries subseries(BarSeries series, int beginIndex, Duration duration) {
+    public static TimeSeries subseries(TimeSeries series, int beginIndex, Duration duration) {
 
         // Calculating the sub-series interval
         ZonedDateTime beginInterval = series.getBar(beginIndex).getEndTime();
@@ -138,8 +141,8 @@ public class WalkForward {
      * @param sliceDuration the duration of each sub-series
      * @return a list of sub-series
      */
-    public static List<BarSeries> splitSeries(BarSeries series, Duration splitDuration, Duration sliceDuration) {
-        ArrayList<BarSeries> subseries = new ArrayList<>();
+    public static List<TimeSeries> splitSeries(TimeSeries series, Duration splitDuration, Duration sliceDuration) {
+        ArrayList<TimeSeries> subseries = new ArrayList<>();
         if (splitDuration != null && !splitDuration.isZero() && sliceDuration != null && !sliceDuration.isZero()) {
 
             List<Integer> beginIndexes = getSplitBeginIndexes(series, splitDuration);
@@ -154,7 +157,7 @@ public class WalkForward {
      * @param series the time series
      * @return a map (key: strategy, value: name) of trading strategies
      */
-    public static Map<Strategy, String> buildStrategiesMap(BarSeries series) {
+    public static Map<Strategy, String> buildStrategiesMap(TimeSeries series) {
         HashMap<Strategy, String> strategies = new HashMap<>();
         strategies.put(CCICorrectionStrategy.buildStrategy(series), "CCI Correction");
         strategies.put(GlobalExtremaStrategy.buildStrategy(series), "Global Extrema");
@@ -165,8 +168,8 @@ public class WalkForward {
 
     public static void main(String[] args) {
         // Splitting the series into slices
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
-        List<BarSeries> subseries = splitSeries(series, Duration.ofHours(6), Duration.ofDays(7));
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        List<TimeSeries> subseries = splitSeries(series, Duration.ofHours(6), Duration.ofDays(7));
 
         // Building the map of strategies
         Map<Strategy, String> strategies = buildStrategiesMap(series);
@@ -174,10 +177,10 @@ public class WalkForward {
         // The analysis criterion
         AnalysisCriterion profitCriterion = new TotalProfitCriterion();
 
-        for (BarSeries slice : subseries) {
+        for (TimeSeries slice : subseries) {
             // For each sub-series...
             System.out.println("Sub-series: " + slice.getSeriesPeriodDescription());
-            BarSeriesManager sliceManager = new BarSeriesManager(slice);
+            TimeSeriesManager sliceManager = new TimeSeriesManager(slice);
             for (Map.Entry<Strategy, String> entry : strategies.entrySet()) {
                 Strategy strategy = entry.getKey();
                 String name = entry.getValue();

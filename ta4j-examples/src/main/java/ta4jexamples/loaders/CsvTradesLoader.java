@@ -24,9 +24,10 @@
 package ta4jexamples.loaders;
 
 import com.opencsv.CSVReader;
-import org.ta4j.core.*;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.TimeSeries;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,7 +50,7 @@ public class CsvTradesLoader {
     /**
      * @return a time series from Bitstamp (bitcoin exchange) trades
      */
-    public static BarSeries loadBitstampSeries() {
+    public static TimeSeries loadBitstampSeries() {
 
         // Reading all lines of the CSV file
         InputStream stream = CsvTradesLoader.class.getClassLoader()
@@ -72,7 +73,7 @@ public class CsvTradesLoader {
             }
         }
 
-        BarSeries series = new BaseBarSeries();
+        TimeSeries series = new BaseTimeSeries();
         if ((lines != null) && !lines.isEmpty()) {
 
             // Getting the first and last trades timestamps
@@ -108,8 +109,8 @@ public class CsvTradesLoader {
      * @return the list of populated bars
      */
     @SuppressWarnings("deprecation")
-    private static void buildSeries(BarSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration,
-                                    List<String[]> lines) {
+    private static void buildSeries(TimeSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration,
+            List<String[]> lines) {
 
         Duration barDuration = Duration.ofSeconds(duration);
         ZonedDateTime barEndTime = beginTime;
@@ -147,7 +148,7 @@ public class CsvTradesLoader {
     }
 
     public static void main(String[] args) {
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
         System.out.println("Number of bars: " + series.getBarCount());

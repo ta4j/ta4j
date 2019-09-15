@@ -40,7 +40,7 @@ import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 @RunWith(Parameterized.class)
-public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<TimeSeries, Num> {
 
     public ConvertibleBaseBarBuilderTest(Function<Number, Num> numFunction) {
         super(numFunction);

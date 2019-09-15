@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.Num;
 
@@ -40,7 +40,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ChandelierExitLongIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private BarSeries data;
+    private TimeSeries data;
 
     public ChandelierExitLongIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -66,7 +66,7 @@ public class ChandelierExitLongIndicatorTest extends AbstractIndicatorTest<Indic
         bars.add(new MockBar(45.45, 45.01, 45.55, 44.80, numFunction));
         bars.add(new MockBar(45.03, 44.23, 45.04, 44.17, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new BaseTimeSeries(bars);
     }
 
     @Test

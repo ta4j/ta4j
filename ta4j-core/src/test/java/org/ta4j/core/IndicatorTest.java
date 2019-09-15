@@ -41,7 +41,7 @@ public class IndicatorTest {
 
     @Test
     public void toDouble() {
-        BarSeries series = new BaseBarSeries();
+        TimeSeries series = new BaseTimeSeries();
         List<Num> values = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             values.add(series.numOf(i));

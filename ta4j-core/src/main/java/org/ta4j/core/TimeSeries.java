@@ -37,7 +37,7 @@ import java.util.function.Function;
  * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15
  * minutes, 1 day, etc.)
  *
- * Notably, a {@link BarSeries time series} can be:
+ * Notably, a {@link TimeSeries time series} can be:
  * <ul>
  * <li>the base of {@link Indicator indicator} calculations
  * <li>constrained between begin and end indexes (e.g. for some backtesting
@@ -45,7 +45,7 @@ import java.util.function.Function;
  * <li>limited to a fixed number of bars (e.g. for actual trading)
  * </ul>
  */
-public interface BarSeries extends Serializable {
+public interface TimeSeries extends Serializable {
 
     /**
      * @return the name of the series
@@ -151,7 +151,7 @@ public interface BarSeries extends Serializable {
      * Exceeding bars are removed.
      * 
      * @param bar the bar to be added
-     * @see BarSeries#setMaximumBarCount(int)
+     * @see TimeSeries#setMaximumBarCount(int)
      * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add
      *          bar data directly
      */
@@ -171,7 +171,7 @@ public interface BarSeries extends Serializable {
      * @param replace true to replace the latest bar. Some exchange provide
      *                continuous new bar data in the time period. (eg. 1s in 1m
      *                Duration)<br>
-     * @see BarSeries#setMaximumBarCount(int)
+     * @see TimeSeries#setMaximumBarCount(int)
      * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add
      *          bar data directly
      */
@@ -337,7 +337,7 @@ public interface BarSeries extends Serializable {
      * @return a new BaseTimeSeries with Bars from startIndex to endIndex-1
      * @throws IllegalArgumentException e.g. if endIndex < startIndex
      */
-    BarSeries getSubSeries(int startIndex, int endIndex);
+    TimeSeries getSubSeries(int startIndex, int endIndex);
 
     /**
      * Transforms a {@link Number} into the {@link Num implementation} used by this

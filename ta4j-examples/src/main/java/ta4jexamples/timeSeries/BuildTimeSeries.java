@@ -21,10 +21,14 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.barSeries;
+package ta4jexamples.timeSeries;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseTimeSeriesBuilder;
+import org.ta4j.core.ConvertibleBaseBarBuilder;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.PrecisionNum;
 
@@ -33,7 +37,7 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
-public class BuildBarSeries {
+public class BuildTimeSeries {
 
     /**
      * Calls different functions that shows how a BaseTimeSeries
@@ -43,22 +47,22 @@ public class BuildBarSeries {
      */
     @SuppressWarnings("unused")
     public static void main(String[] args) {
-        BarSeries a = buildAndAddData();
+        TimeSeries a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-        BaseBarSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
+        BaseTimeSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
         a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-        BarSeries b = buildWithDouble();
-        BarSeries c = buildWithBigDecimal();
-        BarSeries d = buildManually();
-        BarSeries e = buildManuallyDoubleNum();
-        BarSeries f = buildManuallyAndAddBarManually();
-        BarSeries g = buildAndAddBarsFromList();
+        TimeSeries b = buildWithDouble();
+        TimeSeries c = buildWithBigDecimal();
+        TimeSeries d = buildManually();
+        TimeSeries e = buildManuallyDoubleNum();
+        TimeSeries f = buildManuallyAndAddBarManually();
+        TimeSeries g = buildAndAddBarsFromList();
     }
 
 
-    private static BarSeries buildAndAddData() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").build();
+    private static TimeSeries buildAndAddData() {
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -68,20 +72,8 @@ public class BuildBarSeries {
         return series;
     }
 
-    private static BarSeries buildWithDouble() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum.class).build();
-
-        ZonedDateTime endTime = ZonedDateTime.now();
-        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
-        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
-        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
-        //...
-
-        return series;
-    }
-
-    private static BarSeries buildWithBigDecimal() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
+    private static TimeSeries buildWithDouble() {
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(DoubleNum.class).build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -92,8 +84,8 @@ public class BuildBarSeries {
         return series;
     }
 
-    private static BarSeries buildManually() {
-        BarSeries series = new BaseBarSeries("mySeries"); // uses BigDecimalNum
+    private static TimeSeries buildWithBigDecimal() {
+        TimeSeries series = new BaseTimeSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -104,8 +96,9 @@ public class BuildBarSeries {
         return series;
     }
 
-    private static BarSeries buildManuallyDoubleNum() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+    private static TimeSeries buildManually() {
+        TimeSeries series = new BaseTimeSeries("mySeries"); // uses BigDecimalNum
+
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
         series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
@@ -115,8 +108,19 @@ public class BuildBarSeries {
         return series;
     }
 
-    private static BarSeries buildManuallyAndAddBarManually() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+    private static TimeSeries buildManuallyDoubleNum() {
+        TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        ZonedDateTime endTime = ZonedDateTime.now();
+        series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
+        series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
+        series.addBar(endTime.plusDays(2), 107.90, 117.50, 107.90, 115.42, 4242);
+        //...
+
+        return series;
+    }
+
+    private static TimeSeries buildManuallyAndAddBarManually() {
+        TimeSeries series = new BaseTimeSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
 
         // create bars and add them to the series. The bars must have the same Num type as the series
         ZonedDateTime endTime = ZonedDateTime.now();
@@ -156,7 +160,7 @@ public class BuildBarSeries {
         return series;
     }
 
-    private static BarSeries buildAndAddBarsFromList() {
+    private static TimeSeries buildAndAddBarsFromList() {
         // Store Bars in a list and add them later. The bars must have the same Num type as the series
         ZonedDateTime endTime = ZonedDateTime.now();
         Bar b1 = barBuilderFromString().timePeriod(Duration.ofDays(1))
@@ -185,7 +189,7 @@ public class BuildBarSeries {
                 .build();
         List<Bar> bars = Arrays.asList(b1, b2, b3);
 
-        return new BaseBarSeriesBuilder()
+        return new BaseTimeSeriesBuilder()
                 .withName("mySeries")
                 .withNumTypeOf(DoubleNum::valueOf)
                 .withMaxBarCount(5)

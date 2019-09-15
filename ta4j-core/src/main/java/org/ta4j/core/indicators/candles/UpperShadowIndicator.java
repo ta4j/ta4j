@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -45,13 +45,13 @@ public class UpperShadowIndicator extends CachedIndicator<Num> {
      * 
      * @param series a time series
      */
-    public UpperShadowIndicator(BarSeries series) {
+    public UpperShadowIndicator(TimeSeries series) {
         super(series);
     }
 
     @Override
     protected Num calculate(int index) {
-        Bar t = getBarSeries().getBar(index);
+        Bar t = getTimeSeries().getBar(index);
         final Num openPrice = t.getOpenPrice();
         final Num closePrice = t.getClosePrice();
         if (closePrice.isGreaterThan(openPrice)) {
