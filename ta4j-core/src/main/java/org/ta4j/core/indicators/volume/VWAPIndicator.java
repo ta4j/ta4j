@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -55,7 +55,7 @@ public class VWAPIndicator extends CachedIndicator<Num> {
      * @param series   the series
      * @param barCount the time frame
      */
-    public VWAPIndicator(TimeSeries series, int barCount) {
+    public VWAPIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
         this.typicalPrice = new TypicalPriceIndicator(series);

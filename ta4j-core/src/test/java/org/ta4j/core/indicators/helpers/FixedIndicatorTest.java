@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -34,7 +34,7 @@ public class FixedIndicatorTest {
 
     @Test
     public void getValueOnFixedDecimalIndicator() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         FixedDecimalIndicator fixedDecimalIndicator = new FixedDecimalIndicator(series, 13.37, 42, -17);
         assertNumEquals(13.37, fixedDecimalIndicator.getValue(0));
         assertNumEquals(42, fixedDecimalIndicator.getValue(1));
@@ -49,7 +49,7 @@ public class FixedIndicatorTest {
 
     @Test
     public void getValueOnFixedBooleanIndicator() {
-        TimeSeries series = new BaseTimeSeries();
+        BarSeries series = new BaseBarSeries();
         FixedBooleanIndicator fixedBooleanIndicator = new FixedBooleanIndicator(series, false, false, true, false,
                 true);
         Assert.assertFalse(fixedBooleanIndicator.getValue(0));

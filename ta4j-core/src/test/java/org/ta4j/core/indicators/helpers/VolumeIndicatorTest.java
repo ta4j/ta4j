@@ -26,10 +26,10 @@ package org.ta4j.core.indicators.helpers;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -47,7 +47,7 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void indicatorShouldRetrieveBarVolume() {
-        TimeSeries series = new MockTimeSeries(numFunction);
+        BarSeries series = new MockBarSeries(numFunction);
         VolumeIndicator volumeIndicator = new VolumeIndicator(series);
         for (int i = 0; i < 10; i++) {
             assertEquals(volumeIndicator.getValue(i), series.getBar(i).getVolume());
@@ -64,7 +64,7 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         bars.add(new MockBar(0, 150, numFunction));
         bars.add(new MockBar(0, 155, numFunction));
         bars.add(new MockBar(0, 160, numFunction));
-        VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(bars), 3);
+        VolumeIndicator volumeIndicator = new VolumeIndicator(new MockBarSeries(bars), 3);
 
         assertNumEquals(10, volumeIndicator.getValue(0));
         assertNumEquals(21, volumeIndicator.getValue(1));

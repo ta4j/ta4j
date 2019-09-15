@@ -25,9 +25,9 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeriesBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
@@ -39,7 +39,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private TimeSeries data;
+    private BarSeries data;
 
     public AroonDownIndicatorTest(Function<Number, Num> numFunction) {
         super(null, numFunction);
@@ -47,7 +47,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void init() {
-        data = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).withName("Aroon data").build();
+        data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Aroon data").build();
         data.addBar(ZonedDateTime.now().plusDays(1), 168.28, 169.87, 167.15, 169.64, 0);
         data.addBar(ZonedDateTime.now().plusDays(2), 168.84, 169.36, 168.2, 168.71, 0);
         data.addBar(ZonedDateTime.now().plusDays(3), 168.88, 169.29, 166.41, 167.74, 0);
@@ -93,7 +93,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void onlyNaNValues() {
-        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
         for (long i = 0; i <= 1000; i++) {
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
@@ -106,7 +106,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void naNValuesInIntervall() {
-        TimeSeries series = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
         for (long i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
             Num minPrice = i % 2 == 0 ? series.numOf(i) : NaN;
             series.addBar(ZonedDateTime.now().plusDays(10 - i), NaN, NaN, minPrice, NaN, NaN);

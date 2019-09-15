@@ -48,7 +48,7 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
      *                  Typically a StandardDeviationIndicator is used.
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator) {
-        this(bbm, indicator, bbm.getTimeSeries().numOf(2));
+        this(bbm, indicator, bbm.getBarSeries().numOf(2));
     }
 
     /**

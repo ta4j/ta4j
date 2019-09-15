@@ -25,8 +25,8 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BarSeries;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -37,7 +37,7 @@ import java.util.Locale;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class AroonOscillatorIndicatorTest {
-    private TimeSeries data;
+    private BarSeries data;
 
     @Before
     public void init() {
@@ -204,7 +204,7 @@ public class AroonOscillatorIndicatorTest {
                         + "2017/01/03,116.8600,20635600.0000,116.0300,117.8400,115.5100\n";
 
         String[] dataLine = rawData.split("\n");
-        data = new BaseTimeSeries("FB_daily");
+        data = new BaseBarSeries("FB_daily");
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.getDefault());
         for (int i = dataLine.length - 1; i >= 0; i--) {
             String[] tickData = dataLine[i].split(",");

@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
@@ -54,7 +54,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @param factor   the factor used when checking if a candle has a very short
      *                 lower shadow
      */
-    public ThreeBlackCrowsIndicator(TimeSeries series, int barCount, double factor) {
+    public ThreeBlackCrowsIndicator(BarSeries series, int barCount, double factor) {
         super(series);
         lowerShadowInd = new LowerShadowIndicator(series);
         averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
@@ -68,7 +68,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
             return false;
         }
         whiteCandleIndex = index - 3;
-        return getTimeSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
+        return getBarSeries().getBar(whiteCandleIndex).isBullish() && isBlackCrow(index - 2) && isBlackCrow(index - 1)
                 && isBlackCrow(index);
     }
 
@@ -89,8 +89,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is declining, false otherwise
      */
     private boolean isDeclining(int index) {
-        Bar prevBar = getTimeSeries().getBar(index - 1);
-        Bar currBar = getTimeSeries().getBar(index);
+        Bar prevBar = getBarSeries().getBar(index - 1);
+        Bar currBar = getBarSeries().getBar(index);
         final Num prevOpenPrice = prevBar.getOpenPrice();
         final Num prevClosePrice = prevBar.getClosePrice();
         final Num currOpenPrice = currBar.getOpenPrice();
@@ -107,8 +107,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * @return true if the current bar/candle is a black crow, false otherwise
      */
     private boolean isBlackCrow(int index) {
-        Bar prevBar = getTimeSeries().getBar(index - 1);
-        Bar currBar = getTimeSeries().getBar(index);
+        Bar prevBar = getBarSeries().getBar(index - 1);
+        Bar currBar = getBarSeries().getBar(index);
         if (currBar.isBearish()) {
             if (prevBar.isBullish()) {
                 // First crow case

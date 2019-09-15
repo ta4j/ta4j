@@ -33,7 +33,7 @@ public interface ExternalCriterionTest {
      * @return TimeSeries from the external criterion calculator
      * @throws Exception if the external calculator throws an Exception
      */
-    TimeSeries getSeries() throws Exception;
+    BarSeries getSeries() throws Exception;
 
     /**
      * Sends criterion parameters to an external criterion calculator and returns

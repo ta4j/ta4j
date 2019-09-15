@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.NaN;
@@ -39,7 +39,7 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
-public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<TimeSeries, Num> {
+public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     public IchimokuChikouSpanIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -49,16 +49,16 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<TimeS
         return new MockBar(i, this::numOf);
     }
 
-    private TimeSeries timeSeries(int count) {
+    private BarSeries barSeries(int count) {
         final List<Bar> bars = IntStream.range(0, count).boxed().map(this::bar).collect(toList());
-        return new BaseTimeSeries(bars);
+        return new BaseBarSeries(bars);
     }
 
     @Test
     public void testCalculateWithDefaultParam() {
-        final TimeSeries timeSeries = timeSeries(27);
+        final BarSeries barSeries = barSeries(27);
 
-        final IchimokuChikouSpanIndicator indicator = new IchimokuChikouSpanIndicator(timeSeries);
+        final IchimokuChikouSpanIndicator indicator = new IchimokuChikouSpanIndicator(barSeries);
 
         assertEquals(numOf(26), indicator.getValue(0));
         assertEquals(NaN.NaN, indicator.getValue(1));
@@ -91,9 +91,9 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<TimeS
 
     @Test
     public void testCalculateWithSpecifiedValue() {
-        final TimeSeries timeSeries = timeSeries(11);
+        final BarSeries barSeries = barSeries(11);
 
-        final IchimokuChikouSpanIndicator indicator = new IchimokuChikouSpanIndicator(timeSeries, 3);
+        final IchimokuChikouSpanIndicator indicator = new IchimokuChikouSpanIndicator(barSeries, 3);
 
         assertEquals(numOf(3), indicator.getValue(0));
         assertEquals(numOf(4), indicator.getValue(1));

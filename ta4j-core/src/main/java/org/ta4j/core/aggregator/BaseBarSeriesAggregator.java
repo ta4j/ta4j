@@ -21,14 +21,28 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.timeSeries;
+package org.ta4j.core.aggregator;
 
-import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 
-public class BuildTimeSeriesTest {
+import java.util.List;
 
-    @Test
-    public void test() {
-        BuildTimeSeries.main(null);
+/**
+ * Time series aggregator based on provided bar aggregator.
+ */
+public class BaseBarSeriesAggregator implements BarSeriesAggregator {
+
+    private final BarAggregator barAggregator;
+
+    public BaseBarSeriesAggregator(BarAggregator barAggregator) {
+        this.barAggregator = barAggregator;
+    }
+
+    @Override
+    public BarSeries aggregate(BarSeries series, String aggregatedSeriesName) {
+        final List<Bar> aggregatedBars = barAggregator.aggregate(series.getBarData());
+        return new BaseBarSeries(aggregatedSeriesName, aggregatedBars);
     }
 }

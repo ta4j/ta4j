@@ -83,61 +83,61 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateR3(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
         Num low = bar.getLowPrice();
         Num high = bar.getHighPrice();
         for (int i : barsOfPreviousPeriod) {
-            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
-            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
+            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
         }
         return high.plus(numOf(2).multipliedBy((pivotPointIndicator.getValue(index).minus(low))));
     }
 
     private Num calculateR2(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
         Num low = bar.getLowPrice();
         Num high = bar.getHighPrice();
         for (int i : barsOfPreviousPeriod) {
-            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
-            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
+            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
         }
         return pivotPointIndicator.getValue(index).plus((high.minus(low)));
     }
 
     private Num calculateR1(List<Integer> barsOfPreviousPeriod, int index) {
-        Num low = getTimeSeries().getBar(barsOfPreviousPeriod.get(0)).getLowPrice();
+        Num low = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getLowPrice();
         for (int i : barsOfPreviousPeriod) {
-            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
+            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
         }
         return numOf(2).multipliedBy(pivotPointIndicator.getValue(index)).minus(low);
     }
 
     private Num calculateS1(List<Integer> barsOfPreviousPeriod, int index) {
-        Num high = getTimeSeries().getBar(barsOfPreviousPeriod.get(0)).getHighPrice();
+        Num high = getBarSeries().getBar(barsOfPreviousPeriod.get(0)).getHighPrice();
         for (int i : barsOfPreviousPeriod) {
-            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
+            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
         }
         return numOf(2).multipliedBy(pivotPointIndicator.getValue(index)).minus(high);
     }
 
     private Num calculateS2(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
         Num high = bar.getHighPrice();
         Num low = bar.getLowPrice();
         for (int i : barsOfPreviousPeriod) {
-            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
-            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
+            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
+            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
         }
         return pivotPointIndicator.getValue(index).minus((high.minus(low)));
     }
 
     private Num calculateS3(List<Integer> barsOfPreviousPeriod, int index) {
-        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
         Num high = bar.getHighPrice();
         Num low = bar.getLowPrice();
         for (int i : barsOfPreviousPeriod) {
-            high = (getTimeSeries().getBar(i).getHighPrice()).max(high);
-            low = (getTimeSeries().getBar(i).getLowPrice()).min(low);
+            high = (getBarSeries().getBar(i).getHighPrice()).max(high);
+            low = (getBarSeries().getBar(i).getLowPrice()).min(low);
         }
         return low.minus(numOf(2).multipliedBy((high.minus(pivotPointIndicator.getValue(index)))));
     }

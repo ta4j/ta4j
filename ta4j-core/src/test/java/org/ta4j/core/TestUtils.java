@@ -118,9 +118,9 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
-        org.junit.Assert.assertEquals("Size does not match,", expected.getTimeSeries().getBarCount(),
-                actual.getTimeSeries().getBarCount());
-        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+        org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
+                actual.getBarSeries().getBarCount());
+        for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
             assertEquals(String.format("Failed at index %s: %s", i, actual.toString()),
                     expected.getValue(i).doubleValue(), actual.getValue(i).doubleValue(), GENERAL_OFFSET);
         }
@@ -134,9 +134,9 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual) {
-        if (expected.getTimeSeries().getBarCount() != actual.getTimeSeries().getBarCount())
+        if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount())
             return;
-        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+        for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
             if (Math.abs(expected.getValue(i).doubleValue() - actual.getValue(i).doubleValue()) > GENERAL_OFFSET)
                 return;
         }
@@ -192,9 +192,9 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
-        org.junit.Assert.assertEquals("Size does not match,", expected.getTimeSeries().getBarCount(),
-                actual.getTimeSeries().getBarCount());
-        for (int i = expected.getTimeSeries().getBeginIndex(); i < expected.getTimeSeries().getEndIndex(); i++) {
+        org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
+                actual.getBarSeries().getBarCount());
+        for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
             // convert to PrecisionNum via String (auto-precision) avoids Cast Class
             // Exception
             Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
@@ -226,10 +226,10 @@ public class TestUtils {
      * @param delta    num offset to which the indicators must be different
      */
     public static void assertIndicatorNotEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
-        if (expected.getTimeSeries().getBarCount() != actual.getTimeSeries().getBarCount()) {
+        if (expected.getBarSeries().getBarCount() != actual.getBarSeries().getBarCount()) {
             return;
         }
-        for (int i = 0; i < expected.getTimeSeries().getBarCount(); i++) {
+        for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
             Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
             Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
             Num result = exp.minus(act).abs();

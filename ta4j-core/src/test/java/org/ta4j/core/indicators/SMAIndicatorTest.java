@@ -28,9 +28,9 @@ import org.junit.Test;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -48,11 +48,11 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         xls = new XLSIndicatorTest(this.getClass(), "SMA.xls", 6, numFunction);
     }
 
-    private TimeSeries data;
+    private BarSeries data;
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
@@ -89,17 +89,17 @@ public class SMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         actualIndicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
-        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(),
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
-        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(),
+        assertEquals(326.6333, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
-        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(),
+        assertEquals(327.7846, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }
 

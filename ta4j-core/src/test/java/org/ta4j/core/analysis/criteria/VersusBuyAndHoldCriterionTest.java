@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -42,7 +42,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithGainTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
@@ -52,7 +52,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithLossTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
@@ -62,7 +62,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOnlyOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new TotalProfitCriterion());
@@ -71,7 +71,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = getCriterion(new TotalProfitCriterion());
         assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
@@ -79,7 +79,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithAverageProfit() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 130);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, NaN, NaN), Order.sellAt(1, NaN, NaN),
                 Order.buyAt(2, NaN, NaN), Order.sellAt(5, NaN, NaN));
 
@@ -91,7 +91,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNumberOfBars() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 130);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
