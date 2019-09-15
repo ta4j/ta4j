@@ -27,8 +27,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeriesManager;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.BooleanRule;
 import org.ta4j.core.trading.rules.FixedRule;
@@ -62,16 +62,16 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void bestShouldBeAlwaysOperateOnProfit() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
-        TimeSeriesManager manager = new TimeSeriesManager(series);
+        MockBarSeries series = new MockBarSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
+        BarSeriesManager manager = new BarSeriesManager(series);
         Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
         assertEquals(alwaysStrategy, bestStrategy);
     }
 
     @Test
     public void bestShouldBeBuyAndHoldOnLoss() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
-        TimeSeriesManager manager = new TimeSeriesManager(series);
+        MockBarSeries series = new MockBarSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
+        BarSeriesManager manager = new BarSeriesManager(series);
         Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);
     }

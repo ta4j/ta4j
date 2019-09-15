@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -46,7 +46,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
      * @param series   the time series
      * @param barCount the time frame
      */
-    public ROCVIndicator(TimeSeries series, int barCount) {
+    public ROCVIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
         this.hundred = numOf(100);
@@ -55,8 +55,8 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int nIndex = Math.max(index - barCount, 0);
-        Num nPeriodsAgoValue = getTimeSeries().getBar(nIndex).getVolume();
-        Num currentValue = getTimeSeries().getBar(index).getVolume();
+        Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
+        Num currentValue = getBarSeries().getBar(index).getVolume();
         return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
     }
 

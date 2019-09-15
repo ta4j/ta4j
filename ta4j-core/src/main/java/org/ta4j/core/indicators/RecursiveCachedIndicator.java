@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 
 /**
  * Recursive cached {@link Indicator indicator}.
@@ -49,7 +49,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      *
      * @param series the related time series
      */
-    public RecursiveCachedIndicator(TimeSeries series) {
+    public RecursiveCachedIndicator(BarSeries series) {
         super(series);
     }
 
@@ -59,12 +59,12 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * @param indicator a related indicator (with a time series)
      */
     public RecursiveCachedIndicator(Indicator<?> indicator) {
-        this(indicator.getTimeSeries());
+        this(indicator.getBarSeries());
     }
 
     @Override
     public T getValue(int index) {
-        TimeSeries series = getTimeSeries();
+        BarSeries series = getBarSeries();
         if (series != null) {
             final int seriesEndIndex = series.getEndIndex();
             if (index <= seriesEndIndex) {

@@ -27,9 +27,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private TimeSeries series;
+    private BarSeries series;
 
     public AccelerationDecelerationIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -57,7 +57,7 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
         bars.add(new MockBar(0, 0, 10, 6, numFunction));
         bars.add(new MockBar(0, 0, 8, 4, numFunction));
 
-        series = new MockTimeSeries(bars);
+        series = new MockBarSeries(bars);
     }
 
     @Test

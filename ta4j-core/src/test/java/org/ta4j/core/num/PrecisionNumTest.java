@@ -83,11 +83,11 @@ public class PrecisionNumTest {
     private Function<Number, Num> doubleFunc = DoubleNum::valueOf;
     private Function<Number, Num> lowPrecisionFunc = (number -> PrecisionNum.valueOf(number.toString(), 3));
 
-    private TimeSeries superPrecisionSeries;
-    private TimeSeries precisionSeries;
-    private TimeSeries precision32Series;
-    private TimeSeries doubleSeries;
-    private TimeSeries lowPrecisionSeries;
+    private BarSeries superPrecisionSeries;
+    private BarSeries precisionSeries;
+    private BarSeries precision32Series;
+    private BarSeries doubleSeries;
+    private BarSeries lowPrecisionSeries;
 
     private Indicator<Num> superPrecisionIndicator;
     private Indicator<Num> precisionIndicator;
@@ -148,15 +148,15 @@ public class PrecisionNumTest {
             endTime = endTime.plus(timePeriod);
             superPrecisionNum = superPrecisionNum.plus(PrecisionNum.valueOf(deltas[i % 6]));
         }
-        superPrecisionSeries = new BaseTimeSeriesBuilder()
+        superPrecisionSeries = new BaseBarSeriesBuilder()
                 .withName("superPrecision").withNumTypeOf(superPrecisionFunc).withBars(superPrecisionBarList).build();
-        precisionSeries = new BaseTimeSeriesBuilder()
+        precisionSeries = new BaseBarSeriesBuilder()
                 .withName("precision").withNumTypeOf(precisionFunc).withBars(precisionBarList).build();
-        precision32Series = new BaseTimeSeriesBuilder()
+        precision32Series = new BaseBarSeriesBuilder()
                 .withName("precision32").withNumTypeOf(precision32Func).withBars(precision32BarList).build();
-        doubleSeries = new BaseTimeSeriesBuilder()
+        doubleSeries = new BaseBarSeriesBuilder()
                 .withName("double").withNumTypeOf(doubleFunc).withBars(doubleBarList).build();
-        lowPrecisionSeries = new BaseTimeSeriesBuilder()
+        lowPrecisionSeries = new BaseBarSeriesBuilder()
                 .withName("lowPrecision").withNumTypeOf(lowPrecisionFunc).withBars(lowPrecisionBarList).build();
     }
 
@@ -256,35 +256,35 @@ public class PrecisionNumTest {
 
     private void calculateSuperPrecision() {
         Indicator<Num> indicator = superPrecisionIndicator;
-        for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
+        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
             indicator.getValue(i);
         }
     }
 
     private void calculatePrecision() {
         Indicator<Num> indicator = precisionIndicator;
-        for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
+        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
             indicator.getValue(i);
         }
     }
 
     private void calculatePrecision32() {
         Indicator<Num> indicator = precision32Indicator;
-        for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
+        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
             indicator.getValue(i);
         }
     }
 
     private void calculateDouble() {
         Indicator<Num> indicator = doubleIndicator;
-        for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
+        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
             indicator.getValue(i);
         }
     }
 
     private void calculateLowPrecision() {
         Indicator<Num> indicator = lowPrecisionIndicator;
-        for (int i = indicator.getTimeSeries().getBeginIndex(); i < indicator.getTimeSeries().getEndIndex(); i++) {
+        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getEndIndex(); i++) {
             indicator.getValue(i);
         }
     }

@@ -44,7 +44,7 @@ public class TradeCost {
     public static void main(String[] args) {
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the short selling trading strategy
         Strategy strategy = buildShortSellingMomentumStrategy(series);
 
@@ -55,7 +55,7 @@ public class TradeCost {
         CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
 
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series, transactionCostModel, borrowingCostModel);
+        BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
         Order.OrderType entryOrder = Order.OrderType.SELL;
         TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
 
@@ -72,7 +72,7 @@ public class TradeCost {
                         + df.format(trade.getExit().getCost().doubleValue())));
     }
 
-    private static Strategy buildShortSellingMomentumStrategy(TimeSeries series) {
+    private static Strategy buildShortSellingMomentumStrategy(BarSeries series) {
         Indicator<Num> closingPrices = new ClosePriceIndicator(series);
         SMAIndicator shortEma = new SMAIndicator(closingPrices, 10);
         SMAIndicator longEma = new SMAIndicator(closingPrices, 50);

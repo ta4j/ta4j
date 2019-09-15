@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -47,11 +47,11 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         xls = new XLSIndicatorTest(this.getClass(), "MMA.xls", 6, numFunction);
     }
 
-    private TimeSeries data;
+    private BarSeries data;
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction, 64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37,
+        data = new MockBarSeries(numFunction, 64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37,
                 61.33, 61.51);
     }
 
@@ -75,7 +75,7 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         for (int i = 0; i < 10000; i++) {
             bigListOfBars.add(new MockBar(i, numFunction));
         }
-        MockTimeSeries bigSeries = new MockTimeSeries(bigListOfBars);
+        MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
         Indicator<Num> actualIndicator = getIndicator(closePrice, 10);
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
@@ -90,17 +90,17 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         actualIndicator = getIndicator(xlsClose, 1);
         assertIndicatorEquals(xls.getIndicator(1), actualIndicator);
-        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(),
+        assertEquals(329.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 3);
         assertIndicatorEquals(xls.getIndicator(3), actualIndicator);
-        assertEquals(327.2900, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(),
+        assertEquals(327.2900, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(xlsClose, 13);
         assertIndicatorEquals(xls.getIndicator(13), actualIndicator);
-        assertEquals(326.9696, actualIndicator.getValue(actualIndicator.getTimeSeries().getEndIndex()).doubleValue(),
+        assertEquals(326.9696, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }
 

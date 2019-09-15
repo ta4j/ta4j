@@ -25,11 +25,11 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
@@ -41,7 +41,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private TimeSeries data;
+    private BarSeries data;
 
     public HighestValueIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -49,7 +49,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Before
     public void setUp() {
-        data = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
+        data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
@@ -81,7 +81,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void onlyNaNValues() {
-        BaseTimeSeries series = new BaseTimeSeries("NaN test");
+        BaseBarSeries series = new BaseBarSeries("NaN test");
         for (long i = 0; i <= 10000; i++) {
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
         }
@@ -94,7 +94,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void naNValuesInIntervall() {
-        BaseTimeSeries series = new BaseTimeSeries("NaN test");
+        BaseBarSeries series = new BaseBarSeries("NaN test");
         for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 3, NaN, 4, NaN, 5, ...)
             Num closePrice = i % 2 == 0 ? series.numOf(i) : NaN;
             series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, closePrice, NaN);

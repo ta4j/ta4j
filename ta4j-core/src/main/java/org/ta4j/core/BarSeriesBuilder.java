@@ -21,31 +21,18 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.aggregator;
+package org.ta4j.core;
 
-import org.ta4j.core.TimeSeries;
+import java.io.Serializable;
 
 /**
- * Bar aggregator interface to aggregate list of bars into another list of bars.
+ * Interface to build a time series
  */
-public interface TimeSeriesAggregator {
-
+public interface BarSeriesBuilder extends Serializable {
     /**
-     * Aggregate time series.
-     *
-     * @param series series to aggregate
-     * @return aggregated series
+     * Builds the time series with corresponding parameters
+     * 
+     * @return
      */
-    default TimeSeries aggregate(TimeSeries series) {
-        return aggregate(series, series.getName());
-    }
-
-    /**
-     * Aggregate time series.
-     *
-     * @param series               series to aggregate
-     * @param aggregatedSeriesName name for aggregated series
-     * @return aggregated series with specified name
-     */
-    TimeSeries aggregate(TimeSeries series, String aggregatedSeriesName);
+    BarSeries build();
 }

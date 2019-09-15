@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -67,13 +67,13 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
      * @param series   the time series
      * @param barCount the time frame
      */
-    public AroonDownIndicator(TimeSeries series, int barCount) {
+    public AroonDownIndicator(BarSeries series, int barCount) {
         this(new LowPriceIndicator(series), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (getTimeSeries().getBar(index).getLowPrice().isNaN())
+        if (getBarSeries().getBar(index).getLowPrice().isNaN())
             return NaN;
 
         // Getting the number of bars since the lowest close price
