@@ -40,11 +40,6 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
         super(series);
     }
 
-    /**
-     *
-     * @param index the bar index
-     * @return the CLC value or {@link org.ta4j.core.num.NaN} if high == low
-     */
     @Override
     protected Num calculate(int index) {
         final Bar bar = getTimeSeries().getBar(index);
