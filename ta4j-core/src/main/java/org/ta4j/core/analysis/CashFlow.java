@@ -39,7 +39,7 @@ import java.util.List;
 public class CashFlow implements Indicator<Num> {
 
     /** The time series */
-    private final TimeSeries timeSeries;
+    private final BarSeries barSeries;
 
     /** The cash flow values */
     private List<Num> values;
@@ -47,11 +47,11 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Constructor for cash flows of a closed trade.
      * 
-     * @param timeSeries the time series
+     * @param barSeries the time series
      * @param trade      a single trade
      */
-    public CashFlow(TimeSeries timeSeries, Trade trade) {
-        this.timeSeries = timeSeries;
+    public CashFlow(BarSeries barSeries, Trade trade) {
+        this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(trade);
         fillToTheEnd();
@@ -60,11 +60,11 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Constructor for cash flows of closed trades of a trading record.
      * 
-     * @param timeSeries    the time series
+     * @param barSeries    the time series
      * @param tradingRecord the trading record
      */
-    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord) {
-        this.timeSeries = timeSeries;
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
+        this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(tradingRecord);
 
@@ -74,12 +74,12 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Constructor.
      * 
-     * @param timeSeries    the time series
+     * @param barSeries    the time series
      * @param tradingRecord the trading record
      * @param finalIndex    index up until cash flows of open trades are considered
      */
-    public CashFlow(TimeSeries timeSeries, TradingRecord tradingRecord, int finalIndex) {
-        this.timeSeries = timeSeries;
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
+        this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
         calculate(tradingRecord, finalIndex);
 
@@ -96,20 +96,20 @@ public class CashFlow implements Indicator<Num> {
     }
 
     @Override
-    public TimeSeries getTimeSeries() {
-        return timeSeries;
+    public BarSeries getBarSeries() {
+        return barSeries;
     }
 
     @Override
     public Num numOf(Number number) {
-        return timeSeries.numOf(number);
+        return barSeries.numOf(number);
     }
 
     /**
      * @return the size of the time series
      */
     public int getSize() {
-        return timeSeries.getBarCount();
+        return barSeries.getBarCount();
     }
 
     /**
@@ -133,7 +133,7 @@ public class CashFlow implements Indicator<Num> {
      */
     private void calculate(Trade trade, int finalIndex) {
         boolean isLongTrade = trade.getEntry().isBuy();
-        int endIndex = determineEndIndex(trade, finalIndex, timeSeries.getEndIndex());
+        int endIndex = determineEndIndex(trade, finalIndex, barSeries.getEndIndex());
         final int entryIndex = trade.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
@@ -151,7 +151,7 @@ public class CashFlow implements Indicator<Num> {
             // Add intermediate cash flows during trade
             Num netEntryPrice = trade.getEntry().getNetPrice();
             for (int i = startingIndex; i < endIndex; i++) {
-                Num intermediateNetPrice = addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+                Num intermediateNetPrice = addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 values.add(values.get(entryIndex).multipliedBy(ratio));
             }
@@ -161,7 +161,7 @@ public class CashFlow implements Indicator<Num> {
             if (trade.getExit() != null) {
                 exitPrice = trade.getExit().getNetPrice();
             } else {
-                exitPrice = timeSeries.getBar(endIndex).getClosePrice();
+                exitPrice = barSeries.getBar(endIndex).getClosePrice();
             }
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, addCost(exitPrice, avgCost, isLongTrade));
             values.add(values.get(entryIndex).multipliedBy(ratio));
@@ -232,9 +232,9 @@ public class CashFlow implements Indicator<Num> {
      * Fills with last value till the end of the series.
      */
     private void fillToTheEnd() {
-        if (timeSeries.getEndIndex() >= values.size()) {
+        if (barSeries.getEndIndex() >= values.size()) {
             Num lastValue = values.get(values.size() - 1);
-            values.addAll(Collections.nCopies(timeSeries.getEndIndex() - values.size() + 1, lastValue));
+            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, lastValue));
         }
     }
 

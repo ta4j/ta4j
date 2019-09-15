@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
@@ -41,7 +41,7 @@ public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
 
     private final EMAIndicator emaIndicator;
 
-    public KeltnerChannelMiddleIndicator(TimeSeries series, int barCountEMA) {
+    public KeltnerChannelMiddleIndicator(BarSeries series, int barCountEMA) {
         this(new TypicalPriceIndicator(series), barCountEMA);
     }
 

@@ -34,7 +34,7 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 
-public class BaseBarBuilderTest extends AbstractIndicatorTest<TimeSeries, Num> {
+public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     public BaseBarBuilderTest(Function<Number, Num> numFunction) {
         super(numFunction);

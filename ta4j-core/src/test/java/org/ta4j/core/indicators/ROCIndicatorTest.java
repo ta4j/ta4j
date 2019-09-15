@@ -27,7 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -48,7 +48,7 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Before
     public void setUp() {
-        closePrice = new ClosePriceIndicator(new MockTimeSeries(numFunction, closePriceValues));
+        closePrice = new ClosePriceIndicator(new MockBarSeries(numFunction, closePriceValues));
     }
 
     @Test

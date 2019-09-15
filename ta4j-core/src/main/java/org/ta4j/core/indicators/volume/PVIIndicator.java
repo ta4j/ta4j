@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  */
 public class PVIIndicator extends RecursiveCachedIndicator<Num> {
 
-    public PVIIndicator(TimeSeries series) {
+    public PVIIndicator(BarSeries series) {
         super(series);
     }
 
@@ -49,8 +49,8 @@ public class PVIIndicator extends RecursiveCachedIndicator<Num> {
             return numOf(1000);
         }
 
-        Bar currentBar = getTimeSeries().getBar(index);
-        Bar previousBar = getTimeSeries().getBar(index - 1);
+        Bar currentBar = getBarSeries().getBar(index);
+        Bar previousBar = getBarSeries().getBar(index - 1);
         Num previousValue = getValue(index - 1);
 
         if (currentBar.getVolume().isGreaterThan(previousBar.getVolume())) {

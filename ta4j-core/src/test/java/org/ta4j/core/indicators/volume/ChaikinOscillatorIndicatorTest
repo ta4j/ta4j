@@ -24,10 +24,10 @@ package org.ta4j.core.indicators.volume;
 
 import static assertNumEquals;
 import org.ta4j.core.Bar;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ChaikinOscillatorIndicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;

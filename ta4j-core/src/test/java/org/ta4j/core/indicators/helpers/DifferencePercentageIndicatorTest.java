@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -44,7 +44,7 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void getValueWithoutThreshold() {
-        TimeSeries series = new MockTimeSeries(numFunction);
+        BarSeries series = new MockBarSeries(numFunction);
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numOf(100), numOf(101), numOf(98.98),
                 numOf(102.186952), numOf(91.9682568), numOf(100.5213046824), numOf(101.526517729224));
 
@@ -60,7 +60,7 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void getValueWithNumThreshold() {
-        TimeSeries series = new MockTimeSeries(numFunction);
+        BarSeries series = new MockBarSeries(numFunction);
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numOf(1000), numOf(1010), numOf(1020),
                 numOf(1050), numOf(1060.5), numOf(1081.5), numOf(1102.5), numOf(1091.475), numOf(1113.525),
                 numOf(1036.35), numOf(1067.4405));
@@ -81,7 +81,7 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void getValueWithNumberThreshold() {
-        TimeSeries series = new MockTimeSeries(numFunction);
+        BarSeries series = new MockBarSeries(numFunction);
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numOf(1000), numOf(1000), numOf(1010),
                 numOf(1025), numOf(1038.325));
 

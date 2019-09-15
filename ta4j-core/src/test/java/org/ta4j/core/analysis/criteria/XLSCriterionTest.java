@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalCriterionTest;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.num.Num;
@@ -37,7 +37,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     private String fileName;
     private int criterionColumn;
     private int statesColumn;
-    private TimeSeries cachedSeries = null;
+    private BarSeries cachedSeries = null;
     private final Function<Number, Num> numFunction;
 
     /**
@@ -65,7 +65,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * @return TimeSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
-    public TimeSeries getSeries() throws Exception {
+    public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
             cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
         }

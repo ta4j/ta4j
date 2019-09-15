@@ -27,7 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         bars.add(new MockBar(0, 76.260000, 76.470000, 75.840000, numFunction));
         bars.add(new MockBar(0, 76.850000, 77.000000, 76.190000, numFunction));
 
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(bars));
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockBarSeries(bars));
 
         assertEquals("NaN", sar.getValue(0).toString());
         assertNumEquals(74.640000000000000568434188608080, sar.getValue(1));
