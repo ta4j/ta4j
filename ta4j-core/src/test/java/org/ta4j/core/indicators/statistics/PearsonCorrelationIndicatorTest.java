@@ -39,7 +39,7 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private Indicator<Num> close, volume;
 
@@ -52,26 +52,26 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         TimeSeries data = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
         int i = 20;
         // close, volume
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),6,100,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),7,105,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9,130,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11,150,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),10, 130,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 95,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),13,120,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),15,180,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 150,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 200,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 150,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 85,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 70,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),5, 90,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 100,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9, 95,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 110,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i),10, 95,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 6, 100, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 7, 105, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 130, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 10, 130, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 95, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 13, 120, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 15, 180, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 200, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 85, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 70, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 5, 90, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 100, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 95, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 110, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i), 10, 95, numFunction));
 
         close = new ClosePriceIndicator(data);
         volume = new VolumeIndicator(data, 2);
@@ -79,8 +79,8 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
     @Test
     public void test() {
-    PearsonCorrelationIndicator coef = new PearsonCorrelationIndicator(close, volume, 5);
-       
+        PearsonCorrelationIndicator coef = new PearsonCorrelationIndicator(close, volume, 5);
+
         assertNumEquals(0.94947469058476818628408908843839, coef.getValue(1));
         assertNumEquals(0.9640797490298872, coef.getValue(2));
         assertNumEquals(0.9666189661412724, coef.getValue(3));

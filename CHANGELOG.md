@@ -15,9 +15,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **StopLossRule**: now correctly handles stops for sell orders
 - **ProfitLossCriterion**: fixed to work properly for short trades
 - **PivotPointIndicator**: fixed possible npe if first bar is not in same period
+- **`IchimokuChikouSpanIndicator`**: fixed calculations - applied correct formula.
 
 ### Changed
 - **BaseTimeSeriesBuilder** moved from inner class to own class
+- **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
 - :tada: **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
@@ -40,6 +42,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
 - :tada: **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
 for currentStopLossLimitActivation
+- :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
+- :tada: **Enhancement** Added license checker goal on CI's pipeline
+- :tada: **Enhancement** Added source format checker goal on CI's pipeline
+
 
 ### Removed/Deprecated
 

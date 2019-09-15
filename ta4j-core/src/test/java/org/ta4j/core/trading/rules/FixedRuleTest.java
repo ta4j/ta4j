@@ -37,7 +37,7 @@ public class FixedRuleTest {
         assertFalse(fixedRule.isSatisfied(1));
         assertFalse(fixedRule.isSatisfied(2));
         assertFalse(fixedRule.isSatisfied(9));
-        
+
         fixedRule = new FixedRule(1, 2, 3);
         assertFalse(fixedRule.isSatisfied(0));
         assertTrue(fixedRule.isSatisfied(1));
@@ -52,4 +52,3 @@ public class FixedRuleTest {
         assertFalse(fixedRule.isSatisfied(10));
     }
 }
-        

@@ -31,8 +31,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average profit criterion.
- * </p>
- * The {@link TotalProfitCriterion total profit} over the {@link NumberOfBarsCriterion number of bars}.
+ *
+ * The {@link TotalProfitCriterion total profit} over the
+ * {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 

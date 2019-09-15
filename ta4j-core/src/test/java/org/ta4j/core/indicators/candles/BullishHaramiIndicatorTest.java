@@ -52,11 +52,11 @@ public class BullishHaramiIndicatorTest extends AbstractIndicatorTest<Indicator<
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
-        bars.add(new MockBar(10, 18, 20, 10,numFunction));
-        bars.add(new MockBar(21, 15, 22, 14,numFunction));
-        bars.add(new MockBar(17, 20, 21, 17,numFunction));
-        bars.add(new MockBar(15, 11, 15, 8,numFunction));
-        bars.add(new MockBar(11, 12, 12, 10,numFunction));
+        bars.add(new MockBar(10, 18, 20, 10, numFunction));
+        bars.add(new MockBar(21, 15, 22, 14, numFunction));
+        bars.add(new MockBar(17, 20, 21, 17, numFunction));
+        bars.add(new MockBar(15, 11, 15, 8, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
         series = new MockTimeSeries(bars);
     }
 

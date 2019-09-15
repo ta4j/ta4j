@@ -39,15 +39,16 @@ import java.util.logging.Logger;
 
 /**
  * Strategy execution logging example.
- * </p>
  */
 public class StrategyExecutionLogging {
 
-    private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader().getResource("logback-traces.xml");
-    
+    private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader()
+            .getResource("logback-traces.xml");
+
     /**
-     * Loads the Logback configuration from a resource file.
-     * Only here to avoid polluting other examples with logs. Could be replaced by a simple logback.xml file in the resource folder.
+     * Loads the Logback configuration from a resource file. Only here to avoid
+     * polluting other examples with logs. Could be replaced by a simple logback.xml
+     * file in the resource folder.
      */
     private static void loadLoggerConfiguration() {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -58,7 +59,8 @@ public class StrategyExecutionLogging {
         try {
             configurator.doConfigure(LOGBACK_CONF_FILE);
         } catch (JoranException je) {
-            Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE, "Unable to load Logback configuration", je);
+            Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE,
+                    "Unable to load Logback configuration", je);
         }
     }
 

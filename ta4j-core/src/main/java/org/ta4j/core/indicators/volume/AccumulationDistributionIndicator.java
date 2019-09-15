@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.indicators.volume;
 
-
 import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
@@ -31,11 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Accumulation-distribution indicator.
- * </p>
  */
 public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
-    private CloseLocationValueIndicator clvIndicator;
+    private final CloseLocationValueIndicator clvIndicator;
 
     public AccumulationDistributionIndicator(TimeSeries series) {
         super(series);

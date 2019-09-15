@@ -48,12 +48,8 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
 
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(numFunction,
-                10, 12, 15, 14, 17,
-                20, 21, 20, 20, 19,
-                20, 17, 12, 12, 9,
-                8, 9, 10, 9, 10
-        );
+        TimeSeries data = new MockTimeSeries(numFunction, 10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8,
+                9, 10, 9, 10);
         closePrice = new ClosePriceIndicator(data);
     }
 
@@ -62,13 +58,13 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
 
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, 5);
-        
+
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
         BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
         BollingerBandWidthIndicator bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
-        
+
         assertNumEquals(0.0, bandwidth.getValue(0));
         assertNumEquals(36.3636, bandwidth.getValue(1));
         assertNumEquals(66.6423, bandwidth.getValue(2));

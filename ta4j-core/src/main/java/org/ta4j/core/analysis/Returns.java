@@ -36,7 +36,7 @@ import java.util.List;
 
 /**
  * The return rates.
- * </p>
+ *
  * This class allows to compute the return rate of a price time-series
  */
 public class Returns implements Indicator<Num> {
@@ -74,11 +74,11 @@ public class Returns implements Indicator<Num> {
     /** Unit element for efficient arithmetic return computation */
     private static Num one;
 
-
     /**
      * Constructor.
+     * 
      * @param timeSeries the time series
-     * @param trade a single trade
+     * @param trade      a single trade
      */
     public Returns(TimeSeries timeSeries, Trade trade, ReturnType type) {
         one = timeSeries.numOf(1);
@@ -93,7 +93,8 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Constructor.
-     * @param timeSeries the time series
+     * 
+     * @param timeSeries    the time series
      * @param tradingRecord the trading record
      */
     public Returns(TimeSeries timeSeries, TradingRecord tradingRecord, ReturnType type) {
@@ -107,7 +108,9 @@ public class Returns implements Indicator<Num> {
         fillToTheEnd();
     }
 
-    public List<Num> getValues() { return values; }
+    public List<Num> getValues() {
+        return values;
+    }
 
     /**
      * @param index the bar index
@@ -140,8 +143,10 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * Calculates the cash flow for a single trade (including accrued cashflow for open trades).
-     * @param trade a single trade
+     * Calculates the cash flow for a single trade (including accrued cashflow for
+     * open trades).
+     * 
+     * @param trade      a single trade
      * @param finalIndex index up until cash flow of open trades is considered
      */
     public void calculate(Trade trade, int finalIndex) {
@@ -159,7 +164,8 @@ public class Returns implements Indicator<Num> {
         Num holdingCost = trade.getHoldingCost(endIndex);
         Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
 
-        // returns are per period (iterative). Base price needs to be updated accordingly
+        // returns are per period (iterative). Base price needs to be updated
+        // accordingly
         Num lastPrice = trade.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
             Num intermediateNetPrice = CashFlow.addCost(timeSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
@@ -180,8 +186,7 @@ public class Returns implements Indicator<Num> {
         Num exitPrice;
         if (trade.getExit() != null) {
             exitPrice = trade.getExit().getNetPrice();
-        }
-        else {
+        } else {
             exitPrice = timeSeries.getBar(endIndex).getClosePrice();
         }
 
@@ -197,6 +202,7 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Calculates the returns for a trading record.
+     * 
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {

@@ -23,7 +23,6 @@
  */
 package org.ta4j.core;
 
-
 import java.io.Serializable;
 
 /**
@@ -32,6 +31,7 @@ import java.io.Serializable;
 public interface TimeSeriesBuilder extends Serializable {
     /**
      * Builds the time series with corresponding parameters
+     * 
      * @return
      */
     TimeSeries build();

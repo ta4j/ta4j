@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Profit and loss in percentage criterion.
- * </p>
+ *
  * The profit or loss in percentage over the provided {@link Trade trade(s)}.
  * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
  */
@@ -38,9 +38,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream()
-                .filter(Trade::isClosed)
-                .map(trade -> calculate(series, trade))
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
                 .reduce(series.numOf(0), Num::plus);
     }
 

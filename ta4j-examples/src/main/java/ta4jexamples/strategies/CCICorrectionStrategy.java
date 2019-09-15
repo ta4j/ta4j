@@ -23,7 +23,12 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.*;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TimeSeries;
+import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.CCIIndicator;
 import org.ta4j.core.num.Num;
@@ -33,9 +38,10 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * CCI Correction Strategy
- * </p>
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction">
- *     http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
+ *
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
  */
 public class CCICorrectionStrategy {
 
@@ -52,13 +58,13 @@ public class CCICorrectionStrategy {
         CCIIndicator shortCci = new CCIIndicator(series, 5);
         Num plus100 = series.numOf(100);
         Num minus100 = series.numOf(-100);
-        
+
         Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
                 .and(new UnderIndicatorRule(shortCci, minus100)); // Signal
-        
+
         Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
                 .and(new OverIndicatorRule(shortCci, plus100)); // Signal
-        
+
         Strategy strategy = new BaseStrategy(entryRule, exitRule);
         strategy.setUnstablePeriod(5);
         return strategy;
@@ -78,6 +84,7 @@ public class CCICorrectionStrategy {
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

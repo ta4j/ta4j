@@ -39,7 +39,7 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num>{
+public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private TimeSeries series;
 
@@ -49,7 +49,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
 
     @Before
     public void setUp() {
-        series = new MockTimeSeries(numFunction,1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
+        series = new MockTimeSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
     }
 
     @Test
@@ -60,12 +60,11 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
         assertEquals(firstTime, secondTime);
     }
 
-    @Test //should be not null
+    @Test // should be not null
     public void getValueWithNullTimeSeries() {
 
-        ConstantIndicator<Num> constant =
-                new ConstantIndicator<>(new BaseTimeSeriesBuilder()
-                        .withNumTypeOf(numFunction).build(),numFunction.apply(10));
+        ConstantIndicator<Num> constant = new ConstantIndicator<>(
+                new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build(), numFunction.apply(10));
         assertEquals(numFunction.apply(10), constant.getValue(0));
         assertEquals(numFunction.apply(10), constant.getValue(100));
         assertNotNull(constant.getTimeSeries());
@@ -80,7 +79,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
     public void getValueWithCacheLengthIncrease() {
         double[] data = new double[200];
         Arrays.fill(data, 10);
-        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(numFunction,data)), 100);
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(new MockTimeSeries(numFunction, data)), 100);
         assertNumEquals(10, sma.getValue(105));
     }
 
@@ -88,7 +87,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
     public void getValueWithOldResultsRemoval() {
         double[] data = new double[20];
         Arrays.fill(data, 1);
-        TimeSeries timeSeries = new MockTimeSeries(numFunction,data);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction, data);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 10);
         assertNumEquals(1, sma.getValue(5));
         assertNumEquals(1, sma.getValue(10));
@@ -98,18 +97,18 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
 
     @Test
     public void strategyExecutionOnCachedIndicatorAndLimitedTimeSeries() {
-        TimeSeries timeSeries = new MockTimeSeries(numFunction,0, 1, 2, 3, 4, 5, 6, 7);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction, 0, 1, 2, 3, 4, 5, 6, 7);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(timeSeries), 2);
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
         timeSeries.setMaximumBarCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
 
-        Strategy strategy = new BaseStrategy(
-                new OverIndicatorRule(sma, sma.numOf(3)),
-                new UnderIndicatorRule(sma, sma.numOf(3))
-        );
-        // Theoretical shouldEnter results: false, false, false, false, true, true, true, true
-        // Theoretical shouldExit results: false, false, true, true, false, false, false, false
+        Strategy strategy = new BaseStrategy(new OverIndicatorRule(sma, sma.numOf(3)),
+                new UnderIndicatorRule(sma, sma.numOf(3)));
+        // Theoretical shouldEnter results: false, false, false, false, true, true,
+        // true, true
+        // Theoretical shouldExit results: false, false, true, true, false, false,
+        // false, false
 
         // As we return the first bar/result found for the removed bars:
         // -> Approximated values for ClosePrice cache: 2, 2, 2, 3, 4, 5, 6, 7
@@ -139,7 +138,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Nu
 
     @Test
     public void getValueOnResultsCalculatedFromRemovedBarsShouldReturnFirstRemainingResult() {
-        TimeSeries timeSeries = new MockTimeSeries(numFunction,1, 1, 1, 1, 1);
+        TimeSeries timeSeries = new MockTimeSeries(numFunction, 1, 1, 1, 1, 1);
         timeSeries.setMaximumBarCount(3);
         assertEquals(2, timeSeries.getRemovedBarsCount());
 

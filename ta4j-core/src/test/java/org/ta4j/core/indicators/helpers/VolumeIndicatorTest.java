@@ -57,13 +57,13 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void sumOfVolume() {
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 10,numFunction));
-        bars.add(new MockBar(0, 11,numFunction));
-        bars.add(new MockBar(0, 12,numFunction));
-        bars.add(new MockBar(0, 13,numFunction));
-        bars.add(new MockBar(0, 150,numFunction));
-        bars.add(new MockBar(0, 155,numFunction));
-        bars.add(new MockBar(0, 160,numFunction));
+        bars.add(new MockBar(0, 10, numFunction));
+        bars.add(new MockBar(0, 11, numFunction));
+        bars.add(new MockBar(0, 12, numFunction));
+        bars.add(new MockBar(0, 13, numFunction));
+        bars.add(new MockBar(0, 150, numFunction));
+        bars.add(new MockBar(0, 155, numFunction));
+        bars.add(new MockBar(0, 160, numFunction));
         VolumeIndicator volumeIndicator = new VolumeIndicator(new MockTimeSeries(bars), 3);
 
         assertNumEquals(10, volumeIndicator.getValue(0));

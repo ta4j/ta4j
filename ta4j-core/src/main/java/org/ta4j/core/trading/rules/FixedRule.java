@@ -29,7 +29,7 @@ import java.util.Arrays;
 
 /**
  * An indexes-based rule.
- * </p>
+ *
  * Satisfied for provided indexes.
  */
 public class FixedRule extends AbstractRule {
@@ -38,6 +38,7 @@ public class FixedRule extends AbstractRule {
 
     /**
      * Constructor.
+     * 
      * @param indexes a sequence of indexes
      */
     public FixedRule(int... indexes) {

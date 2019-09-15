@@ -33,38 +33,39 @@ import org.ta4j.core.num.Num;
 
 /**
  * Intraday Intensity Index
- * see https://www.investopedia.com/terms/i/intradayintensityindex.asp
- *     https://www.investopedia.com/terms/i/intradayintensityindex.asp
+ *
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/i/intradayintensityindex.asp">https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>
  */
 public class IIIIndicator extends CachedIndicator<Num> {
 
-
-    private ClosePriceIndicator closePriceIndicator;
-
-    private HighPriceIndicator highPriceIndicator;
-
-    private LowPriceIndicator lowPriceIndicator;
-
-    private VolumeIndicator volumeIndicator;
+    private final ClosePriceIndicator closePriceIndicator;
+    private final HighPriceIndicator highPriceIndicator;
+    private final LowPriceIndicator lowPriceIndicator;
+    private final VolumeIndicator volumeIndicator;
+    private final Num two;
 
     public IIIIndicator(TimeSeries series) {
         super(series);
-        closePriceIndicator = new ClosePriceIndicator(series);
-        highPriceIndicator = new HighPriceIndicator(series);
-        lowPriceIndicator = new LowPriceIndicator(series);
-        volumeIndicator = new VolumeIndicator(series);
+        this.closePriceIndicator = new ClosePriceIndicator(series);
+        this.highPriceIndicator = new HighPriceIndicator(series);
+        this.lowPriceIndicator = new LowPriceIndicator(series);
+        this.volumeIndicator = new VolumeIndicator(series);
+        this.two = numOf(2);
     }
+
     @Override
     protected Num calculate(int index) {
-
         if (index == getTimeSeries().getBeginIndex()) {
             return numOf(0);
         }
-        Num closePrice = numOf(2).multipliedBy(closePriceIndicator.getValue(index));
-        Num highmlow = highPriceIndicator.getValue(index).minus(lowPriceIndicator.getValue(index));
-        Num highplow = highPriceIndicator.getValue(index).plus(lowPriceIndicator.getValue(index));
+        final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
+        final Num high = highPriceIndicator.getValue(index);
+        final Num low = lowPriceIndicator.getValue(index);
+        final Num highMinusLow = high.minus(low);
+        final Num highPlusLow = high.plus(low);
 
-        return (closePrice.minus(highplow)).dividedBy(highmlow.multipliedBy(volumeIndicator.getValue(index)));
-
+        return doubledClosePrice.minus(highPlusLow)
+                .dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
     }
 }

@@ -31,15 +31,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class enables backtesting of multiple strategies and comparing them to see which is the best
+ * This class enables backtesting of multiple strategies and comparing them to
+ * see which is the best
  */
 public class BacktestExecutor {
 
-    private final TradingStatementGenerator tradingStatementGenerator = new TradingStatementGenerator();
+    private final TradingStatementGenerator tradingStatementGenerator;
     private final TimeSeriesManager seriesManager;
 
     public BacktestExecutor(TimeSeries series) {
+        this(series, new TradingStatementGenerator());
+    }
+
+    public BacktestExecutor(TimeSeries series, TradingStatementGenerator tradingStatementGenerator) {
         this.seriesManager = new TimeSeriesManager(series);
+        this.tradingStatementGenerator = tradingStatementGenerator;
     }
 
     /**
@@ -52,7 +58,8 @@ public class BacktestExecutor {
     }
 
     /**
-     * Execute given strategies with specified order type to open trades and return trading statements
+     * Execute given strategies with specified order type to open trades and return
+     * trading statements
      *
      * @param amount    - The amount used to open/close the trades
      * @param orderType the {@link Order.OrderType} used to open the trades
@@ -61,7 +68,8 @@ public class BacktestExecutor {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
         for (Strategy strategy : strategies) {
             final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
-            final TradingStatement tradingStatement = tradingStatementGenerator.generate(tradingRecord, seriesManager.getTimeSeries());
+            final TradingStatement tradingStatement = tradingStatementGenerator.generate(strategy, tradingRecord,
+                    seriesManager.getTimeSeries());
             tradingStatements.add(tradingStatement);
         }
         return tradingStatements;

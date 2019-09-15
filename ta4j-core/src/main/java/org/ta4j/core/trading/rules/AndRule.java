@@ -28,7 +28,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * An AND combination of two {@link Rule rules}.
- * </p>
+ *
  * Satisfied when the two provided rules are satisfied as well.<br>
  * Warning: the second rule is not tested if the first rule is not satisfied.
  */

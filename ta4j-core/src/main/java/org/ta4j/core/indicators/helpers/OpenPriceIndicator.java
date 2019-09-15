@@ -28,7 +28,6 @@ import org.ta4j.core.TimeSeries;
 
 /**
  * Open price indicator.
- * </p>
  */
 public class OpenPriceIndicator extends PriceIndicator {
 

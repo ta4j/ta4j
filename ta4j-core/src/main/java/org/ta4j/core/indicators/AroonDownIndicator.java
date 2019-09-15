@@ -32,25 +32,25 @@ import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-
 /**
  * Aroon down indicator.
- * </p>
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
+ *
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonDownIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-
     private final LowestValueIndicator lowestMinPriceIndicator;
     private final Indicator<Num> minValueIndicator;
     private final Num hundred;
 
     /**
      * Constructor.
-     * <p>
-     * @param minValueIndicator the indicator for the maximum price (default {@link HighPriceIndicator})
-     * @param barCount the time frame
+     *
+     * @param minValueIndicator the indicator for the maximum price (default
+     *                          {@link HighPriceIndicator})
+     * @param barCount          the time frame
      */
     public AroonDownIndicator(Indicator<Num> minValueIndicator, int barCount) {
         super(minValueIndicator);
@@ -58,13 +58,13 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         this.minValueIndicator = minValueIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, barCount+1);
+        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, barCount + 1);
     }
 
     /**
      * Default Constructor that is using the maximum price
-     * <p>
-     * @param series the time series
+     *
+     * @param series   the time series
      * @param barCount the time frame
      */
     public AroonDownIndicator(TimeSeries series, int barCount) {
@@ -77,7 +77,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the lowest close price
-        int endIndex = Math.max(0,index - barCount);
+        int endIndex = Math.max(0, index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {
             if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
@@ -91,6 +91,6 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+" barCount: "+barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

@@ -30,14 +30,14 @@ import org.ta4j.core.num.Num;
 
 /**
  * Commodity Channel Index (CCI) indicator.
- * <p/>
  *
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
- * http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
 public class CCIIndicator extends CachedIndicator<Num> {
 
-    private final Num FACTOR;
+    private final Num factor;
     private final TypicalPriceIndicator typicalPriceInd;
     private final SMAIndicator smaInd;
     private final MeanDeviationIndicator meanDeviationInd;
@@ -51,7 +51,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
      */
     public CCIIndicator(TimeSeries series, int barCount) {
         super(series);
-        FACTOR = numOf(0.015);
+        factor = numOf(0.015);
         typicalPriceInd = new TypicalPriceIndicator(series);
         smaInd = new SMAIndicator(typicalPriceInd, barCount);
         meanDeviationInd = new MeanDeviationIndicator(typicalPriceInd, barCount);
@@ -66,7 +66,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
         if (meanDeviation.isZero()) {
             return numOf(0);
         }
-        return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(FACTOR));
+        return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
     }
 
     @Override

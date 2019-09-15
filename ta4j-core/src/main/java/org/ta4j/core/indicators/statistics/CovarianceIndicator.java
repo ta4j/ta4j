@@ -27,27 +27,24 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
+
 /**
  * Covariance indicator.
- * </p>
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> indicator1;
-    
-    private Indicator<Num> indicator2;
-
-    private int barCount;
-
-    private SMAIndicator sma1;
-    
-    private SMAIndicator sma2;
+    private final Indicator<Num> indicator1;
+    private final Indicator<Num> indicator2;
+    private final int barCount;
+    private final SMAIndicator sma1;
+    private final SMAIndicator sma2;
 
     /**
      * Constructor.
+     *
      * @param indicator1 the first indicator
      * @param indicator2 the second indicator
-     * @param barCount the time frame
+     * @param barCount   the time frame
      */
     public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);
