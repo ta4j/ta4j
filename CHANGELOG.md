@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
+- :boom: **Breaking** Removed redundant constructors from BaseBar class
 
 ### Fixed
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
@@ -22,6 +23,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
+- :tada: **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
+- :tada: **Enhancement** Added constructor in BaseBar with trades property
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
 - :tada: **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
 - :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
