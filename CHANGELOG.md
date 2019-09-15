@@ -15,6 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ProfitLossCriterion**: fixed to work properly for short trades
 - **PivotPointIndicator**: fixed possible npe if first bar is not in same period
 - **`IchimokuChikouSpanIndicator`**: fixed calculations - applied correct formula.
+- **CloseLocationValueIndicator**: fixed special case, return zero instead of NaN if high price == low price
 
 ### Changed
 - **BaseTimeSeriesBuilder** moved from inner class to own class
