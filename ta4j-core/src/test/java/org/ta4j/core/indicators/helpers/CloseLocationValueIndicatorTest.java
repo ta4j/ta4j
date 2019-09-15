@@ -56,6 +56,8 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
         bars.add(new MockBar(15, 15, 16, 14, numFunction));
         bars.add(new MockBar(15, 11, 15, 8, numFunction));
         bars.add(new MockBar(11, 12, 12, 10, numFunction));
+        bars.add(new MockBar(10,10,10,10, numFunction));
+        bars.add(new MockBar(11, 12, 12, 10, numFunction));
         series = new MockTimeSeries(bars);
     }
 
@@ -67,5 +69,12 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
         assertNumEquals(0, clv.getValue(2));
         assertNumEquals(-1d / 7, clv.getValue(3));
         assertNumEquals(1, clv.getValue(4));
+    }
+
+    @Test
+    public void returnZeroIfHighEqualsLow(){
+        CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
+        assertNumEquals(0, clv.getValue(5));
+        assertNumEquals(1, clv.getValue(6));
     }
 }
