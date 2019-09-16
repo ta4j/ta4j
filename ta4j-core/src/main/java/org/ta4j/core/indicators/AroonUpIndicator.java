@@ -35,7 +35,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * Aroon up indicator.
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
+ *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonUpIndicator extends CachedIndicator<Num> {
 
@@ -63,7 +63,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     /**
      * Default Constructor that is using the maximum price
      *
-     * @param series   the time series
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public AroonUpIndicator(BarSeries series, int barCount) {

@@ -32,14 +32,13 @@ import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
 /**
- * This class diplays analysis criterion values after running a trading strategy
- * over a time series.
+ * This class diplays analysis criterion values after running a trading strategy over a bar series.
  */
 public class StrategyAnalysis {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);

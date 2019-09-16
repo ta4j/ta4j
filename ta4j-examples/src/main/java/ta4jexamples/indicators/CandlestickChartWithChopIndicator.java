@@ -43,11 +43,12 @@ import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import ta4jexamples.loaders.CsvTradesLoader;
+
 import java.awt.*;
 import java.util.Date;
-import org.ta4j.core.indicators.ChopIndicator;
 
 /**
  * This class builds a traditional candlestick chart.
@@ -64,13 +65,13 @@ public class CandlestickChartWithChopIndicator {
     private static ChartPanel combinedChartPanel;
     private static XYPlot indicatorXYPlot;
     static Stroke dashedThinLineStyle = new BasicStroke(0.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f,
-            new float[] { 8.0f, 4.0f }, 0.0f);
+            new float[]{8.0f, 4.0f}, 0.0f);
     static BarSeries series;
 
     /**
-     * Builds a JFreeChart OHLC dataset from a ta4j time series.
-     * 
-     * @param series a time series
+     * Builds a JFreeChart OHLC dataset from a ta4j bar series.
+     *
+     * @param series a bar series
      * @return an Open-High-Low-Close dataset
      */
     private static OHLCDataset createOHLCDataset(BarSeries series) {
@@ -97,9 +98,9 @@ public class CandlestickChartWithChopIndicator {
     }
 
     /**
-     * Builds an additional JFreeChart dataset from a ta4j time series.
-     * 
-     * @param series a time series
+     * Builds an additional JFreeChart dataset from a ta4j bar series.
+     *
+     * @param series a bar series
      * @return an additional dataset
      */
     private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
@@ -132,11 +133,10 @@ public class CandlestickChartWithChopIndicator {
 
     /**
      * Displays a chart in a frame.
-     * 
+     *
      * @param ohlcDataset
      * @param xyDataset
      * @param chopSeries
-     * @param chart       the chart to be displayed
      */
     private static void displayChart(XYDataset ohlcDataset, XYDataset xyDataset, XYDataset chopSeries) {
         /*

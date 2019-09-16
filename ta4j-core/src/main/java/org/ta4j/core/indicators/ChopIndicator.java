@@ -57,17 +57,16 @@ public class ChopIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param timeseries  the time series or @param timeseries the
-     *                    {@link BarSeries}
+     * @param barSeries  the bar series {@link BarSeries}
      * @param ciTimeFrame time-frame often something like '14'
      * @param scaleTo     maximum value to scale this oscillator, usually '1' or
      *                    '100'
      */
-    public ChopIndicator(BarSeries timeseries, int ciTimeFrame, int scaleTo) {
-        super(timeseries);
-        this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new HighPriceIndicator(timeseries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new LowPriceIndicator(timeseries), ciTimeFrame);
+    public ChopIndicator(BarSeries barSeries, int ciTimeFrame, int scaleTo) {
+        super(barSeries);
+        this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
+        hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
+        lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
         this.LOG10n = numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = numOf(scaleTo);

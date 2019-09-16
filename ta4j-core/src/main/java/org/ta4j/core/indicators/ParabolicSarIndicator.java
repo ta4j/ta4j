@@ -36,10 +36,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * Parabolic SAR indicator.
  *
  * @see <a href=
- *      "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
- *      https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
+ *         "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
+ *         https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
  * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
- *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
+ *         https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -57,7 +57,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with default parameters
      *
-     * @param series the time series for this indicator
+     * @param series the bar series for this indicator
      */
     public ParabolicSarIndicator(BarSeries series) {
         this(series, series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
@@ -67,7 +67,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with custom parameters and default increment value
      *
-     * @param series the time series for this indicator
+     * @param series the bar series for this indicator
      * @param aF     acceleration factor
      * @param maxA   maximum acceleration
      */
@@ -78,7 +78,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with custom parameters
      *
-     * @param series    the time series for this indicator
+     * @param series    the bar series for this indicator
      * @param aF        acceleration factor
      * @param maxA      maximum acceleration
      * @param increment the increment step

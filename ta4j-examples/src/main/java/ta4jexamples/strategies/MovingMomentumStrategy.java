@@ -23,8 +23,12 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
@@ -40,14 +44,14 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * Moving momentum strategy.
  *
  * @see <a href=
- *      "http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum">
- *      http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
+ *         "http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum">
+ *         http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum</a>
  */
 public class MovingMomentumStrategy {
 
     /**
-     * @param series a time series
-     * @return a moving momentum strategy
+     * @param series the bar series
+     * @return the moving momentum strategy
      */
     public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
@@ -83,7 +87,7 @@ public class MovingMomentumStrategy {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy

@@ -53,18 +53,18 @@ import java.util.Date;
 public class IndicatorsToChart {
 
     /**
-     * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * 
-     * @param barseries the ta4j time series
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
      * @param indicator the indicator
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barseries, Indicator<Num> indicator,
-                                                                       String name) {
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
+                                                                      String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < barseries.getBarCount(); i++) {
-            Bar bar = barseries.getBar(i);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
             chartTimeSeries.add(new Day(Date.from(bar.getEndTime().toInstant())), indicator.getValue(i).doubleValue());
         }
         return chartTimeSeries;
@@ -72,7 +72,7 @@ public class IndicatorsToChart {
 
     /**
      * Displays a chart in a frame.
-     * 
+     *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -92,7 +92,7 @@ public class IndicatorsToChart {
     public static void main(String[] args) {
 
         /*
-         * Getting time series
+         * Getting bar series
          */
         BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 

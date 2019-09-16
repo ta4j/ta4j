@@ -34,7 +34,12 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
-import org.ta4j.core.*;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -51,18 +56,17 @@ import java.util.Date;
 public class CashFlowToChart {
 
     /**
-     * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * 
-     * @param barseries the ta4j time series
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
      * @param indicator the indicator
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barseries, Indicator<Num> indicator,
-                                                                       String name) {
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator, String name) {
         org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < barseries.getBarCount(); i++) {
-            Bar bar = barseries.getBar(i);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
             chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
                     indicator.getValue(i).doubleValue());
         }
@@ -71,7 +75,7 @@ public class CashFlowToChart {
 
     /**
      * Adds the cash flow axis to the plot.
-     * 
+     *
      * @param plot    the plot
      * @param dataset the cash flow dataset
      */
@@ -88,7 +92,7 @@ public class CashFlowToChart {
 
     /**
      * Displays a chart in a frame.
-     * 
+     *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -107,7 +111,7 @@ public class CashFlowToChart {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);

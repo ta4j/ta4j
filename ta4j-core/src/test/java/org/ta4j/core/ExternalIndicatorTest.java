@@ -28,9 +28,9 @@ import org.ta4j.core.num.Num;
 public interface ExternalIndicatorTest {
 
     /**
-     * Gets the TimeSeries used by an external indicator calculator.
+     * Gets the BarSeries used by an external indicator calculator.
      * 
-     * @return TimeSeries from the external indicator calculator
+     * @return BarSeries from the external indicator calculator
      * @throws Exception if the external calculator throws an Exception
      */
     BarSeries getSeries() throws Exception;

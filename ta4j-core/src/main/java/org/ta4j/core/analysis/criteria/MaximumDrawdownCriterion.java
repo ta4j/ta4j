@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Maximum drawdown criterion.
  *
  * @see <a href=
- *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
+ *         "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
  */
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
@@ -59,8 +59,8 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the maximum drawdown from a cash flow over a series.
-     * 
-     * @param series   the time series
+     *
+     * @param series   the bar series
      * @param cashFlow the cash flow
      * @return the maximum drawdown from a cash flow over a series
      */

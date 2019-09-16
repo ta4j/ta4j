@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * A time series with sample data. TODO: add Builder
+ * A bar series with sample data. TODO: add Builder
  */
 public class MockBarSeries extends BaseBarSeries {
 

@@ -24,9 +24,10 @@
 package ta4jexamples.loaders;
 
 import com.opencsv.CSVReader;
-import org.ta4j.core.*;
-import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,12 +43,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class builds a Ta4j time series from a CSV file containing trades.
+ * This class builds a Ta4j bar series from a CSV file containing trades.
  */
 public class CsvTradesLoader {
 
     /**
-     * @return a time series from Bitstamp (bitcoin exchange) trades
+     * @return the bar series from Bitstamp (bitcoin exchange) trades
      */
     public static BarSeries loadBitstampSeries() {
 
@@ -100,12 +101,11 @@ public class CsvTradesLoader {
 
     /**
      * Builds a list of populated bars from csv data.
-     * 
+     *
      * @param beginTime the begin time of the whole period
      * @param endTime   the end time of the whole period
      * @param duration  the bar duration (in seconds)
      * @param lines     the csv data returned by CSVReader.readAll()
-     * @return the list of populated bars
      */
     @SuppressWarnings("deprecation")
     private static void buildSeries(BarSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration,

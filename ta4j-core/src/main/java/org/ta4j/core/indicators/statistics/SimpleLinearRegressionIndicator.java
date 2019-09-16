@@ -53,7 +53,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor for the y-values of the formula (y = slope * x + intercept).
-     * 
+     *
      * @param indicator the indicator for the x-values of the formula.
      * @param barCount  the time frame
      */
@@ -63,7 +63,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator for the x-values of the formula.
      * @param barCount  the time frame
      * @param type      the type of the outcome value (y, slope, intercept)
@@ -97,9 +97,9 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * Calculates the regression line.
-     * 
-     * @param startIndex the start index (inclusive) in the time series
-     * @param endIndex   the end index (inclusive) in the time series
+     *
+     * @param startIndex the start index (inclusive) in the bar series
+     * @param endIndex   the end index (inclusive) in the bar series
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar

@@ -23,13 +23,12 @@
  */
 package org.ta4j.core.tradereport;
 
-import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * This class generates TradingStatement basis on provided trading report and
- * time series
+ * This class generates TradingStatement basis on provided trading report and bar series
  *
  * @see TradingStatement
  */
@@ -43,7 +42,7 @@ public class TradingStatementGenerator implements ReportGenerator<TradingStateme
     }
 
     public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
-            TradeStatsReportGenerator tradeStatsReportGenerator) {
+                                     TradeStatsReportGenerator tradeStatsReportGenerator) {
         super();
         this.performanceReportGenerator = performanceReportGenerator;
         this.tradeStatsReportGenerator = tradeStatsReportGenerator;

@@ -23,8 +23,12 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -39,13 +43,13 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * 2-Period RSI Strategy
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
- *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
+ *         "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
+ *         http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
  */
 public class RSI2Strategy {
 
     /**
-     * @param series a time series
+     * @param series a bar series
      * @return a 2-period RSI strategy
      */
     public static Strategy buildStrategy(BarSeries series) {
@@ -80,7 +84,7 @@ public class RSI2Strategy {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy

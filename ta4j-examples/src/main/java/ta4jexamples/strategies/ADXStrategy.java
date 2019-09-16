@@ -23,8 +23,12 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.adx.ADXIndicator;
@@ -41,13 +45,13 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * ADX indicator based strategy
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
+ *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
+ *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
 public class ADXStrategy {
 
     /**
-     * @param series a time series
+     * @param series a bar series
      * @return an adx indicator based strategy
      */
     public static Strategy buildStrategy(BarSeries series) {
@@ -78,7 +82,7 @@ public class ADXStrategy {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy

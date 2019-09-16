@@ -23,9 +23,19 @@
  */
 package ta4jexamples.strategies;
 
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
-import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.MultiplierIndicator;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -35,13 +45,12 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class GlobalExtremaStrategy {
 
-    // We assume that there were at least one trade every 5 minutes during the whole
-    // week
+    // We assume that there were at least one trade every 5 minutes during the whole week
     private static final int NB_BARS_PER_WEEK = 12 * 24 * 7;
 
     /**
-     * @param series a time series
-     * @return a global extrema strategy
+     * @param series the bar series
+     * @return the global extrema strategy
      */
     public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
@@ -70,7 +79,7 @@ public class GlobalExtremaStrategy {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy

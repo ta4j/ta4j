@@ -38,8 +38,8 @@ import static org.ta4j.core.num.NaN.NaN;
  * Pivot Point indicator.
  *
  * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school:
- *      pivotpoints</a>
+ *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school:
+ *         pivotpoints</a>
  */
 public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -49,8 +49,8 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates the pivot point based on the time level parameter.
-     * 
-     * @param series    the time series with adequate endTime of each bar for the
+     *
+     * @param series    the bar series with adequate endTime of each bar for the
      *                  given time level.
      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:
      *                  <ul>
@@ -99,7 +99,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Calculates the indices of the bars of the previous period
-     * 
+     *
      * @param index index of the current bar
      * @return list of indices of the bars of the previous period
      */
@@ -134,33 +134,33 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
         switch (timeLevel) {
-        case DAY: // return previous day
-            int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
-            // skip weekend and holidays:
-            while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
-                    && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
-                prevCalendarDay--;
-            }
-            return prevCalendarDay;
-        case WEEK: // return previous week
-            return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-        case MONTH: // return previous month
-            return bar.getEndTime().minusMonths(1).getMonthValue();
-        default: // return previous year
-            return bar.getEndTime().minusYears(1).getYear();
+            case DAY: // return previous day
+                int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
+                // skip weekend and holidays:
+                while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
+                        && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
+                    prevCalendarDay--;
+                }
+                return prevCalendarDay;
+            case WEEK: // return previous week
+                return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+            case MONTH: // return previous month
+                return bar.getEndTime().minusMonths(1).getMonthValue();
+            default: // return previous year
+                return bar.getEndTime().minusYears(1).getYear();
         }
     }
 
     private long getPeriod(Bar bar) {
         switch (timeLevel) {
-        case DAY: // return previous day
-            return bar.getEndTime().getDayOfYear();
-        case WEEK: // return previous week
-            return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-        case MONTH: // return previous month
-            return bar.getEndTime().getMonthValue();
-        default: // return previous year
-            return bar.getEndTime().getYear();
+            case DAY: // return previous day
+                return bar.getEndTime().getDayOfYear();
+            case WEEK: // return previous week
+                return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+            case MONTH: // return previous month
+                return bar.getEndTime().getMonthValue();
+            default: // return previous year
+                return bar.getEndTime().getYear();
         }
     }
 

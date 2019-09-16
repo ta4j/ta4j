@@ -39,14 +39,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class build a Ta4j time series from a CSV file containing bars.
+ * This class build a Ta4j bar series from a CSV file containing bars.
  */
 public class CsvBarsLoader {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
-     * @return a time series from Apple Inc. bars.
+     * @return the bar series from Apple Inc. bars.
      */
     public static BarSeries loadAppleIncSeries() {
         return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");

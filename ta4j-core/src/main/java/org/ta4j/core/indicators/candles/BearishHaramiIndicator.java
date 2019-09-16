@@ -32,14 +32,14 @@ import org.ta4j.core.num.Num;
  * Bearish Harami pattern indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/b/bearishharami.asp">
- *      http://www.investopedia.com/terms/b/bearishharami.asp</a>
+ *         http://www.investopedia.com/terms/b/bearishharami.asp</a>
  */
 public class BearishHaramiIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * 
-     * @param series a time series
+     *
+     * @param series a bar series
      */
     public BearishHaramiIndicator(BarSeries series) {
         super(series);

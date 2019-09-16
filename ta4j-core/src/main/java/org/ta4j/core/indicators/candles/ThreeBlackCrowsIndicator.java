@@ -33,23 +33,29 @@ import org.ta4j.core.num.Num;
  * Three black crows indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
- *      http://www.investopedia.com/terms/t/three_black_crows.asp</a>
+ *         http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
-    /** Lower shadow */
+    /**
+     * Lower shadow
+     */
     private final LowerShadowIndicator lowerShadowInd;
-    /** Average lower shadow */
+    /**
+     * Average lower shadow
+     */
     private final SMAIndicator averageLowerShadowInd;
-    /** Factor used when checking if a candle has a very short lower shadow */
+    /**
+     * Factor used when checking if a candle has a very short lower shadow
+     */
     private final Num factor;
 
     private int whiteCandleIndex = -1;
 
     /**
      * Constructor.
-     * 
-     * @param series   a time series
+     *
+     * @param series   the bar series
      * @param barCount the number of bars used to calculate the average lower shadow
      * @param factor   the factor used when checking if a candle has a very short
      *                 lower shadow
@@ -98,7 +104,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
         // Opens within the body of the previous candle
         return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
-        // Closes below the previous close price
+                // Closes below the previous close price
                 && currClosePrice.isLessThan(prevClosePrice);
     }
 

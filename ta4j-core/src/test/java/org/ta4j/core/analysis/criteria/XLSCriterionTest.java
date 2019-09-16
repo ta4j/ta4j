@@ -59,10 +59,10 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     }
 
     /**
-     * Gets the TimeSeries from the XLS file. The TimeSeries is cached so that
+     * Gets the BarSeries from the XLS file. The BarSeries is cached so that
      * subsequent calls do not execute getSeries.
      * 
-     * @return TimeSeries from the file
+     * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
     public BarSeries getSeries() throws Exception {

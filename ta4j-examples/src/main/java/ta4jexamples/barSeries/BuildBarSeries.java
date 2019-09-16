@@ -36,7 +36,7 @@ import java.util.List;
 public class BuildBarSeries {
 
     /**
-     * Calls different functions that shows how a BaseTimeSeries
+     * Calls different functions that shows how a BaseBarSeries
      * could be created and how Bars could be added
      *
      * @param args command line arguments (ignored)
