@@ -332,7 +332,7 @@ public class Order implements Serializable {
 
     /**
      * @param index  the index the order is executed
-     * @param series the time series
+     * @param series the bar series
      * @return a SELL order
      */
     public static Order sellAt(int index, BarSeries series) {
