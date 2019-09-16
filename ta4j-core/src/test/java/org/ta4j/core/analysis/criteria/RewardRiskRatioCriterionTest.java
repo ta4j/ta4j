@@ -25,13 +25,19 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
@@ -88,5 +94,26 @@ public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(3.5), numOf(2.2)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.7)));
+    }
+
+    @Test
+    public void testNoDrawDownForTradingRecord() {
+        final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
+                Order.buyAt(2, series), Order.sellAt(3, series));
+
+        final Num result = rrc.calculate(series, tradingRecord);
+
+        assertNumEquals(NaN.NaN, result);
+    }
+
+    @Test
+    public void testNoDrawDownForTrade() {
+        final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
+        final Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+
+        final Num result = rrc.calculate(series, trade);
+
+        assertNumEquals(NaN.NaN, result);
     }
 }
