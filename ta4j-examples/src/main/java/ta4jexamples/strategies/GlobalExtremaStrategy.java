@@ -45,7 +45,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class GlobalExtremaStrategy {
 
-    // We assume that there were at least one trade every 5 minutes during the whole week
+    // We assume that there were at least one trade every 5 minutes during the whole
+    // week
     private static final int NB_BARS_PER_WEEK = 12 * 24 * 7;
 
     /**

@@ -45,8 +45,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * ADX indicator based strategy
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx</a>
  */
 public class ADXStrategy {
 

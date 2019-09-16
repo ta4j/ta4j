@@ -36,7 +36,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * Aroon down indicator.
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonDownIndicator extends CachedIndicator<Num> {
 

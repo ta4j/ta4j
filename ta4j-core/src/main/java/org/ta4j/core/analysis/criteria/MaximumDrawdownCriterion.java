@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Maximum drawdown criterion.
  *
  * @see <a href=
- *         "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
+ *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
  */
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 

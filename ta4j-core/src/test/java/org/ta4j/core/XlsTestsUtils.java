@@ -292,7 +292,7 @@ public class XlsTestsUtils {
      *                             DataFormatException
      */
     public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column,
-                                              Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
     }
@@ -310,7 +310,7 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getValues throws DataFormatException
      */
     public static Num getFinalCriterionValue(Class<?> clazz, String fileName, int column,
-                                             Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         List<Num> values = getValues(sheet, column, numFunction, params);
         return values.get(values.size() - 1);
@@ -327,7 +327,7 @@ public class XlsTestsUtils {
      * @throws DataFormatException if getValues throws DataFormatException
      */
     public static TradingRecord getTradingRecord(Class<?> clazz, String fileName, int column,
-                                                 Function<Number, Num> numFunction) throws IOException, DataFormatException {
+            Function<Number, Num> numFunction) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         return new MockTradingRecord(getValues(sheet, column, numFunction));
     }

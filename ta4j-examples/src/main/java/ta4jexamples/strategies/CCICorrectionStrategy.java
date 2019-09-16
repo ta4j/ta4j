@@ -40,8 +40,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * CCI Correction Strategy
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction">
- *         http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction</a>
  */
 public class CCICorrectionStrategy {
 

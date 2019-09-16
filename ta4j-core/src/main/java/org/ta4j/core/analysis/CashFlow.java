@@ -36,7 +36,8 @@ import java.util.List;
 /**
  * The cash flow.
  *
- * This class allows to follow the money cash flow involved by a list of trades over a bar series.
+ * This class allows to follow the money cash flow involved by a list of trades
+ * over a bar series.
  */
 public class CashFlow implements Indicator<Num> {
 

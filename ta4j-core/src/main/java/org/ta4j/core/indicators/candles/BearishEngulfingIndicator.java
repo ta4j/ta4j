@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  * Bearish engulfing pattern indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/b/bearishengulfingp.asp">
- *         http://www.investopedia.com/terms/b/bearishengulfingp.asp</a>
+ *      http://www.investopedia.com/terms/b/bearishengulfingp.asp</a>
  */
 public class BearishEngulfingIndicator extends CachedIndicator<Boolean> {
 

@@ -57,7 +57,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param barSeries  the bar series {@link BarSeries}
+     * @param barSeries   the bar series {@link BarSeries}
      * @param ciTimeFrame time-frame often something like '14'
      * @param scaleTo     maximum value to scale this oscillator, usually '1' or
      *                    '100'

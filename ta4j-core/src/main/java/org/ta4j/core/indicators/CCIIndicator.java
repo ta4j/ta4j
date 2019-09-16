@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
  * Commodity Channel Index (CCI) indicator.
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in</a>
  */
 public class CCIIndicator extends CachedIndicator<Num> {
 

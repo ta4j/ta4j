@@ -47,10 +47,10 @@ import java.util.Map;
  * Walk-forward optimization example.
  *
  * @see <a href="http://en.wikipedia.org/wiki/Walk_forward_optimization">
- *         http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
+ *      http://en.wikipedia.org/wiki/Walk_forward_optimization</a>
  * @see <a href=
- *         "http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk">
- *         http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
+ *      "http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk">
+ *      http://www.futuresmag.com/2010/04/01/can-your-system-do-the-walk</a>
  */
 public class WalkForward {
 
@@ -96,13 +96,16 @@ public class WalkForward {
     /**
      * Returns a new bar series which is a view of a subset of the current series.
      *
-     * The new series has begin and end indexes which correspond to the bounds of the sub-set into the full series.<br>
-     * The bar of the series are shared between the original bar series and the returned one (i.e. no copy).
+     * The new series has begin and end indexes which correspond to the bounds of
+     * the sub-set into the full series.<br>
+     * The bar of the series are shared between the original bar series and the
+     * returned one (i.e. no copy).
      *
      * @param series     the bar series to get a sub-series of
      * @param beginIndex the begin index (inclusive) of the bar series
      * @param duration   the duration of the bar series
-     * @return a constrained {@link BarSeries bar series} which is a sub-set of the current series
+     * @return a constrained {@link BarSeries bar series} which is a sub-set of the
+     *         current series
      */
     public static BarSeries subseries(BarSeries series, int beginIndex, Duration duration) {
 

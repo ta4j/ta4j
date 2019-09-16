@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Three white soldiers indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/t/three_white_soldiers.asp">
- *         http://www.investopedia.com/terms/t/three_white_soldiers.asp</a>
+ *      http://www.investopedia.com/terms/t/three_white_soldiers.asp</a>
  */
 public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
@@ -104,7 +104,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
         // Opens within the body of the previous candle
         return currOpenPrice.isGreaterThan(prevOpenPrice) && currOpenPrice.isLessThan(prevClosePrice)
-                // Closes above the previous close price
+        // Closes above the previous close price
                 && currClosePrice.isGreaterThan(prevClosePrice);
     }
 

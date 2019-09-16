@@ -65,7 +65,7 @@ public class CandlestickChartWithChopIndicator {
     private static ChartPanel combinedChartPanel;
     private static XYPlot indicatorXYPlot;
     static Stroke dashedThinLineStyle = new BasicStroke(0.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f,
-            new float[]{8.0f, 4.0f}, 0.0f);
+            new float[] { 8.0f, 4.0f }, 0.0f);
     static BarSeries series;
 
     /**

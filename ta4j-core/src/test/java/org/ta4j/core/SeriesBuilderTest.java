@@ -47,8 +47,8 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void testBuilder() {
         BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed bar series
-        BarSeries defaultSeriesName = seriesBuilder.withName("default")
-                .build(); // build a new empty bar series using BigDecimal as delegate
+        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
+                                                                                 // BigDecimal as delegate
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class)
                 .withName("useDoubleNum").build();
         BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(PrecisionNum.class)

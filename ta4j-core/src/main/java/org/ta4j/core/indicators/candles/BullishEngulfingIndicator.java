@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
  * Bullish engulfing pattern indicator.
  *
  * @see <a href=
- *         "http://www.investopedia.com/terms/b/bullishengulfingpattern.asp">
- *         http://www.investopedia.com/terms/b/bullishengulfingpattern.asp</a>
+ *      "http://www.investopedia.com/terms/b/bullishengulfingpattern.asp">
+ *      http://www.investopedia.com/terms/b/bullishengulfingpattern.asp</a>
  */
 public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
 

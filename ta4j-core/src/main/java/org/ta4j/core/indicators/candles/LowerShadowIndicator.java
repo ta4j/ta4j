@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  * of the candle body. I.e.: min price - min(open price, close price)
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
- *         http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
  */
 public class LowerShadowIndicator extends CachedIndicator<Num> {
 

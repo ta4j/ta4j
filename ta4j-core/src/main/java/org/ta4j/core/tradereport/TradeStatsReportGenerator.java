@@ -32,7 +32,8 @@ import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates TradeStatsReport basis on provided trading report and bar series.
+ * This class generates TradeStatsReport basis on provided trading report and
+ * bar series.
  *
  * @see TradeStatsReport
  */

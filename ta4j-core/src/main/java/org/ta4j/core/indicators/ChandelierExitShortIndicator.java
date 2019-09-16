@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
  * The Chandelier Exit (short) Indicator.
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
- *         http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit</a>
  */
 public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 

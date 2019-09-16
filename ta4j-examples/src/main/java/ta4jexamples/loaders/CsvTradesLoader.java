@@ -109,7 +109,7 @@ public class CsvTradesLoader {
      */
     @SuppressWarnings("deprecation")
     private static void buildSeries(BarSeries series, ZonedDateTime beginTime, ZonedDateTime endTime, int duration,
-                                    List<String[]> lines) {
+            List<String[]> lines) {
 
         Duration barDuration = Duration.ofSeconds(duration);
         ZonedDateTime barEndTime = beginTime;

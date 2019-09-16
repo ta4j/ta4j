@@ -37,8 +37,8 @@ import org.ta4j.core.num.Num;
  * multiplied by a factor.
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
- *         http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
 public class DojiIndicator extends CachedIndicator<Boolean> {
 

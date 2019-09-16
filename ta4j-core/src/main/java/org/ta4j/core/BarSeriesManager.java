@@ -33,7 +33,8 @@ import org.ta4j.core.num.Num;
 /**
  * A manager for {@link BarSeries} objects.
  *
- * Used for backtesting. Allows to run a {@link Strategy trading strategy} over the managed bar series.
+ * Used for backtesting. Allows to run a {@link Strategy trading strategy} over
+ * the managed bar series.
  */
 public class BarSeriesManager {
 
@@ -66,7 +67,7 @@ public class BarSeriesManager {
     /**
      * Constructor.
      * 
-     * @param barSeries           the bar series to be managed
+     * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */

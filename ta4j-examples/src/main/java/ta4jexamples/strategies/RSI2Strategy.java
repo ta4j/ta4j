@@ -43,8 +43,8 @@ import ta4jexamples.loaders.CsvTradesLoader;
  * 2-Period RSI Strategy
  *
  * @see <a href=
- *         "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
- *         http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2</a>
  */
 public class RSI2Strategy {
 

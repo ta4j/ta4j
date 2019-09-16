@@ -63,7 +63,8 @@ public class CashFlowToChart {
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
+            String name) {
         org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);

@@ -36,10 +36,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * Parabolic SAR indicator.
  *
  * @see <a href=
- *         "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
- *         https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
+ *      "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
+ *      https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
  * @see <a href="https://www.investopedia.com/terms/p/parabolicindicator.asp">
- *         https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
+ *      https://www.investopedia.com/terms/p/parabolicindicator.asp</a>
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 

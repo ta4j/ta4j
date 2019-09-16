@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Three black crows indicator.
  *
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
- *         http://www.investopedia.com/terms/t/three_black_crows.asp</a>
+ *      http://www.investopedia.com/terms/t/three_black_crows.asp</a>
  */
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
@@ -104,7 +104,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
         // Opens within the body of the previous candle
         return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
-                // Closes below the previous close price
+        // Closes below the previous close price
                 && currClosePrice.isLessThan(prevClosePrice);
     }
 

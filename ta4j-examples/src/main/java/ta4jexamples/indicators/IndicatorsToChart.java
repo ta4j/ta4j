@@ -61,7 +61,7 @@ public class IndicatorsToChart {
      * @return the JFreeChart time series
      */
     private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
-                                                                      String name) {
+            String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barSeries.getBarCount(); i++) {
             Bar bar = barSeries.getBar(i);
