@@ -47,7 +47,9 @@ for currentStopLossLimitActivation
 - :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - :tada: **Enhancement** Added license checker goal on CI's pipeline
 - :tada: **Enhancement** Added source format checker goal on CI's pipeline
-
+- :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
+- :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
+- :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
 
 ### Removed/Deprecated
 
