@@ -69,14 +69,14 @@ public class OrderTest {
     @Test
     public void initializeWithCostsTest() {
         CostModel transactionCostModel = new LinearTransactionCostModel(0.05);
-        Order order = new Order(0, OrderType.BUY, DoubleNum.valueOf(100),  DoubleNum.valueOf(20), transactionCostModel);
+        Order order = new Order(0, OrderType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
         Num expectedRawPrice = DoubleNum.valueOf(100);
         Num expectedNetPrice = DoubleNum.valueOf(105);
 
         assertNumEquals(expectedCost, order.getCost());
-        assertNumEquals(expectedValue,order.getValue());
+        assertNumEquals(expectedValue, order.getValue());
         assertNumEquals(expectedRawPrice, order.getPricePerAsset());
         assertNumEquals(expectedNetPrice, order.getNetPrice());
         assertTrue(transactionCostModel.equals(order.getCostModel()));

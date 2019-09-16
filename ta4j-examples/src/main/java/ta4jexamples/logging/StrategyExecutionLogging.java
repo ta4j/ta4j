@@ -28,8 +28,8 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TimeSeries;
-import org.ta4j.core.TimeSeriesManager;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
 
@@ -39,15 +39,16 @@ import java.util.logging.Logger;
 
 /**
  * Strategy execution logging example.
- * </p>
  */
 public class StrategyExecutionLogging {
 
-    private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader().getResource("logback-traces.xml");
-    
+    private static final URL LOGBACK_CONF_FILE = StrategyExecutionLogging.class.getClassLoader()
+            .getResource("logback-traces.xml");
+
     /**
-     * Loads the Logback configuration from a resource file.
-     * Only here to avoid polluting other examples with logs. Could be replaced by a simple logback.xml file in the resource folder.
+     * Loads the Logback configuration from a resource file. Only here to avoid
+     * polluting other examples with logs. Could be replaced by a simple logback.xml
+     * file in the resource folder.
      */
     private static void loadLoggerConfiguration() {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -58,7 +59,8 @@ public class StrategyExecutionLogging {
         try {
             configurator.doConfigure(LOGBACK_CONF_FILE);
         } catch (JoranException je) {
-            Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE, "Unable to load Logback configuration", je);
+            Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE,
+                    "Unable to load Logback configuration", je);
         }
     }
 
@@ -74,13 +76,13 @@ public class StrategyExecutionLogging {
         loadLoggerConfiguration();
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
 
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         seriesManager.run(strategy);
 
         // Unload the Logback configuration

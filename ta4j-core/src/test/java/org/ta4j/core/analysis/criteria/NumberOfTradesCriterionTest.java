@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -33,7 +33,7 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
+public class NumberOfTradesCriterionTest extends AbstractCriterionTest {
 
     public NumberOfTradesCriterionTest(Function<Number, Num> numFunction) {
         super((params) -> new NumberOfTradesCriterion(), numFunction);
@@ -41,7 +41,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0, buyAndHold.calculate(series, new BaseTradingRecord()));
@@ -49,9 +49,8 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void calculateWithTwoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(2, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion();
@@ -60,7 +59,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest{
 
     @Test
     public void calculateWithOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         Trade trade = new Trade();
         AnalysisCriterion tradesCriterion = getCriterion();
 

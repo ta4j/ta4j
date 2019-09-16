@@ -32,24 +32,25 @@ import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
  * <p/>
  */
-public class TradingBotOnMovingTimeSeries {
+public class TradingBotOnMovingBarSeries {
 
     /** Close price of the last bar */
     private static Num LAST_BAR_CLOSE_PRICE;
 
     /**
-     * Builds a moving time series (i.e. keeping only the maxBarCount last bars)
+     * Builds a moving bar series (i.e. keeping only the maxBarCount last bars)
      * @param maxBarCount the number of bars to keep in the time series (at maximum)
      * @return a moving time series
      */
-    private static TimeSeries initMovingTimeSeries(int maxBarCount) {
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+    private static BarSeries initMovingBarSeries(int maxBarCount) {
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         System.out.print("Initial bar count: " + series.getBarCount());
         // Limitating the number of bars to maxBarCount
         series.setMaximumBarCount(maxBarCount);
@@ -62,7 +63,7 @@ public class TradingBotOnMovingTimeSeries {
      * @param series a time series
      * @return a dummy strategy
      */
-    private static Strategy buildStrategy(TimeSeries series) {
+    private static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
             throw new IllegalArgumentException("Series cannot be null");
         }
@@ -107,14 +108,14 @@ public class TradingBotOnMovingTimeSeries {
         Num maxPrice = openPrice.plus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
         Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
+        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
     }
 
     public static void main(String[] args) throws InterruptedException {
 
         System.out.println("********************** Initialization **********************");
         // Getting the time series
-        TimeSeries series = initMovingTimeSeries(20);
+        BarSeries series = initMovingBarSeries(20);
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);

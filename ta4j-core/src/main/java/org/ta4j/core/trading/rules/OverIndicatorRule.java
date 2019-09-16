@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-over-indicator rule.
- * </p>
- * Satisfied when the value of the first {@link Indicator indicator} is strictly greater than the value of the second one.
+ *
+ * Satisfied when the value of the first {@link Indicator indicator} is strictly
+ * greater than the value of the second one.
  */
 public class OverIndicatorRule extends AbstractRule {
 
@@ -61,7 +62,7 @@ public class OverIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public OverIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(), threshold));
+        this(indicator, new ConstantIndicator<Num>(indicator.getBarSeries(), threshold));
     }
 
     /**

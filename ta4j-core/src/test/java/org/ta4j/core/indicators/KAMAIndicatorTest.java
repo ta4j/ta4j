@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -40,32 +40,26 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 /**
  * The Class KAMAIndicatorTest.
  *
- * @see <a href="http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls>
- *     http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls</a>
+ * @see <a
+ *      href="http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls>
+ *      http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls</a>
  */
-public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private TimeSeries data;
+    private BarSeries data;
 
     public KAMAIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
-
     @Before
     public void setUp() {
 
-        data = new MockTimeSeries(numFunction,
-                110.46, 109.80, 110.17, 109.82, 110.15,
-                109.31, 109.05, 107.94, 107.76, 109.24,
-                109.40, 108.50, 107.96, 108.55, 108.85,
-                110.44, 109.89, 110.70, 110.79, 110.22,
-                110.00, 109.27, 106.69, 107.07, 107.92,
-                107.95, 107.70, 107.97, 106.09, 106.03,
-                107.65, 109.54, 110.26, 110.38, 111.94,
-                113.59, 113.98, 113.91, 112.62, 112.20,
-                111.10, 110.18, 111.13, 111.55, 112.08,
-                111.95, 111.60, 111.39, 112.25
+        data = new MockBarSeries(numFunction, 110.46, 109.80, 110.17, 109.82, 110.15, 109.31, 109.05, 107.94, 107.76,
+                109.24, 109.40, 108.50, 107.96, 108.55, 108.85, 110.44, 109.89, 110.70, 110.79, 110.22, 110.00, 109.27,
+                106.69, 107.07, 107.92, 107.95, 107.70, 107.97, 106.09, 106.03, 107.65, 109.54, 110.26, 110.38, 111.94,
+                113.59, 113.98, 113.91, 112.62, 112.20, 111.10, 110.18, 111.13, 111.55, 112.08, 111.95, 111.60, 111.39,
+                112.25
 
         );
     }
@@ -119,7 +113,7 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void getValueOnDeepIndicesShouldNotCauseStackOverflow() {
-        TimeSeries series = new MockTimeSeries(numFunction);
+        BarSeries series = new MockBarSeries(numFunction);
         series.setMaximumBarCount(5000);
         assertEquals(5000, series.getBarCount());
 

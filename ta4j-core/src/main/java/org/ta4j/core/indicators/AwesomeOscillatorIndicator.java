@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.indicators;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Awesome oscillator. (AO)
- * <p/>
+ *
  * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
@@ -41,8 +41,8 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param indicator (normally {@link MedianPriceIndicator})
+     *
+     * @param indicator    (normally {@link MedianPriceIndicator})
      * @param barCountSma1 (normally 5)
      * @param barCountSma2 (normally 34)
      */
@@ -54,19 +54,19 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator (normally {@link MedianPriceIndicator})
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator) {
         this(indicator, 5, 34);
     }
-    
+
     /**
      * Constructor.
-     * 
+     *
      * @param series the timeSeries
      */
-    public AwesomeOscillatorIndicator(TimeSeries series) {
+    public AwesomeOscillatorIndicator(BarSeries series) {
         this(new MedianPriceIndicator(series), 5, 34);
     }
 

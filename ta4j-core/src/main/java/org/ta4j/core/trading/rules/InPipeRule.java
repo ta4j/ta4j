@@ -30,8 +30,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-between-indicators rule.
- * </p>
- * Satisfied when the value of the {@link Indicator indicator} is between the values of the boundary (up/down) indicators.
+ *
+ * Satisfied when the value of the {@link Indicator indicator} is between the
+ * values of the boundary (up/down) indicators.
  */
 public class InPipeRule extends AbstractRule {
 
@@ -44,7 +45,8 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param ref the reference indicator
+     * 
+     * @param ref   the reference indicator
      * @param upper the upper threshold
      * @param lower the lower threshold
      */
@@ -54,17 +56,20 @@ public class InPipeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param ref the reference indicator
+     * 
+     * @param ref   the reference indicator
      * @param upper the upper threshold
      * @param lower the lower threshold
      */
     public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
-        this(ref, new ConstantIndicator<>(ref.getTimeSeries(), upper), new ConstantIndicator<>(ref.getTimeSeries(), lower));
+        this(ref, new ConstantIndicator<>(ref.getBarSeries(), upper),
+                new ConstantIndicator<>(ref.getBarSeries(), lower));
     }
 
     /**
      * Constructor.
-     * @param ref the reference indicator
+     * 
+     * @param ref   the reference indicator
      * @param upper the upper indicator
      * @param lower the lower indicator
      */

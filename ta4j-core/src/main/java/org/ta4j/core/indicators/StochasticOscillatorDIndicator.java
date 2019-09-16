@@ -28,8 +28,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator D.
- * </p>
- * Receive {@link StochasticOscillatorKIndicator} and returns its {@link SMAIndicator SMAIndicator(3)}.
+ *
+ * Receive {@link StochasticOscillatorKIndicator} and returns its
+ * {@link SMAIndicator SMAIndicator(3)}.
  */
 public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
 

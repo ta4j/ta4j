@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A stop-gain rule.
- * </p>
+ *
  * Satisfied when the close price reaches the gain threshold.
  */
 public class StopGainRule extends AbstractRule {
@@ -49,7 +49,6 @@ public class StopGainRule extends AbstractRule {
      * The gain percentage
      */
     private final Num gainPercentage;
-
 
     /**
      * Constructor.
@@ -72,7 +71,6 @@ public class StopGainRule extends AbstractRule {
         this.gainPercentage = gainPercentage;
         HUNDRED = closePrice.numOf(100);
     }
-
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {

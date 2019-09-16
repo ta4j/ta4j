@@ -26,28 +26,30 @@ package org.ta4j.core.num;
 import java.util.function.Function;
 
 /**
- * Representation of an undefined or unrepresentable value: NaN (not a number) <br>
+ * Representation of an undefined or unrepresentable value: NaN (not a number)
+ * <br>
  * Special behavior in methods such as:
- * <ul> 
- *      <li>{@link NaN#plus(Num)}           => NaN </li>
- *      <li>{@link NaN#isEqual(Num)}        => true </li>
- *      <li>{@link NaN#isPositive()}        => false </li>
- *      <li>{@link NaN#isNegativeOrZero()}  => false </li>
- *      <li>{@link NaN#min(Num)}            => NaN </li>
- *      <li>{@link NaN#max(Num)}            => NaN </li>
- *      <li>{@link NaN#doubleValue()}       => {@link Double#NaN} </li>
- *      <li>{@link NaN#intValue()}          => throws {@link UnsupportedOperationException} </li>
- * </ul> 
+ * <ul>
+ * <li>{@link NaN#plus(Num)} => NaN</li>
+ * <li>{@link NaN#isEqual(Num)} => true</li>
+ * <li>{@link NaN#isPositive()} => false</li>
+ * <li>{@link NaN#isNegativeOrZero()} => false</li>
+ * <li>{@link NaN#min(Num)} => NaN</li>
+ * <li>{@link NaN#max(Num)} => NaN</li>
+ * <li>{@link NaN#doubleValue()} => {@link Double#NaN}</li>
+ * <li>{@link NaN#intValue()} => throws
+ * {@link UnsupportedOperationException}</li>
+ * </ul>
  */
 public class NaN implements Num {
-
 
     private static final long serialVersionUID = 9161474401436305600L;
 
     /** static Not-a-Number instance */
     public static final Num NaN = new NaN();
 
-    private NaN(){}
+    private NaN() {
+    }
 
     @Override
     public int compareTo(Num o) {
@@ -171,6 +173,7 @@ public class NaN implements Num {
 
     /**
      * NaN.isEqual(NaN) -> true
+     * 
      * @param other the other value, not null
      * @return flase if both values are not NaN
      */

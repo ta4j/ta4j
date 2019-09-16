@@ -45,14 +45,17 @@
  */
 package org.ta4j.core.trading.rules;
 
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.PriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * A trailing stop-loss rule
- * <p></p>
+ *
  * Satisfied when the price reaches the trailing loss threshold.
  */
 public class TrailingStopLossRule extends AbstractRule {
@@ -62,14 +65,6 @@ public class TrailingStopLossRule extends AbstractRule {
      */
     private final PriceIndicator priceIndicator;
     /**
-     * the loss ratio multiplier for buy trades eg. for lossPercentage 5% this ratio will be: 0.95
-     */
-    private final Num lossRatioBuyMultiplier;
-    /**
-     * the loss ratio multiplier for sell trades eg. for lossPercentage 5% this ratio will be: 1.05
-     */
-    private final Num lossRatioSellMultiplier;
-    /**
      * the current price extremum
      */
     private Num currentExtremum = null;
@@ -77,22 +72,32 @@ public class TrailingStopLossRule extends AbstractRule {
      * the current stop loss price activation
      */
     private Num currentStopLossLimitActivation = null;
-    /**
-     * the current trade
-     */
-    private Trade supervisedTrade;
+    /** The barCount */
+    private int barCount;
+    /** the loss-distance as percentage */
+    private final Num lossPercentage;
 
     /**
      * Constructor.
-     *
-     * @param priceIndicator the price indicator
+     * 
+     * @param closePrice     the close price indicator
+     * @param lossPercentage the loss percentage
+     * @param barCount       number of bars to look back for the calculation
+     */
+    public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage, int barCount) {
+        this.priceIndicator = priceIndicator;
+        this.barCount = barCount;
+        this.lossPercentage = lossPercentage;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param closePrice     the close price indicator
      * @param lossPercentage the loss percentage
      */
     public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage) {
-        this.priceIndicator = priceIndicator;
-        final Num hundred = lossPercentage.numOf(100);
-        this.lossRatioBuyMultiplier = hundred.minus(lossPercentage).dividedBy(hundred);
-        this.lossRatioSellMultiplier = hundred.plus(lossPercentage).dividedBy(hundred);
+        this(priceIndicator, lossPercentage, Integer.MAX_VALUE);
     }
 
     @Override
@@ -102,16 +107,13 @@ public class TrailingStopLossRule extends AbstractRule {
         if (tradingRecord != null) {
             Trade currentTrade = tradingRecord.getCurrentTrade();
             if (currentTrade.isOpened()) {
-                if (!currentTrade.equals(supervisedTrade)) {
-                    supervisedTrade = currentTrade;
-                    currentExtremum = null;
-                    currentStopLossLimitActivation = null;
-                }
-                final Num currentPrice = priceIndicator.getValue(index);
+                Num currentPrice = priceIndicator.getValue(index);
+                int tradeIndex = currentTrade.getEntry().getIndex();
+
                 if (currentTrade.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice);
+                    satisfied = isBuySatisfied(currentPrice, index, tradeIndex);
                 } else {
-                    satisfied = isSellSatisfied(currentPrice);
+                    satisfied = isSellSatisfied(currentPrice, index, tradeIndex);
                 }
             }
         }
@@ -119,32 +121,38 @@ public class TrailingStopLossRule extends AbstractRule {
         return satisfied;
     }
 
-    private boolean isBuySatisfied(Num currentPrice) {
-        if (currentExtremum == null || currentPrice.isGreaterThan(currentExtremum)) {
-            currentExtremum = currentPrice;
-            currentStopLossLimitActivation = currentExtremum.multipliedBy(lossRatioBuyMultiplier);
-        }
+    private boolean isBuySatisfied(Num currentPrice, int index, int tradeIndex) {
+        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
+                getValueIndicatorBarCount(index, tradeIndex));
+        Num highestCloseNum = highest.getValue(index);
+        Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
+        currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
-    }
-
-    private boolean isSellSatisfied(Num currentPrice) {
-        if (currentExtremum == null || currentPrice.isLessThan(currentExtremum)) {
-            currentExtremum = currentPrice;
-            currentStopLossLimitActivation = currentExtremum.multipliedBy(lossRatioSellMultiplier);
-        }
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
     public Num getCurrentStopLossLimitActivation() {
         return currentStopLossLimitActivation;
     }
 
+    private boolean isSellSatisfied(Num currentPrice, int index, int tradeIndex) {
+        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
+                getValueIndicatorBarCount(index, tradeIndex));
+        Num lowestCloseNum = lowest.getValue(index);
+        Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
+        currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
+        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
+    }
+
+    private int getValueIndicatorBarCount(int index, int tradeIndex) {
+        return Math.min(index - tradeIndex + 1, this.barCount);
+    }
+
     @Override
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}", getClass().getSimpleName(), index, isSatisfied,
-                    priceIndicator.getValue(index), currentStopLossLimitActivation
-            );
+            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}",
+                    getClass().getSimpleName(), index, isSatisfied, priceIndicator.getValue(index),
+                    currentStopLossLimitActivation);
         }
     }
 }

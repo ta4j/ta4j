@@ -35,14 +35,15 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class GlobalExtremaStrategy {
 
-    // We assume that there were at least one trade every 5 minutes during the whole week
+    // We assume that there were at least one trade every 5 minutes during the whole
+    // week
     private static final int NB_BARS_PER_WEEK = 12 * 24 * 7;
 
     /**
      * @param series a time series
      * @return a global extrema strategy
      */
-    public static Strategy buildStrategy(TimeSeries series) {
+    public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
             throw new IllegalArgumentException("Series cannot be null");
         }
@@ -70,17 +71,18 @@ public class GlobalExtremaStrategy {
     public static void main(String[] args) {
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
 
         // Analysis
-        System.out.println("Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
     }
 }

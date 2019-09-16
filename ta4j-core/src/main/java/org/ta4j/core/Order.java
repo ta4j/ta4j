@@ -264,7 +264,7 @@ public class Order implements Serializable {
     }
 
     @Override
-	public boolean equals(Object obj) {
+	  public boolean equals(Object obj) {
 		if (this == obj) return true;
 		if (obj == null || getClass() != obj.getClass()) return false;
 		final Order other = (Order) obj;
@@ -272,7 +272,7 @@ public class Order implements Serializable {
 			&& Objects.equals(index, other.index)
 			&& Objects.equals(pricePerAsset, other.pricePerAsset) 
 			&& Objects.equals(amount, other.amount);
-	}
+	  }
 
     @Override
     public String toString() {

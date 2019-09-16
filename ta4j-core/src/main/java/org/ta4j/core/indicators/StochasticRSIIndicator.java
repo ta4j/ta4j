@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
@@ -42,19 +42,21 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     private final HighestValueIndicator maxRsi;
 
     /**
-     * Constructor.  In most cases, this should be used to avoid confusion
-     * over what Indicator parameters should be used.
-     * @param series the series
+     * Constructor. In most cases, this should be used to avoid confusion over what
+     * Indicator parameters should be used.
+     * 
+     * @param series   the series
      * @param barCount the time frame
      */
-    public StochasticRSIIndicator(TimeSeries series, int barCount) {
+    public StochasticRSIIndicator(BarSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
     }
 
     /**
      * Constructor.
+     * 
      * @param indicator the Indicator, in practice is always a ClosePriceIndicator.
-     * @param barCount the time frame
+     * @param barCount  the time frame
      */
     public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
         this(new RSIIndicator(indicator, barCount), barCount);
@@ -62,8 +64,9 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 
      * @param rsiIndicator the rsi indicator
-     * @param barCount the time frame
+     * @param barCount     the time frame
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
         super(rsiIndicator);
@@ -75,8 +78,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num minRsiValue = minRsi.getValue(index);
-        return rsi.getValue(index).minus(minRsiValue)
-                .dividedBy(maxRsi.getValue(index).minus(minRsiValue));
+        return rsi.getValue(index).minus(minRsiValue).dividedBy(maxRsi.getValue(index).minus(minRsiValue));
     }
 
 }

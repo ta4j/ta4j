@@ -26,12 +26,12 @@ package org.ta4j.core.indicators.bollinger;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -48,12 +48,8 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
 
     @Before
     public void setUp() {
-        TimeSeries data = new MockTimeSeries(numFunction,
-                10, 12, 15, 14, 17,
-                20, 21, 20, 20, 19,
-                20, 17, 12, 12, 9,
-                8, 9, 10, 9, 10
-        );
+        BarSeries data = new MockBarSeries(numFunction, 10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8,
+                9, 10, 9, 10);
         closePrice = new ClosePriceIndicator(data);
     }
 
@@ -62,13 +58,13 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
 
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
         StandardDeviationIndicator standardDeviation = new StandardDeviationIndicator(closePrice, 5);
-        
+
         BollingerBandsMiddleIndicator bbmSMA = new BollingerBandsMiddleIndicator(sma);
         BollingerBandsUpperIndicator bbuSMA = new BollingerBandsUpperIndicator(bbmSMA, standardDeviation);
         BollingerBandsLowerIndicator bblSMA = new BollingerBandsLowerIndicator(bbmSMA, standardDeviation);
 
         BollingerBandWidthIndicator bandwidth = new BollingerBandWidthIndicator(bbuSMA, bbmSMA, bblSMA);
-        
+
         assertNumEquals(0.0, bandwidth.getValue(0));
         assertNumEquals(36.3636, bandwidth.getValue(1));
         assertNumEquals(66.6423, bandwidth.getValue(2));

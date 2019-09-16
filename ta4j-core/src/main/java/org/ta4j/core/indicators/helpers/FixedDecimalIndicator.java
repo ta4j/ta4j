@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
@@ -37,20 +37,22 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
     /**
      * Constructor.
+     * 
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(TimeSeries series, double... values) {
+    public FixedDecimalIndicator(BarSeries series, double... values) {
         super(series);
         for (double value : values) {
             addValue(numOf(value));
         }
     }
-    
+
     /**
      * Constructor.
+     * 
      * @param values the values to be returned by this indicator
      */
-    public FixedDecimalIndicator(TimeSeries series, String... values) {
+    public FixedDecimalIndicator(BarSeries series, String... values) {
         super(series);
         for (String value : values) {
             addValue(numOf(new BigDecimal(value)));

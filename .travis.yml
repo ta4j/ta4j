@@ -1,11 +1,12 @@
+dist: xenial
+
 language: java
 
+services:
+  - xvfb
+  
 jdk:
-  - oraclejdk8
-#  - openjdk8
+  - openjdk8
 
-before_script:
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-  - sleep 3 # give xvfb some time to start
-
+script:
+  -  mvn -B test license:check formatter:format formatter:validate

@@ -52,23 +52,27 @@ public class CashFlowToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j time series and an indicator.
+     * 
      * @param barseries the ta4j time series
      * @param indicator the indicator
-     * @param name the name of the chart time series
+     * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator, String name) {
-        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barseries, Indicator<Num> indicator,
+                                                                       String name) {
+        org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
         for (int i = 0; i < barseries.getBarCount(); i++) {
             Bar bar = barseries.getBar(i);
-            chartTimeSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).doubleValue());
+            chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+                    indicator.getValue(i).doubleValue());
         }
-        return chartTimeSeries;
+        return chartBarSeries;
     }
 
     /**
      * Adds the cash flow axis to the plot.
-     * @param plot the plot
+     * 
+     * @param plot    the plot
      * @param dataset the cash flow dataset
      */
     private static void addCashFlowAxis(XYPlot plot, TimeSeriesCollection dataset) {
@@ -84,6 +88,7 @@ public class CashFlowToChart {
 
     /**
      * Displays a chart in a frame.
+     * 
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -103,46 +108,45 @@ public class CashFlowToChart {
     public static void main(String[] args) {
 
         // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         /*
-          Building chart datasets
+         * Building chart datasets
          */
         TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
-        datasetAxis1.addSeries(buildChartTimeSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
+        datasetAxis1.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
         TimeSeriesCollection datasetAxis2 = new TimeSeriesCollection();
-        datasetAxis2.addSeries(buildChartTimeSeries(series, cashFlow, "Cash Flow"));
+        datasetAxis2.addSeries(buildChartBarSeries(series, cashFlow, "Cash Flow"));
 
         /*
-          Creating the chart
+         * Creating the chart
          */
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                "Bitstamp BTC", // title
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Bitstamp BTC", // title
                 "Date", // x-axis label
                 "Price", // y-axis label
                 datasetAxis1, // data
                 true, // create legend?
                 true, // generate tooltips?
                 false // generate URLs?
-                );
+        );
         XYPlot plot = (XYPlot) chart.getPlot();
         DateAxis axis = (DateAxis) plot.getDomainAxis();
         axis.setDateFormatOverride(new SimpleDateFormat("MM-dd HH:mm"));
 
         /*
-          Adding the cash flow axis (on the right)
+         * Adding the cash flow axis (on the right)
          */
         addCashFlowAxis(plot, datasetAxis2);
 
         /*
-          Displaying the chart
+         * Displaying the chart
          */
         displayChart(chart);
     }

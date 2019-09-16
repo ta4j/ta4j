@@ -24,15 +24,16 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
  * Reward risk ratio criterion.
- * </p>
- * (i.e. the {@link TotalProfitCriterion total profit} over the {@link MaximumDrawdownCriterion maximum drawdown}.
+ *
+ * (i.e. the {@link TotalProfitCriterion total profit} over the
+ * {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
@@ -41,7 +42,7 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
     private AnalysisCriterion maxDrawdown = new MaximumDrawdownCriterion();
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return totalProfit.calculate(series, tradingRecord).dividedBy(maxDrawdown.calculate(series, tradingRecord));
     }
 
@@ -51,7 +52,7 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         return totalProfit.calculate(series, trade).dividedBy(maxDrawdown.calculate(series, trade));
     }
 }

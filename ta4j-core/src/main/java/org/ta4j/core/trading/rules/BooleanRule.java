@@ -27,7 +27,7 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A simple boolean rule.
- * </p>
+ *
  * Satisfied when it has been initialized with true.
  */
 public class BooleanRule extends AbstractRule {
@@ -47,7 +47,8 @@ public class BooleanRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param satisfied true for the rule to be always satisfied, false to be never satisfied
+     * @param satisfied true for the rule to be always satisfied, false to be never
+     *                  satisfied
      */
     public BooleanRule(boolean satisfied) {
         this.satisfied = satisfied;

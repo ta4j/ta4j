@@ -35,8 +35,8 @@ public class LinearBorrowingCostModel implements CostModel {
     private double feePerPeriod;
 
     /**
-     * Constructor.
-     * (feePerPeriod * nPeriod)
+     * Constructor. (feePerPeriod * nPeriod)
+     * 
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
@@ -50,17 +50,21 @@ public class LinearBorrowingCostModel implements CostModel {
 
     /**
      * Calculates the borrowing cost of a closed trade.
+     * 
      * @param trade the trade
      * @return the absolute order cost
      */
     public Num calculate(Trade trade) {
-        if (trade.isOpened()) { throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided."); }
+        if (trade.isOpened()) {
+            throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
+        }
         return calculate(trade, trade.getExit().getIndex());
     }
 
     /**
      * Calculates the borrowing cost of a trade.
-     * @param trade the trade
+     * 
+     * @param trade        the trade
      * @param currentIndex final bar index to be considered (for open trades)
      * @return the absolute order cost
      */
@@ -84,17 +88,17 @@ public class LinearBorrowingCostModel implements CostModel {
 
     /**
      * @param tradingPeriods number of periods
-     * @param tradedValue value of the trade initial trade position
+     * @param tradedValue    value of the trade initial trade position
      * @return the absolute borrowing cost
      */
     private Num getHoldingCostForPeriods(int tradingPeriods, Num tradedValue) {
         return tradedValue
-                .multipliedBy(tradedValue.numOf(tradingPeriods)
-                        .multipliedBy(tradedValue.numOf(feePerPeriod)));
+                .multipliedBy(tradedValue.numOf(tradingPeriods).multipliedBy(tradedValue.numOf(feePerPeriod)));
     }
 
     /**
      * Evaluate if two models are equal
+     * 
      * @param otherModel model to compare with
      */
     public boolean equals(CostModel otherModel) {
