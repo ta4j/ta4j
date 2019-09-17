@@ -83,8 +83,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void returnsWithGaps() {
-        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d,
-                12d);
+        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(2, sampleBarSeries),
                 Order.buyAt(5, sampleBarSeries), Order.buyAt(8, sampleBarSeries), Order.sellAt(10, sampleBarSeries));
 

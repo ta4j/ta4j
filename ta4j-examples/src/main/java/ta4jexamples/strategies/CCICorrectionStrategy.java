@@ -23,11 +23,11 @@
  */
 package ta4jexamples.strategies;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
 import org.ta4j.core.indicators.CCIIndicator;
@@ -46,7 +46,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 public class CCICorrectionStrategy {
 
     /**
-     * @param series a time series
+     * @param series a bar series
      * @return a CCI correction strategy
      */
     public static Strategy buildStrategy(BarSeries series) {
@@ -72,7 +72,7 @@ public class CCICorrectionStrategy {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy

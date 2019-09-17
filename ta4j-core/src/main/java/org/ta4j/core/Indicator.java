@@ -28,8 +28,8 @@ import org.ta4j.core.num.Num;
 import java.io.Serializable;
 
 /**
- * Indicator over a {@link BarSeries time series}. <p/p> For each index of the
- * time series, returns a value of type <b>T</b>.
+ * Indicator over a {@link BarSeries bar series}. <p/p> For each index of the
+ * bar series, returns a value of type <b>T</b>.
  *
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
@@ -42,7 +42,7 @@ public interface Indicator<T> extends Serializable {
     T getValue(int index);
 
     /**
-     * @return the related time series
+     * @return the related bar series
      */
     BarSeries getBarSeries();
 

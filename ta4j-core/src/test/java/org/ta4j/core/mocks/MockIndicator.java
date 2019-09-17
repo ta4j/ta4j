@@ -38,7 +38,7 @@ public class MockIndicator implements Indicator<Num> {
     /**
      * Constructor.
      * 
-     * @param series TimeSeries of the Indicator
+     * @param series BarSeries of the Indicator
      * @param values Indicator values
      */
     public MockIndicator(BarSeries series, List<Num> values) {

@@ -51,9 +51,9 @@ import java.util.Date;
 public class CandlestickChart {
 
     /**
-     * Builds a JFreeChart OHLC dataset from a ta4j time series.
-     * 
-     * @param series a time series
+     * Builds a JFreeChart OHLC dataset from a ta4j bar series.
+     *
+     * @param series the bar series
      * @return an Open-High-Low-Close dataset
      */
     private static OHLCDataset createOHLCDataset(BarSeries series) {
@@ -80,9 +80,9 @@ public class CandlestickChart {
     }
 
     /**
-     * Builds an additional JFreeChart dataset from a ta4j time series.
-     * 
-     * @param series a time series
+     * Builds an additional JFreeChart dataset from a ta4j bar series.
+     *
+     * @param series the bar series
      * @return an additional dataset
      */
     private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
@@ -100,7 +100,7 @@ public class CandlestickChart {
 
     /**
      * Displays a chart in a frame.
-     * 
+     *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -119,7 +119,7 @@ public class CandlestickChart {
 
     public static void main(String[] args) {
         /*
-         * Getting time series
+         * Getting bar series
          */
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 

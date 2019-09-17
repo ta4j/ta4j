@@ -64,7 +64,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series the timeSeries
+     * @param series the bar series
      */
     public AwesomeOscillatorIndicator(BarSeries series) {
         this(new MedianPriceIndicator(series), 5, 34);
