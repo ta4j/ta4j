@@ -6,7 +6,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
 
 ### Fixed
-- **Fixed `PrecisionNum.getDelegate` in**: return `BigDecimal` instead of `Number`.
+- **Fixed return `BigDecimal` instead of `Number` in**: `PrecisionNum.getDelegate`.
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
 - **Fixed `java.lang.ClassCastException` in**: `DoubleNum.equals()`.
 - **Fixed `java.lang.NullPointerException` in**: `NumberOfBarsCriterion.calculate(TimeSeries, Trade)` for opened trade.
