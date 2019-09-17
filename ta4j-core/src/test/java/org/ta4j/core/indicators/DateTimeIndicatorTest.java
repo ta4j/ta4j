@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 
 public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    final static DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_ZONED_DATE_TIME;
 
 	public DateTimeIndicatorTest(Function<Number, Num> numFunction) {
 		super(numFunction);

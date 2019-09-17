@@ -40,8 +40,8 @@ import org.ta4j.core.indicators.DateTimeIndicator;
  */
 public class DayOfWeekRule extends AbstractRule {
 
-	private Set<DayOfWeek> daysOfWeekSet;
-	private DateTimeIndicator timeIndicator;
+	private final Set<DayOfWeek> daysOfWeekSet;
+	private final DateTimeIndicator timeIndicator;
 	
 	public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
 		this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));

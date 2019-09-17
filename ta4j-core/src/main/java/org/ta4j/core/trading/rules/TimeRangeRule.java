@@ -38,8 +38,8 @@ import org.ta4j.core.indicators.DateTimeIndicator;
  */
 public class TimeRangeRule extends AbstractRule {
 
-	private List<TimeRange> timeRanges;
-	private DateTimeIndicator timeIndicator;
+	private final List<TimeRange> timeRanges;
+	private final DateTimeIndicator timeIndicator;
 	
 	public TimeRangeRule(List<TimeRange> timeRanges, DateTimeIndicator beginTimeIndicator) {
 		this.timeRanges = timeRanges;
@@ -50,12 +50,10 @@ public class TimeRangeRule extends AbstractRule {
 	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
 		boolean satisfied = false;
 		ZonedDateTime dateTime = this.timeIndicator.getValue(index);
-    	LocalTime localTime = LocalTime.of(dateTime.getHour(), dateTime.getMinute());
+    	LocalTime localTime = dateTime.toLocalTime();
 		satisfied = this.timeRanges.stream()
 				.anyMatch(timeRange -> 
-					localTime.equals(timeRange.getFrom()) || 
-					localTime.equals(timeRange.getTo()) ||
-					localTime.isAfter(timeRange.getFrom()) && localTime.isBefore(timeRange.getTo())
+					!localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo())
 					);
 		traceIsSatisfied(index, satisfied);
 		return satisfied;
@@ -63,8 +61,8 @@ public class TimeRangeRule extends AbstractRule {
 	
 	public static class TimeRange {
 		
-		private LocalTime from;
-		private LocalTime to;
+		private final LocalTime from;
+		private final LocalTime to;
 		
 		public TimeRange(LocalTime from, LocalTime to) {
 			this.from = from;
