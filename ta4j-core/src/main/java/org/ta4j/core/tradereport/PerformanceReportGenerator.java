@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.tradereport;
 
-import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.ProfitLossCriterion;
 import org.ta4j.core.analysis.criteria.ProfitLossPercentageCriterion;
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * This class generates PerformanceReport basis on provided trading report and
- * time series
+ * bar series
  *
  * @see PerformanceReport
  */

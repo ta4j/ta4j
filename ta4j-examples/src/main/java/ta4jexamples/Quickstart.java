@@ -47,7 +47,7 @@ public class Quickstart {
 
     public static void main(String[] args) {
 
-        // Getting a time series (from any provider: CSV, web service, etc.)
+        // Getting a bar series (from any provider: CSV, web service, etc.)
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Getting the close price of the bars

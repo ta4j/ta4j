@@ -65,20 +65,26 @@ public class Returns implements Indicator<Num> {
 
     private final ReturnType type;
 
-    /** The time series */
+    /**
+     * The bar series
+     */
     private final BarSeries barSeries;
 
-    /** The return rates */
+    /**
+     * The return rates
+     */
     private List<Num> values;
 
-    /** Unit element for efficient arithmetic return computation */
+    /**
+     * Unit element for efficient arithmetic return computation
+     */
     private static Num one;
 
     /**
      * Constructor.
-     * 
-     * @param barSeries the time series
-     * @param trade      a single trade
+     *
+     * @param barSeries the bar series
+     * @param trade     a single trade
      */
     public Returns(BarSeries barSeries, Trade trade, ReturnType type) {
         one = barSeries.numOf(1);
@@ -93,8 +99,8 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param barSeries    the time series
+     *
+     * @param barSeries     the bar series
      * @param tradingRecord the trading record
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
@@ -145,7 +151,7 @@ public class Returns implements Indicator<Num> {
     /**
      * Calculates the cash flow for a single trade (including accrued cashflow for
      * open trades).
-     * 
+     *
      * @param trade      a single trade
      * @param finalIndex index up until cash flow of open trades is considered
      */
@@ -202,7 +208,7 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Calculates the returns for a trading record.
-     * 
+     *
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {

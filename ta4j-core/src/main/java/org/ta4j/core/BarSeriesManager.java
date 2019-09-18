@@ -34,14 +34,14 @@ import org.ta4j.core.num.Num;
  * A manager for {@link BarSeries} objects.
  *
  * Used for backtesting. Allows to run a {@link Strategy trading strategy} over
- * the managed time series.
+ * the managed bar series.
  */
 public class BarSeriesManager {
 
     /** The logger */
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The managed time series */
+    /** The managed bar series */
     private BarSeries barSeries;
 
     /** The trading cost models */
@@ -58,7 +58,7 @@ public class BarSeriesManager {
     /**
      * Constructor.
      * 
-     * @param barSeries the time series to be managed
+     * @param barSeries the bar series to be managed
      */
     public BarSeriesManager(BarSeries barSeries) {
         this(barSeries, new ZeroCostModel(), new ZeroCostModel());
@@ -67,7 +67,7 @@ public class BarSeriesManager {
     /**
      * Constructor.
      * 
-     * @param barSeries           the time series to be managed
+     * @param barSeries            the bar series to be managed
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
@@ -78,14 +78,14 @@ public class BarSeriesManager {
     }
 
     /**
-     * @param barSeries the time series to be managed
+     * @param barSeries the bar series to be managed
      */
     public void setBarSeries(BarSeries barSeries) {
         this.barSeries = barSeries;
     }
 
     /**
-     * @return the managed time series
+     * @return the managed bar series
      */
     public BarSeries getBarSeries() {
         return barSeries;

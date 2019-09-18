@@ -73,22 +73,34 @@ public class Order implements Serializable {
         public abstract OrderType complementType();
     }
 
-    /** Type of the order */
+    /**
+     * Type of the order
+     */
     private OrderType type;
 
-    /** The index the order was executed */
+    /**
+     * The index the order was executed
+     */
     private int index;
 
-    /** The pricePerAsset for the order */
+    /**
+     * The pricePerAsset for the order
+     */
     private Num pricePerAsset;
 
-    /** The net price for the order, net transaction costs */
+    /**
+     * The net price for the order, net transaction costs
+     */
     private Num netPrice;
 
-    /** The amount to be (or that was) ordered */
+    /**
+     * The amount to be (or that was) ordered
+     */
     private Num amount;
 
-    /** Cost of executing the order */
+    /**
+     * Cost of executing the order
+     */
     private Num cost;
 
     /** The cost model for order execution */
@@ -96,7 +108,7 @@ public class Order implements Serializable {
 
     /**
      * Constructor.
-     * 
+     *
      * @param index  the index the order is executed
      * @param series the bar series
      * @param type   the type of the order
@@ -107,7 +119,7 @@ public class Order implements Serializable {
 
     /**
      * Constructor.
-     * 
+     *
      * @param index  the index the order is executed
      * @param series the bar series
      * @param type   the type of the order
@@ -130,13 +142,12 @@ public class Order implements Serializable {
         this.type = type;
         this.index = index;
         this.amount = amount;
-
         setPricesAndCost(series.getBar(index).getClosePrice(), amount, transactionCostModel);
     }
 
     /**
      * Constructor.
-     * 
+     *
      * @param index         the index the order is executed
      * @param type          the type of the order
      * @param pricePerAsset the pricePerAsset for the order
@@ -147,7 +158,7 @@ public class Order implements Serializable {
 
     /**
      * Constructor.
-     * 
+     *
      * @param index         the index the order is executed
      * @param type          the type of the order
      * @param pricePerAsset the pricePerAsset for the order
@@ -159,7 +170,7 @@ public class Order implements Serializable {
 
     /**
      * Constructor.
-     * 
+     *
      * @param index                the index the order is executed
      * @param type                 the type of the order
      * @param pricePerAsset        the pricePerAsset for the order
@@ -225,7 +236,7 @@ public class Order implements Serializable {
 
     /**
      * Sets the raw and net prices of the order
-     * 
+     *
      * @param pricePerAsset        raw price of the asset
      * @param amount               amount of assets ordered
      * @param transactionCostModel the cost model for order execution

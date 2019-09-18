@@ -23,7 +23,10 @@
  */
 package org.ta4j.core.analysis;
 
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -34,21 +37,25 @@ import java.util.List;
  * The cash flow.
  *
  * This class allows to follow the money cash flow involved by a list of trades
- * over a time series.
+ * over a bar series.
  */
 public class CashFlow implements Indicator<Num> {
 
-    /** The time series */
+    /**
+     * The bar series
+     */
     private final BarSeries barSeries;
 
-    /** The cash flow values */
+    /**
+     * The cash flow values
+     */
     private List<Num> values;
 
     /**
      * Constructor for cash flows of a closed trade.
-     * 
-     * @param barSeries the time series
-     * @param trade      a single trade
+     *
+     * @param barSeries the bar series
+     * @param trade     a single trade
      */
     public CashFlow(BarSeries barSeries, Trade trade) {
         this.barSeries = barSeries;
@@ -59,8 +66,8 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Constructor for cash flows of closed trades of a trading record.
-     * 
-     * @param barSeries    the time series
+     *
+     * @param barSeries     the bar series
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
@@ -73,8 +80,8 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param barSeries    the time series
+     *
+     * @param barSeries     the bar series
      * @param tradingRecord the trading record
      * @param finalIndex    index up until cash flows of open trades are considered
      */
@@ -106,7 +113,7 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * @return the size of the time series
+     * @return the size of the bar series
      */
     public int getSize() {
         return barSeries.getBarCount();
@@ -114,7 +121,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Calculates the cash flow for a single closed trade.
-     * 
+     *
      * @param trade a single trade
      */
     private void calculate(Trade trade) {
@@ -127,7 +134,7 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Calculates the cash flow for a single trade (including accrued cashflow for
      * open trades).
-     * 
+     *
      * @param trade      a single trade
      * @param finalIndex index up until cash flow of open trades is considered
      */
@@ -170,7 +177,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Calculates the ratio of intermediate prices.
-     * 
+     *
      * @param isLongTrade true, if the entry order type is BUY
      * @param entryPrice  price ratio denominator
      * @param exitPrice   price ratio numerator
@@ -187,7 +194,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Calculates the cash flow for the closed trades of a trading record.
-     * 
+     *
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
@@ -198,7 +205,7 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Calculates the cash flow for all trades of a trading record, including
      * accrued cash flow of an open trade.
-     * 
+     *
      * @param tradingRecord the trading record
      * @param finalIndex    index up until cash flows of open trades are considered
      */
@@ -213,7 +220,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Adjusts (intermediate) price to incorporate trading costs.
-     * 
+     *
      * @param rawPrice    the gross asset price
      * @param holdingCost share of the holding cost per period
      * @param isLongTrade true, if the entry order type is BUY
@@ -240,7 +247,7 @@ public class CashFlow implements Indicator<Num> {
 
     /**
      * Determines the the valid final index to be considered.
-     * 
+     *
      * @param trade      the trade
      * @param finalIndex index up until cash flows of open trades are considered
      * @param maxIndex   maximal valid index

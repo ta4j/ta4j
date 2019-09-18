@@ -33,13 +33,13 @@ import java.util.List;
 
 public class MockAnalysisCriterion implements AnalysisCriterion {
 
-    BarSeries series;
-    List<Num> values;
+    private final BarSeries series;
+    private final List<Num> values;
 
     /**
      * Constructor.
      * 
-     * @param series TimeSeries of the AnalysisCriterion
+     * @param series BarSeries of the AnalysisCriterion
      * @param values AnalysisCriterion values
      */
     public MockAnalysisCriterion(BarSeries series, List<Num> values) {
@@ -50,7 +50,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Gets the final criterion value.
      * 
-     * @param series TimeSeries is ignored
+     * @param series BarSeries is ignored
      * @param trade  is ignored
      */
     public Num calculate(BarSeries series, Trade trade) {
@@ -60,7 +60,7 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Gets the final criterion value.
      * 
-     * @param series        TimeSeries is ignored
+     * @param series        BarSeries is ignored
      * @param tradingRecord is ignored
      */
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
