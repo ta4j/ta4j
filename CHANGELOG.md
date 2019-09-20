@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PivotPointIndicator**: fixed possible npe if first bar is not in same period
 
 ### Changed
+- **PrecisionNum**: improve performance for methods isZero/isPositive/isPositiveOrZero/isNegative/isNegativeOrZero.
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 
 ### Added
