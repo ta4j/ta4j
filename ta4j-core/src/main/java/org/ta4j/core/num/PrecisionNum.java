@@ -252,7 +252,7 @@ public final class PrecisionNum implements Num {
      * @return BigDecimal delegate instance of this instance
      */
     @Override
-    public Number getDelegate() {
+    public BigDecimal getDelegate() {
         return delegate;
     }
 
@@ -531,7 +531,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isZero() {
-        return compareTo(PrecisionNum.valueOf(0)) == 0;
+        return delegate.signum() == 0;
     }
 
     /**
@@ -541,7 +541,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isPositive() {
-        return compareTo(PrecisionNum.valueOf(0)) > 0;
+        return delegate.signum() > 0;
     }
 
     /**
@@ -551,7 +551,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isPositiveOrZero() {
-        return compareTo(PrecisionNum.valueOf(0)) >= 0;
+    	return delegate.signum() >= 0;
     }
 
     /**
@@ -561,7 +561,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isNegative() {
-        return compareTo(function().apply(0)) < 0;
+    	return delegate.signum() < 0;
     }
 
     /**
@@ -571,7 +571,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isNegativeOrZero() {
-        return compareTo(PrecisionNum.valueOf(0)) <= 0;
+    	return delegate.signum() <= 0;
     }
 
     /**
