@@ -255,7 +255,7 @@ public final class PrecisionNum implements Num {
      * @return BigDecimal delegate instance of this instance
      */
     @Override
-    public Number getDelegate() {
+    public BigDecimal getDelegate() {
         return delegate;
     }
 
