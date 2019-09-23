@@ -110,6 +110,16 @@ public class DoubleNum implements Num {
     public Num remainder(Num divisor) {
         return divisor.isNaN() ? NaN : new DoubleNum(delegate % ((DoubleNum) divisor).delegate);
     }
+    
+	@Override
+	public Num floor() {
+		return new DoubleNum(Math.floor(delegate));
+	}
+
+	@Override
+	public Num ceil() {
+		return new DoubleNum(Math.ceil(delegate));
+	}
 
     @Override
     public Num pow(int n) {
