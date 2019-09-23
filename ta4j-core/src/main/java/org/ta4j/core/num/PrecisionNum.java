@@ -361,8 +361,9 @@ public final class PrecisionNum implements Num {
      * Returns a {@code Num} whose value is rounded down to the nearest whole
      * number.
      *
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this</code> to whole Num rounded down
      */
+    @Override
     public Num floor() {
         int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
         return new PrecisionNum(delegate.setScale(0, RoundingMode.FLOOR), precision);
@@ -371,18 +372,19 @@ public final class PrecisionNum implements Num {
     /**
      * Returns a {@code Num} whose value is rounded up to the nearest whole number.
      *
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this</code> to whole Num rounded up
      */
+    @Override
     public Num ceil() {
         int precision = Math.max(mathContext.getPrecision(), DEFAULT_PRECISION);
         return new PrecisionNum(delegate.setScale(0, RoundingMode.CEILING), precision);
     }
 
     /**
-     * Returns a {@code Num} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
      *
      * @param n power to raise this {@code Num} to.
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      * @see BigDecimal#pow(int, java.math.MathContext)
      */
     @Override
@@ -404,10 +406,10 @@ public final class PrecisionNum implements Num {
     }
 
     /**
-     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * Returns a {@code num} whose value is <code>√(this)</code>.
      *
      * @param precision to calculate.
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      */
     @Override
     public Num sqrt(int precision) {
