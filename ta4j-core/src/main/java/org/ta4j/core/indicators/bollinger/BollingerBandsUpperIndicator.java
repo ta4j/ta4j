@@ -50,7 +50,7 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
      *                  Typically a StandardDeviationIndicator is used.
      */
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> deviation) {
-        this(bbm, deviation, bbm.getTimeSeries().numOf(2));
+        this(bbm, deviation, bbm.getBarSeries().numOf(2));
     }
 
     /**

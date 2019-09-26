@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -45,7 +45,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     private final VolumeIndicator volumeIndicator;
     private final int barCount;
 
-    public ChaikinMoneyFlowIndicator(TimeSeries series, int barCount) {
+    public ChaikinMoneyFlowIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
         this.clvIndicator = new CloseLocationValueIndicator(series);
@@ -69,7 +69,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
      * @return the money flow volume for the i-th period/bar
      */
     private Num getMoneyFlowVolume(int index) {
-        return clvIndicator.getValue(index).multipliedBy(getTimeSeries().getBar(index).getVolume());
+        return clvIndicator.getValue(index).multipliedBy(getBarSeries().getBar(index).getVolume());
     }
 
     @Override

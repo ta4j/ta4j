@@ -27,10 +27,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    protected TimeSeries data;
+    protected BarSeries data;
 
     public IchimokuIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -49,8 +50,7 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Before
     public void setUp() {
-
-        List<Bar> bars = new ArrayList<Bar>();
+        final List<Bar> bars = new ArrayList<>();
         bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
         bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
         bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, numFunction));
@@ -71,7 +71,7 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         bars.add(new MockBar(43.07, 43.55, 43.65, 43.06, numFunction));
         bars.add(new MockBar(43.56, 43.95, 43.99, 43.53, numFunction));
         bars.add(new MockBar(43.93, 44.47, 44.58, 43.93, numFunction));
-        data = new MockTimeSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test
@@ -80,7 +80,8 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         IchimokuKijunSenIndicator kijunSen = new IchimokuKijunSenIndicator(data, 5);
         IchimokuSenkouSpanAIndicator senkouSpanA = new IchimokuSenkouSpanAIndicator(data, tenkanSen, kijunSen);
         IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9);
-        IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data, 5);
+        final int chikouSpanTimeDelay = 5;
+        IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data, chikouSpanTimeDelay);
 
         assertNumEquals(45.155, tenkanSen.getValue(3));
         assertNumEquals(45.18, tenkanSen.getValue(4));
@@ -122,10 +123,25 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(44.335, senkouSpanB.getValue(17));
         assertNumEquals(44.335, senkouSpanB.getValue(18));
 
-        assertNumEquals(45.05, chikouSpan.getValue(5));
-        assertNumEquals(45.10, chikouSpan.getValue(6));
-        assertNumEquals(45.19, chikouSpan.getValue(7));
-        assertNumEquals(45.14, chikouSpan.getValue(8));
-        assertNumEquals(44.23, chikouSpan.getValue(19));
+        assertNumEquals(data.getBar(chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(0));
+        assertNumEquals(data.getBar(1 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(1));
+        assertNumEquals(data.getBar(2 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(2));
+        assertNumEquals(data.getBar(3 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(3));
+        assertNumEquals(data.getBar(4 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(4));
+        assertNumEquals(data.getBar(5 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(5));
+        assertNumEquals(data.getBar(6 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(6));
+        assertNumEquals(data.getBar(7 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(7));
+        assertNumEquals(data.getBar(8 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(8));
+        assertNumEquals(data.getBar(9 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(9));
+        assertNumEquals(data.getBar(10 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(10));
+        assertNumEquals(data.getBar(11 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(11));
+        assertNumEquals(data.getBar(12 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(12));
+        assertNumEquals(data.getBar(13 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(13));
+        assertNumEquals(data.getBar(14 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(14));
+        assertNumEquals(NaN.NaN, chikouSpan.getValue(15));
+        assertNumEquals(NaN.NaN, chikouSpan.getValue(16));
+        assertNumEquals(NaN.NaN, chikouSpan.getValue(17));
+        assertNumEquals(NaN.NaN, chikouSpan.getValue(18));
+        assertNumEquals(NaN.NaN, chikouSpan.getValue(19));
     }
 }

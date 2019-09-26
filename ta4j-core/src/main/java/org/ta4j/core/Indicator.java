@@ -28,7 +28,7 @@ import org.ta4j.core.num.Num;
 import java.io.Serializable;
 
 /**
- * Indicator over a {@link TimeSeries time series}. <p/p> For each index of the
+ * Indicator over a {@link BarSeries time series}. <p/p> For each index of the
  * time series, returns a value of type <b>T</b>.
  *
  * @param <T> the type of returned value (Double, Boolean, etc.)
@@ -44,7 +44,7 @@ public interface Indicator<T> extends Serializable {
     /**
      * @return the related time series
      */
-    TimeSeries getTimeSeries();
+    BarSeries getBarSeries();
 
     /**
      * @return the {@link Num Num extending class} for the given {@link Number}

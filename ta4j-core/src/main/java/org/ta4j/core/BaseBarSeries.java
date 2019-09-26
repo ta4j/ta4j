@@ -39,10 +39,10 @@ import java.util.function.Function;
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
- * Base implementation of a {@link TimeSeries}.
- *
+ * Base implementation of a {@link BarSeries}.
+ * </p>
  */
-public class BaseTimeSeries implements TimeSeries {
+public class BaseBarSeries implements BarSeries {
 
     private static final long serialVersionUID = -1878027009398790126L;
     /**
@@ -82,15 +82,14 @@ public class BaseTimeSeries implements TimeSeries {
      */
     private int removedBarsCount = 0;
     /**
-     * True if the current series is constrained (i.e. its indexes cannot change),
-     * false otherwise
+     * True if the current series is constrained (i.e. its indexes cannot change), false otherwise
      */
     private boolean constrained;
 
     /**
      * Constructor of an unnamed series.
      */
-    public BaseTimeSeries() {
+    public BaseBarSeries() {
         this(UNNAMED_SERIES_NAME);
     }
 
@@ -99,7 +98,7 @@ public class BaseTimeSeries implements TimeSeries {
      *
      * @param name the name of the series
      */
-    public BaseTimeSeries(String name) {
+    public BaseBarSeries(String name) {
         this(name, new ArrayList<>());
     }
 
@@ -108,7 +107,7 @@ public class BaseTimeSeries implements TimeSeries {
      *
      * @param bars the list of bars of the series
      */
-    public BaseTimeSeries(List<Bar> bars) {
+    public BaseBarSeries(List<Bar> bars) {
         this(UNNAMED_SERIES_NAME, bars);
     }
 
@@ -118,7 +117,7 @@ public class BaseTimeSeries implements TimeSeries {
      * @param name the name of the series
      * @param bars the list of bars of the series
      */
-    public BaseTimeSeries(String name, List<Bar> bars) {
+    public BaseBarSeries(String name, List<Bar> bars) {
         this(name, bars, 0, bars.size() - 1, false);
     }
 
@@ -127,7 +126,7 @@ public class BaseTimeSeries implements TimeSeries {
      *
      * @param name the name of the series
      */
-    public BaseTimeSeries(String name, Function<Number, Num> numFunction) {
+    public BaseBarSeries(String name, Function<Number, Num> numFunction) {
         this(name, new ArrayList<>(), numFunction);
     }
 
@@ -137,24 +136,24 @@ public class BaseTimeSeries implements TimeSeries {
      * @param name the name of the series
      * @param bars the list of bars of the series
      */
-    public BaseTimeSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
+    public BaseBarSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
         this(name, bars, 0, bars.size() - 1, false, numFunction);
     }
 
     /**
-     * Constructor. Creates a BaseTimeSeries with default {@link PrecisionNum} as
-     * type for the data and all operations on it
+     * Constructor.<p/>
+     * Creates a BaseTimeSeries with default {@link PrecisionNum} as type for the data and all operations on it
      *
      * @param name             the name of the series
      * @param bars             the list of bars of the series
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex   the end index (inclusive) of the time series
-     * @param constrained      true to constrain the time series (i.e. indexes
-     *                         cannot change), false otherwise
+     * @param constrained      true to constrain the time series (i.e. indexes cannot change), false otherwise
      */
-    private BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
+    private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
         this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, PrecisionNum::valueOf);
     }
+
 
     /**
      * Constructor.
@@ -163,13 +162,11 @@ public class BaseTimeSeries implements TimeSeries {
      * @param bars             the list of bars of the series
      * @param seriesBeginIndex the begin index (inclusive) of the time series
      * @param seriesEndIndex   the end index (inclusive) of the time series
-     * @param constrained      true to constrain the time series (i.e. indexes
-     *                         cannot change), false otherwise
-     * @param numFunction      a {@link Function} to convert a {@link Number} to a
-     *                         {@link Num Num implementation}
+     * @param constrained      true to constrain the time series (i.e. indexes cannot change), false otherwise
+     * @param numFunction      a {@link Function} to convert a {@link Number} to a {@link Num Num implementation}
      */
-    BaseTimeSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-            Function<Number, Num> numFunction) {
+    BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
+                  Function<Number, Num> numFunction) {
         this.name = name;
 
         this.bars = bars;
@@ -185,9 +182,10 @@ public class BaseTimeSeries implements TimeSeries {
         this.numFunction = bars.get(0).getClosePrice().function();
         // Bar list not empty: checking num types
         if (!checkBars(bars)) {
-            throw new IllegalArgumentException(String.format(
-                    "Num implementation of bars: %s" + " does not match to Num implementation of time series: %s",
-                    bars.get(0).getClosePrice().getClass(), numFunction));
+            throw new IllegalArgumentException(
+                    String.format("Num implementation of bars: %s" +
+                                    " does not match to Num implementation of time series: %s",
+                            bars.get(0).getClosePrice().getClass(), numFunction));
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
@@ -207,8 +205,7 @@ public class BaseTimeSeries implements TimeSeries {
      * @param bars       the list of {@link Bar bars}
      * @param startIndex start index of the subset
      * @param endIndex   end index of the subset
-     * @return a new list of bars with tick from startIndex (inclusive) to endIndex
-     *         (exclusive)
+     * @return a new list of bars with tick from startIndex (inclusive) to endIndex (exclusive)
      */
     private static List<Bar> cut(List<Bar> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
@@ -219,40 +216,37 @@ public class BaseTimeSeries implements TimeSeries {
      * @param index  an out of bounds bar index
      * @return a message for an OutOfBoundsException
      */
-    private static String buildOutOfBoundsMessage(BaseTimeSeries series, int index) {
-        return String.format("Size of series: %s bars, %s bars removed, index = %s", series.bars.size(),
-                series.removedBarsCount, index);
+    private static String buildOutOfBoundsMessage(BaseBarSeries series, int index) {
+        return String.format("Size of series: %s bars, %s bars removed, index = %s",
+                series.bars.size(), series.removedBarsCount, index);
     }
 
     /**
-     * Returns a new BaseTimeSeries that is a subset of this BaseTimeSeries. The new
-     * series holds a copy of all {@link Bar bars} between <tt>startIndex</tt>
-     * (inclusive) and <tt>endIndex</tt> (exclusive) of this TimeSeries. The indices
-     * of this TimeSeries and the new subset TimeSeries can be different. I. e.
-     * index 0 of the new TimeSeries will be index <tt>startIndex</tt> of this
-     * TimeSeries. If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries
-     * will start with the first available Bar of this TimeSeries. If
-     * <tt>endIndex</tt> > this.seriesEndIndex+1 the new TimeSeries will end at the
-     * last available Bar of this TimeSeries
+     * Returns a new BaseTimeSeries that is a subset of this BaseTimeSeries.
+     * The new series holds a copy of all {@link Bar bars} between <tt>startIndex</tt> (inclusive) and <tt>endIndex</tt> (exclusive)
+     * of this TimeSeries.
+     * The indices of this TimeSeries and the new subset TimeSeries can be different. I. e. index 0 of the new TimeSeries will
+     * be index <tt>startIndex</tt> of this TimeSeries.
+     * If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries will start with the first available Bar of this TimeSeries.
+     * If <tt>endIndex</tt> > this.seriesEndIndex+1 the new TimeSeries will end at the last available Bar of this TimeSeries
      *
      * @param startIndex the startIndex
      * @param endIndex   the endIndex (exclusive)
-     * @return a new BaseTimeSeries with Bars from <tt>startIndex</tt> to
-     *         <tt>endIndex</tt>-1
+     * @return a new BaseTimeSeries with Bars from <tt>startIndex</tt> to <tt>endIndex</tt>-1
      * @throws IllegalArgumentException if <tt>endIndex</tt> < <tt>startIndex</tt>
      */
     @Override
-    public TimeSeries getSubSeries(int startIndex, int endIndex) {
+    public BarSeries getSubSeries(int startIndex, int endIndex) {
         if (startIndex > endIndex) {
-            throw new IllegalArgumentException(
-                    String.format("the endIndex: %s must be bigger than startIndex: %s", endIndex, startIndex));
+            throw new IllegalArgumentException
+                    (String.format("the endIndex: %s must be bigger than startIndex: %s", endIndex, startIndex));
         }
         if (!bars.isEmpty()) {
             int start = Math.max(startIndex, this.seriesBeginIndex);
             int end = Math.min(endIndex, this.seriesEndIndex + 1);
-            return new BaseTimeSeries(getName(), cut(bars, start, end), numFunction);
+            return new BaseBarSeries(getName(), cut(bars, start, end), numFunction);
         }
-        return new BaseTimeSeries(name, numFunction);
+        return new BaseBarSeries(name, numFunction);
 
     }
 
@@ -267,8 +261,7 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
-     * Checks if all {@link Bar bars} of a list fits to the {@link Num NumFunction}
-     * used by this time series.
+     * Checks if all {@link Bar bars} of a list fits to the {@link Num NumFunction} used by this time series.
      *
      * @param bars a List of Bar objects.
      * @return false if a Num implementation of at least one Bar does not fit.
@@ -283,8 +276,7 @@ public class BaseTimeSeries implements TimeSeries {
     }
 
     /**
-     * Checks if the {@link Num} implementation of a {@link Bar} fits to the
-     * NumFunction used by time series.
+     * Checks if the {@link Num} implementation of a {@link Bar} fits to the NumFunction used by time series.
      *
      * @param bar a Bar object.
      * @return false if another Num implementation is used than by this time series.
@@ -296,8 +288,7 @@ public class BaseTimeSeries implements TimeSeries {
         if (bar.getClosePrice() == null) {
             return true; // bar has not been initialized with data (uses deprecated constructor)
         }
-        // all other constructors initialize at least the close price, check if Num
-        // implementation fits to numFunction
+        // all other constructors initialize at least the close price, check if Num implementation fits to numFunction
         Class<? extends Num> f = numOf(1).getClass();
         return f == bar.getClosePrice().getClass() || bar.getClosePrice().equals(NaN);
     }
@@ -315,8 +306,7 @@ public class BaseTimeSeries implements TimeSeries {
                 // Cannot return the i-th bar if i < 0
                 throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, i));
             }
-            log.trace("Time series `{}` ({} bars): bar {} already removed, use {}-th instead", name, bars.size(), i,
-                    removedBarsCount);
+            log.trace("Time series `{}` ({} bars): bar {} already removed, use {}-th instead", name, bars.size(), i, removedBarsCount);
             if (bars.isEmpty()) {
                 throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, removedBarsCount));
             }
@@ -376,16 +366,14 @@ public class BaseTimeSeries implements TimeSeries {
 
     /**
      * @param bar the <code>Bar</code> to be added
-     * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num,
-     *          Num, Num, Num, Num)
+     * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num)
      */
     @Override
     public void addBar(Bar bar, boolean replace) {
         Objects.requireNonNull(bar);
         if (!checkBar(bar)) {
-            throw new IllegalArgumentException(
-                    String.format("Cannot add Bar with data type: %s to series with data" + "type: %s",
-                            bar.getClosePrice().getClass(), numOf(1).getClass()));
+            throw new IllegalArgumentException(String.format("Cannot add Bar with data type: %s to series with data" +
+                    "type: %s", bar.getClosePrice().getClass(), numOf(1).getClass()));
         }
         if (!bars.isEmpty()) {
             if (replace) {
@@ -397,7 +385,8 @@ public class BaseTimeSeries implements TimeSeries {
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
                 throw new IllegalArgumentException(
                         String.format("Cannot add a bar with end time:%s that is <= to series end time: %s",
-                                bar.getEndTime(), seriesEndTime));
+                                bar.getEndTime(),
+                                seriesEndTime));
             }
         }
 
@@ -417,24 +406,21 @@ public class BaseTimeSeries implements TimeSeries {
 
     @Override
     public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(new BaseBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
+        this.addBar(new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
     }
 
     @Override
-    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
-            Num amount) {
-        this.addBar(new BaseBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
+    public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
+        this.addBar(new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
     }
 
     @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume) {
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
     }
 
     @Override
-    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume, Num amount) {
+    public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount) {
         this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount));
     }
 

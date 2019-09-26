@@ -24,7 +24,7 @@
 package org.ta4j.core.mocks;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.time.ZonedDateTime;
@@ -35,29 +35,29 @@ import java.util.function.Function;
 /**
  * A time series with sample data. TODO: add Builder
  */
-public class MockTimeSeries extends BaseTimeSeries {
+public class MockBarSeries extends BaseBarSeries {
 
-    public MockTimeSeries(Function<Number, Num> nf, double... data) {
+    public MockBarSeries(Function<Number, Num> nf, double... data) {
         super(doublesToBars(nf, data));
     }
 
-    public MockTimeSeries(Function<Number, Num> nf, List<Double> data) {
+    public MockBarSeries(Function<Number, Num> nf, List<Double> data) {
         super(doublesToBars(nf, data));
     }
 
-    public MockTimeSeries(List<Bar> bars) {
+    public MockBarSeries(List<Bar> bars) {
         super(bars);
     }
 
-    public MockTimeSeries(Function<Number, Num> nf, double[] data, ZonedDateTime[] times) {
+    public MockBarSeries(Function<Number, Num> nf, double[] data, ZonedDateTime[] times) {
         super(doublesAndTimesToBars(nf, data, times));
     }
 
-    public MockTimeSeries(Function<Number, Num> nf, ZonedDateTime... dates) {
+    public MockBarSeries(Function<Number, Num> nf, ZonedDateTime... dates) {
         super(timesToBars(nf, dates));
     }
 
-    public MockTimeSeries(Function<Number, Num> nf) {
+    public MockBarSeries(Function<Number, Num> nf) {
         super(arbitraryBars(nf));
     }
 

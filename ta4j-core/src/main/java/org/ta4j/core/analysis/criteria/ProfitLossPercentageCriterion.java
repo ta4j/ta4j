@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
                 .reduce(series.numOf(0), Num::plus);
     }
@@ -50,7 +50,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
      * @return the profit or loss on a trade
      */
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
             Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
             Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();

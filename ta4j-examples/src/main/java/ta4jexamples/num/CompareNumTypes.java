@@ -46,12 +46,12 @@ public class CompareNumTypes {
     private static final int NUMBARS = 10000;
 
     public static void main(String args[]) {
-        BaseTimeSeriesBuilder timeSeriesBuilder = new BaseTimeSeriesBuilder();
-        TimeSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
+        BaseBarSeriesBuilder timeSeriesBuilder = new BaseBarSeriesBuilder();
+        BarSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
                 .build();
-        TimeSeries seriesP = timeSeriesBuilder.withName("Sample Series PrecisionNum 32")
+        BarSeries seriesP = timeSeriesBuilder.withName("Sample Series PrecisionNum 32")
                 .withNumTypeOf(PrecisionNum::valueOf).build();
-        TimeSeries seriesPH = timeSeriesBuilder.withName("Sample Series PrecisionNum 256")
+        BarSeries seriesPH = timeSeriesBuilder.withName("Sample Series PrecisionNum 256")
                 .withNumTypeOf(number -> PrecisionNum.valueOf(number.toString(), 256)).build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();
@@ -70,7 +70,7 @@ public class CompareNumTypes {
                 + P.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
     }
 
-    public static Num test(TimeSeries series) {
+    public static Num test(BarSeries series) {
         ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
         RSIIndicator rsi = new RSIIndicator(closePriceIndicator, 100);
         MACDIndicator macdIndicator = new MACDIndicator(rsi);
@@ -83,7 +83,7 @@ public class CompareNumTypes {
         Strategy strategy1 = new BaseStrategy(entry, exit); // enter/exit every tick
 
         long start = System.currentTimeMillis();
-        TimeSeriesManager manager = new TimeSeriesManager(series);
+        BarSeriesManager manager = new BarSeriesManager(series);
         TradingRecord record1 = manager.run(strategy1);
         TotalProfitCriterion profit1 = new TotalProfitCriterion();
         Num profitResult1 = profit1.calculate(series, record1);

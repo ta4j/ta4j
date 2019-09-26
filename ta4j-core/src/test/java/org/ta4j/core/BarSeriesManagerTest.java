@@ -27,7 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.FixedRule;
 
@@ -40,17 +40,17 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num> {
+public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    private TimeSeries seriesForRun;
+    private BarSeries seriesForRun;
 
-    private TimeSeriesManager manager;
+    private BarSeriesManager manager;
 
     private Strategy strategy;
 
     private final Num HUNDRED = numOf(100);
 
-    public TimeSeriesManagerTest(Function<Number, Num> numFunction) {
+    public BarSeriesManagerTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -58,7 +58,7 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num
     public void setUp() {
 
         final DateTimeFormatter dtf = DateTimeFormatter.ISO_ZONED_DATE_TIME;
-        seriesForRun = new MockTimeSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
+        seriesForRun = new MockBarSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d },
                 new ZonedDateTime[] { ZonedDateTime.parse("2013-01-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2013-08-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2013-10-01T00:00:00-05:00", dtf),
@@ -68,7 +68,7 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num
                         ZonedDateTime.parse("2015-08-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-10-01T00:00:00-05:00", dtf),
                         ZonedDateTime.parse("2015-12-01T00:00:00-05:00", dtf) });
-        manager = new TimeSeriesManager(seriesForRun);
+        manager = new BarSeriesManager(seriesForRun);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -76,16 +76,16 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num
 
     @Test
     public void runOnWholeSeries() {
-        TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager.setTimeSeries(series);
+        BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        manager.setBarSeries(series);
         List<Trade> allTrades = manager.run(strategy).getTrades();
         assertEquals(2, allTrades.size());
     }
 
     @Test
     public void runOnWholeSeriesWithAmount() {
-        TimeSeries series = new MockTimeSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager.setTimeSeries(series);
+        BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
+        manager.setBarSeries(series);
         List<Trade> allTrades = manager.run(strategy, OrderType.BUY, HUNDRED).getTrades();
 
         assertEquals(2, allTrades.size());
@@ -146,12 +146,12 @@ public class TimeSeriesManagerTest extends AbstractIndicatorTest<TimeSeries, Num
     @Test
     public void runOnSeriesSlices() {
         ZonedDateTime dateTime = ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
-        TimeSeries series = new MockTimeSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d },
+        BarSeries series = new MockBarSeries(numFunction, new double[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d },
                 new ZonedDateTime[] { dateTime.withYear(2000), dateTime.withYear(2000), dateTime.withYear(2001),
                         dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
                         dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
                         dateTime.withYear(2005) });
-        manager.setTimeSeries(series);
+        manager.setBarSeries(series);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
