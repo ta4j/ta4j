@@ -61,14 +61,14 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     @Override
-    public BarSeries build() {
+    public BaseBarSeries build() {
         int beginIndex = -1;
         int endIndex = -1;
         if (!bars.isEmpty()) {
             beginIndex = 0;
             endIndex = bars.size() - 1;
         }
-        BarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
+        BaseBarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
         series.setMaximumBarCount(maxBarCount);
         initValues(); // reinitialize values for next series
         return series;

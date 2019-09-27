@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :boom: **Breaking** Renamed `TimeSeries` to `BarSeries`
 
 ### Fixed
+- **Fixed return `BigDecimal` instead of `Number` in**: `PrecisionNum.getDelegate`.
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
 - **Fixed `java.lang.ClassCastException` in**: `DoubleNum.equals()`.
 - **Fixed `java.lang.NullPointerException` in**: `NumberOfBarsCriterion.calculate(TimeSeries, Trade)` for opened trade.
@@ -20,6 +21,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **CloseLocationValueIndicator**: fixed special case, return zero instead of NaN if high price == low price
 
 ### Changed
+- **PrecisionNum**: improve performance for methods isZero/isPositive/isPositiveOrZero/isNegative/isNegativeOrZero.
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 - **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 

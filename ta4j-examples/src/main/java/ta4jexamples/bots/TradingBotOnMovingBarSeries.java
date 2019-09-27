@@ -23,11 +23,18 @@
  */
 package ta4jexamples.bots;
 
-import org.ta4j.core.*;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -41,13 +48,16 @@ import java.time.ZonedDateTime;
  */
 public class TradingBotOnMovingBarSeries {
 
-    /** Close price of the last bar */
+    /**
+     * Close price of the last bar
+     */
     private static Num LAST_BAR_CLOSE_PRICE;
 
     /**
      * Builds a moving bar series (i.e. keeping only the maxBarCount last bars)
-     * @param maxBarCount the number of bars to keep in the time series (at maximum)
-     * @return a moving time series
+     *
+     * @param maxBarCount the number of bars to keep in the bar series (at maximum)
+     * @return a moving bar series
      */
     private static BarSeries initMovingBarSeries(int maxBarCount) {
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
@@ -60,7 +70,7 @@ public class TradingBotOnMovingBarSeries {
     }
 
     /**
-     * @param series a time series
+     * @param series a bar series
      * @return a dummy strategy
      */
     private static Strategy buildStrategy(BarSeries series) {
@@ -74,15 +84,14 @@ public class TradingBotOnMovingBarSeries {
         // Signals
         // Buy when SMA goes over close price
         // Sell when close price goes over SMA
-        Strategy buySellSignals = new BaseStrategy(
-                new OverIndicatorRule(sma, closePrice),
-                new UnderIndicatorRule(sma, closePrice)
-        );
+        Strategy buySellSignals = new BaseStrategy(new OverIndicatorRule(sma, closePrice),
+                new UnderIndicatorRule(sma, closePrice));
         return buySellSignals;
     }
 
     /**
      * Generates a random decimal number between min and max.
+     *
      * @param min the minimum bound
      * @param max the maximum bound
      * @return a random decimal number between min and max
@@ -99,6 +108,7 @@ public class TradingBotOnMovingBarSeries {
 
     /**
      * Generates a random bar.
+     *
      * @return a random bar
      */
     private static Bar generateRandomBar() {
@@ -108,13 +118,14 @@ public class TradingBotOnMovingBarSeries {
         Num maxPrice = openPrice.plus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
         Num closePrice = randDecimal(minPrice, maxPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
+        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice,
+                PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
     }
 
     public static void main(String[] args) throws InterruptedException {
 
         System.out.println("********************** Initialization **********************");
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = initMovingBarSeries(20);
 
         // Building the trading strategy
@@ -125,15 +136,15 @@ public class TradingBotOnMovingBarSeries {
         System.out.println("************************************************************");
 
         /*
-          We run the strategy for the 50 next bars.
+         * We run the strategy for the 50 next bars.
          */
         for (int i = 0; i < 50; i++) {
 
             // New bar
             Thread.sleep(30); // I know...
             Bar newBar = generateRandomBar();
-            System.out.println("------------------------------------------------------\n"
-                    + "Bar "+i+" added, close price = " + newBar.getClosePrice().doubleValue());
+            System.out.println("------------------------------------------------------\n" + "Bar " + i
+                    + " added, close price = " + newBar.getClosePrice().doubleValue());
             series.addBar(newBar);
 
             int endIndex = series.getEndIndex();
@@ -143,8 +154,7 @@ public class TradingBotOnMovingBarSeries {
                 boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), PrecisionNum.valueOf(10));
                 if (entered) {
                     Order entry = tradingRecord.getLastEntry();
-                    System.out.println("Entered on " + entry.getIndex()
-                            + " (price=" + entry.getNetPrice().doubleValue()
+                    System.out.println("Entered on " + entry.getIndex() + " (price=" + entry.getNetPrice().doubleValue()
                             + ", amount=" + entry.getAmount().doubleValue() + ")");
                 }
             } else if (strategy.shouldExit(endIndex)) {
@@ -153,8 +163,7 @@ public class TradingBotOnMovingBarSeries {
                 boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), PrecisionNum.valueOf(10));
                 if (exited) {
                     Order exit = tradingRecord.getLastExit();
-                    System.out.println("Exited on " + exit.getIndex()
-                            + " (price=" + exit.getNetPrice().doubleValue()
+                    System.out.println("Exited on " + exit.getIndex() + " (price=" + exit.getNetPrice().doubleValue()
                             + ", amount=" + exit.getAmount().doubleValue() + ")");
                 }
             }

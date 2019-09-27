@@ -25,9 +25,9 @@ package org.ta4j.core;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 
 import java.time.ZonedDateTime;
 import java.util.function.Function;
@@ -46,15 +46,13 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testBuilder() {
-
-        BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed time series using BigDecimal as
-        // delegate
-        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty unnamed time
-        // series using BigDecimal as delegate
+        BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed bar series
+        BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
+                                                                                 // BigDecimal as delegate
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class)
-                .withName("useDouble").build();
+                .withName("useDoubleNum").build();
         BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(PrecisionNum.class)
-                .withName("useBigDecimal").build();
+                .withName("usePrecisionNum").build();
 
         for (int i = 1000; i >= 0; i--) {
             defaultSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);
@@ -72,7 +70,6 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testNumFunctions() {
-
         BarSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
         assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
 

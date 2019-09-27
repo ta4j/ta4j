@@ -24,7 +24,13 @@
 package ta4jexamples.indicators;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.*;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.PPOIndicator;
+import org.ta4j.core.indicators.ROCIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.WilliamsRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.PriceVariationIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
@@ -46,7 +52,7 @@ public class IndicatorsToCsv {
     public static void main(String[] args) {
 
         /*
-         * Getting time series
+         * Getting bar series
          */
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 

@@ -54,8 +54,8 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the profit of a trade (Buy and sell).
-     * 
-     * @param series a time series
+     *
+     * @param series a bar series
      * @param trade  a trade
      * @return the profit of the trade
      */

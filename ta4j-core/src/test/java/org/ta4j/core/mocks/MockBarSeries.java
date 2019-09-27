@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * A time series with sample data. TODO: add Builder
+ * A bar series with sample data. TODO: add Builder
  */
 public class MockBarSeries extends BaseBarSeries {
 
@@ -72,8 +72,6 @@ public class MockBarSeries extends BaseBarSeries {
     private static List<Bar> doublesToBars(Function<Number, Num> nf, double... data) {
         ArrayList<Bar> bars = new ArrayList<>();
         for (int i = 0; i < data.length; i++) {
-            // bars.add(new MockBar(ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND,
-            // i), data[i]));
             bars.add(new MockBar(ZonedDateTime.now().minusSeconds((data.length + 1 - i)), data[i], nf));
         }
         return bars;

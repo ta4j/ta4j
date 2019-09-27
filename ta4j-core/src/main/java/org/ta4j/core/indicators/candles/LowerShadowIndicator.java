@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  *
  * Provides the (absolute) difference between the min price and the lowest price
  * of the candle body. I.e.: min price - min(open price, close price)
- * 
+ *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
  *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation</a>
@@ -42,8 +42,8 @@ public class LowerShadowIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param series a time series
+     *
+     * @param series a bar series
      */
     public LowerShadowIndicator(BarSeries series) {
         super(series);
