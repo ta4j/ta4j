@@ -122,6 +122,11 @@ public interface BarSeries extends Serializable {
     }
 
     /**
+     * @return the maximum number of bars
+     */
+    int getMaximumBarCount();
+
+    /**
      * Sets the maximum number of bars that will be retained in the series.
      *
      * If a new bar is added to the series such that the number of bars will exceed
@@ -131,11 +136,6 @@ public interface BarSeries extends Serializable {
      * @param maximumBarCount the maximum bar count
      */
     void setMaximumBarCount(int maximumBarCount);
-
-    /**
-     * @return the maximum number of bars
-     */
-    int getMaximumBarCount();
 
     /**
      * @return the number of removed bars
@@ -332,10 +332,10 @@ public interface BarSeries extends Serializable {
      * this.seriesEndIndex the new BarSeries will end at the last available Bar of
      * this BarSeries
      *
-     * @param startIndex the startIndex
-     * @param endIndex   the endIndex
+     * @param startIndex the startIndex (inclusive)
+     * @param endIndex   the endIndex (exclusive)
      * @return a new BarSeries with Bars from startIndex to endIndex-1
-     * @throws IllegalArgumentException e.g. if endIndex < startIndex
+     * @throws IllegalArgumentException if endIndex <= startIndex or startIndex < 0
      */
     BarSeries getSubSeries(int startIndex, int endIndex);
 

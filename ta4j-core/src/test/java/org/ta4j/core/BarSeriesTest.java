@@ -204,6 +204,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void subSeriesCreationTest() {
         BarSeries subSeries = defaultSeries.getSubSeries(2, 5);
+        assertEquals(3, subSeries.getBarCount());
         assertEquals(defaultSeries.getName(), subSeries.getName());
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(defaultSeries.getBeginIndex(), subSeries.getBeginIndex());
@@ -211,9 +212,15 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNotEquals(defaultSeries.getEndIndex(), subSeries.getEndIndex());
         assertEquals(3, subSeries.getBarCount());
 
-        subSeries = defaultSeries.getSubSeries(-1000, 1000);
+        subSeries = defaultSeries.getSubSeries(0, 1000);
         assertEquals(0, subSeries.getBeginIndex());
+        assertEquals(defaultSeries.getBarCount(), subSeries.getBarCount());
         assertEquals(defaultSeries.getEndIndex(), subSeries.getEndIndex());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void subSeriesCreationWithNegativeIndexTest() {
+        defaultSeries.getSubSeries(-1000, 1000);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -223,7 +230,11 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void maximumBarCountOnConstrainedSeriesShouldNotThrowExceptionTest() {
-        subSeries.setMaximumBarCount(10);
+        try {
+            subSeries.setMaximumBarCount(10);
+        } catch (Exception e) {
+            Assert.fail("setMaximumBarCount onConstrained series should not throw Exception");
+        }
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -342,12 +353,21 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         final int timespan = 5;
 
         IntStream.range(0, 100).forEach(i -> {
-            series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i), 5, 7, 1, 5, 5);
-            System.out.println(String.format("SubSeries #%s of size %s created.", i, 0/* subseries.getBarCount() */));
+            series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i), 5, 7, 1, 5, i);
+            assertTrue(series.getBarCount() <= 20);
+            int startIndex = Math.max(series.getEndIndex() - timespan, 0);
+            int endIndex = series.getEndIndex();
+
+            if (startIndex < endIndex) {
+                final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+                if (i < 5) {
+                    assertTrue(subSeries.getBarCount() < 5);
+                } else {
+                    assertEquals(5, subSeries.getBarCount());
+                    TestUtils.assertNumEquals(i, series.getBar(series.getEndIndex()).getVolume());
+                }
+                System.out.println(String.format("SubSeries #%s of size %s created.", i, subSeries.getBarCount()));
+            }
         });
-
-        BarSeries subSeries = series.getSubSeries(series.getEndIndex() - timespan, series.getEndIndex());
-        Assert.assertEquals(5, subSeries.getBarCount());
-
     }
 }

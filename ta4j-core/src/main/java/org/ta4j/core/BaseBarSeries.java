@@ -238,17 +238,19 @@ public class BaseBarSeries implements BarSeries {
      * this.seriesEndIndex+1 the new BaseBarSeries will end at the last available
      * Bar of this BaseBarSeries
      *
-     * @param startIndex the startIndex
+     * @param startIndex the startIndex (inclusive)
      * @param endIndex   the endIndex (exclusive)
-     * @return a new BaseBarSeries with Bars from <tt>startIndex</tt> to
-     *         <tt>endIndex</tt>-1
-     * @throws IllegalArgumentException if <tt>endIndex</tt> < <tt>startIndex</tt>
+     * @return a new BarSeries with Bars from startIndex to endIndex-1
+     * @throws IllegalArgumentException if endIndex <= startIndex or startIndex < 0
      */
     @Override
     public BaseBarSeries getSubSeries(int startIndex, int endIndex) {
-        if (startIndex > endIndex) {
+        if (startIndex < 0) {
+            throw new IllegalArgumentException(String.format("the startIndex: %s must not be negative", startIndex));
+        }
+        if (startIndex >= endIndex) {
             throw new IllegalArgumentException(
-                    String.format("the endIndex: %s must be bigger than startIndex: %s", endIndex, startIndex));
+                    String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
         if (!bars.isEmpty()) {
             int start = Math.max(startIndex - getRemovedBarsCount(), this.getBeginIndex());
