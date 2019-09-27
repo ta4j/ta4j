@@ -150,9 +150,9 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(
                 bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
-        assertTrue(subseries.getSeriesPeriodDescription()
+        assertTrue(subSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(subseries.getSeriesPeriodDescription()
+        assertTrue(subSeries.getSeriesPeriodDescription()
                 .startsWith(bars.get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
