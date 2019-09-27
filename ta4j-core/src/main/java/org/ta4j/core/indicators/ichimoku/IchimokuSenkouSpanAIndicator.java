@@ -72,7 +72,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param baseLine       the base line
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
-                                        IchimokuKijunSenIndicator baseLine) {
+            IchimokuKijunSenIndicator baseLine) {
         super(series);
         this.conversionLine = conversionLine;
         this.baseLine = baseLine;

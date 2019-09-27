@@ -77,7 +77,8 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         for (int i = 0; i < 1000; i++) {
             random = Math.random();
             time = time.plusDays(i);
-            series.addBar(new BaseBar(Duration.ofDays(1), time, random, random, random, random, random, random, 0, numFunction));
+            series.addBar(new BaseBar(Duration.ofDays(1), time, random, random, random, random, random, random, 0,
+                    numFunction));
         }
         return series;
     }

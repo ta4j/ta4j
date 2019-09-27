@@ -23,7 +23,14 @@
  */
 package ta4jexamples.analysis;
 
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Order;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.LinearBorrowingCostModel;
 import org.ta4j.core.cost.LinearTransactionCostModel;
@@ -43,7 +50,7 @@ public class TradeCost {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the short selling trading strategy
         Strategy strategy = buildShortSellingMomentumStrategy(series);

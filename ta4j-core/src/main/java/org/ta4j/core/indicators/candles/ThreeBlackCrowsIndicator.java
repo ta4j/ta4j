@@ -37,19 +37,25 @@ import org.ta4j.core.num.Num;
  */
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
-    /** Lower shadow */
+    /**
+     * Lower shadow
+     */
     private final LowerShadowIndicator lowerShadowInd;
-    /** Average lower shadow */
+    /**
+     * Average lower shadow
+     */
     private final SMAIndicator averageLowerShadowInd;
-    /** Factor used when checking if a candle has a very short lower shadow */
+    /**
+     * Factor used when checking if a candle has a very short lower shadow
+     */
     private final Num factor;
 
     private int whiteCandleIndex = -1;
 
     /**
      * Constructor.
-     * 
-     * @param series   a time series
+     *
+     * @param series   the bar series
      * @param barCount the number of bars used to calculate the average lower shadow
      * @param factor   the factor used when checking if a candle has a very short
      *                 lower shadow

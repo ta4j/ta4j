@@ -34,7 +34,12 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
-import org.ta4j.core.*;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -52,18 +57,18 @@ import java.util.List;
 public class BuyAndSellSignalsToChart {
 
     /**
-     * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * 
-     * @param barseries the ta4j time series
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
      * @param indicator the indicator
      * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barseries, Indicator<Num> indicator,
-                                                                      String name) {
+    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(BarSeries barSeries, Indicator<Num> indicator,
+            String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < barseries.getBarCount(); i++) {
-            Bar bar = barseries.getBar(i);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
             chartTimeSeries.add(new Minute(Date.from(bar.getEndTime().toInstant())),
                     indicator.getValue(i).doubleValue());
         }
@@ -71,11 +76,11 @@ public class BuyAndSellSignalsToChart {
     }
 
     /**
-     * Runs a strategy over a time series and adds the value markers corresponding
-     * to buy/sell signals to the plot.
-     * 
-     * @param series   a time series
-     * @param strategy a trading strategy
+     * Runs a strategy over a bar series and adds the value markers corresponding to
+     * buy/sell signals to the plot.
+     *
+     * @param series   the bar series
+     * @param strategy the trading strategy
      * @param plot     the plot
      */
     private static void addBuySellSignals(BarSeries series, Strategy strategy, XYPlot plot) {
@@ -105,7 +110,7 @@ public class BuyAndSellSignalsToChart {
 
     /**
      * Displays a chart in a frame.
-     * 
+     *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -124,7 +129,7 @@ public class BuyAndSellSignalsToChart {
 
     public static void main(String[] args) {
 
-        // Getting the time series
+        // Getting the bar series
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
@@ -133,7 +138,7 @@ public class BuyAndSellSignalsToChart {
          * Building chart datasets
          */
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        dataset.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
+        dataset.addSeries(buildChartTimeSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
 
         /*
          * Creating the chart

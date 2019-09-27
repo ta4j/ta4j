@@ -150,9 +150,9 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(
                 bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
-        assertTrue(subSeries.getSeriesPeriodDescription()
+        assertTrue(subseries.getSeriesPeriodDescription()
                 .endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(subSeries.getSeriesPeriodDescription()
+        assertTrue(subseries.getSeriesPeriodDescription()
                 .startsWith(bars.get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
@@ -296,7 +296,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
         TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
-        // same
+                                                                                               // same
 
         Num adding2 = numOf(0);
         defaultSeries.addPrice(adding2);
@@ -304,7 +304,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
         TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
-        // same
+                                                                                               // same
     }
 
     /**

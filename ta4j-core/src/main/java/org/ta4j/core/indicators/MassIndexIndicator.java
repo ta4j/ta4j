@@ -45,8 +45,8 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
-     * @param series      the time series
+     *
+     * @param series      the bar series
      * @param emaBarCount the time frame for EMAs (usually 9)
      * @param barCount    the time frame
      */

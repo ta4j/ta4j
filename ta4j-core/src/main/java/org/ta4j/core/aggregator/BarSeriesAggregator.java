@@ -31,7 +31,7 @@ import org.ta4j.core.BarSeries;
 public interface BarSeriesAggregator {
 
     /**
-     * Aggregate time series.
+     * Aggregates bar series.
      *
      * @param series series to aggregate
      * @return aggregated series
@@ -41,7 +41,7 @@ public interface BarSeriesAggregator {
     }
 
     /**
-     * Aggregate time series.
+     * Aggregates bar series.
      *
      * @param series               series to aggregate
      * @param aggregatedSeriesName name for aggregated series

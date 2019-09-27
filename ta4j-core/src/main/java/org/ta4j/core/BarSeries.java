@@ -37,7 +37,7 @@ import java.util.function.Function;
  * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15
  * minutes, 1 day, etc.)
  *
- * Notably, a {@link BarSeries time series} can be:
+ * Notably, a {@link BarSeries bar series} can be:
  * <ul>
  * <li>the base of {@link Indicator indicator} calculations
  * <li>constrained between begin and end indexes (e.g. for some backtesting
@@ -90,8 +90,8 @@ public interface BarSeries extends Serializable {
      * Returns the raw bar data. It means that it returns the current List object
      * used internally to store the {@link Bar bars}. It may be: - a shortened bar
      * list if a maximum bar count has been set - an extended bar list if it is a
-     * constrained time series
-     * 
+     * constrained bar series
+     *
      * @return the raw bar data
      */
     List<Bar> getBarData();
@@ -127,7 +127,7 @@ public interface BarSeries extends Serializable {
      * If a new bar is added to the series such that the number of bars will exceed
      * the maximum bar count, then the FIRST bar in the series is automatically
      * removed, ensuring that the maximum bar count is not exceeded.
-     * 
+     *
      * @param maximumBarCount the maximum bar count
      */
     void setMaximumBarCount(int maximumBarCount);
@@ -149,11 +149,11 @@ public interface BarSeries extends Serializable {
      * End index set to 0 if it wasn't initialized, or incremented if it matches the
      * end of the series.<br>
      * Exceeding bars are removed.
-     * 
+     *
      * @param bar the bar to be added
-     * @see BarSeries#setMaximumBarCount(int)
      * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add
      *          bar data directly
+     * @see BarSeries#setMaximumBarCount(int)
      */
     default void addBar(Bar bar) {
         addBar(bar, false);
@@ -166,20 +166,20 @@ public interface BarSeries extends Serializable {
      * End index set to 0 if it wasn't initialized, or incremented if it matches the
      * end of the series.<br>
      * Exceeding bars are removed.
-     * 
+     *
      * @param bar     the bar to be added
      * @param replace true to replace the latest bar. Some exchange provide
      *                continuous new bar data in the time period. (eg. 1s in 1m
      *                Duration)<br>
-     * @see BarSeries#setMaximumBarCount(int)
      * @apiNote use #addBar(Duration, ZonedDateTime, Num, Num, Num, Num, Num) to add
      *          bar data directly
+     * @see BarSeries#setMaximumBarCount(int)
      */
     void addBar(Bar bar, boolean replace);
 
     /**
      * Adds a bar at the end of the series.
-     * 
+     *
      * @param timePeriod the {@link Duration} of this bar
      * @param endTime    the {@link ZonedDateTime end time} of this bar
      */
@@ -237,8 +237,8 @@ public interface BarSeries extends Serializable {
     }
 
     /**
-     * Adds a new <code>Bar</code> to the time series.
-     * 
+     * Adds a new <code>Bar</code> to the bar series.
+     *
      * @param endTime    end time of the bar
      * @param openPrice  the open price
      * @param highPrice  the high/max price
@@ -251,8 +251,8 @@ public interface BarSeries extends Serializable {
             Num amount);
 
     /**
-     * Adds a new <code>Bar</code> to the time series.
-     * 
+     * Adds a new <code>Bar</code> to the bar series.
+     *
      * @param endTime    end time of the bar
      * @param openPrice  the open price
      * @param highPrice  the high/max price
@@ -264,8 +264,8 @@ public interface BarSeries extends Serializable {
             Num volume);
 
     /**
-     * Adds a new <code>Bar</code> to the time series.
-     * 
+     * Adds a new <code>Bar</code> to the bar series.
+     *
      * @param timePeriod the time period of the bar
      * @param endTime    end time of the bar
      * @param openPrice  the open price
@@ -280,7 +280,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
-     * 
+     *
      * @param tradeVolume the traded volume
      * @param tradePrice  the price
      */
@@ -290,7 +290,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
-     * 
+     *
      * @param tradeVolume the traded volume
      * @param tradePrice  the price
      */
@@ -300,7 +300,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
-     * 
+     *
      * @param tradeVolume the traded volume
      * @param tradePrice  the price
      */
@@ -308,7 +308,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Adds a price to the last bar
-     * 
+     *
      * @param price the price for the bar
      */
     void addPrice(Num price);
@@ -322,27 +322,27 @@ public interface BarSeries extends Serializable {
     }
 
     /**
-     * Returns a new TimeSeries instance that is a subset of this TimeSeries
+     * Returns a new {@link BarSeries} instance that is a subset of this BarSeries
      * instance. It holds a copy of all {@link Bar bars} between <tt>startIndex</tt>
-     * (inclusive) and <tt>endIndex</tt> (exclusive) of this TimeSeries. The indices
-     * of this TimeSeries and the new subset TimeSeries can be different. I. e.
-     * index 0 of the new TimeSeries will be index <tt>startIndex</tt> of this
-     * TimeSeries. If <tt>startIndex</tt> < this.seriesBeginIndex the new TimeSeries
-     * will start with the first available Bar of this TimeSeries. If
-     * <tt>endIndex</tt> > this.seriesEndIndex the new TimeSeries will end at the
-     * last available Bar of this TimeSeries
-     * 
+     * (inclusive) and <tt>endIndex</tt> (exclusive) of this BarSeries. The indices
+     * of this BarSeries and the new subset BarSeries can be different. I. e. index
+     * 0 of the new BarSeries will be index <tt>startIndex</tt> of this BarSeries.
+     * If <tt>startIndex</tt> < this.seriesBeginIndex the new BarSeries will start
+     * with the first available Bar of this BarSeries. If <tt>endIndex</tt> >
+     * this.seriesEndIndex the new BarSeries will end at the last available Bar of
+     * this BarSeries
+     *
      * @param startIndex the startIndex
      * @param endIndex   the endIndex
-     * @return a new BaseTimeSeries with Bars from startIndex to endIndex-1
+     * @return a new BarSeries with Bars from startIndex to endIndex-1
      * @throws IllegalArgumentException e.g. if endIndex < startIndex
      */
     BarSeries getSubSeries(int startIndex, int endIndex);
 
     /**
      * Transforms a {@link Number} into the {@link Num implementation} used by this
-     * time series
-     * 
+     * bar series
+     *
      * @param number a {@link Number} implementing object.
      * @return the corresponding value as a Num implementing object
      */
@@ -350,8 +350,8 @@ public interface BarSeries extends Serializable {
 
     /**
      * Returns the underlying function to transform a Number into the Num
-     * implementation used by this time series
-     * 
+     * implementation used by this bar series
+     *
      * @return a function Number -> Num
      */
     Function<Number, Num> function();

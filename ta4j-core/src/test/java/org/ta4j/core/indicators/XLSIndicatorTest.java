@@ -54,9 +54,9 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     }
 
     /**
-     * Gets the TimeSeries from the XLS file.
+     * Gets the BarSeries from the XLS file.
      * 
-     * @return TimeSeries from the file
+     * @return BarSeries from the file
      * @throws Exception if getSeries throws IOException or DataFormatException
      */
     public BarSeries getSeries() throws Exception {

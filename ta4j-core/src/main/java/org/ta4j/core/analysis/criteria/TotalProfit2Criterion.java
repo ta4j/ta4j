@@ -45,7 +45,7 @@ public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
     /**
      * Calculates the gross profit value of given trade
      *
-     * @param series a time series
+     * @param series a bar series
      * @param trade  a trade to calculate profit
      * @return the total profit
      */

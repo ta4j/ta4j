@@ -63,7 +63,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     /**
      * Default Constructor that is using the maximum price
      *
-     * @param series   the time series
+     * @param series   the bar series
      * @param barCount the time frame
      */
     public AroonUpIndicator(BarSeries series, int barCount) {

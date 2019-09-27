@@ -46,7 +46,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the time series
+     * @param series   the bar series
      * @param barCount the time frame (normally 20)
      */
     public CCIIndicator(BarSeries series, int barCount) {

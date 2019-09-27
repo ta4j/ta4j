@@ -46,7 +46,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor. (a * x)
-     * 
+     *
      * @param initialAmount the initially traded amount
      * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Order
      *                      order})
@@ -57,7 +57,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor. (a * x + b)
-     * 
+     *
      * @param initialAmount the initially traded amount
      * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Order
      *                      order})
@@ -121,7 +121,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * @param series        the time series
+     * @param series        the bar series
      * @param trade         a trade
      * @param initialAmount the initially traded amount for the trade
      * @return the absolute total cost of all orders in the trade
