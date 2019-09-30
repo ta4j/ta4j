@@ -173,7 +173,7 @@ public class DoubleNum implements Num {
     
     @Override
     public boolean isEqual(Num other) {
-        if(other.isZero() && delegate == 0) {
+        if(delegate == 0 && other.isZero()) {
     		return true;
     	}
         //return !other.isNaN() && compareTo(other) == 0;
