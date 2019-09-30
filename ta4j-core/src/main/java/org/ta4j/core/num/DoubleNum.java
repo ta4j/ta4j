@@ -173,7 +173,11 @@ public class DoubleNum implements Num {
     
     @Override
     public boolean isEqual(Num other) {
-        return !other.isNaN() && compareTo(other) == 0;
+        if(other.isZero() && delegate == 0) {
+    		return true;
+    	}
+        //return !other.isNaN() && compareTo(other) == 0;
+        return !other.isNaN() && Double.doubleToLongBits(delegate) == Double.doubleToLongBits(((DoubleNum) other).delegate);
     }
 
     /**
