@@ -164,16 +164,16 @@ public class DoubleNum implements Num {
         return delegate <= 0;
     }
 
-    @Override
-    public boolean isEqual(Num other) {
-        return !other.isNaN() && delegate == ((DoubleNum) other).delegate;
-    }
-
     public Num log() {
         if (delegate <= 0) {
             return NaN;
         }
         return new DoubleNum(Math.log(delegate));
+    }
+    
+    @Override
+    public boolean isEqual(Num other) {
+        return !other.isNaN() && compareTo(other) == 0;
     }
 
     /**
