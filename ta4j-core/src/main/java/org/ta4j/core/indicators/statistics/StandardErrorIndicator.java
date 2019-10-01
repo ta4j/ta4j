@@ -29,23 +29,23 @@ import org.ta4j.core.num.Num;
 
 /**
  * Standard error indicator.
- * </p>
  */
 public class StandardErrorIndicator extends CachedIndicator<Num> {
 
     private int barCount;
-    
+
     private StandardDeviationIndicator sdev;
 
     /**
      * Constructor.
+     * 
      * @param indicator the indicator
-     * @param barCount the time frame
+     * @param barCount  the time frame
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.barCount = barCount;
-        sdev = new StandardDeviationIndicator(indicator, barCount);
+        this.sdev = new StandardDeviationIndicator(indicator, barCount);
     }
 
     @Override

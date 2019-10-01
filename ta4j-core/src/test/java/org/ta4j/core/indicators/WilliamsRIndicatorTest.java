@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -41,8 +41,8 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
-    private TimeSeries data;
+public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+    private BarSeries data;
 
     public WilliamsRIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -52,27 +52,26 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void setUp() {
 
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96,numFunction));
-        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99,numFunction));
-        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11,numFunction));
-        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04,numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10,numFunction));
-        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10,numFunction));
-        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07,numFunction));
-        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10,numFunction));
-        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14,numFunction));
-        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20,numFunction));
-        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39,numFunction));
-        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35,numFunction));
-        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39,numFunction));
+        bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
+        bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
+        bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, numFunction));
+        bars.add(new MockBar(45.19, 45.14, 45.25, 45.04, numFunction));
+        bars.add(new MockBar(45.12, 45.15, 45.20, 45.10, numFunction));
+        bars.add(new MockBar(45.15, 45.14, 45.20, 45.10, numFunction));
+        bars.add(new MockBar(45.13, 45.10, 45.16, 45.07, numFunction));
+        bars.add(new MockBar(45.12, 45.15, 45.22, 45.10, numFunction));
+        bars.add(new MockBar(45.15, 45.22, 45.27, 45.14, numFunction));
+        bars.add(new MockBar(45.24, 45.43, 45.45, 45.20, numFunction));
+        bars.add(new MockBar(45.43, 45.44, 45.50, 45.39, numFunction));
+        bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, numFunction));
+        bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, numFunction));
 
-        data = new BaseTimeSeries(bars);
+        data = new BaseBarSeries(bars);
     }
 
     @Test
     public void williamsRUsingBarCount5UsingClosePrice() {
-        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5,
-                new HighPriceIndicator(data),
+        WilliamsRIndicator wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new HighPriceIndicator(data),
                 new LowPriceIndicator(data));
 
         assertNumEquals(-47.2222, wr.getValue(4));

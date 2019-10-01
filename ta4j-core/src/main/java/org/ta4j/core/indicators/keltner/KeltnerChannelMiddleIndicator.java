@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
@@ -32,14 +32,16 @@ import org.ta4j.core.num.Num;
 
 /**
  * Keltner Channel (middle line) indicator
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
+ *
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
 public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
 
     private final EMAIndicator emaIndicator;
 
-    public KeltnerChannelMiddleIndicator(TimeSeries series, int barCountEMA) {
+    public KeltnerChannelMiddleIndicator(BarSeries series, int barCountEMA) {
         this(new TypicalPriceIndicator(series), barCountEMA);
     }
 

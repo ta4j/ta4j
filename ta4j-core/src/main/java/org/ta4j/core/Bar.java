@@ -23,7 +23,6 @@
  */
 package org.ta4j.core;
 
-
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
@@ -35,8 +34,9 @@ import java.util.function.Function;
 
 /**
  * End bar of a time period.
- * </p>
- * Bar object is aggregated open/high/low/close/volume/etc. data over a time period.
+ *
+ * Bar object is aggregated open/high/low/close/volume/etc. data over a time
+ * period.
  */
 public interface Bar extends Serializable {
     /**
@@ -91,12 +91,11 @@ public interface Bar extends Serializable {
 
     /**
      * @param timestamp a timestamp
-     * @return true if the provided timestamp is between the begin time and the end time of the current period, false otherwise
+     * @return true if the provided timestamp is between the begin time and the end
+     *         time of the current period, false otherwise
      */
     default boolean inPeriod(ZonedDateTime timestamp) {
-        return timestamp != null
-                && !timestamp.isBefore(getBeginTime())
-                && timestamp.isBefore(getEndTime());
+        return timestamp != null && !timestamp.isBefore(getBeginTime()) && timestamp.isBefore(getEndTime());
     }
 
     /**
@@ -133,20 +132,22 @@ public interface Bar extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
+     * 
      * @param tradeVolume the traded volume
-     * @param tradePrice the price
-     * @deprecated use corresponding function of TimeSeries
+     * @param tradePrice  the price
+     * @deprecated use corresponding function of {@link BarSeries}
      */
     @Deprecated
     default void addTrade(double tradeVolume, double tradePrice, Function<Number, Num> numFunction) {
-        addTrade(numFunction.apply(tradeVolume),numFunction.apply(tradePrice));
+        addTrade(numFunction.apply(tradeVolume), numFunction.apply(tradePrice));
     }
 
     /**
      * Adds a trade at the end of bar period.
+     * 
      * @param tradeVolume the traded volume
-     * @param tradePrice the price
-     * @deprecated use corresponding function of TimeSeries
+     * @param tradePrice  the price
+     * @deprecated use corresponding function of {@link BarSeries}
      */
     @Deprecated
     default void addTrade(String tradeVolume, String tradePrice, Function<Number, Num> numFunction) {
@@ -155,17 +156,17 @@ public interface Bar extends Serializable {
 
     /**
      * Adds a trade at the end of bar period.
+     * 
      * @param tradeVolume the traded volume
-     * @param tradePrice the price
+     * @param tradePrice  the price
      */
     void addTrade(Num tradeVolume, Num tradePrice);
 
-
-    default void addPrice(String price, Function<Number, Num> numFunction){
+    default void addPrice(String price, Function<Number, Num> numFunction) {
         addPrice(numFunction.apply(new BigDecimal(price)));
     }
 
-    default void addPrice(Number price, Function<Number, Num> numFunction){
+    default void addPrice(Number price, Function<Number, Num> numFunction) {
         addPrice(numFunction.apply(price));
     }
 

@@ -28,17 +28,18 @@ import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import java.util.function.Function;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.num.Num;
 
 /**
  * Testing the RWIHighIndicator
  */
-public class RWIHighIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>{
+public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     /**
-     * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel formula needed
+     * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel
+     * formula needed
      */
     private ExternalIndicatorTest xls;
 
@@ -48,8 +49,8 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<TimeSeries,Num>{
     }
 
     @Test
-    public void randomWalkIndexHigh() throws Exception{
-        TimeSeries series = xls.getSeries();
+    public void randomWalkIndexHigh() throws Exception {
+        BarSeries series = xls.getSeries();
         RWIHighIndicator rwih = (RWIHighIndicator) getIndicator(series, 20);
         assertIndicatorEquals(getIndicator(series, 20), rwih);
     }

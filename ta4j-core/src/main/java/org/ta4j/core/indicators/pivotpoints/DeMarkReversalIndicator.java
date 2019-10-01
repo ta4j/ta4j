@@ -33,33 +33,36 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * DeMark Reversal Indicator.
- * </p>
- * @see <a href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
- *     http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
+ *
+ * @see <a href=
+ *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
+ *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points</a>
  */
 public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     private final DeMarkPivotPointIndicator pivotPointIndicator;
     private final DeMarkPivotLevel level;
-    private final Num TWO;
+    private final Num two;
 
-    public enum DeMarkPivotLevel{
-        RESISTANCE,
-        SUPPORT,
+    public enum DeMarkPivotLevel {
+        RESISTANCE, SUPPORT,
     }
 
     /**
      * Constructor.
-     * <p>
+     *
      * Calculates the DeMark reversal for the corresponding pivot level
-     * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this reversal
-     * @param level the {@link DeMarkPivotLevel} for this reversal (RESISTANT, SUPPORT)
+     * 
+     * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this
+     *                            reversal
+     * @param level               the {@link DeMarkPivotLevel} for this reversal
+     *                            (RESISTANT, SUPPORT)
      */
     public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
         super(pivotPointIndicator);
         this.pivotPointIndicator = pivotPointIndicator;
-        this.level =level;
-        TWO = numOf(2);
+        this.level = level;
+        this.two = numOf(2);
     }
 
     @Override
@@ -67,10 +70,9 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
         Num x = pivotPointIndicator.getValue(index).multipliedBy(numOf(4));
         Num result;
 
-        if(level == DeMarkPivotLevel.SUPPORT){
+        if (level == DeMarkPivotLevel.SUPPORT) {
             result = calculateSupport(x, index);
-        }
-        else{
+        } else {
             result = calculateResistance(x, index);
         }
 
@@ -80,29 +82,29 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     private Num calculateResistance(Num x, int index) {
         List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
-        if (barsOfPreviousPeriod.isEmpty()){
+        if (barsOfPreviousPeriod.isEmpty()) {
             return NaN;
         }
-        Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
         Num low = bar.getLowPrice();
-        for(int i: barsOfPreviousPeriod){
-            low = getTimeSeries().getBar(i).getLowPrice().min(low);
+        for (int i : barsOfPreviousPeriod) {
+            low = getBarSeries().getBar(i).getLowPrice().min(low);
         }
 
-        return x.dividedBy(TWO).minus(low);
+        return x.dividedBy(two).minus(low);
     }
 
-    private Num calculateSupport(Num x, int index){
-       List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
-       if (barsOfPreviousPeriod.isEmpty()) {
-           return NaN;
-       }
-       Bar bar = getTimeSeries().getBar(barsOfPreviousPeriod.get(0));
-       Num high = bar.getHighPrice();
-       for(int i: barsOfPreviousPeriod){
-           high = getTimeSeries().getBar(i).getHighPrice().max(high);
-       }
+    private Num calculateSupport(Num x, int index) {
+        List<Integer> barsOfPreviousPeriod = pivotPointIndicator.getBarsOfPreviousPeriod(index);
+        if (barsOfPreviousPeriod.isEmpty()) {
+            return NaN;
+        }
+        Bar bar = getBarSeries().getBar(barsOfPreviousPeriod.get(0));
+        Num high = bar.getHighPrice();
+        for (int i : barsOfPreviousPeriod) {
+            high = getBarSeries().getBar(i).getHighPrice().max(high);
+        }
 
-       return x.dividedBy(TWO).minus(high);
-   }
+        return x.dividedBy(two).minus(high);
+    }
 }

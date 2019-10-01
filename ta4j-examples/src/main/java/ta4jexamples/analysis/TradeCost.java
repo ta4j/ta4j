@@ -23,7 +23,14 @@
  */
 package ta4jexamples.analysis;
 
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Order;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.LinearBorrowingCostModel;
 import org.ta4j.core.cost.LinearTransactionCostModel;
@@ -43,8 +50,8 @@ public class TradeCost {
 
     public static void main(String[] args) {
 
-        // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Getting the bar series
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the short selling trading strategy
         Strategy strategy = buildShortSellingMomentumStrategy(series);
 
@@ -55,22 +62,24 @@ public class TradeCost {
         CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
 
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series, transactionCostModel, borrowingCostModel);
+        BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
         Order.OrderType entryOrder = Order.OrderType.SELL;
         TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
 
         DecimalFormat df = new DecimalFormat("##.##");
         System.out.println("------------ Borrowing Costs ------------");
-        tradingRecord.getTrades().forEach(trade -> System.out.println("Borrowing cost for " +
-                df.format(trade.getExit().getIndex()-trade.getEntry().getIndex()) + " periods is: " +
-                df.format(trade.getHoldingCost().doubleValue())));
+        tradingRecord.getTrades()
+                .forEach(trade -> System.out.println(
+                        "Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
+                                + " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
         System.out.println("------------ Transaction Costs ------------");
-        tradingRecord.getTrades().forEach(trade -> System.out.println("Transaction cost for selling: " +
-                df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: " +
-                df.format(trade.getExit().getCost().doubleValue())));
+        tradingRecord.getTrades()
+                .forEach(trade -> System.out.println("Transaction cost for selling: "
+                        + df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
+                        + df.format(trade.getExit().getCost().doubleValue())));
     }
 
-    private static Strategy buildShortSellingMomentumStrategy(TimeSeries series) {
+    private static Strategy buildShortSellingMomentumStrategy(BarSeries series) {
         Indicator<Num> closingPrices = new ClosePriceIndicator(series);
         SMAIndicator shortEma = new SMAIndicator(closingPrices, 10);
         SMAIndicator longEma = new SMAIndicator(closingPrices, 50);

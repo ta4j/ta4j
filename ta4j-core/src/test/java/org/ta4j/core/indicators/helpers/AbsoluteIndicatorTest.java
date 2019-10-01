@@ -24,9 +24,9 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 
@@ -42,10 +42,12 @@ public class AbsoluteIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     @Test
     public void constantIndicators() {
-        TimeSeries series = new BaseTimeSeries();
-        AbsoluteIndicator positiveInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(1337)));
+        BarSeries series = new BaseBarSeries();
+        AbsoluteIndicator positiveInd = new AbsoluteIndicator(
+                new ConstantIndicator<Num>(series, numFunction.apply(1337)));
         AbsoluteIndicator zeroInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(0)));
-        AbsoluteIndicator negativeInd = new AbsoluteIndicator(new ConstantIndicator<Num>(series, numFunction.apply(-42.42)));
+        AbsoluteIndicator negativeInd = new AbsoluteIndicator(
+                new ConstantIndicator<Num>(series, numFunction.apply(-42.42)));
         for (int i = 0; i < 10; i++) {
             assertNumEquals(1337, positiveInd.getValue(i));
             assertNumEquals(0, zeroInd.getValue(i));

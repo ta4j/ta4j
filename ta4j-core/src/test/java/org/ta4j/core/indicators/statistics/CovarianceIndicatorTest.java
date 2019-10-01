@@ -25,9 +25,9 @@ package org.ta4j.core.indicators.statistics;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTimeSeriesBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -49,29 +49,29 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Before
     public void setUp() {
-        TimeSeries data = new BaseTimeSeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         int i = 20;
         // close, volume
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),6,100,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),7,105,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9,130,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11,150,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),10, 130,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 95,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),13,120,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),15,180,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),12,160,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 150,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 200,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 150,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),4, 85,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),3, 70,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),5, 90,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),8, 100,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),9, 95,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--),11, 110,numFunction));
-        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i),10, 95,numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 6, 100, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 7, 105, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 130, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 10, 130, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 95, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 13, 120, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 15, 180, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 12, 160, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 200, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 150, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 4, 85, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 3, 70, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 5, 90, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 8, 100, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 9, 95, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 11, 110, numFunction));
+        data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i), 10, 95, numFunction));
         close = new ClosePriceIndicator(data);
         volume = new VolumeIndicator(data, 2);
     }

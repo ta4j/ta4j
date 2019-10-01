@@ -29,7 +29,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -46,9 +46,8 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithGainTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(2, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
@@ -57,9 +56,8 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateOnlyWithLossTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(0, series), Order.sellAt(1, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
@@ -68,9 +66,8 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateProfitWithTradesThatStartSelling() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.sellAt(0, series), Order.buyAt(1, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
@@ -79,7 +76,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoTradesShouldReturn1() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(1d, profit.calculate(series, new BaseTradingRecord()));
@@ -87,7 +84,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOpenedTradeShouldReturn1() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion profit = getCriterion();
         Trade trade = new Trade();
         assertNumEquals(1d, profit.calculate(series, trade));

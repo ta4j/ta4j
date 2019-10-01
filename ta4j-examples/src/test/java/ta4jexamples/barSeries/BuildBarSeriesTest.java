@@ -21,14 +21,14 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package ta4jexamples.bots;
+package ta4jexamples.barSeries;
 
 import org.junit.Test;
 
-public class TradingBotOnMovingTimeSeriesTest {
+public class BuildBarSeriesTest {
 
     @Test
-    public void test() throws InterruptedException {
-        TradingBotOnMovingTimeSeries.main(null);
+    public void test() {
+        BuildBarSeries.main(null);
     }
 }

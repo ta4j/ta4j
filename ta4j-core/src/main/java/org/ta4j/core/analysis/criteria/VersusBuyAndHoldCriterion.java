@@ -28,8 +28,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Versus "buy and hold" criterion.
- * </p>
- * Compares the value of a provided {@link AnalysisCriterion criterion} with the value of a {@link BuyAndHoldCriterion "buy and hold" criterion}.
+ *
+ * Compares the value of a provided {@link AnalysisCriterion criterion} with the
+ * value of a {@link BuyAndHoldCriterion "buy and hold" criterion}.
  */
 public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
@@ -37,6 +38,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
+     * 
      * @param criterion an analysis criterion to be compared
      */
     public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
@@ -44,7 +46,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());
@@ -53,7 +55,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());

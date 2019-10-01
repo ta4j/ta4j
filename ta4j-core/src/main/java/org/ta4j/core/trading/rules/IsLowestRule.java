@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-lowest-indicator rule.
- * </p>
+ *
  * Satisfied when the value of the {@link Indicator indicator} is the lowest
  * within the barCount.
  */

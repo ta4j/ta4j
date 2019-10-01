@@ -25,16 +25,16 @@ package org.ta4j.core.indicators;
 
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>{
+public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public WMAIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -42,7 +42,7 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void calculate() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
+        MockBarSeries series = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
 
@@ -53,10 +53,10 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertNumEquals(4.3333, wmaIndicator.getValue(4));
         assertNumEquals(5.3333, wmaIndicator.getValue(5));
     }
-    
+
     @Test
     public void wmaWithBarCountGreaterThanSeriesSize() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
+        MockBarSeries series = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d);
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
 
@@ -70,17 +70,11 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void wmaUsingBarCount9UsingClosePrice() {
-        // Example from http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
-        TimeSeries data = new MockTimeSeries(numFunction,
-                84.53, 87.39, 84.55,
-                82.83, 82.58, 83.74,
-                83.33, 84.57, 86.98,
-                87.10, 83.11, 83.60,
-                83.66, 82.76, 79.22,
-                79.03, 78.18, 77.42,
-                74.65, 77.48, 76.87
-        );
-        
+        // Example from
+        // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
+        BarSeries data = new MockBarSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98,
+                87.10, 83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);
+
         WMAIndicator wma = new WMAIndicator(new ClosePriceIndicator(data), 9);
         assertNumEquals(84.4958, wma.getValue(8));
         assertNumEquals(85.0158, wma.getValue(9));

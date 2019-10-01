@@ -48,11 +48,11 @@ public class TradingRecordTest {
         assertTrue(openedRecord.getCurrentTrade().isOpened());
         assertTrue(closedRecord.getCurrentTrade().isNew());
     }
-    
+
     @Test
     public void operate() {
         TradingRecord record = new BaseTradingRecord();
-        
+
         record.operate(1);
         assertTrue(record.getCurrentTrade().isOpened());
         assertEquals(0, record.getTradeCount());
@@ -62,7 +62,7 @@ public class TradingRecordTest {
         assertNull(record.getLastOrder(Order.OrderType.SELL));
         assertEquals(Order.buyAt(1, NaN, NaN), record.getLastEntry());
         assertNull(record.getLastExit());
-        
+
         record.operate(3);
         assertTrue(record.getCurrentTrade().isNew());
         assertEquals(1, record.getTradeCount());
@@ -72,7 +72,7 @@ public class TradingRecordTest {
         assertEquals(Order.sellAt(3, NaN, NaN), record.getLastOrder(Order.OrderType.SELL));
         assertEquals(Order.buyAt(1, NaN, NaN), record.getLastEntry());
         assertEquals(Order.sellAt(3, NaN, NaN), record.getLastExit());
-        
+
         record.operate(5);
         assertTrue(record.getCurrentTrade().isOpened());
         assertEquals(1, record.getTradeCount());
@@ -83,7 +83,7 @@ public class TradingRecordTest {
         assertEquals(Order.buyAt(5, NaN, NaN), record.getLastEntry());
         assertEquals(Order.sellAt(3, NaN, NaN), record.getLastExit());
     }
-    
+
     @Test
     public void isClosed() {
         assertTrue(emptyRecord.isClosed());

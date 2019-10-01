@@ -27,10 +27,13 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Rate of change (ROCIndicator) indicator.
- * Aka. Momentum
- * </p>
- * The ROCIndicator calculation compares the current value with the value "n" periods ago.
+ * Rate of change (ROCIndicator) indicator. Aka. Momentum
+ *
+ * The ROCIndicator calculation compares the current value with the value "n"
+ * periods ago.
+ *
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/p/pricerateofchange.asp">https://www.investopedia.com/terms/p/pricerateofchange.asp</a>
  */
 public class ROCIndicator extends CachedIndicator<Num> {
 

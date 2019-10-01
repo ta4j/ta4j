@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Simple boolean transform indicator.
- * </p>
+ *
  * Transforms any decimal indicator to a boolean indicator by using common
  * logical operators.
  */
@@ -78,8 +78,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      */
     public enum BooleanTransformSimpleType {
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isNaN().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNaN().
          */
         isNaN,
 
@@ -122,9 +121,9 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
+     * @param indicator   the indicator
      * @param coefficient the value for transformation
-     * @param type the type of the transformation
+     * @param type        the type of the transformation
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
         super(indicator);
@@ -137,7 +136,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      * Constructor.
      * 
      * @param indicator the indicator
-     * @param type the type of the transformation
+     * @param type      the type of the transformation
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
         super(indicator);

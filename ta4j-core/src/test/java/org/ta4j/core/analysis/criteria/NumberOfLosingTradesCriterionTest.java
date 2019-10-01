@@ -29,7 +29,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -46,16 +46,15 @@ public class NumberOfLosingTradesCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         assertNumEquals(0, getCriterion().calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithTwoTrades() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Order.buyAt(1, series), Order.sellAt(3, series),
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1, series), Order.sellAt(3, series),
                 Order.buyAt(3, series), Order.sellAt(4, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
@@ -63,7 +62,7 @@ public class NumberOfLosingTradesCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithOneTrade() {
-        MockTimeSeries series = new MockTimeSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         Trade trade = new Trade(Order.buyAt(1, series), Order.sellAt(3, series));
 
         assertNumEquals(1, getCriterion().calculate(series, trade));

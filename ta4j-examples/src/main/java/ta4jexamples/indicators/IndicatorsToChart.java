@@ -33,8 +33,8 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
@@ -53,16 +53,18 @@ import java.util.Date;
 public class IndicatorsToChart {
 
     /**
-     * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * @param barseries the ta4j time series
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
      * @param indicator the indicator
-     * @param name the name of the chart time series
+     * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator, String name) {
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
+            String name) {
         org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < barseries.getBarCount(); i++) {
-            Bar bar = barseries.getBar(i);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
             chartTimeSeries.add(new Day(Date.from(bar.getEndTime().toInstant())), indicator.getValue(i).doubleValue());
         }
         return chartTimeSeries;
@@ -70,6 +72,7 @@ public class IndicatorsToChart {
 
     /**
      * Displays a chart in a frame.
+     *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -89,12 +92,12 @@ public class IndicatorsToChart {
     public static void main(String[] args) {
 
         /*
-          Getting time series
+         * Getting bar series
          */
-        TimeSeries series = CsvBarsLoader.loadAppleIncSeries();
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         /*
-          Creating indicators
+         * Creating indicators
          */
         // Close price
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
@@ -107,31 +110,30 @@ public class IndicatorsToChart {
         BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, sd14);
 
         /*
-          Building chart dataset
+         * Building chart dataset
          */
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        dataset.addSeries(buildChartTimeSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
-        dataset.addSeries(buildChartTimeSeries(series, lowBBand, "Low Bollinger Band"));
-        dataset.addSeries(buildChartTimeSeries(series, upBBand, "High Bollinger Band"));
+        dataset.addSeries(buildChartBarSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
+        dataset.addSeries(buildChartBarSeries(series, lowBBand, "Low Bollinger Band"));
+        dataset.addSeries(buildChartBarSeries(series, upBBand, "High Bollinger Band"));
 
         /*
-          Creating the chart
+         * Creating the chart
          */
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                "Apple Inc. 2013 Close Prices", // title
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Apple Inc. 2013 Close Prices", // title
                 "Date", // x-axis label
                 "Price Per Unit", // y-axis label
                 dataset, // data
                 true, // create legend?
                 true, // generate tooltips?
                 false // generate URLs?
-                );
+        );
         XYPlot plot = (XYPlot) chart.getPlot();
         DateAxis axis = (DateAxis) plot.getDomainAxis();
         axis.setDateFormatOverride(new SimpleDateFormat("yyyy-MM-dd"));
 
         /*
-          Displaying the chart
+         * Displaying the chart
          */
         displayChart(chart);
     }

@@ -26,9 +26,9 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
@@ -37,7 +37,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RAVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private TimeSeries data;
+    private BarSeries data;
 
     public RAVIIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -46,19 +46,17 @@ public class RAVIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     @Before
     public void setUp() {
 
-        data = new MockTimeSeries(numFunction,
-                110.00, 109.27, 104.69, 107.07, 107.92,
-                107.95, 108.70, 107.97, 106.09, 106.03,
-                108.65, 109.54, 112.26, 114.38, 117.94
-            
+        data = new MockBarSeries(numFunction, 110.00, 109.27, 104.69, 107.07, 107.92, 107.95, 108.70, 107.97, 106.09,
+                106.03, 108.65, 109.54, 112.26, 114.38, 117.94
+
         );
     }
-    
+
     @Test
     public void ravi() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         RAVIIndicator ravi = new RAVIIndicator(closePrice, 3, 8);
-        
+
         assertNumEquals(0, ravi.getValue(0));
         assertNumEquals(0, ravi.getValue(1));
         assertNumEquals(0, ravi.getValue(2));

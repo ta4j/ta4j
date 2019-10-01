@@ -26,11 +26,11 @@ package org.ta4j.core.indicators.volume;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -41,7 +41,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    TimeSeries series;
+    BarSeries series;
 
     public ROCVIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -49,18 +49,18 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Before
     public void setUp() {
-            List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(1355.69, 1000,numFunction));
-        bars.add(new MockBar(1325.51, 3000,numFunction));
-        bars.add(new MockBar(1335.02, 3500,numFunction));
-        bars.add(new MockBar(1313.72, 2200,numFunction));
-        bars.add(new MockBar(1319.99, 2300,numFunction));
-        bars.add(new MockBar(1331.85, 200,numFunction));
-        bars.add(new MockBar(1329.04, 2700,numFunction));
-        bars.add(new MockBar(1362.16, 5000,numFunction));
-        bars.add(new MockBar(1365.51, 1000,numFunction));
-        bars.add(new MockBar(1374.02, 2500,numFunction));
-        series = new MockTimeSeries(bars);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(1355.69, 1000, numFunction));
+        bars.add(new MockBar(1325.51, 3000, numFunction));
+        bars.add(new MockBar(1335.02, 3500, numFunction));
+        bars.add(new MockBar(1313.72, 2200, numFunction));
+        bars.add(new MockBar(1319.99, 2300, numFunction));
+        bars.add(new MockBar(1331.85, 200, numFunction));
+        bars.add(new MockBar(1329.04, 2700, numFunction));
+        bars.add(new MockBar(1362.16, 5000, numFunction));
+        bars.add(new MockBar(1365.51, 1000, numFunction));
+        bars.add(new MockBar(1374.02, 2500, numFunction));
+        series = new MockBarSeries(bars);
     }
 
     @Test
