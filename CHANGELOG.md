@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
+- :tada: **Enhancement** Added getters for AroonDownIndicator and AroonUpIndicator in AroonOscillatorIndicator
 - :tada: **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
 - :tada: **Enhancement** Added constructor in BaseBar with trades property
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
