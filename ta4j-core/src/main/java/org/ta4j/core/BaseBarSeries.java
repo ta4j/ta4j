@@ -352,7 +352,7 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public int getEndIndex() {
-        return seriesEndIndex;
+        return seriesEndIndex - removedBarsCount;
     }
 
     @Override

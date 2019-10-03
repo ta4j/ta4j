@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import org.hamcrest.core.IsEqual;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -44,6 +45,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -234,7 +236,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         // After
         assertEquals(0, defaultSeries.getBeginIndex());
-        assertEquals(5, defaultSeries.getEndIndex());
+        assertEquals(2, defaultSeries.getEndIndex());
         assertEquals(3, defaultSeries.getBarCount());
     }
 
@@ -325,5 +327,22 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void wrongBarTypeBigDecimal() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
         series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DoubleNum::valueOf));
+    }
+
+    @Test
+    public void SubSeriesOfMaxBarCountSeriesTest() {
+        final BarSeries series = new BaseBarSeriesBuilder()
+                .withNumTypeOf(numFunction)
+                .withName("Series with maxBar count")
+                .withMaxBarCount(20)
+                .build();
+        final int timespan = 5;
+
+        IntStream.range(0, 100).forEach(i -> {
+            series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i),5,7,1,5,5);
+            int start = series.getEndIndex() - (timespan + 1);
+            int end = series.getEndIndex();
+            assertEquals(series.getSubSeries(start, end).getBarCount(), end - Math.max(series.getBeginIndex(), start));
+        });
     }
 }
