@@ -19,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PivotPointIndicator**: fixed possible npe if first bar is not in same period
 - **`IchimokuChikouSpanIndicator`**: fixed calculations - applied correct formula.
 - **CloseLocationValueIndicator**: fixed special case, return zero instead of NaN if high price == low price
+- **BaseBarSeries**: fixed `getEndIndex()` method if series has a `maxBarCount`
 
 ### Changed
 - **PrecisionNum**: improve performance for methods isZero/isPositive/isPositiveOrZero/isNegative/isNegativeOrZero.
