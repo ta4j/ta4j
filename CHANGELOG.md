@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - :tada: **Enhancement** Added floor() and ceil() to Num.class
+- :tada: **Enhancement** Added getters for AroonDownIndicator and AroonUpIndicator in AroonOscillatorIndicator
 - :tada: **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
 - :tada: **Enhancement** Added constructor in BaseBar with trades property
 - :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
