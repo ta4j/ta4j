@@ -307,7 +307,6 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
         TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
-                                                                                               // same
 
         Num adding2 = numOf(0);
         defaultSeries.addPrice(adding2);
@@ -315,7 +314,6 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
         TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
-                                                                                               // same
     }
 
     /**
@@ -354,20 +352,14 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         IntStream.range(0, 100).forEach(i -> {
             series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i), 5, 7, 1, 5, i);
-            assertTrue(series.getBarCount() <= 20);
-            int startIndex = Math.max(series.getEndIndex() - timespan, 0);
-            int endIndex = series.getEndIndex();
+            int startIndex = Math.max(0, series.getEndIndex() - timespan + 1);
+            int endIndex = i + 1;
+            final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+            assertEquals(subSeries.getBarCount(), endIndex - startIndex);
 
-            if (startIndex < endIndex) {
-                final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
-                if (i < 5) {
-                    assertTrue(subSeries.getBarCount() < 5);
-                } else {
-                    assertEquals(5, subSeries.getBarCount());
-                    TestUtils.assertNumEquals(i, series.getBar(series.getEndIndex()).getVolume());
-                }
-                System.out.println(String.format("SubSeries #%s of size %s created.", i, subSeries.getBarCount()));
-            }
+            final Bar subSeriesLastBar = subSeries.getLastBar();
+            final Bar seriesLastBar = series.getLastBar();
+            assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
         });
     }
 }
