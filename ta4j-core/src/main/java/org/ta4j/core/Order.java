@@ -103,9 +103,7 @@ public class Order implements Serializable {
      */
     private Num cost;
 
-    /**
-     * Model for the costs
-     */
+    /** The cost model for order execution */
     private CostModel costModel;
 
     /**
@@ -133,12 +131,12 @@ public class Order implements Serializable {
 
     /**
      * Constructor.
-     *
-     * @param index                the index the order is executed
-     * @param series               the bar series
-     * @param type                 the type of the order
-     * @param amount               the amount to be (or that was) ordered
-     * @param transactionCostModel the transaction cost model
+     * 
+     * @param index  the index the order is executed
+     * @param series the bar series
+     * @param type   the type of the order
+     * @param amount the amount to be (or that was) ordered
+     * @param transactionCostModel the cost model for order execution cost
      */
     protected Order(int index, BarSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
         this.type = type;
@@ -177,7 +175,7 @@ public class Order implements Serializable {
      * @param type                 the type of the order
      * @param pricePerAsset        the pricePerAsset for the order
      * @param amount               the amount to be (or that was) ordered
-     * @param transactionCostModel Cost model for order execution cost
+     * @param transactionCostModel the cost model for order execution
      */
     protected Order(int index, OrderType type, Num pricePerAsset, Num amount, CostModel transactionCostModel) {
         this.type = type;
@@ -194,6 +192,9 @@ public class Order implements Serializable {
         return type;
     }
 
+    /**
+     * @return the costs of the order
+     */
     public Num getCost() {
         return cost;
     }
@@ -226,6 +227,9 @@ public class Order implements Serializable {
         return amount;
     }
 
+    /**
+     * @return the cost model for order execution
+     */
     public CostModel getCostModel() {
         return costModel;
     }
@@ -235,7 +239,7 @@ public class Order implements Serializable {
      *
      * @param pricePerAsset        raw price of the asset
      * @param amount               amount of assets ordered
-     * @param transactionCostModel model of transaction cost
+     * @param transactionCostModel the cost model for order execution
      */
     private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel) {
         this.costModel = transactionCostModel;
@@ -271,24 +275,15 @@ public class Order implements Serializable {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Order other = (Order) obj;
-        if (this.type != other.type) {
-            return false;
-        }
-        if (this.index != other.index) {
-            return false;
-        }
-        return (this.pricePerAsset == other.pricePerAsset
-                || (this.pricePerAsset != null && this.pricePerAsset.equals(other.pricePerAsset)))
-                && (this.amount == other.amount || (this.amount != null && this.amount.equals(other.amount)));
-    }
+	  public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null || getClass() != obj.getClass()) return false;
+		final Order other = (Order) obj;
+		return Objects.equals(type, other.type) 
+			&& Objects.equals(index, other.index)
+			&& Objects.equals(pricePerAsset, other.pricePerAsset) 
+			&& Objects.equals(amount, other.amount);
+	  }
 
     @Override
     public String toString() {
@@ -308,6 +303,7 @@ public class Order implements Serializable {
      * @param index  the index the order is executed
      * @param price  the price for the order
      * @param amount the amount to be (or that was) bought
+     * @param transactionCostModel the cost model for order execution
      * @return a BUY order
      */
     public static Order buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
@@ -338,6 +334,7 @@ public class Order implements Serializable {
      * @param index  the index the order is executed
      * @param series the bar series
      * @param amount the amount to be (or that was) bought
+     * @param transactionCostModel the cost model for order execution
      * @return a BUY order
      */
     public static Order buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
@@ -367,6 +364,7 @@ public class Order implements Serializable {
      * @param index  the index the order is executed
      * @param price  the price for the order
      * @param amount the amount to be (or that was) sold
+     * @param transactionCostModel the cost model for order execution
      * @return a SELL order
      */
     public static Order sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
@@ -387,6 +385,7 @@ public class Order implements Serializable {
      * @param index  the index the order is executed
      * @param series the bar series
      * @param amount the amount to be (or that was) bought
+     * @param transactionCostModel the cost model for order execution
      * @return a SELL order
      */
     public static Order sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {

@@ -48,7 +48,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Name for unnamed series
      */
-    private static final String UNNAMED_SERIES_NAME = "unamed_series";
+    private static final String UNNAMED_SERIES_NAME = "unnamed_series";
     /**
      * Num type function
      **/
