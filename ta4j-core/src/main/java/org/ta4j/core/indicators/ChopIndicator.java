@@ -1,49 +1,49 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * The "CHOP" index is used to indicate side-ways markets
- * see {@link https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)}
- * 100++ * LOG10( SUM(ATR(1), n) / ( MaxHi(n) - MinLo(n) ) ) / LOG10(n)
- * n = User defined period length.
- * LOG10(n) = base-10 LOG of n
- * ATR(1) = Average True Range (Period of 1)
- * SUM(ATR(1), n) = Sum of the Average True Range over past n bars
- * MaxHi(n) = The highest high over past n bars
- * <p>
- * ++ usually this index is between 0 and 100, but could be scaled differently by the 'scaleTo' arg of the constructor
+ * The "CHOP" index is used to indicate side-ways markets see <a href=
+ * "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
+ * 100++ * LOG10( SUM(ATR(1), n) / ( MaxHi(n) - MinLo(n) ) ) / LOG10(n) n = User
+ * defined period length. LOG10(n) = base-10 LOG of n ATR(1) = Average True
+ * Range (Period of 1) SUM(ATR(1), n) = Sum of the Average True Range over past
+ * n bars MaxHi(n) = The highest high over past n bars
  *
- * @apiNote Minimal deviations in last decimal places possible. During the calculations this indicator converts {@link Num Decimal
- * /BigDecimal} to to {@link Double double}
+ * ++ usually this index is between 0 and 100, but could be scaled differently
+ * by the 'scaleTo' arg of the constructor
+ *
+ * @apiNote Minimal deviations in last decimal places possible. During the
+ *          calculations this indicator converts {@link Num Decimal /BigDecimal}
+ *          to to {@link Double double}
  */
 public class ChopIndicator extends CachedIndicator<Num> {
 
@@ -57,15 +57,16 @@ public class ChopIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param timeseries  the time series or @param timeseries the {@link TimeSeries}
+     * @param barSeries   the bar series {@link BarSeries}
      * @param ciTimeFrame time-frame often something like '14'
-     * @param scaleTo     maximum value to scale this oscillator, usually '1' or '100'
+     * @param scaleTo     maximum value to scale this oscillator, usually '1' or
+     *                    '100'
      */
-    public ChopIndicator(TimeSeries timeseries, int ciTimeFrame, int scaleTo) {
-        super(timeseries);
-        this.atrIndicator = new ATRIndicator(timeseries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new HighPriceIndicator(timeseries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new LowPriceIndicator(timeseries), ciTimeFrame);
+    public ChopIndicator(BarSeries barSeries, int ciTimeFrame, int scaleTo) {
+        super(barSeries);
+        this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
+        hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
+        lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
         this.LOG10n = numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = numOf(scaleTo);

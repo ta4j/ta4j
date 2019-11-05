@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core;
 
 import org.junit.Before;
@@ -48,11 +48,11 @@ public class TradingRecordTest {
         assertTrue(openedRecord.getCurrentTrade().isOpened());
         assertTrue(closedRecord.getCurrentTrade().isNew());
     }
-    
+
     @Test
     public void operate() {
         TradingRecord record = new BaseTradingRecord();
-        
+
         record.operate(1);
         assertTrue(record.getCurrentTrade().isOpened());
         assertEquals(0, record.getTradeCount());
@@ -62,7 +62,7 @@ public class TradingRecordTest {
         assertNull(record.getLastOrder(Order.OrderType.SELL));
         assertEquals(Order.buyAt(1, NaN, NaN), record.getLastEntry());
         assertNull(record.getLastExit());
-        
+
         record.operate(3);
         assertTrue(record.getCurrentTrade().isNew());
         assertEquals(1, record.getTradeCount());
@@ -72,7 +72,7 @@ public class TradingRecordTest {
         assertEquals(Order.sellAt(3, NaN, NaN), record.getLastOrder(Order.OrderType.SELL));
         assertEquals(Order.buyAt(1, NaN, NaN), record.getLastEntry());
         assertEquals(Order.sellAt(3, NaN, NaN), record.getLastExit());
-        
+
         record.operate(5);
         assertTrue(record.getCurrentTrade().isOpened());
         assertEquals(1, record.getTradeCount());
@@ -83,7 +83,7 @@ public class TradingRecordTest {
         assertEquals(Order.buyAt(5, NaN, NaN), record.getLastEntry());
         assertEquals(Order.sellAt(3, NaN, NaN), record.getLastExit());
     }
-    
+
     @Test
     public void isClosed() {
         assertTrue(emptyRecord.isClosed());

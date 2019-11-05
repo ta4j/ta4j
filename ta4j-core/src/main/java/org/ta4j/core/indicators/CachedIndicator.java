@@ -1,30 +1,30 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TimeSeries;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,41 +32,46 @@ import java.util.List;
 
 /**
  * Cached {@link Indicator indicator}.
- * </p>
- * Caches the constructor of the indicator. Avoid to calculate the same index of the indicator twice.
+ *
+ * Caches the constructor of the indicator. Avoid to calculate the same index of
+ * the indicator twice.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-	private static final long serialVersionUID = 7505855220893125595L;
+    private static final long serialVersionUID = 7505855220893125595L;
 
-	/** List of cached results */
+    /**
+     * List of cached results
+     */
     private final List<T> results = new ArrayList<T>();
 
     /**
-     * Should always be the index of the last result in the results list.
-     * I.E. the last calculated result.
+     * Should always be the index of the last result in the results list. I.E. the
+     * last calculated result.
      */
     protected int highestResultIndex = -1;
 
     /**
      * Constructor.
-     * @param series the related time series
+     *
+     * @param series the related bar series
      */
-    public CachedIndicator(TimeSeries series) {
+    public CachedIndicator(BarSeries series) {
         super(series);
     }
 
     /**
      * Constructor.
-     * @param indicator a related indicator (with a time series)
+     *
+     * @param indicator a related indicator (with a bar series)
      */
-    public CachedIndicator(Indicator indicator) {
-        this(indicator.getTimeSeries());
+    public CachedIndicator(Indicator<?> indicator) {
+        this(indicator.getBarSeries());
     }
 
     @Override
     public T getValue(int index) {
-        TimeSeries series = getTimeSeries();
+        BarSeries series = getBarSeries();
         if (series == null) {
             // Series is null; the indicator doesn't need cache.
             // (e.g. simple computation of the value)
@@ -104,7 +109,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     // Result not calculated yet
                     highestResultIndex = index;
                     result = calculate(index);
-                    results.set(results.size()-1, result);
+                    results.set(results.size() - 1, result);
                 } else {
                     // Result covered by current cache
                     int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
@@ -128,12 +133,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Increases the size of cached results buffer.
-     * @param index the index to increase length to
+     *
+     * @param index     the index to increase length to
      * @param maxLength the maximum length of the results buffer
      */
     private void increaseLengthTo(int index, int maxLength) {
         if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index-highestResultIndex, maxLength);
+            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
             if (newResultsCount == maxLength) {
                 results.clear();
                 results.addAll(Collections.nCopies(maxLength, null));
@@ -144,13 +150,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         } else {
             // First use of cache
             assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index+1, maxLength), null));
+            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
         }
     }
 
     /**
-     * Removes the N first results which exceed the maximum bar count.
-     * (i.e. keeps only the last maximumResultCount results)
+     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
+     * only the last maximumResultCount results)
+     *
      * @param maximumResultCount the number of results to keep
      */
     private void removeExceedingResults(int maximumResultCount) {

@@ -1,31 +1,30 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Base implementation of a {@link Strategy}.
@@ -49,25 +48,29 @@ public class BaseStrategy implements Strategy {
 
     /**
      * The unstable period (number of bars).<br>
-     * During the unstable period of the strategy any order placement will be cancelled.<br>
+     * During the unstable period of the strategy any order placement will be
+     * cancelled.<br>
      * I.e. no entry/exit signal will be fired before index == unstablePeriod.
      */
     private int unstablePeriod;
 
     /**
      * Constructor.
+     * 
      * @param entryRule the entry rule
-     * @param exitRule the exit rule
+     * @param exitRule  the exit rule
      */
     public BaseStrategy(Rule entryRule, Rule exitRule) {
         this(null, entryRule, exitRule, 0);
     }
 
-     /**
+    /**
      * Constructor.
-     * @param entryRule the entry rule
-     * @param exitRule the exit rule
-     * @param unstablePeriod strategy will ignore possible signals at <code>index</code> < <code>unstablePeriod</code>
+     * 
+     * @param entryRule      the entry rule
+     * @param exitRule       the exit rule
+     * @param unstablePeriod strategy will ignore possible signals at
+     *                       <code>index</code> < <code>unstablePeriod</code>
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
         this(null, entryRule, exitRule, unstablePeriod);
@@ -75,9 +78,10 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * @param name the name of the strategy
+     * 
+     * @param name      the name of the strategy
      * @param entryRule the entry rule
-     * @param exitRule the exit rule
+     * @param exitRule  the exit rule
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
         this(name, entryRule, exitRule, 0);
@@ -85,17 +89,19 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Constructor.
-     * @param name the name of the strategy
-     * @param entryRule the entry rule
-     * @param exitRule the exit rule
-     * @param unstablePeriod strategy will ignore possible signals at <code>index</code> < <code>unstablePeriod</code>
+     * 
+     * @param name           the name of the strategy
+     * @param entryRule      the entry rule
+     * @param exitRule       the exit rule
+     * @param unstablePeriod strategy will ignore possible signals at
+     *                       <code>index</code> < <code>unstablePeriod</code>
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {
             throw new IllegalArgumentException("Rules cannot be null");
         }
         if (unstablePeriod < 0) {
-        	throw new IllegalArgumentException("Unstable period bar count must be >= 0");
+            throw new IllegalArgumentException("Unstable period bar count must be >= 0");
         }
         this.name = name;
         this.entryRule = entryRule;
@@ -105,22 +111,22 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public String getName() {
-    	return name;
+        return name;
     }
 
     @Override
     public Rule getEntryRule() {
-    	return entryRule;
+        return entryRule;
     }
 
     @Override
     public Rule getExitRule() {
-    	return exitRule;
+        return exitRule;
     }
 
     @Override
     public int getUnstablePeriod() {
-    	return unstablePeriod;
+        return unstablePeriod;
     }
 
     @Override
@@ -168,16 +174,19 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public Strategy and(String name, Strategy strategy, int unstablePeriod) {
-        return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()), unstablePeriod);
+        return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()),
+                unstablePeriod);
     }
 
     @Override
     public Strategy or(String name, Strategy strategy, int unstablePeriod) {
-        return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()), unstablePeriod);
+        return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()),
+                unstablePeriod);
     }
 
     /**
      * Traces the shouldEnter() method calls.
+     * 
      * @param index the bar index
      * @param enter true if the strategy should enter, false otherwise
      */
@@ -187,8 +196,9 @@ public class BaseStrategy implements Strategy {
 
     /**
      * Traces the shouldExit() method calls.
+     * 
      * @param index the bar index
-     * @param exit true if the strategy should exit, false otherwise
+     * @param exit  true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
         log.trace(">>> {}#shouldExit({}): {}", className, index, exit);

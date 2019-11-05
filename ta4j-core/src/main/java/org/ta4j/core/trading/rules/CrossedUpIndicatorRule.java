@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Indicator;
@@ -31,8 +31,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Crossed-up indicator rule.
- * </p>
- * Satisfied when the value of the first {@link Indicator indicator} crosses-up the value of the second one.
+ *
+ * Satisfied when the value of the first {@link Indicator indicator} crosses-up
+ * the value of the second one.
  */
 public class CrossedUpIndicatorRule extends AbstractRule {
 
@@ -41,6 +42,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
+     * 
      * @param indicator the indicator
      * @param threshold a threshold
      */
@@ -50,17 +52,18 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * Constructor.
+     * 
      * @param indicator the indicator
      * @param threshold a threshold
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getTimeSeries(),threshold));
+        this(indicator, new ConstantIndicator<Num>(indicator.getBarSeries(), threshold));
     }
-
 
     /**
      * Constructor.
-     * @param first the first indicator
+     * 
+     * @param first  the first indicator
      * @param second the second indicator
      */
     public CrossedUpIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
@@ -80,6 +83,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
     public Indicator<Num> getLow() {
         return cross.getLow();
     }
+
     /**
      * @return the initial upper indicator
      */

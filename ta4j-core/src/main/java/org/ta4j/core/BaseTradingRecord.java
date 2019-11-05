@@ -1,28 +1,30 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core;
 
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -30,7 +32,7 @@ import java.util.List;
 
 /**
  * Base implementation of a {@link TradingRecord}.
- * </p>
+ *
  */
 public class BaseTradingRecord implements TradingRecord {
 
@@ -77,6 +79,12 @@ public class BaseTradingRecord implements TradingRecord {
     private Trade currentTrade;
 
     /**
+     * Trading cost models
+     */
+    private CostModel transactionCostModel;
+    private CostModel holdingCostModel;
+
+    /**
      * Constructor.
      */
     public BaseTradingRecord() {
@@ -85,15 +93,28 @@ public class BaseTradingRecord implements TradingRecord {
 
     /**
      * Constructor.
-     *
-     * @param entryOrderType the {@link Order.OrderType order type} of entries in the trading session
      */
-    public BaseTradingRecord(Order.OrderType entryOrderType) {
+    public BaseTradingRecord(Order.OrderType orderType) {
+        this(orderType, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param entryOrderType       the {@link Order.OrderType order type} of entries
+     *                             in the trading session
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     */
+    public BaseTradingRecord(Order.OrderType entryOrderType, CostModel transactionCostModel,
+            CostModel holdingCostModel) {
         if (entryOrderType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
         this.startingType = entryOrderType;
-        currentTrade = new Trade(entryOrderType);
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
+        currentTrade = new Trade(entryOrderType, transactionCostModel, holdingCostModel);
     }
 
     /**
@@ -102,18 +123,29 @@ public class BaseTradingRecord implements TradingRecord {
      * @param orders the orders to be recorded (cannot be empty)
      */
     public BaseTradingRecord(Order... orders) {
-        this(orders[0].getType());
+        this(new ZeroCostModel(), new ZeroCostModel(), orders);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param orders               the orders to be recorded (cannot be empty)
+     */
+    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Order... orders) {
+        this(orders[0].getType(), transactionCostModel, holdingCostModel);
         for (Order o : orders) {
             boolean newOrderWillBeAnEntry = currentTrade.isNew();
             if (newOrderWillBeAnEntry && o.getType() != startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
-                //    BUY, SELL,
-                //    SELL, BUY,
-                //    BUY, SELL
-                currentTrade = new Trade(o.getType());
+                // BUY, SELL,
+                // SELL, BUY,
+                // BUY, SELL
+                currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Order newOrder = currentTrade.operate(o.getIndex(), o.getPrice(), o.getAmount());
+            Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
@@ -222,7 +254,7 @@ public class BaseTradingRecord implements TradingRecord {
         // Storing the trade if closed
         if (currentTrade.isClosed()) {
             trades.add(currentTrade);
-            currentTrade = new Trade(startingType);
+            currentTrade = new Trade(startingType, transactionCostModel, holdingCostModel);
         }
     }
 

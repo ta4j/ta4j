@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Indicator;
@@ -33,10 +33,11 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Indicator-in-slope rule.
- * </p>
+ *
  * Satisfied when the difference of the value of the {@link Indicator indicator}
- * and the previous (n-th) value of the {@link Indicator indicator} is between the values of
- * maxSlope or/and minSlope. It can test both, positive and negative slope.
+ * and the previous (n-th) value of the {@link Indicator indicator} is between
+ * the values of maxSlope or/and minSlope. It can test both, positive and
+ * negative slope.
  */
 public class InSlopeRule extends AbstractRule {
 
@@ -51,39 +52,48 @@ public class InSlopeRule extends AbstractRule {
 
     /**
      * Constructor.
-     * @param ref the reference indicator
+     * 
+     * @param ref      the reference indicator
      * @param minSlope minumum slope between reference and previous indicator
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope) {
         this(ref, 1, minSlope, NaN);
     }
-    
+
     /**
      * Constructor.
-     * @param ref the reference indicator
-     * @param minSlope minumum slope between value of reference and previous indicator
-     * @param maxSlope maximum slope between value of reference and previous indicator
+     * 
+     * @param ref      the reference indicator
+     * @param minSlope minumum slope between value of reference and previous
+     *                 indicator
+     * @param maxSlope maximum slope between value of reference and previous
+     *                 indicator
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope, Num maxSlope) {
         this(ref, 1, minSlope, maxSlope);
     }
-    
-     /**
+
+    /**
      * Constructor.
-     * @param ref the reference indicator
+     * 
+     * @param ref         the reference indicator
      * @param nthPrevious defines the previous n-th indicator
-     * @param maxSlope maximum slope between value of reference and previous indicator
+     * @param maxSlope    maximum slope between value of reference and previous
+     *                    indicator
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num maxSlope) {
-    	this(ref, nthPrevious, NaN, maxSlope);
+        this(ref, nthPrevious, NaN, maxSlope);
     }
 
     /**
      * Constructor.
-     * @param ref the reference indicator
+     * 
+     * @param ref         the reference indicator
      * @param nthPrevious defines the previous n-th indicator
-     * @param minSlope minumum slope between value of reference and previous indicator
-     * @param maxSlope maximum slope between value of reference and previous indicator
+     * @param minSlope    minumum slope between value of reference and previous
+     *                    indicator
+     * @param maxSlope    maximum slope between value of reference and previous
+     *                    indicator
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num minSlope, Num maxSlope) {
         this.ref = ref;
@@ -92,16 +102,16 @@ public class InSlopeRule extends AbstractRule {
         this.maxSlope = maxSlope;
     }
 
-   @Override
-   public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-	DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
-	Num val = diff.getValue(index);
-	boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
-	boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
-	boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
+    @Override
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        DifferenceIndicator diff = new DifferenceIndicator(ref, prev);
+        Num val = diff.getValue(index);
+        boolean minSlopeSatisfied = minSlope.isNaN() || val.isGreaterThanOrEqual(minSlope);
+        boolean maxSlopeSatisfied = maxSlope.isNaN() || val.isLessThanOrEqual(maxSlope);
+        boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
-	final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
-	traceIsSatisfied(index, satisfied);
-	return satisfied;
-   }
+        final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
+    }
 }

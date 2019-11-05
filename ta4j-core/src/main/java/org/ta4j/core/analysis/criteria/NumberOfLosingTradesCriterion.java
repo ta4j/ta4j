@@ -1,6 +1,29 @@
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.TimeSeries;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -11,23 +34,25 @@ import org.ta4j.core.num.Num;
 public class NumberOfLosingTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(TimeSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getTrades().stream()
-                .filter(trade -> trade.isClosed())
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfLosingTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
                 .filter(trade -> isLosingTrade(series, trade)).count();
         return series.numOf(numberOfLosingTrades);
     }
 
-    private boolean isLosingTrade(TimeSeries series, Trade trade) {
-        Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-        Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+    private boolean isLosingTrade(BarSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
 
-        Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
-        return profit.isLessThan(series.numOf(0));
+            Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            return profit.isNegative();
+        }
+        return false;
     }
 
     @Override
-    public Num calculate(TimeSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Trade trade) {
         return isLosingTrade(series, trade) ? series.numOf(1) : series.numOf(0);
     }
 

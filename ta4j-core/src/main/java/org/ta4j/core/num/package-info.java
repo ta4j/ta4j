@@ -1,7 +1,7 @@
-/*******************************************************************************
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -20,14 +20,17 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
-
+ */
 /**
- * {@link org.ta4j.core.num.Num Num} interface and implementations of {@link org.ta4j.core.num.NaN NaN}, 
- * {@link org.ta4j.core.num.DoubleNum DoubleNum}
- * and {@link org.ta4j.core.num.PrecisionNum PrecisionNum}
- * <p>
- * The {@link org.ta4j.core.num.Num Num interface} enables the use of different delegates (Double, {@link java.math.BigDecimal BigDecimal}, ...) for storage and calculations in {@link org.ta4j.core.TimeSeries TimeSeries},
- * {@link org.ta4j.core.Bar Bars}, {@link org.ta4j.core.Indicator Indicators} and {@link org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion AnalysisCriterions}
+ * {@link org.ta4j.core.num.Num Num} interface and implementations of
+ * {@link org.ta4j.core.num.NaN NaN}, {@link org.ta4j.core.num.DoubleNum
+ * DoubleNum} and {@link org.ta4j.core.num.PrecisionNum PrecisionNum}
+ *
+ * The {@link org.ta4j.core.num.Num Num interface} enables the use of different
+ * delegates (Double, {@link java.math.BigDecimal BigDecimal}, ...) for storage
+ * and calculations in {@link org.ta4j.core.BarSeries BarSeries},
+ * {@link org.ta4j.core.Bar Bars}, {@link org.ta4j.core.Indicator Indicators}
+ * and {@link org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion
+ * AnalysisCriterions}
  */
 package org.ta4j.core.num;

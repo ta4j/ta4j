@@ -3,15 +3,40 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.13 (unreleased)
 
 ### Breaking
-- :boom: **Breaking** Refactored from Max/Min to High/Low
+- :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
+- :boom: **Breaking** Removed redundant constructors from BaseBar class
+- :boom: **Breaking** Renamed `TimeSeries` to `BarSeries`
 
 ### Fixed
+- **Fixed `BaseBarSeries`**: problem with getSubList for series with specified `maximumBarCount`.
+- **Fixed return `BigDecimal` instead of `Number` in**: `PrecisionNum.getDelegate`.
 - **Fixed `java.lang.ClassCastException` in**: `PrecisionNum.equals()`.
 - **Fixed `java.lang.ClassCastException` in**: `DoubleNum.equals()`.
+- **Fixed `java.lang.NullPointerException` in**: `NumberOfBarsCriterion.calculate(TimeSeries, Trade)` for opened trade.
+- **Fixed `java.lang.NullPointerException` in**: `AverageProfitableTradesCriterion.calculate(TimeSeries, Trade)` for opened trade.
+- **StopGainRule**: now correctly handles stops for sell orders
+- **StopLossRule**: now correctly handles stops for sell orders
+- **ProfitLossCriterion**: fixed to work properly for short trades
+- **PivotPointIndicator**: fixed possible npe if first bar is not in same period
+- **`IchimokuChikouSpanIndicator`**: fixed calculations - applied correct formula.
+- **CloseLocationValueIndicator**: fixed special case, return zero instead of NaN if high price == low price
 
 ### Changed
+- **PrecisionNum**: improve performance for methods isZero/isPositive/isPositiveOrZero/isNegative/isNegativeOrZero.
+- **BaseTimeSeriesBuilder** moved from inner class to own class
+- **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
+- :tada: **Enhancement** Added getters for AroonDownIndicator and AroonUpIndicator in AroonOscillatorIndicator
+- :tada: **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
+- :tada: **Enhancement** Added constructor in BaseBar with trades property
+- :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
+- :tada: **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
+- :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
+- :tada: **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
+- :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
+- :tada: **Enhancement** Implemented Expected Shortfall Analysis Criterion
+- :tada: **Enhancement** Implemented Returns class to analyze the time series of return rates. Supports logarithmic and arithmetic returns
 - :tada: **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
 - :tada: **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades 
 - :tada: **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
@@ -21,6 +46,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
 - :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
 - :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
+- :tada: **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
+for currentStopLossLimitActivation
+- :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
+- :tada: **Enhancement** Added license checker goal on CI's pipeline
+- :tada: **Enhancement** Added source format checker goal on CI's pipeline
+
 
 ### Removed/Deprecated
 

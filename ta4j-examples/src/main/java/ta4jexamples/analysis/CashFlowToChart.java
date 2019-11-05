@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package ta4jexamples.analysis;
 
 import org.jfree.chart.ChartFactory;
@@ -34,7 +34,12 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
-import org.ta4j.core.*;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -51,24 +56,28 @@ import java.util.Date;
 public class CashFlowToChart {
 
     /**
-     * Builds a JFreeChart time series from a Ta4j time series and an indicator.
-     * @param barseries the ta4j time series
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
      * @param indicator the indicator
-     * @param name the name of the chart time series
+     * @param name      the name of the chart time series
      * @return the JFreeChart time series
      */
-    private static org.jfree.data.time.TimeSeries buildChartTimeSeries(TimeSeries barseries, Indicator<Num> indicator, String name) {
-        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-        for (int i = 0; i < barseries.getBarCount(); i++) {
-            Bar bar = barseries.getBar(i);
-            chartTimeSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)), indicator.getValue(i).doubleValue());
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
+            String name) {
+        org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
+            chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+                    indicator.getValue(i).doubleValue());
         }
-        return chartTimeSeries;
+        return chartBarSeries;
     }
 
     /**
      * Adds the cash flow axis to the plot.
-     * @param plot the plot
+     *
+     * @param plot    the plot
      * @param dataset the cash flow dataset
      */
     private static void addCashFlowAxis(XYPlot plot, TimeSeriesCollection dataset) {
@@ -84,6 +93,7 @@ public class CashFlowToChart {
 
     /**
      * Displays a chart in a frame.
+     *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
@@ -102,47 +112,46 @@ public class CashFlowToChart {
 
     public static void main(String[] args) {
 
-        // Getting the time series
-        TimeSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Getting the bar series
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
-        TimeSeriesManager seriesManager = new TimeSeriesManager(series);
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         // Getting the cash flow of the resulting trades
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         /*
-          Building chart datasets
+         * Building chart datasets
          */
         TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
-        datasetAxis1.addSeries(buildChartTimeSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
+        datasetAxis1.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
         TimeSeriesCollection datasetAxis2 = new TimeSeriesCollection();
-        datasetAxis2.addSeries(buildChartTimeSeries(series, cashFlow, "Cash Flow"));
+        datasetAxis2.addSeries(buildChartBarSeries(series, cashFlow, "Cash Flow"));
 
         /*
-          Creating the chart
+         * Creating the chart
          */
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                "Bitstamp BTC", // title
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Bitstamp BTC", // title
                 "Date", // x-axis label
                 "Price", // y-axis label
                 datasetAxis1, // data
                 true, // create legend?
                 true, // generate tooltips?
                 false // generate URLs?
-                );
+        );
         XYPlot plot = (XYPlot) chart.getPlot();
         DateAxis axis = (DateAxis) plot.getDomainAxis();
         axis.setDateFormatOverride(new SimpleDateFormat("MM-dd HH:mm"));
 
         /*
-          Adding the cash flow axis (on the right)
+         * Adding the cash flow axis (on the right)
          */
         addCashFlowAxis(plot, datasetAxis2);
 
         /*
-          Displaying the chart
+         * Displaying the chart
          */
         displayChart(chart);
     }

@@ -1,33 +1,33 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockTimeSeries;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,Num>{
+public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public ParabolicSarIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -46,33 +46,32 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void startUpAndDownTrendTest() {
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 75.1, 74.06, 75.11,numFunction));
-        bars.add(new MockBar(0, 75.9, 76.030000, 74.640000,numFunction));
-        bars.add(new MockBar(0, 75.24, 76.269900, 75.060000,numFunction));
-        bars.add(new MockBar(0, 75.17, 75.280000, 74.500000,numFunction));
-        bars.add(new MockBar(0, 74.6, 75.310000, 74.540000,numFunction));
-        bars.add(new MockBar(0, 74.1, 75.467000, 74.010000,numFunction));
-        bars.add(new MockBar(0, 73.740000,74.700000, 73.546000,numFunction));
-        bars.add(new MockBar(0, 73.390000, 73.830000, 72.720000,numFunction));
-        bars.add(new MockBar(0, 73.25, 73.890000, 72.86,numFunction));
-        bars.add(new MockBar(0, 74.36, 74.410000, 73,26,numFunction));
+        bars.add(new MockBar(0, 75.1, 74.06, 75.11, numFunction));
+        bars.add(new MockBar(0, 75.9, 76.030000, 74.640000, numFunction));
+        bars.add(new MockBar(0, 75.24, 76.269900, 75.060000, numFunction));
+        bars.add(new MockBar(0, 75.17, 75.280000, 74.500000, numFunction));
+        bars.add(new MockBar(0, 74.6, 75.310000, 74.540000, numFunction));
+        bars.add(new MockBar(0, 74.1, 75.467000, 74.010000, numFunction));
+        bars.add(new MockBar(0, 73.740000, 74.700000, 73.546000, numFunction));
+        bars.add(new MockBar(0, 73.390000, 73.830000, 72.720000, numFunction));
+        bars.add(new MockBar(0, 73.25, 73.890000, 72.86, numFunction));
+        bars.add(new MockBar(0, 74.36, 74.410000, 73, 26, numFunction));
 
-        bars.add(new MockBar(0, 76.510000, 76.830000, 74.820000,numFunction));
-        bars.add(new MockBar(0, 75.590000, 76.850000, 74.540000,numFunction));
-        bars.add(new MockBar(0, 75.910000, 76.960000, 75.510000,numFunction));
-        bars.add(new MockBar(0, 74.610000, 77.070000, 74.560000,numFunction));
-        bars.add(new MockBar(0, 75.330000, 75.530000, 74.010000,numFunction));
-        bars.add(new MockBar(0, 75.010000, 75.500000, 74.510000,numFunction));
-        bars.add(new MockBar(0, 75.620000, 76.210000, 75.250000,numFunction));
-        bars.add(new MockBar(0, 76.040000, 76.460000, 75.092800,numFunction));
-        bars.add(new MockBar(0, 76.450000, 76.450000, 75.435000,numFunction));
-        bars.add(new MockBar(0, 76.260000, 76.470000, 75.840000,numFunction));
-        bars.add(new MockBar(0, 76.850000, 77.000000, 76.190000,numFunction));
+        bars.add(new MockBar(0, 76.510000, 76.830000, 74.820000, numFunction));
+        bars.add(new MockBar(0, 75.590000, 76.850000, 74.540000, numFunction));
+        bars.add(new MockBar(0, 75.910000, 76.960000, 75.510000, numFunction));
+        bars.add(new MockBar(0, 74.610000, 77.070000, 74.560000, numFunction));
+        bars.add(new MockBar(0, 75.330000, 75.530000, 74.010000, numFunction));
+        bars.add(new MockBar(0, 75.010000, 75.500000, 74.510000, numFunction));
+        bars.add(new MockBar(0, 75.620000, 76.210000, 75.250000, numFunction));
+        bars.add(new MockBar(0, 76.040000, 76.460000, 75.092800, numFunction));
+        bars.add(new MockBar(0, 76.450000, 76.450000, 75.435000, numFunction));
+        bars.add(new MockBar(0, 76.260000, 76.470000, 75.840000, numFunction));
+        bars.add(new MockBar(0, 76.850000, 77.000000, 76.190000, numFunction));
 
+        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockBarSeries(bars));
 
-        ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockTimeSeries(bars));
-
-        assertEquals("NaN",sar.getValue(0).toString());
+        assertEquals("NaN", sar.getValue(0).toString());
         assertNumEquals(74.640000000000000568434188608080, sar.getValue(1));
         assertNumEquals(74.640000000000000568434188608080, sar.getValue(2)); // start with up trend
         assertNumEquals(76.269900000000006912159733474255, sar.getValue(3)); // switch to downtrend

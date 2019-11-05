@@ -1,26 +1,26 @@
-/*******************************************************************************
- *   The MIT License (MIT)
+/**
+ * The MIT License (MIT)
  *
- *   Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2018 Ta4j Organization 
- *   & respective authors (see AUTHORS)
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
  *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy of
- *   this software and associated documentation files (the "Software"), to deal in
- *   the Software without restriction, including without limitation the rights to
- *   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- *   the Software, and to permit persons to whom the Software is furnished to do so,
- *   subject to the following conditions:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- *   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- *   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- *   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- *   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *******************************************************************************/
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators.statistics;
 
 import org.ta4j.core.Indicator;
@@ -31,50 +31,49 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Simple linear regression indicator.
- * </p>
+ *
  * A moving (i.e. over the time frame) simple linear regression (least squares).
- * y = slope * x + intercept
- * See also: http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
+ * y = slope * x + intercept See also:
+ * http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
-	 /**
-	 * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
-	 */
-	public enum SimpleLinearRegressionType {
-		y, slope, intercept
-	}
+    /**
+     * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
+     */
+    public enum SimpleLinearRegressionType {
+        Y, SLOPE, INTERCEPT
+    }
 
-	private Indicator<Num> indicator;
-	private int barCount;
-	private Num slope;
-	private Num intercept;
-	private SimpleLinearRegressionType type;
+    private Indicator<Num> indicator;
+    private int barCount;
+    private Num slope;
+    private Num intercept;
+    private SimpleLinearRegressionType type;
 
-	/**
-	 * Constructor for the y-values of the formula (y = slope * x + intercept).
-	 * 
-	 * @param indicator the indicator for the x-values of the formula.
-	 * @param barCount the time frame
-	 */
-	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
-		this(indicator, barCount, SimpleLinearRegressionType.y);
-	}
+    /**
+     * Constructor for the y-values of the formula (y = slope * x + intercept).
+     *
+     * @param indicator the indicator for the x-values of the formula.
+     * @param barCount  the time frame
+     */
+    public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
+        this(indicator, barCount, SimpleLinearRegressionType.Y);
+    }
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param indicator the indicator for the x-values of the formula.
-	 * @param barCount the time frame
-	 * @param type the type of the outcome value (y, slope, intercept)
-	 */
-	public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount,
-			SimpleLinearRegressionType type) {
-		super(indicator);
-		this.indicator = indicator;
-		this.barCount = barCount;
-		this.type = type;
-	}
+    /**
+     * Constructor.
+     *
+     * @param indicator the indicator for the x-values of the formula.
+     * @param barCount  the time frame
+     * @param type      the type of the outcome value (y, slope, intercept)
+     */
+    public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount, SimpleLinearRegressionType type) {
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.type = type;
+    }
 
     @Override
     protected Num calculate(int index) {
@@ -84,22 +83,23 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         calculateRegressionLine(startIndex, index);
-        
-        if (type == SimpleLinearRegressionType.slope) {
+
+        if (type == SimpleLinearRegressionType.SLOPE) {
             return slope;
         }
 
-        if (type == SimpleLinearRegressionType.intercept) {
+        if (type == SimpleLinearRegressionType.INTERCEPT) {
             return intercept;
         }
-      
+
         return slope.multipliedBy(numOf(index)).plus(intercept);
     }
-    
+
     /**
      * Calculates the regression line.
-     * @param startIndex the start index (inclusive) in the time series
-     * @param endIndex the end index (inclusive) in the time series
+     *
+     * @param startIndex the start index (inclusive) in the bar series
+     * @param endIndex   the end index (inclusive) in the bar series
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar
@@ -112,7 +112,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         Num nbObservations = numOf(endIndex - startIndex + 1);
         Num xBar = sumX.dividedBy(nbObservations);
         Num yBar = sumY.dividedBy(nbObservations);
-        
+
         // Second pass: compute slope and intercept
         Num xxBar = numOf(0);
         Num xyBar = numOf(0);
@@ -122,7 +122,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
             xxBar = xxBar.plus(dX.multipliedBy(dX));
             xyBar = xyBar.plus(dX.multipliedBy(dY));
         }
-        
+
         slope = xyBar.dividedBy(xxBar);
         intercept = yBar.minus(slope.multipliedBy(xBar));
     }
