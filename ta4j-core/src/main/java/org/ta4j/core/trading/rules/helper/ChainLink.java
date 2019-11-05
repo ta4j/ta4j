@@ -7,8 +7,14 @@ import java.util.Objects;
 
 public class ChainLink implements Serializable {
     private Rule rule;
-    private int threshold;
+    private int threshold = 0;
 
+    /**
+     * Threshold is the number of bars the provided rule has to be satisfied after the preceding rule
+     *
+     * @param rule
+     * @param threshold
+     */
     public ChainLink(Rule rule, int threshold) {
         this.rule = rule;
         this.threshold = threshold;
@@ -37,7 +43,7 @@ public class ChainLink implements Serializable {
         if (!(o instanceof ChainLink)) return false;
         ChainLink chainLink = (ChainLink) o;
         return getThreshold() == chainLink.getThreshold() &&
-            Objects.equals(getRule(), chainLink.getRule());
+                Objects.equals(getRule(), chainLink.getRule());
     }
 
     @Override
@@ -48,8 +54,8 @@ public class ChainLink implements Serializable {
     @Override
     public String toString() {
         return "ChainLink{" +
-            "rule=" + rule +
-            ", threshold=" + threshold +
-            '}';
+                "rule=" + rule +
+                ", threshold=" + threshold +
+                '}';
     }
 }

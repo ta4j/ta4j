@@ -19,10 +19,11 @@ public class ChainRuleTest {
     @Before
     public void setUp() {
         BarSeries series = new BaseBarSeries();
-        Indicator<Num> indicator = new FixedDecimalIndicator(series, 6, 5, 8, 5, 1, 10, 20, 30);
+        Indicator<Num> indicator = new FixedDecimalIndicator(series, 6, 5, 8, 5, 1, 10, 2, 30);
         UnderIndicatorRule underIndicatorRule = new UnderIndicatorRule(indicator, series.numOf(5));
         OverIndicatorRule overIndicatorRule = new OverIndicatorRule(indicator, 7);
-        chainRule = new ChainRule(new ChainLink(underIndicatorRule ,3), new ChainLink(overIndicatorRule, 3));
+        IsEqualRule isEqualRule = new IsEqualRule(indicator, 5);
+        chainRule = new ChainRule(underIndicatorRule, new ChainLink(overIndicatorRule, 3), new ChainLink(isEqualRule, 2));
     }
 
     @Test
