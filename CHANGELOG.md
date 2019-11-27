@@ -1,6 +1,19 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.13 (unreleased)
+## 0.14 (unreleased)
+
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Added
+- :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
+
+### Removed/Deprecated
+
+## 0.13 (released November 5, 2019)
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
