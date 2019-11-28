@@ -50,9 +50,9 @@ public class BaseBar implements Bar {
     private Num openPrice = null;
     /** Close price of the period */
     private Num closePrice = null;
-    /** Max price of the period */
+    /** High price of the period */
     private Num highPrice = null;
-    /** Min price of the period */
+    /** Low price of the period */
     private Num lowPrice = null;
     /** Traded amount during the period */
     private Num amount;
@@ -406,7 +406,7 @@ public class BaseBar implements Bar {
     @Override
     public String toString() {
         return String.format(
-                "{end time: %1s, close price: %2$f, open price: %3$f, min price: %4$f, max price: %5$f, volume: %6$f}",
+                "{end time: %1s, close price: %2$f, open price: %3$f, low price: %4$f, high price: %5$f, volume: %6$f}",
                 endTime.withZoneSameInstant(ZoneId.systemDefault()), closePrice.doubleValue(), openPrice.doubleValue(),
                 lowPrice.doubleValue(), highPrice.doubleValue(), volume.doubleValue());
     }

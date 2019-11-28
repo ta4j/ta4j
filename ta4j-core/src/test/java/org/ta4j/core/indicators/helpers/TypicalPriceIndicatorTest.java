@@ -40,7 +40,7 @@ public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     private TypicalPriceIndicator typicalPriceIndicator;
 
-    BarSeries barSeries;
+    private BarSeries barSeries;
 
     public TypicalPriceIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -53,7 +53,7 @@ public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
-    public void indicatorShouldRetrieveBarMaxPrice() {
+    public void indicatorShouldRetrieveBarHighPrice() {
         for (int i = 0; i < 10; i++) {
             Bar bar = barSeries.getBar(i);
             Num typicalPrice = bar.getHighPrice().plus(bar.getLowPrice()).plus(bar.getClosePrice())

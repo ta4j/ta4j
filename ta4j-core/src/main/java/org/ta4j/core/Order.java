@@ -132,10 +132,10 @@ public class Order implements Serializable {
     /**
      * Constructor.
      * 
-     * @param index  the index the order is executed
-     * @param series the bar series
-     * @param type   the type of the order
-     * @param amount the amount to be (or that was) ordered
+     * @param index                the index the order is executed
+     * @param series               the bar series
+     * @param type                 the type of the order
+     * @param amount               the amount to be (or that was) ordered
      * @param transactionCostModel the cost model for order execution cost
      */
     protected Order(int index, BarSeries series, OrderType type, Num amount, CostModel transactionCostModel) {
@@ -275,15 +275,15 @@ public class Order implements Serializable {
     }
 
     @Override
-	  public boolean equals(Object obj) {
-		if (this == obj) return true;
-		if (obj == null || getClass() != obj.getClass()) return false;
-		final Order other = (Order) obj;
-		return Objects.equals(type, other.type) 
-			&& Objects.equals(index, other.index)
-			&& Objects.equals(pricePerAsset, other.pricePerAsset) 
-			&& Objects.equals(amount, other.amount);
-	  }
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        final Order other = (Order) obj;
+        return Objects.equals(type, other.type) && Objects.equals(index, other.index)
+                && Objects.equals(pricePerAsset, other.pricePerAsset) && Objects.equals(amount, other.amount);
+    }
 
     @Override
     public String toString() {
@@ -300,9 +300,9 @@ public class Order implements Serializable {
     }
 
     /**
-     * @param index  the index the order is executed
-     * @param price  the price for the order
-     * @param amount the amount to be (or that was) bought
+     * @param index                the index the order is executed
+     * @param price                the price for the order
+     * @param amount               the amount to be (or that was) bought
      * @param transactionCostModel the cost model for order execution
      * @return a BUY order
      */
@@ -331,9 +331,9 @@ public class Order implements Serializable {
     }
 
     /**
-     * @param index  the index the order is executed
-     * @param series the bar series
-     * @param amount the amount to be (or that was) bought
+     * @param index                the index the order is executed
+     * @param series               the bar series
+     * @param amount               the amount to be (or that was) bought
      * @param transactionCostModel the cost model for order execution
      * @return a BUY order
      */
@@ -361,9 +361,9 @@ public class Order implements Serializable {
     }
 
     /**
-     * @param index  the index the order is executed
-     * @param price  the price for the order
-     * @param amount the amount to be (or that was) sold
+     * @param index                the index the order is executed
+     * @param price                the price for the order
+     * @param amount               the amount to be (or that was) sold
      * @param transactionCostModel the cost model for order execution
      * @return a SELL order
      */
@@ -382,9 +382,9 @@ public class Order implements Serializable {
     }
 
     /**
-     * @param index  the index the order is executed
-     * @param series the bar series
-     * @param amount the amount to be (or that was) bought
+     * @param index                the index the order is executed
+     * @param series               the bar series
+     * @param amount               the amount to be (or that was) bought
      * @param transactionCostModel the cost model for order execution
      * @return a SELL order
      */

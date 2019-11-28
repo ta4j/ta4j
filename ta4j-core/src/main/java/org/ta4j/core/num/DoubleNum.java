@@ -79,7 +79,7 @@ public class DoubleNum implements Num {
 
     @Override
     public String getName() {
-    	return this.getClass().getSimpleName();
+        return this.getClass().getSimpleName();
     }
 
     @Override

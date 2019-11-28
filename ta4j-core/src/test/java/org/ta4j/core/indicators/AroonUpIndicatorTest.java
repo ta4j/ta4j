@@ -100,11 +100,11 @@ public class AroonUpIndicatorTest {
     }
 
     @Test
-    public void naNValuesInIntervall() {
+    public void naNValuesInInterval() {
         BaseBarSeries series = new BaseBarSeries("NaN test");
         for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
-            Num maxPrice = i % 2 == 0 ? series.numOf(i) : NaN;
-            series.addBar(ZonedDateTime.now().plusDays(i), NaN, maxPrice, NaN, NaN, NaN);
+            Num highPrice = i % 2 == 0 ? series.numOf(i) : NaN;
+            series.addBar(ZonedDateTime.now().plusDays(i), NaN, highPrice, NaN, NaN, NaN);
         }
 
         AroonUpIndicator aroonUpIndicator = new AroonUpIndicator(series, 5);
