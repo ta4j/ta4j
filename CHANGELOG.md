@@ -13,7 +13,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 
-## 0.13 (unreleased)
+## 0.13 (released November 5, 2019)
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
