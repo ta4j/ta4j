@@ -9,7 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 
 ### Added
-- :tada: **Enhancement** Loggers in BaseBarSeries and BarSeriesManager made static for better performance.
+- :tada: **Enhancement** Loggers in `BaseBarSeries` and `BarSeriesManager` made static for better performance.
 
 ### Removed/Deprecated
 
