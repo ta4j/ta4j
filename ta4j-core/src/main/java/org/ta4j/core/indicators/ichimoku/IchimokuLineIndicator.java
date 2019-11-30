@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num> {
+public class IchimokuLineIndicator extends CachedIndicator<Num> {
 
     /** The period high */
     private final Indicator<Num> periodHigh;
@@ -53,7 +53,7 @@ public abstract class AbstractIchimokuLineIndicator extends CachedIndicator<Num>
      * @param series   the series
      * @param barCount the time frame
      */
-    public AbstractIchimokuLineIndicator(BarSeries series, int barCount) {
+    public IchimokuLineIndicator(BarSeries series, int barCount) {
         super(series);
         periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
         periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
