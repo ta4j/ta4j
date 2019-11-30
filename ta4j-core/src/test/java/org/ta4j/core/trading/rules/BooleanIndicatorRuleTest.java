@@ -38,8 +38,7 @@ public class BooleanIndicatorRuleTest {
 
     @Before
     public void setUp() {
-        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseBarSeries(), true, true, false, false,
-                true);
+        Indicator<Boolean> indicator = new FixedIndicator<Boolean>(new BaseBarSeries(), true, true, false, false, true);
         rule = new BooleanIndicatorRule(indicator);
     }
 

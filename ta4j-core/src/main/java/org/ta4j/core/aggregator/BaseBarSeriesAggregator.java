@@ -30,7 +30,7 @@ import org.ta4j.core.BaseBarSeries;
 import java.util.List;
 
 /**
- * Time series aggregator based on provided bar aggregator.
+ * Bar series aggregator based on provided bar aggregator.
  */
 public class BaseBarSeriesAggregator implements BarSeriesAggregator {
 

@@ -39,8 +39,8 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
-     * 
-     * @param series a time series
+     *
+     * @param series a bar series
      */
     public BullishEngulfingIndicator(BarSeries series) {
         super(series);

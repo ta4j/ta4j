@@ -49,8 +49,8 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates the pivot point based on the time level parameter.
-     * 
-     * @param series    the time series with adequate endTime of each bar for the
+     *
+     * @param series    the bar series with adequate endTime of each bar for the
      *                  given time level.
      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:
      *                  <ul>
@@ -99,7 +99,7 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Calculates the indices of the bars of the previous period
-     * 
+     *
      * @param index index of the current bar
      * @return list of indices of the bars of the previous period
      */

@@ -28,9 +28,9 @@ import org.ta4j.core.num.Num;
 public interface ExternalCriterionTest {
 
     /**
-     * Gets the TimeSeries used by an external criterion calculator.
+     * Gets the BarSeries used by an external criterion calculator.
      * 
-     * @return TimeSeries from the external criterion calculator
+     * @return BarSeries from the external criterion calculator
      * @throws Exception if the external calculator throws an Exception
      */
     BarSeries getSeries() throws Exception;

@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.tradereport;
 
-import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
  * This class generates TradingStatement basis on provided trading report and
- * time series
+ * bar series
  *
  * @see TradingStatement
  */

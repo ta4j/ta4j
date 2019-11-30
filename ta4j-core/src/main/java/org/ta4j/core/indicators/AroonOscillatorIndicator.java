@@ -42,8 +42,8 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
     public AroonOscillatorIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        aroonDownIndicator = new AroonDownIndicator(series, barCount);
-        aroonUpIndicator = new AroonUpIndicator(series, barCount);
+        this.aroonDownIndicator = new AroonDownIndicator(series, barCount);
+        this.aroonUpIndicator = new AroonUpIndicator(series, barCount);
     }
 
     @Override
@@ -54,5 +54,13 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
+    }
+
+    public AroonDownIndicator getAroonDownIndicator() {
+        return aroonDownIndicator;
+    }
+
+    public AroonUpIndicator getAroonUpIndicator() {
+        return aroonUpIndicator;
     }
 }

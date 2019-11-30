@@ -46,12 +46,12 @@ public class CompareNumTypes {
     private static final int NUMBARS = 10000;
 
     public static void main(String args[]) {
-        BaseBarSeriesBuilder timeSeriesBuilder = new BaseBarSeriesBuilder();
-        BarSeries seriesD = timeSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
+        BaseBarSeriesBuilder barSeriesBuilder = new BaseBarSeriesBuilder();
+        BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
                 .build();
-        BarSeries seriesP = timeSeriesBuilder.withName("Sample Series PrecisionNum 32")
+        BarSeries seriesP = barSeriesBuilder.withName("Sample Series PrecisionNum 32")
                 .withNumTypeOf(PrecisionNum::valueOf).build();
-        BarSeries seriesPH = timeSeriesBuilder.withName("Sample Series PrecisionNum 256")
+        BarSeries seriesPH = barSeriesBuilder.withName("Sample Series PrecisionNum 256")
                 .withNumTypeOf(number -> PrecisionNum.valueOf(number.toString(), 256)).build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();

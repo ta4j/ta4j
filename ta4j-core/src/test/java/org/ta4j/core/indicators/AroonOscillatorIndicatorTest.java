@@ -25,8 +25,8 @@ package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -34,6 +34,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
+import static org.junit.Assert.assertNotNull;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class AroonOscillatorIndicatorTest {
@@ -217,6 +218,9 @@ public class AroonOscillatorIndicatorTest {
     @Test
     public void test() {
         AroonOscillatorIndicator aroonOscillator = new AroonOscillatorIndicator(data, 25);
+        assertNotNull(aroonOscillator.getAroonUpIndicator());
+        assertNotNull(aroonOscillator.getAroonDownIndicator());
+
         assertNumEquals(0, aroonOscillator.getValue(data.getBeginIndex()));
         assertNumEquals(84, aroonOscillator.getValue(data.getBeginIndex() + 25));
         assertNumEquals(80, aroonOscillator.getValue(data.getBeginIndex() + 26));

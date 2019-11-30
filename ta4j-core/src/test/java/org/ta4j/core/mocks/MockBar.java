@@ -30,7 +30,6 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
 
-
 /**
  * A mock bar with sample data.
  */
@@ -54,15 +53,19 @@ public class MockBar extends BaseBar {
         super(Duration.ofDays(1), endTime, 0, 0, 0, closePrice, volume, 0, 0, numFunction);
     }
 
-    public MockBar(double openPrice, double closePrice, double maxPrice, double minPrice, Function<Number, Num> numFunction) {
+    public MockBar(double openPrice, double closePrice, double maxPrice, double minPrice,
+            Function<Number, Num> numFunction) {
         super(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, 1, 0, 0, numFunction);
     }
 
-    public MockBar(double openPrice, double closePrice, double maxPrice, double minPrice, double volume, Function<Number, Num> numFunction) {
-        super(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, volume, 0, 0, numFunction);
+    public MockBar(double openPrice, double closePrice, double maxPrice, double minPrice, double volume,
+            Function<Number, Num> numFunction) {
+        super(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice, volume, 0, 0,
+                numFunction);
     }
 
-    public MockBar(ZonedDateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice, double amount, double volume, int trades, Function<Number, Num> numFunction) {
+    public MockBar(ZonedDateTime endTime, double openPrice, double closePrice, double maxPrice, double minPrice,
+            double amount, double volume, int trades, Function<Number, Num> numFunction) {
         super(Duration.ofDays(1), endTime, openPrice, maxPrice, minPrice, closePrice, volume, 0, 0, numFunction);
         this.trades = trades;
     }
