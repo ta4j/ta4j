@@ -7,7 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
 - :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
 
-## 0.13 (unreleased)
+## 0.13 (released November 5, 2019)
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
