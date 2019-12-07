@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
 public class CrossedUpIndicatorRule extends AbstractRule {
 
     /** The cross indicator */
-    private CrossIndicator cross;
+    private final CrossIndicator cross;
 
     /**
      * Constructor.
@@ -57,7 +57,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * @param threshold a threshold
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
-        this(indicator, new ConstantIndicator<Num>(indicator.getBarSeries(), threshold));
+        this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
     }
 
     /**

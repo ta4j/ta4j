@@ -38,7 +38,7 @@ import org.ta4j.core.num.Num;
 public class CrossedDownIndicatorRule extends AbstractRule {
 
     /** The cross indicator */
-    private CrossIndicator cross;
+    private final CrossIndicator cross;
 
     /**
      * Constructor.
@@ -75,5 +75,19 @@ public class CrossedDownIndicatorRule extends AbstractRule {
         final boolean satisfied = cross.getValue(index);
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    /**
+     * @return the initial lower indicator
+     */
+    public Indicator<Num> getLow() {
+        return cross.getLow();
+    }
+
+    /**
+     * @return the initial upper indicator
+     */
+    public Indicator<Num> getUp() {
+        return cross.getUp();
     }
 }
