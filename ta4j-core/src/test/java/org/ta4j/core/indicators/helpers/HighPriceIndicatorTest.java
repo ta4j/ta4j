@@ -38,7 +38,7 @@ import static junit.framework.TestCase.assertEquals;
 public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private HighPriceIndicator highPriceIndicator;
 
-    BarSeries barSeries;
+    private BarSeries barSeries;
 
     public HighPriceIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -52,7 +52,7 @@ public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void indicatorShouldRetrieveBarMaxPrice() {
+    public void indicatorShouldRetrieveBarHighPrice() {
         for (int i = 0; i < 10; i++) {
             assertEquals(highPriceIndicator.getValue(i), barSeries.getBar(i).getHighPrice());
         }

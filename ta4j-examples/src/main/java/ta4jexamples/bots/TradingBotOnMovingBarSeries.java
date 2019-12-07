@@ -114,11 +114,11 @@ public class TradingBotOnMovingBarSeries {
     private static Bar generateRandomBar() {
         final Num maxRange = PrecisionNum.valueOf("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
-        Num minPrice = openPrice.minus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
-        Num maxPrice = openPrice.plus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
-        Num closePrice = randDecimal(minPrice, maxPrice);
+        Num lowPrice = openPrice.minus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
+        Num highPrice = openPrice.plus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
+        Num closePrice = randDecimal(lowPrice, highPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice,
+        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, highPrice, lowPrice, closePrice,
                 PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
     }
 

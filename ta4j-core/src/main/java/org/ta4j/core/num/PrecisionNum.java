@@ -555,7 +555,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isPositiveOrZero() {
-    	return delegate.signum() >= 0;
+        return delegate.signum() >= 0;
     }
 
     /**
@@ -565,7 +565,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isNegative() {
-    	return delegate.signum() < 0;
+        return delegate.signum() < 0;
     }
 
     /**
@@ -575,7 +575,7 @@ public final class PrecisionNum implements Num {
      */
     @Override
     public boolean isNegativeOrZero() {
-    	return delegate.signum() <= 0;
+        return delegate.signum() <= 0;
     }
 
     /**

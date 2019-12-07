@@ -108,8 +108,8 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void naNValuesInIntervall() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
         for (long i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
-            Num minPrice = i % 2 == 0 ? series.numOf(i) : NaN;
-            series.addBar(ZonedDateTime.now().plusDays(10 - i), NaN, NaN, minPrice, NaN, NaN);
+            Num lowPrice = i % 2 == 0 ? series.numOf(i) : NaN;
+            series.addBar(ZonedDateTime.now().plusDays(10 - i), NaN, NaN, lowPrice, NaN, NaN);
         }
         series.addBar(ZonedDateTime.now().plusDays(11), NaN, NaN, series.numOf(10), NaN, NaN);
 

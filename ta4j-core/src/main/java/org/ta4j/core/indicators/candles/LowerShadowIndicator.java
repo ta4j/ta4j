@@ -31,8 +31,8 @@ import org.ta4j.core.num.Num;
 /**
  * Lower shadow height indicator.
  *
- * Provides the (absolute) difference between the min price and the lowest price
- * of the candle body. I.e.: min price - min(open price, close price)
+ * Provides the (absolute) difference between the low price and the lowest price
+ * of the candle body. I.e.: low price - min(open price, close price)
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">

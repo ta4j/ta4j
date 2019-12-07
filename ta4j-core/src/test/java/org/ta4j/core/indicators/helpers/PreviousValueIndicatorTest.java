@@ -78,14 +78,14 @@ public class PreviousValueIndicatorTest {
             assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i - 1));
         }
 
-        // test 2 with minPrice-indicator
+        // test 2 with lowPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i - 1));
         }
 
-        // test 3 with maxPrice-indicator
+        // test 3 with highPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {

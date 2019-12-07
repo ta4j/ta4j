@@ -25,7 +25,6 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
@@ -41,28 +40,28 @@ import static org.ta4j.core.num.NaN.NaN;
 public class AroonDownIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final LowestValueIndicator lowestMinPriceIndicator;
-    private final Indicator<Num> minValueIndicator;
+    private final LowestValueIndicator lowestLowPriceIndicator;
+    private final Indicator<Num> lowPriceIndicator;
     private final Num hundred;
 
     /**
      * Constructor.
      *
-     * @param minValueIndicator the indicator for the maximum price (default
-     *                          {@link HighPriceIndicator})
+     * @param lowPriceIndicator the indicator for the low price (default
+     *                          {@link LowPriceIndicator})
      * @param barCount          the time frame
      */
-    public AroonDownIndicator(Indicator<Num> minValueIndicator, int barCount) {
-        super(minValueIndicator);
+    public AroonDownIndicator(Indicator<Num> lowPriceIndicator, int barCount) {
+        super(lowPriceIndicator);
         this.barCount = barCount;
-        this.minValueIndicator = minValueIndicator;
+        this.lowPriceIndicator = lowPriceIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        lowestMinPriceIndicator = new LowestValueIndicator(minValueIndicator, barCount + 1);
+        this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
     }
 
     /**
-     * Default Constructor that is using the maximum price
+     * Default Constructor that is using the low price
      *
      * @param series   the bar series
      * @param barCount the time frame
@@ -80,7 +79,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         int endIndex = Math.max(0, index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {
-            if (minValueIndicator.getValue(i).isEqual(lowestMinPriceIndicator.getValue(index))) {
+            if (lowPriceIndicator.getValue(i).isEqual(lowestLowPriceIndicator.getValue(index))) {
                 break;
             }
             nbBars++;
