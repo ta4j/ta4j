@@ -26,7 +26,7 @@ Ta4j is available on [Maven Central](http://search.maven.org/#search). You just 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.12</version>
+  <version>0.13</version>
 </dependency>
 ```
 
@@ -42,7 +42,7 @@ The current ***snapshot version*** is `0.13-SNAPSHOT` from the [develop](https:/
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.13-SNAPSHOT</version>
+  <version>0.14-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -51,7 +51,7 @@ You can also download ***example code*** from the maven central repository by ad
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.12</version>
+  <version>0.13</version>
 </dependency>
 ```
 ### Getting Help

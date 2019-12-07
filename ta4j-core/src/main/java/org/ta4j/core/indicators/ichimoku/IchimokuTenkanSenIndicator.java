@@ -32,7 +32,7 @@ import org.ta4j.core.BarSeries;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
  */
-public class IchimokuTenkanSenIndicator extends AbstractIchimokuLineIndicator {
+public class IchimokuTenkanSenIndicator extends IchimokuLineIndicator {
 
     /**
      * Constructor.
