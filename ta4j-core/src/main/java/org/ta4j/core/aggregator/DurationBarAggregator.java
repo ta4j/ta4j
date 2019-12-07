@@ -78,8 +78,9 @@ public class DurationBarAggregator implements BarAggregator {
         if (bars.isEmpty()) {
             return aggregated;
         }
+        final Bar firstBar = bars.get(0);
         // get the actual time period
-        final Duration actualDur = bars.iterator().next().getTimePeriod();
+        final Duration actualDur = firstBar.getTimePeriod();
         // check if new timePeriod is a multiplication of actual time period
         final boolean isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
         if (!isMultiplication) {
@@ -88,7 +89,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = bars.iterator().next().getOpenPrice().numOf(0);
+        final Num zero = firstBar.getOpenPrice().numOf(0);
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final ZonedDateTime beginTime = bar.getBeginTime();
