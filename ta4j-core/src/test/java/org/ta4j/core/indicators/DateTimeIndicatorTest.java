@@ -21,35 +21,38 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.ichimoku;
+package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
+
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+
+import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
-/**
- * Ichimoku clouds: Kijun-sen (Base line) indicator
- *
- * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
- */
-public class IchimokuKijunSenIndicator extends IchimokuLineIndicator {
+public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    /**
-     * Constructor.
-     * 
-     * @param series the series
-     */
-    public IchimokuKijunSenIndicator(BarSeries series) {
-        super(series, 26);
-    }
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_ZONED_DATE_TIME;
 
-    /**
-     * Constructor.
-     * 
-     * @param series   the series
-     * @param barCount the time frame (usually 26)
-     */
-    public IchimokuKijunSenIndicator(BarSeries series, int barCount) {
-        super(series, barCount);
+	public DateTimeIndicatorTest(Function<Number, Num> numFunction) {
+		super(numFunction);
+	}
+    
+    @Test
+    public void test() {
+    	ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
+        List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
+        BarSeries series = new MockBarSeries(bars);
+        DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
+        assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
     }
 }

@@ -21,35 +21,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.ichimoku;
+package org.ta4j.core.indicators;
 
+import java.time.ZonedDateTime;
+import java.util.function.Function;
+
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 
 /**
- * Ichimoku clouds: Kijun-sen (Base line) indicator
- *
- * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
+ * DateTime indicator.
  */
-public class IchimokuKijunSenIndicator extends IchimokuLineIndicator {
+public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
-    /**
-     * Constructor.
-     * 
-     * @param series the series
-     */
-    public IchimokuKijunSenIndicator(BarSeries series) {
-        super(series, 26);
+	private final Function<Bar, ZonedDateTime> action;
+	
+    public DateTimeIndicator(BarSeries barSeries) {
+        this(barSeries, Bar::getBeginTime);
+    }
+    
+    public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
+        super(barSeries);
+        this.action = action;
     }
 
-    /**
-     * Constructor.
-     * 
-     * @param series   the series
-     * @param barCount the time frame (usually 26)
-     */
-    public IchimokuKijunSenIndicator(BarSeries series, int barCount) {
-        super(series, barCount);
+    @Override
+    protected ZonedDateTime calculate(int index) {
+    	Bar bar = getBarSeries().getBar(index);
+    	return this.action.apply(bar);
     }
 }

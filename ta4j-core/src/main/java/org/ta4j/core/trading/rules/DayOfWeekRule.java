@@ -21,35 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.ichimoku;
+package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.BarSeries;
+import java.time.DayOfWeek;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.DateTimeIndicator;
 
 /**
- * Ichimoku clouds: Kijun-sen (Base line) indicator
+ * Day of the week rule.
  *
- * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud</a>
+ * Satisfied when the day of the week value of the DateTimeIndicator is equal to
+ * one of the DayOfWeek varargs
  */
-public class IchimokuKijunSenIndicator extends IchimokuLineIndicator {
+public class DayOfWeekRule extends AbstractRule {
 
-    /**
-     * Constructor.
-     * 
-     * @param series the series
-     */
-    public IchimokuKijunSenIndicator(BarSeries series) {
-        super(series, 26);
-    }
+	private final Set<DayOfWeek> daysOfWeekSet;
+	private final DateTimeIndicator timeIndicator;
+	
+	public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
+		this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
+		this.timeIndicator = timeIndicator;
+	}
 
-    /**
-     * Constructor.
-     * 
-     * @param series   the series
-     * @param barCount the time frame (usually 26)
-     */
-    public IchimokuKijunSenIndicator(BarSeries series, int barCount) {
-        super(series, barCount);
-    }
+	@Override
+	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+		ZonedDateTime dateTime = this.timeIndicator.getValue(index);
+		boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
+
+		traceIsSatisfied(index, satisfied);
+		return satisfied;
+	}
 }

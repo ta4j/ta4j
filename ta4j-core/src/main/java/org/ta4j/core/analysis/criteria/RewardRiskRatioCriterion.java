@@ -27,6 +27,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,13 +38,18 @@ import org.ta4j.core.num.Num;
  */
 public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion totalProfit = new TotalProfitCriterion();
-
-    private AnalysisCriterion maxDrawdown = new MaximumDrawdownCriterion();
+    private final AnalysisCriterion totalProfitCriterion = new TotalProfitCriterion();
+    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return totalProfit.calculate(series, tradingRecord).dividedBy(maxDrawdown.calculate(series, tradingRecord));
+        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        if (maxDrawdown.isZero()) {
+            return NaN.NaN;
+        } else {
+            final Num totalProfit = totalProfitCriterion.calculate(series, tradingRecord);
+            return totalProfit.dividedBy(maxDrawdown);
+        }
     }
 
     @Override
@@ -53,6 +59,12 @@ public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        return totalProfit.calculate(series, trade).dividedBy(maxDrawdown.calculate(series, trade));
+        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, trade);
+        if (maxDrawdown.isZero()) {
+            return NaN.NaN;
+        } else {
+            final Num totalProfit = totalProfitCriterion.calculate(series, trade);
+            return totalProfit.dividedBy(maxDrawdown);
+        }
     }
 }

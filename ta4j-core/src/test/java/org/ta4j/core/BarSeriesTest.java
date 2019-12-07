@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -31,9 +32,9 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.PrecisionNum;
 import org.ta4j.core.trading.rules.FixedRule;
 
 import java.math.BigDecimal;
@@ -44,14 +45,20 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries defaultSeries;
 
-    private BarSeries subseries;
+    private BarSeries subSeries;
 
     private BarSeries emptySeries;
 
@@ -78,7 +85,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName(defaultName).withBars(bars)
                 .build();
 
-        subseries = defaultSeries.getSubSeries(2, 5);
+        subSeries = defaultSeries.getSubSeries(2, 5);
         emptySeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
@@ -106,7 +113,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void getEndGetBeginGetBarCountIsEmpty() {
+    public void getEndGetBeginGetBarCountIsEmptyTest() {
 
         // Default series
         assertEquals(0, defaultSeries.getBeginIndex());
@@ -114,10 +121,10 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bars.size(), defaultSeries.getBarCount());
         assertFalse(defaultSeries.isEmpty());
         // Constrained series
-        assertEquals(0, subseries.getBeginIndex());
-        assertEquals(2, subseries.getEndIndex());
-        assertEquals(3, subseries.getBarCount());
-        assertFalse(subseries.isEmpty());
+        assertEquals(0, subSeries.getBeginIndex());
+        assertEquals(2, subSeries.getEndIndex());
+        assertEquals(3, subSeries.getBarCount());
+        assertFalse(subSeries.isEmpty());
         // Empty series
         assertEquals(-1, emptySeries.getBeginIndex());
         assertEquals(-1, emptySeries.getEndIndex());
@@ -126,39 +133,39 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void getBarData() {
+    public void getBarDataTest() {
         // Default series
         assertEquals(bars, defaultSeries.getBarData());
         // Constrained series
-        assertNotEquals(bars, subseries.getBarData());
+        assertNotEquals(bars, subSeries.getBarData());
         // Empty series
         assertEquals(0, emptySeries.getBarData().size());
     }
 
     @Test
-    public void getSeriesPeriodDescription() {
+    public void getSeriesPeriodDescriptionTest() {
         // Default series
         assertTrue(defaultSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(
                 bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
-        assertTrue(subseries.getSeriesPeriodDescription()
+        assertTrue(subSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(subseries.getSeriesPeriodDescription()
+        assertTrue(subSeries.getSeriesPeriodDescription()
                 .startsWith(bars.get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
 
     @Test
-    public void getName() {
+    public void getNameTest() {
         assertEquals(defaultName, defaultSeries.getName());
-        assertEquals(defaultName, subseries.getName());
+        assertEquals(defaultName, subSeries.getName());
     }
 
     @Test
-    public void getBarWithRemovedIndexOnMovingSeriesShouldReturnFirstRemainingBar() {
+    public void getBarWithRemovedIndexOnMovingSeriesShouldReturnFirstRemainingBarTest() {
         Bar bar = defaultSeries.getBar(4);
         defaultSeries.setMaximumBarCount(2);
 
@@ -171,32 +178,33 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
-    public void getBarOnMovingAndEmptySeriesShouldThrowException() {
+    public void getBarOnMovingAndEmptySeriesShouldThrowExceptionTest() {
         defaultSeries.setMaximumBarCount(2);
         bars.clear(); // Should not be used like this
         defaultSeries.getBar(1);
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
-    public void getBarWithNegativeIndexShouldThrowException() {
+    public void getBarWithNegativeIndexShouldThrowExceptionTest() {
         defaultSeries.getBar(-1);
     }
 
     @Test(expected = IndexOutOfBoundsException.class)
-    public void getBarWithIndexGreaterThanBarCountShouldThrowException() {
+    public void getBarWithIndexGreaterThanBarCountShouldThrowExceptionTest() {
         defaultSeries.getBar(10);
     }
 
     @Test
-    public void getBarOnMovingSeries() {
+    public void getBarOnMovingSeriesTest() {
         Bar bar = defaultSeries.getBar(4);
         defaultSeries.setMaximumBarCount(2);
         assertEquals(bar, defaultSeries.getBar(4));
     }
 
     @Test
-    public void subSeriesCreation() {
+    public void subSeriesCreationTest() {
         BarSeries subSeries = defaultSeries.getSubSeries(2, 5);
+        assertEquals(3, subSeries.getBarCount());
         assertEquals(defaultSeries.getName(), subSeries.getName());
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(defaultSeries.getBeginIndex(), subSeries.getBeginIndex());
@@ -204,27 +212,38 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNotEquals(defaultSeries.getEndIndex(), subSeries.getEndIndex());
         assertEquals(3, subSeries.getBarCount());
 
-        subSeries = defaultSeries.getSubSeries(-1000, 1000);
+        subSeries = defaultSeries.getSubSeries(0, 1000);
         assertEquals(0, subSeries.getBeginIndex());
+        assertEquals(defaultSeries.getBarCount(), subSeries.getBarCount());
         assertEquals(defaultSeries.getEndIndex(), subSeries.getEndIndex());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void SubseriesWithWrongArguments() {
-        defaultSeries.getSubSeries(10, 9);
-    }
-
-    public void maximumBarCountOnConstrainedSeriesShouldNotThrowException() {
-        subseries.setMaximumBarCount(10);
+    public void subSeriesCreationWithNegativeIndexTest() {
+        defaultSeries.getSubSeries(-1000, 1000);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void negativeMaximumBarCountShouldThrowException() {
+    public void subSeriesWithWrongArgumentsTest() {
+        defaultSeries.getSubSeries(10, 9);
+    }
+
+    @Test
+    public void maximumBarCountOnConstrainedSeriesShouldNotThrowExceptionTest() {
+        try {
+            subSeries.setMaximumBarCount(10);
+        } catch (Exception e) {
+            Assert.fail("setMaximumBarCount onConstrained series should not throw Exception");
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void negativeMaximumBarCountShouldThrowExceptionTest() {
         defaultSeries.setMaximumBarCount(-1);
     }
 
     @Test
-    public void setMaximumBarCount() {
+    public void setMaximumBarCountTest() {
         // Before
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(bars.size() - 1, defaultSeries.getEndIndex());
@@ -239,18 +258,18 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test(expected = NullPointerException.class)
-    public void addNullBarshouldThrowException() {
+    public void addNullBarShouldThrowExceptionTest() {
         defaultSeries.addBar(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void addBarWithEndTimePriorToSeriesEndTimeShouldThrowException() {
+    public void addBarWithEndTimePriorToSeriesEndTimeShouldThrowExceptionTest() {
         defaultSeries.addBar(
                 new MockBar(ZonedDateTime.of(2000, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault()), 99d, numFunction));
     }
 
     @Test
-    public void addBar() {
+    public void addBarTest() {
         defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d, numFunction);
         Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d, numFunction);
@@ -288,7 +307,6 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
         TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
-                                                                                               // same
 
         Num adding2 = numOf(0);
         defaultSeries.addPrice(adding2);
@@ -296,7 +314,6 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
         TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
         TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
-                                                                                               // same
     }
 
     /**
@@ -316,14 +333,33 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void wrongBarTypeDouble() {
+    public void wrongBarTypeDoubleTest() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DoubleNum.class).build();
         series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, PrecisionNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void wrongBarTypeBigDecimal() {
+    public void wrongBarTypeBigDecimalTest() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
         series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DoubleNum::valueOf));
+    }
+
+    @Test
+    public void subSeriesOfMaxBarCountSeriesTest() {
+        final BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction)
+                .withName("Series with maxBar count").withMaxBarCount(20).build();
+        final int timespan = 5;
+
+        IntStream.range(0, 100).forEach(i -> {
+            series.addBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(i), 5, 7, 1, 5, i);
+            int startIndex = Math.max(0, series.getEndIndex() - timespan + 1);
+            int endIndex = i + 1;
+            final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+            assertEquals(subSeries.getBarCount(), endIndex - startIndex);
+
+            final Bar subSeriesLastBar = subSeries.getLastBar();
+            final Bar seriesLastBar = series.getLastBar();
+            assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
+        });
     }
 }
