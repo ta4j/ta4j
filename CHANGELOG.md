@@ -8,10 +8,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 
-### Added
-- :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
-
 ### Removed/Deprecated
+
+### Added
+- :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
+- :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
+- :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
+- :tada: **Enhancement** Added floor() and ceil() to Num.class
+- :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
 
 ## 0.13 (released November 5, 2019)
 
@@ -64,7 +68,6 @@ for currentStopLossLimitActivation
 - :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - :tada: **Enhancement** Added license checker goal on CI's pipeline
 - :tada: **Enhancement** Added source format checker goal on CI's pipeline
-
 
 ### Removed/Deprecated
 

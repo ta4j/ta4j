@@ -24,7 +24,11 @@
 package org.ta4j.core.analysis;
 
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Order;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -47,6 +51,13 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d);
         CashFlow cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
         assertEquals(5, cashFlow.getSize());
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(1, cashFlow.getValue(2));
+        assertNumEquals(1, cashFlow.getValue(3));
+        assertNumEquals(1, cashFlow.getValue(4));
+
     }
 
     @Test
@@ -110,6 +121,83 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(0, cashFlow.getValue(3));
         assertNumEquals(-8, cashFlow.getValue(4));
         assertNumEquals(-8, cashFlow.getValue(5));
+    }
+
+    @Test
+    public void cashFlowShortSellWith20PercentGain() {
+        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 110, 100, 90, 80);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(1, sampleBarSeries),
+                Order.buyAt(3, sampleBarSeries));
+
+        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(1.1, cashFlow.getValue(2));
+        assertNumEquals(1.2, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowShortSellWith20PercentLoss() {
+        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 90, 100, 110, 120);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(1, sampleBarSeries),
+                Order.buyAt(3, sampleBarSeries));
+
+        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(0.9, cashFlow.getValue(2));
+        assertNumEquals(0.8, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowShortSellWith100PercentLoss() {
+        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190,
+                200);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(1, sampleBarSeries),
+                Order.buyAt(11, sampleBarSeries));
+
+        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(0.9, cashFlow.getValue(2));
+        assertNumEquals(0.8, cashFlow.getValue(3));
+        assertNumEquals(0.7, cashFlow.getValue(4));
+        assertNumEquals(0.6, cashFlow.getValue(5));
+        assertNumEquals(0.5, cashFlow.getValue(6));
+        assertNumEquals(0.4, cashFlow.getValue(7));
+        assertNumEquals(0.3, cashFlow.getValue(8));
+        assertNumEquals(0.2, cashFlow.getValue(9));
+        assertNumEquals(0.1, cashFlow.getValue(10));
+        assertNumEquals(0.0, cashFlow.getValue(11));
+    }
+
+    @Test
+    public void cashFlowShortSellWithOver100PercentLoss() {
+        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 100, 150, 200, 210);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, sampleBarSeries),
+                Order.buyAt(3, sampleBarSeries));
+
+        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(0.5, cashFlow.getValue(1));
+        assertNumEquals(0.0, cashFlow.getValue(2));
+        assertNumEquals(-0.1, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowShortSellBigLossWithNegativeCashFlow() {
+        BarSeries sampleBarSeries = new MockBarSeries(numFunction, 3, 20);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, sampleBarSeries),
+                Order.buyAt(1, sampleBarSeries));
+
+        CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(-4.6667, cashFlow.getValue(1));
     }
 
     @Test
