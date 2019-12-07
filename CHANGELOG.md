@@ -2,10 +2,19 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ## 0.14 (unreleased)
 
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Removed/Deprecated
+
 ### Added
 - :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
 - :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
 - :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
+- :tada: **Enhancement** Added floor() and ceil() to Num.class
 
 ## 0.13 (released November 5, 2019)
 
