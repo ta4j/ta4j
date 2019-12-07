@@ -1,6 +1,13 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.13 (unreleased)
+## 0.14 (unreleased)
+
+### Added
+- :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
+- :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
+- :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
+
+## 0.13 (released November 5, 2019)
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
@@ -51,7 +58,6 @@ for currentStopLossLimitActivation
 - :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - :tada: **Enhancement** Added license checker goal on CI's pipeline
 - :tada: **Enhancement** Added source format checker goal on CI's pipeline
-
 
 ### Removed/Deprecated
 
