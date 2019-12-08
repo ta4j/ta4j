@@ -36,7 +36,7 @@ import java.util.function.Function;
  * @see Num
  * @see Num#function()
  * @see DoubleNum
- * @see PrecisionNum
+ * @see DecimalNum
  * 
  */
 public interface Num extends Comparable<Num>, Serializable {

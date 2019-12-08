@@ -28,7 +28,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -48,7 +48,7 @@ public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<BarSeri
 
     @Test
     public void testBuildBigDecimal() {
-        new ConvertibleBaseBarBuilder<BigDecimal>(PrecisionNum::valueOf);
+        new ConvertibleBaseBarBuilder<BigDecimal>(DecimalNum::valueOf);
 
         final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());

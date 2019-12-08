@@ -32,7 +32,7 @@ public class DoubleNumTest {
 
     @Test
     public void testEqualsDoubleNumWithPrecisionNum() {
-        final PrecisionNum precisionNum = PrecisionNum.valueOf(3.0);
+        final DecimalNum precisionNum = DecimalNum.valueOf(3.0);
         final DoubleNum doubleNum = DoubleNum.valueOf(3.0);
         
         assertFalse(doubleNum.equals(precisionNum));

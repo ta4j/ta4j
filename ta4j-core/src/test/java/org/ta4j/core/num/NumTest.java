@@ -27,7 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.io.InputStream;
 import java.io.IOException;
@@ -66,18 +66,18 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     public void testPrecisionNumPrecision() {
         String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
         Num num = numOf(highPrecisionString, HIGH_PRECISION);
-        Num highPrecisionNum = PrecisionNum.valueOf(highPrecisionString, HIGH_PRECISION);
-        assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 17));
+        Num highPrecisionNum = DecimalNum.valueOf(highPrecisionString, HIGH_PRECISION);
+        assertTrue(((DecimalNum) highPrecisionNum).matches(num, 17));
         BigDecimal fromNum = new BigDecimal(num.toString());
         if (num.getClass().equals(DoubleNum.class)) {
             assertEquals(17, fromNum.precision());
-            assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 17));
-            assertFalse(((PrecisionNum) highPrecisionNum).matches(num, 18));
+            assertTrue(((DecimalNum) highPrecisionNum).matches(num, 17));
+            assertFalse(((DecimalNum) highPrecisionNum).matches(num, 18));
         }
-        if (num.getClass().equals(PrecisionNum.class)) {
+        if (num.getClass().equals(DecimalNum.class)) {
             assertEquals(97, fromNum.precision());
             // since precisions are the same, will match to any precision
-            assertTrue(((PrecisionNum) highPrecisionNum).matches(num, 10000));
+            assertTrue(((DecimalNum) highPrecisionNum).matches(num, 10000));
         }
     }
 
@@ -85,23 +85,23 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     public void testPrecisionNumOffset() {
         String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
         Num num = numOf(highPrecisionString, HIGH_PRECISION);
-        // upconvert num to PrecisionNum so that we don't throw ClassCastException in
+        // upconvert num to DecimalNum so that we don't throw ClassCastException in
         // minus() from
-        // PrecisionNum.matches()
-        Num lowerPrecisionNum = PrecisionNum.valueOf(num.toString(), 128);
-        Num highPrecisionNum = PrecisionNum.valueOf(highPrecisionString, 128);
+        // DecimalNum.matches()
+        Num lowerPrecisionNum = DecimalNum.valueOf(num.toString(), 128);
+        Num highPrecisionNum = DecimalNum.valueOf(highPrecisionString, 128);
         // use HIGH_PRECISION PrecisionNums for delta because they are so small
-        assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum,
+        assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
                 highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
         if (num.getClass().equals(DoubleNum.class)) {
-            assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum,
+            assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
                     highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
-            assertFalse(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum,
+            assertFalse(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
                     highPrecisionNum.numOf("0.00000000000000001", HIGH_PRECISION)));
         }
-        if (num.getClass().equals(PrecisionNum.class)) {
+        if (num.getClass().equals(DecimalNum.class)) {
             // since precisions are the same, will match to any precision
-            assertTrue(((PrecisionNum) highPrecisionNum).matches(lowerPrecisionNum,
+            assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
                     highPrecisionNum.numOf(
                             "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
                             HIGH_PRECISION)));
@@ -134,14 +134,14 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
     @Test(expected = java.lang.ClassCastException.class)
     public void testFailDifferentNumsAdd() {
-        Num a = PrecisionNum.valueOf(12);
+        Num a = DecimalNum.valueOf(12);
         Num b = DoubleNum.valueOf(12);
         a.plus(b);
     }
 
     @Test(expected = java.lang.ClassCastException.class)
     public void testFailDifferentNumsCompare() {
-        Num a = PrecisionNum.valueOf(12);
+        Num a = DecimalNum.valueOf(12);
         Num b = DoubleNum.valueOf(13);
         a.isEqual(b);
     }
@@ -159,7 +159,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     @Test
     public void testNaN() {
         Num a = NaN;
-        Num eleven = PrecisionNum.valueOf(11);
+        Num eleven = DecimalNum.valueOf(11);
 
         Num mustBeNaN = a.plus(eleven);
         assertNumEquals(mustBeNaN, NaN);
@@ -279,7 +279,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         if (numOf(0).getClass().equals(DoubleNum.class)) {
             assertEquals("Infinity", sqrt.toString());
             /*
-             * BigDecimalNum has been replaced by PrecisionNum
+             * BigDecimalNum has been replaced by DecimalNum
              * 
              * } else if (numOf(0).getClass().equals(BigDecimalNum.class)) {
              * assertNumEquals("1.7976931348623157000000000000000E+308", sqrt);
@@ -291,7 +291,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
              * RoundingMode.HALF_UP)))); assertNumEquals(numOf(numBD),
              * sqrt.multipliedBy(sqrt));
              */
-        } else if (numOf(0).getClass().equals(PrecisionNum.class)) {
+        } else if (numOf(0).getClass().equals(DecimalNum.class)) {
             Properties props = new Properties();
             try (InputStream is = getClass().getResourceAsStream("numTest.properties")) {
                 props.load(is);

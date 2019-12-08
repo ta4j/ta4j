@@ -30,7 +30,7 @@ import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.util.function.Function;
 
@@ -117,7 +117,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void returnsPrecision() {
         BarSeries doubleSeries = new MockBarSeries(numFunction, 1.2d, 1.1d);
-        BarSeries precisionSeries = new MockBarSeries(PrecisionNum::valueOf, 1.2d, 1.1d);
+        BarSeries precisionSeries = new MockBarSeries(DecimalNum::valueOf, 1.2d, 1.1d);
 
         TradingRecord fullRecordDouble = new BaseTradingRecord();
         fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).getClosePrice(),
@@ -131,7 +131,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         fullRecordPrecision.exit(precisionSeries.getEndIndex(), precisionSeries.getBar(1).getClosePrice(),
                 precisionSeries.numOf(1));
 
-        // Return calculation DoubleNum vs PrecisionNum
+        // Return calculation DoubleNum vs DecimalNum
         Num arithDouble = new Returns(doubleSeries, fullRecordDouble, Returns.ReturnType.ARITHMETIC).getValue(1);
         Num arithPrecision = new Returns(precisionSeries, fullRecordPrecision, Returns.ReturnType.ARITHMETIC)
                 .getValue(1);
@@ -140,9 +140,9 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(arithDouble, DoubleNum.valueOf(-0.08333333333333326));
         assertNumEquals(arithPrecision,
-                PrecisionNum.valueOf(1.1).dividedBy(PrecisionNum.valueOf(1.2)).minus(PrecisionNum.valueOf(1)));
+                DecimalNum.valueOf(1.1).dividedBy(DecimalNum.valueOf(1.2)).minus(DecimalNum.valueOf(1)));
 
         assertNumEquals(logDouble, DoubleNum.valueOf(-0.08701137698962969));
-        assertNumEquals(logPrecision, PrecisionNum.valueOf("-0.087011376989629766167765901873746"));
+        assertNumEquals(logPrecision, DecimalNum.valueOf("-0.087011376989629766167765901873746"));
     }
 }

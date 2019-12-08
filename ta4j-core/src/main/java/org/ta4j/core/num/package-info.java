@@ -24,7 +24,7 @@
 /**
  * {@link org.ta4j.core.num.Num Num} interface and implementations of
  * {@link org.ta4j.core.num.NaN NaN}, {@link org.ta4j.core.num.DoubleNum
- * DoubleNum} and {@link org.ta4j.core.num.PrecisionNum PrecisionNum}
+ * DoubleNum} and {@link org.ta4j.core.num.DecimalNum DecimalNum}
  *
  * The {@link org.ta4j.core.num.Num Num interface} enables the use of different
  * delegates (Double, {@link java.math.BigDecimal BigDecimal}, ...) for storage

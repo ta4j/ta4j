@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
  * Simple decimal transform indicator.
  *
  * @apiNote Minimal deviations in last decimal places possible. During the
- *          calculations this indicator converts {@link Num PrecisionNum} to to
+ *          calculations this indicator converts {@link Num DecimalNum} to to
  *          {@link Double double} Transforms any indicator by using common math
  *          operations.
  */
