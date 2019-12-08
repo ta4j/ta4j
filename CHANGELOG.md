@@ -1,6 +1,25 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.13 (unreleased)
+## 0.14 (unreleased)
+
+### Breaking
+- :boom: **Breaking** Renamed `PrecisionNum` to `DecimalNum`
+
+### Fixed
+
+### Changed
+
+### Removed/Deprecated
+
+### Added
+- :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
+- :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
+- :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
+- :tada: **Enhancement** Added floor() and ceil() to Num.class
+- :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
+- :tada: **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
+
+## 0.13 (released November 5, 2019)
 
 ### Breaking
 - :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
@@ -51,7 +70,6 @@ for currentStopLossLimitActivation
 - :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - :tada: **Enhancement** Added license checker goal on CI's pipeline
 - :tada: **Enhancement** Added source format checker goal on CI's pipeline
-
 
 ### Removed/Deprecated
 
