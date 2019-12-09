@@ -34,21 +34,21 @@ import org.ta4j.core.num.PrecisionNum;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class AtLeastBarCountRuleTest {
+public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForNegativeNumberShouldThrowException() {
-        new AtLeastBarCountRule(-1);
+        new TradeOpenedMinimumBarCountRule(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForZeroShouldThrowException() {
-        new AtLeastBarCountRule(0);
+        new TradeOpenedMinimumBarCountRule(0);
     }
 
     @Test
     public void testAtLeastOneBarRuleForOpenedTrade() {
-        final AtLeastBarCountRule rule = new AtLeastBarCountRule(1);
+        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
 
         final BarSeries series = new MockBarSeries(PrecisionNum::valueOf, 1, 2, 3, 4);
 
@@ -62,7 +62,7 @@ public class AtLeastBarCountRuleTest {
 
     @Test
     public void testAtLeastMoreThanOneBarRuleForOpenedTrade() {
-        final AtLeastBarCountRule rule = new AtLeastBarCountRule(2);
+        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(2);
 
         final BarSeries series = new MockBarSeries(PrecisionNum::valueOf, 1, 2, 3, 4);
 
@@ -76,7 +76,7 @@ public class AtLeastBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForClosedTradeShouldAlwaysReturnsFalse() {
-        final AtLeastBarCountRule rule = new AtLeastBarCountRule(1);
+        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
 
         final BarSeries series = new MockBarSeries(PrecisionNum::valueOf, 1, 2, 3, 4);
 
@@ -90,7 +90,7 @@ public class AtLeastBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForEmptyTradingRecordShouldAlwaysReturnsFalse() {
-        final AtLeastBarCountRule rule = new AtLeastBarCountRule(1);
+        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
 
         final TradingRecord tradingRecord = new BaseTradingRecord();
 

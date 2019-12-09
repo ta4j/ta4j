@@ -11,7 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 
 ### Added
-- :tada: **Enhancement** Added AtLeastBarCountRule - rule to specify minimum bar count for opened trade.
+- :tada: **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
 - :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
 - :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
 - :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
