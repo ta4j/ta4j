@@ -30,16 +30,18 @@ import org.ta4j.core.trading.rules.helper.ChainLink;
 import java.util.Arrays;
 import java.util.LinkedList;
 
+/**
+ * A chainrule has an initial rule that has to be satisfied before chain links are evaluated.
+ * If the initial rule is satisfied every rule of chain link has to be satisfied within a specified amount of bars (threshold).
+ *
+ */
 public class ChainRule extends AbstractRule {
-    Rule initialRule = null;
+    private final Rule initialRule;
     LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
     /**
-     * A chainrule has an initial rule that has to be satisfied before chain links are evaluated.
-     * If the initial rule is satisfied every rule of chain link has to be satisfied within a specified amount of bars (threshold).
-     *
-     * @param initialRule
-     * @param chainLinks
+     * @param initialRule the first rule that has to be satisfied before {@link ChainLink} are evaluated
+     * @param chainLinks {@link ChainLink} that has to be satisfied after the inital rule within their thresholds
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
         this.initialRule = initialRule;
@@ -51,7 +53,7 @@ public class ChainRule extends AbstractRule {
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
-        if (initialRule == null || !initialRule.isSatisfied(index, tradingRecord)) {
+        if (!initialRule.isSatisfied(index, tradingRecord)) {
             traceIsSatisfied(index, false);
             return false;
         }
