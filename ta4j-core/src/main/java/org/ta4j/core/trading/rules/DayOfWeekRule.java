@@ -40,20 +40,20 @@ import org.ta4j.core.indicators.DateTimeIndicator;
  */
 public class DayOfWeekRule extends AbstractRule {
 
-	private final Set<DayOfWeek> daysOfWeekSet;
-	private final DateTimeIndicator timeIndicator;
-	
-	public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
-		this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
-		this.timeIndicator = timeIndicator;
-	}
+    private final Set<DayOfWeek> daysOfWeekSet;
+    private final DateTimeIndicator timeIndicator;
 
-	@Override
-	public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-		ZonedDateTime dateTime = this.timeIndicator.getValue(index);
-		boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
+    public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
+        this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
+        this.timeIndicator = timeIndicator;
+    }
 
-		traceIsSatisfied(index, satisfied);
-		return satisfied;
-	}
+    @Override
+    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        ZonedDateTime dateTime = this.timeIndicator.getValue(index);
+        boolean satisfied = daysOfWeekSet.contains(dateTime.getDayOfWeek());
+
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
+    }
 }

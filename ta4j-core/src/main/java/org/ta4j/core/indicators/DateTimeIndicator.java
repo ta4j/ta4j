@@ -34,12 +34,12 @@ import org.ta4j.core.BarSeries;
  */
 public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
-	private final Function<Bar, ZonedDateTime> action;
-	
+    private final Function<Bar, ZonedDateTime> action;
+
     public DateTimeIndicator(BarSeries barSeries) {
         this(barSeries, Bar::getBeginTime);
     }
-    
+
     public DateTimeIndicator(BarSeries barSeries, Function<Bar, ZonedDateTime> action) {
         super(barSeries);
         this.action = action;
@@ -47,7 +47,7 @@ public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 
     @Override
     protected ZonedDateTime calculate(int index) {
-    	Bar bar = getBarSeries().getBar(index);
-    	return this.action.apply(bar);
+        Bar bar = getBarSeries().getBar(index);
+        return this.action.apply(bar);
     }
 }
