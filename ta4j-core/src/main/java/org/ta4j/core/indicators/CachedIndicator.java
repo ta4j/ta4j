@@ -43,7 +43,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * List of cached results
      */
-    private final List<T> results = new ArrayList<T>();
+    private final List<T> results = new ArrayList<>();
 
     /**
      * Should always be the index of the last result in the results list. I.E. the
@@ -76,7 +76,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // Series is null; the indicator doesn't need cache.
             // (e.g. simple computation of the value)
             // --> Calculating the value
-            return calculate(index);
+            T result = calculate(index);
+            log.trace("{}({}): {}", getClass().getSimpleName(), index, result);
+            return result;
         }
 
         // Series is not null
@@ -122,6 +124,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
         }
+        log.trace("{}({}): {}", getClass().getSimpleName(), index, result);
         return result;
     }
 
