@@ -77,7 +77,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // (e.g. simple computation of the value)
             // --> Calculating the value
             T result = calculate(index);
-            log.trace("{}({}): {}", getClass().getSimpleName(), index, result);
+            log.trace("{}({}): {}", this, index, result);
             return result;
         }
 
@@ -124,7 +124,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
         }
-        log.trace("{}({}): {}", getClass().getSimpleName(), index, result);
+        log.trace("{}({}): {}", this, index, result);
         return result;
     }
 
