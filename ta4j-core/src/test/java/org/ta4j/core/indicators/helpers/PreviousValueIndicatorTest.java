@@ -25,14 +25,15 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.EMAIndicator;
 
 import java.time.ZonedDateTime;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class PreviousValueIndicatorTest {
 
@@ -95,7 +96,7 @@ public class PreviousValueIndicatorTest {
 
     @Test
     public void shouldBeNthPreviousValueFromIndicator() {
-        for (int i = 0; i < this.series.getBarCount(); i++) {
+        for (int i = 1; i < this.series.getBarCount(); i++) {
             testWithN(i);
         }
     }
@@ -119,5 +120,30 @@ public class PreviousValueIndicatorTest {
         for (int i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i - n));
         }
+    }
+
+    @Test
+    public void testToStringMethodWithN1() {
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
+
+        final String prevValueIndicatorAsString = prevValueIndicator.toString();
+
+        assertTrue(prevValueIndicatorAsString.startsWith("PreviousValueIndicator["));
+        assertTrue(prevValueIndicatorAsString.endsWith("]"));
+    }
+
+    @Test
+    public void testToStringMethodWithNGreaterThen1() {
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 2);
+
+        final String prevValueIndicatorAsString = prevValueIndicator.toString();
+
+        assertTrue(prevValueIndicatorAsString.startsWith("PreviousValueIndicator(2)["));
+        assertTrue(prevValueIndicatorAsString.endsWith("]"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testPreviousValueIndicatorWithNonPositiveN() {
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 0);
     }
 }
