@@ -1,4 +1,5 @@
-# ta4j [![Build Status](https://travis-ci.org/ta4j/ta4j.svg?branch=master)](https://travis-ci.org/ta4j/ta4j) [![Chat on Riot.im](https://img.shields.io/badge/chat-riot.im-green.svg)](https://riot.im/app/#/room/#ta4j:matrix.org)
+# ta4j  ![Build Status develop](https://img.shields.io/travis/ta4j/ta4j/develop?label=develop) ![Build Status master](https://img.shields.io/travis/ta4j/ta4j/develop?label=master) [![Chat on Riot.im](https://img.shields.io/badge/chat-riot.im-green.svg)](https://riot.im/app/#/room/#ta4j:matrix.org) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/org.ta4j/ta4j-parent?label=Snapshot&server=https%3A%2F%2Foss.sonatype.org%2F)
+
 
 ***Technical Analysis For Java***
 
