@@ -42,7 +42,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
 
     /** The Kijun-sen indicator */
     private final IchimokuKijunSenIndicator baseLine;
-    
+
     // Cloud offset
     private final int offset;
 
@@ -59,7 +59,8 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param series                 the series
-     * @param barCountConversionLine the time frame for the conversion line (usually 9)
+     * @param barCountConversionLine the time frame for the conversion line (usually
+     *                               9)
      * @param barCountBaseLine       the time frame for the base line (usually 26)
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
@@ -73,11 +74,11 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param series         the series
      * @param conversionLine the conversion line
      * @param baseLine       the base line
-     * @param offset 		 kumo cloud displacement (offset) forward in time
+     * @param offset         kumo cloud displacement (offset) forward in time
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
             IchimokuKijunSenIndicator baseLine, int offset) {
-    	
+
         super(series);
         this.conversionLine = conversionLine;
         this.baseLine = baseLine;
@@ -86,9 +87,9 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-    	
-    	// at index=7 we need index=3 when offset=5
-    	int spanIndex = index - offset + 1;
+
+        // at index=7 we need index=3 when offset=5
+        int spanIndex = index - offset + 1;
         if (spanIndex >= getBarSeries().getBeginIndex()) {
             return conversionLine.getValue(spanIndex).plus(baseLine.getValue(spanIndex)).dividedBy(numOf(2));
         } else {

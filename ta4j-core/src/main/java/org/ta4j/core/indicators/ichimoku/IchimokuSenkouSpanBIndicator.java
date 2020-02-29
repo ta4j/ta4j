@@ -37,23 +37,22 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
-	// ichimoku avg line indicator
-	IchimokuLineIndicator lineIndicator; 
-	
-	/**
+    // ichimoku avg line indicator
+    IchimokuLineIndicator lineIndicator;
+
+    /**
      * Displacement on the chart (usually 26)
      */
     private final int offset;
 
-		
     /**
      * Constructor.
      * 
      * @param series the series
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series) {
-    
-    	this(series, 52, 26);
+
+        this(series, 52, 26);
     }
 
     /**
@@ -63,31 +62,29 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame (usually 52)
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount) {
-        
-    	this(series, barCount, 26);
+
+        this(series, barCount, 26);
     }
-    
-    
+
     /**
      * Constructor.
      * 
      * @param series   the series
      * @param barCount the time frame (usually 52)
-     * @param offset	displacement on the chart
+     * @param offset   displacement on the chart
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
-    	
+
         super(series);
         lineIndicator = new IchimokuLineIndicator(series, barCount);
         this.offset = offset;
     }
-    
-    
+
     @Override
     protected Num calculate(int index) {
         int spanIndex = index - offset + 1;
         if (spanIndex >= getBarSeries().getBeginIndex()) {
-        	return lineIndicator.getValue(spanIndex);
+            return lineIndicator.getValue(spanIndex);
         } else {
             return NaN.NaN;
         }

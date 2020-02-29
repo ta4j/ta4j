@@ -43,13 +43,13 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_ZONED_DATE_TIME;
 
-	public DateTimeIndicatorTest(Function<Number, Num> numFunction) {
-		super(numFunction);
-	}
-    
+    public DateTimeIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
     @Test
     public void test() {
-    	ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
+        ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
         List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
         BarSeries series = new MockBarSeries(bars);
         DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
