@@ -1,6 +1,9 @@
 ---
 name: General question
 about: A general question about how to use ta4j
+title: ''
+labels: question
+assignees: ''
 
 ---
 
