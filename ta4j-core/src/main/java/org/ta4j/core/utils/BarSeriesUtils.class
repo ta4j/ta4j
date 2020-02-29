@@ -94,7 +94,6 @@ public final class BarSeriesUtils {
 	 * <b>Note:</b> Market closing times (e.g., weekends, holidays) will lead to 
 	 * wrongly detected missing bars and should be ignored by the client.
 	 * 
-	 * 
 	 * @param barSeries       the barSeries
 	 * @param findOnlyNaNBars find only bars with undefined prices
 	 * @return the list of possibly missing bars
