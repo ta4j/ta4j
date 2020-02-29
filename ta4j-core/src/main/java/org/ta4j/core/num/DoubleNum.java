@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2020 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -110,16 +110,16 @@ public class DoubleNum implements Num {
     public Num remainder(Num divisor) {
         return divisor.isNaN() ? NaN : new DoubleNum(delegate % ((DoubleNum) divisor).delegate);
     }
-    
-	@Override
-	public Num floor() {
-		return new DoubleNum(Math.floor(delegate));
-	}
 
-	@Override
-	public Num ceil() {
-		return new DoubleNum(Math.ceil(delegate));
-	}
+    @Override
+    public Num floor() {
+        return new DoubleNum(Math.floor(delegate));
+    }
+
+    @Override
+    public Num ceil() {
+        return new DoubleNum(Math.ceil(delegate));
+    }
 
     @Override
     public Num pow(int n) {
