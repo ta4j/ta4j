@@ -48,10 +48,8 @@ public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     @Before
     public void setUp() {
         unstablePeriod = 5;
-        unstableIndicator = new UnstableIndicator(
-                new ClosePriceIndicator(new MockBarSeries(numFunction)),
-                unstablePeriod
-        );
+        unstableIndicator = new UnstableIndicator(new ClosePriceIndicator(new MockBarSeries(numFunction)),
+                unstablePeriod);
     }
 
     @Test

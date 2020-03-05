@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2020 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,8 +31,9 @@ import java.util.Arrays;
 import java.util.LinkedList;
 
 /**
- * A chainrule has an initial rule that has to be satisfied before chain links are evaluated.
- * If the initial rule is satisfied every rule of chain link has to be satisfied within a specified amount of bars (threshold).
+ * A chainrule has an initial rule that has to be satisfied before chain links
+ * are evaluated. If the initial rule is satisfied every rule of chain link has
+ * to be satisfied within a specified amount of bars (threshold).
  *
  */
 public class ChainRule extends AbstractRule {
@@ -40,8 +41,10 @@ public class ChainRule extends AbstractRule {
     LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
     /**
-     * @param initialRule the first rule that has to be satisfied before {@link ChainLink} are evaluated
-     * @param chainLinks {@link ChainLink} that has to be satisfied after the inital rule within their thresholds
+     * @param initialRule the first rule that has to be satisfied before
+     *                    {@link ChainLink} are evaluated
+     * @param chainLinks  {@link ChainLink} that has to be satisfied after the
+     *                    inital rule within their thresholds
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
         this.initialRule = initialRule;
@@ -59,7 +62,7 @@ public class ChainRule extends AbstractRule {
         }
         traceIsSatisfied(index, true);
 
-        for (ChainLink link: rulesInChain) {
+        for (ChainLink link : rulesInChain) {
             boolean satisfiedWithinThreshold = false;
             startIndex = startIndex - lastRuleWasSatisfiedAfterBars;
             lastRuleWasSatisfiedAfterBars = 0;

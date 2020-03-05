@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2020 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -46,7 +46,8 @@ public class ChainRuleTest {
         UnderIndicatorRule underIndicatorRule = new UnderIndicatorRule(indicator, series.numOf(5));
         OverIndicatorRule overIndicatorRule = new OverIndicatorRule(indicator, 7);
         IsEqualRule isEqualRule = new IsEqualRule(indicator, 5);
-        chainRule = new ChainRule(underIndicatorRule, new ChainLink(overIndicatorRule, 3), new ChainLink(isEqualRule, 2));
+        chainRule = new ChainRule(underIndicatorRule, new ChainLink(overIndicatorRule, 3),
+                new ChainLink(isEqualRule, 2));
     }
 
     @Test
