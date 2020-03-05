@@ -40,8 +40,7 @@ import java.util.stream.Stream;
 public class UnstableIndicatorStrategy {
 
     public static final Duration MINUTE = Duration.ofMinutes(1);
-    public static final ZonedDateTime TIME = ZonedDateTime.of(2020, 1, 1,
-            0, 0, 0, 0, ZoneId.systemDefault());
+    public static final ZonedDateTime TIME = ZonedDateTime.of(2020, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault());
 
     public static Strategy buildStrategy(BarSeries series) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -73,10 +72,9 @@ public class UnstableIndicatorStrategy {
 
     public static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
-        BarSeries series = new BaseBarSeriesBuilder().withBars(closePrices
-                .map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0))
-                .collect(Collectors.toList())
-        ).build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(
+                closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0)).collect(Collectors.toList()))
+                .build();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
