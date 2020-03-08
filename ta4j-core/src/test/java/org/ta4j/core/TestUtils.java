@@ -25,11 +25,13 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.PrecisionNum;
 
 import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 
 /**
@@ -41,6 +43,16 @@ public class TestUtils {
     public static final double GENERAL_OFFSET = 0.0001;
 
     private static Logger log = LoggerFactory.getLogger(TestUtils.class);
+
+    /**
+     * Verifies that the actual {@code Num} value is not equal to {@link NaN}.
+     *
+     * @param actual   the actual {@code Num} value
+     * @throws AssertionError if the actual value is equal to {@link NaN}
+     */
+    public static void assertNotNaN(Num actual) {
+        assertFalse(actual.isNaN());
+    }
 
     /**
      * Verifies that the actual {@code Num} value is equal to the given
@@ -80,6 +92,7 @@ public class TestUtils {
      *                        {@code int} representation
      */
     public static void assertNumEquals(int expected, Num actual) {
+        assertNotNaN(actual);
         assertEquals(actual.numOf(expected), actual);
     }
 
