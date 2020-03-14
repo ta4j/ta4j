@@ -6,6 +6,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **PrecisionNum** renamed to **DecimalNum**
 
 ### Fixed
+- **Fixed `TotalProfitCriterion`**: problem with profit calculations on short trades.
 
 ### Changed
 - **Trade**: Changed the way Nums are created.

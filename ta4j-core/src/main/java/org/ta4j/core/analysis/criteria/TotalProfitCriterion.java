@@ -38,13 +38,13 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
+        return tradingRecord.getTrades().stream().map(trade -> calculateReturn(series, trade)).reduce(series.numOf(1),
                 Num::multipliedBy);
     }
 
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        return calculateProfit(series, trade);
+        return calculateReturn(series, trade);
     }
 
     @Override
@@ -59,7 +59,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @param trade  a trade
      * @return the profit of the trade
      */
-    private Num calculateProfit(BarSeries series, Trade trade) {
+    private Num calculateReturn(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
             return trade.getGrossReturn(series);
         }

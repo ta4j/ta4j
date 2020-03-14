@@ -233,8 +233,8 @@ public class TradeTest {
     public void testGetGrossReturnForShortTrades() {
         Trade trade = new Trade(OrderType.SELL);
 
-        trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
         trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        trade.operate(0, DoubleNum.valueOf(8.00), DoubleNum.valueOf(2));
 
         final Num profit = trade.getGrossReturn();
 
@@ -243,16 +243,16 @@ public class TradeTest {
 
     @Test
     public void testGetGrossReturnForLongTradesUsingBarCloseOnNaN() {
-        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95, 100, 80, 85, 130);
-        Trade trade = new Trade(new Order(1, OrderType.BUY, NaN, NaN), new Order(2, OrderType.SELL, NaN, NaN));
-        assertNumEquals(DoubleNum.valueOf(100.0 / 95.0), trade.getGrossReturn(series));
+        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 105);
+        Trade trade = new Trade(new Order(0, OrderType.BUY, NaN, NaN), new Order(1, OrderType.SELL, NaN, NaN));
+        assertNumEquals(DoubleNum.valueOf(1.05), trade.getGrossReturn(series));
     }
 
     @Test
     public void testGetGrossReturnForShortTradesUsingBarCloseOnNaN() {
-        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95, 100, 80, 85, 130);
-        Trade trade = new Trade(new Order(1, OrderType.SELL, NaN, NaN), new Order(2, OrderType.BUY, NaN, NaN));
-        assertNumEquals(DoubleNum.valueOf(95.0 / 100.0), trade.getGrossReturn(series));
+        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95);
+        Trade trade = new Trade(new Order(0, OrderType.SELL, NaN, NaN), new Order(1, OrderType.BUY, NaN, NaN));
+        assertNumEquals(DoubleNum.valueOf(1.05), trade.getGrossReturn(series));
     }
 
     @Test
