@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
 /**
  * A linear transaction cost criterion.
  *
- * That criterion calculate the transaction cost according to an initial traded
- * amount and a linear function defined by a and b (a * x + b).
+ * Calculates the transaction cost according to an initial traded amount and a
+ * linear function defined by a and b (a * x + b).
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 

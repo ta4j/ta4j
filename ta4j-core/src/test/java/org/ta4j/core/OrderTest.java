@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.LinearTransactionCostModel;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
@@ -80,5 +81,12 @@ public class OrderTest {
         assertNumEquals(expectedRawPrice, order.getPricePerAsset());
         assertNumEquals(expectedNetPrice, order.getNetPrice());
         assertTrue(transactionCostModel.equals(order.getCostModel()));
+    }
+
+    @Test
+    public void testReturnBarSeriesCloseOnNaN() {
+        MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95, 100, 80, 85, 130);
+        Order order = new Order(1, OrderType.BUY, NaN);
+        assertNumEquals(DoubleNum.valueOf(95), order.getPricePerAsset(series));
     }
 }

@@ -214,6 +214,17 @@ public class Order implements Serializable {
     }
 
     /**
+     * @return the pricePerAsset for the order, or, if <code>NaN</code>, the close
+     *         price from the supplied {@link BarSeries}.
+     */
+    public Num getPricePerAsset(BarSeries barSeries) {
+        if (pricePerAsset.isNaN()) {
+            return barSeries.getBar(index).getClosePrice();
+        }
+        return pricePerAsset;
+    }
+
+    /**
      * @return the pricePerAsset for the order, net transaction costs
      */
     public Num getNetPrice() {

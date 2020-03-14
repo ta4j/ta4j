@@ -35,23 +35,24 @@ import java.util.List;
 /**
  * Expected Shortfall criterion.
  *
+ * Measures the expected shortfall of the strategy log-return time-series.
+ *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Expected_shortfall">https://en.wikipedia.org/wiki/Expected_shortfall</a>
  *
- *      Measures the expected shortfall of the strategy log-return time-series
  */
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /**
      * Confidence level as absolute value (e.g. 0.95)
      */
-    private final Double confidence;
+    private final double confidence;
 
     /**
      * Constructor
      *
      * @param confidence the confidence level
      */
-    public ExpectedShortfallCriterion(Double confidence) {
+    public ExpectedShortfallCriterion(double confidence) {
         this.confidence = confidence;
     }
 
