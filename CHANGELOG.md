@@ -5,6 +5,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 
 ### Fixed
+- **Fixed `ProfitLossPercentageCriterion`**: incorrect calculations over multiple trades.
 
 ### Changed
 

@@ -49,7 +49,8 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
+        assertNumEquals(numOf(10 + 5).dividedBy(numOf(100 + 100)).multipliedBy(numOf(100)),
+                profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -59,7 +60,8 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(-5 + -30, profit.calculate(series, tradingRecord));
+        assertNumEquals(numOf(-5 - 30).dividedBy(numOf(100 + 100)).multipliedBy(numOf(100)),
+                profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -69,7 +71,37 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(95 + -30, profit.calculate(series, tradingRecord));
+        assertNumEquals(numOf(95 - 30).dividedBy(numOf(100 + 100)).multipliedBy(numOf(100)),
+                profit.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithOneWinningAndOneLosingTradesOnLargerAmounts() {
+        Num two = numOf(2);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 195, 100, 80, 85, 70);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series, two), Order.sellAt(1, series, two),
+                Order.buyAt(2, series, two), Order.sellAt(5, series, two));
+
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(numOf(2 * 95 - 2 * 30).dividedBy(numOf(2 * 100 + 2 * 100)).multipliedBy(numOf(100)),
+                profit.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateForAGainTrade() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(10, profit.calculate(series, tradingRecord.getTrades().get(0)));
+    }
+
+    @Test
+    public void calculateForALossTrade() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(2, series), Order.sellAt(3, series));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(numOf(-10).dividedBy(numOf(110)).multipliedBy(numOf(100)),
+                profit.calculate(series, tradingRecord.getTrades().get(0)));
     }
 
     @Test

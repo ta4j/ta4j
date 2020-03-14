@@ -36,10 +36,19 @@ import org.ta4j.core.num.Num;
  */
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
+    private ProfitLossCriterion profitLoss = new ProfitLossCriterion();
+
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-                .reduce(series.numOf(0), Num::plus);
+        Num zero = series.numOf(0);
+        Num profit = profitLoss.calculate(series, tradingRecord);
+        Num purchaseCost = tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> series
+                .getBar(trade.getEntry().getIndex()).getClosePrice().multipliedBy(trade.getEntry().getAmount()))
+                .reduce(zero, Num::plus);
+        if (purchaseCost.equals(zero)) {
+            return zero;
+        }
+        return profit.dividedBy(purchaseCost).multipliedBy(series.numOf(100));
     }
 
     /**
