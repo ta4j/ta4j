@@ -53,4 +53,13 @@ public class OrRuleTest {
         assertTrue(unsatisfiedRule.or(BooleanRule.TRUE).isSatisfied(10));
         assertTrue(BooleanRule.TRUE.or(unsatisfiedRule).isSatisfied(10));
     }
+
+    @Test
+    public void arbitraryArgumentLength() {
+        assertFalse(new OrRule(unsatisfiedRule, unsatisfiedRule, unsatisfiedRule, unsatisfiedRule).isSatisfied(0));
+        assertTrue(new OrRule(satisfiedRule, unsatisfiedRule, unsatisfiedRule, unsatisfiedRule).isSatisfied(0));
+        assertTrue(new OrRule(unsatisfiedRule, satisfiedRule, unsatisfiedRule, unsatisfiedRule).isSatisfied(0));
+        assertTrue(new OrRule(unsatisfiedRule, unsatisfiedRule, satisfiedRule, unsatisfiedRule).isSatisfied(0));
+        assertTrue(new OrRule(unsatisfiedRule, unsatisfiedRule, unsatisfiedRule, satisfiedRule).isSatisfied(0));
+    }
 }

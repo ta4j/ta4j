@@ -9,6 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 
 ### Removed/Deprecated
+- **AndRule** and **OrRule**: _deprecated_. getRule1() and getRule2() are now deprecated.
 
 ### Added
 - :tada: **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
@@ -19,7 +20,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
 - :tada: **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
 - :tada: **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
- constructor of PreviousValueIndicator 
+- :tada: **Enhancement** Added support for arbitrary number of arguments on AndRule and OrRule.
 
 ## 0.13 (released November 5, 2019)
 

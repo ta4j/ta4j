@@ -53,4 +53,13 @@ public class AndRuleTest {
         assertFalse(unsatisfiedRule.and(BooleanRule.TRUE).isSatisfied(10));
         assertFalse(BooleanRule.TRUE.and(unsatisfiedRule).isSatisfied(10));
     }
+
+    @Test
+    public void arbitraryArgumentLength() {
+        assertTrue(new AndRule(satisfiedRule, satisfiedRule, satisfiedRule, satisfiedRule).isSatisfied(0));
+        assertFalse(new AndRule(unsatisfiedRule, satisfiedRule, satisfiedRule, satisfiedRule).isSatisfied(0));
+        assertFalse(new AndRule(satisfiedRule, unsatisfiedRule, satisfiedRule, satisfiedRule).isSatisfied(0));
+        assertFalse(new AndRule(satisfiedRule, satisfiedRule, unsatisfiedRule, satisfiedRule).isSatisfied(0));
+        assertFalse(new AndRule(satisfiedRule, satisfiedRule, satisfiedRule, unsatisfiedRule).isSatisfied(0));
+    }
 }

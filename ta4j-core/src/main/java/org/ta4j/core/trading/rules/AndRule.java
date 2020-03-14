@@ -34,32 +34,45 @@ import org.ta4j.core.TradingRecord;
  */
 public class AndRule extends AbstractRule {
 
-    private final Rule rule1;
-    private final Rule rule2;
+    private final Rule[] rules;
 
     /**
      * Constructor
      *
-     * @param rule1 a trading rule
-     * @param rule2 another trading rule
+     * @param rules all trading rules
      */
-    public AndRule(Rule rule1, Rule rule2) {
-        this.rule1 = rule1;
-        this.rule2 = rule2;
+    public AndRule(Rule... rules) {
+        if (rules == null || rules.length < 2) {
+            throw new IllegalArgumentException(
+                    String.format("At least 2 rules must be supplied, %s seen", rules == null ? 0 : rules.length));
+        }
+        this.rules = rules;
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
+        boolean satisfied = true;
+        for (Rule rule : rules) {
+            if (!rule.isSatisfied(index, tradingRecord)) {
+                satisfied = false;
+                break;
+            }
+        }
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
 
+    @Deprecated
     public Rule getRule1() {
-        return rule1;
+        return rules[0];
     }
 
+    @Deprecated
     public Rule getRule2() {
-        return rule2;
+        return rules[1];
+    }
+
+    public Rule[] getRules() {
+        return rules;
     }
 }
