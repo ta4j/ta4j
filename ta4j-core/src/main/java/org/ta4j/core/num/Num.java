@@ -203,7 +203,9 @@ public interface Num extends Comparable<Num>, Serializable {
 	 * @param end the end value, not null
 	 * @return true if this is between start (inclusive) and end (inclusive)
 	 */
-	boolean isBetween(Num start, Num end);
+	default boolean isBetween(Num start, Num end) {
+		return isGreaterThanOrEqual(start) && isLessThanOrEqual(end);
+	}
 
 	/**
 	 * Checks if this value is greater than another.
