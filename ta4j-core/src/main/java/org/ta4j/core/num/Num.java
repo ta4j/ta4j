@@ -192,15 +192,24 @@ public interface Num extends Comparable<Num>, Serializable {
 	 * Checks if this value is equal to another.
 	 * 
 	 * @param other the other value, not null
-	 * @return true is this is greater than the specified value, false otherwise
+	 * @return true if this is greater than the specified value, false otherwise
 	 */
 	boolean isEqual(Num other);
+	
+	/**
+	 * Checks if this value is between start (inclusive) and end (inclusive).
+	 * 
+	 * @param start the start value, not null
+	 * @param end the end value, not null
+	 * @return true if this is between start (inclusive) and end (inclusive)
+	 */
+	boolean isBetween(Num start, Num end);
 
 	/**
 	 * Checks if this value is greater than another.
 	 * 
 	 * @param other the other value, not null
-	 * @return true is this is greater than the specified value, false otherwise
+	 * @return true if this is greater than the specified value, false otherwise
 	 */
 	boolean isGreaterThan(Num other);
 
@@ -208,7 +217,7 @@ public interface Num extends Comparable<Num>, Serializable {
 	 * Checks if this value is greater than or equal to another.
 	 * 
 	 * @param other the other value, not null
-	 * @return true is this is greater than or equal to the specified value, false
+	 * @return true if this is greater than or equal to the specified value, false
 	 *         otherwise
 	 */
 	boolean isGreaterThanOrEqual(Num other);
@@ -217,7 +226,7 @@ public interface Num extends Comparable<Num>, Serializable {
 	 * Checks if this value is less than another.
 	 * 
 	 * @param other the other value, not null
-	 * @return true is this is less than the specified value, false otherwise
+	 * @return true if this is less than the specified value, false otherwise
 	 */
 	boolean isLessThan(Num other);
 
@@ -225,7 +234,7 @@ public interface Num extends Comparable<Num>, Serializable {
 	 * Checks if this value is less than another.
 	 * 
 	 * @param other the other value, not null
-	 * @return true is this is less than or equal the specified value, false
+	 * @return true if this is less than or equal the specified value, false
 	 *         otherwise
 	 */
 	boolean isLessThanOrEqual(Num other);
