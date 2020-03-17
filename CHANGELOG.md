@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added floor() and ceil() to Num.class
 - :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
 - :tada: **Enhancement** Added BarSeriesUtils.
+- :tada: **Enhancement** Added isBetween(start, end) in Num.class.
 
 ## 0.13 (released November 5, 2019)
 
