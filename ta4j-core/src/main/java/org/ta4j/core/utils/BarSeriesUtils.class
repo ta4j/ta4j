@@ -121,5 +121,30 @@ public final class BarSeriesUtils {
 
 		return missingBars;
 	}
+	
+	/**
+	 * Returns a list of overlapping bars founded within the barSeries.
+	 * 
+	 * @param barSeries the bar series with bar data
+	 * @return overlapping bars.
+	 */
+	public static List<Bar> findOverlappingBars(BarSeries barSeries) {
+		List<Bar> bars = barSeries.getBarData();
+		if (bars == null || bars.isEmpty()) return new ArrayList<>();
+		Duration period = bars.iterator().next().getTimePeriod();
+		List<Bar> overlappingBars = new ArrayList<>();
+		for (int i = 0; i < bars.size(); i++) {
+			Bar bar = bars.get(i);
+			Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
+			if (nextBar != null) {
+				if (nextBar.getBeginTime().isBefore(bar.getEndTime())
+						|| nextBar.getBeginTime().minus(period).isBefore(bar.getBeginTime())) {
+					overlappingBars.add(nextBar);
+				}
+			}
+		}
+
+		return overlappingBars;
+	}
 
 }
