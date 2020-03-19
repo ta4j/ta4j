@@ -222,7 +222,6 @@ public interface Num extends Comparable<Num>, Serializable {
         return starts && ends;
     }
 
-
     /**
      * Checks if this value is greater than another.
      * 
