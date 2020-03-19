@@ -147,4 +147,33 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 		// there must be 1 bar with invalid data (e.g. price, volume)
 		assertEquals(missingBars.get(3), bar8.getEndTime());
 	}
+	
+	@Test
+	public void findOverlappingBarsTest() {
+
+		final List<Bar> bars = new ArrayList<>();
+		time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
+
+		final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
+		final Bar bar1 = new MockBar(time, 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+		Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+				.timePeriod(Duration.ofDays(1))
+				.endTime(time.plusDays(8))
+				.openPrice(NaN.NaN)
+				.highPrice(NaN.NaN)
+				.lowPrice(NaN.NaN)
+				.closePrice(NaN.NaN)
+				.volume(NaN.NaN)
+				.build();
+
+		bars.add(bar0);
+		bars.add(bar1);
+		bars.add(bar8);
+
+		series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Series Name").withBars(bars).build();
+		List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(series, false);
+
+		// there must be 1 overlapping bars (bar1)
+		assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
+	}
 }
