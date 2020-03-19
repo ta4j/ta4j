@@ -218,7 +218,7 @@ public interface Num extends Comparable<Num>, Serializable {
      */
     default boolean isBetween(Num start, Num end, boolean startInclusive, boolean endInclusive) {
         boolean starts = startInclusive ? isGreaterThanOrEqual(start) : isGreaterThan(start);
-        boolean ends = endInclusive ? isLowerThanOrEqual(end) : isLowerThan(end);
+        boolean ends = endInclusive ? isLessThanOrEqual(end) : isLessThan(end);
         return starts && ends;
     }
 
