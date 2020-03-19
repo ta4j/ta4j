@@ -137,8 +137,8 @@ public final class BarSeriesUtils {
 			Bar bar = bars.get(i);
 			Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
 			if (nextBar != null) {
-				if (nextBar.getBeginTime().isBefore(bar.getEndTime())
-						|| nextBar.getBeginTime().minus(period).isBefore(bar.getBeginTime())) {
+				if (bar.getEndTime().isAfter(nextBar.getBeginTime())
+						|| bar.getBeginTime().plus(period).isBefore(nextBar.getBeginTime())) {
 					overlappingBars.add(nextBar);
 				}
 			}
