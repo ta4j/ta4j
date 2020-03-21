@@ -56,7 +56,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     public final Function<Number, Num> numFunction;
 
-    @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
+    @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=DecimalNum)")
     public static List<Function<Number, Num>> function() {
         return Arrays.asList(DoubleNum::valueOf, DecimalNum::valueOf);
     }

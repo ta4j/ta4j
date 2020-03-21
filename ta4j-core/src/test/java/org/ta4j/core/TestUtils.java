@@ -195,7 +195,7 @@ public class TestUtils {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
         for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
-            // convert to PrecisionNum via String (auto-precision) avoids Cast Class
+            // convert to DecimalNum via String (auto-precision) avoids Cast Class
             // Exception
             Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
             Num act = DecimalNum.valueOf(actual.getValue(i).toString());
