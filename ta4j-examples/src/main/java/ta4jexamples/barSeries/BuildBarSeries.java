@@ -26,7 +26,7 @@ package ta4jexamples.barSeries;
 import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -80,7 +80,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildWithBigDecimal() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
+        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").withNumTypeOf(DecimalNum.class).build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
