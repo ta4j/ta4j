@@ -192,7 +192,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is equal to another.
      * 
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     boolean isEqual(Num other);
 
@@ -200,7 +200,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is greater than another.
      * 
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     boolean isGreaterThan(Num other);
 
@@ -208,7 +208,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is greater than or equal to another.
      * 
      * @param other the other value, not null
-     * @return true is this is greater than or equal to the specified value, false
+     * @return true if this is greater than or equal to the specified value, false
      *         otherwise
      */
     boolean isGreaterThanOrEqual(Num other);
@@ -217,7 +217,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is less than another.
      * 
      * @param other the other value, not null
-     * @return true is this is less than the specified value, false otherwise
+     * @return true if this is less than the specified value, false otherwise
      */
     boolean isLessThan(Num other);
 
@@ -225,7 +225,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is less than another.
      * 
      * @param other the other value, not null
-     * @return true is this is less than or equal the specified value, false
+     * @return true if this is less than or equal the specified value, false
      *         otherwise
      */
     boolean isLessThanOrEqual(Num other);
