@@ -144,8 +144,8 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      * <p/>
-     * Creates a BaseBarSeries with default {@link DecimalNum} as type for the
-     * data and all operations on it
+     * Creates a BaseBarSeries with default {@link DecimalNum} as type for the data
+     * and all operations on it
      *
      * @param name             the name of the series
      * @param bars             the list of bars of the series
