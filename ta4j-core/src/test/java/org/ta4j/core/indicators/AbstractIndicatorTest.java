@@ -29,7 +29,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -41,7 +41,7 @@ import java.util.function.Function;
 /**
  * Abstract test class to extend BarSeries, Indicator an other test cases. The
  * extending class will be called twice. First time with
- * {@link PrecisionNum#valueOf}, second time with {@link DoubleNum#valueOf} as
+ * {@link DecimalNum#valueOf}, second time with {@link DoubleNum#valueOf} as
  * <code>Function<Number, Num></></code> parameter. This should ensure that the
  * defined test case is valid for both data types.
  *
@@ -58,7 +58,7 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=PrecisionNum)")
     public static List<Function<Number, Num>> function() {
-        return Arrays.asList(DoubleNum::valueOf, PrecisionNum::valueOf);
+        return Arrays.asList(DoubleNum::valueOf, DecimalNum::valueOf);
     }
 
     private final IndicatorFactory<D, I> factory;

@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -161,7 +161,7 @@ public class BaseBar implements Bar {
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
             BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, PrecisionNum::valueOf);
+        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, DecimalNum::valueOf);
     }
 
     /**
@@ -217,7 +217,7 @@ public class BaseBar implements Bar {
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice,
             String closePrice, String volume, String amount) {
         this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, "0",
-                PrecisionNum::valueOf);
+                DecimalNum::valueOf);
     }
 
     /**

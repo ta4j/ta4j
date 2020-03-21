@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +37,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     /**
      * Default Num type function
      **/
-    private static Function<Number, Num> defaultFunction = PrecisionNum::valueOf;
+    private static Function<Number, Num> defaultFunction = DecimalNum::valueOf;
     private List<Bar> bars;
     private String name;
     private Function<Number, Num> numFunction;
@@ -105,14 +105,14 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     public BaseBarSeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
-        if (abstractNumClass == PrecisionNum.class) {
-            numFunction = PrecisionNum::valueOf;
+        if (abstractNumClass == DecimalNum.class) {
+            numFunction = DecimalNum::valueOf;
             return this;
         } else if (abstractNumClass == DoubleNum.class) {
             numFunction = DoubleNum::valueOf;
             return this;
         }
-        numFunction = PrecisionNum::valueOf;
+        numFunction = DecimalNum::valueOf;
         return this;
     }
 

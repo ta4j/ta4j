@@ -26,7 +26,7 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
@@ -197,8 +197,8 @@ public class TestUtils {
         for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
             // convert to PrecisionNum via String (auto-precision) avoids Cast Class
             // Exception
-            Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
-            Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
+            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
+            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 log.debug("{} expected does not match", exp);
@@ -230,8 +230,8 @@ public class TestUtils {
             return;
         }
         for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
-            Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
-            Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
+            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
+            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 return;
