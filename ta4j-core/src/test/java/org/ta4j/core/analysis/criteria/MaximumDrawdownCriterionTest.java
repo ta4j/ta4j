@@ -58,7 +58,7 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateShouldWork() {
+    public void calculateWithGainsAndLosses() {
         MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 5, 20, 3);
         AnalysisCriterion mdd = getCriterion();
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),

@@ -7,6 +7,16 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 
 ### Changed
+- **Trade**: Changed the way Nums are created.
+- **AverageProfitableTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **BuyAndHoldCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **ExpectedShortfallCriterion**: Removed unnecessary primitive boxing.
+- **NumberOfBreakEvenTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **NumberOfLosingTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **NumberOfWinningTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
+- **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **TotalProfitCriterion**: Changed to calculate trade profits using Trade's getProfit().
 
 ### Removed/Deprecated
 
@@ -20,6 +30,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
 - :tada: **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
  constructor of PreviousValueIndicator 
+- :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
+- :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
 
 ## 0.13 (released November 5, 2019)
 

@@ -29,9 +29,9 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Average profitable trades criterion.
+ * Calculates the percentage of trades which are profitable.
  *
- * The number of profitable trades.
+ * Defined as <code># of winning trades / total # of trades</code>.
  */
 public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
 
@@ -42,22 +42,10 @@ public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion 
 
     private boolean isProfitableTrade(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
-            final Num result = calculateResult(series, trade);
-            return result.isGreaterThan(series.numOf(1));
+            Num zero = series.numOf(0);
+            return trade.getProfit().isGreaterThan(zero);
         }
         return false;
-    }
-
-    private Num calculateResult(BarSeries series, Trade trade) {
-        int entryIndex = trade.getEntry().getIndex();
-        int exitIndex = trade.getExit().getIndex();
-        if (trade.getEntry().isBuy()) {
-            // buy-then-sell trade
-            return series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
-        } else {
-            // sell-then-buy trade
-            return series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
-        }
     }
 
     @Override
