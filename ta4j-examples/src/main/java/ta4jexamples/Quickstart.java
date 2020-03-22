@@ -25,9 +25,9 @@ package ta4jexamples;
 
 import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.criteria.AverageProfitableTradesCriterion;
-import org.ta4j.core.analysis.criteria.RewardRiskRatioCriterion;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.WinningTradesRatioCriterion;
+import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -92,15 +92,15 @@ public class Quickstart {
         // Analysis
 
         // Getting the profitable trades ratio
-        AnalysisCriterion profitTradesRatio = new AverageProfitableTradesCriterion();
+        AnalysisCriterion profitTradesRatio = new WinningTradesRatioCriterion();
         System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, tradingRecord));
         // Getting the reward-risk ratio
-        AnalysisCriterion rewardRiskRatio = new RewardRiskRatioCriterion();
+        AnalysisCriterion rewardRiskRatio = new ReturnOverMaxDrawdownCriterion();
         System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, tradingRecord));
 
         // Total profit of our strategy
         // vs total profit of a buy-and-hold strategy
-        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalReturnCriterion());
         System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!

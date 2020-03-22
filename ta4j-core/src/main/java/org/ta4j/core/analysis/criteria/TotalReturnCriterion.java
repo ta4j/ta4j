@@ -23,19 +23,46 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
+/**
+ * Total profit criterion.
+ *
+ * The total profit of the provided {@link Trade trade(s)} over the provided
+ * {@link BarSeries series}.
+ */
+public class TotalReturnCriterion extends AbstractAnalysisCriterion {
 
-public class TotalProfit2CriterionTest extends AbstractCriterionTest {
-
-    public TotalProfit2CriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfit2Criterion(), numFunction);
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
+                Num::multipliedBy);
     }
 
-    @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    @Override
+    public Num calculate(BarSeries series, Trade trade) {
+        return calculateProfit(series, trade);
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    /**
+     * Calculates the profit of a trade (Buy and sell).
+     *
+     * @param series a bar series
+     * @param trade  a trade
+     * @return the profit of the trade
+     */
+    private Num calculateProfit(BarSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            return trade.getGrossReturn(series);
+        }
+        return series.numOf(1);
     }
 }

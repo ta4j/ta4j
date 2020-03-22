@@ -24,19 +24,9 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
@@ -45,72 +35,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithWinningLongTrades() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
-
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(1.10 * 1.05, profit.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateWithLosingLongTrades() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
-
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(0.95 * 0.7, profit.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateProfitWithWinningShortTrades() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-                Order.sellAt(2, series), Order.buyAt(5, series));
-
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateProfitWithLosingShortTrades() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 130);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-                Order.sellAt(2, series), Order.buyAt(5, series));
-
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals((1 / 1.05) * (1 / 1.3), profit.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateWithNoTradesShouldReturn1() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(1d, profit.calculate(series, new BaseTradingRecord()));
-    }
-
-    @Test
-    public void calculateWithOpenedTradeShouldReturn1() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        AnalysisCriterion profit = getCriterion();
-        Trade trade = new Trade();
-        assertNumEquals(1d, profit.calculate(series, trade));
-        trade.operate(0);
-        assertNumEquals(1d, profit.calculate(series, trade));
-    }
-
-    @Test
-    public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
-        assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
-    }
-
-    @Test
-    public void testCalculateOneOpenTradeShouldReturnOne() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 1);
+    public void testCalculateOneOpenTradeShouldReturnZero() {
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

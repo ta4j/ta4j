@@ -24,38 +24,46 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Order;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of trades which are profitable.
+ * Buy and hold criterion.
  *
- * Defined as <code># of winning trades / total # of trades</code>.
+ * Calculates the return if a buy-and-hold strategy was used, buying on the
+ * first bar and selling on the last bar.
+ *
+ * @see <a href=
+ *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
  */
-public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
-    }
-
-    private boolean isProfitableTrade(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num zero = series.numOf(0);
-            return trade.getProfit().isGreaterThan(zero);
-        }
-        return false;
-    }
+public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
-        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
+        return createBuyAndHoldTrade(series).getGrossReturn(series);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, Trade trade) {
+        return createBuyAndHoldTrade(series, trade.getEntry().getIndex(), trade.getExit().getIndex())
+                .getGrossReturn(series);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    private Trade createBuyAndHoldTrade(BarSeries series) {
+        return createBuyAndHoldTrade(series, series.getBeginIndex(), series.getEndIndex());
+    }
+
+    private Trade createBuyAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
+        Trade trade = new Trade(Order.OrderType.BUY);
+        trade.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
+        trade.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
+        return trade;
     }
 }

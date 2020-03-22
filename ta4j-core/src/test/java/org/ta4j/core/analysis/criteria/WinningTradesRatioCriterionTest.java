@@ -35,10 +35,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest {
+public class WinningTradesRatioCriterionTest extends AbstractCriterionTest {
 
-    public AverageProfitableTradesCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageProfitableTradesCriterion(), numFunction);
+    public WinningTradesRatioCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new WinningTradesRatioCriterion(), numFunction);
     }
 
     @Test

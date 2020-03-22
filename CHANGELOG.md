@@ -4,21 +4,27 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **Breaking:** **PrecisionNum** renamed to **DecimalNum**
+- **Breaking:** **AverageProfitableTradesCriterion** renamed to **WinningTradesRatioCriterion**
+- **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
+- **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
+- **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
+- **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
+- **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 
 ### Fixed
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
-- **AverageProfitableTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
-- **BuyAndHoldCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **WinningTradesRatioCriterion** (previously AverageProfitableTradesCriterion): Changed to calculate trade profits using Trade's getProfit().
+- **BuyAndHoldReturnCriterion** (previously BuyAndHoldCriterion): Changed to calculate trade profits using Trade's getProfit().
 - **ExpectedShortfallCriterion**: Removed unnecessary primitive boxing.
 - **NumberOfBreakEvenTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfLosingTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfWinningTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
 - **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
-- **TotalProfitCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
 
 ### Removed/Deprecated
 
