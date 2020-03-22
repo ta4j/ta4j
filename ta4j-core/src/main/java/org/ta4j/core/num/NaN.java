@@ -50,6 +50,16 @@ public class NaN implements Num {
 
     private NaN() {
     }
+    
+    /**
+     * Returns a {@code Num} version of the given {@code Num}.
+     *
+     * @param val the number
+     * @return the {@code Num}
+     */
+    public static NaN valueOf(NaN val) {
+        return val;
+    }
 
     @Override
     public int compareTo(Num o) {
