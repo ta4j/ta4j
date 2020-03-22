@@ -29,9 +29,9 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Total profit criterion.
+ * Total return criterion.
  *
- * The total profit of the provided {@link Trade trade(s)} over the provided
+ * The total return of the provided {@link Trade trade(s)} over the provided
  * {@link BarSeries series}.
  */
 public class TotalReturnCriterion extends AbstractAnalysisCriterion {
@@ -53,7 +53,7 @@ public class TotalReturnCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the profit of a trade (Buy and sell).
+     * Calculates the return of a trade (Buy and sell).
      *
      * @param series a bar series
      * @param trade  a trade

@@ -91,17 +91,16 @@ public class Quickstart {
 
         // Analysis
 
-        // Getting the profitable trades ratio
-        AnalysisCriterion profitTradesRatio = new WinningTradesRatioCriterion();
-        System.out.println("Profitable trades ratio: " + profitTradesRatio.calculate(series, tradingRecord));
-        // Getting the reward-risk ratio
-        AnalysisCriterion rewardRiskRatio = new ReturnOverMaxDrawdownCriterion();
-        System.out.println("Reward-risk ratio: " + rewardRiskRatio.calculate(series, tradingRecord));
+        // Getting the winning trades ratio
+        AnalysisCriterion winningTradesRatio = new WinningTradesRatioCriterion();
+        System.out.println("Winning trades ratio: " + winningTradesRatio.calculate(series, tradingRecord));
+        // Getting a risk-reward ratio
+        AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
+        System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
 
-        // Total profit of our strategy
-        // vs total profit of a buy-and-hold strategy
+        // Total return of our strategy vs total return of a buy-and-hold strategy
         AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalReturnCriterion());
-        System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, tradingRecord));
+        System.out.println("Our return vs buy-and-hold return: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!
     }

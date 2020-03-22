@@ -85,6 +85,6 @@ public class CCICorrectionStrategy {
 
         // Analysis
         System.out.println(
-                "Total profit for the strategy: " + new TotalReturnCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy: " + new TotalReturnCriterion().calculate(series, tradingRecord));
     }
 }

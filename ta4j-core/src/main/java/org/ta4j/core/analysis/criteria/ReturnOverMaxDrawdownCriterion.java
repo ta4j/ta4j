@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Reward risk ratio criterion, defined as the {@link TotalReturnCriterion total
- * profit} over the {@link MaximumDrawdownCriterion maximum drawdown}.
+ * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 

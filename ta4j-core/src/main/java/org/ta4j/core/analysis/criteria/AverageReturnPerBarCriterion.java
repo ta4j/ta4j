@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 /**
  * Calculates the average return per bar criterion.
  *
- * The {@link TotalReturnCriterion total profit} raised to the power of 1
+ * The {@link TotalReturnCriterion total return} raised to the power of 1
  * divided by {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
