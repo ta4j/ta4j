@@ -68,6 +68,14 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateWithAShortTrade() {
+        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series));
+        AnalysisCriterion averageProfit = getCriterion();
+        assertNumEquals(numOf(100d / 110).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void calculateWithNoBarsShouldReturn1() {
         series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion averageProfit = getCriterion();

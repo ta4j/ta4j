@@ -30,10 +30,10 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Average profit criterion.
+ * Calculates the average return per bar criterion.
  *
- * The {@link TotalProfitCriterion total profit} over the
- * {@link NumberOfBarsCriterion number of bars}.
+ * The {@link TotalProfitCriterion total profit} raised to the power of 1
+ * divided by {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 

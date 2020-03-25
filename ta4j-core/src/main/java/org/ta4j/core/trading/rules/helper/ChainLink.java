@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2020 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,18 +29,22 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * A ChainLink is part of a {@link org.ta4j.core.trading.rules.ChainRule}. Every Chainlink has a {@link Rule} and a threshold.
- * ChainLinks are evaluated in the order they are added to the ChainRule and the rule has to be satisfied within the threshold number of bars.
+ * A ChainLink is part of a {@link org.ta4j.core.trading.rules.ChainRule}. Every
+ * Chainlink has a {@link Rule} and a threshold. ChainLinks are evaluated in the
+ * order they are added to the ChainRule and the rule has to be satisfied within
+ * the threshold number of bars.
  */
 public class ChainLink implements Serializable {
     private Rule rule;
     private int threshold = 0;
 
     /**
-     * Threshold is the number of bars the provided rule has to be satisfied after the preceding rule
+     * Threshold is the number of bars the provided rule has to be satisfied after
+     * the preceding rule
      *
-     * @param rule A {@link Rule} that has to be satisfied within the threshold
-     * @param threshold Number of bars the rule has to be satisfied in. The current index is included.
+     * @param rule      A {@link Rule} that has to be satisfied within the threshold
+     * @param threshold Number of bars the rule has to be satisfied in. The current
+     *                  index is included.
      */
     public ChainLink(Rule rule, int threshold) {
         this.rule = rule;
@@ -63,14 +67,14 @@ public class ChainLink implements Serializable {
         this.threshold = threshold;
     }
 
-
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ChainLink)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof ChainLink))
+            return false;
         ChainLink chainLink = (ChainLink) o;
-        return getThreshold() == chainLink.getThreshold() &&
-                Objects.equals(getRule(), chainLink.getRule());
+        return getThreshold() == chainLink.getThreshold() && Objects.equals(getRule(), chainLink.getRule());
     }
 
     @Override
@@ -80,9 +84,6 @@ public class ChainLink implements Serializable {
 
     @Override
     public String toString() {
-        return "ChainLink{" +
-                "rule=" + rule +
-                ", threshold=" + threshold +
-                '}';
+        return "ChainLink{" + "rule=" + rule + ", threshold=" + threshold + '}';
     }
 }
