@@ -34,7 +34,7 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.trading.rules.FixedRule;
 
 import java.math.BigDecimal;
@@ -335,12 +335,12 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDoubleTest() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DoubleNum.class).build();
-        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, PrecisionNum::valueOf));
+        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DecimalNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimalTest() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DecimalNum::valueOf).build();
         series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DoubleNum::valueOf));
     }
 

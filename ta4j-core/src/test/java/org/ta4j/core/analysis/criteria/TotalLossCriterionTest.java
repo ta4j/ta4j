@@ -49,8 +49,8 @@ public class TotalLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(0, profit.calculate(series, tradingRecord));
+        AnalysisCriterion loss = getCriterion();
+        assertNumEquals(0, loss.calculate(series, tradingRecord));
     }
 
     @Test
@@ -59,18 +59,18 @@ public class TotalLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(-35, profit.calculate(series, tradingRecord));
+        AnalysisCriterion loss = getCriterion();
+        assertNumEquals(-35, loss.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateProfitWithTradesThatStartSelling() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+    public void calculateProfitWithShortTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 95, 100, 70, 80, 85, 100);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(-35, profit.calculate(series, tradingRecord));
+        AnalysisCriterion loss = getCriterion();
+        assertNumEquals(-35, loss.calculate(series, tradingRecord));
     }
 
     @Test

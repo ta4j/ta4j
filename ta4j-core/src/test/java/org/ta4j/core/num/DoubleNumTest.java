@@ -31,11 +31,11 @@ import static org.junit.Assert.assertTrue;
 public class DoubleNumTest {
 
     @Test
-    public void testEqualsDoubleNumWithPrecisionNum() {
-        final PrecisionNum precisionNum = PrecisionNum.valueOf(3.0);
+    public void testEqualsDoubleNumWithDecimalNum() {
+        final DecimalNum decimalNum = DecimalNum.valueOf(3.0);
         final DoubleNum doubleNum = DoubleNum.valueOf(3.0);
 
-        assertFalse(doubleNum.equals(precisionNum));
+        assertFalse(doubleNum.equals(decimalNum));
     }
 
     @Test

@@ -60,23 +60,9 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      * @return the profit of the trade
      */
     private Num calculateProfit(BarSeries series, Trade trade) {
-        Num profit = series.numOf(1);
         if (trade.isClosed()) {
-            // use price of entry/exit order, if NaN use close price of underlying time
-            // series
-            Num exitClosePrice = trade.getExit().getNetPrice().isNaN()
-                    ? series.getBar(trade.getExit().getIndex()).getClosePrice()
-                    : trade.getExit().getNetPrice();
-            Num entryClosePrice = trade.getEntry().getNetPrice().isNaN()
-                    ? series.getBar(trade.getEntry().getIndex()).getClosePrice()
-                    : trade.getEntry().getNetPrice();
-
-            if (trade.getEntry().isBuy()) {
-                profit = exitClosePrice.dividedBy(entryClosePrice);
-            } else {
-                profit = entryClosePrice.dividedBy(exitClosePrice);
-            }
+            return trade.getGrossReturn(series);
         }
-        return profit;
+        return series.numOf(1);
     }
 }

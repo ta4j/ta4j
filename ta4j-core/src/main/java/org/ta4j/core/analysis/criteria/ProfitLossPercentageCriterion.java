@@ -29,7 +29,8 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss in percentage criterion.
+ * Profit and loss in percentage criterion, defined as the trade profit over the
+ * purchase price.
  *
  * The profit or loss in percentage over the provided {@link Trade trade(s)}.
  * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
@@ -52,10 +53,8 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
-            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
-            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-
-            return exitPrice.minus(entryPrice).dividedBy(entryPrice).multipliedBy(series.numOf(100));
+            Num entryPrice = trade.getEntry().getPricePerAsset();
+            return trade.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
         }
         return series.numOf(0);
     }

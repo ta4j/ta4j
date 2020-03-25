@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
 /**
  * Number of bars criterion.
  *
- * Returns the number of bars during the provided trade(s).
+ * Returns the total number of bars in all the trades.
  */
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 

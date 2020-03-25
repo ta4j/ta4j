@@ -53,6 +53,17 @@ public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest 
     }
 
     @Test
+    public void calculateWithShortTrades() {
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series),
+                Order.sellAt(3, series), Order.buyAt(4, series));
+
+        AnalysisCriterion average = getCriterion();
+
+        assertNumEquals(0.5, average.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void calculateWithOneTrade() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));

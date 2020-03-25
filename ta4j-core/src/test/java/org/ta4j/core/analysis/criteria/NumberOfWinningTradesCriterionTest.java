@@ -52,7 +52,7 @@ public class NumberOfWinningTradesCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithTwoTrades() {
+    public void calculateWithTwoLongTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -61,11 +61,20 @@ public class NumberOfWinningTradesCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade() {
+    public void calculateWithOneLongTrade() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(2, series));
 
         assertNumEquals(1, getCriterion().calculate(series, trade));
+    }
+
+    @Test
+    public void calculateWithTwoShortTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 110, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
+                Order.sellAt(2, series), Order.buyAt(4, series));
+
+        assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
     }
 
     @Test
