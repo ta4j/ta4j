@@ -125,10 +125,10 @@ public final class BarSeriesUtils {
 	}
     
 	/**
-	 * Returns a list of overlapping bars founded within the barSeries.
+	 * Finds overlapping bars within barSeries.
 	 * 
 	 * @param barSeries the bar series with bar data
-	 * @return overlapping bars.
+	 * @return overlapping bars
 	 */
 	public static List<Bar> findOverlappingBars(BarSeries barSeries) {
 		List<Bar> bars = barSeries.getBarData();
