@@ -120,6 +120,15 @@ public interface BarSeries extends Serializable {
         }
         return sb.toString();
     }
+    
+    /**
+     * @return the overall duration of the barSeries
+     */
+    default Duration getOverallDuration() {
+		var start = getFirstBar().getEndTime().toInstant();
+		var end = getLastBar().getEndTime().toInstant();
+		return Duration.between(start, end);
+	}
 
     /**
      * @return the maximum number of bars
