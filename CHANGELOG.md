@@ -34,6 +34,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
+- **Enhancement** Added getOverallDuration() in BarSeries to return the overall duration of the BarSeries.
 
 ## 0.13 (released November 5, 2019)
 
