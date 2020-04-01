@@ -125,7 +125,7 @@ public interface BarSeries extends Serializable {
      * @return the overall duration of the barSeries
      */
     default Duration getOverallDuration() {
-        return Duration.between(getFirstBar().getEndTime().toInstant(), getLastBar().getEndTime().toInstant());
+        return Duration.between(getFirstBar().getBeginTime().toInstant(), getLastBar().getEndTime().toInstant());
     }
 
     /**
