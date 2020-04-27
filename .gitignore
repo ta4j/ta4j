@@ -2,6 +2,7 @@
 .project
 .settings/
 .idea/
+.svn/
 nb-configuration.xml
 nbactions.xml
 *.iml
