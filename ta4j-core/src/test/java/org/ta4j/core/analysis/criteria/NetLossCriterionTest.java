@@ -37,10 +37,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class TotalLossCriterionTest extends AbstractCriterionTest {
+public class NetLossCriterionTest extends AbstractCriterionTest {
 
-    public TotalLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalLossCriterion(), numFunction);
+    public NetLossCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new NetLossCriterion(), numFunction);
     }
 
     @Test

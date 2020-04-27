@@ -28,10 +28,10 @@ import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
-public class TotalProfit2CriterionTest extends AbstractCriterionTest {
+public class NetProfitCriterionTest extends AbstractCriterionTest {
 
-    public TotalProfit2CriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfit2Criterion(), numFunction);
+    public NetProfitCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new NetProfitCriterion(), numFunction);
     }
 
     @Test

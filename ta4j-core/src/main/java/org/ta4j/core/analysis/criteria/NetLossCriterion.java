@@ -28,8 +28,21 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
-public class TotalLossCriterion extends AbstractAnalysisCriterion {
+/**
+ * Net loss criterion.
+ *
+ * The net loss (without commissions) of the provided {@link Trade trade(s)}
+ * over the provided {@link BarSeries series}.
+ */
+public class NetLossCriterion extends AbstractAnalysisCriterion {
 
+	/**
+	 * Calculates the net loss (without commissions) of all trades
+	 *
+	 * @param series        the BarSeries
+	 * @param tradingRecord the TradingRecord
+	 * @return the total loss of the trades
+	 */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
@@ -37,11 +50,11 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the gross loss of the given trade
+     * Calculates the net loss (without commissions) of the given trade
      *
      * @param series a bar series
      * @param trade  a trade
-     * @return the loss of the trade
+     * @return the total loss of the trade
      */
     @Override
     public Num calculate(BarSeries series, Trade trade) {

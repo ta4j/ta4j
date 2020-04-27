@@ -29,19 +29,33 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Total profit criterion.
+ * Gross profit criterion.
  *
- * The total profit of the provided {@link Trade trade(s)} over the provided
- * {@link BarSeries series}.
+ * The gross profit (with commissions) of the provided {@link Trade trade(s)}
+ * over the provided {@link BarSeries series}.
  */
-public class TotalProfitCriterion extends AbstractAnalysisCriterion {
+public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 
+	/**
+	 * Calculates the gross profit (with commissions) of all trades
+	 *
+	 * @param series        the BarSeries
+	 * @param tradingRecord the TradingRecord
+	 * @return the total profit of the trades
+	 */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
                 Num::multipliedBy);
     }
 
+    /**
+     * Calculates the gross profit (with commissions) of the given trade
+     *
+     * @param series a bar series
+     * @param trade  a trade
+     * @return the total loss of the trade
+     */
     @Override
     public Num calculate(BarSeries series, Trade trade) {
         return calculateProfit(series, trade);
@@ -53,7 +67,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the profit of a trade (Buy and sell).
+     * Calculates the gross profit of a trade (Buy and sell).
      *
      * @param series a bar series
      * @param trade  a trade

@@ -46,7 +46,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalProfitCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossProfitCriterion());
         assertNumEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord));
     }
 
@@ -56,7 +56,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalProfitCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossProfitCriterion());
         assertNumEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord));
     }
 
@@ -65,7 +65,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalProfitCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossProfitCriterion());
         assertNumEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, trade));
     }
 
@@ -73,7 +73,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     public void calculateWithNoTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalProfitCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossProfitCriterion());
         assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
@@ -102,7 +102,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion(new TotalProfitCriterion());
+        AnalysisCriterion criterion = getCriterion(new GrossProfitCriterion());
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }
