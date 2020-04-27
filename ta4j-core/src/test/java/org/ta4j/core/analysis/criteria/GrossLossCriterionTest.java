@@ -31,7 +31,7 @@ import java.util.function.Function;
 public class GrossLossCriterionTest extends AbstractCriterionTest {
 
     public GrossLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetProfitCriterion(), numFunction);
+        super((params) -> new GrossLossCriterion(), numFunction);
     }
 
     @Test

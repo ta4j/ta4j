@@ -24,7 +24,7 @@
 package ta4jexamples.num;
 
 import org.ta4j.core.*;
-import org.ta4j.core.analysis.criteria.GrossProfitCriterion;
+import org.ta4j.core.analysis.criteria.GrossReturnCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -85,7 +85,7 @@ public class CompareNumTypes {
         long start = System.currentTimeMillis();
         BarSeriesManager manager = new BarSeriesManager(series);
         TradingRecord record1 = manager.run(strategy1);
-        GrossProfitCriterion profit1 = new GrossProfitCriterion();
+        GrossReturnCriterion profit1 = new GrossReturnCriterion();
         Num profitResult1 = profit1.calculate(series, record1);
         long end = System.currentTimeMillis();
 

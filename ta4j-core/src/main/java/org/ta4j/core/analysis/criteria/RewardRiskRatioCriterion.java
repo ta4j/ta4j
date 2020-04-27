@@ -31,12 +31,12 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion, defined as the {@link GrossProfitCriterion total
+ * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion total
  * profit} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class RewardRiskRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion totalProfitCriterion = new GrossProfitCriterion();
+    private final AnalysisCriterion totalProfitCriterion = new GrossReturnCriterion();
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override

@@ -28,7 +28,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.GrossProfitCriterion;
+import org.ta4j.core.analysis.criteria.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
@@ -175,7 +175,7 @@ public class WalkForward {
         Map<Strategy, String> strategies = buildStrategiesMap(series);
 
         // The analysis criterion
-        AnalysisCriterion profitCriterion = new GrossProfitCriterion();
+        AnalysisCriterion profitCriterion = new GrossReturnCriterion();
 
         for (BarSeries slice : subseries) {
             // For each sub-series...

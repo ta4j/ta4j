@@ -42,7 +42,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private double a;
     private double b;
 
-    private GrossProfitCriterion profit;
+    private GrossReturnCriterion profit;
 
     /**
      * Constructor. (a * x)
@@ -68,7 +68,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        profit = new GrossProfitCriterion();
+        profit = new GrossReturnCriterion();
     }
 
     @Override

@@ -38,10 +38,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class GrossProfitCriterionTest extends AbstractCriterionTest {
+public class GrossReturnCriterionTest extends AbstractCriterionTest {
 
-    public GrossProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new GrossProfitCriterion(), numFunction);
+    public GrossReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new GrossReturnCriterion(), numFunction);
     }
 
     @Test

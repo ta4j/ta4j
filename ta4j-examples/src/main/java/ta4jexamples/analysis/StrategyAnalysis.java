@@ -52,7 +52,7 @@ public class StrategyAnalysis {
          */
 
         // Gross profit
-        GrossProfitCriterion totalProfit = new GrossProfitCriterion();
+        GrossReturnCriterion totalProfit = new GrossReturnCriterion();
         System.out.println("Gross profit: " + totalProfit.calculate(series, tradingRecord));
         // Number of bars
         System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));

@@ -32,12 +32,12 @@ import org.ta4j.core.num.Num;
 /**
  * Calculates the average return per bar criterion.
  *
- * The {@link GrossProfitCriterion total profit} raised to the power of 1
+ * The {@link GrossReturnCriterion total profit} raised to the power of 1
  * divided by {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion totalProfit = new GrossProfitCriterion();
+    private AnalysisCriterion totalProfit = new GrossReturnCriterion();
 
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 

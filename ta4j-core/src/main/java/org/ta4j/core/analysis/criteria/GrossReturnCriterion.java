@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * The gross profit (with commissions) of the provided {@link Trade trade(s)}
  * over the provided {@link BarSeries series}.
  */
-public class GrossProfitCriterion extends AbstractAnalysisCriterion {
+public class GrossReturnCriterion extends AbstractAnalysisCriterion {
 
 	/**
 	 * Calculates the gross profit (with commissions) of all trades
