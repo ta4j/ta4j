@@ -40,11 +40,14 @@ import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Base implementation of a {@link BarSeries}.
- * </p>
  */
 public class BaseBarSeries implements BarSeries {
 
     private static final long serialVersionUID = -1878027009398790126L;
+    /**
+     * The logger
+     */
+    private static final Logger log = LoggerFactory.getLogger(BaseBarSeries.class);
     /**
      * Name for unnamed series
      */
@@ -53,10 +56,6 @@ public class BaseBarSeries implements BarSeries {
      * Num type function
      **/
     protected final Function<Number, Num> numFunction;
-    /**
-     * The logger
-     */
-    private final Logger log = LoggerFactory.getLogger(getClass());
     /**
      * Name of the series
      */

@@ -9,6 +9,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 
 ### Changed
+- **TotalLossCriterion** TotalLossCriterion renamed to GrossLossCriterion
+- **TotalProfit2Criterion** TotalProfit2Criterion renamed to GrossProfitCriterion
 - **Trade**: Changed the way Nums are created.
 - **AverageProfitableTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **BuyAndHoldCriterion**: Changed to calculate trade profits using Trade's getProfit().
@@ -23,6 +25,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 
 ### Added
+- **Enhancement** Added GrossLossPercentageCriterion and GrossProfitPercentageCriterion
+- **Engancement** added .svn into .gitignore
 - **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
 - **Enhancement** Added DateTimeIndicator a new Indicator for dates.
 - **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
