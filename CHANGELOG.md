@@ -4,6 +4,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **Breaking:** **PrecisionNum** renamed to **DecimalNum**
+- **Breaking:** **TotalLossCriterion** renamed to **NetLossCriterion**
+- **Breaking:** **TotalProfit2Criterion** renamed to **NetProfitCriterion**
+- **Breaking:** **TotalProfitCriterion** renamed to **GrossReturnCriterion**
+
+
 
 ### Fixed
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
@@ -34,6 +39,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
+- :tada: **Enhancement** added GrossLossCriterion.
+- :tada: **Enhancement** added GrossProfitCriterion.
 
 ## 0.13 (released November 5, 2019)
 
