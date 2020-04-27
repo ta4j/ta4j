@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.GrossProfitCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.StochasticOscillatorKIndicator;
@@ -100,6 +100,6 @@ public class MovingMomentumStrategy {
 
         // Analysis
         System.out.println(
-                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+                "Gross profit for the strategy: " + new GrossProfitCriterion().calculate(series, tradingRecord));
     }
 }

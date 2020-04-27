@@ -51,9 +51,9 @@ public class StrategyAnalysis {
          * Analysis criteria
          */
 
-        // Total profit
-        TotalProfitCriterion totalProfit = new TotalProfitCriterion();
-        System.out.println("Total profit: " + totalProfit.calculate(series, tradingRecord));
+        // Gross profit
+        GrossProfitCriterion totalProfit = new GrossProfitCriterion();
+        System.out.println("Gross profit: " + totalProfit.calculate(series, tradingRecord));
         // Number of bars
         System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
         // Average profit (per bar)

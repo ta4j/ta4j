@@ -27,7 +27,7 @@ import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.criteria.AverageProfitableTradesCriterion;
 import org.ta4j.core.analysis.criteria.RewardRiskRatioCriterion;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.GrossProfitCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -100,7 +100,7 @@ public class Quickstart {
 
         // Total profit of our strategy
         // vs total profit of a buy-and-hold strategy
-        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalProfitCriterion());
+        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new GrossProfitCriterion());
         System.out.println("Our profit vs buy-and-hold profit: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!
