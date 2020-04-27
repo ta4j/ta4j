@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * The gross profit of the provided {@link Trade trade(s)} over the provided
  * {@link BarSeries series}.
  */
-public class TotalProfit2Criterion extends AbstractAnalysisCriterion {
+public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
