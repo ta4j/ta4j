@@ -43,19 +43,16 @@ public class GrossProfitCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the gross profit value of given trade
+     * Calculates the gross profit of given trade
      *
      * @param series a bar series
-     * @param trade  a trade to calculate profit
-     * @return the total profit
+     * @param trade  a trade
+     * @return the profit of the profit
      */
     @Override
     public Num calculate(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
-            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
-
-            Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            Num profit = trade.getGrossProfit();
             return profit.isPositive() ? profit : series.numOf(0);
         }
         return series.numOf(0);

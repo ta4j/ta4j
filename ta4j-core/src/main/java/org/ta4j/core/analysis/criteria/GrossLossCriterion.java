@@ -46,12 +46,10 @@ public class GrossLossCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
-            Num loss = trade.getProfit();
+            Num loss = trade.getGrossProfit();
             return loss.isNegative() ? loss : series.numOf(0);
-
         }
         return series.numOf(0);
-
     }
 
     @Override
