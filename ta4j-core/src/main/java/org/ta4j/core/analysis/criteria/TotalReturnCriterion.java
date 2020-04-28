@@ -24,31 +24,27 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Order;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Buy and hold criterion.
+ * Total return criterion.
  *
- * Calculates the return if a buy-and-hold strategy was used, buying on the
- * first bar and selling on the last bar.
- *
- * @see <a href=
- *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
+ * The total return of the provided {@link Trade trade(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
+public class TotalReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return createBuyAndHoldTrade(series).getGrossReturn(series);
+        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
+                Num::multipliedBy);
     }
 
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        return createBuyAndHoldTrade(series, trade.getEntry().getIndex(), trade.getExit().getIndex())
-                .getGrossReturn(series);
+        return calculateProfit(series, trade);
     }
 
     @Override
@@ -56,14 +52,17 @@ public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Trade createBuyAndHoldTrade(BarSeries series) {
-        return createBuyAndHoldTrade(series, series.getBeginIndex(), series.getEndIndex());
-    }
-
-    private Trade createBuyAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
-        Trade trade = new Trade(Order.OrderType.BUY);
-        trade.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
-        trade.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
-        return trade;
+    /**
+     * Calculates the return of a trade (Buy and sell).
+     *
+     * @param series a bar series
+     * @param trade  a trade
+     * @return the profit of the trade
+     */
+    private Num calculateProfit(BarSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            return trade.getGrossReturn(series);
+        }
+        return series.numOf(1);
     }
 }

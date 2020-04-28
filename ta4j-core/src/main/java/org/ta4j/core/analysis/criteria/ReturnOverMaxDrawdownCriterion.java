@@ -27,42 +27,42 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the average return per bar criterion.
- *
- * The {@link TotalProfitCriterion total profit} raised to the power of 1
- * divided by {@link NumberOfBarsCriterion number of bars}.
+ * Reward risk ratio criterion, defined as the {@link TotalReturnCriterion total
+ * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
-public class AverageProfitCriterion extends AbstractAnalysisCriterion {
+public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion totalProfit = new TotalProfitCriterion();
-
-    private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
+    private final AnalysisCriterion totalProfitCriterion = new TotalReturnCriterion();
+    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num bars = numberOfBars.calculate(series, tradingRecord);
-        if (bars.isEqual(series.numOf(0))) {
-            return series.numOf(1);
+        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        if (maxDrawdown.isZero()) {
+            return NaN.NaN;
+        } else {
+            final Num totalProfit = totalProfitCriterion.calculate(series, tradingRecord);
+            return totalProfit.dividedBy(maxDrawdown);
         }
-
-        return totalProfit.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        Num bars = numberOfBars.calculate(series, trade);
-        if (bars.isEqual(series.numOf(0))) {
-            return series.numOf(1);
-        }
-
-        return totalProfit.calculate(series, trade).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, Trade trade) {
+        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, trade);
+        if (maxDrawdown.isZero()) {
+            return NaN.NaN;
+        } else {
+            final Num totalProfit = totalProfitCriterion.calculate(series, trade);
+            return totalProfit.dividedBy(maxDrawdown);
+        }
     }
 }

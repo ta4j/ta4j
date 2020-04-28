@@ -23,35 +23,42 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of trades which are profitable.
+ * Calculates the average return per bar criterion.
  *
- * Defined as <code># of winning trades / total # of trades</code>.
+ * The {@link TotalReturnCriterion total return} raised to the power of 1
+ * divided by {@link NumberOfBarsCriterion number of bars}.
  */
-public class AverageProfitableTradesCriterion extends AbstractAnalysisCriterion {
+public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
-    }
+    private AnalysisCriterion totalProfit = new TotalReturnCriterion();
 
-    private boolean isProfitableTrade(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num zero = series.numOf(0);
-            return trade.getProfit().isGreaterThan(zero);
-        }
-        return false;
-    }
+    private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
-        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
+        Num bars = numberOfBars.calculate(series, tradingRecord);
+        if (bars.isEqual(series.numOf(0))) {
+            return series.numOf(1);
+        }
+
+        return totalProfit.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
+    }
+
+    @Override
+    public Num calculate(BarSeries series, Trade trade) {
+        Num bars = numberOfBars.calculate(series, trade);
+        if (bars.isEqual(series.numOf(0))) {
+            return series.numOf(1);
+        }
+
+        return totalProfit.calculate(series, trade).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
