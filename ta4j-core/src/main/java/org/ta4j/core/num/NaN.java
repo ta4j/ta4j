@@ -52,12 +52,12 @@ public class NaN implements Num {
     }
     
     /**
-     * Returns a {@code Num} version of the given {@code Number}.
+     * Returns a {@code Num} version of the given {@code Num}.
      *
      * @param val the number
      * @return {@link #NaN}
      */
-    public static Num valueOf(Number val) {
+    public static Num valueOf(Num val) {
         return NaN;
     }
 
