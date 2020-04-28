@@ -75,9 +75,9 @@ public interface AnalysisCriterion {
 	}
 	
 	/**
-	 * @param manager    the bar series manager
+	 * @param manager     the bar series manager
 	 * @param orderType   the {@link OrderType} used to open the trades
-	 * @param strategies a list of strategies
+	 * @param strategies  the list of strategies
 	 * @param startIndex  the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
 	 * @return the best strategy (among the provided ones) according to the
@@ -103,10 +103,7 @@ public interface AnalysisCriterion {
 
     /**
      * @param criterionValue1 the first value
-     * @param criterionValue2
-     * 
-     * 
-     *                        the second value
+     * @param criterionValue2 the second value
      * @return true if the first value is better than (according to the criterion)
      *         the second one, false otherwise
      */
