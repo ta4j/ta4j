@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.num.Num;
 
 import java.util.List;
@@ -39,42 +40,66 @@ import java.util.List;
 public interface AnalysisCriterion {
 
     /**
-     * @param series a bar series, not null
-     * @param trade  a trade, not null
+     * @param series the bar series, not null
+     * @param trade  the trade, not null
      * @return the criterion value for the trade
      */
     Num calculate(BarSeries series, Trade trade);
 
     /**
-     * @param series        a bar series, not null
-     * @param tradingRecord a trading record, not null
+     * @param series        the bar series, not null
+     * @param tradingRecord the trading record, not null
      * @return the criterion value for the trades
      */
     Num calculate(BarSeries series, TradingRecord tradingRecord);
 
-    /**
-     * @param manager    the bar series manager
-     * @param strategies a list of strategies
-     * @return the best strategy (among the provided ones) according to the
-     *         criterion
-     */
-    default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies) {
+	/**
+	 * @param manager    the bar series manager
+	 * @param strategies the list of strategies
+	 * @return the best strategy (among the provided ones) according to the
+	 *         criterion
+	 */
+	default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies) {
+		return chooseBest(manager, strategies, OrderType.BUY);
+	}
 
-        Strategy bestStrategy = strategies.get(0);
-        Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
+	/**
+	 * @param manager    the bar series manager
+	 * @param strategies the list of strategies
+	 * @param orderType  the {@link OrderType} used to open the trades
+	 * @return the best strategy (among the provided ones) according to the
+	 *         criterion
+	 */
+	default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies, OrderType orderType) {
+		return chooseBest(manager, strategies, orderType, manager.getBarSeries().getBeginIndex(), manager.getBarSeries().getEndIndex());
+	}
+	
+	/**
+	 * @param manager    the bar series manager
+	 * @param orderType   the {@link OrderType} used to open the trades
+	 * @param strategies a list of strategies
+	 * @param startIndex  the start index for the run (included)
+     * @param finishIndex the finish index for the run (included)
+	 * @return the best strategy (among the provided ones) according to the
+	 *         criterion
+	 */
+	default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies, OrderType orderType, int startIndex, int finishIndex) {
 
-        for (int i = 1; i < strategies.size(); i++) {
-            Strategy currentStrategy = strategies.get(i);
-            Num currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy));
+		Strategy bestStrategy = strategies.get(0);
+		Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy, orderType, startIndex, finishIndex));
 
-            if (betterThan(currentCriterionValue, bestCriterionValue)) {
-                bestStrategy = currentStrategy;
-                bestCriterionValue = currentCriterionValue;
-            }
-        }
+		for (int i = 1; i < strategies.size(); i++) {
+			Strategy currentStrategy = strategies.get(i);
+			Num currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy, orderType, startIndex, finishIndex));
 
-        return bestStrategy;
-    }
+			if (betterThan(currentCriterionValue, bestCriterionValue)) {
+				bestStrategy = currentStrategy;
+				bestCriterionValue = currentCriterionValue;
+			}
+		}
+
+		return bestStrategy;
+	}
 
     /**
      * @param criterionValue1 the first value
