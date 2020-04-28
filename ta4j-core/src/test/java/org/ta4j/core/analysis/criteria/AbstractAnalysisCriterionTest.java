@@ -48,7 +48,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfitCriterion(), numFunction);
+        super((params) -> new TotalReturnCriterion(), numFunction);
     }
 
     @Before
@@ -78,12 +78,12 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void toStringMethod() {
-        AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
-        assertEquals("Average Profit", c1.toString());
-        AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();
-        assertEquals("Buy And Hold", c2.toString());
-        AbstractAnalysisCriterion c3 = new RewardRiskRatioCriterion();
-        assertEquals("Reward Risk Ratio", c3.toString());
+        AbstractAnalysisCriterion c1 = new AverageReturnPerBarCriterion();
+        assertEquals("Average Return Per Bar", c1.toString());
+        AbstractAnalysisCriterion c2 = new BuyAndHoldReturnCriterion();
+        assertEquals("Buy And Hold Return", c2.toString());
+        AbstractAnalysisCriterion c3 = new ReturnOverMaxDrawdownCriterion();
+        assertEquals("Return Over Max Drawdown", c3.toString());
     }
 
 }

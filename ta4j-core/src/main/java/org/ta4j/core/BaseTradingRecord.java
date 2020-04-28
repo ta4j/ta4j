@@ -37,6 +37,11 @@ import java.util.List;
 public class BaseTradingRecord implements TradingRecord {
 
     private static final long serialVersionUID = -4436851731855891220L;
+    
+    /**
+     * The name of the trading record
+     */
+    private String name;
 
     /**
      * The recorded orders
@@ -90,14 +95,40 @@ public class BaseTradingRecord implements TradingRecord {
     public BaseTradingRecord() {
         this(Order.OrderType.BUY);
     }
+    
+    /**
+     * Constructor.
+     *
+     * @param name the name of the tradingRecord
+     */
+    public BaseTradingRecord(String name) {
+        this(Order.OrderType.BUY);
+        this.name = name;
+    }
+    
+     /**
+     * Constructor.
+     *
+     * @param name                 the name of the trading record
+     * @param entryOrderType       the {@link Order.OrderType order type} of entries
+     *                             in the trading session
+     */
+    public BaseTradingRecord(String name, Order.OrderType orderType) {
+        this(orderType, new ZeroCostModel(), new ZeroCostModel());
+        this.name = name;
+    }
 
     /**
      * Constructor.
+     *
+     * @param entryOrderType       the {@link Order.OrderType order type} of entries
+     *                             in the trading session
      */
     public BaseTradingRecord(Order.OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
     }
 
+    
     /**
      * Constructor.
      *
@@ -261,7 +292,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord:\n");
+        sb.append("BaseTradingRecord: " + name != null ? name : "" + "\n");
         for (Order order : orders) {
             sb.append(order.toString()).append("\n");
         }

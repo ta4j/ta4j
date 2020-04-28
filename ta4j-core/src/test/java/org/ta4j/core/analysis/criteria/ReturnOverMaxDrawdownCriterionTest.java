@@ -40,12 +40,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class RewardRiskRatioCriterionTest extends AbstractCriterionTest {
+public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     private AnalysisCriterion rrc;
 
-    public RewardRiskRatioCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new RewardRiskRatioCriterion(), numFunction);
+    public ReturnOverMaxDrawdownCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new ReturnOverMaxDrawdownCriterion(), numFunction);
     }
 
     @Before
