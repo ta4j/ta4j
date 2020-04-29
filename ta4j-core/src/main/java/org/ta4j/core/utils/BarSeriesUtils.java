@@ -124,5 +124,40 @@ public final class BarSeriesUtils {
 
         return missingBars;
     }
+    
+    /**
+	 * Gets a new BarSeries cloned from the provided barSeries with bars converted
+	 * by conversionFunction.
+	 * 
+	 * @param barSeries          the BarSeries
+	 * @param conversionFunction the conversionFunction
+	 * @return new cloned BarSeries with bars converted by conversionFunction
+	 */
+	public static BarSeries convertBarSeries(BarSeries barSeries, Function<Number, Num> conversionFunction) {
+		List<Bar> bars = barSeries.getBarData();
+		if (bars == null || bars.isEmpty() || barSeries.function().equals(conversionFunction)) return barSeries;
+		List<Bar> convertedBars = new ArrayList<>();
+		for (int i = 0; i < bars.size(); i++) {
+			Bar bar = bars.get(i);
+			Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
+					.timePeriod(bar.getTimePeriod())
+					.endTime(bar.getEndTime())
+					.openPrice(bar.getOpenPrice().getDelegate())
+					.highPrice(bar.getHighPrice().getDelegate())
+					.lowPrice(bar.getLowPrice().getDelegate())
+					.closePrice(bar.getClosePrice().getDelegate())
+					.volume(bar.getVolume().getDelegate())
+					.amount(bar.getAmount().getDelegate())
+					.trades(bar.getTrades())
+					.build();
+			convertedBars.add(convertedBar);
+		}
+		BarSeries convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, conversionFunction);
+		if (barSeries.getMaximumBarCount() > 0) {
+			convertedBarSeries.setMaximumBarCount(barSeries.getMaximumBarCount());
+		}
+
+		return convertedBarSeries;
+	}
 
 }
