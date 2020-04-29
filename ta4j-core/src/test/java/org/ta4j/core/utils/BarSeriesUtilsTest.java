@@ -170,7 +170,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 		bars.add(bar8);
 
 		series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Series Name").withBars(bars).build();
-		List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(series, false);
+		List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(series);
 
 		// there must be 1 overlapping bars (bar1)
 		assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
