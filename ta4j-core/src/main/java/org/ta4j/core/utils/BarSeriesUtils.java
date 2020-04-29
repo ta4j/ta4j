@@ -139,9 +139,7 @@ public final class BarSeriesUtils {
 	 */
 	public static BarSeries convertBarSeries(BarSeries barSeries, Function<Number, Num> conversionFunction) {
 		List<Bar> bars = barSeries.getBarData();
-		if (bars == null || bars.isEmpty()
-				|| barSeries.getFirstBar().getClosePrice().getClass() == conversionFunction.apply(0).getClass())
-			return barSeries;
+		if (bars == null || bars.isEmpty()) return barSeries;
 		List<Bar> convertedBars = new ArrayList<>();
 		for (int i = 0; i < bars.size(); i++) {
 			Bar bar = bars.get(i);
