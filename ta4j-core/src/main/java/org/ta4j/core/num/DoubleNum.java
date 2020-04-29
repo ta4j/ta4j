@@ -36,7 +36,7 @@ import static org.ta4j.core.num.NaN.NaN;
 public class DoubleNum implements Num {
 
     private static final long serialVersionUID = -2611177221813615070L;
-    private final static double EPS = 0.00001; // precision
+    private final static double EPSILON = 0.00001; // precision
     private final double delegate;
 
     private DoubleNum(double val) {
@@ -249,7 +249,7 @@ public class DoubleNum implements Num {
         }
 
         DoubleNum doubleNumObj = (DoubleNum) obj;
-        return Math.abs(delegate - doubleNumObj.delegate) < EPS;
+        return Math.abs(delegate / doubleNumObj.delegate - 1) < EPSILON;
     }
 
     @Override
