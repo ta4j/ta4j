@@ -249,6 +249,9 @@ public class DoubleNum implements Num {
         }
 
         DoubleNum doubleNumObj = (DoubleNum) obj;
+        if(Math.abs(delegate - doubleNumObj.delegate) == 0.0) {
+        	return 0.0 < EPSILON;
+        }
         return Math.abs(delegate / doubleNumObj.delegate - 1) < EPSILON;
     }
 
