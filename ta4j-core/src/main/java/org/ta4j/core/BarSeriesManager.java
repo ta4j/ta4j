@@ -129,6 +129,22 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, OrderType orderType) {
         return run(strategy, orderType, barSeries.numOf(1));
     }
+    
+    /**
+     * Runs the provided strategy over the managed series (from the latest bar going
+     * backward till pastBars).
+     *
+     * Opens the trades with the specified {@link OrderType orderType} order.
+     * 
+     * @param strategy    the trading strategy
+     * @param orderType   the {@link OrderType} used to open the trades
+     * @param pastBars    the number of past bars to go backward (included)
+     * @return the trading record coming from the run
+     */
+	public TradingRecord run(Strategy strategy, OrderType orderType, int pastBars) {
+		return run(strategy, orderType, barSeries.numOf(1), Math.max(0, barSeries.getEndIndex() - pastBars),
+				Math.max(0, barSeries.getEndIndex()));
+	}
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to
