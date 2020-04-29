@@ -147,4 +147,39 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 		// there must be 1 bar with invalid data (e.g. price, volume)
 		assertEquals(missingBars.get(3), bar8.getEndTime());
 	}
+    
+    
+    @Test
+	public void convertBarSeriesTest() {
+		
+		final Function<Number, Num> decimalNumFunction = DecimalNum::valueOf;
+		final Function<Number, Num> doubleNumFunction = DoubleNum::valueOf;
+		
+		final List<Bar> bars = new ArrayList<>();
+		time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
+		bars.add(new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, decimalNumFunction));
+		bars.add(new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction));
+		bars.add(new MockBar(time.plusDays(2), 2d, 2d, 2d, 2d, 2d, 2d, 2, decimalNumFunction));
+	
+		final BarSeries decimalBarSeries = new BaseBarSeriesBuilder().withMaxBarCount(100)
+				.withBars(bars)
+				.withMaxBarCount(100)
+				.withNumTypeOf(DecimalNum.class)
+				.withName("useDecimalNum")
+				.build();
+
+		// convert barSeries with DecimalNum to barSeries with DoubleNum
+		final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNumFunction);
+		
+		// convert barSeries with DoubleNum to barSeries with DecimalNum
+		final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, decimalNumFunction);
+		
+		// convert barSeries with DoubleNum to barSeries with NaNNum
+//		final BarSeries doubleToNaNSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, NaN::valueOf);
+		
+		assertEquals(decimalBarSeries.getFirstBar().getClosePrice().getClass(), DecimalNum.class);
+		assertEquals(decimalToDoubleSeries.getFirstBar().getClosePrice().getClass(), DoubleNum.class);
+		assertEquals(doubleToDecimalSeries.getFirstBar().getClosePrice().getClass(), DecimalNum.class);
+//		assertEquals(doubleToNaNSeries.getFirstBar().getClosePrice().getClass(), NaN.class);
+	}
 }
