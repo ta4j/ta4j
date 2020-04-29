@@ -25,6 +25,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
 - **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
+- **DoubleNum**: Changed the calculation of equals()
 
 ### Removed/Deprecated
 
