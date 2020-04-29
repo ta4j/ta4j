@@ -33,7 +33,6 @@ import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.utils.BarSeriesUtils;
 
 import java.time.Duration;
 import java.time.ZoneId;
