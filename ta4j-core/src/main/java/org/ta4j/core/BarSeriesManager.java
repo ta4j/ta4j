@@ -142,8 +142,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
 	public TradingRecord run(Strategy strategy, OrderType orderType, int pastBars) {
-		return run(strategy, orderType, barSeries.numOf(1), Math.max(0, barSeries.getEndIndex() - pastBars),
-				Math.max(0, barSeries.getEndIndex()));
+		return run(strategy, orderType, barSeries.numOf(1), Math.max(0, barSeries.getEndIndex() - pastBars), barSeries.getEndIndex());
 	}
 
     /**
@@ -202,8 +201,7 @@ public class BarSeriesManager {
 
         if (!tradingRecord.isClosed()) {
             // If the last trade is still opened, we search out of the run end index.
-            // May works if the end index for this run was inferior to the actual number of
-            // bars
+            // May work if the end index for this run was inferior to the actual number of bars
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
