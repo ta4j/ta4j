@@ -31,10 +31,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class enables backtesting of multiple strategies and comparing them to
+ * This class generates reports of multiple strategies which can be compared to
  * see which is the best.
  */
-public class BacktestExecutor {
+public class ReportExecutor {
 
     private final TradingStatementGenerator tradingStatementGenerator;
     private final BarSeriesManager seriesManager;
