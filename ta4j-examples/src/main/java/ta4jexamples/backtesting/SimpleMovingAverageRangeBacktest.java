@@ -23,10 +23,10 @@
  */
 package ta4jexamples.backtesting;
 
-import org.ta4j.core.BacktestExecutor;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Order;
+import org.ta4j.core.ReportExecutor;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeries;
@@ -56,8 +56,8 @@ public class SimpleMovingAverageRangeBacktest {
                     createExitRule(series, i));
             strategies.add(strategy);
         }
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Order.OrderType.BUY);
+        ReportExecutor reportExecutor = new ReportExecutor(series);
+        reportExecutor.execute(strategies, DecimalNum.valueOf(50), Order.OrderType.BUY);
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {
