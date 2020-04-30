@@ -29,7 +29,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
 
 /**
- * This class holds the backtesting backtest result of the AnalysisCriterion
+ * This class holds the backtest result of the AnalysisCriterion
  * running against a Strategy within a BarSeries.
  */
 public class BacktestResult {
