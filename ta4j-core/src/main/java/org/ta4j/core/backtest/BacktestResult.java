@@ -59,7 +59,7 @@ public class BacktestResult {
 	}
 
 	/**
-	 * @return the requiredNum value of the criterion (is null if no required
+	 * @return the required value of the criterion (is null if no required
 	 *         criterion value was set)
 	 */
 	public Num getRequiredNum() {
