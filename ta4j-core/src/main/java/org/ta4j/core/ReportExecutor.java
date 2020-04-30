@@ -39,11 +39,11 @@ public class ReportExecutor {
     private final TradingStatementGenerator tradingStatementGenerator;
     private final BarSeriesManager seriesManager;
 
-    public BacktestExecutor(BarSeries series) {
+    public ReportExecutor(BarSeries series) {
         this(series, new TradingStatementGenerator());
     }
 
-    public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
+    public ReportExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
         this.seriesManager = new BarSeriesManager(series);
         this.tradingStatementGenerator = tradingStatementGenerator;
     }
