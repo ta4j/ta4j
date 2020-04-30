@@ -163,7 +163,7 @@ public class BacktestExecutor {
 		return bestStrategies.stream()
 				.sorted(isBetterIfHigher ? BacktestResult.COMPARE.reversed() : BacktestResult.COMPARE)
 				.limit(topNumbers)
-				.collect(Collectors.toUnmodifiableList());
+				.collect(Collectors.toList());
 	}
 
 	/**
