@@ -54,6 +54,6 @@ public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }
