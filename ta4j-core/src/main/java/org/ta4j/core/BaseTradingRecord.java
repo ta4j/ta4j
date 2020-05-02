@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -76,7 +77,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The entry type (BUY or SELL) in the trading session
      */
-    private Order.OrderType startingType;
+    private OrderType startingType;
 
     /**
      * The current non-closed trade (there's always one)
@@ -180,6 +181,11 @@ public class BaseTradingRecord implements TradingRecord {
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
+    
+    @Override
+    public OrderType getStartingType() {
+		return startingType;
+	}
 
     @Override
     public Trade getCurrentTrade() {
