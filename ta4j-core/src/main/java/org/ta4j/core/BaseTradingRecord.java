@@ -180,6 +180,11 @@ public class BaseTradingRecord implements TradingRecord {
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
+    
+    @Override
+	public String getName() {
+		return name;
+	}
 
     @Override
     public Trade getCurrentTrade() {
