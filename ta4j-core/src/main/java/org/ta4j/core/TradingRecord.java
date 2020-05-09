@@ -42,6 +42,11 @@ import static org.ta4j.core.num.NaN.NaN;
  * </ul>
  */
 public interface TradingRecord extends Serializable {
+    
+    /**
+	 * @return the name of the TradingRecord
+	 */
+	String getName();
 
     /**
      * @return the current trade
