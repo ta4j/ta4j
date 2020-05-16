@@ -51,20 +51,20 @@ public class BacktestExecutor {
     /**
      * Executes given strategies and returns trading statements.
      * 
-     * @param strategies    the strategies
-     * @param amount        the amount used to open/close the trades
+     * @param strategies the strategies
+     * @param amount     the amount used to open/close the trades
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
         return execute(strategies, amount, Order.OrderType.BUY);
     }
 
     /**
-     * Executes given strategies with specified order type to open trades and returns
-     * trading statements.
+     * Executes given strategies with specified order type to open trades and
+     * returns trading statements.
      * 
-     * @param strategies    the strategies
-     * @param amount        the amount used to open/close the trades
-     * @param orderType     the {@link Order.OrderType} used to open the trades
+     * @param strategies the strategies
+     * @param amount     the amount used to open/close the trades
+     * @param orderType  the {@link Order.OrderType} used to open the trades
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Order.OrderType orderType) {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());

@@ -37,7 +37,7 @@ import java.util.List;
 public class BaseTradingRecord implements TradingRecord {
 
     private static final long serialVersionUID = -4436851731855891220L;
-    
+
     /**
      * The name of the trading record
      */
@@ -95,7 +95,7 @@ public class BaseTradingRecord implements TradingRecord {
     public BaseTradingRecord() {
         this(Order.OrderType.BUY);
     }
-    
+
     /**
      * Constructor.
      *
@@ -105,13 +105,13 @@ public class BaseTradingRecord implements TradingRecord {
         this(Order.OrderType.BUY);
         this.name = name;
     }
-    
-     /**
+
+    /**
      * Constructor.
      *
-     * @param name                 the name of the trading record
-     * @param entryOrderType       the {@link Order.OrderType order type} of entries
-     *                             in the trading session
+     * @param name           the name of the trading record
+     * @param entryOrderType the {@link Order.OrderType order type} of entries in
+     *                       the trading session
      */
     public BaseTradingRecord(String name, Order.OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
@@ -121,14 +121,13 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryOrderType       the {@link Order.OrderType order type} of entries
-     *                             in the trading session
+     * @param entryOrderType the {@link Order.OrderType order type} of entries in
+     *                       the trading session
      */
     public BaseTradingRecord(Order.OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
     }
 
-    
     /**
      * Constructor.
      *
@@ -180,11 +179,11 @@ public class BaseTradingRecord implements TradingRecord {
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
-    
+
     @Override
-	public String getName() {
-		return name;
-	}
+    public String getName() {
+        return name;
+    }
 
     @Override
     public Trade getCurrentTrade() {
