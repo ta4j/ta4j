@@ -32,6 +32,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15
@@ -356,4 +357,10 @@ public interface BarSeries extends Serializable {
      */
     Function<Number, Num> function();
 
+    /**
+     * Returns a sequential Stream with this bar series as its source.
+     *
+     * @return a sequential Stream over the elements in this bar series
+     */
+    Stream<Bar> stream();
 }
