@@ -50,6 +50,11 @@ public interface TradingRecord extends Serializable {
 	OrderType getStartingType();
 
     /**
+     * @return the name of the TradingRecord
+     */
+    String getName();
+
+    /**
      * @return the current trade
      */
     Trade getCurrentTrade();

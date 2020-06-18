@@ -38,7 +38,7 @@ import java.util.List;
 public class BaseTradingRecord implements TradingRecord {
 
     private static final long serialVersionUID = -4436851731855891220L;
-    
+
     /**
      * The name of the trading record
      */
@@ -96,7 +96,7 @@ public class BaseTradingRecord implements TradingRecord {
     public BaseTradingRecord() {
         this(OrderType.BUY);
     }
-    
+
     /**
      * Constructor.
      *
@@ -106,13 +106,13 @@ public class BaseTradingRecord implements TradingRecord {
         this(OrderType.BUY);
         this.name = name;
     }
-    
-     /**
+
+    /**
      * Constructor.
      *
-     * @param name                 the name of the trading record
-     * @param entryOrderType       the {@link OrderType order type} of entries
-     *                             in the trading session
+     * @param name           the name of the trading record
+     * @param entryOrderType the {@link OrderType order type} of entries in
+     *                       the trading session
      */
     public BaseTradingRecord(String name, OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
@@ -124,12 +124,13 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param entryOrderType       the {@link OrderType order type} of entries
      *                             in the trading session
+     * @param entryOrderType the {@link OrderType order type} of entries in
+     *                       the trading session
      */
     public BaseTradingRecord(OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
     }
 
-    
     /**
      * Constructor.
      *
@@ -186,6 +187,11 @@ public class BaseTradingRecord implements TradingRecord {
     public OrderType getStartingType() {
 		return startingType;
 	}
+
+    @Override
+    public String getName() {
+        return name;
+    }
 
     @Override
     public Trade getCurrentTrade() {
