@@ -32,8 +32,8 @@ import org.ta4j.core.num.Num;
 /**
  * A linear transaction cost criterion.
  *
- * That criterion calculate the transaction cost according to an initial traded
- * amount and a linear function defined by a and b (a * x + b).
+ * Calculates the transaction cost according to an initial traded amount and a
+ * linear function defined by a and b (a * x + b).
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
@@ -42,7 +42,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private double a;
     private double b;
 
-    private TotalProfitCriterion profit;
+    private TotalReturnCriterion totalReturn;
 
     /**
      * Constructor. (a * x)
@@ -68,7 +68,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        profit = new TotalProfitCriterion();
+        totalReturn = new TotalReturnCriterion();
     }
 
     @Override
@@ -89,7 +89,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             // - Multiply by the profit ratio
             // - Remove the cost of the *second* order
             tradedAmount = tradedAmount.minus(getOrderCost(trade.getEntry(), tradedAmount));
-            tradedAmount = tradedAmount.multipliedBy(profit.calculate(series, trade));
+            tradedAmount = tradedAmount.multipliedBy(totalReturn.calculate(series, trade));
             tradedAmount = tradedAmount.minus(getOrderCost(trade.getExit(), tradedAmount));
         }
 
@@ -136,7 +136,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
                     // - Remove the cost of the first order
                     // - Multiply by the profit ratio
                     Num newTradedAmount = initialAmount.minus(totalTradeCost)
-                            .multipliedBy(profit.calculate(series, trade));
+                            .multipliedBy(totalReturn.calculate(series, trade));
                     totalTradeCost = totalTradeCost.plus(getOrderCost(trade.getExit(), newTradedAmount));
                 }
             }

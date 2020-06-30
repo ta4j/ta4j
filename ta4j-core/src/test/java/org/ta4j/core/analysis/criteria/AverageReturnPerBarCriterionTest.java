@@ -33,11 +33,11 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AverageProfitCriterionTest extends AbstractCriterionTest {
+public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     private MockBarSeries series;
 
-    public AverageProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageProfitCriterion(), numFunction);
+    public AverageReturnPerBarCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new AverageReturnPerBarCriterion(), numFunction);
     }
 
     @Test
@@ -65,6 +65,14 @@ public class AverageProfitCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(95d / 100 * 70d / 100).pow(numOf(1d / 6)),
                 averageProfit.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithAShortTrade() {
+        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series));
+        AnalysisCriterion averageProfit = getCriterion();
+        assertNumEquals(numOf(100d / 110).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
     }
 
     @Test

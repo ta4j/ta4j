@@ -46,10 +46,7 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Trade trade) {
         if (trade.isClosed()) {
-            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
-            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
-
-            Num loss = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            Num loss = trade.getProfit();
             return loss.isNegative() ? loss : series.numOf(0);
 
         }

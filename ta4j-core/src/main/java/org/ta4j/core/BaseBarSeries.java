@@ -26,7 +26,7 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -144,8 +144,8 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      * <p/>
-     * Creates a BaseBarSeries with default {@link PrecisionNum} as type for the
-     * data and all operations on it
+     * Creates a BaseBarSeries with default {@link DecimalNum} as type for the data
+     * and all operations on it
      *
      * @param name             the name of the series
      * @param bars             the list of bars of the series
@@ -155,7 +155,7 @@ public class BaseBarSeries implements BarSeries {
      *                         change), false otherwise
      */
     private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, PrecisionNum::valueOf);
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum::valueOf);
     }
 
     /**

@@ -3,31 +3,55 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.14 (unreleased)
 
 ### Breaking
+- **Breaking:** **PrecisionNum** renamed to **DecimalNum**
+- **Breaking:** **AverageProfitableTradesCriterion** renamed to **WinningTradesRatioCriterion**
+- **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
+- **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
+- **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
+- **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
+- **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 
 ### Fixed
 - **Fixed `ProfitLossPercentageCriterion`**: incorrect calculations over multiple trades.
+- **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 
 ### Changed
+- **Trade**: Changed the way Nums are created.
+- **WinningTradesRatioCriterion** (previously AverageProfitableTradesCriterion): Changed to calculate trade profits using Trade's getProfit().
+- **BuyAndHoldReturnCriterion** (previously BuyAndHoldCriterion): Changed to calculate trade profits using Trade's getProfit().
+- **ExpectedShortfallCriterion**: Removed unnecessary primitive boxing.
+- **NumberOfBreakEvenTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **NumberOfLosingTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **NumberOfWinningTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
+- **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
 
 ### Removed/Deprecated
 
 ### Added
-- :tada: **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
-- :tada: **Enhancement** Added DateTimeIndicator a new Indicator for dates.
-- :tada: **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
-- :tada: **Enhancement** Added TimeRangeRule for trading within time ranges.
-- :tada: **Enhancement** Added floor() and ceil() to Num.class
-- :tada: **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
-- :tada: **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
-- :tada: **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
+- **Enhancement** Improvements on gitignore
+- **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
+- **Enhancement** Added DateTimeIndicator a new Indicator for dates.
+- **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
+- **Enhancement** Added TimeRangeRule for trading within time ranges.
+- **Enhancement** Added floor() and ceil() to Num.class
+- **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
+- **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
+- **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
  constructor of PreviousValueIndicator 
+- :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
+- :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
+- :tada: **Enhancement** added UnstableIndicator.
+- :tada: **Enhancement** added Chainrule.
+
 
 ## 0.13 (released November 5, 2019)
 
 ### Breaking
-- :boom: **Breaking** Refactored from Max/Min to High/Low in Bar class
-- :boom: **Breaking** Removed redundant constructors from BaseBar class
-- :boom: **Breaking** Renamed `TimeSeries` to `BarSeries`
+- **Breaking** Refactored from Max/Min to High/Low in Bar class
+- **Breaking** Removed redundant constructors from BaseBar class
+- **Breaking** Renamed `TimeSeries` to `BarSeries`
 
 ### Fixed
 - **Fixed `BaseBarSeries`**: problem with getSubList for series with specified `maximumBarCount`.
@@ -49,30 +73,30 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
 
 ### Added
-- :tada: **Enhancement** Added getters for AroonDownIndicator and AroonUpIndicator in AroonOscillatorIndicator
-- :tada: **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
-- :tada: **Enhancement** Added constructor in BaseBar with trades property
-- :tada: **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
-- :tada: **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
-- :tada: **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
-- :tada: **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
-- :tada: **Enhancement** Implemented Value at Risk Analysis Criterion
-- :tada: **Enhancement** Implemented Expected Shortfall Analysis Criterion
-- :tada: **Enhancement** Implemented Returns class to analyze the time series of return rates. Supports logarithmic and arithmetic returns
-- :tada: **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
-- :tada: **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades 
-- :tada: **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
-- :tada: **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
-- :tada: **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
-- :tada: **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades 
-- :tada: **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
-- :tada: **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
-- :tada: **Enhancement** Added ADX indicator based strategy to ta4j-examples  
-- :tada: **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
+- **Enhancement** Added getters for AroonDownIndicator and AroonUpIndicator in AroonOscillatorIndicator
+- **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
+- **Enhancement** Added constructor in BaseBar with trades property
+- **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
+- **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
+- **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
+- **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
+- **Enhancement** Implemented Value at Risk Analysis Criterion
+- **Enhancement** Implemented Expected Shortfall Analysis Criterion
+- **Enhancement** Implemented Returns class to analyze the time series of return rates. Supports logarithmic and arithmetic returns
+- **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
+- **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades 
+- **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
+- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
+- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
+- **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades 
+- **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
+- **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
+- **Enhancement** Added ADX indicator based strategy to ta4j-examples  
+- **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
 for currentStopLossLimitActivation
-- :tada: **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
-- :tada: **Enhancement** Added license checker goal on CI's pipeline
-- :tada: **Enhancement** Added source format checker goal on CI's pipeline
+- **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
+- **Enhancement** Added license checker goal on CI's pipeline
+- **Enhancement** Added source format checker goal on CI's pipeline
 
 ### Removed/Deprecated
 

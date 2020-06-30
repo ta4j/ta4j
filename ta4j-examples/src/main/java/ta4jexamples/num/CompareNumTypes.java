@@ -24,7 +24,7 @@
 package ta4jexamples.num;
 
 import org.ta4j.core.*;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.trading.rules.IsEqualRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
@@ -49,10 +49,10 @@ public class CompareNumTypes {
         BaseBarSeriesBuilder barSeriesBuilder = new BaseBarSeriesBuilder();
         BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
                 .build();
-        BarSeries seriesP = barSeriesBuilder.withName("Sample Series PrecisionNum 32")
-                .withNumTypeOf(PrecisionNum::valueOf).build();
-        BarSeries seriesPH = barSeriesBuilder.withName("Sample Series PrecisionNum 256")
-                .withNumTypeOf(number -> PrecisionNum.valueOf(number.toString(), 256)).build();
+        BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32").withNumTypeOf(DecimalNum::valueOf)
+                .build();
+        BarSeries seriesPH = barSeriesBuilder.withName("Sample Series DecimalNum 256")
+                .withNumTypeOf(number -> DecimalNum.valueOf(number.toString(), 256)).build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
@@ -61,13 +61,13 @@ public class CompareNumTypes {
             seriesP.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
             seriesPH.addBar(date, randoms[i], randoms[i] + 21, randoms[i] - 21, randoms[i] - 5);
         }
-        Num D = PrecisionNum.valueOf(test(seriesD).toString(), 256);
-        Num P = PrecisionNum.valueOf(test(seriesP).toString(), 256);
-        Num standard = PrecisionNum.valueOf(test(seriesPH).toString(), 256);
+        Num D = DecimalNum.valueOf(test(seriesD).toString(), 256);
+        Num P = DecimalNum.valueOf(test(seriesP).toString(), 256);
+        Num standard = DecimalNum.valueOf(test(seriesPH).toString(), 256);
         System.out.println(seriesD.getName() + " error: "
-                + D.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
+                + D.minus(standard).dividedBy(standard).multipliedBy(DecimalNum.valueOf(100)));
         System.out.println(seriesP.getName() + " error: "
-                + P.minus(standard).dividedBy(standard).multipliedBy(PrecisionNum.valueOf(100)));
+                + P.minus(standard).dividedBy(standard).multipliedBy(DecimalNum.valueOf(100)));
     }
 
     public static Num test(BarSeries series) {
@@ -85,12 +85,12 @@ public class CompareNumTypes {
         long start = System.currentTimeMillis();
         BarSeriesManager manager = new BarSeriesManager(series);
         TradingRecord record1 = manager.run(strategy1);
-        TotalProfitCriterion profit1 = new TotalProfitCriterion();
-        Num profitResult1 = profit1.calculate(series, record1);
+        TotalReturnCriterion totalReturn1 = new TotalReturnCriterion();
+        Num returnResult1 = totalReturn1.calculate(series, record1);
         long end = System.currentTimeMillis();
 
         System.out.printf("[%s]\n" + "    -Time:   %s ms.\n" + "    -Profit: %s \n" + "    -Bars:   %s\n \n",
-                series.getName(), (end - start), profitResult1, series.getBarCount());
-        return profitResult1;
+                series.getName(), (end - start), returnResult1, series.getBarCount());
+        return returnResult1;
     }
 }

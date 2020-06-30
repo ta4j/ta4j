@@ -29,22 +29,36 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Total profit criterion.
+ * Gross profit criterion.
  *
- * The total profit of the provided {@link Trade trade(s)} over the provided
+ * The gross profit of the provided {@link Trade trade(s)} over the provided
  * {@link BarSeries series}.
  */
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
-                Num::multipliedBy);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * Calculates the gross profit value of given trade
+     *
+     * @param series a bar series
+     * @param trade  a trade to calculate profit
+     * @return the total profit
+     */
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        return calculateProfit(series, trade);
+        if (trade.isClosed()) {
+            Num exitPrice = series.getBar(trade.getExit().getIndex()).getClosePrice();
+            Num entryPrice = series.getBar(trade.getEntry().getIndex()).getClosePrice();
+
+            Num profit = exitPrice.minus(entryPrice).multipliedBy(trade.getExit().getAmount());
+            return profit.isPositive() ? profit : series.numOf(0);
+        }
+        return series.numOf(0);
     }
 
     @Override
@@ -52,31 +66,4 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /**
-     * Calculates the profit of a trade (Buy and sell).
-     *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit of the trade
-     */
-    private Num calculateProfit(BarSeries series, Trade trade) {
-        Num profit = series.numOf(1);
-        if (trade.isClosed()) {
-            // use price of entry/exit order, if NaN use close price of underlying time
-            // series
-            Num exitClosePrice = trade.getExit().getNetPrice().isNaN()
-                    ? series.getBar(trade.getExit().getIndex()).getClosePrice()
-                    : trade.getExit().getNetPrice();
-            Num entryClosePrice = trade.getEntry().getNetPrice().isNaN()
-                    ? series.getBar(trade.getEntry().getIndex()).getClosePrice()
-                    : trade.getEntry().getNetPrice();
-
-            if (trade.getEntry().isBuy()) {
-                profit = exitClosePrice.dividedBy(entryClosePrice);
-            } else {
-                profit = entryClosePrice.dividedBy(exitClosePrice);
-            }
-        }
-        return profit;
-    }
 }

@@ -25,54 +25,60 @@ package org.ta4j.core.analysis.criteria;
 
 import org.junit.Test;
 import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AverageProfitableTradesCriterionTest extends AbstractCriterionTest {
+public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
-    public AverageProfitableTradesCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageProfitableTradesCriterion(), numFunction);
+    public BuyAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new BuyAndHoldReturnCriterion(), numFunction);
     }
 
     @Test
-    public void calculate() {
-        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+    public void calculateOnlyWithGainTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
+                Order.buyAt(3, series), Order.sellAt(5, series));
+
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(1.05, buyAndHold.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateOnlyWithLossTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(3, series), Order.buyAt(4, series), Order.sellAt(5, series));
+                Order.buyAt(2, series), Order.sellAt(5, series));
 
-        AnalysisCriterion average = getCriterion();
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(0.7, buyAndHold.calculate(series, tradingRecord));
+    }
 
-        assertNumEquals(2d / 3, average.calculate(series, tradingRecord));
+    @Test
+    public void calculateWithNoTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOneTrade() {
-        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
-
-        AnalysisCriterion average = getCriterion();
-        assertNumEquals(numOf(0), average.calculate(series, trade));
-
-        trade = new Trade(Order.buyAt(1, series), Order.sellAt(2, series));
-        assertNumEquals(1, average.calculate(series, trade));
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(105d / 100, buyAndHold.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(12), numOf(8)));
-        assertFalse(criterion.betterThan(numOf(8), numOf(12)));
-    }
-
-    @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+        assertTrue(criterion.betterThan(numOf(1.3), numOf(1.1)));
+        assertFalse(criterion.betterThan(numOf(0.6), numOf(0.9)));
     }
 }

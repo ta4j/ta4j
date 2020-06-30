@@ -44,7 +44,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithGainTrades() {
+    public void calculateWithWinningLongTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -54,7 +54,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithLossTrades() {
+    public void calculateWithLosingLongTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -65,7 +65,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneWinningAndOneLosingTrades() {
+    public void calculateWithOneWinningAndOneLosingLongTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 195, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -102,6 +102,24 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion profit = getCriterion();
         assertNumEquals(numOf(-10).dividedBy(numOf(110)).multipliedBy(numOf(100)),
                 profit.calculate(series, tradingRecord.getTrades().get(0)));
+    }
+
+    @Test
+    public void calculateWithWinningShortTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 90, 100, 95, 95, 100);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
+                Order.sellAt(2, series), Order.buyAt(3, series));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(10 + 5, profit.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithLosingShortTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 110, 100, 105, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
+                Order.sellAt(2, series), Order.buyAt(3, series));
+        AnalysisCriterion profit = getCriterion();
+        assertNumEquals(-10 - 5, profit.calculate(series, tradingRecord));
     }
 
     @Test

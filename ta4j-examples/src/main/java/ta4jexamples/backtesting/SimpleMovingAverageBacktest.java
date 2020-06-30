@@ -25,11 +25,11 @@ package ta4jexamples.backtesting;
 
 import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
@@ -46,15 +46,15 @@ public class SimpleMovingAverageBacktest {
 
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY,
-                PrecisionNum.valueOf(50));
+                DecimalNum.valueOf(50));
         System.out.println(tradingRecord3DaySma);
 
         Strategy strategy2DaySma = create2DaySmaStrategy(series);
         TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY,
-                PrecisionNum.valueOf(50));
+                DecimalNum.valueOf(50));
         System.out.println(tradingRecord2DaySma);
 
-        AnalysisCriterion criterion = new TotalProfitCriterion();
+        AnalysisCriterion criterion = new TotalReturnCriterion();
         Num calculate3DaySma = criterion.calculate(series, tradingRecord3DaySma);
         Num calculate2DaySma = criterion.calculate(series, tradingRecord2DaySma);
 
@@ -77,7 +77,7 @@ public class SimpleMovingAverageBacktest {
 
     private static BaseBar createBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
             Number closePrice, Number volume) {
-        return BaseBar.builder(PrecisionNum::valueOf, Number.class).timePeriod(Duration.ofDays(1)).endTime(endTime)
+        return BaseBar.builder(DecimalNum::valueOf, Number.class).timePeriod(Duration.ofDays(1)).endTime(endTime)
                 .openPrice(openPrice).highPrice(highPrice).lowPrice(lowPrice).closePrice(closePrice).volume(volume)
                 .build();
     }

@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -37,40 +38,68 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class TotalLossCriterionTest extends AbstractCriterionTest {
+public class TotalReturnCriterionTest extends AbstractCriterionTest {
 
-    public TotalLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalLossCriterion(), numFunction);
+    public TotalReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new TotalReturnCriterion(), numFunction);
     }
 
     @Test
-    public void calculateOnlyWithGainTrades() {
+    public void calculateWithWinningLongTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(0, loss.calculate(series, tradingRecord));
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(1.10 * 1.05, ret.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateOnlyWithLossTrades() {
+    public void calculateWithLosingLongTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(0.95 * 0.7, ret.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateProfitWithShortTrades() {
-        MockBarSeries series = new MockBarSeries(numFunction, 95, 100, 70, 80, 85, 100);
+    public void calculateReturnWithWinningShortTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals((1 / 0.95) * (1 / 0.7), ret.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateReturnWithLosingShortTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 130);
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
+                Order.sellAt(2, series), Order.buyAt(5, series));
+
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals((1 / 1.05) * (1 / 1.3), ret.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithNoTradesShouldReturn1() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(1d, ret.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
+    public void calculateWithOpenedTradeShouldReturn1() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        AnalysisCriterion ret = getCriterion();
+        Trade trade = new Trade();
+        assertNumEquals(1d, ret.calculate(series, trade));
+        trade.operate(0);
+        assertNumEquals(1d, ret.calculate(series, trade));
     }
 
     @Test
@@ -81,7 +110,7 @@ public class TotalLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenTradeShouldReturnOne() {
+        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 1);
     }
 }

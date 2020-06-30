@@ -29,33 +29,40 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Buy and hold criterion.
+ * Total return criterion.
  *
- * @see <a href=
- *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
+ * The total return of the provided {@link Trade trade(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class BuyAndHoldCriterion extends AbstractAnalysisCriterion {
+public class TotalReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return series.getBar(series.getEndIndex()).getClosePrice()
-                .dividedBy(series.getBar(series.getBeginIndex()).getClosePrice());
+        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
+                Num::multipliedBy);
     }
 
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        int entryIndex = trade.getEntry().getIndex();
-        int exitIndex = trade.getExit().getIndex();
-
-        if (trade.getEntry().isBuy()) {
-            return series.getBar(exitIndex).getClosePrice().dividedBy(series.getBar(entryIndex).getClosePrice());
-        } else {
-            return series.getBar(entryIndex).getClosePrice().dividedBy(series.getBar(exitIndex).getClosePrice());
-        }
+        return calculateProfit(series, trade);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    /**
+     * Calculates the return of a trade (Buy and sell).
+     *
+     * @param series a bar series
+     * @param trade  a trade
+     * @return the profit of the trade
+     */
+    private Num calculateProfit(BarSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            return trade.getGrossReturn(series);
+        }
+        return series.numOf(1);
     }
 }
