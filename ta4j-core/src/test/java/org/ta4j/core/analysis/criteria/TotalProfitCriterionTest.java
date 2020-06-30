@@ -71,7 +71,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(1.05 * 1.30, profit.calculate(series, tradingRecord));
+        assertNumEquals((1 / 0.95) * (1 / 0.7), profit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -81,7 +81,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
         AnalysisCriterion profit = getCriterion();
-        assertNumEquals(.95 * .70, profit.calculate(series, tradingRecord));
+        assertNumEquals((1 / 1.05) * (1 / 1.3), profit.calculate(series, tradingRecord));
     }
 
     @Test
