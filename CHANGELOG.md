@@ -4,6 +4,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **Breaking:** **PrecisionNum** renamed to **DecimalNum**
+- **Breaking:** **AverageProfitableTradesCriterion** renamed to **WinningTradesRatioCriterion**
+- **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
+- **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
+- **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
+- **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
+- **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.
@@ -11,19 +17,20 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
-- **AverageProfitableTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
-- **BuyAndHoldCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **WinningTradesRatioCriterion** (previously AverageProfitableTradesCriterion): Changed to calculate trade profits using Trade's getProfit().
+- **BuyAndHoldReturnCriterion** (previously BuyAndHoldCriterion): Changed to calculate trade profits using Trade's getProfit().
 - **ExpectedShortfallCriterion**: Removed unnecessary primitive boxing.
 - **NumberOfBreakEvenTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfLosingTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfWinningTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
 - **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
-- **TotalProfitCriterion**: Changed to calculate trade profits using Trade's getProfit().
+- **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
 
 ### Removed/Deprecated
 
 ### Added
+- **Enhancement** Improvements on gitignore
 - **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
 - **Enhancement** Added DateTimeIndicator a new Indicator for dates.
 - **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
@@ -35,6 +42,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
+- :tada: **Enhancement** added UnstableIndicator.
+- :tada: **Enhancement** added Chainrule.
+
 
 ## 0.13 (released November 5, 2019)
 

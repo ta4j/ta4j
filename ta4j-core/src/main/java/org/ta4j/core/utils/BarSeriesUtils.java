@@ -93,6 +93,9 @@ public final class BarSeriesUtils {
      * the subsequent bar starts not with the end time of the previous bar or (2) if
      * any open, high, low price is missing.
      * 
+     * <b>Note:</b> Market closing times (e.g., weekends, holidays) will lead to
+     * wrongly detected missing bars and should be ignored by the client.
+     * 
      * @param barSeries       the barSeries
      * @param findOnlyNaNBars find only bars with undefined prices
      * @return the list of possibly missing bars
@@ -109,7 +112,7 @@ public final class BarSeriesUtils {
                 Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
                 Duration incDuration = Duration.ZERO;
                 if (nextBar != null) {
-                    // weekends and holidays are also treated as missing bars
+                    // market closing times are also treated as missing bars
                     while (nextBar.getBeginTime().minus(incDuration).isAfter(bar.getEndTime())) {
                         missingBars.add(bar.getEndTime().plus(incDuration).plus(duration));
                         incDuration = incDuration.plus(duration);
@@ -121,8 +124,31 @@ public final class BarSeriesUtils {
                 missingBars.add(bar.getEndTime());
             }
         }
-
         return missingBars;
     }
 
+    /**
+     * Finds overlapping bars within barSeries.
+     * 
+     * @param barSeries the bar series with bar data
+     * @return overlapping bars
+     */
+    public static List<Bar> findOverlappingBars(BarSeries barSeries) {
+        List<Bar> bars = barSeries.getBarData();
+        if (bars == null || bars.isEmpty())
+            return new ArrayList<>();
+        Duration period = bars.iterator().next().getTimePeriod();
+        List<Bar> overlappingBars = new ArrayList<>();
+        for (int i = 0; i < bars.size(); i++) {
+            Bar bar = bars.get(i);
+            Bar nextBar = i + 1 < bars.size() ? bars.get(i + 1) : null;
+            if (nextBar != null) {
+                if (bar.getEndTime().isAfter(nextBar.getBeginTime())
+                        || bar.getBeginTime().plus(period).isBefore(nextBar.getBeginTime())) {
+                    overlappingBars.add(nextBar);
+                }
+            }
+        }
+        return overlappingBars;
+    }
 }

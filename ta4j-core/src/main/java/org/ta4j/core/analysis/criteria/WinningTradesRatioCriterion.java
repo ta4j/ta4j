@@ -23,19 +23,39 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
+/**
+ * Calculates the percentage of trades which are profitable.
+ *
+ * Defined as <code># of winning trades / total # of trades</code>.
+ */
+public class WinningTradesRatioCriterion extends AbstractAnalysisCriterion {
 
-public class TotalProfit2CriterionTest extends AbstractCriterionTest {
-
-    public TotalProfit2CriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfit2Criterion(), numFunction);
+    @Override
+    public Num calculate(BarSeries series, Trade trade) {
+        return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
     }
 
-    @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    private boolean isProfitableTrade(BarSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            Num zero = series.numOf(0);
+            return trade.getProfit().isGreaterThan(zero);
+        }
+        return false;
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
+        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

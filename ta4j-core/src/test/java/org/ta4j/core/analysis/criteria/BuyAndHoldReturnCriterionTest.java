@@ -33,67 +33,52 @@ import java.util.function.Function;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class AverageProfitCriterionTest extends AbstractCriterionTest {
-    private MockBarSeries series;
+public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
-    public AverageProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new AverageProfitCriterion(), numFunction);
+    public BuyAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new BuyAndHoldReturnCriterion(), numFunction);
     }
 
     @Test
     public void calculateOnlyWithGainTrades() {
-        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
-        AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(1.0243, averageProfit.calculate(series, tradingRecord));
-    }
 
-    @Test
-    public void calculateWithASimpleTrade() {
-        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
-        AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(numOf(110d / 100).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(1.05, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateOnlyWithLossTrades() {
-        series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
-        AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(numOf(95d / 100 * 70d / 100).pow(numOf(1d / 6)),
-                averageProfit.calculate(series, tradingRecord));
+
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(0.7, buyAndHold.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateWithAShortTrade() {
-        series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series));
-        AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(numOf(100d / 110).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
-    }
+    public void calculateWithNoTrades() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
-    @Test
-    public void calculateWithNoBarsShouldReturn1() {
-        series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        AnalysisCriterion averageProfit = getCriterion();
-        assertNumEquals(1, averageProfit.calculate(series, new BaseTradingRecord()));
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
     public void calculateWithOneTrade() {
-        series = new MockBarSeries(numFunction, 100, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105);
         Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
-        AnalysisCriterion average = getCriterion();
-        assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, trade));
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertNumEquals(105d / 100, buyAndHold.calculate(series, trade));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
-        assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
+        assertTrue(criterion.betterThan(numOf(1.3), numOf(1.1)));
+        assertFalse(criterion.betterThan(numOf(0.6), numOf(0.9)));
     }
 }

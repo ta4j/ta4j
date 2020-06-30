@@ -80,8 +80,8 @@ public class NumberOfWinningTradesCriterionTest extends AbstractCriterionTest {
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(3), numOf(6)));
-        assertFalse(criterion.betterThan(numOf(7), numOf(4)));
+        assertTrue(criterion.betterThan(numOf(6), numOf(3)));
+        assertFalse(criterion.betterThan(numOf(4), numOf(7)));
     }
 
     @Test
