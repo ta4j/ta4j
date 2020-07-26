@@ -156,7 +156,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 	 * @param coefficient the value for transformation
 	 * @param type        the type of the transformation
 	 */
-	public DecimalTransformIndicator(Indicator<Num> indicator, double coefficient, DecimalTransformType type) {
+	public DecimalTransformIndicator(Indicator<Num> indicator, Number coefficient, DecimalTransformType type) {
 		super(indicator);
 		this.indicator = indicator;
 		this.coefficient = numOf(coefficient);
