@@ -12,6 +12,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 
 ### Fixed
+- **Fixed `Trade`**: problem with profit calculations on short trades.
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 
 ### Changed

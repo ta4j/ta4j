@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion totalProfit = new TotalReturnCriterion();
+    private AnalysisCriterion totalReturn = new TotalReturnCriterion();
 
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
@@ -48,7 +48,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
             return series.numOf(1);
         }
 
-        return totalProfit.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
+        return totalReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
@@ -58,7 +58,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
             return series.numOf(1);
         }
 
-        return totalProfit.calculate(series, trade).pow(series.numOf(1).dividedBy(bars));
+        return totalReturn.calculate(series, trade).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
