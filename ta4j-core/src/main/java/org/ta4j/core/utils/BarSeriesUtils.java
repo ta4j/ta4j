@@ -131,7 +131,9 @@ public final class BarSeriesUtils {
     
     /**
 	 * Gets a new BarSeries cloned from the provided barSeries with bars converted
-	 * by conversionFunction.
+	 * by conversionFunction. The returned barSeries inherits
+	 * <code>beginIndex</code>, <code>endIndex</code> and
+	 * <code>maximumBarCount</code> from the provided barSeries.
 	 * 
 	 * @param barSeries          the BarSeries
 	 * @param conversionFunction the conversionFunction
@@ -141,7 +143,7 @@ public final class BarSeriesUtils {
 		List<Bar> bars = barSeries.getBarData();
 		if (bars == null || bars.isEmpty()) return barSeries;
 		List<Bar> convertedBars = new ArrayList<>();
-		for (int i = 0; i < bars.size(); i++) {
+		for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
 			Bar bar = bars.get(i);
 			Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
 					.timePeriod(bar.getTimePeriod())
