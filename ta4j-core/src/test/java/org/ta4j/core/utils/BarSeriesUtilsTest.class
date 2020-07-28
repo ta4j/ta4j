@@ -161,7 +161,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 		bars.add(new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction));
 		bars.add(new MockBar(time.plusDays(2), 2d, 2d, 2d, 2d, 2d, 2d, 2, decimalNumFunction));
 	
-		final BarSeries decimalBarSeries = new BaseBarSeriesBuilder().withMaxBarCount(100)
+		final BarSeries decimalBarSeries = new BaseBarSeriesBuilder()
 				.withBars(bars)
 				.withMaxBarCount(100)
 				.withNumTypeOf(DecimalNum.class)
