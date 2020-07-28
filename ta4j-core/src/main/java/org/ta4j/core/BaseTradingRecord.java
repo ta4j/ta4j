@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -37,7 +38,7 @@ import java.util.List;
 public class BaseTradingRecord implements TradingRecord {
 
     private static final long serialVersionUID = -4436851731855891220L;
-    
+
     /**
      * The name of the trading record
      */
@@ -76,7 +77,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The entry type (BUY or SELL) in the trading session
      */
-    private Order.OrderType startingType;
+    private OrderType startingType;
 
     /**
      * The current non-closed trade (there's always one)
@@ -93,27 +94,27 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      */
     public BaseTradingRecord() {
-        this(Order.OrderType.BUY);
+        this(OrderType.BUY);
     }
-    
+
     /**
      * Constructor.
      *
      * @param name the name of the tradingRecord
      */
     public BaseTradingRecord(String name) {
-        this(Order.OrderType.BUY);
+        this(OrderType.BUY);
         this.name = name;
     }
-    
-     /**
+
+    /**
      * Constructor.
      *
-     * @param name                 the name of the trading record
-     * @param entryOrderType       the {@link Order.OrderType order type} of entries
-     *                             in the trading session
+     * @param name           the name of the trading record
+     * @param entryOrderType the {@link OrderType order type} of entries in
+     *                       the trading session
      */
-    public BaseTradingRecord(String name, Order.OrderType orderType) {
+    public BaseTradingRecord(String name, OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
         this.name = name;
     }
@@ -121,23 +122,24 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryOrderType       the {@link Order.OrderType order type} of entries
+     * @param entryOrderType       the {@link OrderType order type} of entries
      *                             in the trading session
+     * @param entryOrderType the {@link OrderType order type} of entries in
+     *                       the trading session
      */
-    public BaseTradingRecord(Order.OrderType orderType) {
+    public BaseTradingRecord(OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
     }
 
-    
     /**
      * Constructor.
      *
-     * @param entryOrderType       the {@link Order.OrderType order type} of entries
+     * @param entryOrderType       the {@link OrderType order type} of entries
      *                             in the trading session
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public BaseTradingRecord(Order.OrderType entryOrderType, CostModel transactionCostModel,
+    public BaseTradingRecord(OrderType entryOrderType, CostModel transactionCostModel,
             CostModel holdingCostModel) {
         if (entryOrderType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
@@ -179,6 +181,16 @@ public class BaseTradingRecord implements TradingRecord {
             Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
+    }
+    
+    @Override
+    public OrderType getStartingType() {
+		return startingType;
+	}
+
+    @Override
+    public String getName() {
+        return name;
     }
 
     @Override
@@ -229,10 +241,10 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public Order getLastOrder(Order.OrderType orderType) {
-        if (Order.OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
+    public Order getLastOrder(OrderType orderType) {
+        if (OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
             return buyOrders.get(buyOrders.size() - 1);
-        } else if (Order.OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
+        } else if (OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
             return sellOrders.get(sellOrders.size() - 1);
         }
         return null;
@@ -274,10 +286,10 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the new order in orders list
         orders.add(order);
-        if (Order.OrderType.BUY.equals(order.getType())) {
+        if (OrderType.BUY.equals(order.getType())) {
             // Storing the new order in buy orders list
             buyOrders.add(order);
-        } else if (Order.OrderType.SELL.equals(order.getType())) {
+        } else if (OrderType.SELL.equals(order.getType())) {
             // Storing the new order in sell orders list
             sellOrders.add(order);
         }

@@ -284,11 +284,13 @@ public class Trade implements Serializable {
     }
 
     private Num getGrossReturn(Num entryPrice, Num exitPrice) {
+        Num profitPerAsset;
         if (getEntry().isBuy()) {
-            return exitPrice.dividedBy(entryPrice);
+            profitPerAsset = exitPrice.minus(entryPrice);
         } else {
-            return entryPrice.dividedBy(exitPrice);
+            profitPerAsset = entryPrice.minus(exitPrice);
         }
+        return profitPerAsset.dividedBy(entryPrice).plus(entryPrice.numOf(1));
     }
 
     /**

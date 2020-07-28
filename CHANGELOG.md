@@ -12,6 +12,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 
 ### Fixed
+- **Fixed `Trade`**: problem with profit calculations on short trades.
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 
 ### Changed
@@ -29,6 +30,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 
 ### Added
+- **Enhancement** Improvements on gitignore
 - **Enhancement** Added TradeOpenedMinimumBarCountRule - rule to specify minimum bar count for opened trade.
 - **Enhancement** Added DateTimeIndicator a new Indicator for dates.
 - **Enhancement** Added DayOfWeekRule for specifying days of the week to trade.
@@ -41,6 +43,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
+- :tada: **Enhancement** added UnstableIndicator.
+- :tada: **Enhancement** added Chainrule.
+
 
 ## 0.13 (released November 5, 2019)
 

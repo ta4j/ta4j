@@ -37,140 +37,165 @@ import org.ta4j.core.num.Num;
  */
 public class DecimalTransformIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -8017034587193428498L;
+	private static final long serialVersionUID = -8017034587193428498L;
 
-    /**
-     * Select the type for transformation.
-     */
-    public enum DecimalTransformType {
+	/**
+	 * Select the type for transformation.
+	 */
+	public enum DecimalTransformType {
 
-        /**
-         * Transforms the input indicator by indicator.plus(coefficient).
-         */
-        plus,
+		/**
+		 * Transforms the input indicator by indicator.plus(coefficient).
+		 */
+		plus {
+			@Override
+			Num calculate(Num val, Num coefficient) {
+				return val.plus(coefficient);
+			}
+		},
 
-        /**
-         * Transforms the input indicator by indicator.minus(coefficient).
-         */
-        minus,
+		/**
+		 * Transforms the input indicator by indicator.minus(coefficient).
+		 */
+		minus {
+			@Override
+			Num calculate(Num val, Num coefficient) {
+				return val.minus(coefficient);
+			}
+		},
 
-        /**
-         * Transforms the input indicator by indicator.multipliedBy(coefficient).
-         */
-        multiply,
+		/**
+		 * Transforms the input indicator by indicator.multipliedBy(coefficient).
+		 */
+		multiply {
+			@Override
+			Num calculate(Num val, Num coefficient) {
+				return val.multipliedBy(coefficient);
+			}
+		},
 
-        /**
-         * Transforms the input indicator by indicator.dividedBy(coefficient).
-         */
-        divide,
+		/**
+		 * Transforms the input indicator by indicator.dividedBy(coefficient).
+		 */
+		divide {
+			@Override
+			Num calculate(Num val, Num coefficient) {
+				return val.dividedBy(coefficient);
+			}
+		},
 
-        /**
-         * Transforms the input indicator by indicator.max(coefficient).
-         */
-        max,
+		/**
+		 * Transforms the input indicator by indicator.max(coefficient).
+		 */
+		max {
+			@Override
+			Num calculate(Num val, Num coefficient) {
+				return val.max(coefficient);
+			}
+		},
 
-        /**
-         * Transforms the input indicator by indicator.min(coefficient).
-         */
-        min
-    }
+		/**
+		 * Transforms the input indicator by indicator.min(coefficient).
+		 */
+		min {
+			@Override
+			Num calculate(Num val, Num coefficient) {
+				return val.min(coefficient);
+			}
+		};
 
-    /**
-     * Select the type for transformation.
-     */
-    public enum DecimalTransformSimpleType {
-        /**
-         * Transforms the input indicator by indicator.abs().
-         */
-        abs,
+		abstract Num calculate(Num val, Num coefficient);
+	}
 
-        /**
-         * Transforms the input indicator by indicator.sqrt().
-         */
-        sqrt,
+	/**
+	 * Select the type for transformation.
+	 */
+	public enum DecimalTransformSimpleType {
+		/**
+		 * Transforms the input indicator by indicator.abs().
+		 */
+		abs {
+			@Override
+			Num calculate(Num val) {
+				return val.abs();
+			}
+		},
 
-        /**
-         * Transforms the input indicator by indicator.log().
-         */
-        log
-    }
+		/**
+		 * Transforms the input indicator by indicator.sqrt().
+		 */
+		sqrt {
+			@Override
+			Num calculate(Num val) {
+				return val.sqrt();
+			}
+		},
 
-    private Indicator<Num> indicator;
-    private Num coefficient;
-    private DecimalTransformType type;
-    private DecimalTransformSimpleType simpleType;
+		/**
+		 * Transforms the input indicator by indicator.log().
+		 */
+		log {
+			@Override
+			Num calculate(Num val) {
+				return val.numOf(Math.log(val.doubleValue()));
+			}
+		};
 
-    /**
-     * Constructor.
-     * 
-     * @param indicator   the indicator
-     * @param coefficient the value for transformation
-     * @param type        the type of the transformation
-     */
-    public DecimalTransformIndicator(Indicator<Num> indicator, double coefficient, DecimalTransformType type) {
-        super(indicator);
-        this.indicator = indicator;
-        this.coefficient = numOf(coefficient);
-        this.type = type;
-    }
+		abstract Num calculate(Num val);
+	}
 
-    /**
-     * Constructor.
-     * 
-     * @param indicator the indicator
-     * @param type      the type of the transformation
-     */
-    public DecimalTransformIndicator(Indicator<Num> indicator, DecimalTransformSimpleType type) {
-        super(indicator);
-        this.indicator = indicator;
-        this.simpleType = type;
-    }
+	private Indicator<Num> indicator;
+	private Num coefficient;
+	private DecimalTransformType type;
+	private DecimalTransformSimpleType simpleType;
 
-    @Override
-    protected Num calculate(int index) {
+	/**
+	 * Constructor.
+	 * 
+	 * @param indicator   the indicator
+	 * @param coefficient the value for transformation
+	 * @param type        the type of the transformation
+	 */
+	public DecimalTransformIndicator(Indicator<Num> indicator, Number coefficient, DecimalTransformType type) {
+		super(indicator);
+		this.indicator = indicator;
+		this.coefficient = numOf(coefficient);
+		this.type = type;
+	}
 
-        Num val = indicator.getValue(index);
+	/**
+	 * Constructor.
+	 * 
+	 * @param indicator the indicator
+	 * @param type      the type of the transformation
+	 */
+	public DecimalTransformIndicator(Indicator<Num> indicator, DecimalTransformSimpleType type) {
+		super(indicator);
+		this.indicator = indicator;
+		this.simpleType = type;
+	}
 
-        if (type != null) {
-            switch (type) {
-            case plus:
-                return val.plus(coefficient);
-            case minus:
-                return val.minus(coefficient);
-            case multiply:
-                return val.multipliedBy(coefficient);
-            case divide:
-                return val.dividedBy(coefficient);
-            case max:
-                return val.max(coefficient);
-            case min:
-                return val.min(coefficient);
-            default:
-                break;
-            }
-        }
+	@Override
+	protected Num calculate(int index) {
 
-        else if (simpleType != null) {
-            switch (simpleType) {
-            case sqrt:
-                return val.sqrt();
-            case abs:
-                return val.abs();
-            case log:
-                return numOf(Math.log(val.doubleValue()));
-            default:
-                break;
-            }
-        }
+		Num val = indicator.getValue(index);
 
-        return val;
-    }
+		if (type != null) {
+			return type.calculate(val, coefficient);
+		}
 
-    @Override
-    public String toString() {
-        if (type != null) {
-            return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
-        }
-        return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
-    }
+		else if (simpleType != null) {
+			return simpleType.calculate(val);
+		}
+
+		return val;
+	}
+
+	@Override
+	public String toString() {
+		if (type != null) {
+			return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
+		}
+		return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
+	}
 }

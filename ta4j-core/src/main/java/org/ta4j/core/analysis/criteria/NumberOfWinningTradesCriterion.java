@@ -35,9 +35,9 @@ public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
+        long numberOfWinningTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
                 .filter(this::isWinningTrade).count();
-        return series.numOf(numberOfLosingTrades);
+        return series.numOf(numberOfWinningTrades);
     }
 
     private boolean isWinningTrade(Trade trade) {
@@ -54,6 +54,6 @@ public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

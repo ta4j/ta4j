@@ -71,7 +71,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals((1 / 0.95) * (1 / 0.7), ret.calculate(series, tradingRecord));
+        assertNumEquals(1.05 * 1.30, ret.calculate(series, tradingRecord));
     }
 
     @Test
@@ -81,7 +81,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
                 Order.sellAt(2, series), Order.buyAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
-        assertNumEquals((1 / 1.05) * (1 / 1.3), ret.calculate(series, tradingRecord));
+        assertNumEquals(0.95 * 0.70, ret.calculate(series, tradingRecord));
     }
 
     @Test
