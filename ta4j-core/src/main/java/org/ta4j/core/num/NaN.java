@@ -50,7 +50,7 @@ public class NaN implements Num {
 
     private NaN() {
     }
-    
+
     /**
      * Returns a {@code Num} version of the given {@code Num}.
      *
