@@ -69,11 +69,13 @@ public class GlobalExtremaStrategy {
         LowestValueIndicator weekLowPrice = new LowestValueIndicator(lowPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the low price
-        DecimalTransformIndicator downWeek = new DecimalTransformIndicator(weekLowPrice, 1.004, DecimalTransformType.multiply);
+        DecimalTransformIndicator downWeek = new DecimalTransformIndicator(weekLowPrice, 1.004,
+                DecimalTransformType.multiply);
         Rule buyingRule = new UnderIndicatorRule(closePrices, downWeek);
 
         // Going short if the close price goes above the high price
-        DecimalTransformIndicator upWeek = new DecimalTransformIndicator(weekHighPrice,  0.996, DecimalTransformType.multiply);
+        DecimalTransformIndicator upWeek = new DecimalTransformIndicator(weekHighPrice, 0.996,
+                DecimalTransformType.multiply);
         Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
         return new BaseStrategy(buyingRule, sellingRule);

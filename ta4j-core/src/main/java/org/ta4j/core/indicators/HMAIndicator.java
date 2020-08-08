@@ -36,8 +36,8 @@ import org.ta4j.core.num.Num;
  */
 public class HMAIndicator extends CachedIndicator<Num> {
 
-	private static final long serialVersionUID = 4924150812692951024L;
-	private final int barCount;
+    private static final long serialVersionUID = 4924150812692951024L;
+    private final int barCount;
     private final WMAIndicator sqrtWma;
 
     public HMAIndicator(Indicator<Num> indicator, int barCount) {
@@ -47,7 +47,9 @@ public class HMAIndicator extends CachedIndicator<Num> {
         WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
         WMAIndicator origWma = new WMAIndicator(indicator, barCount);
 
-        Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(new DecimalTransformIndicator(halfWma, 2, DecimalTransformIndicator.DecimalTransformType.multiply), origWma);
+        Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(
+                new DecimalTransformIndicator(halfWma, 2, DecimalTransformIndicator.DecimalTransformType.multiply),
+                origWma);
         sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
     }
 
