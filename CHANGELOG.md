@@ -28,6 +28,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
 
 ### Removed/Deprecated
+- **MultiplierIndicator**: replaced by DecimalTransformIndicator.
+- **AbsoluteIndicator**: replaced by DecimalTransformIndicator.
 
 ### Added
 - **Enhancement** Improvements on gitignore
