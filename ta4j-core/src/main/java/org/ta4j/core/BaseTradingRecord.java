@@ -111,8 +111,8 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param name           the name of the trading record
-     * @param entryOrderType the {@link OrderType order type} of entries in
-     *                       the trading session
+     * @param entryOrderType the {@link OrderType order type} of entries in the
+     *                       trading session
      */
     public BaseTradingRecord(String name, OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
@@ -122,10 +122,10 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryOrderType       the {@link OrderType order type} of entries
-     *                             in the trading session
-     * @param entryOrderType the {@link OrderType order type} of entries in
-     *                       the trading session
+     * @param entryOrderType the {@link OrderType order type} of entries in the
+     *                       trading session
+     * @param entryOrderType the {@link OrderType order type} of entries in the
+     *                       trading session
      */
     public BaseTradingRecord(OrderType orderType) {
         this(orderType, new ZeroCostModel(), new ZeroCostModel());
@@ -134,13 +134,12 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryOrderType       the {@link OrderType order type} of entries
-     *                             in the trading session
+     * @param entryOrderType       the {@link OrderType order type} of entries in
+     *                             the trading session
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public BaseTradingRecord(OrderType entryOrderType, CostModel transactionCostModel,
-            CostModel holdingCostModel) {
+    public BaseTradingRecord(OrderType entryOrderType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (entryOrderType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -182,11 +181,11 @@ public class BaseTradingRecord implements TradingRecord {
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
-    
+
     @Override
     public OrderType getStartingType() {
-		return startingType;
-	}
+        return startingType;
+    }
 
     @Override
     public String getName() {
