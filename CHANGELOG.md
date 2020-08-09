@@ -14,6 +14,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
+- **Fixed `BarSeriesBuilder`**: removed the Serializable interface
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
@@ -23,7 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **NumberOfBreakEvenTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfLosingTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfWinningTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
-- **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
+- **ProfitLossPercentageCriterion**: ChangBed to calculate trade profits using Trade's entry and exit prices.
 - **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
 - **WMAIndicator**: reduced complexity of WMAIndicator implementation
