@@ -29,28 +29,28 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformSimpleType;
-import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformType;
+import org.ta4j.core.indicators.helpers.TransformIndicator.TransformSimpleType;
+import org.ta4j.core.indicators.helpers.TransformIndicator.TransformType;
 import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private DecimalTransformIndicator transPlus;
-    private DecimalTransformIndicator transMinus;
-    private DecimalTransformIndicator transMultiply;
-    private DecimalTransformIndicator transDivide;
-    private DecimalTransformIndicator transMax;
-    private DecimalTransformIndicator transMin;
+    private TransformIndicator transPlus;
+    private TransformIndicator transMinus;
+    private TransformIndicator transMultiply;
+    private TransformIndicator transDivide;
+    private TransformIndicator transMax;
+    private TransformIndicator transMin;
 
-    private DecimalTransformIndicator transAbs;
-    private DecimalTransformIndicator transSqrt;
-    private DecimalTransformIndicator transLog;
+    private TransformIndicator transAbs;
+    private TransformIndicator transSqrt;
+    private TransformIndicator transLog;
 
-    public DecimalTransformIndicatorTest(Function<Number, Num> numFunction) {
+    public TransformIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -59,17 +59,17 @@ public class DecimalTransformIndicatorTest extends AbstractIndicatorTest<Indicat
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
 
-        transPlus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.plus);
-        transMinus = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.minus);
-        transMultiply = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.multiply);
-        transDivide = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.divide);
-        transMax = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.max);
-        transMin = new DecimalTransformIndicator(constantIndicator, 10, DecimalTransformType.min);
+        transPlus = new TransformIndicator(constantIndicator, 10, TransformType.plus);
+        transMinus = new TransformIndicator(constantIndicator, 10, TransformType.minus);
+        transMultiply = new TransformIndicator(constantIndicator, 10, TransformType.multiply);
+        transDivide = new TransformIndicator(constantIndicator, 10, TransformType.divide);
+        transMax = new TransformIndicator(constantIndicator, 10, TransformType.max);
+        transMin = new TransformIndicator(constantIndicator, 10, TransformType.min);
 
-        transAbs = new DecimalTransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)),
-                DecimalTransformSimpleType.abs);
-        transSqrt = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.sqrt);
-        transLog = new DecimalTransformIndicator(constantIndicator, DecimalTransformSimpleType.log);
+        transAbs = new TransformIndicator(new ConstantIndicator<Num>(series, numOf(-4)),
+                TransformSimpleType.abs);
+        transSqrt = new TransformIndicator(constantIndicator, TransformSimpleType.sqrt);
+        transLog = new TransformIndicator(constantIndicator, TransformSimpleType.log);
     }
 
     @Test
