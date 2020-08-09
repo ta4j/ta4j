@@ -28,9 +28,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Simple transform indicator for Num.
+ * Transform indicator for Num.
  *
- * <p>Transforms any indicator by using common math operations.
+ * <p>Transforms the Num of any indicator by using common math operations.
  *
  * @apiNote Minimal deviations in last decimal places possible. During the
  *          calculations this indicator converts {@link Num DecimalNum} to
