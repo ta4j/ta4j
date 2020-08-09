@@ -33,7 +33,6 @@ import java.util.function.Function;
 
 public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
-    private static final long serialVersionUID = 111164611841087550L;
     /**
      * Default Num type function
      **/
