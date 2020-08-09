@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **Breaking:** **PrecisionNum** renamed to **DecimalNum**
+- **Breaking:** **DecimalTransformIndicator** renamed to **TransformIndicator**
 - **Breaking:** **AverageProfitableTradesCriterion** renamed to **WinningTradesRatioCriterion**
 - **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
 - **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
