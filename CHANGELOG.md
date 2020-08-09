@@ -24,7 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **NumberOfBreakEvenTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfLosingTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **NumberOfWinningTradesCriterion**: Changed to calculate trade profits using Trade's getProfit().
-- **ProfitLossPercentageCriterion**: ChangBed to calculate trade profits using Trade's entry and exit prices.
+- **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
 - **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
 - **WMAIndicator**: reduced complexity of WMAIndicator implementation
