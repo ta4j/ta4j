@@ -31,8 +31,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.DecimalTransformIndicator;
-import org.ta4j.core.indicators.helpers.DecimalTransformIndicator.DecimalTransformType;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -69,13 +68,11 @@ public class GlobalExtremaStrategy {
         LowestValueIndicator weekLowPrice = new LowestValueIndicator(lowPrices, NB_BARS_PER_WEEK);
 
         // Going long if the close price goes below the low price
-        DecimalTransformIndicator downWeek = new DecimalTransformIndicator(weekLowPrice, 1.004,
-                DecimalTransformType.multiply);
+        TransformIndicator downWeek = TransformIndicator.multiply(weekLowPrice, 1.004);
         Rule buyingRule = new UnderIndicatorRule(closePrices, downWeek);
 
         // Going short if the close price goes above the high price
-        DecimalTransformIndicator upWeek = new DecimalTransformIndicator(weekHighPrice, 0.996,
-                DecimalTransformType.multiply);
+        TransformIndicator upWeek = TransformIndicator.multiply(weekHighPrice, 0.996);
         Rule sellingRule = new OverIndicatorRule(closePrices, upWeek);
 
         return new BaseStrategy(buyingRule, sellingRule);
