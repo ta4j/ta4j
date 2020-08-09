@@ -28,21 +28,22 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Simple decimal transform indicator.
+ * Simple transform indicator for Num.
+ *
+ * <p>Transforms any indicator by using common math operations.
  *
  * @apiNote Minimal deviations in last decimal places possible. During the
- *          calculations this indicator converts {@link Num PrecisionNum} to to
- *          {@link Double double} Transforms any indicator by using common math
- *          operations.
+ *          calculations this indicator converts {@link Num DecimalNum} to
+ *          {@link Double double}
  */
-public class DecimalTransformIndicator extends CachedIndicator<Num> {
+public class TransformIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -8017034587193428498L;
 
     /**
      * Select the type for transformation.
      */
-    public enum DecimalTransformType {
+    public enum TransformType {
 
         /**
          * Transforms the input indicator by indicator.plus(coefficient).
@@ -110,7 +111,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
     /**
      * Select the type for transformation.
      */
-    public enum DecimalTransformSimpleType {
+    public enum TransformSimpleType {
         /**
          * Transforms the input indicator by indicator.abs().
          */
@@ -146,8 +147,8 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
 
     private Indicator<Num> indicator;
     private Num coefficient;
-    private DecimalTransformType type;
-    private DecimalTransformSimpleType simpleType;
+    private TransformType type;
+    private TransformSimpleType simpleType;
 
     /**
      * Constructor.
@@ -156,7 +157,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
      * @param coefficient the value for transformation
      * @param type        the type of the transformation
      */
-    public DecimalTransformIndicator(Indicator<Num> indicator, Number coefficient, DecimalTransformType type) {
+    public TransformIndicator(Indicator<Num> indicator, Number coefficient, TransformType type) {
         super(indicator);
         this.indicator = indicator;
         this.coefficient = numOf(coefficient);
@@ -169,7 +170,7 @@ public class DecimalTransformIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      * @param type      the type of the transformation
      */
-    public DecimalTransformIndicator(Indicator<Num> indicator, DecimalTransformSimpleType type) {
+    public TransformIndicator(Indicator<Num> indicator, TransformSimpleType type) {
         super(indicator);
         this.indicator = indicator;
         this.simpleType = type;
