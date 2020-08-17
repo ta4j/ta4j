@@ -24,24 +24,25 @@
 package org.ta4j.core.indicators.helpers;
 
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Decimal transform indicator.
+ * Transform indicator.
+ * <p>Transforms the Num of any indicator by using common math operations.
  *
- * @apiNote Minimal deviations in last decimal places possible. During the
- *          calculations this indicator converts {@link Num PrecisionNum} to to
- *          {@link Double double} Transforms any indicator by using common math
- *          operations.
+ * @apiNote Minimal deviations in last decimal places possible. During some
+ *          calculations this indicator converts {@link Num DecimalNum} to
+ *          {@link Double double}
  */
 public class TransformIndicator extends CachedIndicator<Num> {
 
     private static final long serialVersionUID = -8017034587193428498L;
     private final Indicator<Num> indicator;
-    private final Function<Num, Num> transformationFunction;
+    private final UnaryOperator<Num> transformationFunction;
 
     /**
      * Constructor.
@@ -49,7 +50,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * @param indicator      the indicator
      * @param transformation a {@link Function} describing the transformation
      */
-    public TransformIndicator(Indicator<Num> indicator, Function<Num, Num> transformation) {
+    public TransformIndicator(Indicator<Num> indicator, UnaryOperator<Num> transformation) {
         super(indicator);
         this.indicator = indicator;
         this.transformationFunction = transformation;
@@ -112,14 +113,14 @@ public class TransformIndicator extends CachedIndicator<Num> {
      * Transforms the input indicator by indicator.abs().
      */
     public static TransformIndicator abs(Indicator<Num> indicator) {
-        return new TransformIndicator(indicator, val -> val.abs());
+        return new TransformIndicator(indicator, Num::abs);
     }
 
     /**
      * Transforms the input indicator by indicator.sqrt().
      */
     public static TransformIndicator sqrt(Indicator<Num> indicator) {
-        return new TransformIndicator(indicator, val -> val.sqrt());
+        return new TransformIndicator(indicator, Num::sqrt);
     }
 
     /**
