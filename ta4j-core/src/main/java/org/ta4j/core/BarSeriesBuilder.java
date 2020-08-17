@@ -23,12 +23,10 @@
  */
 package org.ta4j.core;
 
-import java.io.Serializable;
-
 /**
  * Interface to build a bar series
  */
-public interface BarSeriesBuilder extends Serializable {
+public interface BarSeriesBuilder {
     /**
      * Builds the bar series with corresponding parameters
      *

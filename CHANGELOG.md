@@ -14,6 +14,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
+- **Fixed `BarSeriesBuilder`**: removed the Serializable interface
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
