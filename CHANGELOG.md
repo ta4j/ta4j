@@ -30,6 +30,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **WMAIndicator**: reduced complexity of WMAIndicator implementation
 
 ### Removed/Deprecated
+- **MultiplierIndicator**: replaced by TransformIndicator.
+- **AbsoluteIndicator**: replaced by TransformIndicator.
 
 ### Added
 - **Enhancement** Improvements on gitignore
