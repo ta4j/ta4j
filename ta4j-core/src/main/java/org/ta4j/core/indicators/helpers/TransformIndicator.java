@@ -32,7 +32,8 @@ import org.ta4j.core.num.Num;
 
 /**
  * Transform indicator.
- * <p>Transforms the Num of any indicator by using common math operations.
+ * <p>
+ * Transforms the Num of any indicator by using common math operations.
  *
  * @apiNote Minimal deviations in last decimal places possible. During some
  *          calculations this indicator converts {@link Num DecimalNum} to
