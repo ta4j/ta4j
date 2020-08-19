@@ -27,12 +27,16 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.ConvertibleBaseBarBuilder;
 import org.ta4j.core.aggregator.BarAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 
 /**
@@ -126,6 +130,43 @@ public final class BarSeriesUtils {
         }
         return missingBars;
     }
+    
+    /**
+	 * Gets a new BarSeries cloned from the provided barSeries with bars converted
+	 * by conversionFunction. The returned barSeries inherits
+	 * <code>beginIndex</code>, <code>endIndex</code> and
+	 * <code>maximumBarCount</code> from the provided barSeries.
+	 * 
+	 * @param barSeries          the BarSeries
+	 * @param conversionFunction the conversionFunction
+	 * @return new cloned BarSeries with bars converted by conversionFunction
+	 */
+	public static BarSeries convertBarSeries(BarSeries barSeries, Function<Number, Num> conversionFunction) {
+		List<Bar> bars = barSeries.getBarData();
+		if (bars == null || bars.isEmpty()) return barSeries;
+		List<Bar> convertedBars = new ArrayList<>();
+		for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
+			Bar bar = bars.get(i);
+			Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
+					.timePeriod(bar.getTimePeriod())
+					.endTime(bar.getEndTime())
+					.openPrice(bar.getOpenPrice().getDelegate())
+					.highPrice(bar.getHighPrice().getDelegate())
+					.lowPrice(bar.getLowPrice().getDelegate())
+					.closePrice(bar.getClosePrice().getDelegate())
+					.volume(bar.getVolume().getDelegate())
+					.amount(bar.getAmount().getDelegate())
+					.trades(bar.getTrades())
+					.build();
+			convertedBars.add(convertedBar);
+		}
+		BarSeries convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, conversionFunction);
+		if (barSeries.getMaximumBarCount() > 0) {
+			convertedBarSeries.setMaximumBarCount(barSeries.getMaximumBarCount());
+		}
+
+		return convertedBarSeries;
+	}
 
     /**
      * Finds overlapping bars within barSeries.
