@@ -28,6 +28,8 @@ import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
@@ -61,6 +63,8 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         ClosePriceIndicator cp = new ClosePriceIndicator(series);
         SMAIndicator sma = new SMAIndicator(cp, 9);
         int timeShift = 9 / 2 + 1;
+
+        // compare results to alternative calculation for each index
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertEquals(dpo.getValue(i), cp.getValue(i).minus(sma.getValue(i - timeShift)));
         }

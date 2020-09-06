@@ -26,6 +26,8 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -46,10 +48,10 @@ import org.ta4j.core.num.Num;
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
-    private final int barCount;
-    private final int timeShift;
-    private final Indicator<Num> price;
-    private final SMAIndicator sma;
+    private static final long serialVersionUID = -3450705409405267767L;
+
+    private final DifferenceIndicator indicatorMinusPreviousSMAIndicator;
+    private final String name;
 
     /**
      * Constructor.
@@ -69,19 +71,22 @@ public class DPOIndicator extends CachedIndicator<Num> {
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
-        this.barCount = barCount;
-        timeShift = barCount / 2 + 1;
-        this.price = price;
-        sma = new SMAIndicator(price, this.barCount);
+        int timeFrame = barCount / 2 + 1;
+        final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
+        final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
+                timeFrame);
+
+        this.indicatorMinusPreviousSMAIndicator = new DifferenceIndicator(price, previousSimpleMovingAverage);
+        this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return price.getValue(index).minus(sma.getValue(index - timeShift));
+        return indicatorMinusPreviousSMAIndicator.getValue(index);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return name;
     }
 }
