@@ -1,8 +1,11 @@
 package org.ta4j.core.indicators.range;
 
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.pivotpoints.TimeLevel;
@@ -17,6 +20,16 @@ public class LastCandleOfPeriod extends OpeningRange {
   @Override
   protected Num calculate(int index) {
     List<Bar> barsOfThePeriod = getBarsOfThePeriod(index);
-    return barsOfThePeriod.get(barsOfThePeriod.size() -2).getClosePrice();
+    return barsOfThePeriod.get(barsOfThePeriod.size() -1).getClosePrice();
+  }
+
+  public List<Bar> getBarsOfThePeriod(int index) {
+    Bar currentBar = getBarSeries().getBar(index);
+    Function<ZonedDateTime, Integer> dateFunction = getDateFunction();
+    return getBarSeries().getBarData().stream()
+        .filter(bar -> barsInSamePeriod(bar, currentBar, dateFunction))
+        .sorted(Comparator.comparing(Bar::getEndTime).reversed())
+        .limit(limit)
+        .collect(Collectors.toList());
   }
 }

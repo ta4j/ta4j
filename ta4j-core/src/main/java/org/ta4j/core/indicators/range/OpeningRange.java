@@ -31,7 +31,7 @@ public abstract class OpeningRange extends RecursiveCachedIndicator<Num> {
         .collect(Collectors.toList());
   }
 
-  private Function<ZonedDateTime, Integer> getDateFunction() {
+  protected Function<ZonedDateTime, Integer> getDateFunction() {
     switch (timeLevel) {
       case MONTH:
         return ZonedDateTime::getMonthValue;
@@ -42,7 +42,7 @@ public abstract class OpeningRange extends RecursiveCachedIndicator<Num> {
     }
   }
 
-  private boolean barsInSamePeriod(Bar currentBar, Bar reference,
+  protected boolean barsInSamePeriod(Bar currentBar, Bar reference,
       Function<ZonedDateTime, Integer> dateFunction) {
     return dateFunction.apply(currentBar.getEndTime()) == dateFunction.apply(reference.getEndTime());
   }
