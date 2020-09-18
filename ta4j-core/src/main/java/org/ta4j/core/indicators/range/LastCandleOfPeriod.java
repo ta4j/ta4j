@@ -25,9 +25,9 @@ public class LastCandleOfPeriod extends OpeningRange {
 
   public List<Bar> getBarsOfThePeriod(int index) {
     Bar currentBar = getBarSeries().getBar(index);
-    Function<ZonedDateTime, Integer> dateFunction = getDateFunction();
+    List<Function<ZonedDateTime, Integer>> dateFunction = getDateFunction();
     return getBarSeries().getBarData().stream()
-        .filter(bar -> barsInSamePeriod(bar, currentBar, dateFunction))
+        .filter(bar -> barsInSamePeriod(bar.getEndTime(), currentBar.getEndTime(), dateFunction))
         .sorted(Comparator.comparing(Bar::getEndTime).reversed())
         .limit(limit)
         .collect(Collectors.toList());
