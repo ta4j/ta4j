@@ -1,12 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.ta4j</groupId>
+	<groupId>com.dtech.ta4j-ext</groupId>
 	<artifactId>ta4j-parent</artifactId>
 	<version>0.13</version>
 	<packaging>pom</packaging>
 
 	<name>Ta4j Parent</name>
-	<description>ta4j is a Java library providing a simple API for technical analysis.</description>
+	<description>ta4j is a Java library providing a simple API for technical analysis. This is a fork from the same with few additional indicators. </description>
 	<url>http://github.com/ta4j/ta4j</url>
 	<inceptionYear>2014</inceptionYear>
 
