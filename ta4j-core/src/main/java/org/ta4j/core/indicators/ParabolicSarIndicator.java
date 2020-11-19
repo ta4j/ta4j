@@ -102,11 +102,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             currentTrend = getBarSeries().getBar(getBarSeries().getBeginIndex()).getClosePrice()
                     .isLessThan(getBarSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
-                sar = highPriceIndicator.getValue(index); // put sar on high price of candlestick
+                sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index); // put the highest high value of two first bars
                 currentExtremePoint = sar;
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend
-                sar = lowPriceIndicator.getValue(index); // put sar on low price of candlestick
+                sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index); // put the lowest low value of two first bars
                 currentExtremePoint = sar;
                 minMaxExtremePoint = currentExtremePoint;
 
@@ -126,6 +126,9 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getBarSeries().getBar(index).getLowPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
+                Num lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator, Math.min(2, index - startTrendIndex)).getValue(index - 1);
+                if(sar.isGreaterThan(lowestPriceOfTwoPreviousBars))
+                    sar = lowestPriceOfTwoPreviousBars;
                 currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex)
                         .getValue(index);
                 if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
@@ -144,6 +147,9 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getBarSeries().getBar(index).getHighPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
+                Num highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator, Math.min(2, index - startTrendIndex)).getValue(index - 1);
+                if(sar.isLessThan(highestPriceOfTwoPreviousBars))
+                    sar = highestPriceOfTwoPreviousBars;
                 currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex)
                         .getValue(index);
                 if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
