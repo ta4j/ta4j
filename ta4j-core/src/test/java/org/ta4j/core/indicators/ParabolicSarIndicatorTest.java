@@ -72,21 +72,21 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockBarSeries(bars));
 
         assertEquals("NaN", sar.getValue(0).toString());
-        assertNumEquals(74.640000000000000568434188608080, sar.getValue(1));
-        assertNumEquals(74.640000000000000568434188608080, sar.getValue(2)); // start with up trend
-        assertNumEquals(76.269900000000006912159733474255, sar.getValue(3)); // switch to downtrend
+        assertNumEquals(74.64, sar.getValue(1));
+        assertNumEquals(74.64, sar.getValue(2)); // start with up trend
+        assertNumEquals(76.2699, sar.getValue(3)); // switch to downtrend
         assertNumEquals(76.234502000000006773916538804770, sar.getValue(4)); // hold trend...
-        assertNumEquals(76.200611960000006763493729522452, sar.getValue(5));
-        assertNumEquals(76.112987481600006697590288240463, sar.getValue(6));
-        assertNumEquals(75.958968232704006684543855953962, sar.getValue(7));
-        assertNumEquals(75.699850774087686058830877300352, sar.getValue(8));
-        assertNumEquals(75.461462712160671083174936939031, sar.getValue(9)); // switch to up trend
-        assertNumEquals(72.719999999999998863131622783840, sar.getValue(10));// hold trend
-        assertNumEquals(72.802199999999998851762939011678, sar.getValue(11));
-        assertNumEquals(72.964111999999998670318746007979, sar.getValue(12));
-        assertNumEquals(73.203865279999998374933056766167, sar.getValue(13));
-        assertNumEquals(73.513156057599997959241591161117, sar.getValue(14));
-        assertNumEquals(73.797703572991997576805442804471, sar.getValue(15));
+        assertNumEquals(76.19981196, sar.getValue(5));
+        assertNumEquals(76.11221948160001, sar.getValue(6));
+        assertNumEquals(75.958246312704, sar.getValue(7));
+        assertNumEquals(75.69918660768768, sar.getValue(8));
+        assertNumEquals(75.46085167907266, sar.getValue(9)); // switch to up trend
+        assertNumEquals(72.72, sar.getValue(10));// hold trend
+        assertNumEquals(72.8022, sar.getValue(11));
+        assertNumEquals(72.964112, sar.getValue(12));
+        assertNumEquals(73.20386528, sar.getValue(13));
+        assertNumEquals(73.5131560576, sar.getValue(14));
+        assertNumEquals(73.797703572992, sar.getValue(15));
         assertNumEquals(74.01, sar.getValue(16));
         assertNumEquals(74.2548, sar.getValue(17));
         assertNumEquals(74.480016, sar.getValue(18));

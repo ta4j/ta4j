@@ -129,7 +129,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 Num lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator, Math.min(2, index - startTrendIndex)).getValue(index - 1);
                 if(sar.isGreaterThan(lowestPriceOfTwoPreviousBars))
                     sar = lowestPriceOfTwoPreviousBars;
-                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex)
+                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex + 1)
                         .getValue(index);
                 if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
                     incrementAcceleration();
@@ -150,7 +150,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 Num highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator, Math.min(2, index - startTrendIndex)).getValue(index - 1);
                 if(sar.isLessThan(highestPriceOfTwoPreviousBars))
                     sar = highestPriceOfTwoPreviousBars;
-                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex)
+                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex + 1)
                         .getValue(index);
                 if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
                     incrementAcceleration();
