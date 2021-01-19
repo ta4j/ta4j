@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -93,6 +93,6 @@ public class GlobalExtremaStrategy {
 
         // Analysis
         System.out.println(
-                "Total return for the strategy: " + new TotalReturnCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 }

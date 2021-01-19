@@ -8,8 +8,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
 - **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
 - **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
-- **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
-- **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
+- **Breaking:** **Pnl Package** created
+- **Breaking:** **TotalProfitCriterion** renamed to **GrossReturnCriterion** and moved to Pnl-Package
+- **Breaking:** **TotalProfit2Criterion** renamed to **NetProfitCriterion** and moved to Pnl-Package
+- **Breaking:** **TotalLossCriterion** renamed to **NetLossCriterion** and moved to Pnl-Package
+- **Breaking:** **TotalProfitCriterion** renamed to **GrossProfitCriterion** and moved to Pnl-Package
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.
@@ -50,6 +53,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
+- :tada: **Enhancement** added GrossLossCriterion.
+- :tada: **Enhancement** added NetProfitCriterion.
 
 
 ## 0.13 (released November 5, 2019)

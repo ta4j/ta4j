@@ -25,7 +25,7 @@ package ta4jexamples.backtesting;
 
 import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -54,7 +54,7 @@ public class SimpleMovingAverageBacktest {
                 DecimalNum.valueOf(50));
         System.out.println(tradingRecord2DaySma);
 
-        AnalysisCriterion criterion = new TotalReturnCriterion();
+        AnalysisCriterion criterion = new GrossReturnCriterion();
         Num calculate3DaySma = criterion.calculate(series, tradingRecord3DaySma);
         Num calculate2DaySma = criterion.calculate(series, tradingRecord2DaySma);
 

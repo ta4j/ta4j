@@ -26,8 +26,8 @@ package ta4jexamples;
 import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.criteria.WinningTradesRatioCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -99,7 +99,7 @@ public class Quickstart {
         System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
 
         // Total return of our strategy vs total return of a buy-and-hold strategy
-        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new TotalReturnCriterion());
+        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new GrossReturnCriterion());
         System.out.println("Our return vs buy-and-hold return: " + vsBuyAndHold.calculate(series, tradingRecord));
 
         // Your turn!

@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.CCIIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
@@ -85,6 +85,6 @@ public class CCICorrectionStrategy {
 
         // Analysis
         System.out.println(
-                "Total return for the strategy: " + new TotalReturnCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 }

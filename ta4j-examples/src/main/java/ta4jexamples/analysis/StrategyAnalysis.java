@@ -28,6 +28,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.*;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
@@ -52,7 +54,7 @@ public class StrategyAnalysis {
          */
 
         // Total profit
-        TotalReturnCriterion totalReturn = new TotalReturnCriterion();
+        GrossReturnCriterion totalReturn = new GrossReturnCriterion();
         System.out.println("Total return: " + totalReturn.calculate(series, tradingRecord));
         // Number of bars
         System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
