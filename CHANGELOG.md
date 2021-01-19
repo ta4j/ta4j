@@ -103,6 +103,8 @@ for currentStopLossLimitActivation
 - **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - **Enhancement** Added license checker goal on CI's pipeline
 - **Enhancement** Added source format checker goal on CI's pipeline
+- **Enhancement** Added ExpectancyCriterion
+
 
 ### Removed/Deprecated
 
