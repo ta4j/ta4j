@@ -50,6 +50,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
+- :tada: **Enhancement** added ExpectancyCriterion.
 
 
 ## 0.13 (released November 5, 2019)
