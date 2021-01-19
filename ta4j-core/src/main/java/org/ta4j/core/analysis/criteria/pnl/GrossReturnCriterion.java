@@ -21,40 +21,49 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss criterion.
+ * Total return criterion.
  *
- * The profit or loss over the provided {@link BarSeries series}.
+ * The gross return (with commissions) of the provided {@link Trade trade(s)}
+ * over the provided {@link BarSeries series}.
  */
-public class ProfitLossCriterion extends AbstractAnalysisCriterion {
+public class GrossReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-                .reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
+                Num::multipliedBy);
     }
 
-    /**
-     * Calculates the profit or loss on the trade.
-     *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit or loss on the trade
-     */
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        return trade.getProfit();
+        return calculateProfit(series, trade);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    /**
+     * Calculates the return of a trade (Buy and sell).
+     *
+     * @param series a bar series
+     * @param trade  a trade
+     * @return the profit of the trade
+     */
+    private Num calculateProfit(BarSeries series, Trade trade) {
+        if (trade.isClosed()) {
+            return trade.getGrossReturn(series);
+        }
+        return series.numOf(1);
     }
 }

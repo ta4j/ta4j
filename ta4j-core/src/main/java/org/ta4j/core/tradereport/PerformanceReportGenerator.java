@@ -26,10 +26,10 @@ package org.ta4j.core.tradereport;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.ProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.ProfitLossPercentageCriterion;
-import org.ta4j.core.analysis.criteria.TotalLossCriterion;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
+import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,8 +44,8 @@ public class PerformanceReportGenerator implements ReportGenerator<PerformanceRe
     public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
         final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
         final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num totalProfit = new TotalProfitCriterion().calculate(series, tradingRecord);
-        final Num totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
+        final Num totalProfit = new GrossProfitCriterion().calculate(series, tradingRecord);
+        final Num totalLoss = new NetLossCriterion().calculate(series, tradingRecord);
         return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
     }
 }

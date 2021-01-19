@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -48,7 +49,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalReturnCriterion(), numFunction);
+        super((params) -> new GrossReturnCriterion(), numFunction);
     }
 
     @Before

@@ -21,48 +21,55 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Total return criterion.
+ * Net loss criterion.
  *
- * The total return of the provided {@link Trade trade(s)} over the provided
- * {@link BarSeries series}.
+ * The net loss (without commissions) of the provided {@link Trade trade(s)}
+ * over the provided {@link BarSeries series}.
  */
-public class TotalReturnCriterion extends AbstractAnalysisCriterion {
+public class NetLossCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * Calculates the net loss (without commissions) of all trades
+     *
+     * @param series        the BarSeries
+     * @param tradingRecord the TradingRecord
+     * @return the gross loss of the trade
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
-                Num::multipliedBy);
+        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+                .reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * Calculates the net loss (without commissions) of the given trade
+     *
+     * @param series a bar series
+     * @param trade  a trade
+     * @return the loss of the trade
+     */
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        return calculateProfit(series, trade);
+        if (trade.isClosed()) {
+            Num loss = trade.getProfit();
+            return loss.isNegative() ? loss : series.numOf(0);
+
+        }
+        return series.numOf(0);
+
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
-    /**
-     * Calculates the return of a trade (Buy and sell).
-     *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit of the trade
-     */
-    private Num calculateProfit(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getGrossReturn(series);
-        }
-        return series.numOf(1);
     }
 }

@@ -21,21 +21,20 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss in percentage criterion, defined as the trade profit over the
- * purchase price.
+ * Profit and loss criterion.
  *
- * The profit or loss in percentage over the provided {@link Trade trade(s)}.
- * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
+ * The profit or loss over the provided {@link BarSeries series}.
  */
-public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
+public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
@@ -44,24 +43,19 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the profit or loss on a trade in percentage.
+     * Calculates the profit or loss on the trade.
      *
      * @param series a bar series
      * @param trade  a trade
-     * @return the profit or loss on a trade
+     * @return the profit or loss on the trade
      */
     @Override
     public Num calculate(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num entryPrice = trade.getEntry().getPricePerAsset();
-            return trade.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
-        }
-        return series.numOf(0);
+        return trade.getProfit();
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
-
 }

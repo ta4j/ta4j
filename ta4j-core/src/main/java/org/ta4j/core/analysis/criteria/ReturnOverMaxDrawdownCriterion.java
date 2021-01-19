@@ -27,16 +27,17 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion, defined as the {@link TotalReturnCriterion total
+ * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion total
  * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion totalProfitCriterion = new TotalReturnCriterion();
+    private final AnalysisCriterion totalProfitCriterion = new GrossReturnCriterion();
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
