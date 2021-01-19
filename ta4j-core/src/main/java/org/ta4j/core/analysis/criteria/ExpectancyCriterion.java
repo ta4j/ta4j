@@ -31,8 +31,8 @@ import org.ta4j.core.num.Num;
 /**
  * Expectancy criterion (Kelly Criterion).
  *
- * Measures the positive or negative expectancy. The higher the positive number
- * is, the better a winning expectation.
+ * Measures the positive or negative expectancy. The higher the positive number,
+ * the better a winning expectation.
  *
  * @see <a href=
  *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
