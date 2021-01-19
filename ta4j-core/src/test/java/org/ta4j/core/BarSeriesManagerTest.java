@@ -29,7 +29,7 @@ import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.FixedRule;
+import org.ta4j.core.rules.FixedRule;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;

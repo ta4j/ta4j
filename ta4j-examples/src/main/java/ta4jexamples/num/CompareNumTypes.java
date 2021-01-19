@@ -33,10 +33,10 @@ import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.IsEqualRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.trading.rules.IsEqualRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
 import java.time.ZonedDateTime;
 import java.util.Random;

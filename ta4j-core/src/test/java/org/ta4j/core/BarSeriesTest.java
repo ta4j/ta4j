@@ -34,8 +34,8 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.trading.rules.FixedRule;
 
 import java.math.BigDecimal;
 import java.time.Duration;
