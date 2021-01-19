@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.num.Num;
 
 import java.util.List;
@@ -51,6 +52,32 @@ public interface AnalysisCriterion {
      * @return the criterion value for the trades
      */
     Num calculate(BarSeries series, TradingRecord tradingRecord);
+
+    /**
+     * @param manager    the bar series manager
+     * @param orderType  the entry type (BUY or SELL) of the first trade in the
+     *                   trading session
+     * @param strategies a list of strategies
+     * @return the best strategy (among the provided ones) according to the
+     *         criterion
+     */
+    default Strategy chooseBest(BarSeriesManager manager, OrderType orderType, List<Strategy> strategies) {
+
+        Strategy bestStrategy = strategies.get(0);
+        Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
+
+        for (int i = 1; i < strategies.size(); i++) {
+            Strategy currentStrategy = strategies.get(i);
+            Num currentCriterionValue = calculate(manager.getBarSeries(), manager.run(currentStrategy, orderType));
+
+            if (betterThan(currentCriterionValue, bestCriterionValue)) {
+                bestStrategy = currentStrategy;
+                bestCriterionValue = currentCriterionValue;
+            }
+        }
+
+        return bestStrategy;
+    }
 
     /**
      * @param manager    the bar series manager
