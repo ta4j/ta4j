@@ -1,4 +1,4 @@
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
