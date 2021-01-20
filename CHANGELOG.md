@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 - **Fixed `BarSeriesBuilder`**: removed the Serializable interface
 - **Fixed `ParabolicSarIndicator`**: problem with calculating in special cases
+- **Fixed `BaseTimeSeries`**: can now be serialized
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
