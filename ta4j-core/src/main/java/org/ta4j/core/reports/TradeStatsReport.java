@@ -21,26 +21,35 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.tradereport;
+package org.ta4j.core.reports;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 
 /**
- * Generic interface for generating trade reports
- *
- * @param <T> type of report to be generated
+ * This class represents report with statistics for executed trades
  */
-public interface ReportGenerator<T> {
+public class TradeStatsReport {
 
-    /**
-     * Generate report
-     *
-     * @param tradingRecord the trading record which is a source to generate report,
-     *                      not null
-     * @param series        the bar series, not null
-     * @return generated report
-     */
-    T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
+    private final Num profitTradeCount;
+    private final Num lossTradeCount;
+    private final Num breakEvenTradeCount;
+
+    public TradeStatsReport(Num profitTradeCount, Num lossTradeCount, Num breakEvenTradeCount) {
+        this.profitTradeCount = profitTradeCount;
+        this.lossTradeCount = lossTradeCount;
+        this.breakEvenTradeCount = breakEvenTradeCount;
+    }
+
+    public Num getProfitTradeCount() {
+        return profitTradeCount;
+    }
+
+    public Num getLossTradeCount() {
+        return lossTradeCount;
+    }
+
+    public Num getBreakEvenTradeCount() {
+        return breakEvenTradeCount;
+    }
+
 }

@@ -21,8 +21,26 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package org.ta4j.core.reports;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+
 /**
- * The main module for trade reports
+ * Generic interface for generating trade reports
  *
+ * @param <T> type of report to be generated
  */
-package org.ta4j.core.tradereport;
+public interface ReportGenerator<T> {
+
+    /**
+     * Generate report
+     *
+     * @param tradingRecord the trading record which is a source to generate report,
+     *                      not null
+     * @param series        the bar series, not null
+     * @return generated report
+     */
+    T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
+}

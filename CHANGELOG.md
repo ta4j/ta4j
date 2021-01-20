@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
 - **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
 - **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
+- **Breaking:** package "tradereports" renamed to "reports"
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.
