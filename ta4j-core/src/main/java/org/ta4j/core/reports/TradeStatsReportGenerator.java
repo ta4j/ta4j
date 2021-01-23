@@ -21,35 +21,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.tradereport;
+package org.ta4j.core.reports;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.NumberOfBreakEvenTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
+import org.ta4j.core.num.Num;
 
 /**
- * This class represents trading statement report which contains trade and
- * performance statistics
+ * This class generates TradeStatsReport basis on provided trading report and
+ * bar series.
+ *
+ * @see TradeStatsReport
  */
-public class TradingStatement {
+public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsReport> {
 
-    private final Strategy strategy;
-    private final TradeStatsReport tradeStatsReport;
-    private final PerformanceReport performanceReport;
-
-    public TradingStatement(Strategy strategy, TradeStatsReport tradeStatsReport, PerformanceReport performanceReport) {
-        this.strategy = strategy;
-        this.tradeStatsReport = tradeStatsReport;
-        this.performanceReport = performanceReport;
-    }
-
-    public Strategy getStrategy() {
-        return strategy;
-    }
-
-    public TradeStatsReport getTradeStatsReport() {
-        return tradeStatsReport;
-    }
-
-    public PerformanceReport getPerformanceReport() {
-        return performanceReport;
+    @Override
+    public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
+        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
+        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
+        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
     }
 }
