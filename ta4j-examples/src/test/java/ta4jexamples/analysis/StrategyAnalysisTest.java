@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class StrategyAnalysisTest {
 
-    @Test
-    public void test() {
-        StrategyAnalysis.main(null);
-    }
+	@Test
+	public void test() {
+		StrategyAnalysis.main(null);
+	}
 }

@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class IndicatorsToChartTest {
 
-    @Test
-    public void test() {
-        IndicatorsToChart.main(null);
-    }
+	@Test
+	public void test() {
+		IndicatorsToChart.main(null);
+	}
 }

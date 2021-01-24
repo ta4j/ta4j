@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class WalkForwardTest {
 
-    @Test
-    public void test() {
-        WalkForward.main(null);
-    }
+	@Test
+	public void test() {
+		WalkForward.main(null);
+	}
 }

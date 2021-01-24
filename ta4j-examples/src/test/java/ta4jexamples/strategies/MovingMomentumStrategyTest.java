@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class MovingMomentumStrategyTest {
 
-    @Test
-    public void test() {
-        MovingMomentumStrategy.main(null);
-    }
+	@Test
+	public void test() {
+		MovingMomentumStrategy.main(null);
+	}
 }

@@ -23,6 +23,8 @@
  */
 package ta4jexamples.analysis;
 
+import java.text.DecimalFormat;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
@@ -39,54 +41,53 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvTradesLoader;
 
-import java.text.DecimalFormat;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class displays an example of the transaction cost calculation.
  */
 public class TradeCost {
 
-    public static void main(String[] args) {
+	public static void main(String[] args) {
 
-        // Getting the bar series
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
-        // Building the short selling trading strategy
-        Strategy strategy = buildShortSellingMomentumStrategy(series);
+		// Getting the bar series
+		BarSeries series = CsvTradesLoader.loadBitstampSeries();
+		// Building the short selling trading strategy
+		Strategy strategy = buildShortSellingMomentumStrategy(series);
 
-        // Setting the trading cost models
-        double feePerTrade = 0.0005;
-        double borrowingFee = 0.00001;
-        CostModel transactionCostModel = new LinearTransactionCostModel(feePerTrade);
-        CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
+		// Setting the trading cost models
+		double feePerTrade = 0.0005;
+		double borrowingFee = 0.00001;
+		CostModel transactionCostModel = new LinearTransactionCostModel(feePerTrade);
+		CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
 
-        // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
-        Pos.PosType entryOrder = Pos.PosType.SELL;
-        TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
+		// Running the strategy
+		BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
+		Pos.PosType entryOrder = Pos.PosType.SELL;
+		TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
 
-        DecimalFormat df = new DecimalFormat("##.##");
-        System.out.println("------------ Borrowing Costs ------------");
-        tradingRecord.getPairs()
-                .forEach(trade -> System.out.println(
-                        "Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
-                                + " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
-        System.out.println("------------ Transaction Costs ------------");
-        tradingRecord.getPairs()
-                .forEach(trade -> System.out.println("Transaction cost for selling: "
-                        + df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
-                        + df.format(trade.getExit().getCost().doubleValue())));
-    }
+		DecimalFormat df = new DecimalFormat("##.##");
+		System.out.println("------------ Borrowing Costs ------------");
+		tradingRecord.getPairs()
+				.forEach(pair -> System.out.println(
+						"Borrowing cost for " + df.format(pair.getExit().getIndex() - pair.getEntry().getIndex())
+								+ " periods is: " + df.format(pair.getHoldingCost().doubleValue())));
+		System.out.println("------------ Transaction Costs ------------");
+		tradingRecord.getPairs()
+				.forEach(pair -> System.out.println("Transaction cost for selling: "
+						+ df.format(pair.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
+						+ df.format(pair.getExit().getCost().doubleValue())));
+	}
 
-    private static Strategy buildShortSellingMomentumStrategy(BarSeries series) {
-        Indicator<Num> closingPrices = new ClosePriceIndicator(series);
-        SMAIndicator shortEma = new SMAIndicator(closingPrices, 10);
-        SMAIndicator longEma = new SMAIndicator(closingPrices, 50);
-        Rule shortOverLongRule = new OverIndicatorRule(shortEma, longEma);
-        Rule shortUnderLongRule = new UnderIndicatorRule(shortEma, longEma);
+	private static Strategy buildShortSellingMomentumStrategy(BarSeries series) {
+		Indicator<Num> closingPrices = new ClosePriceIndicator(series);
+		SMAIndicator shortEma = new SMAIndicator(closingPrices, 10);
+		SMAIndicator longEma = new SMAIndicator(closingPrices, 50);
+		Rule shortOverLongRule = new OverIndicatorRule(shortEma, longEma);
+		Rule shortUnderLongRule = new UnderIndicatorRule(shortEma, longEma);
 
-        String strategyName = "Momentum short-selling strategy";
-        return new BaseStrategy(strategyName, shortOverLongRule, shortUnderLongRule);
-    }
+		String strategyName = "Momentum short-selling strategy";
+		return new BaseStrategy(strategyName, shortOverLongRule, shortUnderLongRule);
+	}
 }

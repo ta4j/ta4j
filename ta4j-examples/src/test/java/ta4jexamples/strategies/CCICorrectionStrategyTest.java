@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class CCICorrectionStrategyTest {
 
-    @Test
-    public void test() {
-        CCICorrectionStrategy.main(null);
-    }
+	@Test
+	public void test() {
+		CCICorrectionStrategy.main(null);
+	}
 }
