@@ -26,15 +26,16 @@ package org.ta4j.core.reports;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossLossCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
-import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.num.Num;
 
 /**
  * This class generates PerformanceReport basis on provided trading report and
- * bar series
+ * bar series. The report containts the ProfitLoss, the ProfitLossPercentage,
+ * the GrossProfit and the GrossLoss.
  *
  * @see PerformanceReport
  */
@@ -45,7 +46,7 @@ public class PerformanceReportGenerator implements ReportGenerator<PerformanceRe
         final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
         final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
         final Num grossProfit = new GrossProfitCriterion().calculate(series, tradingRecord);
-        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, grossProfit, netLoss);
+        final Num grossLoss = new GrossLossCriterion().calculate(series, tradingRecord);
+        return new PerformanceReport(pnl, pnlPercentage, grossProfit, grossLoss);
     }
 }
