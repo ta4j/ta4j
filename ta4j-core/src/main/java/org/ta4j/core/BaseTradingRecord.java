@@ -166,8 +166,8 @@ public class BaseTradingRecord implements TradingRecord {
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Pos... positions) {
         this(positions[0].getType(), transactionCostModel, holdingCostModel);
         for (Pos pos : positions) {
-            boolean newOrderWillBeAnEntry = currentPosition.isNew();
-            if (newOrderWillBeAnEntry && pos.getType() != startingType) {
+            boolean newPositionWillBeAnEntry = currentPosition.isNew();
+            if (newPositionWillBeAnEntry && pos.getType() != startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
                 // BUY, SELL,
@@ -175,8 +175,8 @@ public class BaseTradingRecord implements TradingRecord {
                 // BUY, SELL
                 currentPosition = new PosPair(pos.getType(), transactionCostModel, holdingCostModel);
             }
-            Pos newOrder = currentPosition.operate(pos.getIndex(), pos.getPricePerAsset(), pos.getAmount());
-            recordPosition(newOrder, newOrderWillBeAnEntry);
+            Pos newPosition = currentPosition.operate(pos.getIndex(), pos.getPricePerAsset(), pos.getAmount());
+            recordPosition(newPosition, newPositionWillBeAnEntry);
         }
     }
 
@@ -201,9 +201,9 @@ public class BaseTradingRecord implements TradingRecord {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
         }
-        boolean newOrderWillBeAnEntry = currentPosition.isNew();
-        Pos newOrder = currentPosition.operate(index, price, amount);
-        recordPosition(newOrder, newOrderWillBeAnEntry);
+        boolean newPositionWillBeAnEntry = currentPosition.isNew();
+        Pos newPosition = currentPosition.operate(index, price, amount);
+        recordPosition(newPosition, newPositionWillBeAnEntry);
     }
 
     @Override
