@@ -21,31 +21,35 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.tradereport;
+package org.ta4j.core.reports;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.ProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.ProfitLossPercentageCriterion;
-import org.ta4j.core.analysis.criteria.TotalLossCriterion;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
-import org.ta4j.core.num.Num;
 
 /**
- * This class generates PerformanceReport basis on provided trading report and
- * bar series
- *
- * @see PerformanceReport
+ * This class represents trading statement report which contains trade and
+ * performance statistics
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class TradingStatement {
 
-    @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num totalProfit = new TotalProfitCriterion().calculate(series, tradingRecord);
-        final Num totalLoss = new TotalLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
+    private final Strategy strategy;
+    private final TradeStatsReport tradeStatsReport;
+    private final PerformanceReport performanceReport;
+
+    public TradingStatement(Strategy strategy, TradeStatsReport tradeStatsReport, PerformanceReport performanceReport) {
+        this.strategy = strategy;
+        this.tradeStatsReport = tradeStatsReport;
+        this.performanceReport = performanceReport;
+    }
+
+    public Strategy getStrategy() {
+        return strategy;
+    }
+
+    public TradeStatsReport getTradeStatsReport() {
+        return tradeStatsReport;
+    }
+
+    public PerformanceReport getPerformanceReport() {
+        return performanceReport;
     }
 }
