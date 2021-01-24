@@ -72,7 +72,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded position pairs.
      */
-    private List<PosPair> posPairs = new ArrayList<>();
+    private List<PosPair> pairs = new ArrayList<>();
 
     /**
      * The entry type (BUY or SELL) in the trading session
@@ -226,7 +226,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public List<PosPair> getPairs() {
-        return posPairs;
+        return pairs;
     }
 
     @Override
@@ -293,7 +293,7 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the position if closed
         if (currentPosition.isClosed()) {
-            posPairs.add(currentPosition);
+            pairs.add(currentPosition);
             currentPosition = new PosPair(startingType, transactionCostModel, holdingCostModel);
         }
     }
