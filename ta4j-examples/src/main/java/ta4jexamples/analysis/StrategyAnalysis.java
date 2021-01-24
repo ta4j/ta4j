@@ -60,10 +60,10 @@ public class StrategyAnalysis {
         System.out.println(
                 "Average return (per bar): " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
         // Number of trades
-        System.out.println("Number of trades: " + new NumberOfTradesCriterion().calculate(series, tradingRecord));
+        System.out.println("Number of trades: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
         // Profitable trades ratio
         System.out
-                .println("Winning trades ratio: " + new WinningTradesRatioCriterion().calculate(series, tradingRecord));
+                .println("Winning trades ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
         // Maximum drawdown
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
         // Reward-risk ratio

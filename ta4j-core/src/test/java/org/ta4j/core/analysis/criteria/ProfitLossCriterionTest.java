@@ -41,7 +41,7 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series, series.numOf(50)),
                 Order.sellAt(2, series, series.numOf(50)), Order.buyAt(3, series, series.numOf(50)),
@@ -52,7 +52,7 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithLossTrades() {
+    public void calculateOnlyWithLossPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series, series.numOf(50)),
                 Order.sellAt(1, series, series.numOf(50)), Order.buyAt(2, series, series.numOf(50)),
@@ -63,7 +63,7 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateShortOnlyWithGainTrades() {
+    public void calculateShortOnlyWithGainPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series, series.numOf(50)),
                 Order.buyAt(2, series, series.numOf(50)), Order.sellAt(3, series, series.numOf(50)),
@@ -74,7 +74,7 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateShortOnlyWithLossTrades() {
+    public void calculateShortOnlyWithLossPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series, series.numOf(50)),
                 Order.buyAt(1, series, series.numOf(50)), Order.sellAt(2, series, series.numOf(50)),
@@ -92,8 +92,8 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 
 }

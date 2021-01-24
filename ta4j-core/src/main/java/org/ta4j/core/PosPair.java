@@ -39,7 +39,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * The exit order has the complement type of the entry order.<br>
  * I.e.: entry == BUY --> exit == SELL entry == SELL --> exit == BUY
  */
-public class Trade implements Serializable {
+public class PosPair implements Serializable {
 
     private static final long serialVersionUID = -5484709075767220358L;
 
@@ -61,17 +61,17 @@ public class Trade implements Serializable {
     /**
      * Constructor.
      */
-    public Trade() {
+    public PosPair() {
         this(OrderType.BUY);
     }
 
     /**
      * Constructor.
      * 
-     * @param startingType the starting {@link OrderType order type} of the trade
+     * @param startingType the starting {@link OrderType order type} of the position
      *                     (i.e. type of the entry order)
      */
-    public Trade(OrderType startingType) {
+    public PosPair(OrderType startingType) {
         this(startingType, new ZeroCostModel(), new ZeroCostModel());
     }
 
@@ -79,11 +79,11 @@ public class Trade implements Serializable {
      * Constructor.
      * 
      * @param startingType         the starting {@link OrderType order type} of the
-     *                             trade (i.e. type of the entry order)
+     *                             position (i.e. type of the entry order)
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public Trade(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public PosPair(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -98,7 +98,7 @@ public class Trade implements Serializable {
      * @param entry the entry {@link Order order}
      * @param exit  the exit {@link Order order}
      */
-    public Trade(Order entry, Order exit) {
+    public PosPair(Order entry, Order exit) {
         this(entry, exit, entry.getCostModel(), new ZeroCostModel());
     }
 
@@ -110,7 +110,7 @@ public class Trade implements Serializable {
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public Trade(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public PosPair(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
 
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both orders must have different types");
@@ -118,7 +118,7 @@ public class Trade implements Serializable {
 
         if (!(entry.getCostModel().equals(transactionCostModel))
                 || !(exit.getCostModel().equals(transactionCostModel))) {
-            throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
+            throw new IllegalArgumentException("Orders and the position must incorporate the same trading cost model");
         }
 
         this.startingType = entry.getType();
@@ -129,14 +129,14 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the entry {@link Order order} of the trade
+     * @return the entry {@link Order order} of the position
      */
     public Order getEntry() {
         return entry;
     }
 
     /**
-     * @return the exit {@link Order order} of the trade
+     * @return the exit {@link Order order} of the position
      */
     public Order getExit() {
         return exit;
@@ -144,8 +144,8 @@ public class Trade implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Trade) {
-            Trade t = (Trade) obj;
+        if (obj instanceof PosPair) {
+            PosPair t = (PosPair) obj;
             return (entry == null ? t.getEntry() == null : entry.equals(t.getEntry()))
                     && (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
         }
@@ -158,7 +158,7 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Operates the trade at the index-th position
+     * Operates the position at the index-th position
      * 
      * @param index the bar index
      * @return the order
@@ -168,7 +168,7 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Operates the trade at the index-th position
+     * Operates the position at the index-th position
      * 
      * @param index  the bar index
      * @param price  the price
@@ -191,21 +191,21 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return true if the trade is closed, false otherwise
+     * @return true if the position is closed, false otherwise
      */
     public boolean isClosed() {
         return (entry != null) && (exit != null);
     }
 
     /**
-     * @return true if the trade is opened, false otherwise
+     * @return true if the position is opened, false otherwise
      */
     public boolean isOpened() {
         return (entry != null) && (exit == null);
     }
 
     /**
-     * @return true if the trade is new, false otherwise
+     * @return true if the position is new, false otherwise
      */
     public boolean isNew() {
         return (entry == null) && (exit == null);
@@ -217,9 +217,9 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculate the profit of the trade if it is closed
+     * Calculate the profit of the position if it is closed
      *
-     * @return the profit or loss of the trade
+     * @return the profit or loss of the position
      */
     public Num getProfit() {
         if (isOpened()) {
@@ -230,14 +230,14 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculate the profit of the trade. If it is open, calculates the profit until
-     * the final bar.
+     * Calculate the profit of the position. If it is open, calculates the profit
+     * until the final bar.
      *
-     * @param finalIndex the index of the final bar to be considered (if trade is
+     * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
-     * @param finalPrice the price of the final bar to be considered (if trade is
+     * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
-     * @return the profit or loss of the trade
+     * @return the profit or loss of the position
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
         Num grossProfit = getGrossProfit(finalPrice);
@@ -246,9 +246,9 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the trade if it is closed
+     * Calculate the gross return of the position if it is closed
      *
-     * @return the gross return of the trade
+     * @return the gross return of the position
      */
     public Num getGrossReturn() {
         if (isOpened()) {
@@ -259,23 +259,24 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the trade, if it exited at the provided price.
+     * Calculate the gross return of the position, if it exited at the provided
+     * price.
      *
-     * @param finalPrice the price of the final bar to be considered (if trade is
+     * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
-     * @return the gross return of the trade
+     * @return the gross return of the position
      */
     public Num getGrossReturn(Num finalPrice) {
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
     }
 
     /**
-     * Returns the gross return of the trade. If either the entry or the exit price
-     * are <code>NaN</code>, the close price from the supplies {@link BarSeries} is
-     * used.
+     * Returns the gross return of the position. If either the entry or the exit
+     * price are <code>NaN</code>, the close price from the supplies
+     * {@link BarSeries} is used.
      * 
      * @param barSeries
-     * @return
+     * @return the gross return of the position
      */
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
@@ -294,9 +295,9 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the trade if it is closed
+     * Calculate the gross return of the position if it is closed
      *
-     * @return the gross return of the trade
+     * @return the gross return of the position
      */
     public Num getGrossProfit() {
         if (isOpened()) {
@@ -307,11 +308,11 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculate the gross (w/o trading costs) profit of the trade.
+     * Calculate the gross (w/o trading costs) profit of the position.
      * 
-     * @param finalPrice the price of the final bar to be considered (if trade is
+     * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
-     * @return the profit or loss of the trade
+     * @return the profit or loss of the position
      */
     public Num getGrossProfit(Num finalPrice) {
         Num grossProfit;
@@ -329,11 +330,11 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculates the total cost of the trade
+     * Calculates the total cost of the position
      * 
-     * @param finalIndex the index of the final bar to be considered (if trade is
+     * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
-     * @return the cost of the trade
+     * @return the cost of the position
      */
     public Num getTradeCost(int finalIndex) {
         Num transactionCost = transactionCostModel.calculate(this, finalIndex);
@@ -342,9 +343,9 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculates the total cost of the closed trade
+     * Calculates the total cost of the closed position
      * 
-     * @return the cost of the trade
+     * @return the cost of the position
      */
     public Num getTradeCost() {
         Num transactionCost = transactionCostModel.calculate(this);
@@ -353,20 +354,20 @@ public class Trade implements Serializable {
     }
 
     /**
-     * Calculates the holding cost of the closed trade
+     * Calculates the holding cost of the closed position
      * 
-     * @return the cost of the trade
+     * @return the cost of the position
      */
     public Num getHoldingCost() {
         return holdingCostModel.calculate(this);
     }
 
     /**
-     * Calculates the holding cost of the trade
+     * Calculates the holding cost of the position
      * 
-     * @param finalIndex the index of the final bar to be considered (if trade is
+     * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
-     * @return the cost of the trade
+     * @return the cost of the position
      */
     public Num getHoldingCost(int finalIndex) {
         return holdingCostModel.calculate(this, finalIndex);

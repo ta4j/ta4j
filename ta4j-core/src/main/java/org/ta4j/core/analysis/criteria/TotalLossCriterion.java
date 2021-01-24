@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -32,21 +32,14 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+        return tradingRecord.getPositions().stream().filter(PosPair::isClosed).map(pos -> calculate(series, pos))
                 .reduce(series.numOf(0), Num::plus);
     }
 
-    /**
-     * Calculates the gross loss of the given trade
-     *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the loss of the trade
-     */
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num loss = trade.getProfit();
+    public Num calculate(BarSeries series, PosPair posPair) {
+        if (posPair.isClosed()) {
+            Num loss = posPair.getProfit();
             return loss.isNegative() ? loss : series.numOf(0);
 
         }

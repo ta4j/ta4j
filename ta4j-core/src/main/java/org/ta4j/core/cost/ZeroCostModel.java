@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.num.Num;
 
 public class ZeroCostModel implements CostModel {
@@ -35,12 +35,12 @@ public class ZeroCostModel implements CostModel {
     public ZeroCostModel() {
     }
 
-    public Num calculate(Trade trade) {
-        return calculate(trade, 0);
+    public Num calculate(PosPair posPair) {
+        return calculate(posPair, 0);
     }
 
-    public Num calculate(Trade trade, int currentIndex) {
-        return trade.getEntry().getPricePerAsset().numOf(0);
+    public Num calculate(PosPair posPair, int currentIndex) {
+        return posPair.getEntry().getPricePerAsset().numOf(0);
     }
 
     public Num calculate(Num price, Num amount) {

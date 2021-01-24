@@ -11,6 +11,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
 - **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 - **Breaking:** package "tradereports" renamed to "reports"
+- **Breaking:** Trade.class renamed to "PosPair.class" (which stands for "PositionPair")
+- **Breaking:** The word "Trades" contained in a few criterions is renamed to "Position"
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.

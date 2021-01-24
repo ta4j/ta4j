@@ -48,7 +48,7 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainPositions() {
         series = new MockBarSeries(numFunction, 100d, 105d, 106d, 107d, 108d, 115d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -57,8 +57,8 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithASimpleTrade() {
-        // if only one trade in tail, VaR = ES
+    public void calculateWithASimplePosition() {
+        // if only one position in tail, VaR = ES
         series = new MockBarSeries(numFunction, 100d, 104d, 90d, 100d, 95d, 105d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
         AnalysisCriterion esCriterion = getCriterion();
@@ -66,15 +66,15 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithLossTrade() {
+    public void calculateOnlyWithLossPosition() {
         // regularly decreasing prices
         List<Double> prices = IntStream.rangeClosed(1, 100).asDoubleStream().boxed().sorted(Collections.reverseOrder())
                 .collect(Collectors.toList());
         series = new MockBarSeries(numFunction, prices);
-        Trade trade = new Trade(Order.buyAt(series.getBeginIndex(), series),
+        PosPair posPair = new PosPair(Order.buyAt(series.getBeginIndex(), series),
                 Order.sellAt(series.getEndIndex(), series));
         AnalysisCriterion esCriterion = getCriterion();
-        assertNumEquals(numOf(-0.35835189384561106), esCriterion.calculate(series, trade));
+        assertNumEquals(numOf(-0.35835189384561106), esCriterion.calculate(series, posPair));
     }
 
     @Test
@@ -87,9 +87,9 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithBuyAndHold() {
         series = new MockBarSeries(numFunction, 100d, 99d);
-        Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion varCriterion = getCriterion();
-        assertNumEquals(numOf(Math.log(99d / 100)), varCriterion.calculate(series, trade));
+        assertNumEquals(numOf(Math.log(99d / 100)), varCriterion.calculate(series, posPair));
     }
 
     @Test

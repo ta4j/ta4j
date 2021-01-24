@@ -101,24 +101,24 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void fixedCostWithOneTrade() {
+    public void fixedCostWithOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        Trade trade = new Trade();
+        PosPair posPair = new PosPair();
         Num criterion;
 
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, posPair);
         assertNumEquals(0d, criterion);
 
-        trade.operate(1);
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        posPair.operate(1);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, posPair);
         assertNumEquals(0.75d, criterion);
 
-        trade.operate(3);
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        posPair.operate(3);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, posPair);
         assertNumEquals(1.5d, criterion);
 
-        trade.operate(4);
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        posPair.operate(4);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, posPair);
         assertNumEquals(1.5d, criterion);
     }
 

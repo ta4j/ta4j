@@ -25,7 +25,7 @@ package org.ta4j.core.mocks;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -50,10 +50,10 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Gets the final criterion value.
      * 
-     * @param series BarSeries is ignored
-     * @param trade  is ignored
+     * @param series  BarSeries is ignored
+     * @param posPair is ignored
      */
-    public Num calculate(BarSeries series, Trade trade) {
+    public Num calculate(BarSeries series, PosPair posPair) {
         return values.get(values.size() - 1);
     }
 

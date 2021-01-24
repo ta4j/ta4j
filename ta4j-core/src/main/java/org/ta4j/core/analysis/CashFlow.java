@@ -25,7 +25,7 @@ package org.ta4j.core.analysis;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -36,8 +36,8 @@ import java.util.List;
 /**
  * The cash flow.
  *
- * This class allows to follow the money cash flow involved by a list of trades
- * over a bar series.
+ * This class allows to follow the money cash flow involved by a list of
+ * positions over a bar series.
  */
 public class CashFlow implements Indicator<Num> {
 
@@ -52,20 +52,20 @@ public class CashFlow implements Indicator<Num> {
     private List<Num> values;
 
     /**
-     * Constructor for cash flows of a closed trade.
+     * Constructor for cash flows of a closed position.
      *
      * @param barSeries the bar series
-     * @param trade     a single trade
+     * @param position  the position pair
      */
-    public CashFlow(BarSeries barSeries, Trade trade) {
+    public CashFlow(BarSeries barSeries, PosPair posPair) {
         this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
-        calculate(trade);
+        calculate(posPair);
         fillToTheEnd();
     }
 
     /**
-     * Constructor for cash flows of closed trades of a trading record.
+     * Constructor for cash flows of closed positions of a trading record.
      *
      * @param barSeries     the bar series
      * @param tradingRecord the trading record
@@ -83,7 +83,8 @@ public class CashFlow implements Indicator<Num> {
      *
      * @param barSeries     the bar series
      * @param tradingRecord the trading record
-     * @param finalIndex    index up until cash flows of open trades are considered
+     * @param finalIndex    index up until cash flows of open positions are
+     *                      considered
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
@@ -120,28 +121,29 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Calculates the cash flow for a single closed trade.
+     * Calculates the cash flow for a single closed position.
      *
-     * @param trade a single trade
+     * @param posPair a position pair
      */
-    private void calculate(Trade trade) {
-        if (trade.isOpened()) {
-            throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
+    private void calculate(PosPair posPair) {
+        if (posPair.isOpened()) {
+            throw new IllegalArgumentException(
+                    "Position is not closed. Final index of observation needs to be provided.");
         }
-        calculate(trade, trade.getExit().getIndex());
+        calculate(posPair, posPair.getExit().getIndex());
     }
 
     /**
-     * Calculates the cash flow for a single trade (including accrued cashflow for
-     * open trades).
+     * Calculates the cash flow for a single position (including accrued cashflow
+     * for open positions).
      *
-     * @param trade      a single trade
-     * @param finalIndex index up until cash flow of open trades is considered
+     * @param posPair    a position pair
+     * @param finalIndex index up until cash flow of open positions is considered
      */
-    private void calculate(Trade trade, int finalIndex) {
-        boolean isLongTrade = trade.getEntry().isBuy();
-        int endIndex = determineEndIndex(trade, finalIndex, barSeries.getEndIndex());
-        final int entryIndex = trade.getEntry().getIndex();
+    private void calculate(PosPair posPair, int finalIndex) {
+        boolean isLongTrade = posPair.getEntry().isBuy();
+        int endIndex = determineEndIndex(posPair, finalIndex, barSeries.getEndIndex());
+        final int entryIndex = posPair.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
             Num lastValue = values.get(values.size() - 1);
@@ -152,21 +154,21 @@ public class CashFlow implements Indicator<Num> {
             int startingIndex = Math.max(begin, 1);
 
             int nPeriods = endIndex - entryIndex;
-            Num holdingCost = trade.getHoldingCost(endIndex);
+            Num holdingCost = posPair.getHoldingCost(endIndex);
             Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
 
-            // Add intermediate cash flows during trade
-            Num netEntryPrice = trade.getEntry().getNetPrice();
+            // Add intermediate cash flows during open position
+            Num netEntryPrice = posPair.getEntry().getNetPrice();
             for (int i = startingIndex; i < endIndex; i++) {
                 Num intermediateNetPrice = addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 values.add(values.get(entryIndex).multipliedBy(ratio));
             }
 
-            // add net cash flow at exit trade
+            // add net cash flow at exit position
             Num exitPrice;
-            if (trade.getExit() != null) {
-                exitPrice = trade.getExit().getNetPrice();
+            if (posPair.getExit() != null) {
+                exitPrice = posPair.getExit().getNetPrice();
             } else {
                 exitPrice = barSeries.getBar(endIndex).getClosePrice();
             }
@@ -193,28 +195,29 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Calculates the cash flow for the closed trades of a trading record.
+     * Calculates the cash flow for the closed positions of a trading record.
      *
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
-        // For each trade...
-        tradingRecord.getTrades().forEach(this::calculate);
+        // For each position...
+        tradingRecord.getPositions().forEach(this::calculate);
     }
 
     /**
-     * Calculates the cash flow for all trades of a trading record, including
-     * accrued cash flow of an open trade.
+     * Calculates the cash flow for all positions of a trading record, including
+     * accrued cash flow of an open position.
      *
      * @param tradingRecord the trading record
-     * @param finalIndex    index up until cash flows of open trades are considered
+     * @param finalIndex    index up until cash flows of open positions are
+     *                      considered
      */
     private void calculate(TradingRecord tradingRecord, int finalIndex) {
         calculate(tradingRecord);
 
-        // Add accrued cash flow of open trade
-        if (tradingRecord.getCurrentTrade().isOpened()) {
-            calculate(tradingRecord.getCurrentTrade(), finalIndex);
+        // Add accrued cash flow of open position
+        if (tradingRecord.getCurrentPosition().isOpened()) {
+            calculate(tradingRecord.getCurrentPosition(), finalIndex);
         }
     }
 
@@ -248,15 +251,15 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Determines the the valid final index to be considered.
      *
-     * @param trade      the trade
-     * @param finalIndex index up until cash flows of open trades are considered
+     * @param posPair    the position pair
+     * @param finalIndex index up until cash flows of open positions are considered
      * @param maxIndex   maximal valid index
      */
-    static int determineEndIndex(Trade trade, int finalIndex, int maxIndex) {
+    static int determineEndIndex(PosPair posPair, int finalIndex, int maxIndex) {
         int idx = finalIndex;
-        // After closing of trade, no further accrual necessary
-        if (trade.getExit() != null) {
-            idx = Math.min(trade.getExit().getIndex(), finalIndex);
+        // After closing of position, no further accrual necessary
+        if (posPair.getExit() != null) {
+            idx = Math.min(posPair.getExit().getIndex(), finalIndex);
         }
         // Accrual at most until maximal index of asset data
         if (idx > maxIndex) {

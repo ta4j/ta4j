@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -72,8 +72,8 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return getTradeCost(series, trade, series.numOf(initialAmount));
+    public Num calculate(BarSeries series, PosPair posPair) {
+        return getTradeCost(series, posPair, series.numOf(initialAmount));
     }
 
     @Override
@@ -81,22 +81,22 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         Num totalCosts = series.numOf(0);
         Num tradedAmount = series.numOf(initialAmount);
 
-        for (Trade trade : tradingRecord.getTrades()) {
-            Num tradeCost = getTradeCost(series, trade, tradedAmount);
+        for (PosPair posPair : tradingRecord.getPositions()) {
+            Num tradeCost = getTradeCost(series, posPair, tradedAmount);
             totalCosts = totalCosts.plus(tradeCost);
             // To calculate the new traded amount:
             // - Remove the cost of the *first* order
             // - Multiply by the profit ratio
             // - Remove the cost of the *second* order
-            tradedAmount = tradedAmount.minus(getOrderCost(trade.getEntry(), tradedAmount));
-            tradedAmount = tradedAmount.multipliedBy(totalReturn.calculate(series, trade));
-            tradedAmount = tradedAmount.minus(getOrderCost(trade.getExit(), tradedAmount));
+            tradedAmount = tradedAmount.minus(getOrderCost(posPair.getEntry(), tradedAmount));
+            tradedAmount = tradedAmount.multipliedBy(totalReturn.calculate(series, posPair));
+            tradedAmount = tradedAmount.minus(getOrderCost(posPair.getExit(), tradedAmount));
         }
 
-        // Special case: if the current trade is open
-        Trade currentTrade = tradingRecord.getCurrentTrade();
-        if (currentTrade.isOpened()) {
-            totalCosts = totalCosts.plus(getOrderCost(currentTrade.getEntry(), tradedAmount));
+        // Special case: if the current position is open
+        PosPair currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition.isOpened()) {
+            totalCosts = totalCosts.plus(getOrderCost(currentPosition.getEntry(), tradedAmount));
         }
 
         return totalCosts;
@@ -122,22 +122,22 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * @param series        the bar series
-     * @param trade         a trade
-     * @param initialAmount the initially traded amount for the trade
-     * @return the absolute total cost of all orders in the trade
+     * @param posPair       the position pair
+     * @param initialAmount the initially traded amount for the position
+     * @return the absolute total cost of all orders in the position
      */
-    private Num getTradeCost(BarSeries series, Trade trade, Num initialAmount) {
+    private Num getTradeCost(BarSeries series, PosPair posPair, Num initialAmount) {
         Num totalTradeCost = series.numOf(0);
-        if (trade != null) {
-            if (trade.getEntry() != null) {
-                totalTradeCost = getOrderCost(trade.getEntry(), initialAmount);
-                if (trade.getExit() != null) {
+        if (posPair != null) {
+            if (posPair.getEntry() != null) {
+                totalTradeCost = getOrderCost(posPair.getEntry(), initialAmount);
+                if (posPair.getExit() != null) {
                     // To calculate the new traded amount:
                     // - Remove the cost of the first order
                     // - Multiply by the profit ratio
                     Num newTradedAmount = initialAmount.minus(totalTradeCost)
-                            .multipliedBy(totalReturn.calculate(series, trade));
-                    totalTradeCost = totalTradeCost.plus(getOrderCost(trade.getExit(), newTradedAmount));
+                            .multipliedBy(totalReturn.calculate(series, posPair));
+                    totalTradeCost = totalTradeCost.plus(getOrderCost(posPair.getExit(), newTradedAmount));
                 }
             }
         }

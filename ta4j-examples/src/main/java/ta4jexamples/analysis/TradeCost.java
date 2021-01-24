@@ -68,12 +68,12 @@ public class TradeCost {
 
         DecimalFormat df = new DecimalFormat("##.##");
         System.out.println("------------ Borrowing Costs ------------");
-        tradingRecord.getTrades()
+        tradingRecord.getPositions()
                 .forEach(trade -> System.out.println(
                         "Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
                                 + " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
         System.out.println("------------ Transaction Costs ------------");
-        tradingRecord.getTrades()
+        tradingRecord.getPositions()
                 .forEach(trade -> System.out.println("Transaction cost for selling: "
                         + df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
                         + df.format(trade.getExit().getCost().doubleValue())));

@@ -39,11 +39,11 @@ import java.util.List;
 public interface AnalysisCriterion {
 
     /**
-     * @param series a bar series, not null
-     * @param trade  a trade, not null
+     * @param series  a bar series, not null
+     * @param posPair a position pair, not null
      * @return the criterion value for the trade
      */
-    Num calculate(BarSeries series, Trade trade);
+    Num calculate(BarSeries series, PosPair posPair);
 
     /**
      * @param series        a bar series, not null

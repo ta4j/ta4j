@@ -70,9 +70,9 @@ public class BaseTradingRecord implements TradingRecord {
     private List<Order> exitOrders = new ArrayList<>();
 
     /**
-     * The recorded trades
+     * The recorded positions
      */
-    private List<Trade> trades = new ArrayList<>();
+    private List<PosPair> positions = new ArrayList<>();
 
     /**
      * The entry type (BUY or SELL) in the trading session
@@ -80,9 +80,9 @@ public class BaseTradingRecord implements TradingRecord {
     private OrderType startingType;
 
     /**
-     * The current non-closed trade (there's always one)
+     * The current non-closed position (there's always one)
      */
-    private Trade currentTrade;
+    private PosPair currentPosition;
 
     /**
      * Trading cost models
@@ -146,7 +146,7 @@ public class BaseTradingRecord implements TradingRecord {
         this.startingType = entryOrderType;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        currentTrade = new Trade(entryOrderType, transactionCostModel, holdingCostModel);
+        currentPosition = new PosPair(entryOrderType, transactionCostModel, holdingCostModel);
     }
 
     /**
@@ -168,16 +168,16 @@ public class BaseTradingRecord implements TradingRecord {
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Order... orders) {
         this(orders[0].getType(), transactionCostModel, holdingCostModel);
         for (Order o : orders) {
-            boolean newOrderWillBeAnEntry = currentTrade.isNew();
+            boolean newOrderWillBeAnEntry = currentPosition.isNew();
             if (newOrderWillBeAnEntry && o.getType() != startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
                 // BUY, SELL,
                 // SELL, BUY,
                 // BUY, SELL
-                currentTrade = new Trade(o.getType(), transactionCostModel, holdingCostModel);
+                currentPosition = new PosPair(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Order newOrder = currentTrade.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            Order newOrder = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
@@ -193,24 +193,24 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public Trade getCurrentTrade() {
-        return currentTrade;
+    public PosPair getCurrentPosition() {
+        return currentPosition;
     }
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        if (currentTrade.isClosed()) {
-            // Current trade closed, should not occur
-            throw new IllegalStateException("Current trade should not be closed");
+        if (currentPosition.isClosed()) {
+            // Current position closed, should not occur
+            throw new IllegalStateException("Current position should not be closed");
         }
-        boolean newOrderWillBeAnEntry = currentTrade.isNew();
-        Order newOrder = currentTrade.operate(index, price, amount);
+        boolean newOrderWillBeAnEntry = currentPosition.isNew();
+        Order newOrder = currentPosition.operate(index, price, amount);
         recordOrder(newOrder, newOrderWillBeAnEntry);
     }
 
     @Override
     public boolean enter(int index, Num price, Num amount) {
-        if (currentTrade.isNew()) {
+        if (currentPosition.isNew()) {
             operate(index, price, amount);
             return true;
         }
@@ -219,7 +219,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public boolean exit(int index, Num price, Num amount) {
-        if (currentTrade.isOpened()) {
+        if (currentPosition.isOpened()) {
             operate(index, price, amount);
             return true;
         }
@@ -227,8 +227,8 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public List<Trade> getTrades() {
-        return trades;
+    public List<PosPair> getPositions() {
+        return positions;
     }
 
     @Override
@@ -266,7 +266,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     /**
-     * Records an order and the corresponding trade (if closed).
+     * Records an order and the corresponding position (if closed).
      *
      * @param order   the order to be recorded
      * @param isEntry true if the order is an entry, false otherwise (exit)
@@ -293,10 +293,10 @@ public class BaseTradingRecord implements TradingRecord {
             sellOrders.add(order);
         }
 
-        // Storing the trade if closed
-        if (currentTrade.isClosed()) {
-            trades.add(currentTrade);
-            currentTrade = new Trade(startingType, transactionCostModel, holdingCostModel);
+        // Storing the position if closed
+        if (currentPosition.isClosed()) {
+            positions.add(currentPosition);
+            currentPosition = new PosPair(startingType, transactionCostModel, holdingCostModel);
         }
     }
 

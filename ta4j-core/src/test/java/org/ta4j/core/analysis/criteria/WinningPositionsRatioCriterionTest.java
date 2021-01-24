@@ -35,10 +35,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class WinningTradesRatioCriterionTest extends AbstractCriterionTest {
+public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
 
-    public WinningTradesRatioCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new WinningTradesRatioCriterion(), numFunction);
+    public WinningPositionsRatioCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new WinningPositionsRatioCriterion(), numFunction);
     }
 
     @Test
@@ -53,7 +53,7 @@ public class WinningTradesRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithShortTrades() {
+    public void calculateWithShortPositions() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series),
                 Order.sellAt(3, series), Order.buyAt(4, series));
@@ -64,15 +64,15 @@ public class WinningTradesRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade() {
+    public void calculateWithOnePosition() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
 
         AnalysisCriterion average = getCriterion();
-        assertNumEquals(numOf(0), average.calculate(series, trade));
+        assertNumEquals(numOf(0), average.calculate(series, posPair));
 
-        trade = new Trade(Order.buyAt(1, series), Order.sellAt(2, series));
-        assertNumEquals(1, average.calculate(series, trade));
+        posPair = new PosPair(Order.buyAt(1, series), Order.sellAt(2, series));
+        assertNumEquals(1, average.calculate(series, posPair));
     }
 
     @Test
@@ -83,7 +83,7 @@ public class WinningTradesRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

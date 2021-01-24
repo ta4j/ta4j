@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
@@ -44,9 +44,9 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-            CashFlow cashFlow = new CashFlow(series, trade);
+    public Num calculate(BarSeries series, PosPair posPair) {
+        if (posPair != null && posPair.getEntry() != null && posPair.getExit() != null) {
+            CashFlow cashFlow = new CashFlow(series, posPair);
             return calculateMaximumDrawdown(series, cashFlow);
         }
         return series.numOf(0);

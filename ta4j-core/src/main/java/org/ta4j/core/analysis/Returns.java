@@ -25,7 +25,7 @@ package org.ta4j.core.analysis;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -84,15 +84,15 @@ public class Returns implements Indicator<Num> {
      * Constructor.
      *
      * @param barSeries the bar series
-     * @param trade     a single trade
+     * @param posPair   the position pair
      */
-    public Returns(BarSeries barSeries, Trade trade, ReturnType type) {
+    public Returns(BarSeries barSeries, PosPair posPair, ReturnType type) {
         one = barSeries.numOf(1);
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        calculate(trade);
+        calculate(posPair);
 
         fillToTheEnd();
     }
@@ -144,22 +144,22 @@ public class Returns implements Indicator<Num> {
         return barSeries.getBarCount() - 1;
     }
 
-    public void calculate(Trade trade) {
-        calculate(trade, barSeries.getEndIndex());
+    public void calculate(PosPair posPair) {
+        calculate(posPair, barSeries.getEndIndex());
     }
 
     /**
-     * Calculates the cash flow for a single trade (including accrued cashflow for
-     * open trades).
+     * Calculates the cash flow for a single position (including accrued cashflow
+     * for open positions).
      *
-     * @param trade      a single trade
-     * @param finalIndex index up until cash flow of open trades is considered
+     * @param posPair    the position pair
+     * @param finalIndex index up until cash flow of open positions is considered
      */
-    public void calculate(Trade trade, int finalIndex) {
-        boolean isLongTrade = trade.getEntry().isBuy();
+    public void calculate(PosPair posPair, int finalIndex) {
+        boolean isLongTrade = posPair.getEntry().isBuy();
         Num minusOne = barSeries.numOf(-1);
-        int endIndex = CashFlow.determineEndIndex(trade, finalIndex, barSeries.getEndIndex());
-        final int entryIndex = trade.getEntry().getIndex();
+        int endIndex = CashFlow.determineEndIndex(posPair, finalIndex, barSeries.getEndIndex());
+        final int entryIndex = posPair.getEntry().getIndex();
         int begin = entryIndex + 1;
         if (begin > values.size()) {
             values.addAll(Collections.nCopies(begin - values.size(), barSeries.numOf(0)));
@@ -167,18 +167,18 @@ public class Returns implements Indicator<Num> {
 
         int startingIndex = Math.max(begin, 1);
         int nPeriods = endIndex - entryIndex;
-        Num holdingCost = trade.getHoldingCost(endIndex);
+        Num holdingCost = posPair.getHoldingCost(endIndex);
         Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
 
         // returns are per period (iterative). Base price needs to be updated
         // accordingly
-        Num lastPrice = trade.getEntry().getNetPrice();
+        Num lastPrice = posPair.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
             Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
             Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
             Num strategyReturn;
-            if (trade.getEntry().isBuy()) {
+            if (posPair.getEntry().isBuy()) {
                 strategyReturn = assetReturn;
             } else {
                 strategyReturn = assetReturn.multipliedBy(minusOne);
@@ -188,17 +188,17 @@ public class Returns implements Indicator<Num> {
             lastPrice = barSeries.getBar(i).getClosePrice();
         }
 
-        // add net return at exit trade
+        // add net return at exit position
         Num exitPrice;
-        if (trade.getExit() != null) {
-            exitPrice = trade.getExit().getNetPrice();
+        if (posPair.getExit() != null) {
+            exitPrice = posPair.getExit().getNetPrice();
         } else {
             exitPrice = barSeries.getBar(endIndex).getClosePrice();
         }
 
         Num strategyReturn;
         Num assetReturn = type.calculate(CashFlow.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
-        if (trade.getEntry().isBuy()) {
+        if (posPair.getEntry().isBuy()) {
             strategyReturn = assetReturn;
         } else {
             strategyReturn = assetReturn.multipliedBy(minusOne);
@@ -212,8 +212,8 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     private void calculate(TradingRecord tradingRecord) {
-        // For each trade...
-        tradingRecord.getTrades().forEach(this::calculate);
+        // For each position...
+        tradingRecord.getPositions().forEach(this::calculate);
     }
 
     /**

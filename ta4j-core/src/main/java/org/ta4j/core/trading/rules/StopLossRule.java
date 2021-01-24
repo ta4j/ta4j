@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -75,15 +75,15 @@ public class StopLossRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
-        // No trading history or no trade opened, no loss
+        // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            Trade currentTrade = tradingRecord.getCurrentTrade();
-            if (currentTrade.isOpened()) {
+            PosPair currentPos = tradingRecord.getCurrentPosition();
+            if (currentPos.isOpened()) {
 
-                Num entryPrice = currentTrade.getEntry().getNetPrice();
+                Num entryPrice = currentPos.getEntry().getNetPrice();
                 Num currentPrice = closePrice.getValue(index);
 
-                if (currentTrade.getEntry().isBuy()) {
+                if (currentPos.getEntry().isBuy()) {
                     satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
                 } else {
                     satisfied = isSellStopSatisfied(entryPrice, currentPrice);

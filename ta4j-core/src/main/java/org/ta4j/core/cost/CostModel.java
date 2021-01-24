@@ -23,7 +23,7 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
@@ -31,17 +31,17 @@ import java.io.Serializable;
 public interface CostModel extends Serializable {
 
     /**
-     * @param trade      the trade
-     * @param finalIndex final index of consideration for open trades
-     * @return Calculates the trading cost of a single trade
+     * @param posPair    the position pair
+     * @param finalIndex final index of consideration for open positions
+     * @return Calculates the trading cost of a single position
      */
-    Num calculate(Trade trade, int finalIndex);
+    Num calculate(PosPair posPair, int finalIndex);
 
     /**
-     * @param trade the trade
-     * @return Calculates the trading cost of a single trade
+     * @param posPair the position pair
+     * @return Calculates the trading cost of a single position
      */
-    Num calculate(Trade trade);
+    Num calculate(PosPair posPair);
 
     /**
      * @param price  the price per asset

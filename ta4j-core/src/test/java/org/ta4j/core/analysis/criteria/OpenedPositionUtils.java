@@ -23,37 +23,27 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Order;
+import org.ta4j.core.PosPair;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * Number of break even trades criterion.
- */
-public class NumberOfBreakEvenTradesCriterion extends AbstractAnalysisCriterion {
+import java.util.function.Function;
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfBreakEvenTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
-                .filter(this::isBreakEvenTrade).count();
-        return series.numOf(numberOfBreakEvenTrades);
-    }
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-    private boolean isBreakEvenTrade(Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getProfit().isZero();
-        }
-        return false;
-    }
+public class OpenedPositionUtils {
 
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isBreakEvenTrade(trade) ? series.numOf(1) : series.numOf(0);
-    }
+    public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
+            AnalysisCriterion criterion, int expectedValue) {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        PosPair posPair = new PosPair(Order.OrderType.BUY);
+        posPair.operate(0, series.numOf(2.5), series.numOf(1));
+
+        final Num value = criterion.calculate(series, posPair);
+
+        assertNumEquals(expectedValue, value);
     }
 }

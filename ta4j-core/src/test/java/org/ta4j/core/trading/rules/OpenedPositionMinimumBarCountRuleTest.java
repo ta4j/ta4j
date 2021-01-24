@@ -34,21 +34,21 @@ import org.ta4j.core.num.DecimalNum;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class TradeOpenedMinimumBarCountRuleTest {
+public class OpenedPositionMinimumBarCountRuleTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForNegativeNumberShouldThrowException() {
-        new TradeOpenedMinimumBarCountRule(-1);
+        new OpenedPositionMinimumBarCountRule(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForZeroShouldThrowException() {
-        new TradeOpenedMinimumBarCountRule(0);
+        new OpenedPositionMinimumBarCountRule(0);
     }
 
     @Test
     public void testAtLeastOneBarRuleForOpenedTrade() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
@@ -62,7 +62,7 @@ public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastMoreThanOneBarRuleForOpenedTrade() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(2);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(2);
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
@@ -76,7 +76,7 @@ public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForClosedTradeShouldAlwaysReturnsFalse() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
@@ -90,7 +90,7 @@ public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForEmptyTradingRecordShouldAlwaysReturnsFalse() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
 
         final TradingRecord tradingRecord = new BaseTradingRecord();
 

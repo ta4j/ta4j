@@ -25,7 +25,7 @@ package ta4jexamples;
 
 import org.ta4j.core.*;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.criteria.WinningTradesRatioCriterion;
+import org.ta4j.core.analysis.criteria.WinningPositionsRatioCriterion;
 import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
@@ -87,12 +87,12 @@ public class Quickstart {
         // Running our juicy trading strategy...
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(new BaseStrategy(buyingRule, sellingRule));
-        System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
+        System.out.println("Number of trades for our strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
 
         // Getting the winning trades ratio
-        AnalysisCriterion winningTradesRatio = new WinningTradesRatioCriterion();
+        AnalysisCriterion winningTradesRatio = new WinningPositionsRatioCriterion();
         System.out.println("Winning trades ratio: " + winningTradesRatio.calculate(series, tradingRecord));
         // Getting a risk-reward ratio
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();

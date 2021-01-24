@@ -55,12 +55,12 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
+    public Num calculate(BarSeries series, PosPair posPair) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());
 
-        return criterion.calculate(series, trade).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, posPair).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override

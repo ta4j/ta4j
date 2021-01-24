@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 
 public class LinearTransactionCostModelTest {
 
@@ -55,17 +55,17 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
-    public void calculateBuyTrade() {
-        // Calculate the transaction costs of a closed long trade
+    public void calculateBuyPosition() {
+        // Calculate the transaction costs of a closed long position
         int holdingPeriod = 2;
         Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
         Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
-        Trade trade = new Trade(entry, exit, transactionModel, new ZeroCostModel());
+        PosPair posPair = new PosPair(entry, exit, transactionModel, new ZeroCostModel());
 
         Num costFromBuy = entry.getCost();
         Num costFromSell = exit.getCost();
-        Num costsFromModel = transactionModel.calculate(trade, holdingPeriod);
+        Num costsFromModel = transactionModel.calculate(posPair, holdingPeriod);
 
         assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
@@ -73,17 +73,17 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
-    public void calculateSellTrade() {
-        // Calculate the transaction costs of a closed short trade
+    public void calculateSellPosition() {
+        // Calculate the transaction costs of a closed short position
         int holdingPeriod = 2;
         Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
         Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
-        Trade trade = new Trade(entry, exit, transactionModel, new ZeroCostModel());
+        PosPair posPair = new PosPair(entry, exit, transactionModel, new ZeroCostModel());
 
         Num costFromBuy = entry.getCost();
         Num costFromSell = exit.getCost();
-        Num costsFromModel = transactionModel.calculate(trade, holdingPeriod);
+        Num costsFromModel = transactionModel.calculate(posPair, holdingPeriod);
 
         assertNumEquals(costsFromModel, costFromBuy.plus(costFromSell));
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2.1));
@@ -91,13 +91,13 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
-    public void calculateOpenSellTrade() {
-        // Calculate the transaction costs of an open trade
+    public void calculateOpenSellPosition() {
+        // Calculate the transaction costs of an open position
         int currentIndex = 4;
-        Trade trade = new Trade(Order.OrderType.BUY, transactionModel, new ZeroCostModel());
-        trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        PosPair posPair = new PosPair(Order.OrderType.BUY, transactionModel, new ZeroCostModel());
+        posPair.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num costsFromModel = transactionModel.calculate(trade, currentIndex);
+        Num costsFromModel = transactionModel.calculate(posPair, currentIndex);
 
         assertNumEquals(costsFromModel, DoubleNum.valueOf(1));
     }

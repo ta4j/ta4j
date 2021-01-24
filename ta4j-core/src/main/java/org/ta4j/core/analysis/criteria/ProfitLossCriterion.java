@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -37,20 +37,13 @@ public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
+        return tradingRecord.getPositions().stream().filter(PosPair::isClosed).map(pos -> calculate(series, pos))
                 .reduce(series.numOf(0), Num::plus);
     }
 
-    /**
-     * Calculates the profit or loss on the trade.
-     *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit or loss on the trade
-     */
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return trade.getProfit();
+    public Num calculate(BarSeries series, PosPair posPair) {
+        return posPair.getProfit();
     }
 
     @Override

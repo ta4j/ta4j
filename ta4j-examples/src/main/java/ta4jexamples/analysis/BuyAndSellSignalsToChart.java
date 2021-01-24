@@ -39,7 +39,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -86,9 +86,9 @@ public class BuyAndSellSignalsToChart {
     private static void addBuySellSignals(BarSeries series, Strategy strategy, XYPlot plot) {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
-        List<Trade> trades = seriesManager.run(strategy).getTrades();
+        List<PosPair> trades = seriesManager.run(strategy).getPositions();
         // Adding markers to plot
-        for (Trade trade : trades) {
+        for (PosPair trade : trades) {
             // Buy signal
             double buySignalBarTime = new Minute(
                     Date.from(series.getBar(trade.getEntry().getIndex()).getEndTime().toInstant()))

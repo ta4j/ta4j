@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.NaN;
@@ -75,18 +75,18 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void rewardRiskRatioCriterionWithNoTrades() {
+    public void rewardRiskRatioCriterionWithNoPosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         assertTrue(rrc.calculate(series, new BaseTradingRecord()).isNaN());
     }
 
     @Test
-    public void withOneTrade() {
+    public void withOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
-        Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
 
         AnalysisCriterion ratioCriterion = getCriterion();
-        assertNumEquals((95d / 100) / ((1d - 0.95d)), ratioCriterion.calculate(series, trade));
+        assertNumEquals((95d / 100) / ((1d - 0.95d)), ratioCriterion.calculate(series, posPair));
     }
 
     @Test
@@ -108,11 +108,11 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testNoDrawDownForTrade() {
+    public void testNoDrawDownForPosition() {
         final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
-        final Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+        final PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
 
-        final Num result = rrc.calculate(series, trade);
+        final Num result = rrc.calculate(series, posPair);
 
         assertNumEquals(NaN.NaN, result);
     }

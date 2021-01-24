@@ -53,47 +53,47 @@ public class LinearBorrowingCostModelTest {
     }
 
     @Test
-    public void calculateBuyTrade() {
+    public void calculateBuyPosition() {
         // Holding a bought stock should not incur borrowing costs
         int holdingPeriod = 2;
         Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
         Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
 
-        Trade trade = new Trade(entry, exit, new ZeroCostModel(), borrowingModel);
+        PosPair posPair = new PosPair(entry, exit, new ZeroCostModel(), borrowingModel);
 
-        Num costsFromTrade = trade.getHoldingCost();
-        Num costsFromModel = borrowingModel.calculate(trade, holdingPeriod);
+        Num costsFromTrade = posPair.getHoldingCost();
+        Num costsFromModel = borrowingModel.calculate(posPair, holdingPeriod);
 
         assertNumEquals(costsFromModel, costsFromTrade);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(0));
     }
 
     @Test
-    public void calculateSellTrade() {
+    public void calculateSellPosition() {
         // Short selling incurs borrowing costs
         int holdingPeriod = 2;
         Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
         Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
 
-        Trade trade = new Trade(entry, exit, new ZeroCostModel(), borrowingModel);
+        PosPair posPair = new PosPair(entry, exit, new ZeroCostModel(), borrowingModel);
 
-        Num costsFromTrade = trade.getHoldingCost();
-        Num costsFromModel = borrowingModel.calculate(trade, holdingPeriod);
+        Num costsFromTrade = posPair.getHoldingCost();
+        Num costsFromModel = borrowingModel.calculate(posPair, holdingPeriod);
 
         assertNumEquals(costsFromModel, costsFromTrade);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2));
     }
 
     @Test
-    public void calculateOpenSellTrade() {
-        // Short selling incurs borrowing costs. Since trade is still open, accounted
+    public void calculateOpenSellPosition() {
+        // Short selling incurs borrowing costs. Since position is still open, accounted
         // for until current index
         int currentIndex = 4;
-        Trade trade = new Trade(Order.OrderType.SELL, new ZeroCostModel(), borrowingModel);
-        trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        PosPair posPair = new PosPair(Order.OrderType.SELL, new ZeroCostModel(), borrowingModel);
+        posPair.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num costsFromTrade = trade.getHoldingCost(currentIndex);
-        Num costsFromModel = borrowingModel.calculate(trade, currentIndex);
+        Num costsFromTrade = posPair.getHoldingCost(currentIndex);
+        Num costsFromModel = borrowingModel.calculate(posPair, currentIndex);
 
         assertNumEquals(costsFromModel, costsFromTrade);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(4));

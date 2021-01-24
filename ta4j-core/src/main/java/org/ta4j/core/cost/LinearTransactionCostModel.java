@@ -24,13 +24,13 @@
 package org.ta4j.core.cost;
 
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.num.Num;
 
 public class LinearTransactionCostModel implements CostModel {
 
     /**
-     * Slope of the linear model - fee per trade
+     * Slope of the linear model - fee per position
      */
     private double feePerTrade;
 
@@ -45,31 +45,31 @@ public class LinearTransactionCostModel implements CostModel {
     }
 
     /**
-     * Calculates the transaction cost of a trade.
+     * Calculates the transaction cost of a position.
      * 
-     * @param trade        the trade
+     * @param position     the position pair
      * @param currentIndex current bar index (irrelevant for the
      *                     LinearTransactionCostModel)
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade, int currentIndex) {
-        return this.calculate(trade);
+    public Num calculate(PosPair posPair, int currentIndex) {
+        return this.calculate(posPair);
     }
 
     /**
-     * Calculates the transaction cost of a trade.
+     * Calculates the transaction cost of a position.
      * 
-     * @param trade the trade
+     * @param posPair the position pair
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade) {
+    public Num calculate(PosPair posPair) {
         Num totalTradeCost = null;
-        Order entryOrder = trade.getEntry();
+        Order entryOrder = posPair.getEntry();
         if (entryOrder != null) {
-            // transaction costs of entry order
+            // transaction costs of entry position
             totalTradeCost = entryOrder.getCost();
-            if (trade.getExit() != null) {
-                totalTradeCost = totalTradeCost.plus(trade.getExit().getCost());
+            if (posPair.getExit() != null) {
+                totalTradeCost = totalTradeCost.plus(posPair.getExit().getCost());
             }
         }
         return totalTradeCost;

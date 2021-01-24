@@ -39,7 +39,7 @@ import java.util.function.Function;
 public abstract class AbstractCriterionTest {
 
     protected final Function<Number, Num> numFunction;
-    protected final OpenedTradeUtils openedTradeUtils = new OpenedTradeUtils();
+    protected final OpenedPositionUtils openedPositionUtils = new OpenedPositionUtils();
     private final CriterionFactory factory;
 
     /**

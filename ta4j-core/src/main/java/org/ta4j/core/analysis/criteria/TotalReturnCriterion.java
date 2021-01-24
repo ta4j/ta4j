@@ -24,27 +24,27 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
  * Total return criterion.
  *
- * The total return of the provided {@link Trade trade(s)} over the provided
- * {@link BarSeries series}.
+ * The total return of the provided {@link PosPair position(s)} over the
+ * provided {@link BarSeries series}.
  */
 public class TotalReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
+        return tradingRecord.getPositions().stream().map(pos -> calculateProfit(series, pos)).reduce(series.numOf(1),
                 Num::multipliedBy);
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return calculateProfit(series, trade);
+    public Num calculate(BarSeries series, PosPair posPair) {
+        return calculateProfit(series, posPair);
     }
 
     @Override
@@ -52,16 +52,9 @@ public class TotalReturnCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /**
-     * Calculates the return of a trade (Buy and sell).
-     *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit of the trade
-     */
-    private Num calculateProfit(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getGrossReturn(series);
+    private Num calculateProfit(BarSeries series, PosPair posPair) {
+        if (posPair.isClosed()) {
+            return posPair.getGrossReturn(series);
         }
         return series.numOf(1);
     }

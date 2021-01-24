@@ -27,7 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -45,7 +45,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithNoTrades() {
+    public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion numberOfBars = getCriterion();
@@ -53,7 +53,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithTwoTrades() {
+    public void calculateWithTwoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -63,9 +63,9 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade() {
+    public void calculateWithOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        Trade t = new Trade(Order.buyAt(2, series), Order.sellAt(5, series));
+        PosPair t = new PosPair(Order.buyAt(2, series), Order.sellAt(5, series));
         AnalysisCriterion numberOfBars = getCriterion();
         assertNumEquals(4, numberOfBars.calculate(series, t));
     }
@@ -78,7 +78,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

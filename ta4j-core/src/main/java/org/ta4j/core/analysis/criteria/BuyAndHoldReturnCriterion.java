@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -46,8 +46,8 @@ public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return createBuyAndHoldTrade(series, trade.getEntry().getIndex(), trade.getExit().getIndex())
+    public Num calculate(BarSeries series, PosPair posPair) {
+        return createBuyAndHoldTrade(series, posPair.getEntry().getIndex(), posPair.getExit().getIndex())
                 .getGrossReturn(series);
     }
 
@@ -56,14 +56,14 @@ public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Trade createBuyAndHoldTrade(BarSeries series) {
+    private PosPair createBuyAndHoldTrade(BarSeries series) {
         return createBuyAndHoldTrade(series, series.getBeginIndex(), series.getEndIndex());
     }
 
-    private Trade createBuyAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
-        Trade trade = new Trade(Order.OrderType.BUY);
-        trade.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
-        trade.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
-        return trade;
+    private PosPair createBuyAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
+        PosPair posPair = new PosPair(Order.OrderType.BUY);
+        posPair.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
+        posPair.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
+        return posPair;
     }
 }

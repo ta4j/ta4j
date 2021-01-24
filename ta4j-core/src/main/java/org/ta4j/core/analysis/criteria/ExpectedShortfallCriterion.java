@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
@@ -63,9 +63,9 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-            Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
+    public Num calculate(BarSeries series, PosPair posPair) {
+        if (posPair != null && posPair.getEntry() != null && posPair.getExit() != null) {
+            Returns returns = new Returns(series, posPair, Returns.ReturnType.LOG);
             return calculateES(returns, confidence);
         }
         return series.numOf(0);

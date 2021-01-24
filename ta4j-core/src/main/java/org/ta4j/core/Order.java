@@ -40,7 +40,7 @@ import java.util.Objects;
  * <li>a pricePerAsset (optional)
  * <li>an amount to be (or that was) ordered (optional)
  * </ul>
- * A {@link Trade trade} is a pair of complementary orders.
+ * A {@link PosPair position pair} is a pair of complementary positions.
  */
 public class Order implements Serializable {
 

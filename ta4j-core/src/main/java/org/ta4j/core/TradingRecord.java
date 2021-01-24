@@ -44,7 +44,7 @@ import static org.ta4j.core.num.NaN.NaN;
 public interface TradingRecord extends Serializable {
 
     /**
-     * @return the entry type (BUY or SELL) of the first trade in the trading
+     * @return the entry type (BUY or SELL) of the first position in the trading
      *         session
      */
     OrderType getStartingType();
@@ -55,9 +55,9 @@ public interface TradingRecord extends Serializable {
     String getName();
 
     /**
-     * @return the current trade
+     * @return the current position
      */
-    Trade getCurrentTrade();
+    PosPair getCurrentPosition();
 
     /**
      * Operates an order in the trading record.
@@ -118,31 +118,31 @@ public interface TradingRecord extends Serializable {
     boolean exit(int index, Num price, Num amount);
 
     /**
-     * @return true if no trade is open, false otherwise
+     * @return true if no position is open, false otherwise
      */
     default boolean isClosed() {
-        return !getCurrentTrade().isOpened();
+        return !getCurrentPosition().isOpened();
     }
 
     /**
-     * @return the recorded trades
+     * @return the recorded positions
      */
-    List<Trade> getTrades();
+    List<PosPair> getPositions();
 
     /**
-     * @return the number of recorded trades
+     * @return the number of recorded positions
      */
-    default int getTradeCount() {
-        return getTrades().size();
+    default int getPositionCount() {
+        return getPositions().size();
     }
 
     /**
-     * @return the last trade recorded
+     * @return the last position recorded
      */
-    default Trade getLastTrade() {
-        List<Trade> trades = getTrades();
-        if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+    default PosPair getLastPosition() {
+        List<PosPair> positions = getPositions();
+        if (!positions.isEmpty()) {
+            return positions.get(positions.size() - 1);
         }
         return null;
     }

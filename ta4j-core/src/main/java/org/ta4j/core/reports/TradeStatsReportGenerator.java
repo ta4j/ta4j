@@ -26,9 +26,9 @@ package org.ta4j.core.reports;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.NumberOfBreakEvenTradesCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfBreakEvenPositionsCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfLosingPositionsCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,9 +41,9 @@ public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsRepo
 
     @Override
     public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
-        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
-        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
-        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
+        final Num winningPositions = new NumberOfWinningPositionsCriterion().calculate(series, tradingRecord);
+        final Num losingPositions = new NumberOfLosingPositionsCriterion().calculate(series, tradingRecord);
+        final Num breakEvenPositions = new NumberOfBreakEvenPositionsCriterion().calculate(series, tradingRecord);
+        return new TradeStatsReport(winningPositions, losingPositions, breakEvenPositions);
     }
 }
