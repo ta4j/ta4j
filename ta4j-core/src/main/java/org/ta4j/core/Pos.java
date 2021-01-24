@@ -23,12 +23,12 @@
  */
 package org.ta4j.core;
 
+import java.io.Serializable;
+import java.util.Objects;
+
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
-
-import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * A position.

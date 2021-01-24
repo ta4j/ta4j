@@ -34,10 +34,10 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.ConvertibleBaseBarBuilder;
 import org.ta4j.core.aggregator.BarAggregator;
+import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.aggregator.BarSeriesAggregator;
 
 /**
  * Common utilities and helper methods for BarSeries.

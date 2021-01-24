@@ -23,17 +23,16 @@
  */
 package org.ta4j.core.cost;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 public class LinearTransactionCostModelTest {
 

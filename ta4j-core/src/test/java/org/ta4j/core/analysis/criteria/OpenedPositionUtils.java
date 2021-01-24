@@ -23,15 +23,15 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class OpenedPositionUtils {
 

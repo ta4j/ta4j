@@ -23,9 +23,9 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.util.List;
+
+import org.ta4j.core.num.Num;
 
 /**
  * An analysis criterion.

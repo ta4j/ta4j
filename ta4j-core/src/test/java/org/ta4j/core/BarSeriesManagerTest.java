@@ -23,13 +23,8 @@
  */
 package org.ta4j.core;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Pos.PosType;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.FixedRule;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -37,8 +32,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Pos.PosType;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.trading.rules.FixedRule;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
 

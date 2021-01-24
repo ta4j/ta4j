@@ -23,17 +23,17 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.CriterionFactory;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DecimalNum;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractCriterionTest {

@@ -23,15 +23,15 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Pos.PosType;
-import org.ta4j.core.cost.CostModel;
-import org.ta4j.core.cost.ZeroCostModel;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
 import java.util.Objects;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Pos.PosType;
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
+import org.ta4j.core.num.Num;
 
 /**
  * Pair of two complementary {@link Pos positions}.

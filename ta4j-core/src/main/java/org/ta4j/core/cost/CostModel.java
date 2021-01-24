@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.cost;
 
+import java.io.Serializable;
+
 import org.ta4j.core.PosPair;
 import org.ta4j.core.num.Num;
-
-import java.io.Serializable;
 
 public interface CostModel extends Serializable {
 

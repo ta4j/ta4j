@@ -47,9 +47,9 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**

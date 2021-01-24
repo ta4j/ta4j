@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.mocks;
 
+import java.util.List;
+
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-
-import java.util.List;
 
 public class MockAnalysisCriterion implements AnalysisCriterion {
 

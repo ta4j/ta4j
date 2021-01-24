@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.math.BigDecimal;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
-
-import java.math.BigDecimal;
 
 /**
  * A fixed decimal indicator.

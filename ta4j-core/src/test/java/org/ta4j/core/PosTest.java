@@ -23,6 +23,13 @@
  */
 package org.ta4j.core;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Pos.PosType;
@@ -31,10 +38,6 @@ import org.ta4j.core.cost.LinearTransactionCostModel;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.*;
-import static org.ta4j.core.num.NaN.NaN;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class PosTest {
 

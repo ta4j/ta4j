@@ -23,13 +23,13 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Pos.PosType;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
 import java.util.List;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Pos.PosType;
+import org.ta4j.core.num.Num;
 
 /**
  * A history/record of a trading session.

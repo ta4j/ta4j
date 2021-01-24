@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.trading.rules;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Pos;
 import org.ta4j.core.TradingRecord;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class WaitForRuleTest {
 

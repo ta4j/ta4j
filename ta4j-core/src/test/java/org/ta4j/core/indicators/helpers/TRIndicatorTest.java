@@ -23,6 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
@@ -30,12 +36,6 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

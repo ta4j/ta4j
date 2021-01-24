@@ -23,10 +23,7 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DecimalNum;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -36,7 +33,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link BarSeries}.

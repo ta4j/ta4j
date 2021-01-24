@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import java.util.function.Function;
+
 import org.junit.Test;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
 
 public class TotalProfitCriterionTest extends AbstractCriterionTest {
 

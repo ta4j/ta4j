@@ -23,7 +23,11 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.PosPair;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
