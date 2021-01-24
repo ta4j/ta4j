@@ -176,7 +176,7 @@ public class BaseTradingRecord implements TradingRecord {
                 currentPosition = new PosPair(pos.getType(), transactionCostModel, holdingCostModel);
             }
             Pos newOrder = currentPosition.operate(pos.getIndex(), pos.getPricePerAsset(), pos.getAmount());
-            recordOrder(newOrder, newOrderWillBeAnEntry);
+            recordPosition(newOrder, newOrderWillBeAnEntry);
         }
     }
 
@@ -203,7 +203,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
         boolean newOrderWillBeAnEntry = currentPosition.isNew();
         Pos newOrder = currentPosition.operate(index, price, amount);
-        recordOrder(newOrder, newOrderWillBeAnEntry);
+        recordPosition(newOrder, newOrderWillBeAnEntry);
     }
 
     @Override
@@ -269,7 +269,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param position the position to be recorded
      * @param isEntry  true if the position is an entry, false otherwise (exit)
      */
-    private void recordOrder(Pos position, boolean isEntry) {
+    private void recordPosition(Pos position, boolean isEntry) {
         if (position == null) {
             throw new IllegalArgumentException("Position should not be null");
         }
