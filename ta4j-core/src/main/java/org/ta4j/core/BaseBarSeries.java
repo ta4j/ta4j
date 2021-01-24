@@ -52,7 +52,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Num type function
      **/
-    protected final Function<Number, Num> numFunction;
+    protected final transient Function<Number, Num> numFunction;
     /**
      * The logger
      */
