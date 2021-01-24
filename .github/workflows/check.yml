@@ -3,7 +3,7 @@
 
 name: Check license header
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build:
