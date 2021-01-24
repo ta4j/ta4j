@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class GlobalExtremaStrategyTest {
 
-	@Test
-	public void test() {
-		GlobalExtremaStrategy.main(null);
-	}
+    @Test
+    public void test() {
+        GlobalExtremaStrategy.main(null);
+    }
 }

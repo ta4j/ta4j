@@ -44,48 +44,48 @@ import com.opencsv.CSVReader;
  */
 public class CsvBarsLoader {
 
-	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-	/**
-	 * @return the bar series from Apple Inc. bars.
-	 */
-	public static BarSeries loadAppleIncSeries() {
-		return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
-	}
+    /**
+     * @return the bar series from Apple Inc. bars.
+     */
+    public static BarSeries loadAppleIncSeries() {
+        return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
+    }
 
-	public static BarSeries loadCsvSeries(String filename) {
+    public static BarSeries loadCsvSeries(String filename) {
 
-		InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
+        InputStream stream = CsvBarsLoader.class.getClassLoader().getResourceAsStream(filename);
 
-		BarSeries series = new BaseBarSeries("apple_bars");
+        BarSeries series = new BaseBarSeries("apple_bars");
 
-		try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"',
-				1)) {
-			String[] line;
-			while ((line = csvReader.readNext()) != null) {
-				ZonedDateTime date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneId.systemDefault());
-				double open = Double.parseDouble(line[1]);
-				double high = Double.parseDouble(line[2]);
-				double low = Double.parseDouble(line[3]);
-				double close = Double.parseDouble(line[4]);
-				double volume = Double.parseDouble(line[5]);
+        try (CSVReader csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',', '"',
+                1)) {
+            String[] line;
+            while ((line = csvReader.readNext()) != null) {
+                ZonedDateTime date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneId.systemDefault());
+                double open = Double.parseDouble(line[1]);
+                double high = Double.parseDouble(line[2]);
+                double low = Double.parseDouble(line[3]);
+                double close = Double.parseDouble(line[4]);
+                double volume = Double.parseDouble(line[5]);
 
-				series.addBar(date, open, high, low, close, volume);
-			}
-		} catch (IOException ioe) {
-			Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
-		} catch (NumberFormatException nfe) {
-			Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
-		}
-		return series;
-	}
+                series.addBar(date, open, high, low, close, volume);
+            }
+        } catch (IOException ioe) {
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
+        } catch (NumberFormatException nfe) {
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
+        }
+        return series;
+    }
 
-	public static void main(String[] args) {
-		BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+    public static void main(String[] args) {
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-		System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-		System.out.println("Number of bars: " + series.getBarCount());
-		System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
-				+ series.getBar(0).getOpenPrice() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
-	}
+        System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
+        System.out.println("Number of bars: " + series.getBarCount());
+        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
+                + series.getBar(0).getOpenPrice() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
+    }
 }

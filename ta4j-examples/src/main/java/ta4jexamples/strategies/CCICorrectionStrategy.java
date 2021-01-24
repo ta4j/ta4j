@@ -46,46 +46,46 @@ import ta4jexamples.loaders.CsvTradesLoader;
  */
 public class CCICorrectionStrategy {
 
-	/**
-	 * @param series a bar series
-	 * @return a CCI correction strategy
-	 */
-	public static Strategy buildStrategy(BarSeries series) {
-		if (series == null) {
-			throw new IllegalArgumentException("Series cannot be null");
-		}
+    /**
+     * @param series a bar series
+     * @return a CCI correction strategy
+     */
+    public static Strategy buildStrategy(BarSeries series) {
+        if (series == null) {
+            throw new IllegalArgumentException("Series cannot be null");
+        }
 
-		CCIIndicator longCci = new CCIIndicator(series, 200);
-		CCIIndicator shortCci = new CCIIndicator(series, 5);
-		Num plus100 = series.numOf(100);
-		Num minus100 = series.numOf(-100);
+        CCIIndicator longCci = new CCIIndicator(series, 200);
+        CCIIndicator shortCci = new CCIIndicator(series, 5);
+        Num plus100 = series.numOf(100);
+        Num minus100 = series.numOf(-100);
 
-		Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
-				.and(new UnderIndicatorRule(shortCci, minus100)); // Signal
+        Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
+                .and(new UnderIndicatorRule(shortCci, minus100)); // Signal
 
-		Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
-				.and(new OverIndicatorRule(shortCci, plus100)); // Signal
+        Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
+                .and(new OverIndicatorRule(shortCci, plus100)); // Signal
 
-		Strategy strategy = new BaseStrategy(entryRule, exitRule);
-		strategy.setUnstablePeriod(5);
-		return strategy;
-	}
+        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+        strategy.setUnstablePeriod(5);
+        return strategy;
+    }
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
 
-		// Getting the bar series
-		BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Getting the bar series
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
-		// Building the trading strategy
-		Strategy strategy = buildStrategy(series);
+        // Building the trading strategy
+        Strategy strategy = buildStrategy(series);
 
-		// Running the strategy
-		BarSeriesManager seriesManager = new BarSeriesManager(series);
-		TradingRecord tradingRecord = seriesManager.run(strategy);
-		System.out.println("Number of position pairs for the strategy: " + tradingRecord.getPairsCount());
+        // Running the strategy
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
+        System.out.println("Number of position pairs for the strategy: " + tradingRecord.getPairsCount());
 
-		// Analysis
-		System.out.println(
-				"Total return for the strategy: " + new TotalReturnCriterion().calculate(series, tradingRecord));
-	}
+        // Analysis
+        System.out.println(
+                "Total return for the strategy: " + new TotalReturnCriterion().calculate(series, tradingRecord));
+    }
 }

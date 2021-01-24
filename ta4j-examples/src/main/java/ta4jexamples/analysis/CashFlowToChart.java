@@ -57,106 +57,104 @@ import ta4jexamples.strategies.MovingMomentumStrategy;
  */
 public class CashFlowToChart {
 
-	/**
-	 * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
-	 *
-	 * @param barSeries the ta4j bar series
-	 * @param indicator the indicator
-	 * @param name      the name of the chart time series
-	 * @return the JFreeChart time series
-	 */
-	private static org.jfree.data.time.TimeSeries buildChartBarSeries(
-			BarSeries barSeries,
-			Indicator<Num> indicator,
-			String name) {
-		org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
-		for (int i = 0; i < barSeries.getBarCount(); i++) {
-			Bar bar = barSeries.getBar(i);
-			chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
-					indicator.getValue(i).doubleValue());
-		}
-		return chartBarSeries;
-	}
+    /**
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
+     * @param indicator the indicator
+     * @param name      the name of the chart time series
+     * @return the JFreeChart time series
+     */
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
+            String name) {
+        org.jfree.data.time.TimeSeries chartBarSeries = new org.jfree.data.time.TimeSeries(name);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
+            chartBarSeries.add(new Minute(new Date(bar.getEndTime().toEpochSecond() * 1000)),
+                    indicator.getValue(i).doubleValue());
+        }
+        return chartBarSeries;
+    }
 
-	/**
-	 * Adds the cash flow axis to the plot.
-	 *
-	 * @param plot    the plot
-	 * @param dataset the cash flow dataset
-	 */
-	private static void addCashFlowAxis(XYPlot plot, TimeSeriesCollection dataset) {
-		final NumberAxis cashAxis = new NumberAxis("Cash Flow Ratio");
-		cashAxis.setAutoRangeIncludesZero(false);
-		plot.setRangeAxis(1, cashAxis);
-		plot.setDataset(1, dataset);
-		plot.mapDatasetToRangeAxis(1, 1);
-		final StandardXYItemRenderer cashFlowRenderer = new StandardXYItemRenderer();
-		cashFlowRenderer.setSeriesPaint(0, Color.blue);
-		plot.setRenderer(1, cashFlowRenderer);
-	}
+    /**
+     * Adds the cash flow axis to the plot.
+     *
+     * @param plot    the plot
+     * @param dataset the cash flow dataset
+     */
+    private static void addCashFlowAxis(XYPlot plot, TimeSeriesCollection dataset) {
+        final NumberAxis cashAxis = new NumberAxis("Cash Flow Ratio");
+        cashAxis.setAutoRangeIncludesZero(false);
+        plot.setRangeAxis(1, cashAxis);
+        plot.setDataset(1, dataset);
+        plot.mapDatasetToRangeAxis(1, 1);
+        final StandardXYItemRenderer cashFlowRenderer = new StandardXYItemRenderer();
+        cashFlowRenderer.setSeriesPaint(0, Color.blue);
+        plot.setRenderer(1, cashFlowRenderer);
+    }
 
-	/**
-	 * Displays a chart in a frame.
-	 *
-	 * @param chart the chart to be displayed
-	 */
-	private static void displayChart(JFreeChart chart) {
-		// Chart panel
-		ChartPanel panel = new ChartPanel(chart);
-		panel.setFillZoomRectangle(true);
-		panel.setMouseWheelEnabled(true);
-		panel.setPreferredSize(new Dimension(1024, 400));
-		// Application frame
-		ApplicationFrame frame = new ApplicationFrame("Ta4j example - Cash flow to chart");
-		frame.setContentPane(panel);
-		frame.pack();
-		RefineryUtilities.centerFrameOnScreen(frame);
-		frame.setVisible(true);
-	}
+    /**
+     * Displays a chart in a frame.
+     *
+     * @param chart the chart to be displayed
+     */
+    private static void displayChart(JFreeChart chart) {
+        // Chart panel
+        ChartPanel panel = new ChartPanel(chart);
+        panel.setFillZoomRectangle(true);
+        panel.setMouseWheelEnabled(true);
+        panel.setPreferredSize(new Dimension(1024, 400));
+        // Application frame
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Cash flow to chart");
+        frame.setContentPane(panel);
+        frame.pack();
+        RefineryUtilities.centerFrameOnScreen(frame);
+        frame.setVisible(true);
+    }
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
 
-		// Getting the bar series
-		BarSeries series = CsvTradesLoader.loadBitstampSeries();
-		// Building the trading strategy
-		Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
-		// Running the strategy
-		BarSeriesManager seriesManager = new BarSeriesManager(series);
-		TradingRecord tradingRecord = seriesManager.run(strategy);
-		// Getting the cash flow of the resulting positions
-		CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        // Getting the bar series
+        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        // Building the trading strategy
+        Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
+        // Running the strategy
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
+        // Getting the cash flow of the resulting positions
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
-		/*
-		 * Building chart datasets
-		 */
-		TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
-		datasetAxis1.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
-		TimeSeriesCollection datasetAxis2 = new TimeSeriesCollection();
-		datasetAxis2.addSeries(buildChartBarSeries(series, cashFlow, "Cash Flow"));
+        /*
+         * Building chart datasets
+         */
+        TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
+        datasetAxis1.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
+        TimeSeriesCollection datasetAxis2 = new TimeSeriesCollection();
+        datasetAxis2.addSeries(buildChartBarSeries(series, cashFlow, "Cash Flow"));
 
-		/*
-		 * Creating the chart
-		 */
-		JFreeChart chart = ChartFactory.createTimeSeriesChart("Bitstamp BTC", // title
-				"Date", // x-axis label
-				"Price", // y-axis label
-				datasetAxis1, // data
-				true, // create legend?
-				true, // generate tooltips?
-				false // generate URLs?
-		);
-		XYPlot plot = (XYPlot) chart.getPlot();
-		DateAxis axis = (DateAxis) plot.getDomainAxis();
-		axis.setDateFormatOverride(new SimpleDateFormat("MM-dd HH:mm"));
+        /*
+         * Creating the chart
+         */
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Bitstamp BTC", // title
+                "Date", // x-axis label
+                "Price", // y-axis label
+                datasetAxis1, // data
+                true, // create legend?
+                true, // generate tooltips?
+                false // generate URLs?
+        );
+        XYPlot plot = (XYPlot) chart.getPlot();
+        DateAxis axis = (DateAxis) plot.getDomainAxis();
+        axis.setDateFormatOverride(new SimpleDateFormat("MM-dd HH:mm"));
 
-		/*
-		 * Adding the cash flow axis (on the right)
-		 */
-		addCashFlowAxis(plot, datasetAxis2);
+        /*
+         * Adding the cash flow axis (on the right)
+         */
+        addCashFlowAxis(plot, datasetAxis2);
 
-		/*
-		 * Displaying the chart
-		 */
-		displayChart(chart);
-	}
+        /*
+         * Displaying the chart
+         */
+        displayChart(chart);
+    }
 }

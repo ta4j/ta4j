@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class CompareNumTypesTest {
 
-	@Test
-	public void test() {
-		CompareNumTypes.main(null);
-	}
+    @Test
+    public void test() {
+        CompareNumTypes.main(null);
+    }
 }

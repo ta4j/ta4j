@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class StrategyExecutionLoggingTest {
 
-	@Test
-	public void test() {
-		StrategyExecutionLogging.main(null);
-	}
+    @Test
+    public void test() {
+        StrategyExecutionLogging.main(null);
+    }
 }

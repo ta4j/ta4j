@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class TradingBotOnMovingBarSeriesTest {
 
-	@Test
-	public void test() throws InterruptedException {
-		TradingBotOnMovingBarSeries.main(null);
-	}
+    @Test
+    public void test() throws InterruptedException {
+        TradingBotOnMovingBarSeries.main(null);
+    }
 }

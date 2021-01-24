@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class BuildBarSeriesTest {
 
-	@Test
-	public void test() {
-		BuildBarSeries.main(null);
-	}
+    @Test
+    public void test() {
+        BuildBarSeries.main(null);
+    }
 }

@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class TradeCostTest {
 
-	@Test
-	public void test() {
-		TradeCost.main(null);
-	}
+    @Test
+    public void test() {
+        TradeCost.main(null);
+    }
 }

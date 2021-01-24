@@ -44,32 +44,32 @@ import ta4jexamples.loaders.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
 
-	public static void main(String[] args) {
-		BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+    public static void main(String[] args) {
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-		int start = 3;
-		int stop = 50;
-		int step = 5;
+        int start = 3;
+        int stop = 50;
+        int step = 5;
 
-		final List<Strategy> strategies = new ArrayList<>();
-		for (int i = start; i <= stop; i += step) {
-			Strategy strategy = new BaseStrategy("Sma(" + i + ")", createEntryRule(series, i),
-					createExitRule(series, i));
-			strategies.add(strategy);
-		}
-		BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-		backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Pos.PosType.BUY);
-	}
+        final List<Strategy> strategies = new ArrayList<>();
+        for (int i = start; i <= stop; i += step) {
+            Strategy strategy = new BaseStrategy("Sma(" + i + ")", createEntryRule(series, i),
+                    createExitRule(series, i));
+            strategies.add(strategy);
+        }
+        BacktestExecutor backtestExecutor = new BacktestExecutor(series);
+        backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Pos.PosType.BUY);
+    }
 
-	private static Rule createEntryRule(BarSeries series, int barCount) {
-		Indicator<Num> closePrice = new ClosePriceIndicator(series);
-		SMAIndicator sma = new SMAIndicator(closePrice, barCount);
-		return new UnderIndicatorRule(sma, closePrice);
-	}
+    private static Rule createEntryRule(BarSeries series, int barCount) {
+        Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
+        return new UnderIndicatorRule(sma, closePrice);
+    }
 
-	private static Rule createExitRule(BarSeries series, int barCount) {
-		Indicator<Num> closePrice = new ClosePriceIndicator(series);
-		SMAIndicator sma = new SMAIndicator(closePrice, barCount);
-		return new OverIndicatorRule(sma, closePrice);
-	}
+    private static Rule createExitRule(BarSeries series, int barCount) {
+        Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
+        return new OverIndicatorRule(sma, closePrice);
+    }
 }

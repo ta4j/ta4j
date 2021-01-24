@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class CsvBarsLoaderTest {
 
-	@Test
-	public void test() {
-		CsvBarsLoader.main(null);
-	}
+    @Test
+    public void test() {
+        CsvBarsLoader.main(null);
+    }
 }

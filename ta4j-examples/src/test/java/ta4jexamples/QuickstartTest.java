@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class QuickstartTest {
 
-	@Test
-	public void test() {
-		Quickstart.main(null);
-	}
+    @Test
+    public void test() {
+        Quickstart.main(null);
+    }
 }

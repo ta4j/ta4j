@@ -53,92 +53,90 @@ import ta4jexamples.loaders.CsvBarsLoader;
  */
 public class IndicatorsToChart {
 
-	/**
-	 * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
-	 *
-	 * @param barSeries the ta4j bar series
-	 * @param indicator the indicator
-	 * @param name      the name of the chart time series
-	 * @return the JFreeChart time series
-	 */
-	private static org.jfree.data.time.TimeSeries buildChartBarSeries(
-			BarSeries barSeries,
-			Indicator<Num> indicator,
-			String name) {
-		org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
-		for (int i = 0; i < barSeries.getBarCount(); i++) {
-			Bar bar = barSeries.getBar(i);
-			chartTimeSeries.add(new Day(Date.from(bar.getEndTime().toInstant())), indicator.getValue(i).doubleValue());
-		}
-		return chartTimeSeries;
-	}
+    /**
+     * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     *
+     * @param barSeries the ta4j bar series
+     * @param indicator the indicator
+     * @param name      the name of the chart time series
+     * @return the JFreeChart time series
+     */
+    private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
+            String name) {
+        org.jfree.data.time.TimeSeries chartTimeSeries = new org.jfree.data.time.TimeSeries(name);
+        for (int i = 0; i < barSeries.getBarCount(); i++) {
+            Bar bar = barSeries.getBar(i);
+            chartTimeSeries.add(new Day(Date.from(bar.getEndTime().toInstant())), indicator.getValue(i).doubleValue());
+        }
+        return chartTimeSeries;
+    }
 
-	/**
-	 * Displays a chart in a frame.
-	 *
-	 * @param chart the chart to be displayed
-	 */
-	private static void displayChart(JFreeChart chart) {
-		// Chart panel
-		ChartPanel panel = new ChartPanel(chart);
-		panel.setFillZoomRectangle(true);
-		panel.setMouseWheelEnabled(true);
-		panel.setPreferredSize(new java.awt.Dimension(500, 270));
-		// Application frame
-		ApplicationFrame frame = new ApplicationFrame("Ta4j example - Indicators to chart");
-		frame.setContentPane(panel);
-		frame.pack();
-		RefineryUtilities.centerFrameOnScreen(frame);
-		frame.setVisible(true);
-	}
+    /**
+     * Displays a chart in a frame.
+     *
+     * @param chart the chart to be displayed
+     */
+    private static void displayChart(JFreeChart chart) {
+        // Chart panel
+        ChartPanel panel = new ChartPanel(chart);
+        panel.setFillZoomRectangle(true);
+        panel.setMouseWheelEnabled(true);
+        panel.setPreferredSize(new java.awt.Dimension(500, 270));
+        // Application frame
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Indicators to chart");
+        frame.setContentPane(panel);
+        frame.pack();
+        RefineryUtilities.centerFrameOnScreen(frame);
+        frame.setVisible(true);
+    }
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
 
-		/*
-		 * Getting bar series
-		 */
-		BarSeries series = CsvBarsLoader.loadAppleIncSeries();
+        /*
+         * Getting bar series
+         */
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
-		/*
-		 * Creating indicators
-		 */
-		// Close price
-		ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-		EMAIndicator avg14 = new EMAIndicator(closePrice, 14);
-		StandardDeviationIndicator sd14 = new StandardDeviationIndicator(closePrice, 14);
+        /*
+         * Creating indicators
+         */
+        // Close price
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        EMAIndicator avg14 = new EMAIndicator(closePrice, 14);
+        StandardDeviationIndicator sd14 = new StandardDeviationIndicator(closePrice, 14);
 
-		// Bollinger bands
-		BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(avg14);
-		BollingerBandsLowerIndicator lowBBand = new BollingerBandsLowerIndicator(middleBBand, sd14);
-		BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, sd14);
+        // Bollinger bands
+        BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(avg14);
+        BollingerBandsLowerIndicator lowBBand = new BollingerBandsLowerIndicator(middleBBand, sd14);
+        BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, sd14);
 
-		/*
-		 * Building chart dataset
-		 */
-		TimeSeriesCollection dataset = new TimeSeriesCollection();
-		dataset.addSeries(buildChartBarSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
-		dataset.addSeries(buildChartBarSeries(series, lowBBand, "Low Bollinger Band"));
-		dataset.addSeries(buildChartBarSeries(series, upBBand, "High Bollinger Band"));
+        /*
+         * Building chart dataset
+         */
+        TimeSeriesCollection dataset = new TimeSeriesCollection();
+        dataset.addSeries(buildChartBarSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
+        dataset.addSeries(buildChartBarSeries(series, lowBBand, "Low Bollinger Band"));
+        dataset.addSeries(buildChartBarSeries(series, upBBand, "High Bollinger Band"));
 
-		/*
-		 * Creating the chart
-		 */
-		JFreeChart chart = ChartFactory.createTimeSeriesChart("Apple Inc. 2013 Close Prices", // title
-				"Date", // x-axis label
-				"Price Per Unit", // y-axis label
-				dataset, // data
-				true, // create legend?
-				true, // generate tooltips?
-				false // generate URLs?
-		);
-		XYPlot plot = (XYPlot) chart.getPlot();
-		DateAxis axis = (DateAxis) plot.getDomainAxis();
-		axis.setDateFormatOverride(new SimpleDateFormat("yyyy-MM-dd"));
+        /*
+         * Creating the chart
+         */
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Apple Inc. 2013 Close Prices", // title
+                "Date", // x-axis label
+                "Price Per Unit", // y-axis label
+                dataset, // data
+                true, // create legend?
+                true, // generate tooltips?
+                false // generate URLs?
+        );
+        XYPlot plot = (XYPlot) chart.getPlot();
+        DateAxis axis = (DateAxis) plot.getDomainAxis();
+        axis.setDateFormatOverride(new SimpleDateFormat("yyyy-MM-dd"));
 
-		/*
-		 * Displaying the chart
-		 */
-		displayChart(chart);
-	}
+        /*
+         * Displaying the chart
+         */
+        displayChart(chart);
+    }
 
 }
