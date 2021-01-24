@@ -21,29 +21,26 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.tradereport;
+package org.ta4j.core.report;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.NumberOfBreakEvenTradesCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
-import org.ta4j.core.num.Num;
 
 /**
- * This class generates TradeStatsReport basis on provided trading report and
- * bar series.
+ * Generic interface for generating trade reports
  *
- * @see TradeStatsReport
+ * @param <T> type of report to be generated
  */
-public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsReport> {
+public interface ReportGenerator<T> {
 
-    @Override
-    public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
-        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
-        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
-        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
-    }
+    /**
+     * Generate report
+     *
+     * @param tradingRecord the trading record which is a source to generate report,
+     *                      not null
+     * @param series        the bar series, not null
+     * @return generated report
+     */
+    T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
 }

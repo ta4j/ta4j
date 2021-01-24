@@ -21,31 +21,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.tradereport;
+package org.ta4j.core.report;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
-import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates PerformanceReport basis on provided trading report and
- * bar series
- *
- * @see PerformanceReport
+ * This class represents report which contains performance statistics
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class PerformanceReport {
 
-    @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num totalProfit = new GrossProfitCriterion().calculate(series, tradingRecord);
-        final Num totalLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
+    private final Num totalProfitLoss;
+    private final Num totalProfitLossPercentage;
+    private final Num totalProfit;
+    private final Num totalLoss;
+
+    public PerformanceReport(Num totalProfitLoss, Num totalProfitLossPercentage, Num totalProfit, Num totalLoss) {
+        this.totalProfitLoss = totalProfitLoss;
+        this.totalProfitLossPercentage = totalProfitLossPercentage;
+        this.totalProfit = totalProfit;
+        this.totalLoss = totalLoss;
     }
+
+    public Num getTotalProfitLoss() {
+        return totalProfitLoss;
+    }
+
+    public Num getTotalProfitLossPercentage() {
+        return totalProfitLossPercentage;
+    }
+
+    public Num getTotalProfit() {
+        return totalProfit;
+    }
+
+    public Num getTotalLoss() {
+        return totalLoss;
+    }
+
 }

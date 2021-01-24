@@ -24,8 +24,8 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
-import org.ta4j.core.tradereport.TradingStatement;
-import org.ta4j.core.tradereport.TradingStatementGenerator;
+import org.ta4j.core.report.TradingStatement;
+import org.ta4j.core.report.TradingStatementGenerator;
 
 import java.util.ArrayList;
 import java.util.List;

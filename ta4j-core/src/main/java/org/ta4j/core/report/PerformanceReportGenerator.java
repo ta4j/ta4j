@@ -21,26 +21,31 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.tradereport;
+package org.ta4j.core.report;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
+import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossProfitCriterion;
+import org.ta4j.core.num.Num;
 
 /**
- * Generic interface for generating trade reports
+ * This class generates PerformanceReport basis on provided trading report and
+ * bar series
  *
- * @param <T> type of report to be generated
+ * @see PerformanceReport
  */
-public interface ReportGenerator<T> {
+public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
 
-    /**
-     * Generate report
-     *
-     * @param tradingRecord the trading record which is a source to generate report,
-     *                      not null
-     * @param series        the bar series, not null
-     * @return generated report
-     */
-    T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
+    @Override
+    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+        final Num totalProfitLoss = new ProfitLossCriterion().calculate(series, tradingRecord);
+        final Num totalProfitLossPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
+        final Num totalProfit = new GrossProfitCriterion().calculate(series, tradingRecord);
+        final Num totalLoss = new NetLossCriterion().calculate(series, tradingRecord);
+        return new PerformanceReport(totalProfitLoss, totalProfitLossPercentage, totalProfit, totalLoss);
+    }
 }

@@ -8,6 +8,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
 - **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
 - **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
+- **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
+- **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
+- **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** **Pnl Package** created
 - **Breaking:** **TotalProfitCriterion** renamed to **GrossReturnCriterion** and moved to Pnl-Package
 - **Breaking:** **TotalProfit2Criterion** renamed to **NetProfitCriterion** and moved to Pnl-Package
@@ -19,6 +22,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `TotalLossCriterion`**: problem with profit calculations on short trades.
 - **Fixed `BarSeriesBuilder`**: removed the Serializable interface
 - **Fixed `ParabolicSarIndicator`**: problem with calculating in special cases
+- **Fixed `BaseTimeSeries`**: can now be serialized
 
 ### Changed
 - **Trade**: Changed the way Nums are created.

@@ -21,8 +21,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package org.ta4j.core.report;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.NumberOfBreakEvenTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
+import org.ta4j.core.num.Num;
+
 /**
- * The main module for trade reports
+ * This class generates TradeStatsReport basis on provided trading report and
+ * bar series.
  *
+ * @see TradeStatsReport
  */
-package org.ta4j.core.tradereport;
+public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsReport> {
+
+    @Override
+    public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
+        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
+        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
+        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
+    }
+}
