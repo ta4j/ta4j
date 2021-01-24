@@ -21,35 +21,35 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.report;
+package org.ta4j.core.reports;
 
-import org.ta4j.core.Strategy;
+import org.ta4j.core.num.Num;
 
 /**
- * This class represents trading statement report which contains trade and
- * performance statistics
+ * This class represents report with statistics for executed trades
  */
-public class TradingStatement {
+public class TradeStatsReport {
 
-    private final Strategy strategy;
-    private final TradeStatsReport tradeStatsReport;
-    private final PerformanceReport performanceReport;
+    private final Num profitTradeCount;
+    private final Num lossTradeCount;
+    private final Num breakEvenTradeCount;
 
-    public TradingStatement(Strategy strategy, TradeStatsReport tradeStatsReport, PerformanceReport performanceReport) {
-        this.strategy = strategy;
-        this.tradeStatsReport = tradeStatsReport;
-        this.performanceReport = performanceReport;
+    public TradeStatsReport(Num profitTradeCount, Num lossTradeCount, Num breakEvenTradeCount) {
+        this.profitTradeCount = profitTradeCount;
+        this.lossTradeCount = lossTradeCount;
+        this.breakEvenTradeCount = breakEvenTradeCount;
     }
 
-    public Strategy getStrategy() {
-        return strategy;
+    public Num getProfitTradeCount() {
+        return profitTradeCount;
     }
 
-    public TradeStatsReport getTradeStatsReport() {
-        return tradeStatsReport;
+    public Num getLossTradeCount() {
+        return lossTradeCount;
     }
 
-    public PerformanceReport getPerformanceReport() {
-        return performanceReport;
+    public Num getBreakEvenTradeCount() {
+        return breakEvenTradeCount;
     }
+
 }

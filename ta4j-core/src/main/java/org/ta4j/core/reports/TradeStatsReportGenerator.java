@@ -21,39 +21,29 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.report;
+package org.ta4j.core.reports;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.NumberOfBreakEvenTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
+import org.ta4j.core.num.Num;
 
 /**
- * This class generates TradingStatement basis on provided trading report and
- * bar series
+ * This class generates TradeStatsReport basis on provided trading report and
+ * bar series.
  *
- * @see TradingStatement
+ * @see TradeStatsReport
  */
-public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
-
-    private final PerformanceReportGenerator performanceReportGenerator;
-    private final TradeStatsReportGenerator tradeStatsReportGenerator;
-
-    public TradingStatementGenerator() {
-        this(new PerformanceReportGenerator(), new TradeStatsReportGenerator());
-    }
-
-    public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
-            TradeStatsReportGenerator tradeStatsReportGenerator) {
-        super();
-        this.performanceReportGenerator = performanceReportGenerator;
-        this.tradeStatsReportGenerator = tradeStatsReportGenerator;
-    }
+public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsReport> {
 
     @Override
-    public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
-                series);
-        final TradeStatsReport tradeStatsReport = tradeStatsReportGenerator.generate(strategy, tradingRecord, series);
-        return new TradingStatement(strategy, tradeStatsReport, performanceReport);
+    public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
+        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
+        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
+        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
     }
 }

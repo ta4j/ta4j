@@ -21,26 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.report;
+package org.ta4j.core.reports;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Generic interface for generating trade reports
+ * This class generates TradingStatement basis on provided trading report and
+ * bar series
  *
- * @param <T> type of report to be generated
+ * @see TradingStatement
  */
-public interface ReportGenerator<T> {
+public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
 
-    /**
-     * Generate report
-     *
-     * @param tradingRecord the trading record which is a source to generate report,
-     *                      not null
-     * @param series        the bar series, not null
-     * @return generated report
-     */
-    T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
+    private final PerformanceReportGenerator performanceReportGenerator;
+    private final TradeStatsReportGenerator tradeStatsReportGenerator;
+
+    public TradingStatementGenerator() {
+        this(new PerformanceReportGenerator(), new TradeStatsReportGenerator());
+    }
+
+    public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
+            TradeStatsReportGenerator tradeStatsReportGenerator) {
+        super();
+        this.performanceReportGenerator = performanceReportGenerator;
+        this.tradeStatsReportGenerator = tradeStatsReportGenerator;
+    }
+
+    @Override
+    public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+        final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
+                series);
+        final TradeStatsReport tradeStatsReport = tradeStatsReportGenerator.generate(strategy, tradingRecord, series);
+        return new TradingStatement(strategy, tradeStatsReport, performanceReport);
+    }
 }
