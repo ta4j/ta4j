@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Pos.PosType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -45,39 +45,39 @@ public class BaseTradingRecord implements TradingRecord {
     private String name;
 
     /**
-     * The recorded orders
-     */
-    private List<Order> orders = new ArrayList<>();
-
-    /**
-     * The recorded BUY orders
-     */
-    private List<Order> buyOrders = new ArrayList<>();
-
-    /**
-     * The recorded SELL orders
-     */
-    private List<Order> sellOrders = new ArrayList<>();
-
-    /**
-     * The recorded entry orders
-     */
-    private List<Order> entryOrders = new ArrayList<>();
-
-    /**
-     * The recorded exit orders
-     */
-    private List<Order> exitOrders = new ArrayList<>();
-
-    /**
      * The recorded positions
      */
-    private List<PosPair> positions = new ArrayList<>();
+    private List<Pos> positions = new ArrayList<>();
+
+    /**
+     * The recorded BUY (LONG) positions
+     */
+    private List<Pos> buyPositions = new ArrayList<>();
+
+    /**
+     * The recorded SELL (SHORT) positions
+     */
+    private List<Pos> sellPositions = new ArrayList<>();
+
+    /**
+     * The recorded entry positions
+     */
+    private List<Pos> entryPositions = new ArrayList<>();
+
+    /**
+     * The recorded exit positions
+     */
+    private List<Pos> exitPositions = new ArrayList<>();
+
+    /**
+     * The recorded position pairs.
+     */
+    private List<PosPair> posPairs = new ArrayList<>();
 
     /**
      * The entry type (BUY or SELL) in the trading session
      */
-    private OrderType startingType;
+    private PosType startingType;
 
     /**
      * The current non-closed position (there's always one)
@@ -94,7 +94,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      */
     public BaseTradingRecord() {
-        this(OrderType.BUY);
+        this(PosType.BUY);
     }
 
     /**
@@ -103,59 +103,57 @@ public class BaseTradingRecord implements TradingRecord {
      * @param name the name of the tradingRecord
      */
     public BaseTradingRecord(String name) {
-        this(OrderType.BUY);
+        this(PosType.BUY);
         this.name = name;
     }
 
     /**
      * Constructor.
      *
-     * @param name           the name of the trading record
-     * @param entryOrderType the {@link OrderType order type} of entries in the
-     *                       trading session
+     * @param name              the name of the trading record
+     * @param entryPositionType the {@link PosType position type} of entries in the
+     *                          trading session
      */
-    public BaseTradingRecord(String name, OrderType orderType) {
-        this(orderType, new ZeroCostModel(), new ZeroCostModel());
+    public BaseTradingRecord(String name, PosType entryPositionType) {
+        this(entryPositionType, new ZeroCostModel(), new ZeroCostModel());
         this.name = name;
     }
 
     /**
      * Constructor.
      *
-     * @param entryOrderType the {@link OrderType order type} of entries in the
-     *                       trading session
-     * @param entryOrderType the {@link OrderType order type} of entries in the
-     *                       trading session
+     * @param entryPositionType the {@link PosType position type} of entries in the
+     *                          trading session
      */
-    public BaseTradingRecord(OrderType orderType) {
-        this(orderType, new ZeroCostModel(), new ZeroCostModel());
+    public BaseTradingRecord(PosType entryPositionType) {
+        this(entryPositionType, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      *
-     * @param entryOrderType       the {@link OrderType order type} of entries in
+     * @param entryPositionType    the {@link PosType position type} of entries in
      *                             the trading session
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public BaseTradingRecord(OrderType entryOrderType, CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (entryOrderType == null) {
+    public BaseTradingRecord(PosType entryPositionType, CostModel transactionCostModel, CostModel holdingCostModel) {
+        if (entryPositionType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
-        this.startingType = entryOrderType;
+        this.startingType = entryPositionType;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-        currentPosition = new PosPair(entryOrderType, transactionCostModel, holdingCostModel);
+        currentPosition = new PosPair(entryPositionType, transactionCostModel, holdingCostModel);
     }
 
     /**
      * Constructor.
      *
-     * @param orders the orders to be recorded (cannot be empty)
+     * @param positions the positions to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(Order... orders) {
-        this(new ZeroCostModel(), new ZeroCostModel(), orders);
+    public BaseTradingRecord(Pos... positions) {
+        this(new ZeroCostModel(), new ZeroCostModel(), positions);
     }
 
     /**
@@ -163,27 +161,27 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
-     * @param orders               the orders to be recorded (cannot be empty)
+     * @param positions            the positions to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Order... orders) {
-        this(orders[0].getType(), transactionCostModel, holdingCostModel);
-        for (Order o : orders) {
+    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Pos... positions) {
+        this(positions[0].getType(), transactionCostModel, holdingCostModel);
+        for (Pos pos : positions) {
             boolean newOrderWillBeAnEntry = currentPosition.isNew();
-            if (newOrderWillBeAnEntry && o.getType() != startingType) {
+            if (newOrderWillBeAnEntry && pos.getType() != startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
                 // BUY, SELL,
                 // SELL, BUY,
                 // BUY, SELL
-                currentPosition = new PosPair(o.getType(), transactionCostModel, holdingCostModel);
+                currentPosition = new PosPair(pos.getType(), transactionCostModel, holdingCostModel);
             }
-            Order newOrder = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            Pos newOrder = currentPosition.operate(pos.getIndex(), pos.getPricePerAsset(), pos.getAmount());
             recordOrder(newOrder, newOrderWillBeAnEntry);
         }
     }
 
     @Override
-    public OrderType getStartingType() {
+    public PosType getStartingType() {
         return startingType;
     }
 
@@ -193,7 +191,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public PosPair getCurrentPosition() {
+    public PosPair getCurrentPair() {
         return currentPosition;
     }
 
@@ -204,7 +202,7 @@ public class BaseTradingRecord implements TradingRecord {
             throw new IllegalStateException("Current position should not be closed");
         }
         boolean newOrderWillBeAnEntry = currentPosition.isNew();
-        Order newOrder = currentPosition.operate(index, price, amount);
+        Pos newOrder = currentPosition.operate(index, price, amount);
         recordOrder(newOrder, newOrderWillBeAnEntry);
     }
 
@@ -227,75 +225,75 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public List<PosPair> getPositions() {
-        return positions;
+    public List<PosPair> getPairs() {
+        return posPairs;
     }
 
     @Override
-    public Order getLastOrder() {
-        if (!orders.isEmpty()) {
-            return orders.get(orders.size() - 1);
+    public Pos getLastPosition() {
+        if (!positions.isEmpty()) {
+            return positions.get(positions.size() - 1);
         }
         return null;
     }
 
     @Override
-    public Order getLastOrder(OrderType orderType) {
-        if (OrderType.BUY.equals(orderType) && !buyOrders.isEmpty()) {
-            return buyOrders.get(buyOrders.size() - 1);
-        } else if (OrderType.SELL.equals(orderType) && !sellOrders.isEmpty()) {
-            return sellOrders.get(sellOrders.size() - 1);
+    public Pos getLastPosition(PosType positionType) {
+        if (PosType.BUY.equals(positionType) && !buyPositions.isEmpty()) {
+            return buyPositions.get(buyPositions.size() - 1);
+        } else if (PosType.SELL.equals(positionType) && !sellPositions.isEmpty()) {
+            return sellPositions.get(sellPositions.size() - 1);
         }
         return null;
     }
 
     @Override
-    public Order getLastEntry() {
-        if (!entryOrders.isEmpty()) {
-            return entryOrders.get(entryOrders.size() - 1);
+    public Pos getLastEntry() {
+        if (!entryPositions.isEmpty()) {
+            return entryPositions.get(entryPositions.size() - 1);
         }
         return null;
     }
 
     @Override
-    public Order getLastExit() {
-        if (!exitOrders.isEmpty()) {
-            return exitOrders.get(exitOrders.size() - 1);
+    public Pos getLastExit() {
+        if (!exitPositions.isEmpty()) {
+            return exitPositions.get(exitPositions.size() - 1);
         }
         return null;
     }
 
     /**
-     * Records an order and the corresponding position (if closed).
+     * Records a position and the corresponding position pair (if closed).
      *
-     * @param order   the order to be recorded
-     * @param isEntry true if the order is an entry, false otherwise (exit)
+     * @param position the position to be recorded
+     * @param isEntry  true if the position is an entry, false otherwise (exit)
      */
-    private void recordOrder(Order order, boolean isEntry) {
-        if (order == null) {
-            throw new IllegalArgumentException("Order should not be null");
+    private void recordOrder(Pos position, boolean isEntry) {
+        if (position == null) {
+            throw new IllegalArgumentException("Position should not be null");
         }
 
-        // Storing the new order in entries/exits lists
+        // Storing the new position in entries/exits lists
         if (isEntry) {
-            entryOrders.add(order);
+            entryPositions.add(position);
         } else {
-            exitOrders.add(order);
+            exitPositions.add(position);
         }
 
-        // Storing the new order in orders list
-        orders.add(order);
-        if (OrderType.BUY.equals(order.getType())) {
-            // Storing the new order in buy orders list
-            buyOrders.add(order);
-        } else if (OrderType.SELL.equals(order.getType())) {
-            // Storing the new order in sell orders list
-            sellOrders.add(order);
+        // Storing the new position in positions list
+        positions.add(position);
+        if (PosType.BUY.equals(position.getType())) {
+            // Storing the new position in buy positions list
+            buyPositions.add(position);
+        } else if (PosType.SELL.equals(position.getType())) {
+            // Storing the new position in sell positions list
+            sellPositions.add(position);
         }
 
         // Storing the position if closed
         if (currentPosition.isClosed()) {
-            positions.add(currentPosition);
+            posPairs.add(currentPosition);
             currentPosition = new PosPair(startingType, transactionCostModel, holdingCostModel);
         }
     }
@@ -304,8 +302,8 @@ public class BaseTradingRecord implements TradingRecord {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("BaseTradingRecord: " + name != null ? name : "" + "\n");
-        for (Order order : orders) {
-            sb.append(order.toString()).append("\n");
+        for (Pos pos : positions) {
+            sb.append(pos.toString()).append("\n");
         }
         return sb.toString();
     }

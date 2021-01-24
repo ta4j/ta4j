@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -39,7 +39,7 @@ public class OpenedPositionUtils {
             AnalysisCriterion criterion, int expectedValue) {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-        PosPair posPair = new PosPair(Order.OrderType.BUY);
+        PosPair posPair = new PosPair(Pos.PosType.BUY);
         posPair.operate(0, series.numOf(2.5), series.numOf(1));
 
         final Num value = criterion.calculate(series, posPair);

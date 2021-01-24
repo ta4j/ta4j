@@ -28,6 +28,8 @@ import org.ta4j.core.num.Num;
 
 public class ZeroCostModel implements CostModel {
 
+    private static final long serialVersionUID = -4331956397670215205L;
+
     /**
      * Constructor for a trading cost-free model.
      *

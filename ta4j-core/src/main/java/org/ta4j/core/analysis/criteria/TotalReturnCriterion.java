@@ -38,7 +38,7 @@ public class TotalReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().map(pos -> calculateProfit(series, pos)).reduce(series.numOf(1),
+        return tradingRecord.getPairs().stream().map(pos -> calculateProfit(series, pos)).reduce(series.numOf(1),
                 Num::multipliedBy);
     }
 

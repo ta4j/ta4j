@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -48,8 +48,8 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor. (a * x)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Order
-     *                      order})
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Pos
+     *                      position})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a) {
         this(initialAmount, a, 0);
@@ -59,10 +59,10 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor. (a * x + b)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Order
-     *                      order})
-     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Order
-     *                      order})
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Pos
+     *                      position})
+     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Pos
+     *                      position})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
         this.initialAmount = initialAmount;
@@ -81,7 +81,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         Num totalCosts = series.numOf(0);
         Num tradedAmount = series.numOf(initialAmount);
 
-        for (PosPair posPair : tradingRecord.getPositions()) {
+        for (PosPair posPair : tradingRecord.getPairs()) {
             Num tradeCost = getTradeCost(series, posPair, tradedAmount);
             totalCosts = totalCosts.plus(tradeCost);
             // To calculate the new traded amount:
@@ -94,7 +94,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         }
 
         // Special case: if the current position is open
-        PosPair currentPosition = tradingRecord.getCurrentPosition();
+        PosPair currentPosition = tradingRecord.getCurrentPair();
         if (currentPosition.isOpened()) {
             totalCosts = totalCosts.plus(getOrderCost(currentPosition.getEntry(), tradedAmount));
         }
@@ -108,14 +108,14 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * @param order        a trade order
-     * @param tradedAmount the traded amount for the order
+     * @param position       the position
+     * @param positionAmount the position amount
      * @return the absolute order cost
      */
-    private Num getOrderCost(Order order, Num tradedAmount) {
-        Num orderCost = tradedAmount.numOf(0);
-        if (order != null) {
-            return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
+    private Num getOrderCost(Pos position, Num positionAmount) {
+        Num orderCost = positionAmount.numOf(0);
+        if (position != null) {
+            return positionAmount.numOf(a).multipliedBy(positionAmount).plus(positionAmount.numOf(b));
         }
         return orderCost;
     }
@@ -124,7 +124,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @param series        the bar series
      * @param posPair       the position pair
      * @param initialAmount the initially traded amount for the position
-     * @return the absolute total cost of all orders in the position
+     * @return the absolute total cost of a position pair
      */
     private Num getTradeCost(BarSeries series, PosPair posPair, Num initialAmount) {
         Num totalTradeCost = series.numOf(0);

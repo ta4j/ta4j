@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Pos.PosType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -34,23 +34,24 @@ import java.util.Objects;
 import static org.ta4j.core.num.NaN.NaN;
 
 /**
- * Pair of two {@link Order orders}.
- *
- * The exit order has the complement type of the entry order.<br>
+ * Pair of two complementary {@link Pos positions}.
+ * 
+ * <p>
+ * The exit position has the complement type of the entry position.<br>
  * I.e.: entry == BUY --> exit == SELL entry == SELL --> exit == BUY
  */
 public class PosPair implements Serializable {
 
     private static final long serialVersionUID = -5484709075767220358L;
 
-    /** The entry order */
-    private Order entry;
+    /** The entry position */
+    private Pos entry;
 
-    /** The exit order */
-    private Order exit;
+    /** The exit position */
+    private Pos exit;
 
-    /** The type of the entry order */
-    private OrderType startingType;
+    /** The type of the entry position */
+    private PosType startingType;
 
     /** The cost model for transactions of the asset */
     private CostModel transactionCostModel;
@@ -62,28 +63,28 @@ public class PosPair implements Serializable {
      * Constructor.
      */
     public PosPair() {
-        this(OrderType.BUY);
+        this(PosType.BUY);
     }
 
     /**
      * Constructor.
      * 
-     * @param startingType the starting {@link OrderType order type} of the position
-     *                     (i.e. type of the entry order)
+     * @param startingType the starting {@link PosType type} of the position (i.e.
+     *                     type of the entry position)
      */
-    public PosPair(OrderType startingType) {
+    public PosPair(PosType startingType) {
         this(startingType, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      * 
-     * @param startingType         the starting {@link OrderType order type} of the
-     *                             position (i.e. type of the entry order)
+     * @param startingType         the starting {@link PosType type} of the position
+     *                             (i.e. type of the entry position)
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public PosPair(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public PosPair(PosType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -95,30 +96,30 @@ public class PosPair implements Serializable {
     /**
      * Constructor.
      * 
-     * @param entry the entry {@link Order order}
-     * @param exit  the exit {@link Order order}
+     * @param entry the entry {@link Pos position}
+     * @param exit  the exit {@link Pos position}
      */
-    public PosPair(Order entry, Order exit) {
+    public PosPair(Pos entry, Pos exit) {
         this(entry, exit, entry.getCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      * 
-     * @param entry                the entry {@link Order order}
-     * @param exit                 the exit {@link Order order}
+     * @param entry                the entry {@link Pos position}
+     * @param exit                 the exit {@link Pos position}
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public PosPair(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public PosPair(Pos entry, Pos exit, CostModel transactionCostModel, CostModel holdingCostModel) {
 
         if (entry.getType().equals(exit.getType())) {
-            throw new IllegalArgumentException("Both orders must have different types");
+            throw new IllegalArgumentException("Both positions must have different types");
         }
 
         if (!(entry.getCostModel().equals(transactionCostModel))
                 || !(exit.getCostModel().equals(transactionCostModel))) {
-            throw new IllegalArgumentException("Orders and the position must incorporate the same trading cost model");
+            throw new IllegalArgumentException("A position pair must incorporate the same trading cost model");
         }
 
         this.startingType = entry.getType();
@@ -129,16 +130,16 @@ public class PosPair implements Serializable {
     }
 
     /**
-     * @return the entry {@link Order order} of the position
+     * @return the entry {@link Pos position}
      */
-    public Order getEntry() {
+    public Pos getEntry() {
         return entry;
     }
 
     /**
-     * @return the exit {@link Order order} of the position
+     * @return the exit {@link Pos position}
      */
-    public Order getExit() {
+    public Pos getExit() {
         return exit;
     }
 
@@ -161,9 +162,9 @@ public class PosPair implements Serializable {
      * Operates the position at the index-th position
      * 
      * @param index the bar index
-     * @return the order
+     * @return the position
      */
-    public Order operate(int index) {
+    public Pos operate(int index) {
         return operate(index, NaN, NaN);
     }
 
@@ -173,21 +174,21 @@ public class PosPair implements Serializable {
      * @param index  the bar index
      * @param price  the price
      * @param amount the amount
-     * @return the order
+     * @return the position
      */
-    public Order operate(int index, Num price, Num amount) {
-        Order order = null;
+    public Pos operate(int index, Num price, Num amount) {
+        Pos position = null;
         if (isNew()) {
-            order = new Order(index, startingType, price, amount, transactionCostModel);
-            entry = order;
+            position = new Pos(index, startingType, price, amount, transactionCostModel);
+            entry = position;
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
-                throw new IllegalStateException("The index i is less than the entryOrder index");
+                throw new IllegalStateException("The index i is less than the index of the entryPosition");
             }
-            order = new Order(index, startingType.complementType(), price, amount, transactionCostModel);
-            exit = order;
+            position = new Pos(index, startingType.complementType(), price, amount, transactionCostModel);
+            exit = position;
         }
-        return order;
+        return position;
     }
 
     /**
@@ -323,7 +324,7 @@ public class PosPair implements Serializable {
         }
 
         // Profits of long position are losses of short
-        if (entry.getType().equals(OrderType.SELL)) {
+        if (entry.getType().equals(PosType.SELL)) {
             grossProfit = grossProfit.multipliedBy(numOf(-1));
         }
         return grossProfit;

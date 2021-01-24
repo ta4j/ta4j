@@ -32,7 +32,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 
 public class LinearTransactionCostModelTest {
@@ -58,8 +58,8 @@ public class LinearTransactionCostModelTest {
     public void calculateBuyPosition() {
         // Calculate the transaction costs of a closed long position
         int holdingPeriod = 2;
-        Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+        Pos entry = Pos.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+        Pos exit = Pos.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
         PosPair posPair = new PosPair(entry, exit, transactionModel, new ZeroCostModel());
 
@@ -76,8 +76,8 @@ public class LinearTransactionCostModelTest {
     public void calculateSellPosition() {
         // Calculate the transaction costs of a closed short position
         int holdingPeriod = 2;
-        Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+        Pos entry = Pos.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+        Pos exit = Pos.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
         PosPair posPair = new PosPair(entry, exit, transactionModel, new ZeroCostModel());
 
@@ -94,7 +94,7 @@ public class LinearTransactionCostModelTest {
     public void calculateOpenSellPosition() {
         // Calculate the transaction costs of an open position
         int currentIndex = 4;
-        PosPair posPair = new PosPair(Order.OrderType.BUY, transactionModel, new ZeroCostModel());
+        PosPair posPair = new PosPair(Pos.PosType.BUY, transactionModel, new ZeroCostModel());
         posPair.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num costsFromModel = transactionModel.calculate(posPair, currentIndex);

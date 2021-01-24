@@ -26,7 +26,7 @@ package org.ta4j.core.trading.rules;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DecimalNum;
@@ -52,7 +52,7 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertTrue(rule.isSatisfied(1, tradingRecord));
@@ -66,7 +66,7 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -80,7 +80,7 @@ public class OpenedPositionMinimumBarCountRuleTest {
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));

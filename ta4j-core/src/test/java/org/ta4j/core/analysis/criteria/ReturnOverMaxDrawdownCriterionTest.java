@@ -27,7 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -56,8 +56,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     @Test
     public void rewardRiskRatioCriterion() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(4, series), Order.buyAt(5, series), Order.sellAt(7, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(4, series), Pos.buyAt(5, series), Pos.sellAt(7, series));
 
         double totalProfit = (105d / 100) * (90d / 95d) * (120d / 95);
         double peak = (105d / 100) * (100d / 95);
@@ -69,8 +69,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     @Test
     public void rewardRiskRatioCriterionOnlyWithGain() {
         MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(5, series));
         assertTrue(rrc.calculate(series, tradingRecord).isNaN());
     }
 
@@ -83,7 +83,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     @Test
     public void withOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 95, 100, 90, 95, 80, 120);
-        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Pos.buyAt(0, series), Pos.sellAt(1, series));
 
         AnalysisCriterion ratioCriterion = getCriterion();
         assertNumEquals((95d / 100) / ((1d - 0.95d)), ratioCriterion.calculate(series, posPair));
@@ -99,8 +99,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     @Test
     public void testNoDrawDownForTradingRecord() {
         final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(3, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(3, series));
 
         final Num result = rrc.calculate(series, tradingRecord);
 
@@ -110,7 +110,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     @Test
     public void testNoDrawDownForPosition() {
         final MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 95, 100, 90, 95, 80, 120);
-        final PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
+        final PosPair posPair = new PosPair(Pos.buyAt(0, series), Pos.sellAt(1, series));
 
         final Num result = rrc.calculate(series, posPair);
 

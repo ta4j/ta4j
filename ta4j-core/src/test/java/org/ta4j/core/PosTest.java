@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Pos.PosType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.LinearTransactionCostModel;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -36,25 +36,25 @@ import static org.junit.Assert.*;
 import static org.ta4j.core.num.NaN.NaN;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class OrderTest {
+public class PosTest {
 
-    Order opEquals1, opEquals2, opNotEquals1, opNotEquals2;
+    Pos opEquals1, opEquals2, opNotEquals1, opNotEquals2;
 
     @Before
     public void setUp() {
-        opEquals1 = Order.buyAt(1, NaN, NaN);
-        opEquals2 = Order.buyAt(1, NaN, NaN);
+        opEquals1 = Pos.buyAt(1, NaN, NaN);
+        opEquals2 = Pos.buyAt(1, NaN, NaN);
 
-        opNotEquals1 = Order.sellAt(1, NaN, NaN);
-        opNotEquals2 = Order.buyAt(2, NaN, NaN);
+        opNotEquals1 = Pos.sellAt(1, NaN, NaN);
+        opNotEquals2 = Pos.buyAt(2, NaN, NaN);
     }
 
     @Test
     public void type() {
-        assertEquals(OrderType.SELL, opNotEquals1.getType());
+        assertEquals(PosType.SELL, opNotEquals1.getType());
         assertFalse(opNotEquals1.isBuy());
         assertTrue(opNotEquals1.isSell());
-        assertEquals(OrderType.BUY, opNotEquals2.getType());
+        assertEquals(PosType.BUY, opNotEquals2.getType());
         assertTrue(opNotEquals2.isBuy());
         assertFalse(opNotEquals2.isSell());
     }
@@ -70,23 +70,23 @@ public class OrderTest {
     @Test
     public void initializeWithCostsTest() {
         CostModel transactionCostModel = new LinearTransactionCostModel(0.05);
-        Order order = new Order(0, OrderType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
+        Pos position = new Pos(0, PosType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
         Num expectedRawPrice = DoubleNum.valueOf(100);
         Num expectedNetPrice = DoubleNum.valueOf(105);
 
-        assertNumEquals(expectedCost, order.getCost());
-        assertNumEquals(expectedValue, order.getValue());
-        assertNumEquals(expectedRawPrice, order.getPricePerAsset());
-        assertNumEquals(expectedNetPrice, order.getNetPrice());
-        assertTrue(transactionCostModel.equals(order.getCostModel()));
+        assertNumEquals(expectedCost, position.getCost());
+        assertNumEquals(expectedValue, position.getValue());
+        assertNumEquals(expectedRawPrice, position.getPricePerAsset());
+        assertNumEquals(expectedNetPrice, position.getNetPrice());
+        assertTrue(transactionCostModel.equals(position.getCostModel()));
     }
 
     @Test
     public void testReturnBarSeriesCloseOnNaN() {
         MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95, 100, 80, 85, 130);
-        Order order = new Order(1, OrderType.BUY, NaN);
-        assertNumEquals(DoubleNum.valueOf(95), order.getPricePerAsset(series));
+        Pos position = new Pos(1, PosType.BUY, NaN);
+        assertNumEquals(DoubleNum.valueOf(95), position.getPricePerAsset(series));
     }
 }

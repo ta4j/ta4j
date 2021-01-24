@@ -43,8 +43,8 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithGainPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(2, series),
+                Pos.buyAt(3, series), Pos.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
         assertNumEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord));
@@ -53,8 +53,8 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithLossPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
         assertNumEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord));
@@ -63,7 +63,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithOnlyOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Pos.buyAt(0, series), Pos.sellAt(1, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
         assertNumEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, posPair));
@@ -80,8 +80,8 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithAverageProfit() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, NaN, NaN), Order.sellAt(1, NaN, NaN),
-                Order.buyAt(2, NaN, NaN), Order.sellAt(5, NaN, NaN));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, NaN, NaN), Pos.sellAt(1, NaN, NaN),
+                Pos.buyAt(2, NaN, NaN), Pos.sellAt(5, NaN, NaN));
 
         AnalysisCriterion buyAndHold = getCriterion(new AverageReturnPerBarCriterion());
 
@@ -92,8 +92,8 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithNumberOfBars() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 130);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion(new NumberOfBarsCriterion());
 

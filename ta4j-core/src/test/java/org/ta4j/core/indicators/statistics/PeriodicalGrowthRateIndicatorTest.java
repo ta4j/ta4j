@@ -92,7 +92,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         Strategy strategy = new BaseStrategy(buyingRule, sellingRule);
 
         // Check positions
-        int result = seriesManager.run(strategy).getPositionCount();
+        int result = seriesManager.run(strategy).getPairsCount();
         int expResult = 3;
 
         assertEquals(expResult, result);

@@ -23,11 +23,13 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.num.Num;
 
 public class LinearTransactionCostModel implements CostModel {
+
+    private static final long serialVersionUID = 381889036599829773L;
 
     /**
      * Slope of the linear model - fee per position
@@ -38,7 +40,7 @@ public class LinearTransactionCostModel implements CostModel {
      * Constructor. (feePerTrade * x)
      * 
      * @param feePerTrade the feePerTrade coefficient (e.g. 0.005 for 0.5% per
-     *                    {@link Order order})
+     *                    {@link Pos position})
      */
     public LinearTransactionCostModel(double feePerTrade) {
         this.feePerTrade = feePerTrade;
@@ -64,10 +66,10 @@ public class LinearTransactionCostModel implements CostModel {
      */
     public Num calculate(PosPair posPair) {
         Num totalTradeCost = null;
-        Order entryOrder = posPair.getEntry();
-        if (entryOrder != null) {
+        Pos entryPos = posPair.getEntry();
+        if (entryPos != null) {
             // transaction costs of entry position
-            totalTradeCost = entryOrder.getCost();
+            totalTradeCost = entryPos.getCost();
             if (posPair.getExit() != null) {
                 totalTradeCost = totalTradeCost.plus(posPair.getExit().getCost());
             }

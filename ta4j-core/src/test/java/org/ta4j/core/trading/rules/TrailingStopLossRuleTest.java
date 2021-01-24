@@ -47,7 +47,7 @@ package org.ta4j.core.trading.rules;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Pos.PosType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -68,7 +68,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForBuy() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(PosType.BUY);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
 
@@ -104,7 +104,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForBuyForBarCount() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.BUY);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(PosType.BUY);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeries(numFunction, 100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99));
 
@@ -132,7 +132,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForSell() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(PosType.SELL);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
 
@@ -168,7 +168,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void isSatisfiedForSellForBarCount() {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(OrderType.SELL);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(PosType.SELL);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeries(numFunction, 100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01));
 

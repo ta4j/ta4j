@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Pos.PosType;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
@@ -47,14 +47,14 @@ public class PosPairTest {
 
     private CostModel transactionModel;
     private CostModel holdingModel;
-    private Order enter;
-    private Order exitSameType;
-    private Order exitDifferentType;
+    private Pos enter;
+    private Pos exitSameType;
+    private Pos exitDifferentType;
 
     @Before
     public void setUp() {
         this.newPosPair = new PosPair();
-        this.uncoveredPosPair = new PosPair(OrderType.SELL);
+        this.uncoveredPosPair = new PosPair(PosType.SELL);
 
         pEquals1 = new PosPair();
         pEquals1.operate(1);
@@ -64,26 +64,26 @@ public class PosPairTest {
         pEquals2.operate(1);
         pEquals2.operate(2);
 
-        pNotEquals1 = new PosPair(OrderType.SELL);
+        pNotEquals1 = new PosPair(PosType.SELL);
         pNotEquals1.operate(1);
         pNotEquals1.operate(2);
 
-        pNotEquals2 = new PosPair(OrderType.SELL);
+        pNotEquals2 = new PosPair(PosType.SELL);
         pNotEquals2.operate(1);
         pNotEquals2.operate(2);
 
         transactionModel = new LinearTransactionCostModel(0.01);
         holdingModel = new LinearBorrowingCostModel(0.001);
 
-        enter = Order.buyAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-        exitSameType = Order.sellAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-        exitDifferentType = Order.buyAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
+        enter = Pos.buyAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        exitSameType = Pos.sellAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        exitDifferentType = Pos.buyAt(2, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
     }
 
     @Test
     public void whenNewShouldCreateBuyOrderWhenEntering() {
         newPosPair.operate(0);
-        assertEquals(Order.buyAt(0, NaN, NaN), newPosPair.getEntry());
+        assertEquals(Pos.buyAt(0, NaN, NaN), newPosPair.getEntry());
     }
 
     @Test
@@ -95,7 +95,7 @@ public class PosPairTest {
     public void whenOpenedShouldCreateSellOrderWhenExiting() {
         newPosPair.operate(0);
         newPosPair.operate(1);
-        assertEquals(Order.sellAt(1, NaN, NaN), newPosPair.getExit());
+        assertEquals(Pos.sellAt(1, NaN, NaN), newPosPair.getExit());
     }
 
     @Test
@@ -127,20 +127,20 @@ public class PosPairTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
-        new PosPair(Order.buyAt(0, NaN, NaN), Order.buyAt(1, NaN, NaN));
+        new PosPair(Pos.buyAt(0, NaN, NaN), Pos.buyAt(1, NaN, NaN));
     }
 
     @Test
     public void whenNewShouldCreateSellOrderWhenEnteringUncovered() {
         uncoveredPosPair.operate(0);
-        assertEquals(Order.sellAt(0, NaN, NaN), uncoveredPosPair.getEntry());
+        assertEquals(Pos.sellAt(0, NaN, NaN), uncoveredPosPair.getEntry());
     }
 
     @Test
     public void whenOpenedShouldCreateBuyOrderWhenExitingUncovered() {
         uncoveredPosPair.operate(0);
         uncoveredPosPair.operate(1);
-        assertEquals(Order.buyAt(1, NaN, NaN), uncoveredPosPair.getExit());
+        assertEquals(Pos.buyAt(1, NaN, NaN), uncoveredPosPair.getExit());
     }
 
     @Test
@@ -163,11 +163,11 @@ public class PosPairTest {
         PosPair trRightEquals = new PosPair();
         PosPair trRightNotEquals = new PosPair();
 
-        assertEquals(OrderType.BUY, trRightNotEquals.operate(2).getType());
+        assertEquals(PosType.BUY, trRightNotEquals.operate(2).getType());
         assertNotEquals(trLeft, trRightNotEquals);
 
-        assertEquals(OrderType.BUY, trLeft.operate(1).getType());
-        assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(PosType.BUY, trLeft.operate(1).getType());
+        assertEquals(PosType.BUY, trRightEquals.operate(1).getType());
         assertEquals(trLeft, trRightEquals);
 
         assertNotEquals(trLeft, trRightNotEquals);
@@ -179,15 +179,15 @@ public class PosPairTest {
         PosPair trRightEquals = new PosPair();
         PosPair trRightNotEquals = new PosPair();
 
-        assertEquals(OrderType.BUY, trLeft.operate(1).getType());
-        assertEquals(OrderType.BUY, trRightEquals.operate(1).getType());
-        assertEquals(OrderType.BUY, trRightNotEquals.operate(1).getType());
+        assertEquals(PosType.BUY, trLeft.operate(1).getType());
+        assertEquals(PosType.BUY, trRightEquals.operate(1).getType());
+        assertEquals(PosType.BUY, trRightNotEquals.operate(1).getType());
 
-        assertEquals(OrderType.SELL, trRightNotEquals.operate(3).getType());
+        assertEquals(PosType.SELL, trRightNotEquals.operate(3).getType());
         assertNotEquals(trLeft, trRightNotEquals);
 
-        assertEquals(OrderType.SELL, trLeft.operate(2).getType());
-        assertEquals(OrderType.SELL, trRightEquals.operate(2).getType());
+        assertEquals(PosType.SELL, trLeft.operate(2).getType());
+        assertEquals(PosType.SELL, trRightEquals.operate(2).getType());
         assertEquals(trLeft, trRightEquals);
 
         assertNotEquals(trLeft, trRightNotEquals);
@@ -195,7 +195,7 @@ public class PosPairTest {
 
     @Test
     public void testGetProfitForLongTrades() {
-        PosPair trade = new PosPair(OrderType.BUY);
+        PosPair trade = new PosPair(PosType.BUY);
 
         trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
@@ -207,7 +207,7 @@ public class PosPairTest {
 
     @Test
     public void testGetProfitForShortTrades() {
-        PosPair trade = new PosPair(OrderType.SELL);
+        PosPair trade = new PosPair(PosType.SELL);
 
         trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
         trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
@@ -219,7 +219,7 @@ public class PosPairTest {
 
     @Test
     public void testGetGrossReturnForLongTrades() {
-        PosPair trade = new PosPair(OrderType.BUY);
+        PosPair trade = new PosPair(PosType.BUY);
 
         trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         trade.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
@@ -231,7 +231,7 @@ public class PosPairTest {
 
     @Test
     public void testGetGrossReturnForShortTrades() {
-        PosPair trade = new PosPair(OrderType.SELL);
+        PosPair trade = new PosPair(PosType.SELL);
 
         trade.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
         trade.operate(0, DoubleNum.valueOf(8.00), DoubleNum.valueOf(2));
@@ -244,14 +244,14 @@ public class PosPairTest {
     @Test
     public void testGetGrossReturnForLongTradesUsingBarCloseOnNaN() {
         MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 105);
-        PosPair trade = new PosPair(new Order(0, OrderType.BUY, NaN, NaN), new Order(1, OrderType.SELL, NaN, NaN));
+        PosPair trade = new PosPair(new Pos(0, PosType.BUY, NaN, NaN), new Pos(1, PosType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), trade.getGrossReturn(series));
     }
 
     @Test
     public void testGetGrossReturnForShortTradesUsingBarCloseOnNaN() {
         MockBarSeries series = new MockBarSeries(DoubleNum::valueOf, 100, 95);
-        PosPair trade = new PosPair(new Order(0, OrderType.SELL, NaN, NaN), new Order(1, OrderType.BUY, NaN, NaN));
+        PosPair trade = new PosPair(new Pos(0, PosType.SELL, NaN, NaN), new Pos(1, PosType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), trade.getGrossReturn(series));
     }
 
@@ -273,7 +273,7 @@ public class PosPairTest {
     @Test
     public void getProfitLongNoFinalBarTest() {
         PosPair closedTrade = new PosPair(enter, exitSameType, transactionModel, holdingModel);
-        PosPair openTrade = new PosPair(OrderType.BUY, transactionModel, holdingModel);
+        PosPair openTrade = new PosPair(PosType.BUY, transactionModel, holdingModel);
         openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num profitOfClosedTrade = closedTrade.getProfit();
@@ -286,7 +286,7 @@ public class PosPairTest {
     @Test
     public void getProfitLongWithFinalBarTest() {
         PosPair closedTrade = new PosPair(enter, exitSameType, transactionModel, holdingModel);
-        PosPair openTrade = new PosPair(OrderType.BUY, transactionModel, holdingModel);
+        PosPair openTrade = new PosPair(PosType.BUY, transactionModel, holdingModel);
         openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
         Num profitOfClosedTrade = closedTrade.getProfit(10, DoubleNum.valueOf(12));
@@ -298,11 +298,11 @@ public class PosPairTest {
 
     @Test
     public void getProfitShortNoFinalBarTest() {
-        Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-        Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Pos sell = Pos.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Pos buyBack = Pos.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
 
         PosPair closedTrade = new PosPair(sell, buyBack, transactionModel, holdingModel);
-        PosPair openTrade = new PosPair(OrderType.SELL, transactionModel, holdingModel);
+        PosPair openTrade = new PosPair(PosType.SELL, transactionModel, holdingModel);
         openTrade.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num profitOfClosedTrade = closedTrade.getProfit();
@@ -317,11 +317,11 @@ public class PosPairTest {
 
     @Test
     public void getProfitShortWithFinalBarTest() {
-        Order sell = Order.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
-        Order buyBack = Order.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Pos sell = Pos.sellAt(1, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
+        Pos buyBack = Pos.buyAt(10, DoubleNum.valueOf(2), DoubleNum.valueOf(1), transactionModel);
 
         PosPair closedTrade = new PosPair(sell, buyBack, transactionModel, holdingModel);
-        PosPair openTrade = new PosPair(OrderType.SELL, transactionModel, holdingModel);
+        PosPair openTrade = new PosPair(PosType.SELL, transactionModel, holdingModel);
         openTrade.operate(5, DoubleNum.valueOf(2), DoubleNum.valueOf(1));
 
         Num profitOfClosedTradeFinalAfter = closedTrade.getProfit(20, DoubleNum.valueOf(3));

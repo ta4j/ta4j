@@ -23,12 +23,14 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.PosPair;
 import org.ta4j.core.num.Num;
 
 public class LinearBorrowingCostModel implements CostModel {
 
+    private static final long serialVersionUID = -8389217438194697344L;
+    
     /**
      * Slope of the linear model - fee per period
      */
@@ -52,7 +54,7 @@ public class LinearBorrowingCostModel implements CostModel {
      * Calculates the borrowing cost of a closed position.
      * 
      * @param position the position pair
-     * @return the absolute order cost
+     * @return the absolute cost for closing a position
      */
     public Num calculate(PosPair posPair) {
         if (posPair.isOpened()) {
@@ -67,20 +69,20 @@ public class LinearBorrowingCostModel implements CostModel {
      * 
      * @param posPair      the position pair
      * @param currentIndex final bar index to be considered (for open positions)
-     * @return the absolute order cost
+     * @return the absolute borrowing cost
      */
     public Num calculate(PosPair posPair, int currentIndex) {
-        Order entryOrder = posPair.getEntry();
-        Order exitOrder = posPair.getExit();
+        Pos entryPos = posPair.getEntry();
+        Pos exitPos = posPair.getExit();
         Num borrowingCost = posPair.getEntry().getNetPrice().numOf(0);
 
         // borrowing costs apply for short positions only
-        if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
+        if (entryPos != null && entryPos.getType().equals(Pos.PosType.SELL) && entryPos.getAmount() != null) {
             int tradingPeriods = 0;
             if (posPair.isClosed()) {
-                tradingPeriods = exitOrder.getIndex() - entryOrder.getIndex();
+                tradingPeriods = exitPos.getIndex() - entryPos.getIndex();
             } else if (posPair.isOpened()) {
-                tradingPeriods = currentIndex - entryOrder.getIndex();
+                tradingPeriods = currentIndex - entryPos.getIndex();
             }
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, posPair.getEntry().getValue());
         }

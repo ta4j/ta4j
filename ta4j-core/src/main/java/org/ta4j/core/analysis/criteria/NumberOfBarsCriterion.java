@@ -37,7 +37,7 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(PosPair::isClosed).map(t -> calculate(series, t))
+        return tradingRecord.getPairs().stream().filter(PosPair::isClosed).map(t -> calculate(series, t))
                 .reduce(series.numOf(0), Num::plus);
     }
 

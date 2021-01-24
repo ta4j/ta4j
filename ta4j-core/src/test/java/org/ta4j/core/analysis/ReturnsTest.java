@@ -56,8 +56,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void singleReturnTradeArith() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(1, sampleBarSeries));
         Returns return1 = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
         assertNumEquals(NaN.NaN, return1.getValue(0));
         assertNumEquals(1.0, return1.getValue(1));
@@ -66,9 +66,9 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void returnsWithSellAndBuyOrders() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries), Order.buyAt(3, sampleBarSeries), Order.sellAt(4, sampleBarSeries),
-                Order.sellAt(5, sampleBarSeries), Order.buyAt(6, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(1, sampleBarSeries), Pos.buyAt(3, sampleBarSeries), Pos.sellAt(4, sampleBarSeries),
+                Pos.sellAt(5, sampleBarSeries), Pos.buyAt(6, sampleBarSeries));
 
         Returns strategyReturns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
 
@@ -84,8 +84,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void returnsWithGaps() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(2, sampleBarSeries),
-                Order.buyAt(5, sampleBarSeries), Order.buyAt(8, sampleBarSeries), Order.sellAt(10, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(2, sampleBarSeries),
+                Pos.buyAt(5, sampleBarSeries), Pos.buyAt(8, sampleBarSeries), Pos.sellAt(10, sampleBarSeries));
 
         Returns returns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.LOG);
 

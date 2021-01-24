@@ -50,8 +50,8 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithTwoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(2, series),
+                Pos.buyAt(3, series), Pos.sellAt(5, series));
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(2, buyAndHold.calculate(series, tradingRecord));

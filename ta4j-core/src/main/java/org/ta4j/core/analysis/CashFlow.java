@@ -41,6 +41,8 @@ import java.util.List;
  */
 public class CashFlow implements Indicator<Num> {
 
+    private static final long serialVersionUID = 1325151305716193893L;
+
     /**
      * The bar series
      */
@@ -180,13 +182,13 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Calculates the ratio of intermediate prices.
      *
-     * @param isLongTrade true, if the entry order type is BUY
-     * @param entryPrice  price ratio denominator
-     * @param exitPrice   price ratio numerator
+     * @param isLongPosition true, if the entry position type is BUY
+     * @param entryPrice     price ratio denominator
+     * @param exitPrice      price ratio numerator
      */
-    private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
+    private static Num getIntermediateRatio(boolean isLongPosition, Num entryPrice, Num exitPrice) {
         Num ratio;
-        if (isLongTrade) {
+        if (isLongPosition) {
             ratio = exitPrice.dividedBy(entryPrice);
         } else {
             ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
@@ -201,7 +203,7 @@ public class CashFlow implements Indicator<Num> {
      */
     private void calculate(TradingRecord tradingRecord) {
         // For each position...
-        tradingRecord.getPositions().forEach(this::calculate);
+        tradingRecord.getPairs().forEach(this::calculate);
     }
 
     /**
@@ -216,21 +218,21 @@ public class CashFlow implements Indicator<Num> {
         calculate(tradingRecord);
 
         // Add accrued cash flow of open position
-        if (tradingRecord.getCurrentPosition().isOpened()) {
-            calculate(tradingRecord.getCurrentPosition(), finalIndex);
+        if (tradingRecord.getCurrentPair().isOpened()) {
+            calculate(tradingRecord.getCurrentPair(), finalIndex);
         }
     }
 
     /**
      * Adjusts (intermediate) price to incorporate trading costs.
      *
-     * @param rawPrice    the gross asset price
-     * @param holdingCost share of the holding cost per period
-     * @param isLongTrade true, if the entry order type is BUY
+     * @param rawPrice       the gross asset price
+     * @param holdingCost    share of the holding cost per period
+     * @param isLongPosition true, if the entry position type is BUY
      */
-    static Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
+    static Num addCost(Num rawPrice, Num holdingCost, boolean isLongPosition) {
         Num netPrice;
-        if (isLongTrade) {
+        if (isLongPosition) {
             netPrice = rawPrice.minus(holdingCost);
         } else {
             netPrice = rawPrice.plus(holdingCost);

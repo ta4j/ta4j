@@ -83,7 +83,7 @@ public class UnstableIndicatorStrategy {
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
 
-        System.out.println(name + " " + tradingRecord.getPositions());
+        System.out.println(name + " " + tradingRecord.getPairs());
     }
 
 }

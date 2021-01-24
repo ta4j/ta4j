@@ -36,17 +36,16 @@ public class TradingRecordTest {
     @Before
     public void setUp() {
         emptyRecord = new BaseTradingRecord();
-        openedRecord = new BaseTradingRecord(Order.buyAt(0, NaN, NaN), Order.sellAt(3, NaN, NaN),
-                Order.buyAt(7, NaN, NaN));
-        closedRecord = new BaseTradingRecord(Order.buyAt(0, NaN, NaN), Order.sellAt(3, NaN, NaN),
-                Order.buyAt(7, NaN, NaN), Order.sellAt(8, NaN, NaN));
+        openedRecord = new BaseTradingRecord(Pos.buyAt(0, NaN, NaN), Pos.sellAt(3, NaN, NaN), Pos.buyAt(7, NaN, NaN));
+        closedRecord = new BaseTradingRecord(Pos.buyAt(0, NaN, NaN), Pos.sellAt(3, NaN, NaN), Pos.buyAt(7, NaN, NaN),
+                Pos.sellAt(8, NaN, NaN));
     }
 
     @Test
-    public void getCurrentTrade() {
-        assertTrue(emptyRecord.getCurrentPosition().isNew());
-        assertTrue(openedRecord.getCurrentPosition().isOpened());
-        assertTrue(closedRecord.getCurrentPosition().isNew());
+    public void getCurrentPair() {
+        assertTrue(emptyRecord.getCurrentPair().isNew());
+        assertTrue(openedRecord.getCurrentPair().isOpened());
+        assertTrue(closedRecord.getCurrentPair().isNew());
     }
 
     @Test
@@ -54,34 +53,34 @@ public class TradingRecordTest {
         TradingRecord record = new BaseTradingRecord();
 
         record.operate(1);
-        assertTrue(record.getCurrentPosition().isOpened());
-        assertEquals(0, record.getPositionCount());
-        assertNull(record.getLastPosition());
-        assertEquals(Order.buyAt(1, NaN, NaN), record.getLastOrder());
-        assertEquals(Order.buyAt(1, NaN, NaN), record.getLastOrder(Order.OrderType.BUY));
-        assertNull(record.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.buyAt(1, NaN, NaN), record.getLastEntry());
+        assertTrue(record.getCurrentPair().isOpened());
+        assertEquals(0, record.getPairsCount());
+        assertNull(record.getLastPair());
+        assertEquals(Pos.buyAt(1, NaN, NaN), record.getLastPosition());
+        assertEquals(Pos.buyAt(1, NaN, NaN), record.getLastPosition(Pos.PosType.BUY));
+        assertNull(record.getLastPosition(Pos.PosType.SELL));
+        assertEquals(Pos.buyAt(1, NaN, NaN), record.getLastEntry());
         assertNull(record.getLastExit());
 
         record.operate(3);
-        assertTrue(record.getCurrentPosition().isNew());
-        assertEquals(1, record.getPositionCount());
-        assertEquals(new PosPair(Order.buyAt(1, NaN, NaN), Order.sellAt(3, NaN, NaN)), record.getLastPosition());
-        assertEquals(Order.sellAt(3, NaN, NaN), record.getLastOrder());
-        assertEquals(Order.buyAt(1, NaN, NaN), record.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.sellAt(3, NaN, NaN), record.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.buyAt(1, NaN, NaN), record.getLastEntry());
-        assertEquals(Order.sellAt(3, NaN, NaN), record.getLastExit());
+        assertTrue(record.getCurrentPair().isNew());
+        assertEquals(1, record.getPairsCount());
+        assertEquals(new PosPair(Pos.buyAt(1, NaN, NaN), Pos.sellAt(3, NaN, NaN)), record.getLastPair());
+        assertEquals(Pos.sellAt(3, NaN, NaN), record.getLastPosition());
+        assertEquals(Pos.buyAt(1, NaN, NaN), record.getLastPosition(Pos.PosType.BUY));
+        assertEquals(Pos.sellAt(3, NaN, NaN), record.getLastPosition(Pos.PosType.SELL));
+        assertEquals(Pos.buyAt(1, NaN, NaN), record.getLastEntry());
+        assertEquals(Pos.sellAt(3, NaN, NaN), record.getLastExit());
 
         record.operate(5);
-        assertTrue(record.getCurrentPosition().isOpened());
-        assertEquals(1, record.getPositionCount());
-        assertEquals(new PosPair(Order.buyAt(1, NaN, NaN), Order.sellAt(3, NaN, NaN)), record.getLastPosition());
-        assertEquals(Order.buyAt(5, NaN, NaN), record.getLastOrder());
-        assertEquals(Order.buyAt(5, NaN, NaN), record.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.sellAt(3, NaN, NaN), record.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.buyAt(5, NaN, NaN), record.getLastEntry());
-        assertEquals(Order.sellAt(3, NaN, NaN), record.getLastExit());
+        assertTrue(record.getCurrentPair().isOpened());
+        assertEquals(1, record.getPairsCount());
+        assertEquals(new PosPair(Pos.buyAt(1, NaN, NaN), Pos.sellAt(3, NaN, NaN)), record.getLastPair());
+        assertEquals(Pos.buyAt(5, NaN, NaN), record.getLastPosition());
+        assertEquals(Pos.buyAt(5, NaN, NaN), record.getLastPosition(Pos.PosType.BUY));
+        assertEquals(Pos.sellAt(3, NaN, NaN), record.getLastPosition(Pos.PosType.SELL));
+        assertEquals(Pos.buyAt(5, NaN, NaN), record.getLastEntry());
+        assertEquals(Pos.sellAt(3, NaN, NaN), record.getLastExit());
     }
 
     @Test
@@ -92,44 +91,44 @@ public class TradingRecordTest {
     }
 
     @Test
-    public void getTradeCount() {
-        assertEquals(0, emptyRecord.getPositionCount());
-        assertEquals(1, openedRecord.getPositionCount());
-        assertEquals(2, closedRecord.getPositionCount());
+    public void getPairsCount() {
+        assertEquals(0, emptyRecord.getPairsCount());
+        assertEquals(1, openedRecord.getPairsCount());
+        assertEquals(2, closedRecord.getPairsCount());
     }
 
     @Test
-    public void getLastTrade() {
+    public void getLastPair() {
+        assertNull(emptyRecord.getLastPair());
+        assertEquals(new PosPair(Pos.buyAt(0, NaN, NaN), Pos.sellAt(3, NaN, NaN)), openedRecord.getLastPair());
+        assertEquals(new PosPair(Pos.buyAt(7, NaN, NaN), Pos.sellAt(8, NaN, NaN)), closedRecord.getLastPair());
+    }
+
+    @Test
+    public void getLastPosition() {
+        // Last position
         assertNull(emptyRecord.getLastPosition());
-        assertEquals(new PosPair(Order.buyAt(0, NaN, NaN), Order.sellAt(3, NaN, NaN)), openedRecord.getLastPosition());
-        assertEquals(new PosPair(Order.buyAt(7, NaN, NaN), Order.sellAt(8, NaN, NaN)), closedRecord.getLastPosition());
-    }
-
-    @Test
-    public void getLastOrder() {
-        // Last order
-        assertNull(emptyRecord.getLastOrder());
-        assertEquals(Order.buyAt(7, NaN, NaN), openedRecord.getLastOrder());
-        assertEquals(Order.sellAt(8, NaN, NaN), closedRecord.getLastOrder());
-        // Last BUY order
-        assertNull(emptyRecord.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.buyAt(7, NaN, NaN), openedRecord.getLastOrder(Order.OrderType.BUY));
-        assertEquals(Order.buyAt(7, NaN, NaN), closedRecord.getLastOrder(Order.OrderType.BUY));
-        // Last SELL order
-        assertNull(emptyRecord.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.sellAt(3, NaN, NaN), openedRecord.getLastOrder(Order.OrderType.SELL));
-        assertEquals(Order.sellAt(8, NaN, NaN), closedRecord.getLastOrder(Order.OrderType.SELL));
+        assertEquals(Pos.buyAt(7, NaN, NaN), openedRecord.getLastPosition());
+        assertEquals(Pos.sellAt(8, NaN, NaN), closedRecord.getLastPosition());
+        // Last BUY position
+        assertNull(emptyRecord.getLastPosition(Pos.PosType.BUY));
+        assertEquals(Pos.buyAt(7, NaN, NaN), openedRecord.getLastPosition(Pos.PosType.BUY));
+        assertEquals(Pos.buyAt(7, NaN, NaN), closedRecord.getLastPosition(Pos.PosType.BUY));
+        // Last SELL position
+        assertNull(emptyRecord.getLastPosition(Pos.PosType.SELL));
+        assertEquals(Pos.sellAt(3, NaN, NaN), openedRecord.getLastPosition(Pos.PosType.SELL));
+        assertEquals(Pos.sellAt(8, NaN, NaN), closedRecord.getLastPosition(Pos.PosType.SELL));
     }
 
     @Test
     public void getLastEntryExit() {
-        // Last entry
+        // Last entry position
         assertNull(emptyRecord.getLastEntry());
-        assertEquals(Order.buyAt(7, NaN, NaN), openedRecord.getLastEntry());
-        assertEquals(Order.buyAt(7, NaN, NaN), closedRecord.getLastEntry());
-        // Last exit
+        assertEquals(Pos.buyAt(7, NaN, NaN), openedRecord.getLastEntry());
+        assertEquals(Pos.buyAt(7, NaN, NaN), closedRecord.getLastEntry());
+        // Last exit position
         assertNull(emptyRecord.getLastExit());
-        assertEquals(Order.sellAt(3, NaN, NaN), openedRecord.getLastExit());
-        assertEquals(Order.sellAt(8, NaN, NaN), closedRecord.getLastExit());
+        assertEquals(Pos.sellAt(3, NaN, NaN), openedRecord.getLastExit());
+        assertEquals(Pos.sellAt(8, NaN, NaN), closedRecord.getLastExit());
     }
 }

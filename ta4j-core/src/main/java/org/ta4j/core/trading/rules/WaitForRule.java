@@ -24,23 +24,24 @@
 package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.TradingRecord;
 
-import static org.ta4j.core.Order.OrderType;
+import static org.ta4j.core.Pos.PosType;
 
 /**
- * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after an
- * order.
+ * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after a
+ * position.
  *
- * Satisfied after a fixed number of bars since the last order.
+ * Satisfied after a fixed number of bars since the last order leading to the
+ * position.
  */
 public class WaitForRule extends AbstractRule {
 
     /**
-     * The type of the order since we have to wait for
+     * The type of the position since we have to wait for
      */
-    private final OrderType orderType;
+    private final PosType positionType;
 
     /**
      * The number of bars to wait for
@@ -53,8 +54,8 @@ public class WaitForRule extends AbstractRule {
      * @param orderType    the type of the order since we have to wait for
      * @param numberOfBars the number of bars to wait for
      */
-    public WaitForRule(OrderType orderType, int numberOfBars) {
-        this.orderType = orderType;
+    public WaitForRule(PosType positionType, int numberOfBars) {
+        this.positionType = positionType;
         this.numberOfBars = numberOfBars;
     }
 
@@ -63,9 +64,9 @@ public class WaitForRule extends AbstractRule {
         boolean satisfied = false;
         // No trading history, no need to wait
         if (tradingRecord != null) {
-            Order lastOrder = tradingRecord.getLastOrder(orderType);
-            if (lastOrder != null) {
-                int currentNumberOfBars = index - lastOrder.getIndex();
+            Pos lastPosition = tradingRecord.getLastPosition(positionType);
+            if (lastPosition != null) {
+                int currentNumberOfBars = index - lastPosition.getIndex();
                 satisfied = currentNumberOfBars >= numberOfBars;
             }
         }

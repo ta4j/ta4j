@@ -44,8 +44,8 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculate() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(3, series), Order.buyAt(4, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(3, series), Pos.buyAt(4, series), Pos.sellAt(5, series));
 
         AnalysisCriterion average = getCriterion();
 
@@ -55,8 +55,8 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithShortPositions() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series),
-                Order.sellAt(3, series), Order.buyAt(4, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(0, series), Pos.buyAt(2, series),
+                Pos.sellAt(3, series), Pos.buyAt(4, series));
 
         AnalysisCriterion average = getCriterion();
 
@@ -66,12 +66,12 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithOnePosition() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Pos.buyAt(0, series), Pos.sellAt(1, series));
 
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(0), average.calculate(series, posPair));
 
-        posPair = new PosPair(Order.buyAt(1, series), Order.sellAt(2, series));
+        posPair = new PosPair(Pos.buyAt(1, series), Pos.sellAt(2, series));
         assertNumEquals(1, average.calculate(series, posPair));
     }
 

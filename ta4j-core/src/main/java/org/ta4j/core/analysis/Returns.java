@@ -41,6 +41,8 @@ import java.util.List;
  */
 public class Returns implements Indicator<Num> {
 
+    private static final long serialVersionUID = 6333825860579015536L;
+
     public enum ReturnType {
         LOG {
             @Override
@@ -213,7 +215,7 @@ public class Returns implements Indicator<Num> {
      */
     private void calculate(TradingRecord tradingRecord) {
         // For each position...
-        tradingRecord.getPositions().forEach(this::calculate);
+        tradingRecord.getPairs().forEach(this::calculate);
     }
 
     /**

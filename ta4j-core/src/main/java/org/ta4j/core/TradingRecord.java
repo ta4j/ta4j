@@ -23,7 +23,7 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Pos.PosType;
 import org.ta4j.core.num.Num;
 
 import java.io.Serializable;
@@ -34,6 +34,7 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * A history/record of a trading session.
  *
+ * <p>
  * Holds the full trading record when running a {@link Strategy strategy}. It is
  * used to:
  * <ul>
@@ -47,7 +48,7 @@ public interface TradingRecord extends Serializable {
      * @return the entry type (BUY or SELL) of the first position in the trading
      *         session
      */
-    OrderType getStartingType();
+    PosType getStartingType();
 
     /**
      * @return the name of the TradingRecord
@@ -55,32 +56,27 @@ public interface TradingRecord extends Serializable {
     String getName();
 
     /**
-     * @return the current position
-     */
-    PosPair getCurrentPosition();
-
-    /**
-     * Operates an order in the trading record.
+     * Places a position in the trading record.
      * 
-     * @param index the index to operate the order
+     * @param index the index to place the position
      */
     default void operate(int index) {
         operate(index, NaN, NaN);
     }
 
     /**
-     * Operates an order in the trading record.
+     * Places a position in the trading record.
      * 
-     * @param index  the index to operate the order
-     * @param price  the price of the order
-     * @param amount the amount to be ordered
+     * @param index  the index to place the position
+     * @param price  the exit price
+     * @param amount the exit amount
      */
     void operate(int index, Num price, Num amount);
 
     /**
-     * Operates an entry order in the trading record.
+     * Places an entry position in the trading record.
      * 
-     * @param index the index to operate the entry
+     * @param index the index to place the entry position
      * @return true if the entry has been operated, false otherwise
      */
     default boolean enter(int index) {
@@ -88,19 +84,19 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
-     * Operates an entry order in the trading record.
+     * Places an entry position in the trading record.
      * 
-     * @param index  the index to operate the entry
-     * @param price  the price of the order
-     * @param amount the amount to be ordered
+     * @param index  the index to place the entry position
+     * @param price  the entry price
+     * @param amount the entry amount
      * @return true if the entry has been operated, false otherwise
      */
     boolean enter(int index, Num price, Num amount);
 
     /**
-     * Operates an exit order in the trading record.
+     * Places an exit position in the trading record.
      * 
-     * @param index the index to operate the exit
+     * @param index the index to place the exit position
      * @return true if the exit has been operated, false otherwise
      */
     default boolean exit(int index) {
@@ -108,11 +104,11 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
-     * Operates an exit order in the trading record.
+     * Places an exit position in the trading record.
      * 
-     * @param index  the index to operate the exit
-     * @param price  the price of the order
-     * @param amount the amount to be ordered
+     * @param index  the index to place the exit position
+     * @param price  the exit price
+     * @param amount the exit amount
      * @return true if the exit has been operated, false otherwise
      */
     boolean exit(int index, Num price, Num amount);
@@ -121,50 +117,55 @@ public interface TradingRecord extends Serializable {
      * @return true if no position is open, false otherwise
      */
     default boolean isClosed() {
-        return !getCurrentPosition().isOpened();
+        return !getCurrentPair().isOpened();
     }
 
     /**
-     * @return the recorded positions
+     * @return the recorded position pairs
      */
-    List<PosPair> getPositions();
+    List<PosPair> getPairs();
 
     /**
-     * @return the number of recorded positions
+     * @return the number of recorded position pairs
      */
-    default int getPositionCount() {
-        return getPositions().size();
+    default int getPairsCount() {
+        return getPairs().size();
     }
 
     /**
-     * @return the last position recorded
+     * @return the current position pair
      */
-    default PosPair getLastPosition() {
-        List<PosPair> positions = getPositions();
-        if (!positions.isEmpty()) {
-            return positions.get(positions.size() - 1);
+    PosPair getCurrentPair();
+
+    /**
+     * @return the last position pair recorded
+     */
+    default PosPair getLastPair() {
+        List<PosPair> pairs = getPairs();
+        if (!pairs.isEmpty()) {
+            return pairs.get(pairs.size() - 1);
         }
         return null;
     }
 
     /**
-     * @return the last order recorded
+     * @return the last position recorded
      */
-    Order getLastOrder();
+    Pos getLastPosition();
 
     /**
-     * @param orderType the type of the order to get the last of
-     * @return the last order (of the provided type) recorded
+     * @param positionType the type of the position to get the last of
+     * @return the last position (of the provided type) recorded
      */
-    Order getLastOrder(OrderType orderType);
+    Pos getLastPosition(PosType positionType);
 
     /**
-     * @return the last entry order recorded
+     * @return the last entry position recorded
      */
-    Order getLastEntry();
+    Pos getLastEntry();
 
     /**
-     * @return the last exit order recorded
+     * @return the last exit position recorded
      */
-    Order getLastExit();
+    Pos getLastExit();
 }

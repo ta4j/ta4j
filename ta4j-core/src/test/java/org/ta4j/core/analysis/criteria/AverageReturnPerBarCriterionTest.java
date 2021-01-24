@@ -43,8 +43,8 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithGainPositions() {
         series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(2, series),
+                Pos.buyAt(3, series), Pos.sellAt(5, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(1.0243, averageProfit.calculate(series, tradingRecord));
     }
@@ -52,7 +52,7 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithASimplePosition() {
         series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(2, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(110d / 100).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
     }
@@ -60,8 +60,8 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithLossPositions() {
         series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(5, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(95d / 100 * 70d / 100).pow(numOf(1d / 6)),
                 averageProfit.calculate(series, tradingRecord));
@@ -70,7 +70,7 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithLosingAShortPosition() {
         series = new MockBarSeries(numFunction, 100d, 105d, 110d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(0, series), Pos.buyAt(2, series));
         AnalysisCriterion averageProfit = getCriterion();
         assertNumEquals(numOf(90d / 100).pow(numOf(1d / 3)), averageProfit.calculate(series, tradingRecord));
     }
@@ -85,7 +85,7 @@ public class AverageReturnPerBarCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithOnePosition() {
         series = new MockBarSeries(numFunction, 100, 105);
-        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Pos.buyAt(0, series), Pos.sellAt(1, series));
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(105d / 100).pow(numOf(0.5)), average.calculate(series, posPair));
     }

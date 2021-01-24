@@ -77,7 +77,7 @@ public class StopGainRule extends AbstractRule {
         boolean satisfied = false;
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            PosPair currentPos = tradingRecord.getCurrentPosition();
+            PosPair currentPos = tradingRecord.getCurrentPair();
             if (currentPos.isOpened()) {
 
                 Num entryPrice = currentPos.getEntry().getNetPrice();

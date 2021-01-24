@@ -104,7 +104,7 @@ public interface Strategy {
      * @return true to recommend an order, false otherwise (no recommendation)
      */
     default boolean shouldOperate(int index, TradingRecord tradingRecord) {
-        PosPair position = tradingRecord.getCurrentPosition();
+        PosPair position = tradingRecord.getCurrentPair();
         if (position.isNew()) {
             return shouldEnter(index, tradingRecord);
         } else if (position.isOpened()) {

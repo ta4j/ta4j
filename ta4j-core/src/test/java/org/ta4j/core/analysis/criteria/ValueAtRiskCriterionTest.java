@@ -46,8 +46,8 @@ public class ValueAtRiskCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithGainPositions() {
         series = new MockBarSeries(numFunction, 100d, 105d, 106d, 107d, 108d, 115d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(2, series),
+                Pos.buyAt(3, series), Pos.sellAt(5, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numOf(0.0), varCriterion.calculate(series, tradingRecord));
     }
@@ -55,7 +55,7 @@ public class ValueAtRiskCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithASimplePosition() {
         series = new MockBarSeries(numFunction, 100d, 104d, 90d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(2, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numOf(Math.log(90d / 104)), varCriterion.calculate(series, tradingRecord));
     }
@@ -63,8 +63,8 @@ public class ValueAtRiskCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithLossPositions() {
         series = new MockBarSeries(numFunction, 100d, 95d, 100d, 80d, 85d, 70d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, series), Pos.sellAt(1, series),
+                Pos.buyAt(2, series), Pos.sellAt(5, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numOf(Math.log(80d / 100)), varCriterion.calculate(series, tradingRecord));
     }
@@ -79,7 +79,7 @@ public class ValueAtRiskCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithBuyAndHold() {
         series = new MockBarSeries(numFunction, 100d, 99d);
-        PosPair posPair = new PosPair(Order.buyAt(0, series), Order.sellAt(1, series));
+        PosPair posPair = new PosPair(Pos.buyAt(0, series), Pos.sellAt(1, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numOf(Math.log(99d / 100)), varCriterion.calculate(series, posPair));
     }

@@ -40,7 +40,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(PosPair::isClosed).map(pos -> calculate(series, pos))
+        return tradingRecord.getPairs().stream().filter(PosPair::isClosed).map(pos -> calculate(series, pos))
                 .reduce(series.numOf(0), Num::plus);
     }
 

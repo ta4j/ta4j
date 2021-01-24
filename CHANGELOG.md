@@ -13,6 +13,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** Trade.class renamed to "PosPair.class" (which stands for "PositionPair")
 - **Breaking:** The word "Trades" contained in a few criterions is renamed to "Position"
+- **Breaking:** Order.class renamed to "Pos.class" (which stands for "Position")
+- **Breaking:** The word "order" contained in other classes were renamed to "position"
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.

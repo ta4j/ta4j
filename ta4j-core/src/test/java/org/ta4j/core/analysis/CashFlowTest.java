@@ -27,7 +27,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -63,8 +63,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowBuyWithOnlyOneTrade() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(1, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -75,9 +75,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowWithSellAndBuyOrders() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries), Order.buyAt(3, sampleBarSeries), Order.sellAt(4, sampleBarSeries),
-                Order.sellAt(5, sampleBarSeries), Order.buyAt(6, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(1, sampleBarSeries), Pos.buyAt(3, sampleBarSeries), Pos.sellAt(4, sampleBarSeries),
+                Pos.sellAt(5, sampleBarSeries), Pos.buyAt(6, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -93,8 +93,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowSell() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1, 2, 4, 8, 16, 32);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(2, sampleBarSeries),
-                Order.buyAt(3, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(2, sampleBarSeries),
+                Pos.buyAt(3, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -109,9 +109,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowShortSell() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1, 2, 4, 8, 16, 32);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(2, sampleBarSeries), Order.sellAt(2, sampleBarSeries), Order.buyAt(4, sampleBarSeries),
-                Order.buyAt(4, sampleBarSeries), Order.sellAt(5, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(2, sampleBarSeries), Pos.sellAt(2, sampleBarSeries), Pos.buyAt(4, sampleBarSeries),
+                Pos.buyAt(4, sampleBarSeries), Pos.sellAt(5, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -126,8 +126,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowShortSellWith20PercentGain() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 110, 100, 90, 80);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(1, sampleBarSeries),
-                Order.buyAt(3, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(1, sampleBarSeries),
+                Pos.buyAt(3, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -140,8 +140,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowShortSellWith20PercentLoss() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 90, 100, 110, 120);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(1, sampleBarSeries),
-                Order.buyAt(3, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(1, sampleBarSeries),
+                Pos.buyAt(3, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -155,8 +155,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     public void cashFlowShortSellWith100PercentLoss() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190,
                 200);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(1, sampleBarSeries),
-                Order.buyAt(11, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(1, sampleBarSeries),
+                Pos.buyAt(11, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -177,8 +177,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowShortSellWithOver100PercentLoss() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 100, 150, 200, 210);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, sampleBarSeries),
-                Order.buyAt(3, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(0, sampleBarSeries),
+                Pos.buyAt(3, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -191,8 +191,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowShortSellBigLossWithNegativeCashFlow() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 3, 20);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, sampleBarSeries),
-                Order.buyAt(1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.sellAt(0, sampleBarSeries),
+                Pos.buyAt(1, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -203,8 +203,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowValueWithOnlyOneTradeAndAGapBefore() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 1d, 2d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1, sampleBarSeries),
-                Order.sellAt(2, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(1, sampleBarSeries),
+                Pos.sellAt(2, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -216,8 +216,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowValueWithOnlyOneTradeAndAGapAfter() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 2d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(1, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -230,8 +230,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void cashFlowValueWithTwoTradesAndLongTimeWithoutOrders() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 4d, 8d, 16d, 32d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1, sampleBarSeries),
-                Order.sellAt(2, sampleBarSeries), Order.buyAt(4, sampleBarSeries), Order.sellAt(5, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(1, sampleBarSeries),
+                Pos.sellAt(2, sampleBarSeries), Pos.buyAt(4, sampleBarSeries), Pos.sellAt(5, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -248,9 +248,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         // First sample series
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 3d, 2d, 5d, 1000d, 5000d, 0.0001d, 4d, 7d, 6d, 7d,
                 8d, 5d, 6d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(2, sampleBarSeries), Order.buyAt(6, sampleBarSeries), Order.sellAt(8, sampleBarSeries),
-                Order.buyAt(9, sampleBarSeries), Order.sellAt(11, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(2, sampleBarSeries), Pos.buyAt(6, sampleBarSeries), Pos.sellAt(8, sampleBarSeries),
+                Pos.buyAt(9, sampleBarSeries), Pos.sellAt(11, sampleBarSeries));
 
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
@@ -270,8 +270,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         // Second sample series
         sampleBarSeries = new MockBarSeries(numFunction, 5d, 6d, 3d, 7d, 8d, 6d, 10d, 15d, 6d);
-        tradingRecord = new BaseTradingRecord(Order.buyAt(4, sampleBarSeries), Order.sellAt(5, sampleBarSeries),
-                Order.buyAt(6, sampleBarSeries), Order.sellAt(8, sampleBarSeries));
+        tradingRecord = new BaseTradingRecord(Pos.buyAt(4, sampleBarSeries), Pos.sellAt(5, sampleBarSeries),
+                Pos.buyAt(6, sampleBarSeries), Pos.sellAt(8, sampleBarSeries));
 
         CashFlow flow = new CashFlow(sampleBarSeries, tradingRecord);
         assertNumEquals(1, flow.getValue(0));
@@ -298,8 +298,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     public void reallyLongCashFlow() {
         int size = 1000000;
         BarSeries sampleBarSeries = new MockBarSeries(Collections.nCopies(size, new MockBar(10, numFunction)));
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(size - 1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Pos.buyAt(0, sampleBarSeries),
+                Pos.sellAt(size - 1, sampleBarSeries));
         CashFlow cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
         assertNumEquals(1, cashFlow.getValue(size - 1));
     }

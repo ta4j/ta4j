@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
@@ -63,17 +63,17 @@ public class TradeCost {
 
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
-        Order.OrderType entryOrder = Order.OrderType.SELL;
+        Pos.PosType entryOrder = Pos.PosType.SELL;
         TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
 
         DecimalFormat df = new DecimalFormat("##.##");
         System.out.println("------------ Borrowing Costs ------------");
-        tradingRecord.getPositions()
+        tradingRecord.getPairs()
                 .forEach(trade -> System.out.println(
                         "Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
                                 + " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
         System.out.println("------------ Transaction Costs ------------");
-        tradingRecord.getPositions()
+        tradingRecord.getPairs()
                 .forEach(trade -> System.out.println("Transaction cost for selling: "
                         + df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
                         + df.format(trade.getExit().getCost().doubleValue())));

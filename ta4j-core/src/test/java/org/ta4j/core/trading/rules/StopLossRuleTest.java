@@ -26,7 +26,7 @@ package org.ta4j.core.trading.rules;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
+import org.ta4j.core.Pos;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -54,7 +54,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForBuy() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Pos.PosType.BUY);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss
@@ -80,7 +80,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForSell() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.SELL);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Pos.PosType.SELL);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss

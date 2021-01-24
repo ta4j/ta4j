@@ -91,7 +91,7 @@ public class ADXStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of trades for the strategy: " + tradingRecord.getPositionCount());
+        System.out.println("Number of trades for the strategy: " + tradingRecord.getPairsCount());
 
         // Analysis
         System.out.println(

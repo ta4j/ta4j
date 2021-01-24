@@ -35,7 +35,7 @@ public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getPositions().stream().filter(PosPair::isClosed)
+        long numberOfLosingTrades = tradingRecord.getPairs().stream().filter(PosPair::isClosed)
                 .filter(this::isLosingTrade).count();
         return series.numOf(numberOfLosingTrades);
     }
