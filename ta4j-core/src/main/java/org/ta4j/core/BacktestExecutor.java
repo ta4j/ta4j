@@ -52,7 +52,7 @@ public class BacktestExecutor {
      * Executes given strategies and returns trading statements.
      * 
      * @param strategies the strategies
-     * @param amount     the amount used to open/close the trades
+     * @param amount     the amount used to open/close the position
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
         return execute(strategies, amount, Trade.TradeType.BUY);
