@@ -101,7 +101,7 @@ public interface Strategy {
     /**
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
-     * @return true to recommend an order, false otherwise (no recommendation)
+     * @return true to recommend a trade, false otherwise (no recommendation)
      */
     default boolean shouldOperate(int index, TradingRecord tradingRecord) {
         Position position = tradingRecord.getCurrentPosition();

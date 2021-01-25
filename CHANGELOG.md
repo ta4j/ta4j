@@ -18,7 +18,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **WinningTradesRatioCriterion** renamed to **WinningPositionsRatioCriterion**
 - **Breaking:** **TradeStatsReport** renamed to **PositionStatsReport**
 - **Breaking:** **TradeStatsReportGenerator** renamed to **PositionStatsReportGenerator**
-
+- **Breaking:** **TradeOpenedMinimumBarCountRule** renamed to **OpenedPositionMinimumBarCountRule**
+- **Breaking:** **Trade.class** renamed to **Position.class**
+- **Breaking:** **Order.class** renamed to **Trade.class**
 
 
 ### Fixed

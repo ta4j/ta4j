@@ -32,8 +32,8 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -54,8 +54,8 @@ public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest 
     @Test
     public void calculateWithTwoLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1, series), Order.sellAt(3, series),
-                Order.buyAt(3, series), Order.sellAt(4, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(3, series),
+                Trade.buyAt(3, series), Trade.sellAt(4, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
     }
@@ -63,7 +63,7 @@ public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest 
     @Test
     public void calculateWithOneLongPosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        Position position = new Position(Order.buyAt(1, series), Order.sellAt(3, series));
+        Position position = new Position(Trade.buyAt(1, series), Trade.sellAt(3, series));
 
         assertNumEquals(1, getCriterion().calculate(series, position));
     }
@@ -71,8 +71,8 @@ public class NumberOfLosingPositionsCriterionTest extends AbstractCriterionTest 
     @Test
     public void calculateWithTwoShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-                Order.sellAt(3, series), Order.buyAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.sellAt(3, series), Trade.buyAt(5, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
     }

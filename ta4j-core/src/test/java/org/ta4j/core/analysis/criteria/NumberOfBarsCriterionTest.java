@@ -32,8 +32,8 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -55,8 +55,8 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithTwoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+                Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion numberOfBars = getCriterion();
         assertNumEquals(6, numberOfBars.calculate(series, tradingRecord));
@@ -65,7 +65,7 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        Position t = new Position(Order.buyAt(2, series), Order.sellAt(5, series));
+        Position t = new Position(Trade.buyAt(2, series), Trade.sellAt(5, series));
         AnalysisCriterion numberOfBars = getCriterion();
         assertNumEquals(4, numberOfBars.calculate(series, t));
     }

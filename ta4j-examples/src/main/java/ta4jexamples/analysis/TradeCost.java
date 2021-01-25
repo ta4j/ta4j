@@ -29,9 +29,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Order;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.LinearBorrowingCostModel;
@@ -64,8 +64,8 @@ public class TradeCost {
 
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
-        Order.OrderType entryOrder = Order.OrderType.SELL;
-        TradingRecord tradingRecord = seriesManager.run(strategy, entryOrder);
+        Trade.TradeType entryTrade = Trade.TradeType.SELL;
+        TradingRecord tradingRecord = seriesManager.run(strategy, entryTrade);
 
         DecimalFormat df = new DecimalFormat("##.##");
         System.out.println("------------ Borrowing Costs ------------");

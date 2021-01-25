@@ -32,8 +32,8 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -47,8 +47,8 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithWinningLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+                Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
         assertNumEquals(1.10 * 1.05, ret.calculate(series, tradingRecord));
@@ -57,8 +57,8 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithLosingLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
         assertNumEquals(0.95 * 0.7, ret.calculate(series, tradingRecord));
@@ -67,8 +67,8 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateReturnWithWinningShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-                Order.sellAt(2, series), Order.buyAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
         assertNumEquals(1.05 * 1.30, ret.calculate(series, tradingRecord));
@@ -77,8 +77,8 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateReturnWithLosingShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 130);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-                Order.sellAt(2, series), Order.buyAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(5, series));
 
         AnalysisCriterion ret = getCriterion();
         assertNumEquals(0.95 * 0.70, ret.calculate(series, tradingRecord));

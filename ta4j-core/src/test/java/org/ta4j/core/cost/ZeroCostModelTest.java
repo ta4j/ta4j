@@ -28,8 +28,8 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
@@ -41,8 +41,8 @@ public class ZeroCostModelTest {
         ZeroCostModel model = new ZeroCostModel();
 
         int holdingPeriod = 2;
-        Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), model);
-        Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), model);
+        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), model);
+        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), model);
 
         Position position = new Position(entry, exit, model, model);
         Num cost = model.calculate(position, holdingPeriod);

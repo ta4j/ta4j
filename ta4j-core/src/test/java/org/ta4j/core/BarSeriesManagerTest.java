@@ -34,7 +34,7 @@ import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -86,7 +86,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     public void runOnWholeSeriesWithAmount() {
         BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
         manager.setBarSeries(series);
-        List<Position> allPositions = manager.run(strategy, OrderType.BUY, HUNDRED).getPositions();
+        List<Position> allPositions = manager.run(strategy, TradeType.BUY, HUNDRED).getPositions();
 
         assertEquals(2, allPositions.size());
         assertEquals(HUNDRED, allPositions.get(0).getEntry().getAmount());
@@ -99,11 +99,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Position> positions = manager.run(strategy).getPositions();
         assertEquals(2, positions.size());
 
-        assertEquals(Order.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
-        assertEquals(Order.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(1).getEntry());
-        assertEquals(Order.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(1).getExit());
+        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(1).getEntry());
+        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(1).getExit());
     }
 
     @Test
@@ -112,18 +112,18 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Position> positions = manager.run(aStrategy, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
-        assertEquals(Order.buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
     public void runWithOpenEntrySellLeft() {
         Strategy aStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3));
-        List<Position> positions = manager.run(aStrategy, OrderType.SELL, 0, 3).getPositions();
+        List<Position> positions = manager.run(aStrategy, TradeType.SELL, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
-        assertEquals(Order.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -131,16 +131,16 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         List<Position> positions = manager.run(strategy, 0, 3).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Order.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         positions = manager.run(strategy, 4, 4).getPositions();
         assertTrue(positions.isEmpty());
 
         positions = manager.run(strategy, 5, 8).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Order.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -157,23 +157,23 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         List<Position> positions = manager.run(aStrategy, 0, 1).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Order.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(2, series.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(2, series.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         positions = manager.run(aStrategy, 2, 3).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Order.buyAt(3, series.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(4, series.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(3, series.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(4, series.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         positions = manager.run(aStrategy, 4, 6).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Order.buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         positions = manager.run(aStrategy, 7, 7).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Order.buyAt(7, series.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Order.sellAt(9, series.getBar(9).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(Trade.buyAt(7, series.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(9, series.getBar(9).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         positions = manager.run(aStrategy, 8, 8).getPositions();
         assertTrue(positions.isEmpty());

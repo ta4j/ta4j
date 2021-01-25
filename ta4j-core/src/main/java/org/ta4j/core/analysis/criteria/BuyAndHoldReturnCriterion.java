@@ -24,8 +24,8 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -61,7 +61,7 @@ public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
     }
 
     private Position createBuyAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
-        Position position = new Position(Order.OrderType.BUY);
+        Position position = new Position(Trade.TradeType.BUY);
         position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
         position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
         return position;

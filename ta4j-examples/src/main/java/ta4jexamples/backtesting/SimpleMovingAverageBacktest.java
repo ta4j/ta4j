@@ -33,8 +33,8 @@ import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Order;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
@@ -52,12 +52,12 @@ public class SimpleMovingAverageBacktest {
         Strategy strategy3DaySma = create3DaySmaStrategy(series);
 
         BarSeriesManager seriesManager = new BarSeriesManager(series);
-        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Order.OrderType.BUY,
+        TradingRecord tradingRecord3DaySma = seriesManager.run(strategy3DaySma, Trade.TradeType.BUY,
                 DecimalNum.valueOf(50));
         System.out.println(tradingRecord3DaySma);
 
         Strategy strategy2DaySma = create2DaySmaStrategy(series);
-        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Order.OrderType.BUY,
+        TradingRecord tradingRecord2DaySma = seriesManager.run(strategy2DaySma, Trade.TradeType.BUY,
                 DecimalNum.valueOf(50));
         System.out.println(tradingRecord2DaySma);
 

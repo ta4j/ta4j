@@ -29,30 +29,30 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.DecimalNum;
 
-public class TradeOpenedMinimumBarCountRuleTest {
+public class OpenedPositionMinimumBarCountRuleTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForNegativeNumberShouldThrowException() {
-        new TradeOpenedMinimumBarCountRule(-1);
+        new OpenedPositionMinimumBarCountRule(-1);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForZeroShouldThrowException() {
-        new TradeOpenedMinimumBarCountRule(0);
+        new OpenedPositionMinimumBarCountRule(0);
     }
 
     @Test
     public void testAtLeastOneBarRuleForOpenedTrade() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertTrue(rule.isSatisfied(1, tradingRecord));
@@ -62,11 +62,11 @@ public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastMoreThanOneBarRuleForOpenedTrade() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(2);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(2);
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -76,11 +76,11 @@ public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForClosedTradeShouldAlwaysReturnsFalse() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
 
         final BarSeries series = new MockBarSeries(DecimalNum::valueOf, 1, 2, 3, 4);
 
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series));
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         assertFalse(rule.isSatisfied(0, tradingRecord));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -90,7 +90,7 @@ public class TradeOpenedMinimumBarCountRuleTest {
 
     @Test
     public void testAtLeastBarCountRuleForEmptyTradingRecordShouldAlwaysReturnsFalse() {
-        final TradeOpenedMinimumBarCountRule rule = new TradeOpenedMinimumBarCountRule(1);
+        final OpenedPositionMinimumBarCountRule rule = new OpenedPositionMinimumBarCountRule(1);
 
         final TradingRecord tradingRecord = new BaseTradingRecord();
 

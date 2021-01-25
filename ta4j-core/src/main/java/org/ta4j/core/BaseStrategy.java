@@ -48,7 +48,7 @@ public class BaseStrategy implements Strategy {
 
     /**
      * The unstable period (number of bars).<br>
-     * During the unstable period of the strategy any order placement will be
+     * During the unstable period of the strategy any trade placement will be
      * cancelled.<br>
      * I.e. no entry/exit signal will be fired before index == unstablePeriod.
      */

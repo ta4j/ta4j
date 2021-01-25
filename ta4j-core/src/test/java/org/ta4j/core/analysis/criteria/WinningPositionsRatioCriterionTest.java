@@ -33,8 +33,8 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -48,8 +48,8 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculate() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(3, series), Order.buyAt(4, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 
         AnalysisCriterion average = getCriterion();
 
@@ -59,8 +59,8 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithShortPositions() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(2, series),
-                Order.sellAt(3, series), Order.buyAt(4, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series), Trade.buyAt(4, series));
 
         AnalysisCriterion average = getCriterion();
 
@@ -70,12 +70,12 @@ public class WinningPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithOnePosition() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        Position position = new Position(Order.buyAt(0, series), Order.sellAt(1, series));
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         AnalysisCriterion average = getCriterion();
         assertNumEquals(numOf(0), average.calculate(series, position));
 
-        position = new Position(Order.buyAt(1, series), Order.sellAt(2, series));
+        position = new Position(Trade.buyAt(1, series), Trade.sellAt(2, series));
         assertNumEquals(1, average.calculate(series, position));
     }
 

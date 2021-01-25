@@ -29,8 +29,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
@@ -44,7 +44,7 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
-    public void calculateSingleOrderCost() {
+    public void calculateSingleTradeCost() {
         // Price - Amount calculation Test
         Num price = DoubleNum.valueOf(100);
         Num amount = DoubleNum.valueOf(2);
@@ -57,8 +57,8 @@ public class LinearTransactionCostModelTest {
     public void calculateBuyPosition() {
         // Calculate the transaction costs of a closed long position
         int holdingPeriod = 2;
-        Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
         Position position = new Position(entry, exit, transactionModel, new ZeroCostModel());
 
@@ -75,8 +75,8 @@ public class LinearTransactionCostModelTest {
     public void calculateSellPosition() {
         // Calculate the transaction costs of a closed short position
         int holdingPeriod = 2;
-        Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
-        Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
+        Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
+        Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
 
         Position position = new Position(entry, exit, transactionModel, new ZeroCostModel());
 
@@ -93,7 +93,7 @@ public class LinearTransactionCostModelTest {
     public void calculateOpenSellPosition() {
         // Calculate the transaction costs of an open position
         int currentIndex = 4;
-        Position position = new Position(Order.OrderType.BUY, transactionModel, new ZeroCostModel());
+        Position position = new Position(Trade.TradeType.BUY, transactionModel, new ZeroCostModel());
         position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
         Num costsFromModel = transactionModel.calculate(position, currentIndex);

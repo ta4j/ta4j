@@ -182,7 +182,7 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Calculates the ratio of intermediate prices.
      *
-     * @param isLongTrade true, if the entry order type is BUY
+     * @param isLongTrade true, if the entry trade type is BUY
      * @param entryPrice  price ratio denominator
      * @param exitPrice   price ratio numerator
      */
@@ -228,7 +228,7 @@ public class CashFlow implements Indicator<Num> {
      *
      * @param rawPrice    the gross asset price
      * @param holdingCost share of the holding cost per period
-     * @param isLongTrade true, if the entry order type is BUY
+     * @param isLongTrade true, if the entry trade type is BUY
      */
     static Num addCost(Num rawPrice, Num holdingCost, boolean isLongTrade) {
         Num netPrice;

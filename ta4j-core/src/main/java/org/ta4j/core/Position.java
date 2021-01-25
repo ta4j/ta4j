@@ -28,29 +28,29 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.io.Serializable;
 import java.util.Objects;
 
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Pair of two {@link Order orders}.
+ * Pair of two {@link Trade trades}.
  *
- * The exit order has the complement type of the entry order.<br>
+ * The exit trade has the complement type of the entry trade.<br>
  * I.e.: entry == BUY --> exit == SELL entry == SELL --> exit == BUY
  */
 public class Position implements Serializable {
 
     private static final long serialVersionUID = -5484709075767220358L;
 
-    /** The entry order */
-    private Order entry;
+    /** The entry trade */
+    private Trade entry;
 
-    /** The exit order */
-    private Order exit;
+    /** The exit trade */
+    private Trade exit;
 
-    /** The type of the entry order */
-    private OrderType startingType;
+    /** The type of the entry trade */
+    private TradeType startingType;
 
     /** The cost model for transactions of the asset */
     private CostModel transactionCostModel;
@@ -62,28 +62,28 @@ public class Position implements Serializable {
      * Constructor.
      */
     public Position() {
-        this(OrderType.BUY);
+        this(TradeType.BUY);
     }
 
     /**
      * Constructor.
      * 
-     * @param startingType the starting {@link OrderType order type} of the position
-     *                     (i.e. type of the entry order)
+     * @param startingType the starting {@link TradeType trade type} of the position
+     *                     (i.e. type of the entry trade)
      */
-    public Position(OrderType startingType) {
+    public Position(TradeType startingType) {
         this(startingType, new ZeroCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      * 
-     * @param startingType         the starting {@link OrderType order type} of the
-     *                             position (i.e. type of the entry order)
+     * @param startingType         the starting {@link TradeType trade type} of the
+     *                             position (i.e. type of the entry trade)
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public Position(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public Position(TradeType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (startingType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -95,30 +95,30 @@ public class Position implements Serializable {
     /**
      * Constructor.
      * 
-     * @param entry the entry {@link Order order}
-     * @param exit  the exit {@link Order order}
+     * @param entry the entry {@link Trade trade}
+     * @param exit  the exit {@link Trade trade}
      */
-    public Position(Order entry, Order exit) {
+    public Position(Trade entry, Trade exit) {
         this(entry, exit, entry.getCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      * 
-     * @param entry                the entry {@link Order order}
-     * @param exit                 the exit {@link Order order}
+     * @param entry                the entry {@link Trade trade}
+     * @param exit                 the exit {@link Trade trade}
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public Position(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel) {
 
         if (entry.getType().equals(exit.getType())) {
-            throw new IllegalArgumentException("Both orders must have different types");
+            throw new IllegalArgumentException("Both trades must have different types");
         }
 
         if (!(entry.getCostModel().equals(transactionCostModel))
                 || !(exit.getCostModel().equals(transactionCostModel))) {
-            throw new IllegalArgumentException("Orders and the position must incorporate the same trading cost model");
+            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
         }
 
         this.startingType = entry.getType();
@@ -129,16 +129,16 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the entry {@link Order order} of the position
+     * @return the entry {@link Trade trade} of the position
      */
-    public Order getEntry() {
+    public Trade getEntry() {
         return entry;
     }
 
     /**
-     * @return the exit {@link Order order} of the position
+     * @return the exit {@link Trade trade} of the position
      */
-    public Order getExit() {
+    public Trade getExit() {
         return exit;
     }
 
@@ -161,9 +161,9 @@ public class Position implements Serializable {
      * Operates the position at the index-th position
      * 
      * @param index the bar index
-     * @return the order
+     * @return the trade
      */
-    public Order operate(int index) {
+    public Trade operate(int index) {
         return operate(index, NaN, NaN);
     }
 
@@ -173,21 +173,21 @@ public class Position implements Serializable {
      * @param index  the bar index
      * @param price  the price
      * @param amount the amount
-     * @return the order
+     * @return the trade
      */
-    public Order operate(int index, Num price, Num amount) {
-        Order order = null;
+    public Trade operate(int index, Num price, Num amount) {
+        Trade trade = null;
         if (isNew()) {
-            order = new Order(index, startingType, price, amount, transactionCostModel);
-            entry = order;
+            trade = new Trade(index, startingType, price, amount, transactionCostModel);
+            entry = trade;
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
-                throw new IllegalStateException("The index i is less than the entryOrder index");
+                throw new IllegalStateException("The index i is less than the entryTrade index");
             }
-            order = new Order(index, startingType.complementType(), price, amount, transactionCostModel);
-            exit = order;
+            trade = new Trade(index, startingType.complementType(), price, amount, transactionCostModel);
+            exit = trade;
         }
-        return order;
+        return trade;
     }
 
     /**
@@ -323,7 +323,7 @@ public class Position implements Serializable {
         }
 
         // Profits of long position are losses of short
-        if (entry.getType().equals(OrderType.SELL)) {
+        if (entry.getType().equals(TradeType.SELL)) {
             grossProfit = grossProfit.multipliedBy(numOf(-1));
         }
         return grossProfit;

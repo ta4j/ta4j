@@ -28,8 +28,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.function.Function;
 
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
@@ -39,7 +39,7 @@ public class OpenedPositionUtils {
             AnalysisCriterion criterion, int expectedValue) {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-        Position trade = new Position(Order.OrderType.BUY);
+        Position trade = new Position(Trade.TradeType.BUY);
         trade.operate(0, series.numOf(2.5), series.numOf(1));
 
         final Num value = criterion.calculate(series, trade);

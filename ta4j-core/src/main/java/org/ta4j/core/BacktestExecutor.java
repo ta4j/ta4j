@@ -55,21 +55,21 @@ public class BacktestExecutor {
      * @param amount     the amount used to open/close the trades
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
-        return execute(strategies, amount, Order.OrderType.BUY);
+        return execute(strategies, amount, Trade.TradeType.BUY);
     }
 
     /**
-     * Executes given strategies with specified order type to open trades and
+     * Executes given strategies with specified trade type to open trades and
      * returns trading statements.
      * 
      * @param strategies the strategies
-     * @param amount     the amount used to open/close the trades
-     * @param orderType  the {@link Order.OrderType} used to open the trades
+     * @param amount     the amount used to open/close the position
+     * @param tradeType  the {@link Trade.TradeType} used to open the trades
      */
-    public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Order.OrderType orderType) {
+    public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
         for (Strategy strategy : strategies) {
-            final TradingRecord tradingRecord = seriesManager.run(strategy, orderType, amount);
+            final TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
             final TradingStatement tradingStatement = tradingStatementGenerator.generate(strategy, tradingRecord,
                     seriesManager.getBarSeries());
             tradingStatements.add(tradingStatement);

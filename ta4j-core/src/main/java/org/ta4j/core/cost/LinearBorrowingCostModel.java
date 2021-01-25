@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Order;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 public class LinearBorrowingCostModel implements CostModel {
@@ -53,7 +53,7 @@ public class LinearBorrowingCostModel implements CostModel {
      * Calculates the borrowing cost of a closed position.
      * 
      * @param position the position
-     * @return the absolute order cost
+     * @return the absolute trade cost
      */
     public Num calculate(Position position) {
         if (position.isOpened()) {
@@ -68,20 +68,20 @@ public class LinearBorrowingCostModel implements CostModel {
      * 
      * @param position     the position
      * @param currentIndex final bar index to be considered (for open positions)
-     * @return the absolute order cost
+     * @return the absolute trade cost
      */
     public Num calculate(Position position, int currentIndex) {
-        Order entryOrder = position.getEntry();
-        Order exitOrder = position.getExit();
+        Trade entryTrade = position.getEntry();
+        Trade exitTrade = position.getExit();
         Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
 
         // borrowing costs apply for short positions only
-        if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
+        if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {
             int tradingPeriods = 0;
             if (position.isClosed()) {
-                tradingPeriods = exitOrder.getIndex() - entryOrder.getIndex();
+                tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
             } else if (position.isOpened()) {
-                tradingPeriods = currentIndex - entryOrder.getIndex();
+                tradingPeriods = currentIndex - entryTrade.getIndex();
             }
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }

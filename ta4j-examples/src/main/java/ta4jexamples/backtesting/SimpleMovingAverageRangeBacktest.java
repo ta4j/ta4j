@@ -30,9 +30,9 @@ import org.ta4j.core.BacktestExecutor;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Order;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -58,7 +58,7 @@ public class SimpleMovingAverageRangeBacktest {
             strategies.add(strategy);
         }
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Order.OrderType.BUY);
+        backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Trade.TradeType.BUY);
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {

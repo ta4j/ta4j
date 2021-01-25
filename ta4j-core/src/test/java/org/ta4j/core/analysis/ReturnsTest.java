@@ -32,7 +32,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Order;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -60,19 +60,19 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void singleReturnPositionArith() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+                Trade.sellAt(1, sampleBarSeries));
         Returns return1 = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
         assertNumEquals(NaN.NaN, return1.getValue(0));
         assertNumEquals(1.0, return1.getValue(1));
     }
 
     @Test
-    public void returnsWithSellAndBuyOrders() {
+    public void returnsWithSellAndBuyTrades() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries), Order.buyAt(3, sampleBarSeries), Order.sellAt(4, sampleBarSeries),
-                Order.sellAt(5, sampleBarSeries), Order.buyAt(6, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+                Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries), Trade.sellAt(4, sampleBarSeries),
+                Trade.sellAt(5, sampleBarSeries), Trade.buyAt(6, sampleBarSeries));
 
         Returns strategyReturns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
 
@@ -88,8 +88,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void returnsWithGaps() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(2, sampleBarSeries),
-                Order.buyAt(5, sampleBarSeries), Order.buyAt(8, sampleBarSeries), Order.sellAt(10, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(2, sampleBarSeries),
+                Trade.buyAt(5, sampleBarSeries), Trade.buyAt(8, sampleBarSeries), Trade.sellAt(10, sampleBarSeries));
 
         Returns returns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.LOG);
 
