@@ -59,12 +59,12 @@ public class BacktestExecutor {
     }
 
     /**
-     * Executes given strategies with specified trade type to open trades and
-     * returns trading statements.
+     * Executes given strategies with specified trade type to open the position and
+     * return the trading statements.
      * 
      * @param strategies the strategies
      * @param amount     the amount used to open/close the position
-     * @param tradeType  the {@link Trade.TradeType} used to open the trades
+     * @param tradeType  the {@link Trade.TradeType} used to open the position
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
