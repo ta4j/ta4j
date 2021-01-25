@@ -23,6 +23,12 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
@@ -31,12 +37,6 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
 
     public ProfitLossPercentageCriterionTest(Function<Number, Num> numFunction) {
@@ -44,7 +44,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithWinningLongTrades() {
+    public void calculateWithWinningLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -53,7 +53,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithLosingLongTrades() {
+    public void calculateWithLosingLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -63,7 +63,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneWinningAndOneLosingLongTrades() {
+    public void calculateWithOneWinningAndOneLosingLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 195, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -73,7 +73,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithWinningShortTrades() {
+    public void calculateWithWinningShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 90, 100, 95, 95, 100);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(3, series));
@@ -82,7 +82,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithLosingShortTrades() {
+    public void calculateWithLosingShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 110, 100, 105, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(3, series));
@@ -98,7 +98,7 @@ public class ProfitLossPercentageCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

@@ -23,17 +23,17 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.Num;
-
-import java.time.ZonedDateTime;
-
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
+
+import java.time.ZonedDateTime;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.num.Num;
 
 public class AroonUpIndicatorTest {
 

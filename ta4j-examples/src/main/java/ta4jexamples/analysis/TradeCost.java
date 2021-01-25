@@ -23,6 +23,8 @@
  */
 package ta4jexamples.analysis;
 
+import java.text.DecimalFormat;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.BaseStrategy;
@@ -39,9 +41,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvTradesLoader;
 
-import java.text.DecimalFormat;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class displays an example of the transaction cost calculation.
@@ -68,15 +69,15 @@ public class TradeCost {
 
         DecimalFormat df = new DecimalFormat("##.##");
         System.out.println("------------ Borrowing Costs ------------");
-        tradingRecord.getTrades()
-                .forEach(trade -> System.out.println(
-                        "Borrowing cost for " + df.format(trade.getExit().getIndex() - trade.getEntry().getIndex())
-                                + " periods is: " + df.format(trade.getHoldingCost().doubleValue())));
+        tradingRecord.getPositions()
+                .forEach(position -> System.out.println("Borrowing cost for "
+                        + df.format(position.getExit().getIndex() - position.getEntry().getIndex()) + " periods is: "
+                        + df.format(position.getHoldingCost().doubleValue())));
         System.out.println("------------ Transaction Costs ------------");
-        tradingRecord.getTrades()
-                .forEach(trade -> System.out.println("Transaction cost for selling: "
-                        + df.format(trade.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
-                        + df.format(trade.getExit().getCost().doubleValue())));
+        tradingRecord.getPositions()
+                .forEach(position -> System.out.println("Transaction cost for selling: "
+                        + df.format(position.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
+                        + df.format(position.getExit().getCost().doubleValue())));
     }
 
     private static Strategy buildShortSellingMomentumStrategy(BarSeries series) {

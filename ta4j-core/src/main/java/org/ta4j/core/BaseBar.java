@@ -23,16 +23,16 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.DecimalNum;
-
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.function.Function;
+
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link Bar}.

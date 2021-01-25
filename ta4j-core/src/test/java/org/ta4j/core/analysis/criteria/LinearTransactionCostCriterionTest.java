@@ -23,15 +23,21 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExternalCriterionTest;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
 public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
 
@@ -101,24 +107,24 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void fixedCostWithOneTrade() {
+    public void fixedCostWithOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
-        Trade trade = new Trade();
+        Position position = new Position();
         Num criterion;
 
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, position);
         assertNumEquals(0d, criterion);
 
-        trade.operate(1);
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        position.operate(1);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, position);
         assertNumEquals(0.75d, criterion);
 
-        trade.operate(3);
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        position.operate(3);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, position);
         assertNumEquals(1.5d, criterion);
 
-        trade.operate(4);
-        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, trade);
+        position.operate(4);
+        criterion = getCriterion(1000d, 0d, 0.75d).calculate(series, position);
         assertNumEquals(1.5d, criterion);
     }
 

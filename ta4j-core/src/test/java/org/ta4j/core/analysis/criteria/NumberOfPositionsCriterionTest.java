@@ -23,24 +23,29 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
-public class NumberOfTradesCriterionTest extends AbstractCriterionTest {
+public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
-    public NumberOfTradesCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfTradesCriterion(), numFunction);
+    public NumberOfPositionsCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new NumberOfPositionsCriterion(), numFunction);
     }
 
     @Test
-    public void calculateWithNoTrades() {
+    public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         AnalysisCriterion buyAndHold = getCriterion();
@@ -48,7 +53,7 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithTwoTrades() {
+    public void calculateWithTwoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -58,12 +63,12 @@ public class NumberOfTradesCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade() {
+    public void calculateWithOnePosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        Trade trade = new Trade();
-        AnalysisCriterion tradesCriterion = getCriterion();
+        Position position = new Position();
+        AnalysisCriterion positionsCriterion = getCriterion();
 
-        assertNumEquals(1, tradesCriterion.calculate(series, trade));
+        assertNumEquals(1, positionsCriterion.calculate(series, position));
     }
 
     @Test

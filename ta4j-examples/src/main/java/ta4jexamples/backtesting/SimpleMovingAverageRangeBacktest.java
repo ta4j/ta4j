@@ -23,23 +23,24 @@
  */
 package ta4jexamples.backtesting;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.ta4j.core.BacktestExecutor;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Order;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvBarsLoader;
 
-import java.util.ArrayList;
-import java.util.List;
+import ta4jexamples.loaders.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
 

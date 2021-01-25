@@ -23,6 +23,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,11 +36,6 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

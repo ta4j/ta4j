@@ -24,37 +24,38 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss in percentage criterion, defined as the trade profit over the
- * purchase price.
+ * Profit and loss in percentage criterion, defined as the position profit over
+ * the purchase price.
  *
- * The profit or loss in percentage over the provided {@link Trade trade(s)}.
+ * The profit or loss in percentage over the provided {@link Position
+ * position(s)}.
  * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
  */
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-                .reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
     }
 
     /**
-     * Calculates the profit or loss on a trade in percentage.
+     * Calculates the profit or loss on a position in percentage.
      *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit or loss on a trade
+     * @param series   a bar series
+     * @param position a position
+     * @return the profit or loss on a position
      */
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num entryPrice = trade.getEntry().getPricePerAsset();
-            return trade.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
+    public Num calculate(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            Num entryPrice = position.getEntry().getPricePerAsset();
+            return position.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
         }
         return series.numOf(0);
     }

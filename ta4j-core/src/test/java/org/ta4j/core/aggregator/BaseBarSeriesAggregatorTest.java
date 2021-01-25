@@ -23,13 +23,8 @@
  */
 package org.ta4j.core.aggregator;
 
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -38,8 +33,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.num.Num;
 
 public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 

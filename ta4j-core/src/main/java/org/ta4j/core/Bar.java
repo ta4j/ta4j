@@ -23,14 +23,14 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Function;
+
+import org.ta4j.core.num.Num;
 
 /**
  * End bar of a time period.

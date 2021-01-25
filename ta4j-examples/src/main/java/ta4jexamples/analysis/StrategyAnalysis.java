@@ -24,10 +24,20 @@
 package ta4jexamples.analysis;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
 import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.*;
+import org.ta4j.core.analysis.criteria.AverageReturnPerBarCriterion;
+import org.ta4j.core.analysis.criteria.BuyAndHoldReturnCriterion;
+import org.ta4j.core.analysis.criteria.LinearTransactionCostCriterion;
+import org.ta4j.core.analysis.criteria.MaximumDrawdownCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfBarsCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
+import org.ta4j.core.analysis.criteria.WinningPositionsRatioCriterion;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
@@ -59,11 +69,11 @@ public class StrategyAnalysis {
         // Average profit (per bar)
         System.out.println(
                 "Average return (per bar): " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
-        // Number of trades
-        System.out.println("Number of trades: " + new NumberOfTradesCriterion().calculate(series, tradingRecord));
-        // Profitable trades ratio
-        System.out
-                .println("Winning trades ratio: " + new WinningTradesRatioCriterion().calculate(series, tradingRecord));
+        // Number of positions
+        System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
+        // Profitable position ratio
+        System.out.println(
+                "Winning positions ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
         // Maximum drawdown
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
         // Reward-risk ratio

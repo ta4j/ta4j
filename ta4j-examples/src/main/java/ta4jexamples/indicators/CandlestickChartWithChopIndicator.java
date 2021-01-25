@@ -23,6 +23,12 @@
  */
 package ta4jexamples.indicators;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.GridLayout;
+import java.awt.Stroke;
+import java.util.Date;
+
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYLineAnnotation;
@@ -45,10 +51,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import ta4jexamples.loaders.CsvTradesLoader;
 
-import java.awt.*;
-import java.util.Date;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a traditional candlestick chart.

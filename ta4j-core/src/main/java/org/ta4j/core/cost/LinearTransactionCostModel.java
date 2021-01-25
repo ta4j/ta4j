@@ -24,55 +24,56 @@
 package org.ta4j.core.cost;
 
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 public class LinearTransactionCostModel implements CostModel {
 
+    private static final long serialVersionUID = -8808559507754156097L;
     /**
-     * Slope of the linear model - fee per trade
+     * Slope of the linear model - fee per position
      */
-    private double feePerTrade;
+    private double feePerPosition;
 
     /**
-     * Constructor. (feePerTrade * x)
+     * Constructor. (feePerPosition * x)
      * 
-     * @param feePerTrade the feePerTrade coefficient (e.g. 0.005 for 0.5% per
-     *                    {@link Order order})
+     * @param feePerPosition the feePerPosition coefficient (e.g. 0.005 for 0.5% per
+     *                       {@link Order order})
      */
-    public LinearTransactionCostModel(double feePerTrade) {
-        this.feePerTrade = feePerTrade;
+    public LinearTransactionCostModel(double feePerPosition) {
+        this.feePerPosition = feePerPosition;
     }
 
     /**
-     * Calculates the transaction cost of a trade.
+     * Calculates the transaction cost of a position.
      * 
-     * @param trade        the trade
+     * @param position     the position
      * @param currentIndex current bar index (irrelevant for the
      *                     LinearTransactionCostModel)
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade, int currentIndex) {
-        return this.calculate(trade);
+    public Num calculate(Position position, int currentIndex) {
+        return this.calculate(position);
     }
 
     /**
-     * Calculates the transaction cost of a trade.
+     * Calculates the transaction cost of a position.
      * 
-     * @param trade the trade
+     * @param position the position
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade) {
-        Num totalTradeCost = null;
-        Order entryOrder = trade.getEntry();
+    public Num calculate(Position position) {
+        Num totalPositionCost = null;
+        Order entryOrder = position.getEntry();
         if (entryOrder != null) {
             // transaction costs of entry order
-            totalTradeCost = entryOrder.getCost();
-            if (trade.getExit() != null) {
-                totalTradeCost = totalTradeCost.plus(trade.getExit().getCost());
+            totalPositionCost = entryOrder.getCost();
+            if (position.getExit() != null) {
+                totalPositionCost = totalPositionCost.plus(position.getExit().getCost());
             }
         }
-        return totalTradeCost;
+        return totalPositionCost;
     }
 
     /**
@@ -81,7 +82,7 @@ public class LinearTransactionCostModel implements CostModel {
      * @return the absolute order transaction cost
      */
     public Num calculate(Num price, Num amount) {
-        return amount.numOf(feePerTrade).multipliedBy(price).multipliedBy(amount);
+        return amount.numOf(feePerPosition).multipliedBy(price).multipliedBy(amount);
     }
 
     /**
@@ -92,7 +93,7 @@ public class LinearTransactionCostModel implements CostModel {
     public boolean equals(CostModel otherModel) {
         boolean equality = false;
         if (this.getClass().equals(otherModel.getClass())) {
-            equality = ((LinearTransactionCostModel) otherModel).feePerTrade == this.feePerTrade;
+            equality = ((LinearTransactionCostModel) otherModel).feePerPosition == this.feePerPosition;
         }
         return equality;
     }

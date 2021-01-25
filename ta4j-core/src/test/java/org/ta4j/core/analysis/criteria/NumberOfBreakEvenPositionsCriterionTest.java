@@ -23,56 +23,56 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class NumberOfLosingTradesCriterionTest extends AbstractCriterionTest {
+import java.util.function.Function;
 
-    public NumberOfLosingTradesCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfLosingTradesCriterion(), numFunction);
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
+public class NumberOfBreakEvenPositionsCriterionTest extends AbstractCriterionTest {
+
+    public NumberOfBreakEvenPositionsCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new NumberOfBreakEvenPositionsCriterion(), numFunction);
     }
 
     @Test
-    public void calculateWithNoTrades() {
+    public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         assertNumEquals(0, getCriterion().calculate(series, new BaseTradingRecord()));
     }
 
     @Test
-    public void calculateWithTwoLongTrades() {
+    public void calculateWithTwoLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(1, series), Order.sellAt(3, series),
-                Order.buyAt(3, series), Order.sellAt(4, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(3, series),
+                Order.buyAt(1, series), Order.sellAt(5, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateWithOneLongTrade() {
+    public void calculateWithOneLongPosition() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        Trade trade = new Trade(Order.buyAt(1, series), Order.sellAt(3, series));
+        Position position = new Position(Order.buyAt(0, series), Order.sellAt(3, series));
 
-        assertNumEquals(1, getCriterion().calculate(series, trade));
+        assertNumEquals(1, getCriterion().calculate(series, position));
     }
 
     @Test
-    public void calculateWithTwoShortTrades() {
+    public void calculateWithTwoShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
-                Order.sellAt(3, series), Order.buyAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(3, series),
+                Order.sellAt(1, series), Order.buyAt(5, series));
 
         assertNumEquals(2, getCriterion().calculate(series, tradingRecord));
     }
@@ -85,7 +85,7 @@ public class NumberOfLosingTradesCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

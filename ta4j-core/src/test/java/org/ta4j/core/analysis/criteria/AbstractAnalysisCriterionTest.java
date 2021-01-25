@@ -23,21 +23,21 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeriesManager;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.BooleanRule;
-import org.ta4j.core.trading.rules.FixedRule;
+import static junit.framework.TestCase.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static junit.framework.TestCase.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.trading.rules.BooleanRule;
+import org.ta4j.core.trading.rules.FixedRule;
 
 public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 

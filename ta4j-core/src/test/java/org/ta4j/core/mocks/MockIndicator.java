@@ -23,11 +23,11 @@
  */
 package org.ta4j.core.mocks;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
-
-import java.util.List;
 
 public class MockIndicator implements Indicator<Num> {
 

@@ -23,6 +23,9 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -31,9 +34,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConvergenceDivergenceIndicator.ConvergenceDivergenceStrictType;
 import org.ta4j.core.indicators.helpers.ConvergenceDivergenceIndicator.ConvergenceDivergenceType;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class ConvergenceDivergenceIndicatorTest {
 

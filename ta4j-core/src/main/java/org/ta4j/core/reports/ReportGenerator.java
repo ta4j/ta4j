@@ -28,7 +28,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Generic interface for generating trade reports
+ * Generic interface for generating trading reports
  *
  * @param <T> type of report to be generated
  */

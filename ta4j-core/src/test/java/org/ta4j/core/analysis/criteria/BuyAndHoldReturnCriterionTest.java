@@ -23,15 +23,20 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Order;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
 public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
@@ -40,7 +45,7 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -50,7 +55,7 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithLossTrades() {
+    public void calculateOnlyWithLossPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -60,7 +65,7 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithNoTrades() {
+    public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion buyAndHold = getCriterion();
@@ -68,11 +73,11 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOneTrade() {
+    public void calculateWithOnePositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105);
-        Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+        Position position = new Position(Order.buyAt(0, series), Order.sellAt(1, series));
         AnalysisCriterion buyAndHold = getCriterion();
-        assertNumEquals(105d / 100, buyAndHold.calculate(series, trade));
+        assertNumEquals(105d / 100, buyAndHold.calculate(series, position));
     }
 
     @Test

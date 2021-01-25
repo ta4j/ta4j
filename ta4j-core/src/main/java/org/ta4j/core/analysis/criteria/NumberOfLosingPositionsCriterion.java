@@ -21,35 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.analysis.criteria;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * This class represents report with statistics for executed trades
+ * Number of losing position criterion.
  */
-public class TradeStatsReport {
+public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion {
 
-    private final Num profitTradeCount;
-    private final Num lossTradeCount;
-    private final Num breakEvenTradeCount;
-
-    public TradeStatsReport(Num profitTradeCount, Num lossTradeCount, Num breakEvenTradeCount) {
-        this.profitTradeCount = profitTradeCount;
-        this.lossTradeCount = lossTradeCount;
-        this.breakEvenTradeCount = breakEvenTradeCount;
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfLosingTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .filter(this::isLosingTrade).count();
+        return series.numOf(numberOfLosingTrades);
     }
 
-    public Num getProfitTradeCount() {
-        return profitTradeCount;
+    private boolean isLosingTrade(Position position) {
+        if (position.isClosed()) {
+            return position.getProfit().isNegative();
+        }
+        return false;
     }
 
-    public Num getLossTradeCount() {
-        return lossTradeCount;
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        return isLosingTrade(position) ? series.numOf(1) : series.numOf(0);
     }
 
-    public Num getBreakEvenTradeCount() {
-        return breakEvenTradeCount;
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isLessThan(criterionValue2);
     }
-
 }

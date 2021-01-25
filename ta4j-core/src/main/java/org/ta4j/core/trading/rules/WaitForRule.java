@@ -25,9 +25,8 @@ package org.ta4j.core.trading.rules;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.Order;
+import org.ta4j.core.Order.OrderType;
 import org.ta4j.core.TradingRecord;
-
-import static org.ta4j.core.Order.OrderType;
 
 /**
  * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after an

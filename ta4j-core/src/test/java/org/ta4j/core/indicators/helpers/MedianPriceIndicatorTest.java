@@ -23,21 +23,21 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Bar;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import static junit.framework.TestCase.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static junit.framework.TestCase.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
 public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private MedianPriceIndicator average;

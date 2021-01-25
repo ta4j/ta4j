@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Parabolic SAR indicator.

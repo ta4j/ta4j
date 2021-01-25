@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.trading.rules;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Indicator-in-slope rule.

@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -52,13 +52,13 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        Num bars = numberOfBars.calculate(series, trade);
+    public Num calculate(BarSeries series, Position position) {
+        Num bars = numberOfBars.calculate(series, position);
         if (bars.isEqual(series.numOf(0))) {
             return series.numOf(1);
         }
 
-        return totalReturn.calculate(series, trade).pow(series.numOf(1).dividedBy(bars));
+        return totalReturn.calculate(series, position).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override

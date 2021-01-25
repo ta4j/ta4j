@@ -23,19 +23,23 @@
  */
 package org.ta4j.core.analysis;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DecimalNum;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Order;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -54,7 +58,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void singleReturnTradeArith() {
+    public void singleReturnPositionArith() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
                 Order.sellAt(1, sampleBarSeries));
@@ -105,7 +109,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void returnsWithNoTrades() {
+    public void returnsWithNoPositions() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), Returns.ReturnType.LOG);
         assertNumEquals(NaN.NaN, returns.getValue(0));

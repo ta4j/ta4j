@@ -23,6 +23,13 @@
  */
 package ta4jexamples.indicators;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
@@ -35,14 +42,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.PriceVariationIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import ta4jexamples.loaders.CsvTradesLoader;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a CSV file containing values from indicators.

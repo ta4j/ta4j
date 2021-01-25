@@ -24,11 +24,12 @@
 package org.ta4j.core.cost;
 
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 public class LinearBorrowingCostModel implements CostModel {
 
+    private static final long serialVersionUID = -2839623394737567618L;
     /**
      * Slope of the linear model - fee per period
      */
@@ -49,39 +50,40 @@ public class LinearBorrowingCostModel implements CostModel {
     }
 
     /**
-     * Calculates the borrowing cost of a closed trade.
+     * Calculates the borrowing cost of a closed position.
      * 
-     * @param trade the trade
+     * @param position the position
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade) {
-        if (trade.isOpened()) {
-            throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
+    public Num calculate(Position position) {
+        if (position.isOpened()) {
+            throw new IllegalArgumentException(
+                    "Position is not closed. Final index of observation needs to be provided.");
         }
-        return calculate(trade, trade.getExit().getIndex());
+        return calculate(position, position.getExit().getIndex());
     }
 
     /**
-     * Calculates the borrowing cost of a trade.
+     * Calculates the borrowing cost of a position.
      * 
-     * @param trade        the trade
-     * @param currentIndex final bar index to be considered (for open trades)
+     * @param position     the position
+     * @param currentIndex final bar index to be considered (for open positions)
      * @return the absolute order cost
      */
-    public Num calculate(Trade trade, int currentIndex) {
-        Order entryOrder = trade.getEntry();
-        Order exitOrder = trade.getExit();
-        Num borrowingCost = trade.getEntry().getNetPrice().numOf(0);
+    public Num calculate(Position position, int currentIndex) {
+        Order entryOrder = position.getEntry();
+        Order exitOrder = position.getExit();
+        Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
 
         // borrowing costs apply for short positions only
         if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
             int tradingPeriods = 0;
-            if (trade.isClosed()) {
+            if (position.isClosed()) {
                 tradingPeriods = exitOrder.getIndex() - entryOrder.getIndex();
-            } else if (trade.isOpened()) {
+            } else if (position.isOpened()) {
                 tradingPeriods = currentIndex - entryOrder.getIndex();
             }
-            borrowingCost = getHoldingCostForPeriods(tradingPeriods, trade.getEntry().getValue());
+            borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }
         return borrowingCost;
     }

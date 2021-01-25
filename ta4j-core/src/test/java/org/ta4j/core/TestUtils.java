@@ -23,14 +23,15 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DecimalNum;
-
-import java.math.BigDecimal;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+
+import java.math.BigDecimal;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 
 /**
  * Utility class for {@code Num} tests.

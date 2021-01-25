@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.List;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Bar;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Fibonacci Reversal Indicator.

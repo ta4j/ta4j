@@ -24,8 +24,8 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
 /**

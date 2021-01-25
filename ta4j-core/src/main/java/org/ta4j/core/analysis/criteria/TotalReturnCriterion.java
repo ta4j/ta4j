@@ -24,27 +24,27 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
  * Total return criterion.
  *
- * The total return of the provided {@link Trade trade(s)} over the provided
- * {@link BarSeries series}.
+ * The total return of the provided {@link Position position(s)} over the
+ * provided {@link BarSeries series}.
  */
 public class TotalReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().map(trade -> calculateProfit(series, trade)).reduce(series.numOf(1),
-                Num::multipliedBy);
+        return tradingRecord.getPositions().stream().map(position -> calculateProfit(series, position))
+                .reduce(series.numOf(1), Num::multipliedBy);
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return calculateProfit(series, trade);
+    public Num calculate(BarSeries series, Position position) {
+        return calculateProfit(series, position);
     }
 
     @Override
@@ -53,15 +53,15 @@ public class TotalReturnCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the return of a trade (Buy and sell).
+     * Calculates the return of a position (Buy and sell).
      *
-     * @param series a bar series
-     * @param trade  a trade
-     * @return the profit of the trade
+     * @param series   a bar series
+     * @param position a position
+     * @return the profit of the position
      */
-    private Num calculateProfit(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getGrossReturn(series);
+    private Num calculateProfit(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            return position.getGrossReturn(series);
         }
         return series.numOf(1);
     }

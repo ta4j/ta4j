@@ -28,7 +28,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * This class generates TradingStatement basis on provided trading report and
+ * This class generates TradingStatement basis on provided trading record and
  * bar series
  *
  * @see TradingStatement
@@ -36,24 +36,25 @@ import org.ta4j.core.TradingRecord;
 public class TradingStatementGenerator implements ReportGenerator<TradingStatement> {
 
     private final PerformanceReportGenerator performanceReportGenerator;
-    private final TradeStatsReportGenerator tradeStatsReportGenerator;
+    private final PositionStatsReportGenerator positionStatsReportGenerator;
 
     public TradingStatementGenerator() {
-        this(new PerformanceReportGenerator(), new TradeStatsReportGenerator());
+        this(new PerformanceReportGenerator(), new PositionStatsReportGenerator());
     }
 
     public TradingStatementGenerator(PerformanceReportGenerator performanceReportGenerator,
-            TradeStatsReportGenerator tradeStatsReportGenerator) {
+            PositionStatsReportGenerator positionStatsReportGenerator) {
         super();
         this.performanceReportGenerator = performanceReportGenerator;
-        this.tradeStatsReportGenerator = tradeStatsReportGenerator;
+        this.positionStatsReportGenerator = positionStatsReportGenerator;
     }
 
     @Override
     public TradingStatement generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
         final PerformanceReport performanceReport = performanceReportGenerator.generate(strategy, tradingRecord,
                 series);
-        final TradeStatsReport tradeStatsReport = tradeStatsReportGenerator.generate(strategy, tradingRecord, series);
-        return new TradingStatement(strategy, tradeStatsReport, performanceReport);
+        final PositionStatsReport positionStatsReport = positionStatsReportGenerator.generate(strategy, tradingRecord,
+                series);
+        return new TradingStatement(strategy, positionStatsReport, performanceReport);
     }
 }

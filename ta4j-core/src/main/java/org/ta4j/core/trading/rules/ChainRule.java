@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.trading.rules;
 
+import java.util.Arrays;
+import java.util.LinkedList;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.trading.rules.helper.ChainLink;
-
-import java.util.Arrays;
-import java.util.LinkedList;
 
 /**
  * A chainrule has an initial rule that has to be satisfied before chain links

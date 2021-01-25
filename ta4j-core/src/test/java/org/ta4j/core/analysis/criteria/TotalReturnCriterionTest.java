@@ -23,20 +23,20 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class TotalReturnCriterionTest extends AbstractCriterionTest {
 
@@ -45,7 +45,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithWinningLongTrades() {
+    public void calculateWithWinningLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
                 Order.buyAt(3, series), Order.sellAt(5, series));
@@ -55,7 +55,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithLosingLongTrades() {
+    public void calculateWithLosingLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
                 Order.buyAt(2, series), Order.sellAt(5, series));
@@ -65,7 +65,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateReturnWithWinningShortTrades() {
+    public void calculateReturnWithWinningShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(5, series));
@@ -75,7 +75,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateReturnWithLosingShortTrades() {
+    public void calculateReturnWithLosingShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 130);
         TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(0, series), Order.buyAt(1, series),
                 Order.sellAt(2, series), Order.buyAt(5, series));
@@ -85,7 +85,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithNoTradesShouldReturn1() {
+    public void calculateWithNoPositionsShouldReturn1() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
         AnalysisCriterion ret = getCriterion();
@@ -93,13 +93,13 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateWithOpenedTradeShouldReturn1() {
+    public void calculateWithOpenedPositionShouldReturn1() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         AnalysisCriterion ret = getCriterion();
-        Trade trade = new Trade();
-        assertNumEquals(1d, ret.calculate(series, trade));
-        trade.operate(0);
-        assertNumEquals(1d, ret.calculate(series, trade));
+        Position position = new Position();
+        assertNumEquals(1d, ret.calculate(series, position));
+        position.operate(0);
+        assertNumEquals(1d, ret.calculate(series, position));
     }
 
     @Test
@@ -110,7 +110,7 @@ public class TotalReturnCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnOne() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 1);
+    public void testCalculateOneOpenPositionShouldReturnOne() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 1);
     }
 }

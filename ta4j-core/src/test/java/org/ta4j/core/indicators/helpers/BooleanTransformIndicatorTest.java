@@ -23,6 +23,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -32,11 +37,6 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator.BooleanTransformSimpleType;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator.BooleanTransformType;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 

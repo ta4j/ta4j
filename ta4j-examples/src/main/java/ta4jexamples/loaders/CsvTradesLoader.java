@@ -23,12 +23,6 @@
  */
 package ta4jexamples.loaders;
 
-import com.opencsv.CSVReader;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeries;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -41,6 +35,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+
+import com.opencsv.CSVReader;
 
 /**
  * This class builds a Ta4j bar series from a CSV file containing trades.

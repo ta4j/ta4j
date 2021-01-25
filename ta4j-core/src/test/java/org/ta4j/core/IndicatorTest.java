@@ -23,14 +23,14 @@
  */
 package org.ta4j.core;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for {@link Indicator}.

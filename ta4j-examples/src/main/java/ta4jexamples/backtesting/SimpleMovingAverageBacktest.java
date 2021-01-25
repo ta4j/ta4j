@@ -23,19 +23,26 @@
  */
 package ta4jexamples.backtesting;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
-import org.ta4j.core.indicators.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.trading.rules.OverIndicatorRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
-
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Order;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.trading.rules.OverIndicatorRule;
+import org.ta4j.core.trading.rules.UnderIndicatorRule;
 
 public class SimpleMovingAverageBacktest {
 

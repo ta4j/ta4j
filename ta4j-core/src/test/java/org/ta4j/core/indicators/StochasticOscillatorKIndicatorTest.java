@@ -23,19 +23,20 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.num.Num;
 
 public class StochasticOscillatorKIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

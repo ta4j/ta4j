@@ -11,6 +11,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
 - **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
 - **Breaking:** package "tradereports" renamed to "reports"
+- **Breaking:** **NumberOfTradesCriterion** renamed to **NumberOfPositionsCriterion**
+- **Breaking:** **NumberOfLosingTradesCriterion** renamed to **NumberOfLosingPositionsCriterion**
+- **Breaking:** **NumberOfWinningTradesCriterion** renamed to **NumberOfWinningPositionsCriterion**
+- **Breaking:** **NumberOfBreakEvenTradesCriterion** renamed to **NumberOfBreakEvenPositionsCriterion**
+- **Breaking:** **WinningTradesRatioCriterion** renamed to **WinningPositionsRatioCriterion**
+- **Breaking:** **TradeStatsReport** renamed to **PositionStatsReport**
+- **Breaking:** **TradeStatsReportGenerator** renamed to **PositionStatsReportGenerator**
+
+
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.

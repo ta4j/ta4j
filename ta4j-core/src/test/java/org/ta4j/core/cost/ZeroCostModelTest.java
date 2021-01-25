@@ -23,28 +23,29 @@
  */
 package org.ta4j.core.cost;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
 import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ZeroCostModelTest {
 
     @Test
-    public void calculatePerTrade() {
-        // calculate costs per trade
+    public void calculatePerPosition() {
+        // calculate costs per position
         ZeroCostModel model = new ZeroCostModel();
 
         int holdingPeriod = 2;
         Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), model);
         Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), model);
 
-        Trade trade = new Trade(entry, exit, model, model);
-        Num cost = model.calculate(trade, holdingPeriod);
+        Position position = new Position(entry, exit, model, model);
+        Num cost = model.calculate(position, holdingPeriod);
 
         assertNumEquals(cost, DoubleNum.valueOf(0));
 
@@ -52,7 +53,7 @@ public class ZeroCostModelTest {
 
     @Test
     public void calculatePerPrice() {
-        // calculate costs per trade
+        // calculate costs per position
         ZeroCostModel model = new ZeroCostModel();
         Num cost = model.calculate(DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 

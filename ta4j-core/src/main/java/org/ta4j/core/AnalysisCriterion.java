@@ -23,9 +23,9 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.util.List;
+
+import org.ta4j.core.num.Num;
 
 /**
  * An analysis criterion.
@@ -39,16 +39,16 @@ import java.util.List;
 public interface AnalysisCriterion {
 
     /**
-     * @param series a bar series, not null
-     * @param trade  a trade, not null
-     * @return the criterion value for the trade
+     * @param series   a bar series, not null
+     * @param position a position, not null
+     * @return the criterion value for the position
      */
-    Num calculate(BarSeries series, Trade trade);
+    Num calculate(BarSeries series, Position position);
 
     /**
      * @param series        a bar series, not null
      * @param tradingRecord a trading record, not null
-     * @return the criterion value for the trades
+     * @return the criterion value for the positions
      */
     Num calculate(BarSeries series, TradingRecord tradingRecord);
 

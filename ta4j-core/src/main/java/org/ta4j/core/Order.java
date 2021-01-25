@@ -23,12 +23,12 @@
  */
 package org.ta4j.core;
 
+import java.io.Serializable;
+import java.util.Objects;
+
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
-
-import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * An order.
@@ -40,7 +40,7 @@ import java.util.Objects;
  * <li>a pricePerAsset (optional)
  * <li>an amount to be (or that was) ordered (optional)
  * </ul>
- * A {@link Trade trade} is a pair of complementary orders.
+ * A {@link Position position} is a pair of complementary orders.
  */
 public class Order implements Serializable {
 

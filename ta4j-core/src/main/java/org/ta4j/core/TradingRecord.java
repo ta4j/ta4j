@@ -23,13 +23,13 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Order.OrderType;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
 import java.util.List;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.num.Num;
 
 /**
  * A history/record of a trading session.
@@ -55,9 +55,9 @@ public interface TradingRecord extends Serializable {
     String getName();
 
     /**
-     * @return the current trade
+     * @return the current position
      */
-    Trade getCurrentTrade();
+    Position getCurrentPosition();
 
     /**
      * Operates an order in the trading record.
@@ -118,31 +118,31 @@ public interface TradingRecord extends Serializable {
     boolean exit(int index, Num price, Num amount);
 
     /**
-     * @return true if no trade is open, false otherwise
+     * @return true if no position is open, false otherwise
      */
     default boolean isClosed() {
-        return !getCurrentTrade().isOpened();
+        return !getCurrentPosition().isOpened();
     }
 
     /**
-     * @return the recorded trades
+     * @return the recorded positions
      */
-    List<Trade> getTrades();
+    List<Position> getPositions();
 
     /**
-     * @return the number of recorded trades
+     * @return the number of recorded positions
      */
-    default int getTradeCount() {
-        return getTrades().size();
+    default int getPositionCount() {
+        return getPositions().size();
     }
 
     /**
-     * @return the last trade recorded
+     * @return the last position recorded
      */
-    default Trade getLastTrade() {
-        List<Trade> trades = getTrades();
-        if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+    default Position getLastPosition() {
+        List<Position> positions = getPositions();
+        if (!positions.isEmpty()) {
+            return positions.get(positions.size() - 1);
         }
         return null;
     }

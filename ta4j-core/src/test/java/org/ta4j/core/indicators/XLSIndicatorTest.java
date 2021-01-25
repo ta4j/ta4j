@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.function.Function;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.XlsTestsUtils;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
 
 public class XLSIndicatorTest implements ExternalIndicatorTest {
 

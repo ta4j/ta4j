@@ -25,7 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -56,12 +56,12 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, trade);
+    public Num calculate(BarSeries series, Position position) {
+        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = totalProfitCriterion.calculate(series, trade);
+            final Num totalProfit = totalProfitCriterion.calculate(series, position);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }

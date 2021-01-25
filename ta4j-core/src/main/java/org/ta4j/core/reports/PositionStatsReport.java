@@ -21,39 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.reports;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of winning trades criterion.
+ * This class represents report with statistics for positions.
  */
-public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
+public class PositionStatsReport {
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfWinningTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
-                .filter(this::isWinningTrade).count();
-        return series.numOf(numberOfWinningTrades);
+    private final Num profitCount;
+    private final Num lossCount;
+    private final Num breakEvenCount;
+
+    /**
+     * Constructor.
+     * 
+     * @param profitCount    the number of positions making a profit
+     * @param lossCount      the number of positions making a loss
+     * @param breakEvenCount the number of positions with a break even
+     */
+    public PositionStatsReport(Num profitCount, Num lossCount, Num breakEvenCount) {
+        this.profitCount = profitCount;
+        this.lossCount = lossCount;
+        this.breakEvenCount = breakEvenCount;
     }
 
-    private boolean isWinningTrade(Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getProfit().isPositive();
-        }
-        return false;
+    public Num getProfitCount() {
+        return profitCount;
     }
 
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isWinningTrade(trade) ? series.numOf(1) : series.numOf(0);
+    public Num getLossCount() {
+        return lossCount;
     }
 
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+    public Num getBreakEvenCount() {
+        return breakEvenCount;
     }
+
 }
