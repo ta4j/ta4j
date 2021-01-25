@@ -312,8 +312,8 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
-     * @param price                the price for the trade
-     * @param amount               the amount to be (or that was) bought
+     * @param price                the trade price
+     * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      * @return a BUY trade
      */
@@ -323,8 +323,8 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
-     * @param price  the price for the trade
-     * @param amount the amount to be (or that was) bought
+     * @param price  the trade price
+     * @param amount the trade amount
      * @return a BUY trade
      */
     public static Trade buyAt(int index, Num price, Num amount) {
@@ -334,7 +334,7 @@ public class Trade implements Serializable {
     /**
      * @param index  the index the trade is executed
      * @param series the bar series
-     * @param amount the amount to be (or that was) bought
+     * @param amount the trade amount
      * @return a BUY trade
      */
     public static Trade buyAt(int index, BarSeries series, Num amount) {
@@ -344,7 +344,7 @@ public class Trade implements Serializable {
     /**
      * @param index                the index the trade is executed
      * @param series               the bar series
-     * @param amount               the amount to be (or that was) bought
+     * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      * @return a BUY trade
      */
@@ -363,8 +363,8 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
-     * @param price  the price for the trade
-     * @param amount the amount to be (or that was) sold
+     * @param price  the trade price
+     * @param amount the trade amount
      * @return a SELL trade
      */
     public static Trade sellAt(int index, Num price, Num amount) {
@@ -373,8 +373,8 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
-     * @param price                the price for the trade
-     * @param amount               the amount to be (or that was) sold
+     * @param price                the trade price
+     * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      * @return a SELL trade
      */
@@ -385,7 +385,7 @@ public class Trade implements Serializable {
     /**
      * @param index  the index the trade is executed
      * @param series the bar series
-     * @param amount the amount to be (or that was) bought
+     * @param amount the trade amount
      * @return a SELL trade
      */
     public static Trade sellAt(int index, BarSeries series, Num amount) {
@@ -395,7 +395,7 @@ public class Trade implements Serializable {
     /**
      * @param index                the index the trade is executed
      * @param series               the bar series
-     * @param amount               the amount to be (or that was) bought
+     * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      * @return a SELL trade
      */

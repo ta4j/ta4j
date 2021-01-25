@@ -47,7 +47,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded trades
      */
-    private List<Trade> traded = new ArrayList<>();
+    private List<Trade> trades = new ArrayList<>();
 
     /**
      * The recorded BUY trades
@@ -231,8 +231,8 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public Trade getLastTrade() {
-        if (!traded.isEmpty()) {
-            return traded.get(traded.size() - 1);
+        if (!trades.isEmpty()) {
+            return trades.get(trades.size() - 1);
         }
         return null;
     }
@@ -276,13 +276,13 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the new trade in entries/exits lists
         if (isEntry) {
-            exitTrades.add(trade);
+            entryTrades.add(trade);
         } else {
             exitTrades.add(trade);
         }
 
         // Storing the new trade in trades list
-        traded.add(trade);
+        trades.add(trade);
         if (TradeType.BUY.equals(trade.getType())) {
             // Storing the new trade in buy trades list
             buyTrades.add(trade);
@@ -302,7 +302,7 @@ public class BaseTradingRecord implements TradingRecord {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("BaseTradingRecord: " + name != null ? name : "" + "\n");
-        for (Trade trade : traded) {
+        for (Trade trade : trades) {
             sb.append(trade.toString()).append("\n");
         }
         return sb.toString();
