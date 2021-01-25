@@ -55,11 +55,6 @@ public interface TradingRecord extends Serializable {
     String getName();
 
     /**
-     * @return the current position
-     */
-    Position getCurrentPosition();
-
-    /**
      * Places a trade in the trading record.
      * 
      * @param index the index to place the trade
@@ -135,6 +130,11 @@ public interface TradingRecord extends Serializable {
     default int getPositionCount() {
         return getPositions().size();
     }
+
+    /**
+     * @return the current position
+     */
+    Position getCurrentPosition();
 
     /**
      * @return the last position recorded

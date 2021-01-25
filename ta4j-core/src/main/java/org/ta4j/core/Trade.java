@@ -84,7 +84,7 @@ public class Trade implements Serializable {
     private int index;
 
     /**
-     * The pricePerAsset for the trade
+     * the trade price per asset
      */
     private Num pricePerAsset;
 
@@ -94,16 +94,18 @@ public class Trade implements Serializable {
     private Num netPrice;
 
     /**
-     * The amount of the trade
+     * the trade amount
      */
     private Num amount;
 
     /**
-     * Cost of executing the trade
+     * The cost for executing the trade
      */
     private Num cost;
 
-    /** The cost model for trade execution */
+    /**
+     * The cost model for trade execution
+     */
     private CostModel costModel;
 
     /**
@@ -111,7 +113,7 @@ public class Trade implements Serializable {
      *
      * @param index  the index the trade is executed
      * @param series the bar series
-     * @param type   the type of the trade
+     * @param type   the trade type
      */
     protected Trade(int index, BarSeries series, TradeType type) {
         this(index, series, type, series.numOf(1));
@@ -122,8 +124,8 @@ public class Trade implements Serializable {
      *
      * @param index  the index the trade is executed
      * @param series the bar series
-     * @param type   the type of the trade
-     * @param amount the amount of the trade
+     * @param type   the trade type
+     * @param amount the trade amount
      */
     protected Trade(int index, BarSeries series, TradeType type, Num amount) {
         this(index, series, type, amount, new ZeroCostModel());
@@ -134,8 +136,8 @@ public class Trade implements Serializable {
      * 
      * @param index                the index the trade is executed
      * @param series               the bar series
-     * @param type                 the type of the trade
-     * @param amount               the amount of the trade
+     * @param type                 the trade type
+     * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution cost
      */
     protected Trade(int index, BarSeries series, TradeType type, Num amount, CostModel transactionCostModel) {
@@ -149,8 +151,8 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index         the index the trade is executed
-     * @param type          the type of the trade
-     * @param pricePerAsset the pricePerAsset for the trade
+     * @param type          the trade type
+     * @param pricePerAsset the trade price per asset
      */
     protected Trade(int index, TradeType type, Num pricePerAsset) {
         this(index, type, pricePerAsset, pricePerAsset.numOf(1));
@@ -160,9 +162,9 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index         the index the trade is executed
-     * @param type          the type of the trade
-     * @param pricePerAsset the pricePerAsset for the trade
-     * @param amount        the amount of the trade
+     * @param type          the trade type
+     * @param pricePerAsset the trade price per asset
+     * @param amount        the trade amount
      */
     protected Trade(int index, TradeType type, Num pricePerAsset, Num amount) {
         this(index, type, pricePerAsset, amount, new ZeroCostModel());
@@ -172,9 +174,9 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index                the index the trade is executed
-     * @param type                 the type of the trade
-     * @param pricePerAsset        the pricePerAsset for the trade
-     * @param amount               the amount of the trade
+     * @param type                 the trade type
+     * @param pricePerAsset        the trade price per asset
+     * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      */
     protected Trade(int index, TradeType type, Num pricePerAsset, Num amount, CostModel transactionCostModel) {
@@ -186,7 +188,7 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the type of the trade (BUY or SELL)
+     * @return the trade type (BUY or SELL)
      */
     public TradeType getType() {
         return type;
@@ -207,15 +209,15 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the pricePerAsset for the trade
+     * @return the trade price per asset
      */
     public Num getPricePerAsset() {
         return pricePerAsset;
     }
 
     /**
-     * @return the pricePerAsset for the trade, or, if <code>NaN</code>, the close
-     *         price from the supplied {@link BarSeries}.
+     * @return the trade price per asset, or, if <code>NaN</code>, the close price
+     *         from the supplied {@link BarSeries}.
      */
     public Num getPricePerAsset(BarSeries barSeries) {
         if (pricePerAsset.isNaN()) {
@@ -225,14 +227,14 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the pricePerAsset for the trade, net transaction costs
+     * @return the trade price per asset, net transaction costs
      */
     public Num getNetPrice() {
         return netPrice;
     }
 
     /**
-     * @return the amount of the trade
+     * @return the trade amount
      */
     public Num getAmount() {
         return amount;

@@ -70,14 +70,14 @@ public class BaseTradingRecord implements TradingRecord {
     private List<Trade> exitTrades = new ArrayList<>();
 
     /**
-     * The recorded positions
-     */
-    private List<Position> positions = new ArrayList<>();
-
-    /**
      * The entry type (BUY or SELL) in the trading session
      */
     private TradeType startingType;
+
+    /**
+     * The recorded positions
+     */
+    private List<Position> positions = new ArrayList<>();
 
     /**
      * The current non-closed position (there's always one)
@@ -181,13 +181,13 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public TradeType getStartingType() {
-        return startingType;
+    public String getName() {
+        return name;
     }
 
     @Override
-    public String getName() {
-        return name;
+    public TradeType getStartingType() {
+        return startingType;
     }
 
     @Override
