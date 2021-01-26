@@ -23,15 +23,19 @@
  */
 package ta4jexamples.barSeries;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.DecimalNum;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ConvertibleBaseBarBuilder;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 
 public class BuildBarSeries {
 

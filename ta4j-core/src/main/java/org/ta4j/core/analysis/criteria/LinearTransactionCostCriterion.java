@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Order;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -48,8 +48,8 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor. (a * x)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Order
-     *                      order})
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade
+     *                      trade})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a) {
         this(initialAmount, a, 0);
@@ -59,10 +59,10 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor. (a * x + b)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Order
-     *                      order})
-     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Order
-     *                      order})
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade
+     *                      trade})
+     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Trade
+     *                      trade})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
         this.initialAmount = initialAmount;
@@ -72,8 +72,8 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return getTradeCost(series, trade, series.numOf(initialAmount));
+    public Num calculate(BarSeries series, Position position) {
+        return getTradeCost(series, position, series.numOf(initialAmount));
     }
 
     @Override
@@ -81,22 +81,22 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         Num totalCosts = series.numOf(0);
         Num tradedAmount = series.numOf(initialAmount);
 
-        for (Trade trade : tradingRecord.getTrades()) {
-            Num tradeCost = getTradeCost(series, trade, tradedAmount);
+        for (Position position : tradingRecord.getPositions()) {
+            Num tradeCost = getTradeCost(series, position, tradedAmount);
             totalCosts = totalCosts.plus(tradeCost);
             // To calculate the new traded amount:
-            // - Remove the cost of the *first* order
+            // - Remove the cost of the *first* trade
             // - Multiply by the profit ratio
-            // - Remove the cost of the *second* order
-            tradedAmount = tradedAmount.minus(getOrderCost(trade.getEntry(), tradedAmount));
-            tradedAmount = tradedAmount.multipliedBy(totalReturn.calculate(series, trade));
-            tradedAmount = tradedAmount.minus(getOrderCost(trade.getExit(), tradedAmount));
+            // - Remove the cost of the *second* trade
+            tradedAmount = tradedAmount.minus(getTradeCost(position.getEntry(), tradedAmount));
+            tradedAmount = tradedAmount.multipliedBy(totalReturn.calculate(series, position));
+            tradedAmount = tradedAmount.minus(getTradeCost(position.getExit(), tradedAmount));
         }
 
-        // Special case: if the current trade is open
-        Trade currentTrade = tradingRecord.getCurrentTrade();
-        if (currentTrade.isOpened()) {
-            totalCosts = totalCosts.plus(getOrderCost(currentTrade.getEntry(), tradedAmount));
+        // Special case: if the current position is open
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition.isOpened()) {
+            totalCosts = totalCosts.plus(getTradeCost(currentPosition.getEntry(), tradedAmount));
         }
 
         return totalCosts;
@@ -108,36 +108,36 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * @param order        a trade order
-     * @param tradedAmount the traded amount for the order
-     * @return the absolute order cost
+     * @param trade        the trade
+     * @param tradedAmount the amount of the trade
+     * @return the absolute trade cost
      */
-    private Num getOrderCost(Order order, Num tradedAmount) {
-        Num orderCost = tradedAmount.numOf(0);
-        if (order != null) {
+    private Num getTradeCost(Trade trade, Num tradedAmount) {
+        Num tradeCost = tradedAmount.numOf(0);
+        if (trade != null) {
             return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
         }
-        return orderCost;
+        return tradeCost;
     }
 
     /**
      * @param series        the bar series
-     * @param trade         a trade
-     * @param initialAmount the initially traded amount for the trade
-     * @return the absolute total cost of all orders in the trade
+     * @param position      the position
+     * @param initialAmount the initially traded amount for the position
+     * @return the absolute total cost of all trades in the position
      */
-    private Num getTradeCost(BarSeries series, Trade trade, Num initialAmount) {
+    private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
         Num totalTradeCost = series.numOf(0);
-        if (trade != null) {
-            if (trade.getEntry() != null) {
-                totalTradeCost = getOrderCost(trade.getEntry(), initialAmount);
-                if (trade.getExit() != null) {
+        if (position != null) {
+            if (position.getEntry() != null) {
+                totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
+                if (position.getExit() != null) {
                     // To calculate the new traded amount:
-                    // - Remove the cost of the first order
+                    // - Remove the cost of the first trade
                     // - Multiply by the profit ratio
                     Num newTradedAmount = initialAmount.minus(totalTradeCost)
-                            .multipliedBy(totalReturn.calculate(series, trade));
-                    totalTradeCost = totalTradeCost.plus(getOrderCost(trade.getExit(), newTradedAmount));
+                            .multipliedBy(totalReturn.calculate(series, position));
+                    totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));
                 }
             }
         }

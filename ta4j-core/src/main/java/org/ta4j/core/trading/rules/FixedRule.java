@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.TradingRecord;
-
 import java.util.Arrays;
+
+import org.ta4j.core.TradingRecord;
 
 /**
  * An indexes-based rule.

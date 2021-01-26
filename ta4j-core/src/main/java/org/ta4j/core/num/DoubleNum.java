@@ -23,9 +23,9 @@
  */
 package org.ta4j.core.num;
 
-import java.util.function.Function;
-
 import static org.ta4j.core.num.NaN.NaN;
+
+import java.util.function.Function;
 
 /**
  * Representation of Double. High performance, lower precision.

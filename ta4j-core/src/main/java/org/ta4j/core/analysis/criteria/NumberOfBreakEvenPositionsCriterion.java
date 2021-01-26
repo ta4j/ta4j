@@ -24,38 +24,36 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of trades which are profitable.
- *
- * Defined as <code># of winning trades / total # of trades</code>.
+ * Number of break even position criterion.
  */
-public class WinningTradesRatioCriterion extends AbstractAnalysisCriterion {
+public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isProfitableTrade(series, trade) ? series.numOf(1) : series.numOf(0);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfBreakEvenTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .filter(this::isBreakEvenTrade).count();
+        return series.numOf(numberOfBreakEvenTrades);
     }
 
-    private boolean isProfitableTrade(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num zero = series.numOf(0);
-            return trade.getProfit().isGreaterThan(zero);
+    private boolean isBreakEvenTrade(Position position) {
+        if (position.isClosed()) {
+            return position.getProfit().isZero();
         }
         return false;
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfProfitable = tradingRecord.getTrades().stream().filter(t -> isProfitableTrade(series, t)).count();
-        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getTradeCount()));
+    public Num calculate(BarSeries series, Position position) {
+        return isBreakEvenTrade(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isLessThan(criterionValue2);
     }
 }

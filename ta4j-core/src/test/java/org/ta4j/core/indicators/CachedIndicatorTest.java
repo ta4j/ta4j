@@ -23,21 +23,29 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.Arrays;
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
-
-import java.util.Arrays;
-import java.util.function.Function;
-
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

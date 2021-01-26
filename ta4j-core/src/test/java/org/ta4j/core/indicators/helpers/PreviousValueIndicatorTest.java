@@ -23,17 +23,17 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.time.ZonedDateTime;
+import java.util.Random;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.EMAIndicator;
-
-import java.time.ZonedDateTime;
-import java.util.Random;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class PreviousValueIndicatorTest {
 

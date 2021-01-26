@@ -23,27 +23,28 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Order;
-import org.ta4j.core.Trade;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
+/**
+ * Number of position criterion.
+ */
+public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return series.numOf(tradingRecord.getPositionCount());
+    }
 
-public class OpenedTradeUtils {
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        return series.numOf(1);
+    }
 
-    public void testCalculateOneOpenTradeShouldReturnExpectedValue(Function<Number, Num> numFunction,
-            AnalysisCriterion criterion, int expectedValue) {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-
-        Trade trade = new Trade(Order.OrderType.BUY);
-        trade.operate(0, series.numOf(2.5), series.numOf(1));
-
-        final Num value = criterion.calculate(series, trade);
-
-        assertNumEquals(expectedValue, value);
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isLessThan(criterionValue2);
     }
 }

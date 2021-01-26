@@ -23,21 +23,21 @@
  */
 package org.ta4j.core.trading.rules;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -54,7 +54,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForBuy() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.BUY);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss
@@ -80,7 +80,7 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void isSatisfiedWorksForSell() {
-        final TradingRecord tradingRecord = new BaseTradingRecord(Order.OrderType.SELL);
+        final TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
         final Num tradedAmount = numOf(1);
 
         // 5% stop-loss

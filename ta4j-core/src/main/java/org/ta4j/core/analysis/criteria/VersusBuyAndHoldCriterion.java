@@ -23,7 +23,11 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
@@ -55,12 +59,12 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Position position) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());
 
-        return criterion.calculate(series, trade).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override

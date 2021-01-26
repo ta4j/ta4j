@@ -25,7 +25,7 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.Order.OrderType;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
@@ -94,19 +94,19 @@ public class BarSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      *
-     * Opens the trades with {@link OrderType} BUY order.
+     * Opens the position with a {@link TradeType} BUY trade.
      * 
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
-        return run(strategy, OrderType.BUY);
+        return run(strategy, TradeType.BUY);
     }
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex).
      *
-     * Opens the trades with {@link OrderType} BUY order.
+     * Opens the position with a {@link TradeType} BUY trade.
      * 
      * @param strategy    the trading strategy
      * @param startIndex  the start index for the run (included)
@@ -114,48 +114,48 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, OrderType.BUY, barSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, TradeType.BUY, barSeries.numOf(1), startIndex, finishIndex);
     }
 
     /**
      * Runs the provided strategy over the managed series.
      *
-     * Opens the trades with the specified {@link OrderType orderType} order.
+     * Opens the position with a trade of {@link TradeType tradeType}.
      * 
      * @param strategy  the trading strategy
-     * @param orderType the {@link OrderType} used to open the trades
+     * @param tradeType the {@link TradeType} used to open the position
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType) {
-        return run(strategy, orderType, barSeries.numOf(1));
+    public TradingRecord run(Strategy strategy, TradeType tradeType) {
+        return run(strategy, tradeType, barSeries.numOf(1));
     }
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex).
      *
-     * Opens the trades with the specified {@link OrderType orderType} order.
+     * Opens the position with a trade of {@link TradeType tradeType}.
      * 
      * @param strategy    the trading strategy
-     * @param orderType   the {@link OrderType} used to open the trades
+     * @param tradeType   the {@link TradeType} used to open the position
      * @param startIndex  the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType, int startIndex, int finishIndex) {
-        return run(strategy, orderType, barSeries.numOf(1), startIndex, finishIndex);
+    public TradingRecord run(Strategy strategy, TradeType tradeType, int startIndex, int finishIndex) {
+        return run(strategy, tradeType, barSeries.numOf(1), startIndex, finishIndex);
     }
 
     /**
      * Runs the provided strategy over the managed series.
      *
      * @param strategy  the trading strategy
-     * @param orderType the {@link OrderType} used to open the trades
+     * @param tradeType the {@link TradeType} used to open the position
      * @param amount    the amount used to open/close the trades
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Num amount) {
-        return run(strategy, orderType, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount) {
+        return run(strategy, tradeType, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
     }
 
     /**
@@ -163,20 +163,20 @@ public class BarSeriesManager {
      * finishIndex).
      *
      * @param strategy    the trading strategy
-     * @param orderType   the {@link OrderType} used to open the trades
+     * @param tradeType   the {@link TradeType} used to open the trades
      * @param amount      the amount used to open/close the trades
      * @param startIndex  the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
      * @return the trading record coming from the run
      */
-    public TradingRecord run(Strategy strategy, OrderType orderType, Num amount, int startIndex, int finishIndex) {
+    public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
 
         int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
 
         log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy,
-                orderType);
-        TradingRecord tradingRecord = new BaseTradingRecord(orderType, transactionCostModel, holdingCostModel);
+                tradeType);
+        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
@@ -185,13 +185,13 @@ public class BarSeriesManager {
         }
 
         if (!tradingRecord.isClosed()) {
-            // If the last trade is still opened, we search out of the run end index.
+            // If the last position is still opened, we search out of the run end index.
             // May works if the end index for this run was inferior to the actual number of
             // bars
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
-                // --> Trying to close the last trade
+                // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
                     break;

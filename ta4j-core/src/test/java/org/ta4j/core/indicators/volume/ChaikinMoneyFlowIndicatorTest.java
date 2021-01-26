@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.ZonedDateTime;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 
 public class ChaikinMoneyFlowIndicatorTest {
 

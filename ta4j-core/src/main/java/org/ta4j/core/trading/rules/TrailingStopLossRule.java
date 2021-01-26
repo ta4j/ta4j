@@ -45,12 +45,11 @@
  */
 package org.ta4j.core.trading.rules;
 
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -103,17 +102,17 @@ public class TrailingStopLossRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
-        // No trading history or no trade opened, no loss
+        // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            Trade currentTrade = tradingRecord.getCurrentTrade();
-            if (currentTrade.isOpened()) {
+            Position currentPosition = tradingRecord.getCurrentPosition();
+            if (currentPosition.isOpened()) {
                 Num currentPrice = priceIndicator.getValue(index);
-                int tradeIndex = currentTrade.getEntry().getIndex();
+                int positionIndex = currentPosition.getEntry().getIndex();
 
-                if (currentTrade.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, tradeIndex);
+                if (currentPosition.getEntry().isBuy()) {
+                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
                 } else {
-                    satisfied = isSellSatisfied(currentPrice, index, tradeIndex);
+                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
                 }
             }
         }
@@ -121,9 +120,9 @@ public class TrailingStopLossRule extends AbstractRule {
         return satisfied;
     }
 
-    private boolean isBuySatisfied(Num currentPrice, int index, int tradeIndex) {
+    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
         HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, tradeIndex));
+                getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
         Num lossRatioThreshold = highestCloseNum.numOf(100).minus(lossPercentage).dividedBy(highestCloseNum.numOf(100));
         currentStopLossLimitActivation = highestCloseNum.multipliedBy(lossRatioThreshold);
@@ -134,17 +133,17 @@ public class TrailingStopLossRule extends AbstractRule {
         return currentStopLossLimitActivation;
     }
 
-    private boolean isSellSatisfied(Num currentPrice, int index, int tradeIndex) {
+    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, tradeIndex));
+                getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
         Num lossRatioThreshold = lowestCloseNum.numOf(100).plus(lossPercentage).dividedBy(lowestCloseNum.numOf(100));
         currentStopLossLimitActivation = lowestCloseNum.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
-    private int getValueIndicatorBarCount(int index, int tradeIndex) {
-        return Math.min(index - tradeIndex + 1, this.barCount);
+    private int getValueIndicatorBarCount(int index, int positionIndex) {
+        return Math.min(index - positionIndex + 1, this.barCount);
     }
 
     @Override

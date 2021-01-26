@@ -3,14 +3,25 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.14 (unreleased)
 
 ### Breaking
-- **Breaking:** **PrecisionNum** renamed to **DecimalNum**
-- **Breaking:** **AverageProfitableTradesCriterion** renamed to **WinningTradesRatioCriterion**
-- **Breaking:** **AverageProfitCriterion** renamed to **AverageReturnPerBarCriterion**
-- **Breaking:** **BuyAndHoldCriterion** renamed to **BuyAndHoldReturnCriterion**
-- **Breaking:** **RewardRiskRatioCriterion** renamed to **ReturnOverMaxDrawdownCriterion**
-- **Breaking:** **TotalProfitCriterion** renamed to **TotalReturnCriterion**
-- **Breaking:** **TotalProfit2Criterion** renamed to **TotalProfitCriterion**
+- **Breaking:** **`PrecisionNum`** renamed to **`DecimalNum`**
+- **Breaking:** **`AverageProfitableTradesCriterion`** renamed to **`WinningTradesRatioCriterion`**
+- **Breaking:** **`AverageProfitCriterion`** renamed to **`AverageReturnPerBarCriterion`**
+- **Breaking:** **`BuyAndHoldCriterion`** renamed to **`BuyAndHoldReturnCriterion`**
+- **Breaking:** **`RewardRiskRatioCriterion`** renamed to **`ReturnOverMaxDrawdownCriterion`**
+- **Breaking:** **`TotalProfitCriterion`** renamed to **`TotalReturnCriterion`**
+- **Breaking:** **`TotalProfit2Criterion`** renamed to **`TotalProfitCriterion`**
 - **Breaking:** package "tradereports" renamed to "reports"
+- **Breaking:** **`NumberOfTradesCriterion`** renamed to **`NumberOfPositionsCriterion`**
+- **Breaking:** **`NumberOfLosingTradesCriterion`** renamed to **`NumberOfLosingPositionsCriterion`**
+- **Breaking:** **`NumberOfWinningTradesCriterion`** renamed to **`NumberOfWinningPositionsCriterion`**
+- **Breaking:** **`NumberOfBreakEvenTradesCriterion`** renamed to **`NumberOfBreakEvenPositionsCriterion`**
+- **Breaking:** **`WinningTradesRatioCriterion`** renamed to **`WinningPositionsRatioCriterion`**
+- **Breaking:** **`TradeStatsReport`** renamed to **`PositionStatsReport`**
+- **Breaking:** **`TradeStatsReportGenerator`** renamed to **`PositionStatsReportGenerator`**
+- **Breaking:** **`TradeOpenedMinimumBarCountRule`** renamed to **`OpenedPositionMinimumBarCountRule`**
+- **Breaking:** **`Trade.class`** renamed to **`Position.class`**
+- **Breaking:** **`Order.class`** renamed to **`Trade.class`**
+
 
 ### Fixed
 - **Fixed `Trade`**: problem with profit calculations on short trades.

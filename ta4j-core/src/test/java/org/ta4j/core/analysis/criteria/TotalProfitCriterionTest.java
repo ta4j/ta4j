@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import java.util.function.Function;
+
 import org.junit.Test;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
 
 public class TotalProfitCriterionTest extends AbstractCriterionTest {
 
@@ -35,7 +35,7 @@ public class TotalProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenTradeShouldReturnZero() {
-        openedTradeUtils.testCalculateOneOpenTradeShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

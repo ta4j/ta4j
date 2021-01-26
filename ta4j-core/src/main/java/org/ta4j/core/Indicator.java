@@ -23,9 +23,9 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.io.Serializable;
+
+import org.ta4j.core.num.Num;
 
 /**
  * Indicator over a {@link BarSeries bar series}. <p/p> For each index of the

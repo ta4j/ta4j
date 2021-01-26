@@ -23,356 +23,392 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Order.OrderType;
+import java.io.Serializable;
+import java.util.Objects;
+
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
-import java.io.Serializable;
-import java.util.Objects;
-
-import static org.ta4j.core.num.NaN.NaN;
-
 /**
- * Pair of two {@link Order orders}.
+ * A trade.
  *
- * The exit order has the complement type of the entry order.<br>
- * I.e.: entry == BUY --> exit == SELL entry == SELL --> exit == BUY
+ * The trade is defined by:
+ * <ul>
+ * <li>the index (in the {@link BarSeries bar series}) it is executed
+ * <li>a {@link TradeType type} (BUY or SELL)
+ * <li>a pricePerAsset (optional)
+ * <li>a trade amount (optional)
+ * </ul>
+ * A {@link Position position} is a pair of complementary trades.
  */
 public class Trade implements Serializable {
 
-    private static final long serialVersionUID = -5484709075767220358L;
+    private static final long serialVersionUID = -905474949010114150L;
 
-    /** The entry order */
-    private Order entry;
+    /**
+     * The type of an {@link Trade trade}.
+     *
+     * A BUY corresponds to a <i>BID</i> trade. A SELL corresponds to an <i>ASK</i>
+     * trade.
+     */
+    public enum TradeType {
 
-    /** The exit order */
-    private Order exit;
+        BUY {
+            @Override
+            public TradeType complementType() {
+                return SELL;
+            }
+        },
+        SELL {
+            @Override
+            public TradeType complementType() {
+                return BUY;
+            }
+        };
 
-    /** The type of the entry order */
-    private OrderType startingType;
+        /**
+         * @return the complementary trade type
+         */
+        public abstract TradeType complementType();
+    }
 
-    /** The cost model for transactions of the asset */
-    private CostModel transactionCostModel;
+    /**
+     * Type of the trade
+     */
+    private TradeType type;
 
-    /** The cost model for holding the asset */
-    private CostModel holdingCostModel;
+    /**
+     * The index the trade was executed
+     */
+    private int index;
+
+    /**
+     * the trade price per asset
+     */
+    private Num pricePerAsset;
+
+    /**
+     * The net price for the trade, net transaction costs
+     */
+    private Num netPrice;
+
+    /**
+     * the trade amount
+     */
+    private Num amount;
+
+    /**
+     * The cost for executing the trade
+     */
+    private Num cost;
+
+    /**
+     * The cost model for trade execution
+     */
+    private CostModel costModel;
 
     /**
      * Constructor.
+     *
+     * @param index  the index the trade is executed
+     * @param series the bar series
+     * @param type   the trade type
      */
-    public Trade() {
-        this(OrderType.BUY);
+    protected Trade(int index, BarSeries series, TradeType type) {
+        this(index, series, type, series.numOf(1));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param index  the index the trade is executed
+     * @param series the bar series
+     * @param type   the trade type
+     * @param amount the trade amount
+     */
+    protected Trade(int index, BarSeries series, TradeType type, Num amount) {
+        this(index, series, type, amount, new ZeroCostModel());
     }
 
     /**
      * Constructor.
      * 
-     * @param startingType the starting {@link OrderType order type} of the trade
-     *                     (i.e. type of the entry order)
+     * @param index                the index the trade is executed
+     * @param series               the bar series
+     * @param type                 the trade type
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution cost
      */
-    public Trade(OrderType startingType) {
-        this(startingType, new ZeroCostModel(), new ZeroCostModel());
+    protected Trade(int index, BarSeries series, TradeType type, Num amount, CostModel transactionCostModel) {
+        this.type = type;
+        this.index = index;
+        this.amount = amount;
+        setPricesAndCost(series.getBar(index).getClosePrice(), amount, transactionCostModel);
     }
 
     /**
      * Constructor.
-     * 
-     * @param startingType         the starting {@link OrderType order type} of the
-     *                             trade (i.e. type of the entry order)
-     * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     *
+     * @param index         the index the trade is executed
+     * @param type          the trade type
+     * @param pricePerAsset the trade price per asset
      */
-    public Trade(OrderType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (startingType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
-        }
-        this.startingType = startingType;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
+    protected Trade(int index, TradeType type, Num pricePerAsset) {
+        this(index, type, pricePerAsset, pricePerAsset.numOf(1));
     }
 
     /**
      * Constructor.
-     * 
-     * @param entry the entry {@link Order order}
-     * @param exit  the exit {@link Order order}
+     *
+     * @param index         the index the trade is executed
+     * @param type          the trade type
+     * @param pricePerAsset the trade price per asset
+     * @param amount        the trade amount
      */
-    public Trade(Order entry, Order exit) {
-        this(entry, exit, entry.getCostModel(), new ZeroCostModel());
+    protected Trade(int index, TradeType type, Num pricePerAsset, Num amount) {
+        this(index, type, pricePerAsset, amount, new ZeroCostModel());
     }
 
     /**
      * Constructor.
-     * 
-     * @param entry                the entry {@link Order order}
-     * @param exit                 the exit {@link Order order}
-     * @param transactionCostModel the cost model for transactions of the asset
-     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     *
+     * @param index                the index the trade is executed
+     * @param type                 the trade type
+     * @param pricePerAsset        the trade price per asset
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution
      */
-    public Trade(Order entry, Order exit, CostModel transactionCostModel, CostModel holdingCostModel) {
+    protected Trade(int index, TradeType type, Num pricePerAsset, Num amount, CostModel transactionCostModel) {
+        this.type = type;
+        this.index = index;
+        this.amount = amount;
 
-        if (entry.getType().equals(exit.getType())) {
-            throw new IllegalArgumentException("Both orders must have different types");
-        }
-
-        if (!(entry.getCostModel().equals(transactionCostModel))
-                || !(exit.getCostModel().equals(transactionCostModel))) {
-            throw new IllegalArgumentException("Orders and the trade must incorporate the same trading cost model");
-        }
-
-        this.startingType = entry.getType();
-        this.entry = entry;
-        this.exit = exit;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
+        setPricesAndCost(pricePerAsset, amount, transactionCostModel);
     }
 
     /**
-     * @return the entry {@link Order order} of the trade
+     * @return the trade type (BUY or SELL)
      */
-    public Order getEntry() {
-        return entry;
+    public TradeType getType() {
+        return type;
     }
 
     /**
-     * @return the exit {@link Order order} of the trade
+     * @return the costs of the trade
      */
-    public Order getExit() {
-        return exit;
+    public Num getCost() {
+        return cost;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Trade) {
-            Trade t = (Trade) obj;
-            return (entry == null ? t.getEntry() == null : entry.equals(t.getEntry()))
-                    && (exit == null ? t.getExit() == null : exit.equals(t.getExit()));
+    /**
+     * @return the index the trade is executed
+     */
+    public int getIndex() {
+        return index;
+    }
+
+    /**
+     * @return the trade price per asset
+     */
+    public Num getPricePerAsset() {
+        return pricePerAsset;
+    }
+
+    /**
+     * @return the trade price per asset, or, if <code>NaN</code>, the close price
+     *         from the supplied {@link BarSeries}.
+     */
+    public Num getPricePerAsset(BarSeries barSeries) {
+        if (pricePerAsset.isNaN()) {
+            return barSeries.getBar(index).getClosePrice();
         }
-        return false;
+        return pricePerAsset;
+    }
+
+    /**
+     * @return the trade price per asset, net transaction costs
+     */
+    public Num getNetPrice() {
+        return netPrice;
+    }
+
+    /**
+     * @return the trade amount
+     */
+    public Num getAmount() {
+        return amount;
+    }
+
+    /**
+     * @return the cost model for trade execution
+     */
+    public CostModel getCostModel() {
+        return costModel;
+    }
+
+    /**
+     * Sets the raw and net prices of the trade
+     *
+     * @param pricePerAsset        the raw price of the asset
+     * @param amount               the amount of assets ordered
+     * @param transactionCostModel the cost model for trade execution
+     */
+    private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel) {
+        this.costModel = transactionCostModel;
+        this.pricePerAsset = pricePerAsset;
+        this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
+
+        Num costPerAsset = cost.dividedBy(amount);
+        // add transaction costs to the pricePerAsset at the trade
+        if (type.equals(TradeType.BUY)) {
+            this.netPrice = this.pricePerAsset.plus(costPerAsset);
+        } else {
+            this.netPrice = this.pricePerAsset.minus(costPerAsset);
+        }
+    }
+
+    /**
+     * @return true if this is a BUY trade, false otherwise
+     */
+    public boolean isBuy() {
+        return type == TradeType.BUY;
+    }
+
+    /**
+     * @return true if this is a SELL trade, false otherwise
+     */
+    public boolean isSell() {
+        return type == TradeType.SELL;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(entry, exit);
+        return Objects.hash(type, index, pricePerAsset, amount);
     }
 
-    /**
-     * Operates the trade at the index-th position
-     * 
-     * @param index the bar index
-     * @return the order
-     */
-    public Order operate(int index) {
-        return operate(index, NaN, NaN);
-    }
-
-    /**
-     * Operates the trade at the index-th position
-     * 
-     * @param index  the bar index
-     * @param price  the price
-     * @param amount the amount
-     * @return the order
-     */
-    public Order operate(int index, Num price, Num amount) {
-        Order order = null;
-        if (isNew()) {
-            order = new Order(index, startingType, price, amount, transactionCostModel);
-            entry = order;
-        } else if (isOpened()) {
-            if (index < entry.getIndex()) {
-                throw new IllegalStateException("The index i is less than the entryOrder index");
-            }
-            order = new Order(index, startingType.complementType(), price, amount, transactionCostModel);
-            exit = order;
-        }
-        return order;
-    }
-
-    /**
-     * @return true if the trade is closed, false otherwise
-     */
-    public boolean isClosed() {
-        return (entry != null) && (exit != null);
-    }
-
-    /**
-     * @return true if the trade is opened, false otherwise
-     */
-    public boolean isOpened() {
-        return (entry != null) && (exit == null);
-    }
-
-    /**
-     * @return true if the trade is new, false otherwise
-     */
-    public boolean isNew() {
-        return (entry == null) && (exit == null);
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        final Trade other = (Trade) obj;
+        return Objects.equals(type, other.type) && Objects.equals(index, other.index)
+                && Objects.equals(pricePerAsset, other.pricePerAsset) && Objects.equals(amount, other.amount);
     }
 
     @Override
     public String toString() {
-        return "Entry: " + entry + " exit: " + exit;
+        return "Trade{" + "type=" + type + ", index=" + index + ", price=" + pricePerAsset + ", amount=" + amount + '}';
     }
 
     /**
-     * Calculate the profit of the trade if it is closed
-     *
-     * @return the profit or loss of the trade
+     * @param index  the index the trade is executed
+     * @param series the bar series
+     * @return a BUY trade
      */
-    public Num getProfit() {
-        if (isOpened()) {
-            return numOf(0);
-        } else {
-            return getGrossProfit(exit.getPricePerAsset()).minus(getTradeCost());
-        }
+    public static Trade buyAt(int index, BarSeries series) {
+        return new Trade(index, series, TradeType.BUY);
     }
 
     /**
-     * Calculate the profit of the trade. If it is open, calculates the profit until
-     * the final bar.
-     *
-     * @param finalIndex the index of the final bar to be considered (if trade is
-     *                   open)
-     * @param finalPrice the price of the final bar to be considered (if trade is
-     *                   open)
-     * @return the profit or loss of the trade
+     * @param index                the index the trade is executed
+     * @param price                the trade price
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution
+     * @return a BUY trade
      */
-    public Num getProfit(int finalIndex, Num finalPrice) {
-        Num grossProfit = getGrossProfit(finalPrice);
-        Num tradingCost = getTradeCost(finalIndex);
-        return grossProfit.minus(tradingCost);
+    public static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new Trade(index, TradeType.BUY, price, amount, transactionCostModel);
     }
 
     /**
-     * Calculate the gross return of the trade if it is closed
-     *
-     * @return the gross return of the trade
+     * @param index  the index the trade is executed
+     * @param price  the trade price
+     * @param amount the trade amount
+     * @return a BUY trade
      */
-    public Num getGrossReturn() {
-        if (isOpened()) {
-            return numOf(0);
-        } else {
-            return getGrossReturn(exit.getPricePerAsset());
-        }
+    public static Trade buyAt(int index, Num price, Num amount) {
+        return new Trade(index, TradeType.BUY, price, amount);
     }
 
     /**
-     * Calculate the gross return of the trade, if it exited at the provided price.
-     *
-     * @param finalPrice the price of the final bar to be considered (if trade is
-     *                   open)
-     * @return the gross return of the trade
+     * @param index  the index the trade is executed
+     * @param series the bar series
+     * @param amount the trade amount
+     * @return a BUY trade
      */
-    public Num getGrossReturn(Num finalPrice) {
-        return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
+    public static Trade buyAt(int index, BarSeries series, Num amount) {
+        return new Trade(index, series, TradeType.BUY, amount);
     }
 
     /**
-     * Returns the gross return of the trade. If either the entry or the exit price
-     * are <code>NaN</code>, the close price from the supplies {@link BarSeries} is
-     * used.
-     * 
-     * @param barSeries
-     * @return
+     * @param index                the index the trade is executed
+     * @param series               the bar series
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution
+     * @return a BUY trade
      */
-    public Num getGrossReturn(BarSeries barSeries) {
-        Num entryPrice = getEntry().getPricePerAsset(barSeries);
-        Num exitPrice = getExit().getPricePerAsset(barSeries);
-        return getGrossReturn(entryPrice, exitPrice);
-    }
-
-    private Num getGrossReturn(Num entryPrice, Num exitPrice) {
-        Num profitPerAsset;
-        if (getEntry().isBuy()) {
-            profitPerAsset = exitPrice.minus(entryPrice);
-        } else {
-            profitPerAsset = entryPrice.minus(exitPrice);
-        }
-        return profitPerAsset.dividedBy(entryPrice).plus(entryPrice.numOf(1));
+    public static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+        return new Trade(index, series, TradeType.BUY, amount, transactionCostModel);
     }
 
     /**
-     * Calculate the gross return of the trade if it is closed
-     *
-     * @return the gross return of the trade
+     * @param index  the index the trade is executed
+     * @param series the bar series
+     * @return a SELL trade
      */
-    public Num getGrossProfit() {
-        if (isOpened()) {
-            return numOf(0);
-        } else {
-            return getGrossProfit(exit.getPricePerAsset());
-        }
+    public static Trade sellAt(int index, BarSeries series) {
+        return new Trade(index, series, TradeType.SELL);
     }
 
     /**
-     * Calculate the gross (w/o trading costs) profit of the trade.
-     * 
-     * @param finalPrice the price of the final bar to be considered (if trade is
-     *                   open)
-     * @return the profit or loss of the trade
+     * @param index  the index the trade is executed
+     * @param price  the trade price
+     * @param amount the trade amount
+     * @return a SELL trade
      */
-    public Num getGrossProfit(Num finalPrice) {
-        Num grossProfit;
-        if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        } else {
-            grossProfit = exit.getValue().minus(entry.getValue());
-        }
-
-        // Profits of long position are losses of short
-        if (entry.getType().equals(OrderType.SELL)) {
-            grossProfit = grossProfit.multipliedBy(numOf(-1));
-        }
-        return grossProfit;
+    public static Trade sellAt(int index, Num price, Num amount) {
+        return new Trade(index, TradeType.SELL, price, amount);
     }
 
     /**
-     * Calculates the total cost of the trade
-     * 
-     * @param finalIndex the index of the final bar to be considered (if trade is
-     *                   open)
-     * @return the cost of the trade
+     * @param index                the index the trade is executed
+     * @param price                the trade price
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution
+     * @return a SELL trade
      */
-    public Num getTradeCost(int finalIndex) {
-        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
-        Num borrowingCost = getHoldingCost(finalIndex);
-        return transactionCost.plus(borrowingCost);
+    public static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new Trade(index, TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**
-     * Calculates the total cost of the closed trade
-     * 
-     * @return the cost of the trade
+     * @param index  the index the trade is executed
+     * @param series the bar series
+     * @param amount the trade amount
+     * @return a SELL trade
      */
-    public Num getTradeCost() {
-        Num transactionCost = transactionCostModel.calculate(this);
-        Num borrowingCost = getHoldingCost();
-        return transactionCost.plus(borrowingCost);
+    public static Trade sellAt(int index, BarSeries series, Num amount) {
+        return new Trade(index, series, TradeType.SELL, amount);
     }
 
     /**
-     * Calculates the holding cost of the closed trade
-     * 
-     * @return the cost of the trade
+     * @param index                the index the trade is executed
+     * @param series               the bar series
+     * @param amount               the trade amount
+     * @param transactionCostModel the cost model for trade execution
+     * @return a SELL trade
      */
-    public Num getHoldingCost() {
-        return holdingCostModel.calculate(this);
+    public static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+        return new Trade(index, series, TradeType.SELL, amount, transactionCostModel);
     }
 
     /**
-     * Calculates the holding cost of the trade
-     * 
-     * @param finalIndex the index of the final bar to be considered (if trade is
-     *                   open)
-     * @return the cost of the trade
+     * @return the value of an trade (without transaction cost)
      */
-    public Num getHoldingCost(int finalIndex) {
-        return holdingCostModel.calculate(this, finalIndex);
-    }
-
-    private Num numOf(Number num) {
-        return entry.getNetPrice().numOf(num);
+    public Num getValue() {
+        return pricePerAsset.multipliedBy(amount);
     }
 }

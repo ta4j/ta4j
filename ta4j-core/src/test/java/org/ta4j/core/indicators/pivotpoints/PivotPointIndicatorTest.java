@@ -23,16 +23,6 @@
  */
 package org.ta4j.core.indicators.pivotpoints;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-
 import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.pivotpoints.PivotLevel.RESISTANCE_1;
@@ -46,6 +36,16 @@ import static org.ta4j.core.indicators.pivotpoints.TimeLevel.MONTH;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.WEEK;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 import static org.ta4j.core.num.NaN.NaN;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 
 public class PivotPointIndicatorTest {
 

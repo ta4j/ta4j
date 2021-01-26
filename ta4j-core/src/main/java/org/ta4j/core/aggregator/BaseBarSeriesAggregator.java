@@ -23,11 +23,11 @@
  */
 package org.ta4j.core.aggregator;
 
+import java.util.List;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
-
-import java.util.List;
 
 /**
  * Bar series aggregator based on provided bar aggregator.

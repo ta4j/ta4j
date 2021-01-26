@@ -23,11 +23,11 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
+
+import org.ta4j.core.num.Num;
 
 public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
 

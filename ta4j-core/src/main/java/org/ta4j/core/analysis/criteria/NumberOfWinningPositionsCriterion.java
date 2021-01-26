@@ -24,27 +24,36 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of trades criterion.
+ * Number of winning position criterion.
  */
-public class NumberOfTradesCriterion extends AbstractAnalysisCriterion {
+public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return series.numOf(tradingRecord.getTradeCount());
+        long numberOfWinningTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .filter(this::isWinningTrade).count();
+        return series.numOf(numberOfWinningTrades);
+    }
+
+    private boolean isWinningTrade(Position position) {
+        if (position.isClosed()) {
+            return position.getProfit().isPositive();
+        }
+        return false;
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return series.numOf(1);
+    public Num calculate(BarSeries series, Position position) {
+        return isWinningTrade(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

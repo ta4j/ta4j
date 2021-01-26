@@ -23,37 +23,27 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.BarSeries;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-/**
- * Number of winning trades criterion.
- */
-public class NumberOfWinningTradesCriterion extends AbstractAnalysisCriterion {
+public class OpenedPositionUtils {
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfWinningTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
-                .filter(this::isWinningTrade).count();
-        return series.numOf(numberOfWinningTrades);
-    }
+    public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
+            AnalysisCriterion criterion, int expectedValue) {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
-    private boolean isWinningTrade(Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getProfit().isPositive();
-        }
-        return false;
-    }
+        Position trade = new Position(Trade.TradeType.BUY);
+        trade.operate(0, series.numOf(2.5), series.numOf(1));
 
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isWinningTrade(trade) ? series.numOf(1) : series.numOf(0);
-    }
+        final Num value = criterion.calculate(series, trade);
 
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        assertNumEquals(expectedValue, value);
     }
 }

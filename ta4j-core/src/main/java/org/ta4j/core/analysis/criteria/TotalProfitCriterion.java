@@ -24,35 +24,35 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
  * Gross profit criterion.
  *
- * The gross profit of the provided {@link Trade trade(s)} over the provided
- * {@link BarSeries series}.
+ * The gross profit of the provided {@link Position position(s)} over the
+ * provided {@link BarSeries series}.
  */
 public class TotalProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(trade -> calculate(series, trade))
-                .reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
     }
 
     /**
-     * Calculates the gross profit value of given trade
+     * Calculates the gross profit value of given position
      *
-     * @param series a bar series
-     * @param trade  a trade to calculate profit
+     * @param series   a bar series
+     * @param position a position to calculate profit
      * @return the total profit
      */
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            Num profit = trade.getGrossProfit();
+    public Num calculate(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            Num profit = position.getGrossProfit();
             return profit.isPositive() ? profit : series.numOf(0);
         }
         return series.numOf(0);

@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class FixedIndicatorTest {
 

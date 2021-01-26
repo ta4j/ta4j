@@ -26,19 +26,19 @@ package org.ta4j.core.trading.rules;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Rule to specify minimum bar count for opened trade. Using this rule makes
+ * Rule to specify minimum bar count for opened position. Using this rule makes
  * sense only for exit rule (for entry rule
- * {@link TradeOpenedMinimumBarCountRule#isSatisfied(int, TradingRecord)} always
- * return false.
+ * {@link OpenedPositionMinimumBarCountRule#isSatisfied(int, TradingRecord)}
+ * always return false.
  */
-public class TradeOpenedMinimumBarCountRule extends AbstractRule {
+public class OpenedPositionMinimumBarCountRule extends AbstractRule {
 
     /**
      * Minimum bar count for opened trade.
      */
     private final int barCount;
 
-    public TradeOpenedMinimumBarCountRule(int barCount) {
+    public OpenedPositionMinimumBarCountRule(int barCount) {
         if (barCount < 1) {
             throw new IllegalArgumentException("Bar count must be positive");
         }
@@ -47,16 +47,16 @@ public class TradeOpenedMinimumBarCountRule extends AbstractRule {
 
     /**
      * Returns true if opened trade reached minimum bar count specified in
-     * {@link TradeOpenedMinimumBarCountRule#barCount}
+     * {@link OpenedPositionMinimumBarCountRule#barCount}
      *
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true if opened trade reached minimum bar count specified in
-     *         {@link TradeOpenedMinimumBarCountRule#barCount}, otherwise false
+     *         {@link OpenedPositionMinimumBarCountRule#barCount}, otherwise false
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord.getCurrentTrade().isOpened()) {
+        if (tradingRecord.getCurrentPosition().isOpened()) {
             final int entryIndex = tradingRecord.getLastEntry().getIndex();
             final int currentBarCount = index - entryIndex;
             return currentBarCount >= barCount;

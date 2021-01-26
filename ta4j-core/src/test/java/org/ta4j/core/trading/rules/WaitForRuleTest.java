@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.trading.rules;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class WaitForRuleTest {
 
@@ -44,8 +44,8 @@ public class WaitForRuleTest {
 
     @Test
     public void waitForSinceLastBuyRuleIsSatisfied() {
-        // Waits for 3 bars since last buy order
-        rule = new WaitForRule(Order.OrderType.BUY, 3);
+        // Waits for 3 bars since last buy trade
+        rule = new WaitForRule(Trade.TradeType.BUY, 3);
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
@@ -70,8 +70,8 @@ public class WaitForRuleTest {
 
     @Test
     public void waitForSinceLastSellRuleIsSatisfied() {
-        // Waits for 2 bars since last sell order
-        rule = new WaitForRule(Order.OrderType.SELL, 2);
+        // Waits for 2 bars since last sell trade
+        rule = new WaitForRule(Trade.TradeType.SELL, 2);
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));

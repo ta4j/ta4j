@@ -32,9 +32,9 @@ import java.time.ZonedDateTime;
 import java.util.function.Function;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
 /**

@@ -38,6 +38,7 @@ import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.trading.rules.OverIndicatorRule;
 import org.ta4j.core.trading.rules.UnderIndicatorRule;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -96,7 +97,7 @@ public class MovingMomentumStrategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
+        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
         System.out.println(

@@ -23,33 +23,27 @@
  */
 package org.ta4j.core.reports;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.NumberOfBreakEvenPositionsCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfLosingPositionsCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class represents report with statistics for executed trades
+ * This class generates PositionStatsReport based on provided trading record and
+ * bar series.
+ *
+ * @see PositionStatsReport
  */
-public class TradeStatsReport {
+public class PositionStatsReportGenerator implements ReportGenerator<PositionStatsReport> {
 
-    private final Num profitTradeCount;
-    private final Num lossTradeCount;
-    private final Num breakEvenTradeCount;
-
-    public TradeStatsReport(Num profitTradeCount, Num lossTradeCount, Num breakEvenTradeCount) {
-        this.profitTradeCount = profitTradeCount;
-        this.lossTradeCount = lossTradeCount;
-        this.breakEvenTradeCount = breakEvenTradeCount;
+    @Override
+    public PositionStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
+        final Num winningPositions = new NumberOfWinningPositionsCriterion().calculate(series, tradingRecord);
+        final Num losingPositions = new NumberOfLosingPositionsCriterion().calculate(series, tradingRecord);
+        final Num breakEvenPositions = new NumberOfBreakEvenPositionsCriterion().calculate(series, tradingRecord);
+        return new PositionStatsReport(winningPositions, losingPositions, breakEvenPositions);
     }
-
-    public Num getProfitTradeCount() {
-        return profitTradeCount;
-    }
-
-    public Num getLossTradeCount() {
-        return lossTradeCount;
-    }
-
-    public Num getBreakEvenTradeCount() {
-        return breakEvenTradeCount;
-    }
-
 }

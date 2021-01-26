@@ -45,8 +45,7 @@
  */
 package org.ta4j.core.num;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -57,7 +56,8 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Representation of arbitrary precision BigDecimal. A {@code Num} consists of a

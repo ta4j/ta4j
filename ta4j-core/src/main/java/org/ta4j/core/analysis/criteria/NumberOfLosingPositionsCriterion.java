@@ -24,32 +24,32 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of break even trades criterion.
+ * Number of losing position criterion.
  */
-public class NumberOfBreakEvenTradesCriterion extends AbstractAnalysisCriterion {
+public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfBreakEvenTrades = tradingRecord.getTrades().stream().filter(Trade::isClosed)
-                .filter(this::isBreakEvenTrade).count();
-        return series.numOf(numberOfBreakEvenTrades);
+        long numberOfLosingTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .filter(this::isLosingTrade).count();
+        return series.numOf(numberOfLosingTrades);
     }
 
-    private boolean isBreakEvenTrade(Trade trade) {
-        if (trade.isClosed()) {
-            return trade.getProfit().isZero();
+    private boolean isLosingTrade(Position position) {
+        if (position.isClosed()) {
+            return position.getProfit().isNegative();
         }
         return false;
     }
 
     @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        return isBreakEvenTrade(trade) ? series.numOf(1) : series.numOf(0);
+    public Num calculate(BarSeries series, Position position) {
+        return isLosingTrade(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override

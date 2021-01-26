@@ -23,13 +23,13 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.Order.OrderType;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
 import java.util.List;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.num.Num;
 
 /**
  * A history/record of a trading session.
@@ -47,7 +47,7 @@ public interface TradingRecord extends Serializable {
      * @return the entry type (BUY or SELL) of the first trade in the trading
      *         session
      */
-    OrderType getStartingType();
+    TradeType getStartingType();
 
     /**
      * @return the name of the TradingRecord
@@ -55,116 +55,116 @@ public interface TradingRecord extends Serializable {
     String getName();
 
     /**
-     * @return the current trade
-     */
-    Trade getCurrentTrade();
-
-    /**
-     * Operates an order in the trading record.
+     * Places a trade in the trading record.
      * 
-     * @param index the index to operate the order
+     * @param index the index to place the trade
      */
     default void operate(int index) {
         operate(index, NaN, NaN);
     }
 
     /**
-     * Operates an order in the trading record.
+     * Places a trade in the trading record.
      * 
-     * @param index  the index to operate the order
-     * @param price  the price of the order
-     * @param amount the amount to be ordered
+     * @param index  the index to place the trade
+     * @param price  the trade price
+     * @param amount the trade amount
      */
     void operate(int index, Num price, Num amount);
 
     /**
-     * Operates an entry order in the trading record.
+     * Places an entry trade in the trading record.
      * 
-     * @param index the index to operate the entry
-     * @return true if the entry has been operated, false otherwise
+     * @param index the index to place the entry
+     * @return true if the entry has been placed, false otherwise
      */
     default boolean enter(int index) {
         return enter(index, NaN, NaN);
     }
 
     /**
-     * Operates an entry order in the trading record.
+     * Places an entry trade in the trading record.
      * 
-     * @param index  the index to operate the entry
-     * @param price  the price of the order
-     * @param amount the amount to be ordered
-     * @return true if the entry has been operated, false otherwise
+     * @param index  the index to place the entry
+     * @param price  the trade price
+     * @param amount the trade amount
+     * @return true if the entry has been placed, false otherwise
      */
     boolean enter(int index, Num price, Num amount);
 
     /**
-     * Operates an exit order in the trading record.
+     * Places an exit trade in the trading record.
      * 
-     * @param index the index to operate the exit
-     * @return true if the exit has been operated, false otherwise
+     * @param index the index to place the exit
+     * @return true if the exit has been placed, false otherwise
      */
     default boolean exit(int index) {
         return exit(index, NaN, NaN);
     }
 
     /**
-     * Operates an exit order in the trading record.
+     * Places an exit trade in the trading record.
      * 
-     * @param index  the index to operate the exit
-     * @param price  the price of the order
-     * @param amount the amount to be ordered
-     * @return true if the exit has been operated, false otherwise
+     * @param index  the index to place the exit
+     * @param price  the trade price
+     * @param amount the trade amount
+     * @return true if the exit has been placed, false otherwise
      */
     boolean exit(int index, Num price, Num amount);
 
     /**
-     * @return true if no trade is open, false otherwise
+     * @return true if no position is open, false otherwise
      */
     default boolean isClosed() {
-        return !getCurrentTrade().isOpened();
+        return !getCurrentPosition().isOpened();
     }
 
     /**
-     * @return the recorded trades
+     * @return the recorded positions
      */
-    List<Trade> getTrades();
+    List<Position> getPositions();
 
     /**
-     * @return the number of recorded trades
+     * @return the number of recorded positions
      */
-    default int getTradeCount() {
-        return getTrades().size();
+    default int getPositionCount() {
+        return getPositions().size();
     }
 
     /**
-     * @return the last trade recorded
+     * @return the current position
      */
-    default Trade getLastTrade() {
-        List<Trade> trades = getTrades();
-        if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+    Position getCurrentPosition();
+
+    /**
+     * @return the last position recorded
+     */
+    default Position getLastPosition() {
+        List<Position> positions = getPositions();
+        if (!positions.isEmpty()) {
+            return positions.get(positions.size() - 1);
         }
         return null;
     }
 
     /**
-     * @return the last order recorded
+     * @return the last trade recorded
      */
-    Order getLastOrder();
+    Trade getLastTrade();
 
     /**
-     * @param orderType the type of the order to get the last of
-     * @return the last order (of the provided type) recorded
+     * @param tradeType the type of the trade to get the last of
+     * @return the last trade (of the provided type) recorded
      */
-    Order getLastOrder(OrderType orderType);
+    Trade getLastTrade(TradeType tradeType);
 
     /**
-     * @return the last entry order recorded
+     * @return the last entry trade recorded
      */
-    Order getLastEntry();
+    Trade getLastEntry();
 
     /**
-     * @return the last exit order recorded
+     * @return the last exit trade recorded
      */
-    Order getLastExit();
+    Trade getLastExit();
 }

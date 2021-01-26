@@ -21,29 +21,42 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.NumberOfBreakEvenTradesCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfLosingTradesCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfWinningTradesCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates TradeStatsReport basis on provided trading report and
- * bar series.
+ * Calculates the percentage of positions which are profitable.
  *
- * @see TradeStatsReport
+ * Defined as <code># of winning positions / total # of positions</code>.
  */
-public class TradeStatsReportGenerator implements ReportGenerator<TradeStatsReport> {
+public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public TradeStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num profitTradeCount = new NumberOfWinningTradesCriterion().calculate(series, tradingRecord);
-        final Num lossTradeCount = new NumberOfLosingTradesCriterion().calculate(series, tradingRecord);
-        final Num breakEvenTradeCount = new NumberOfBreakEvenTradesCriterion().calculate(series, tradingRecord);
-        return new TradeStatsReport(profitTradeCount, lossTradeCount, breakEvenTradeCount);
+    public Num calculate(BarSeries series, Position position) {
+        return isProfitablePosition(series, position) ? series.numOf(1) : series.numOf(0);
+    }
+
+    private boolean isProfitablePosition(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            Num zero = series.numOf(0);
+            return position.getProfit().isGreaterThan(zero);
+        }
+        return false;
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfProfitable = tradingRecord.getPositions().stream().filter(t -> isProfitablePosition(series, t))
+                .count();
+        return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getPositionCount()));
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

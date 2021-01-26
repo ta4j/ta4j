@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.function.Function;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
 
 /**
  * Base class for price indicators

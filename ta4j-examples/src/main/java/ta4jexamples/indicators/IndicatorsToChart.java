@@ -23,6 +23,9 @@
  */
 package ta4jexamples.indicators;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -42,10 +45,8 @@ import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
-import ta4jexamples.loaders.CsvBarsLoader;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import ta4jexamples.loaders.CsvBarsLoader;
 
 /**
  * This class builds a graphical chart showing values from indicators.

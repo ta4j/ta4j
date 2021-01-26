@@ -23,12 +23,16 @@
  */
 package ta4jexamples;
 
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.criteria.WinningTradesRatioCriterion;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
+import org.ta4j.core.analysis.criteria.WinningPositionsRatioCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -36,6 +40,7 @@ import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.trading.rules.StopGainRule;
 import org.ta4j.core.trading.rules.StopLossRule;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -87,13 +92,13 @@ public class Quickstart {
         // Running our juicy trading strategy...
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(new BaseStrategy(buyingRule, sellingRule));
-        System.out.println("Number of trades for our strategy: " + tradingRecord.getTradeCount());
+        System.out.println("Number of positions for our strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
 
-        // Getting the winning trades ratio
-        AnalysisCriterion winningTradesRatio = new WinningTradesRatioCriterion();
-        System.out.println("Winning trades ratio: " + winningTradesRatio.calculate(series, tradingRecord));
+        // Getting the winning positions ratio
+        AnalysisCriterion winningPositionsRatio = new WinningPositionsRatioCriterion();
+        System.out.println("Winning positions ratio: " + winningPositionsRatio.calculate(series, tradingRecord));
         // Getting a risk-reward ratio
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();
         System.out.println("Return over Max Drawdown: " + romad.calculate(series, tradingRecord));
