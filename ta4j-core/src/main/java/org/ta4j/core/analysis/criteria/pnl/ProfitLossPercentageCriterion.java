@@ -21,19 +21,20 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss in percentage criterion, defined as the position profit over
- * the purchase price.
- *
- * The profit or loss in percentage over the provided {@link Position
- * position(s)}.
+ * Profit and loss in percentage criterion (relative PnL) (without commissions).
+ * 
+ * <p>
+ * Defined as the position profit over the purchase price. The profit or loss in
+ * percentage over the provided {@link Position position(s)}.
  * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
  */
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {

@@ -21,20 +21,22 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross profit criterion.
+ * Gross profit criterion (with commissions).
  *
+ * <p>
  * The gross profit of the provided {@link Position position(s)} over the
  * provided {@link BarSeries series}.
  */
-public class TotalProfitCriterion extends AbstractAnalysisCriterion {
+public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
@@ -47,7 +49,7 @@ public class TotalProfitCriterion extends AbstractAnalysisCriterion {
      *
      * @param series   a bar series
      * @param position a position to calculate profit
-     * @return the total profit
+     * @return the gross profit
      */
     @Override
     public Num calculate(BarSeries series, Position position) {

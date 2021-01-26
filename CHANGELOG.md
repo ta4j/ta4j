@@ -8,8 +8,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **`AverageProfitCriterion`** renamed to **`AverageReturnPerBarCriterion`**
 - **Breaking:** **`BuyAndHoldCriterion`** renamed to **`BuyAndHoldReturnCriterion`**
 - **Breaking:** **`RewardRiskRatioCriterion`** renamed to **`ReturnOverMaxDrawdownCriterion`**
-- **Breaking:** **`TotalProfitCriterion`** renamed to **`TotalReturnCriterion`**
-- **Breaking:** **`TotalProfit2Criterion`** renamed to **`TotalProfitCriterion`**
+- **Breaking:** **`ProfitLossCriterion`** moved to PnL-Package
+- **Breaking:** **`ProfitLossPercentageCriterion`** moved to PnL-Package
+- **Breaking:** **`TotalProfitCriterion`** renamed to **`GrossReturnCriterion`** and moved to PnL-Package.
+- **Breaking:** **`TotalProfit2Criterion`** renamed to **`GrossProfitCriterion`** and moved to PnL-Package.
+- **Breaking:** **`TotalLossCriterion`** renamed to **`NetLossCriterion`** and moved to PnL-Package.
 - **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** **`NumberOfTradesCriterion`** renamed to **`NumberOfPositionsCriterion`**
 - **Breaking:** **`NumberOfLosingTradesCriterion`** renamed to **`NumberOfLosingPositionsCriterion`**
@@ -63,6 +66,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
+- :tada: **Enhancement** added **`GrossLossCriterion.class`**.
+- :tada: **Enhancement** added **`NetProfitCriterion.class`**.
 
 
 ## 0.13 (released November 5, 2019)
