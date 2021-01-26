@@ -54,6 +54,16 @@ public interface AnalysisCriterion {
     Num calculate(BarSeries series, TradingRecord tradingRecord);
 
     /**
+     * @param manager    the bar series manager with entry type of BUY
+     * @param strategies a list of strategies
+     * @return the best strategy (among the provided ones) according to the
+     *         criterion
+     */
+    default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies) {
+        return chooseBest(manager, TradeType.BUY, strategies);
+    }
+
+    /**
      * @param manager    the bar series manager
      * @param tradeType  the entry type (BUY or SELL) of the first trade in the
      *                   trading session
