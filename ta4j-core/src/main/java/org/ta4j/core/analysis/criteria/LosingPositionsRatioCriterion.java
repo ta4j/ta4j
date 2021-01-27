@@ -21,48 +21,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.analysis.criteria;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Abstract {@link Indicator indicator}.
+ * Calculates the percentage of positions which are not profitable.
+ *
+ * Defined as <code># of losing positions / total # of positions</code>.
  */
-public abstract class AbstractIndicator<T> implements Indicator<T> {
+public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
-    /**
-     * The logger
-     */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        return isLosingPosition(series, position) ? series.numOf(1) : series.numOf(0);
+    }
 
-    private final BarSeries series;
-
-    /**
-     * Constructor.
-     *
-     * @param series the related bar series
-     */
-    protected AbstractIndicator(BarSeries series) {
-        this.series = series;
+    private boolean isLosingPosition(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            Num zero = series.numOf(0);
+            return position.getProfit().isLessThan(zero);
+        }
+        return false;
     }
 
     @Override
-    public BarSeries getBarSeries() {
-        return series;
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfLosing = tradingRecord.getPositions().stream().filter(t -> isLosingPosition(series, t)).count();
+        return series.numOf(numberOfLosing).dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
     @Override
-    public String toString() {
-        return getClass().getSimpleName();
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
-
-    @Override
-    public Num numOf(Number number) {
-        return series.numOf(number);
-    }
-
 }
