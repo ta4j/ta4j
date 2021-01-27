@@ -41,7 +41,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ProfitLossPercentageCriterion**: Changed to calculate trade profits using Trade's entry and exit prices.
 - **TotalLossCriterion**: Changed to calculate trade profits using Trade's getProfit().
 - **TotalReturnCriterion** (previously TotalProfitCriterion): Changed to calculate trade profits using Trade's getProfit().
-- **WMAIndicator**: reduced complexity of WMAIndicator implementation
+- **InPipeRule**: reduced complexity by using Num.isBetween()
+- **InSlopeRule**: reduced complexity by using Num.isBetween()
 
 ### Removed/Deprecated
 - **MultiplierIndicator**: replaced by TransformIndicator.
@@ -63,6 +64,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
+- :tada: **Enhancement** added Num#isBetween() to test the Num if it is between a range.
 
 
 ## 0.13 (released November 5, 2019)

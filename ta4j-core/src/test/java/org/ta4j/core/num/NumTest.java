@@ -312,7 +312,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         Num sqrt = numOf(numBD).sqrt();
         assertNumEquals("547722.55750516611345696978280080", sqrt);
     }
-    
+
     @Test
     public void isBetween() {
         Num val = numOf(BigDecimal.valueOf(1.33));
