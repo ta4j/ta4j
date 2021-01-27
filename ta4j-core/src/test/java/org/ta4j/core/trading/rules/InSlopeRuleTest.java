@@ -32,12 +32,16 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedDecimalIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 public class InSlopeRuleTest {
 
     private InSlopeRule rulePositiveSlope;
     private InSlopeRule ruleNegativeSlope;
+    private InSlopeRule ruleSlopeNaN;
+    private InSlopeRule rulePositiveSlopeNaN;
+    private InSlopeRule ruleNegativeSlopeNaN;
 
     @Before
     public void setUp() {
@@ -45,6 +49,10 @@ public class InSlopeRuleTest {
         Indicator<Num> indicator = new FixedDecimalIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
         rulePositiveSlope = new InSlopeRule(indicator, series.numOf(20), series.numOf(30));
         ruleNegativeSlope = new InSlopeRule(indicator, series.numOf(-40), series.numOf(-20));
+        
+        ruleSlopeNaN = new InSlopeRule(indicator, NaN.NaN, NaN.NaN);
+        rulePositiveSlopeNaN = new InSlopeRule(indicator, NaN.NaN, series.numOf(30));
+        ruleNegativeSlopeNaN = new InSlopeRule(indicator, series.numOf(-40), NaN.NaN);
     }
 
     @Test
@@ -58,5 +66,20 @@ public class InSlopeRuleTest {
         assertFalse(ruleNegativeSlope.isSatisfied(1));
         assertTrue(ruleNegativeSlope.isSatisfied(5));
         assertFalse(ruleNegativeSlope.isSatisfied(9));
+        
+        assertFalse(ruleSlopeNaN.isSatisfied(0));
+        assertFalse(ruleSlopeNaN.isSatisfied(1));
+        assertFalse(ruleSlopeNaN.isSatisfied(5));
+        assertFalse(ruleSlopeNaN.isSatisfied(9));
+        
+        assertTrue(rulePositiveSlopeNaN.isSatisfied(0));
+        assertTrue(rulePositiveSlopeNaN.isSatisfied(1));
+        assertTrue(rulePositiveSlopeNaN.isSatisfied(2));
+        assertTrue(rulePositiveSlopeNaN.isSatisfied(9));
+        
+        assertTrue(ruleNegativeSlopeNaN.isSatisfied(0));
+        assertTrue(ruleNegativeSlopeNaN.isSatisfied(1));
+        assertTrue(ruleNegativeSlopeNaN.isSatisfied(5));
+        assertTrue(ruleNegativeSlopeNaN.isSatisfied(9));
     }
 }

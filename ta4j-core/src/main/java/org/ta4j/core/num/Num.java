@@ -231,6 +231,36 @@ public interface Num extends Comparable<Num>, Serializable {
     boolean isLessThanOrEqual(Num other);
 
     /**
+     * Checks if this value is between <code>start</code> (inclusive) and
+     * <code>end</code> (inclusive).
+     * 
+     * @param start the start value, not null
+     * @param end   the end value, not null
+     * @return true if this value is between start and end.
+     */
+    default boolean isBetween(Num start, Num end) {
+        return isBetween(start, end, true, true);
+    }
+
+    /**
+     * Checks if this value is between <code>start</code> and <code>end</code>.
+     * 
+     * @param start          the start value, not null
+     * @param end            the end value, not null
+     * @param startInclusive if this value should include start
+     * @param endInclusive   if this value should include end
+     * @return true if number is between start and end
+     */
+    default boolean isBetween(Num start, Num end, boolean startInclusive, boolean endInclusive) {
+        if (start == null || end == null || start.isNaN() || end.isNaN()) {
+            return false;
+        }
+        boolean starts = startInclusive ? isGreaterThanOrEqual(start) : isGreaterThan(start);
+        boolean ends = endInclusive ? isLessThanOrEqual(end) : isLessThan(end);
+        return starts && ends;
+    }
+
+    /**
      * Returns the minimum of this {@code num} and {@code other}.
      * 
      * @param other value with which the minimum is to be computed
