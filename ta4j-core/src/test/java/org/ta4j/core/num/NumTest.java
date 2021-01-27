@@ -329,6 +329,8 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         assertFalse(val.isBetween(start1, NaN, false, false));
         assertFalse(val.isBetween(NaN, NaN, false, false));
         assertFalse(val.isBetween(NaN, NaN));
+        assertFalse(val.isBetween(null, NaN));
+        assertFalse(val.isBetween(NaN, null));
     }
 
 }
