@@ -11,7 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **`TotalProfitCriterion`** renamed to **`TotalReturnCriterion`**
 - **Breaking:** **`TotalProfit2Criterion`** renamed to **`TotalProfitCriterion`**
 - **Breaking:** package "tradereports" renamed to "reports"
-- **Breaking:** **`NumberOfTradesCriterion`** renamed to **`NumberOfPositionsCriterion`**
+- **Breaking:** **`NumberOfTradesCriterion`** renamed to **`NumberOfMaxPositionsCriterion`**
 - **Breaking:** **`NumberOfLosingTradesCriterion`** renamed to **`NumberOfLosingPositionsCriterion`**
 - **Breaking:** **`NumberOfWinningTradesCriterion`** renamed to **`NumberOfWinningPositionsCriterion`**
 - **Breaking:** **`NumberOfBreakEvenTradesCriterion`** renamed to **`NumberOfBreakEvenPositionsCriterion`**
@@ -63,6 +63,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
+- :tada: **Enhancement** **`NumberOfMinPositionsCriterion`** 
+
 
 
 ## 0.13 (released November 5, 2019)
