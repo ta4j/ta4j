@@ -70,7 +70,8 @@ public class StrategyAnalysis {
         System.out.println(
                 "Average return (per bar): " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
         // Number of positions
-        System.out.println("Number of positions: " + new NumberOfMinPositionsCriterion().calculate(series, tradingRecord));
+        System.out.println(
+                "Number of positions: " + new NumberOfMinPositionsCriterion().calculate(series, tradingRecord));
         // Profitable position ratio
         System.out.println(
                 "Winning positions ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
