@@ -36,11 +36,11 @@ public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriteri
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         long numberOfBreakEvenTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .filter(this::isBreakEvenTrade).count();
+                .filter(this::isBreakEvenPosition).count();
         return series.numOf(numberOfBreakEvenTrades);
     }
 
-    private boolean isBreakEvenTrade(Position position) {
+    private boolean isBreakEvenPosition(Position position) {
         if (position.isClosed()) {
             return position.getProfit().isZero();
         }
@@ -49,7 +49,7 @@ public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriteri
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isBreakEvenTrade(position) ? series.numOf(1) : series.numOf(0);
+        return isBreakEvenPosition(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override

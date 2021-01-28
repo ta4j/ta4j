@@ -48,10 +48,8 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
         if (position.isClosed()) {
             Num loss = position.getProfit();
             return loss.isNegative() ? loss : series.numOf(0);
-
         }
         return series.numOf(0);
-
     }
 
     @Override
