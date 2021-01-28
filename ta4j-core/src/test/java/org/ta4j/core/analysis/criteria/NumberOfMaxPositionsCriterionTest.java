@@ -38,10 +38,10 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
+public class NumberOfMaxPositionsCriterionTest extends AbstractCriterionTest {
 
-    public NumberOfPositionsCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NumberOfPositionsCriterion(), numFunction);
+    public NumberOfMaxPositionsCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new NumberOfMaxPositionsCriterion(), numFunction);
     }
 
     @Test

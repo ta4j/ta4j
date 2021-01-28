@@ -29,9 +29,9 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of position criterion.
+ * Number of minimum required position criterion.
  */
-public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
+public class NumberOfMinPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
@@ -45,6 +45,6 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

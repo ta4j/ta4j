@@ -32,7 +32,7 @@ import org.ta4j.core.analysis.criteria.BuyAndHoldReturnCriterion;
 import org.ta4j.core.analysis.criteria.LinearTransactionCostCriterion;
 import org.ta4j.core.analysis.criteria.MaximumDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.NumberOfBarsCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfMinPositionsCriterion;
 import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
@@ -70,7 +70,7 @@ public class StrategyAnalysis {
         System.out.println(
                 "Average return (per bar): " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
         // Number of positions
-        System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
+        System.out.println("Number of positions: " + new NumberOfMinPositionsCriterion().calculate(series, tradingRecord));
         // Profitable position ratio
         System.out.println(
                 "Winning positions ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
