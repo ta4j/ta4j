@@ -64,10 +64,10 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
     private Num calculate(BarSeries series, Num numberOfWinningPositions, Num numberOfLosingPositions) {
         Num one = series.numOf(1);
-        Num probabiltyToWinOneTrade = numberOfWinningPositions.dividedBy(series.numOf(100));
+        Num probabiltyToWinOnePosition = numberOfWinningPositions.dividedBy(series.numOf(100));
         // Expectancy = (1 + AW/AL) * ProbabilityToWinOnePosition - 1
         return (one.plus(numberOfWinningPositions.dividedBy(numberOfLosingPositions)))
-                .multipliedBy(probabiltyToWinOneTrade).minus(one);
+                .multipliedBy(probabiltyToWinOnePosition).minus(one);
     }
 
 }
