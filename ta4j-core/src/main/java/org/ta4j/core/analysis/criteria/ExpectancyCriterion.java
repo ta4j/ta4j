@@ -52,9 +52,9 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfWinningTrades = numberOfWinningPositionsCriterion.calculate(series, position);
-        Num numberOfLosingTrades = numberOfLosingPositionsCriterion.calculate(series, position);
-        return calculate(series, numberOfWinningTrades, numberOfLosingTrades);
+        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
+        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
+        return calculate(series, numberOfWinningPositions, numberOfLosingPositions);
     }
 
     @Override
@@ -62,12 +62,12 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num calculate(BarSeries series, Num numberOfWinningTrades, Num numberOfLosingTrades) {
+    private Num calculate(BarSeries series, Num numberOfWinningPositions, Num numberOfLosingPositions) {
         Num one = series.numOf(1);
-        Num probabiltyToWinOneTrade = numberOfWinningTrades.dividedBy(series.numOf(100));
+        Num probabiltyToWinOneTrade = numberOfWinningPositions.dividedBy(series.numOf(100));
         // Expectancy = (1 + AW/AL) * ProbabilityToWinOnePosition - 1
-        return (one.plus(numberOfWinningTrades.dividedBy(numberOfLosingTrades))).multipliedBy(probabiltyToWinOneTrade)
-                .minus(one);
+        return (one.plus(numberOfWinningPositions.dividedBy(numberOfLosingPositions)))
+                .multipliedBy(probabiltyToWinOneTrade).minus(one);
     }
 
 }
