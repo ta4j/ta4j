@@ -225,7 +225,11 @@ public class Position implements Serializable {
         if (isOpened()) {
             return numOf(0);
         } else {
-            return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
+            if (exit.isBuy()) {
+                return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
+            } else {
+                return getGrossProfit(exit.getPricePerAsset()).plus(getPositionCost());
+            }
         }
     }
 
