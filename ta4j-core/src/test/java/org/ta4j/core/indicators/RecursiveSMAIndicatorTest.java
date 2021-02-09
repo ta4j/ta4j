@@ -38,7 +38,6 @@ import java.util.function.Function;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-
 public class RecursiveSMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private BarSeries data;

@@ -27,12 +27,13 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Faster implementation of the simple moving average (SMA) indicator. It recursively calculates
- * the current value using only the previous value. The decreased complexity allows for broad
- * applications, even for very long timeframes.
+ * Faster implementation of the simple moving average (SMA) indicator. It
+ * recursively calculates the current value using only the previous value. The
+ * decreased complexity allows for broad applications, even for very long
+ * timeframes.
  *
  * @see <a href=
- * "https://de.wikipedia.org/wiki/Gleitender_Mittelwert#Online-Berechnung">https://de.wikipedia.org/wiki/Gleitender_Mittelwert#Online-Berechnung</a>
+ *      "https://de.wikipedia.org/wiki/Gleitender_Mittelwert#Online-Berechnung">https://de.wikipedia.org/wiki/Gleitender_Mittelwert#Online-Berechnung</a>
  * @see SMAIndicator
  */
 public class RecursiveSMAIndicator extends CachedIndicator<Num> {
@@ -46,8 +47,9 @@ public class RecursiveSMAIndicator extends CachedIndicator<Num> {
     /**
      * @param indicator          the indicator
      * @param barCount           the timeframe
-     * @param fullRecalcBarCount number of bars in the time series after which a full recalculation
-     *                           using the standard SMA algorithm should be performed in order to to account for
+     * @param fullRecalcBarCount number of bars in the time series after which a
+     *                           full recalculation using the standard SMA algorithm
+     *                           should be performed in order to to account for
      *                           prevent accumulated rounding errors.
      */
     public RecursiveSMAIndicator(Indicator<Num> indicator, int barCount, int fullRecalcBarCount) {
@@ -62,15 +64,14 @@ public class RecursiveSMAIndicator extends CachedIndicator<Num> {
         if (barCount > index || index % fullRecalcBarCount == 0) {
             return calculateFull(index);
         } else {
-            return getValue(index - 1)
-                    .plus(indicator.getValue(index).dividedBy(numOf(barCount)))
+            return getValue(index - 1).plus(indicator.getValue(index).dividedBy(numOf(barCount)))
                     .minus(indicator.getValue(index - barCount).dividedBy(numOf(barCount)));
         }
     }
 
     /**
-     * This method encapsulates the standard SMA implementation.
-     * Performs a full recalculation using all bars of the time frame.
+     * This method encapsulates the standard SMA implementation. Performs a full
+     * recalculation using all bars of the time frame.
      *
      * @see SMAIndicator#calculate(int)
      */

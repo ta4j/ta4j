@@ -47,7 +47,7 @@ public class TestUtils {
     /**
      * Verifies that the actual {@code Num} value is not equal to {@link NaN}.
      *
-     * @param actual   the actual {@code Num} value
+     * @param actual the actual {@code Num} value
      * @throws AssertionError if the actual value is equal to {@link NaN}
      */
     public static void assertNotNaN(Num actual) {
