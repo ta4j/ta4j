@@ -1,0 +1,92 @@
+/**
+ * The MIT License (MIT)
+ * <p>
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ * <p>
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * <p>
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * <p>
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.indicators;
+
+import org.ta4j.core.Indicator;
+import org.ta4j.core.num.Num;
+
+/**
+ * Faster implementation of the simple moving average (SMA) indicator. It recursively calculates
+ * the current value using only the previous value. The decreased complexity allows for broad
+ * applications, even for very long timeframes.
+ *
+ * @see <a href=
+ * "https://de.wikipedia.org/wiki/Gleitender_Mittelwert#Online-Berechnung">https://de.wikipedia.org/wiki/Gleitender_Mittelwert#Online-Berechnung</a>
+ * @see SMAIndicator
+ */
+public class RecursiveSMAIndicator extends CachedIndicator<Num> {
+
+    private static final long serialVersionUID = 653601631245729997L;
+    private final Indicator<Num> indicator;
+
+    private final int barCount;
+    private final int fullRecalcBarCount;
+
+    /**
+     * @param indicator          the indicator
+     * @param barCount           the timeframe
+     * @param fullRecalcBarCount number of bars in the time series after which a full recalculation
+     *                           using the standard SMA algorithm should be performed in order to to account for
+     *                           prevent accumulated rounding errors.
+     */
+    public RecursiveSMAIndicator(Indicator<Num> indicator, int barCount, int fullRecalcBarCount) {
+        super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.fullRecalcBarCount = fullRecalcBarCount;
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        if (barCount > index || index % fullRecalcBarCount == 0) {
+            return calculateFull(index);
+        } else {
+            return getValue(index - 1)
+                    .plus(indicator.getValue(index).dividedBy(numOf(barCount)))
+                    .minus(indicator.getValue(index - barCount).dividedBy(numOf(barCount)));
+        }
+    }
+
+    /**
+     * This method encapsulates the standard SMA implementation.
+     * Performs a full recalculation using all bars of the time frame.
+     *
+     * @see SMAIndicator#calculate(int)
+     */
+    private Num calculateFull(int index) {
+        Num sum = numOf(0);
+        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
+            sum = sum.plus(indicator.getValue(i));
+        }
+
+        final int realBarCount = Math.min(barCount, index + 1);
+        return sum.dividedBy(numOf(realBarCount));
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + barCount;
+    }
+
+}

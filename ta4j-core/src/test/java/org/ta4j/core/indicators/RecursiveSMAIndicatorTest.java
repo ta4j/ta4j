@@ -1,0 +1,84 @@
+/**
+ * The MIT License (MIT)
+ * <p>
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ * <p>
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ * <p>
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * <p>
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.indicators;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+
+import java.util.Random;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+
+public class RecursiveSMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    private BarSeries data;
+
+    public RecursiveSMAIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
+
+    @Before
+    public void setUp() {
+        data = new MockBarSeries(numFunction, new Random().doubles(20000, 10, 500).toArray());
+    }
+
+    @Test
+    public void testEqualityToSMAIndicator_1() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
+        RecursiveSMAIndicator recursiveSMAIndicator = new RecursiveSMAIndicator(closePrice, 1000, 100);
+        SMAIndicator smaIndicator = new SMAIndicator(closePrice, 1000);
+
+        for (int i = 0; i < data.getBarCount(); i++) {
+            assertNumEquals(smaIndicator.getValue(i), recursiveSMAIndicator.getValue(i));
+        }
+    }
+
+    @Test
+    public void testPerformance() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
+        RecursiveSMAIndicator recursiveSMAIndicator = new RecursiveSMAIndicator(closePrice, 1000, 10000);
+        SMAIndicator smaIndicator = new SMAIndicator(closePrice, 1000);
+
+        Function<Indicator<Num>, Long> executor = numIndicator -> {
+            long before = System.currentTimeMillis();
+            for (int i = 0; i < data.getBarCount(); i++) {
+                numIndicator.getValue(i);
+            }
+            return System.currentTimeMillis() - before;
+        };
+
+        long smaDuration = executor.apply(smaIndicator);
+        long recSmaDuration = executor.apply(recursiveSMAIndicator);
+        assertTrue(recSmaDuration < smaDuration);
+    }
+}
