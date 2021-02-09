@@ -323,7 +323,7 @@ public class Position implements Serializable {
         }
 
         // Profits of long position are losses of short
-        if (entry.getType().equals(TradeType.SELL)) {
+        if (entry.isSell()) {
             grossProfit = grossProfit.multipliedBy(numOf(-1));
         }
         return grossProfit;
