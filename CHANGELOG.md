@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - :tada: **Enhancement** Loggers in `BaseBarSeries` and `BarSeriesManager` made static for better performance.
+- :tada: **RecursiveSMAIndicator**: New indicator for faster SMA calculation
 
 ### Removed/Deprecated
 
