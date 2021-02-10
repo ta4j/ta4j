@@ -64,6 +64,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
 - :tada: **Enhancement** added Num.negate() to negate a Num value.
+- :tada: **Enhancement** added chooseBest() method with parameter tradeType in AnalysisCriterion.
 
 
 ## 0.13 (released November 5, 2019)
