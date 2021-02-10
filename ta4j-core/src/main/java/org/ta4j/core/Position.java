@@ -288,7 +288,7 @@ public class Position implements Serializable {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice).minus(entryPrice.numOf(1));
         } else {
-            return exitPrice.dividedBy(entryPrice).minus(entryPrice.numOf(1)).multipliedBy(entryPrice.numOf(-1));
+            return (exitPrice.dividedBy(entryPrice).minus(entryPrice.numOf(1))).multipliedBy(entryPrice.numOf(-1));
         }
     }
 
