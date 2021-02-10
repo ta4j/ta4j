@@ -271,12 +271,12 @@ public class Position implements Serializable {
     }
 
     /**
-     * Returns the gross return of the position. If either the entry or the exit
+     * Calculates the gross return of the position. If either the entry or the exit
      * price are <code>NaN</code>, the close price from the supplies
      * {@link BarSeries} is used.
      * 
      * @param barSeries
-     * @return
+     * @return the gross return with entry and exit prices from the barSeries
      */
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
@@ -284,14 +284,27 @@ public class Position implements Serializable {
         return getGrossReturn(entryPrice, exitPrice);
     }
 
+    /**
+     * Calculates the gross return between entry and exit price. Includes the base.
+     * 
+     * <p>
+     * For example:
+     * <ul>
+     * <li>For buy position with a profit of 4%, it returns 1.04 (includes the base)
+     * <li>For sell position with a loss of 4%, it returns 0.96 (includes the base)
+     * </ul>
+     * 
+     * @param entryPrice
+     * @param exitPrice
+     * @return the gross return between entryPrice and exitPrice (includes the base)
+     */
     private Num getGrossReturn(Num entryPrice, Num exitPrice) {
-        Num profitPerAsset;
         if (getEntry().isBuy()) {
-            profitPerAsset = exitPrice.minus(entryPrice);
+            return exitPrice.dividedBy(entryPrice);
         } else {
-            profitPerAsset = entryPrice.minus(exitPrice);
+            Num one = entryPrice.numOf(1);
+            return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
-        return profitPerAsset.dividedBy(entryPrice).plus(entryPrice.numOf(1));
     }
 
     /**
@@ -323,8 +336,8 @@ public class Position implements Serializable {
         }
 
         // Profits of long position are losses of short
-        if (entry.getType().equals(TradeType.SELL)) {
-            grossProfit = grossProfit.multipliedBy(numOf(-1));
+        if (entry.isSell()) {
+            grossProfit = grossProfit.negate();
         }
         return grossProfit;
     }

@@ -150,6 +150,11 @@ public class DoubleNum implements Num {
     }
 
     @Override
+    public Num negate() {
+        return new DoubleNum(-delegate);
+    }
+
+    @Override
     public boolean isZero() {
         return delegate == 0;
     }
