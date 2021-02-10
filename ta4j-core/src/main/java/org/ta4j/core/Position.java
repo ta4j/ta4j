@@ -248,7 +248,7 @@ public class Position implements Serializable {
     /**
      * Calculate the gross return of the position if it is closed
      *
-     * @return the gross return of the position
+     * @return the gross return of the position in percent
      */
     public Num getGrossReturn() {
         if (isOpened()) {
@@ -264,7 +264,7 @@ public class Position implements Serializable {
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
-     * @return the gross return of the position
+     * @return the gross return of the position in percent
      */
     public Num getGrossReturn(Num finalPrice) {
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
@@ -276,7 +276,8 @@ public class Position implements Serializable {
      * {@link BarSeries} is used.
      * 
      * @param barSeries
-     * @return the gross return with entry and exit prices from the barSeries
+     * @return the gross return in percent with entry and exit prices from the
+     *         barSeries
      */
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
@@ -285,7 +286,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the gross return between entry and exit price. Includes the base.
+     * Calculates the gross return between entry and exit price in percent. Includes
+     * the base.
      * 
      * <p>
      * For example:
@@ -294,9 +296,10 @@ public class Position implements Serializable {
      * <li>For sell position with a loss of 4%, it returns 0.96 (includes the base)
      * </ul>
      * 
-     * @param entryPrice
-     * @param exitPrice
-     * @return the gross return between entryPrice and exitPrice (includes the base)
+     * @param entryPrice the entry price
+     * @param exitPrice  the exit price
+     * @return the gross return in percent between entryPrice and exitPrice
+     *         (includes the base)
      */
     private Num getGrossReturn(Num entryPrice, Num exitPrice) {
         if (getEntry().isBuy()) {
@@ -308,9 +311,9 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the position if it is closed
+     * Calculate the gross profit of the position if it is closed
      *
-     * @return the gross return of the position
+     * @return the gross profit of the position
      */
     public Num getGrossProfit() {
         if (isOpened()) {
