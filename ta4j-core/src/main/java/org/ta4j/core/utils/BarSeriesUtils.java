@@ -201,7 +201,7 @@ public final class BarSeriesUtils {
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
      * before higher times).
      * 
-     * @param bars
+     * @param bars the bars
      * @return the sorted bars
      */
     public static List<Bar> sortBars(List<Bar> bars) {
