@@ -26,6 +26,8 @@ package org.ta4j.core.utils;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -43,6 +45,12 @@ import org.ta4j.core.num.Num;
  * Common utilities and helper methods for BarSeries.
  */
 public final class BarSeriesUtils {
+
+    /**
+     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower
+     * values before higher values).
+     */
+    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().isAfter(b2.getEndTime()) ? 1 : -1;
 
     private BarSeriesUtils() {
     }
@@ -187,5 +195,41 @@ public final class BarSeriesUtils {
             }
         }
         return overlappingBars;
+    }
+
+    /**
+     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
+     * before higher times).
+     * 
+     * @param bars
+     * @return the sorted bars
+     */
+    public static List<Bar> sortBars(List<Bar> bars) {
+        return sortBars(bars, true);
+    }
+
+    /**
+     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
+     * before higher times).
+     * 
+     * @param bars         the bars
+     * @param forceSorting if true, forces the sorting even if firsBar#endTime is
+     *                     before lastBar#endTime (useful if bar data is unsorted in
+     *                     any way)
+     * @return the sorted bars
+     */
+    public static List<Bar> sortBars(List<Bar> bars, boolean forceSorting) {
+        if (!bars.isEmpty()) {
+            if (forceSorting) {
+                Collections.sort(bars, BarSeriesUtils.sortBarsByTime);
+            } else {
+                Bar firstBar = bars.get(0);
+                Bar lastBar = bars.get(bars.size() - 1);
+                if (firstBar.getEndTime().isAfter(lastBar.getEndTime())) {
+                    Collections.reverse(bars);
+                }
+            }
+        }
+        return bars;
     }
 }
