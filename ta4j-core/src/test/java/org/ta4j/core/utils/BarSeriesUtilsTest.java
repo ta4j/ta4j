@@ -226,21 +226,21 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         unsortedBars.add(bar0);
 
         BarSeriesUtils.sortBars(unsortedBars, false);
-        assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
+        assertEquals(bar0.getEndTime(), unsortedBars.get(0).getEndTime());
+        assertEquals(bar1.getEndTime(), unsortedBars.get(1).getEndTime());
+        assertEquals(bar2.getEndTime(), unsortedBars.get(2).getEndTime());
+        assertEquals(bar3.getEndTime(), unsortedBars.get(3).getEndTime());
 
         final List<Bar> unsortedBars2 = new ArrayList<>();
-        unsortedBars.add(bar2);
-        unsortedBars.add(bar1);
-        unsortedBars.add(bar3);
-        unsortedBars.add(bar0);
+        unsortedBars2.add(bar2);
+        unsortedBars2.add(bar1);
+        unsortedBars2.add(bar3);
+        unsortedBars2.add(bar0);
 
         BarSeriesUtils.sortBars(unsortedBars2);
-        assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
+        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
+        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
+        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
+        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
     }
 }
