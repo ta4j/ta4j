@@ -213,7 +213,7 @@ public final class BarSeriesUtils {
      * before higher times).
      * 
      * @param bars         the bars
-     * @param forceSorting if true, forces the sorting even if firsBar#endTime is
+     * @param forceSorting if true, forces the sorting even if firstBar#endTime is
      *                     before lastBar#endTime (useful if bar data is unsorted in
      *                     any way)
      * @return the sorted bars
