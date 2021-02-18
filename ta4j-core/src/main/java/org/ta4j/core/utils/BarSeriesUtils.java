@@ -198,24 +198,6 @@ public final class BarSeriesUtils {
     }
 
     /**
-     * Creates a new BarSeries of type DecimalNum with the provided bars.
-     * 
-     * @param barSeriesName   the name of the series
-     * @param bars            the bars to be added
-     * @param maximumBarCount the maximum number of bars that will be retained in
-     *                        the series
-     * @return the new BarSeries with the provided bars
-     */
-    public static BarSeries createBarSeries(String barSeriesName, List<Bar> bars, Integer maximumBarCount) {
-        BarSeries barSeries = new BaseBarSeries(barSeriesName);
-        if (maximumBarCount != null) {
-            barSeries.setMaximumBarCount(maximumBarCount);
-        }
-        addBars(barSeries, bars);
-        return barSeries;
-    }
-
-    /**
      * Adds <code>newBars</code> to <code>barSeries</code>.
      * 
      * @param barSeries the BarSeries

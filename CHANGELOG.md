@@ -65,7 +65,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Chainrule.
 - :tada: **Enhancement** added BarSeriesUtils#sortBars.
 - :tada: **Enhancement** added BarSeriesUtils#addBars.
-- :tada: **Enhancement** added BarSeriesUtils#createBarSeries.
 
 
 ## 0.13 (released November 5, 2019)

@@ -201,28 +201,6 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void createBarSeries() {
-        final Function<Number, Num> decimalNumFunction = DecimalNum::valueOf;
-        time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
-
-        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, decimalNumFunction);
-        final Bar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction);
-        final Bar bar2 = new MockBar(time.plusDays(2), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction);
-        final Bar bar3 = new MockBar(time.plusDays(3), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction);
-
-        final List<Bar> bars = new ArrayList<>();
-        bars.add(bar0);
-        bars.add(bar1);
-        bars.add(bar2);
-        bars.add(bar3);
-        Collections.shuffle(bars);
-
-        BarSeries barSeries = BarSeriesUtils.createBarSeries("1day", bars, 10);
-        assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
-        assertEquals(bar3.getEndTime(), barSeries.getLastBar().getEndTime());
-    }
-
-    @Test
     public void addBars() {
         BarSeries barSeries = new BaseBarSeries("1day", numFunction);
 
