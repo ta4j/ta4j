@@ -29,8 +29,8 @@ import static org.junit.Assert.assertNotEquals;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -243,7 +243,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
         assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
         assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
-        
+
         Collections.shuffle(unsortedBars2);
         BarSeriesUtils.sortBars(unsortedBars2);
         assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
