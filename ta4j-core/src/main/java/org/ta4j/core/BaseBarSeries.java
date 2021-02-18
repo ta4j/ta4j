@@ -124,8 +124,10 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * Constructor.
-     *
-     * @param name the name of the series
+     * 
+     * @param name        the name of the series
+     * @param numFunction a {@link Function} to convert a {@link Number} to a
+     *                    {@link Num Num implementation}
      */
     public BaseBarSeries(String name, Function<Number, Num> numFunction) {
         this(name, new ArrayList<>(), numFunction);

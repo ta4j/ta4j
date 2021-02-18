@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -37,6 +38,7 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -199,6 +201,55 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void createBarSeries() {
+        final Function<Number, Num> decimalNumFunction = DecimalNum::valueOf;
+        time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
+
+        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, decimalNumFunction);
+        final Bar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction);
+        final Bar bar2 = new MockBar(time.plusDays(2), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction);
+        final Bar bar3 = new MockBar(time.plusDays(3), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction);
+
+        final List<Bar> bars = new ArrayList<>();
+        bars.add(bar0);
+        bars.add(bar1);
+        bars.add(bar2);
+        bars.add(bar3);
+        Collections.shuffle(bars);
+
+        BarSeries barSeries = BarSeriesUtils.createBarSeries("1day", bars, 10);
+        assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
+        assertEquals(bar3.getEndTime(), barSeries.getLastBar().getEndTime());
+    }
+
+    @Test
+    public void addBars() {
+        BarSeries barSeries = new BaseBarSeries("1day", numFunction);
+
+        List<Bar> bars = new ArrayList<>();
+        time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
+        final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
+        final Bar bar1 = new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        final Bar bar2 = new MockBar(time.plusDays(2), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        bars.add(bar2);
+        bars.add(bar0);
+        bars.add(bar1);
+
+        // add 3 bars to empty barSeries
+        BarSeriesUtils.addBars(barSeries, bars);
+
+        assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
+        assertEquals(bar2.getEndTime(), barSeries.getLastBar().getEndTime());
+
+        final Bar bar3 = new MockBar(time.plusDays(3), 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
+        bars.add(bar3);
+
+        // add 1 bar to non empty barSeries
+        BarSeriesUtils.addBars(barSeries, bars);
+        assertEquals(bar3.getEndTime(), barSeries.getLastBar().getEndTime());
+    }
+
+    @Test
     public void sortBars() {
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
 
@@ -226,21 +277,28 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         unsortedBars.add(bar0);
 
         BarSeriesUtils.sortBars(unsortedBars, false);
-        assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
+        assertEquals(bar0.getEndTime(), unsortedBars.get(0).getEndTime());
+        assertEquals(bar1.getEndTime(), unsortedBars.get(1).getEndTime());
+        assertEquals(bar2.getEndTime(), unsortedBars.get(2).getEndTime());
+        assertEquals(bar3.getEndTime(), unsortedBars.get(3).getEndTime());
 
         final List<Bar> unsortedBars2 = new ArrayList<>();
-        unsortedBars.add(bar2);
-        unsortedBars.add(bar1);
-        unsortedBars.add(bar3);
-        unsortedBars.add(bar0);
+        unsortedBars2.add(bar2);
+        unsortedBars2.add(bar1);
+        unsortedBars2.add(bar3);
+        unsortedBars2.add(bar0);
 
         BarSeriesUtils.sortBars(unsortedBars2);
-        assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
-        assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
-        assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
-        assertEquals(bar3.getEndTime(), sortedBars.get(3).getEndTime());
+        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
+        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
+        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
+        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+
+        Collections.shuffle(unsortedBars2);
+        BarSeriesUtils.sortBars(unsortedBars2);
+        assertEquals(bar0.getEndTime(), unsortedBars2.get(0).getEndTime());
+        assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
+        assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
+        assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
     }
 }

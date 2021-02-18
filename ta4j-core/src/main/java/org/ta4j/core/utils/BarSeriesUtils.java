@@ -73,7 +73,7 @@ public final class BarSeriesUtils {
     /**
      * We can assume that finalized bar data will be never changed afterwards by the
      * marketdata provider. It is rare, but depending on the exchange, they reserve
-     * the right to make updates to finalized bars. This method founds and replaces
+     * the right to make updates to finalized bars. This method finds and replaces
      * potential bar data that was changed afterwards by the marketdata provider. It
      * can also be uses to check bar data equality over different marketdata
      * providers. This method does <b>not</b> add missing bars but replaces an
@@ -198,10 +198,45 @@ public final class BarSeriesUtils {
     }
 
     /**
+     * Creates a new BarSeries of type DecimalNum with the provided bars.
+     * 
+     * @param barSeriesName   the name of the series
+     * @param bars            the bars to be added
+     * @param maximumBarCount the maximum number of bars that will be retained in
+     *                        the series
+     * @return the new BarSeries with the provided bars
+     */
+    public static BarSeries createBarSeries(String barSeriesName, List<Bar> bars, Integer maximumBarCount) {
+        BarSeries barSeries = new BaseBarSeries(barSeriesName);
+        if (maximumBarCount != null) {
+            barSeries.setMaximumBarCount(maximumBarCount);
+        }
+        addBars(barSeries, bars);
+        return barSeries;
+    }
+
+    /**
+     * Adds <code>newBars</code> to <code>barSeries</code>.
+     * 
+     * @param barSeries the BarSeries
+     * @param newBars   the new bars to be added
+     */
+    public static void addBars(BarSeries barSeries, List<Bar> newBars) {
+        if (newBars != null && !newBars.isEmpty()) {
+            sortBars(newBars, true);
+            for (Bar bar : newBars) {
+                if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
+                    barSeries.addBar(bar);
+                }
+            }
+        }
+    }
+
+    /**
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
      * before higher times).
      * 
-     * @param bars
+     * @param bars the bars
      * @return the sorted bars
      */
     public static List<Bar> sortBars(List<Bar> bars) {
@@ -212,8 +247,8 @@ public final class BarSeriesUtils {
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
      * before higher times).
      * 
-     * @param bars         the bars
-     * @param forceSorting if true, forces the sorting even if firsBar#endTime is
+     * @param bars         the bars must be within a mutable collection type
+     * @param forceSorting if true, forces the sorting even if firstBar#endTime is
      *                     before lastBar#endTime (useful if bar data is unsorted in
      *                     any way)
      * @return the sorted bars
