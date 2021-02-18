@@ -46,7 +46,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
      *
      * @param series the related bar series
      */
-    public AbstractIndicator(BarSeries series) {
+    protected AbstractIndicator(BarSeries series) {
         this.series = series;
     }
 
