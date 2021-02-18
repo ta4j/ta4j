@@ -212,7 +212,7 @@ public final class BarSeriesUtils {
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
      * before higher times).
      * 
-     * @param bars         the bars must be within an unimmutable collection type
+     * @param bars         the bars must be within a mutable collection type
      * @param forceSorting if true, forces the sorting even if firstBar#endTime is
      *                     before lastBar#endTime (useful if bar data is unsorted in
      *                     any way)
