@@ -33,7 +33,7 @@ import org.ta4j.core.Rule;
 public abstract class AbstractRule implements Rule {
 
     /** The logger */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected final transient Logger log = LoggerFactory.getLogger(getClass());
 
     /** The class name */
     private final String className = getClass().getSimpleName();
