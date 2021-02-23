@@ -29,22 +29,22 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the percentage of positions which are profitable.
+ * Calculates the percentage of positions which are not profitable.
  *
- * Defined as <code># of winning positions / total # of positions</code>.
+ * Defined as <code># of losing positions / total # of positions</code>.
  */
-public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
+public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return numberOfWinningPositionsCriterion.calculate(series, position);
+        return numberOfLosingPositionsCriterion.calculate(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return numberOfWinningPositionsCriterion.calculate(series, tradingRecord)
+        return numberOfLosingPositionsCriterion.calculate(series, tradingRecord)
                 .dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
