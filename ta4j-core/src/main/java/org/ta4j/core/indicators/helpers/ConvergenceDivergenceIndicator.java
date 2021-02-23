@@ -29,8 +29,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.IsFallingRule;
-import org.ta4j.core.trading.rules.IsRisingRule;
+import org.ta4j.core.rules.IsFallingRule;
+import org.ta4j.core.rules.IsRisingRule;
 
 /**
  * Indicator-convergence-divergence.
