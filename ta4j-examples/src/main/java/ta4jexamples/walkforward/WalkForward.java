@@ -34,8 +34,9 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -176,7 +177,7 @@ public class WalkForward {
         Map<Strategy, String> strategies = buildStrategiesMap(series);
 
         // The analysis criterion
-        AnalysisCriterion returnCriterion = new TotalReturnCriterion();
+        AnalysisCriterion returnCriterion = new GrossReturnCriterion();
 
         for (BarSeries slice : subseries) {
             // For each sub-series...
@@ -190,7 +191,7 @@ public class WalkForward {
                 Num profit = returnCriterion.calculate(slice, tradingRecord);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
-            Strategy bestStrategy = returnCriterion.chooseBest(sliceManager,
+            Strategy bestStrategy = returnCriterion.chooseBest(sliceManager, TradeType.BUY,
                     new ArrayList<Strategy>(strategies.keySet()));
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }

@@ -36,13 +36,13 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalReturnCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.OverIndicatorRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
 
 public class SimpleMovingAverageBacktest {
 
@@ -61,7 +61,7 @@ public class SimpleMovingAverageBacktest {
                 DecimalNum.valueOf(50));
         System.out.println(tradingRecord2DaySma);
 
-        AnalysisCriterion criterion = new TotalReturnCriterion();
+        AnalysisCriterion criterion = new GrossReturnCriterion();
         Num calculate3DaySma = criterion.calculate(series, tradingRecord3DaySma);
         Num calculate2DaySma = criterion.calculate(series, tradingRecord2DaySma);
 
