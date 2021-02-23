@@ -38,8 +38,8 @@ import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.BooleanRule;
-import org.ta4j.core.trading.rules.FixedRule;
+import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.rules.FixedRule;
 
 public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 

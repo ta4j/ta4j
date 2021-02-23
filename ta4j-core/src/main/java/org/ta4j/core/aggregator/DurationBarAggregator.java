@@ -100,6 +100,7 @@ public class DurationBarAggregator implements BarAggregator {
             Num close = null;
             Num volume = zero;
             Num amount = zero;
+            int trades = 0;
             Duration sumDur = Duration.ZERO;
 
             while (sumDur.compareTo(timePeriod) < 0) {
@@ -113,8 +114,17 @@ public class DurationBarAggregator implements BarAggregator {
                         low = bar.getLowPrice();
                     }
                     close = bar.getClosePrice();
-                    volume = volume.plus(bar.getVolume());
-                    amount = amount.plus(bar.getAmount());
+
+                    if (bar.getVolume() != null) {
+                        volume = volume.plus(bar.getVolume());
+                    }
+                    if (bar.getAmount() != null) {
+                        amount = amount.plus(bar.getAmount());
+                    }
+                    if (bar.getTrades() != 0) {
+                        trades = trades + bar.getTrades();
+                    }
+
                 }
                 sumDur = sumDur.plus(actualDur);
                 i++;
@@ -122,7 +132,7 @@ public class DurationBarAggregator implements BarAggregator {
 
             if (!onlyFinalBars || i <= bars.size()) {
                 final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
-                        volume, amount);
+                        volume, amount, trades);
                 aggregated.add(aggregatedBar);
             }
         }

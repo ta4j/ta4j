@@ -24,6 +24,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **`TradeOpenedMinimumBarCountRule`** renamed to **`OpenedPositionMinimumBarCountRule`**
 - **Breaking:** **`Trade.class`** renamed to **`Position.class`**
 - **Breaking:** **`Order.class`** renamed to **`Trade.class`**
+- **Breaking:** package "tradereports" renamed to "reports"
+- **Breaking:** package "trading/rules" renamed to "rules"
 
 
 ### Fixed
