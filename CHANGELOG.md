@@ -8,8 +8,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **`AverageProfitCriterion`** renamed to **`AverageReturnPerBarCriterion`**
 - **Breaking:** **`BuyAndHoldCriterion`** renamed to **`BuyAndHoldReturnCriterion`**
 - **Breaking:** **`RewardRiskRatioCriterion`** renamed to **`ReturnOverMaxDrawdownCriterion`**
-- **Breaking:** **`TotalProfitCriterion`** renamed to **`TotalReturnCriterion`**
-- **Breaking:** **`TotalProfit2Criterion`** renamed to **`TotalProfitCriterion`**
+- **Breaking:** **`ProfitLossCriterion`** moved to PnL-Package
+- **Breaking:** **`ProfitLossPercentageCriterion`** moved to PnL-Package
+- **Breaking:** **`TotalProfitCriterion`** renamed to **`GrossReturnCriterion`** and moved to PnL-Package.
+- **Breaking:** **`TotalProfit2Criterion`** renamed to **`GrossProfitCriterion`** and moved to PnL-Package.
+- **Breaking:** **`TotalLossCriterion`** renamed to **`NetLossCriterion`** and moved to PnL-Package.
 - **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** **`NumberOfTradesCriterion`** renamed to **`NumberOfPositionsCriterion`**
 - **Breaking:** **`NumberOfLosingTradesCriterion`** renamed to **`NumberOfLosingPositionsCriterion`**
@@ -21,6 +24,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **`TradeOpenedMinimumBarCountRule`** renamed to **`OpenedPositionMinimumBarCountRule`**
 - **Breaking:** **`Trade.class`** renamed to **`Position.class`**
 - **Breaking:** **`Order.class`** renamed to **`Trade.class`**
+- **Breaking:** package "tradereports" renamed to "reports"
+- **Breaking:** package "trading/rules" renamed to "rules"
 
 
 ### Fixed
@@ -64,6 +69,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
 - :tada: **Enhancement** added ExpectancyCriterion.
+- :tada: **Enhancement** added **`GrossLossCriterion.class`**.
+- :tada: **Enhancement** added **`NetProfitCriterion.class`**.
+- :tada: **Enhancement** added chooseBest() method with parameter tradeType in AnalysisCriterion.
 
 
 ## 0.13 (released November 5, 2019)

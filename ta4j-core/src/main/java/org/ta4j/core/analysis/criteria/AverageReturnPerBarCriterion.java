@@ -27,17 +27,18 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
  * Calculates the average return per bar criterion.
  *
- * The {@link TotalReturnCriterion total return} raised to the power of 1
+ * The {@link GrossReturnCriterion total return} raised to the power of 1
  * divided by {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion totalReturn = new TotalReturnCriterion();
+    private AnalysisCriterion grossReturn = new GrossReturnCriterion();
 
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
@@ -48,7 +49,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
             return series.numOf(1);
         }
 
-        return totalReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
+        return grossReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
@@ -58,7 +59,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
             return series.numOf(1);
         }
 
-        return totalReturn.calculate(series, position).pow(series.numOf(1).dividedBy(bars));
+        return grossReturn.calculate(series, position).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override
