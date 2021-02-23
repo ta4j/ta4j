@@ -21,14 +21,22 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
-public class TotalLossCriterion extends AbstractAnalysisCriterion {
+/**
+ * Net profit criterion (without commissions).
+ *
+ * <p>
+ * The net profit of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
+ */
+public class NetProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
@@ -37,17 +45,17 @@ public class TotalLossCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the gross loss of the given position
+     * Calculates the net profit of the given position
      *
      * @param series   a bar series
      * @param position a position
-     * @return the loss of the position
+     * @return the net profit of the position
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num loss = position.getProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+            Num profit = position.getProfit();
+            return profit.isPositive() ? profit : series.numOf(0);
 
         }
         return series.numOf(0);

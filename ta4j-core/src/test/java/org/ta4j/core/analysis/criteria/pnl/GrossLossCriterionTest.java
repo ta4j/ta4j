@@ -21,31 +21,22 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.analysis.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
+import java.util.function.Function;
+
+import org.junit.Test;
+import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.num.Num;
 
-/**
- * This class generates PerformanceReport basis on provided trading report and
- * bar series
- *
- * @see PerformanceReport
- */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class GrossLossCriterionTest extends AbstractCriterionTest {
 
-    @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
-        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+    public GrossLossCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new GrossProfitCriterion(), numFunction);
+    }
+
+    @Test
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

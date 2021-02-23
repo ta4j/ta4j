@@ -21,40 +21,22 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria;
+package org.ta4j.core.analysis.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
+import java.util.function.Function;
+
+import org.junit.Test;
+import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.num.Num;
 
-/**
- * Profit and loss criterion.
- *
- * The profit or loss over the provided {@link BarSeries series}.
- */
-public class ProfitLossCriterion extends AbstractAnalysisCriterion {
+public class GrossProfitCriterionTest extends AbstractCriterionTest {
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
+    public GrossProfitCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new GrossProfitCriterion(), numFunction);
     }
 
-    /**
-     * Calculates the profit or loss on the position.
-     *
-     * @param series   a bar series
-     * @param position a position
-     * @return the profit or loss on the position
-     */
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        return position.getProfit();
-    }
-
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+    @Test
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
 }

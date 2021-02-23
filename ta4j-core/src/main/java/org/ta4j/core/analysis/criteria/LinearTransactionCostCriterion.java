@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -42,7 +43,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
     private double a;
     private double b;
 
-    private TotalReturnCriterion totalReturn;
+    private GrossReturnCriterion grossReturn;
 
     /**
      * Constructor. (a * x)
@@ -68,7 +69,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
-        totalReturn = new TotalReturnCriterion();
+        grossReturn = new GrossReturnCriterion();
     }
 
     @Override
@@ -89,7 +90,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             // - Multiply by the profit ratio
             // - Remove the cost of the *second* trade
             tradedAmount = tradedAmount.minus(getTradeCost(position.getEntry(), tradedAmount));
-            tradedAmount = tradedAmount.multipliedBy(totalReturn.calculate(series, position));
+            tradedAmount = tradedAmount.multipliedBy(grossReturn.calculate(series, position));
             tradedAmount = tradedAmount.minus(getTradeCost(position.getExit(), tradedAmount));
         }
 
@@ -136,7 +137,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
                     // - Remove the cost of the first trade
                     // - Multiply by the profit ratio
                     Num newTradedAmount = initialAmount.minus(totalTradeCost)
-                            .multipliedBy(totalReturn.calculate(series, position));
+                            .multipliedBy(grossReturn.calculate(series, position));
                     totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));
                 }
             }

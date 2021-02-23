@@ -21,31 +21,48 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package org.ta4j.core.analysis.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Strategy;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates PerformanceReport basis on provided trading report and
- * bar series
+ * Gross loss criterion (with commissions).
  *
- * @see PerformanceReport
+ * <p>
+ * The gross loss of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class PerformanceReportGenerator implements ReportGenerator<PerformanceReport> {
+public class GrossLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public PerformanceReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num pnl = new ProfitLossCriterion().calculate(series, tradingRecord);
-        final Num pnlPercentage = new ProfitLossPercentageCriterion().calculate(series, tradingRecord);
-        final Num netProfit = new NetProfitCriterion().calculate(series, tradingRecord);
-        final Num netLoss = new NetLossCriterion().calculate(series, tradingRecord);
-        return new PerformanceReport(pnl, pnlPercentage, netProfit, netLoss);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
     }
+
+    /**
+     * Calculates the gross loss value of given position
+     *
+     * @param series   a bar series
+     * @param position a position to calculate profit
+     * @return the gross loss
+     */
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            Num loss = position.getGrossProfit();
+            return loss.isNegative() ? loss : series.numOf(0);
+        }
+        return series.numOf(0);
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
 }
