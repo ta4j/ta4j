@@ -23,10 +23,10 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.trading.rules.AndRule;
-import org.ta4j.core.trading.rules.NotRule;
-import org.ta4j.core.trading.rules.OrRule;
-import org.ta4j.core.trading.rules.XorRule;
+import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.NotRule;
+import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.XorRule;
 
 /**
  * A rule for strategy building.

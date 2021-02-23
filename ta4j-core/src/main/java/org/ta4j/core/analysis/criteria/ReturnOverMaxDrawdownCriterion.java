@@ -27,16 +27,17 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion, defined as the {@link TotalReturnCriterion total
+ * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion total
  * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion totalProfitCriterion = new TotalReturnCriterion();
+    private final AnalysisCriterion grossReturnCriterion = new GrossReturnCriterion();
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
@@ -45,7 +46,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = totalProfitCriterion.calculate(series, tradingRecord);
+            final Num totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }
@@ -61,7 +62,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         if (maxDrawdown.isZero()) {
             return NaN.NaN;
         } else {
-            final Num totalProfit = totalProfitCriterion.calculate(series, position);
+            final Num totalProfit = grossReturnCriterion.calculate(series, position);
             return totalProfit.dividedBy(maxDrawdown);
         }
     }
