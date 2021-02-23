@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public class BaseStrategy implements Strategy {
 
     /** The logger */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected final transient Logger log = LoggerFactory.getLogger(getClass());
 
     /** The class name */
     private final String className = getClass().getSimpleName();
