@@ -36,6 +36,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
@@ -51,7 +52,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals(1.10 * 1.05 / 1.05, buyAndHold.calculate(series, tradingRecord));
     }
 
@@ -61,7 +62,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals(0.95 * 0.7 / 0.7, buyAndHold.calculate(series, tradingRecord));
     }
 
@@ -70,7 +71,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals((100d / 70) / (100d / 95), buyAndHold.calculate(series, position));
     }
 
@@ -78,7 +79,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
     public void calculateWithNoPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
 
-        AnalysisCriterion buyAndHold = getCriterion(new TotalReturnCriterion());
+        AnalysisCriterion buyAndHold = getCriterion(new GrossReturnCriterion());
         assertNumEquals(1 / 0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
     }
 
@@ -107,7 +108,7 @@ public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion(new TotalReturnCriterion());
+        AnalysisCriterion criterion = getCriterion(new GrossReturnCriterion());
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }

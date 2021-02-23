@@ -42,8 +42,8 @@ import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.UnstableIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
-import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
 
 public class UnstableIndicatorStrategy {
 

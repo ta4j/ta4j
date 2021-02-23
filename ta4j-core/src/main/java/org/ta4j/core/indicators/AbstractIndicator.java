@@ -37,7 +37,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     /**
      * The logger
      */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected final transient Logger log = LoggerFactory.getLogger(getClass());
 
     private final BarSeries series;
 
