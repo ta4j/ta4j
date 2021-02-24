@@ -41,8 +41,6 @@ import org.ta4j.core.num.Num;
  */
 public class TripleEMAIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -3091675249185831978L;
-
     private final int barCount;
     private final EMAIndicator ema;
     private final EMAIndicator emaEma;

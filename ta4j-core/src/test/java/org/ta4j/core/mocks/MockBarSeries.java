@@ -37,6 +37,8 @@ import org.ta4j.core.num.Num;
  */
 public class MockBarSeries extends BaseBarSeries {
 
+    private static final long serialVersionUID = -1216549934945189371L;
+
     public MockBarSeries(Function<Number, Num> nf, double... data) {
         super(doublesToBars(nf, data));
     }

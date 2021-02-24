@@ -35,8 +35,6 @@ import org.ta4j.core.num.Num;
  */
 public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
 
-    private static final long serialVersionUID = -5870953997596403170L;
-
     public OnBalanceVolumeIndicator(BarSeries series) {
         super(series);
     }

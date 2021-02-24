@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** **`Order.class`** renamed to **`Trade.class`**
 - **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** package "trading/rules" renamed to "rules"
+- **Breaking:** remove Serializable from all indicators
 
 
 ### Fixed

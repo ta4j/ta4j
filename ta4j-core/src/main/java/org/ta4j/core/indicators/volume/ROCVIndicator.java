@@ -35,8 +35,6 @@ import org.ta4j.core.num.Num;
  */
 public class ROCVIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = 6366365574748347534L;
-
     private final int barCount;
     private final Num hundred;
 

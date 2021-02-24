@@ -34,8 +34,6 @@ import org.ta4j.core.num.Num;
  */
 public class MMAIndicator extends AbstractEMAIndicator {
 
-    private static final long serialVersionUID = -7287520945130507544L;
-
     /**
      * Constructor.
      *

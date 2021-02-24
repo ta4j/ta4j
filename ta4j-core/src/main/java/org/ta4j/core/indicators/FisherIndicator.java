@@ -46,8 +46,6 @@ import org.ta4j.core.num.Num;
  */
 public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
-    private static final long serialVersionUID = 4622250625267906228L;
-
     private static final double ZERO_DOT_FIVE = 0.5;
     private static final double VALUE_MAX = 0.999;
     private static final double VALUE_MIN = -0.999;
@@ -154,8 +152,6 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
-
-            private static final long serialVersionUID = 1242564751445450654L;
 
             @Override
             protected Num calculate(int index) {

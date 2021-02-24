@@ -36,8 +36,6 @@ import org.ta4j.core.num.Num;
  */
 public class MACDIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -6899062131135971403L;
-
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 
