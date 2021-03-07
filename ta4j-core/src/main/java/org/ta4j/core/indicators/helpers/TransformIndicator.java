@@ -41,7 +41,6 @@ import org.ta4j.core.num.Num;
  */
 public class TransformIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -8017034587193428498L;
     private final Indicator<Num> indicator;
     private final UnaryOperator<Num> transformationFunction;
 

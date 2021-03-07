@@ -31,7 +31,6 @@ import org.ta4j.core.num.Num;
 
 public class MockIndicator implements Indicator<Num> {
 
-    private static final long serialVersionUID = -1083818948051189894L;
     private BarSeries series;
     private List<Num> values;
 

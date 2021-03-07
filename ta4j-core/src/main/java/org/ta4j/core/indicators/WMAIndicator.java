@@ -31,7 +31,6 @@ import org.ta4j.core.num.Num;
  */
 public class WMAIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -1610206345404758687L;
     private final int barCount;
     private final Indicator<Num> indicator;
 

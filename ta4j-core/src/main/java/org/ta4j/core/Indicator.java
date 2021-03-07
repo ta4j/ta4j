@@ -23,8 +23,6 @@
  */
 package org.ta4j.core;
 
-import java.io.Serializable;
-
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,7 +31,7 @@ import org.ta4j.core.num.Num;
  *
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
-public interface Indicator<T> extends Serializable {
+public interface Indicator<T> {
 
     /**
      * @param index the bar index

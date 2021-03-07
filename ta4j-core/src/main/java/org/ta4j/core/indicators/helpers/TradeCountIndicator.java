@@ -31,8 +31,6 @@ import org.ta4j.core.indicators.CachedIndicator;
  */
 public class TradeCountIndicator extends CachedIndicator<Integer> {
 
-    private static final long serialVersionUID = -925772914642803594L;
-
     public TradeCountIndicator(BarSeries series) {
         super(series);
     }
