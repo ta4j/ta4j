@@ -242,7 +242,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         sortedBars.add(bar2);
         sortedBars.add(bar3);
 
-        BarSeriesUtils.sortBars(sortedBars, false);
+        BarSeriesUtils.sortBars(sortedBars);
         assertEquals(bar0.getEndTime(), sortedBars.get(0).getEndTime());
         assertEquals(bar1.getEndTime(), sortedBars.get(1).getEndTime());
         assertEquals(bar2.getEndTime(), sortedBars.get(2).getEndTime());
@@ -254,7 +254,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         unsortedBars.add(bar1);
         unsortedBars.add(bar0);
 
-        BarSeriesUtils.sortBars(unsortedBars, false);
+        BarSeriesUtils.sortBars(unsortedBars);
         assertEquals(bar0.getEndTime(), unsortedBars.get(0).getEndTime());
         assertEquals(bar1.getEndTime(), unsortedBars.get(1).getEndTime());
         assertEquals(bar2.getEndTime(), unsortedBars.get(2).getEndTime());
