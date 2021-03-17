@@ -154,6 +154,14 @@ public interface Num extends Comparable<Num>, Serializable {
     Num abs();
 
     /**
+     * Returns a {@code num} whose value is (-this), and whose scale is
+     * this.scale().
+     * 
+     * @return {@code negate(this)}
+     */
+    Num negate();
+
+    /**
      * Checks if the value is zero.
      * 
      * @return true if the value is zero, false otherwise

@@ -168,6 +168,11 @@ public class NaN implements Num {
     }
 
     @Override
+    public Num negate() {
+        return this;
+    }
+
+    @Override
     public boolean isZero() {
         return false;
     }
