@@ -205,7 +205,7 @@ public final class BarSeriesUtils {
      */
     public static void addBars(BarSeries barSeries, List<Bar> newBars) {
         if (newBars != null && !newBars.isEmpty()) {
-            sortBars(newBars, true);
+            sortBars(newBars);
             for (Bar bar : newBars) {
                 if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
                     barSeries.addBar(bar);
@@ -222,31 +222,10 @@ public final class BarSeriesUtils {
      * @return the sorted bars
      */
     public static List<Bar> sortBars(List<Bar> bars) {
-        return sortBars(bars, true);
-    }
-
-    /**
-     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
-     * before higher times).
-     * 
-     * @param bars         the bars must be within a mutable collection type
-     * @param forceSorting if true, forces the sorting even if firstBar#endTime is
-     *                     before lastBar#endTime (useful if bar data is unsorted in
-     *                     any way)
-     * @return the sorted bars
-     */
-    public static List<Bar> sortBars(List<Bar> bars, boolean forceSorting) {
         if (!bars.isEmpty()) {
-            if (forceSorting) {
-                Collections.sort(bars, BarSeriesUtils.sortBarsByTime);
-            } else {
-                Bar firstBar = bars.get(0);
-                Bar lastBar = bars.get(bars.size() - 1);
-                if (firstBar.getEndTime().isAfter(lastBar.getEndTime())) {
-                    Collections.reverse(bars);
-                }
-            }
+            Collections.sort(bars, BarSeriesUtils.sortBarsByTime);
         }
         return bars;
     }
+
 }
