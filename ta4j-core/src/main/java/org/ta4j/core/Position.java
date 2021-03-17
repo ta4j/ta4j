@@ -248,7 +248,7 @@ public class Position implements Serializable {
     /**
      * Calculate the gross return of the position if it is closed
      *
-     * @return the gross return of the position
+     * @return the gross return of the position in percent
      */
     public Num getGrossReturn() {
         if (isOpened()) {
@@ -264,19 +264,20 @@ public class Position implements Serializable {
      *
      * @param finalPrice the price of the final bar to be considered (if position is
      *                   open)
-     * @return the gross return of the position
+     * @return the gross return of the position in percent
      */
     public Num getGrossReturn(Num finalPrice) {
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
     }
 
     /**
-     * Returns the gross return of the position. If either the entry or the exit
+     * Calculates the gross return of the position. If either the entry or the exit
      * price are <code>NaN</code>, the close price from the supplies
      * {@link BarSeries} is used.
      * 
      * @param barSeries
-     * @return
+     * @return the gross return in percent with entry and exit prices from the
+     *         barSeries
      */
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
@@ -284,20 +285,35 @@ public class Position implements Serializable {
         return getGrossReturn(entryPrice, exitPrice);
     }
 
+    /**
+     * Calculates the gross return between entry and exit price in percent. Includes
+     * the base.
+     * 
+     * <p>
+     * For example:
+     * <ul>
+     * <li>For buy position with a profit of 4%, it returns 1.04 (includes the base)
+     * <li>For sell position with a loss of 4%, it returns 0.96 (includes the base)
+     * </ul>
+     * 
+     * @param entryPrice the entry price
+     * @param exitPrice  the exit price
+     * @return the gross return in percent between entryPrice and exitPrice
+     *         (includes the base)
+     */
     private Num getGrossReturn(Num entryPrice, Num exitPrice) {
-        Num profitPerAsset;
         if (getEntry().isBuy()) {
-            profitPerAsset = exitPrice.minus(entryPrice);
+            return exitPrice.dividedBy(entryPrice);
         } else {
-            profitPerAsset = entryPrice.minus(exitPrice);
+            Num one = entryPrice.numOf(1);
+            return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
-        return profitPerAsset.dividedBy(entryPrice).plus(entryPrice.numOf(1));
     }
 
     /**
-     * Calculate the gross return of the position if it is closed
+     * Calculate the gross profit of the position if it is closed
      *
-     * @return the gross return of the position
+     * @return the gross profit of the position
      */
     public Num getGrossProfit() {
         if (isOpened()) {
@@ -324,7 +340,7 @@ public class Position implements Serializable {
 
         // Profits of long position are losses of short
         if (entry.isSell()) {
-            grossProfit = grossProfit.multipliedBy(numOf(-1));
+            grossProfit = grossProfit.negate();
         }
         return grossProfit;
     }

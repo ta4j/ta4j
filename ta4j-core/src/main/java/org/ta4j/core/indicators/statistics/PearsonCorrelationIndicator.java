@@ -38,8 +38,6 @@ import org.ta4j.core.num.Num;
  */
 public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
-    private static final long serialVersionUID = 6317147143504055664L;
-
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;
     private final int barCount;

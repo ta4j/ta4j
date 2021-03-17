@@ -37,8 +37,6 @@ import org.ta4j.core.rules.IsRisingRule;
  */
 public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
-    private static final long serialVersionUID = -6735646430246479066L;
-
     /**
      * Select the type of convergence or divergence.
      */

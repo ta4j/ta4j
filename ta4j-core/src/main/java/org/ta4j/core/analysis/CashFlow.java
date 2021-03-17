@@ -41,8 +41,6 @@ import org.ta4j.core.num.Num;
  */
 public class CashFlow implements Indicator<Num> {
 
-    private static final long serialVersionUID = -3733056428511000149L;
-
     /**
      * The bar series
      */

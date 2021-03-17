@@ -529,6 +529,17 @@ public final class DecimalNum implements Num {
     }
 
     /**
+     * Returns a {@code num} whose value is (-this), and whose scale is
+     * this.scale().
+     * 
+     * @return {@code negate(this)}
+     */
+    @Override
+    public Num negate() {
+        return new DecimalNum(delegate.negate(), mathContext.getPrecision());
+    }
+
+    /**
      * Checks if the value is zero.
      *
      * @return true if the value is zero, false otherwise

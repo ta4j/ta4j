@@ -33,8 +33,6 @@ import org.ta4j.core.num.Num;
  */
 public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
-    private static final long serialVersionUID = 139320494945326149L;
-
     /**
      * Constructor.
      * 

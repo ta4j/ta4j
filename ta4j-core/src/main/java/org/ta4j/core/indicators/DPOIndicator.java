@@ -48,8 +48,6 @@ import org.ta4j.core.num.Num;
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -3450705409405267767L;
-
     private final DifferenceIndicator indicatorMinusPreviousSMAIndicator;
     private final String name;
 

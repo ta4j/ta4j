@@ -38,12 +38,10 @@ import org.ta4j.core.Indicator;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    private static final long serialVersionUID = 7505855220893125595L;
-
     /**
      * List of cached results
      */
-    private final List<T> results = new ArrayList<>();
+    private final List<T> results;
 
     /**
      * Should always be the index of the last result in the results list. I.E. the
@@ -56,8 +54,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *
      * @param series the related bar series
      */
-    public CachedIndicator(BarSeries series) {
+    protected CachedIndicator(BarSeries series) {
         super(series);
+        int limit = series.getMaximumBarCount();
+        results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
     }
 
     /**
@@ -65,9 +65,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *
      * @param indicator a related indicator (with a bar series)
      */
-    public CachedIndicator(Indicator<?> indicator) {
+    protected CachedIndicator(Indicator<?> indicator) {
         this(indicator.getBarSeries());
     }
+
+    /**
+     * @param index the bar index
+     * @return the value of the indicator
+     */
+    protected abstract T calculate(int index);
 
     @Override
     public T getValue(int index) {
@@ -127,12 +133,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         log.trace("{}({}): {}", this, index, result);
         return result;
     }
-
-    /**
-     * @param index the bar index
-     * @return the value of the indicator
-     */
-    protected abstract T calculate(int index);
 
     /**
      * Increases the size of cached results buffer.

@@ -35,8 +35,6 @@ import org.ta4j.core.num.Num;
  */
 public class PPOIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -4337731034816094765L;
-
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 

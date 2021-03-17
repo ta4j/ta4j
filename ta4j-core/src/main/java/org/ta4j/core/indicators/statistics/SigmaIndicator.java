@@ -35,8 +35,6 @@ import org.ta4j.core.num.Num;
  */
 public class SigmaIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = 6283425887025798038L;
-
     private Indicator<Num> ref;
     private int barCount;
 

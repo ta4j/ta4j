@@ -41,8 +41,6 @@ import org.ta4j.core.num.Num;
  */
 public class Returns implements Indicator<Num> {
 
-    private static final long serialVersionUID = 8807578497434663055L;
-
     public enum ReturnType {
         LOG {
             @Override
