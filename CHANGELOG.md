@@ -69,6 +69,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
 - :tada: **Enhancement** added UnstableIndicator.
 - :tada: **Enhancement** added Chainrule.
+- :tada: **Enhancement** added BarSeriesUtils#sortBars.
+- :tada: **Enhancement** added BarSeriesUtils#addBars.
 - :tada: **Enhancement** added Num.negate() to negate a Num value.
 - :tada: **Enhancement** added **`GrossLossCriterion.class`**.
 - :tada: **Enhancement** added **`NetProfitCriterion.class`**.

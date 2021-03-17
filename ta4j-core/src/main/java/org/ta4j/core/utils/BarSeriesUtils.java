@@ -26,6 +26,8 @@ package org.ta4j.core.utils;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -43,6 +45,12 @@ import org.ta4j.core.num.Num;
  * Common utilities and helper methods for BarSeries.
  */
 public final class BarSeriesUtils {
+
+    /**
+     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower
+     * values before higher values).
+     */
+    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().isAfter(b2.getEndTime()) ? 1 : -1;
 
     private BarSeriesUtils() {
     }
@@ -65,7 +73,7 @@ public final class BarSeriesUtils {
     /**
      * We can assume that finalized bar data will be never changed afterwards by the
      * marketdata provider. It is rare, but depending on the exchange, they reserve
-     * the right to make updates to finalized bars. This method founds and replaces
+     * the right to make updates to finalized bars. This method finds and replaces
      * potential bar data that was changed afterwards by the marketdata provider. It
      * can also be uses to check bar data equality over different marketdata
      * providers. This method does <b>not</b> add missing bars but replaces an
@@ -188,4 +196,36 @@ public final class BarSeriesUtils {
         }
         return overlappingBars;
     }
+
+    /**
+     * Adds <code>newBars</code> to <code>barSeries</code>.
+     * 
+     * @param barSeries the BarSeries
+     * @param newBars   the new bars to be added
+     */
+    public static void addBars(BarSeries barSeries, List<Bar> newBars) {
+        if (newBars != null && !newBars.isEmpty()) {
+            sortBars(newBars);
+            for (Bar bar : newBars) {
+                if (barSeries.isEmpty() || bar.getEndTime().isAfter(barSeries.getLastBar().getEndTime())) {
+                    barSeries.addBar(bar);
+                }
+            }
+        }
+    }
+
+    /**
+     * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower times
+     * before higher times).
+     * 
+     * @param bars the bars
+     * @return the sorted bars
+     */
+    public static List<Bar> sortBars(List<Bar> bars) {
+        if (!bars.isEmpty()) {
+            Collections.sort(bars, BarSeriesUtils.sortBarsByTime);
+        }
+        return bars;
+    }
+
 }
