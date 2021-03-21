@@ -29,30 +29,46 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of losing position criterion.
+ * Number of maximum consecutive winning position criterion.
  */
-public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion {
+public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .filter(this::isLosingPosition).count();
-        return series.numOf(numberOfLosingPositions);
+        int maxConsecutiveWins = 0;
+        int consecutiveWins = 0;
+        for (Position position : tradingRecord.getPositions()) {
+            if (isWinningPosition(position)) {
+                consecutiveWins = consecutiveWins + 1;
+            } else {
+                if (maxConsecutiveWins < consecutiveWins) {
+                    maxConsecutiveWins = consecutiveWins;
+                }
+                consecutiveWins = 0; // reset
+            }
+        }
+
+        // in case all positions are wining positions
+        if (maxConsecutiveWins < consecutiveWins) {
+            maxConsecutiveWins = consecutiveWins;
+        }
+
+        return series.numOf(maxConsecutiveWins);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isLosingPosition(position) ? series.numOf(1) : series.numOf(0);
+        return isWinningPosition(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private boolean isLosingPosition(Position position) {
+    private boolean isWinningPosition(Position position) {
         if (position.isClosed()) {
-            return position.getProfit().isNegative();
+            return position.getProfit().isPositive();
         }
         return false;
     }

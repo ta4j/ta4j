@@ -35,12 +35,12 @@ public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfWinningTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .filter(this::isWinningTrade).count();
-        return series.numOf(numberOfWinningTrades);
+        long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .filter(this::isWinningPositions).count();
+        return series.numOf(numberOfWinningPositions);
     }
 
-    private boolean isWinningTrade(Position position) {
+    private boolean isWinningPositions(Position position) {
         if (position.isClosed()) {
             return position.getProfit().isPositive();
         }
@@ -49,7 +49,7 @@ public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isWinningTrade(position) ? series.numOf(1) : series.numOf(0);
+        return isWinningPositions(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override

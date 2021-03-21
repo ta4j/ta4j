@@ -45,7 +45,7 @@ public class NetProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithGainPositions() {
+    public void calculateOnlyWithProfitPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
@@ -55,7 +55,7 @@ public class NetProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithProfitPositions() {
+    public void calculateOnlyWithProfitPositions2() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 120);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
