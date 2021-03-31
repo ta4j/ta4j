@@ -48,7 +48,7 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
             }
         }
 
-        // in case all positions are wining positions
+        // in case all positions are winning positions
         if (maxConsecutiveWins < consecutiveWins) {
             maxConsecutiveWins = consecutiveWins;
         }
