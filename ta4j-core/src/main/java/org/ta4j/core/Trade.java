@@ -406,7 +406,7 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the value of an trade (without transaction cost)
+     * @return the value of a trade (without transaction cost)
      */
     public Num getValue() {
         return pricePerAsset.multipliedBy(amount);
