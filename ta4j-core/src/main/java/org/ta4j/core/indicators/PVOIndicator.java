@@ -27,19 +27,19 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
- * Percentage Volume Oscillator (PVO):
- * ((12-day EMA of Volume - 26-day EMA of Volume)/26-day EMA of Volume) x 100
+ * Percentage Volume Oscillator (PVO): ((12-day EMA of Volume - 26-day EMA of
+ * Volume)/26-day EMA of Volume) x 100
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo">
- *       https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo
- *  </a>
+ *      https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo
+ *      </a>
  */
 public class PVOIndicator extends PPOIndicator {
 
     /**
-     * @param series   the bar series {@link BarSeries}.
-     * Will use PPO default constructor with shortBarCount "12" and longBarCount "26".
+     * @param series the bar series {@link BarSeries}. Will use PPO default
+     *               constructor with shortBarCount "12" and longBarCount "26".
      */
     public PVOIndicator(BarSeries series) {
         super(new VolumeIndicator(series));
@@ -47,17 +47,18 @@ public class PVOIndicator extends PPOIndicator {
 
     /**
      * @param series         the bar series {@link BarSeries}.
-     * @param volumeBarCount Volume Indicator bar count.
-     * Will use PPO default constructor with shortBarCount "12" and longBarCount "26".
+     * @param volumeBarCount Volume Indicator bar count. Will use PPO default
+     *                       constructor with shortBarCount "12" and longBarCount
+     *                       "26".
      */
     public PVOIndicator(BarSeries series, int volumeBarCount) {
         super(new VolumeIndicator(series, volumeBarCount));
     }
 
     /**
-     * @param series         the bar series {@link BarSeries}.
-     * @param shortBarCount  PPO short time frame.
-     * @param longBarCount   PPO long time frame.
+     * @param series        the bar series {@link BarSeries}.
+     * @param shortBarCount PPO short time frame.
+     * @param longBarCount  PPO long time frame.
      */
     public PVOIndicator(BarSeries series, int shortBarCount, int longBarCount) {
         super(new VolumeIndicator(series), shortBarCount, longBarCount);
