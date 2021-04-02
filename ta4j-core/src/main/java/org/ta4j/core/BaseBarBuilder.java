@@ -38,7 +38,7 @@ public class BaseBarBuilder {
     private Num lowPrice;
     private Num amount;
     private Num volume;
-    private int trades;
+    private long trades;
 
     BaseBarBuilder() {
     }
@@ -83,7 +83,7 @@ public class BaseBarBuilder {
         return this;
     }
 
-    public BaseBarBuilder trades(int trades) {
+    public BaseBarBuilder trades(long trades) {
         this.trades = trades;
         return this;
     }

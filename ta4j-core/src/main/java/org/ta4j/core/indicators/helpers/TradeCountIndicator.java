@@ -29,14 +29,14 @@ import org.ta4j.core.indicators.CachedIndicator;
 /**
  * Trade count indicator.
  */
-public class TradeCountIndicator extends CachedIndicator<Integer> {
+public class TradeCountIndicator extends CachedIndicator<Long> {
 
     public TradeCountIndicator(BarSeries series) {
         super(series);
     }
 
     @Override
-    protected Integer calculate(int index) {
+    protected Long calculate(int index) {
         return getBarSeries().getBar(index).getTrades();
     }
 }

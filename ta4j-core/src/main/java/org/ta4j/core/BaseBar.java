@@ -59,7 +59,7 @@ public class BaseBar implements Bar {
     /** Volume of the period */
     private Num volume;
     /** Trade count */
-    private int trades = 0;
+    private long trades = 0;
 
     /**
      * Constructor.
@@ -125,7 +125,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice,
-            double closePrice, double volume, double amount, int trades, Function<Number, Num> numFunction) {
+            double closePrice, double volume, double amount, long trades, Function<Number, Num> numFunction) {
         this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
                 numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
                 numFunction.apply(amount), trades);
@@ -179,7 +179,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
-            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, int trades,
+            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, long trades,
             Function<Number, Num> numFunction) {
         this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
                 numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
@@ -272,7 +272,7 @@ public class BaseBar implements Bar {
      * @param trades     the trades count of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume, Num amount, int trades) {
+            Num closePrice, Num volume, Num amount, long trades) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -342,7 +342,7 @@ public class BaseBar implements Bar {
     /**
      * @return the number of trades in the period
      */
-    public int getTrades() {
+    public long getTrades() {
         return trades;
     }
 
