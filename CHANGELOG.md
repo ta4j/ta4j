@@ -63,6 +63,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
 - **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
 - **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
+- **Enhancement** Added Percentage Volume Oscillator Indicator, PVOIndicator.
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
