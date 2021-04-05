@@ -30,50 +30,41 @@ import org.ta4j.core.num.Num;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 /**
- * Distance From Moving Average
- * (close - MA)/MA
+ * Distance From Moving Average (close - MA)/MA
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma">
- *       https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma
+ *      https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma
  *      </a>
  */
 public class DistanceFromMAIndicator extends CachedIndicator<Num> {
-   private final List<Class> supportedMovingAverages = new ArrayList<>(Arrays.asList(
-                                                                        EMAIndicator.class,
-                                                                        DoubleEMAIndicator.class,
-                                                                        TripleEMAIndicator.class,
-                                                                        SMAIndicator.class,
-                                                                        WMAIndicator.class,
-                                                                        ZLEMAIndicator.class,
-                                                                        HMAIndicator.class,
-                                                                        KAMAIndicator.class,
-                                                                        LWMAIndicator.class,
-                                                                        AbstractEMAIndicator.class,
-                                                                        MMAIndicator.class));
-   private final CachedIndicator movingAverage;
+    private final List<Class> supportedMovingAverages = new ArrayList<>(
+            Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
+                    WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
+                    LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class));
+    private final CachedIndicator movingAverage;
 
-   /**
-    *
-    * @param series the bar series {@link BarSeries}.
-    * @param movingAverage the moving average.
-    */
-   public DistanceFromMAIndicator(BarSeries series,
-                                  CachedIndicator movingAverage) {
-      super(series);
-      if(!(supportedMovingAverages.contains(movingAverage.getClass()))){
-         throw new IllegalArgumentException("Passed indicator must be a moving average based indicator. "
-                                            + movingAverage.toString());
-      }
-      this.movingAverage = movingAverage;
-   }
+    /**
+     *
+     * @param series        the bar series {@link BarSeries}.
+     * @param movingAverage the moving average.
+     */
+    public DistanceFromMAIndicator(BarSeries series, CachedIndicator movingAverage) {
+        super(series);
+        if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
+            throw new IllegalArgumentException(
+                    "Passed indicator must be a moving average based indicator. " + movingAverage.toString());
+        }
+        this.movingAverage = movingAverage;
+    }
 
-   @Override
-   protected Num calculate(int index) {
-      Bar currentBar = getBarSeries().getBar(index);
-      Num closePrice = currentBar.getClosePrice();
-      Num maValue = (Num) movingAverage.getValue(index);
-      return (closePrice.minus(maValue)).dividedBy(maValue);
-   }
+    @Override
+    protected Num calculate(int index) {
+        Bar currentBar = getBarSeries().getBar(index);
+        Num closePrice = currentBar.getClosePrice();
+        Num maValue = (Num) movingAverage.getValue(index);
+        return (closePrice.minus(maValue)).dividedBy(maValue);
+    }
 }
