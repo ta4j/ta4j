@@ -83,7 +83,14 @@ public class KSTIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return ((RCMA1.getValue(index).multipliedBy(numOf(1))).plus(RCMA2.getValue(index).multipliedBy(numOf(2)))
-                .plus(RCMA3.getValue(index).multipliedBy(numOf(3))).plus(RCMA4.getValue(index).multipliedBy(numOf(4))));
+        Num RCMA1Multiplier = numOf(1);
+        Num RCMA2Multiplier = numOf(2);
+        Num RCMA3Multiplier = numOf(3);
+        Num RCMA4Multiplier = numOf(4);
+
+        return ((RCMA1.getValue(index).multipliedBy(RCMA1Multiplier))
+                .plus(RCMA2.getValue(index).multipliedBy(RCMA2Multiplier))
+                .plus(RCMA3.getValue(index).multipliedBy(RCMA3Multiplier))
+                .plus(RCMA4.getValue(index).multipliedBy(RCMA4Multiplier)));
     }
 }

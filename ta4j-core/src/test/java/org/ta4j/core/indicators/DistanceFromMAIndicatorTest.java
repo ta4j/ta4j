@@ -56,4 +56,10 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
         assertNumEquals(0.01886792452830182, distanceFromMAIndicator.getValue(5));
         assertNumEquals(-0.1, distanceFromMAIndicator.getValue(6));
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void DistanceFromIllegalMovingAverage() {
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
+        new DistanceFromMAIndicator(data, closePriceIndicator);
+    }
 }
