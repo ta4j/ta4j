@@ -64,6 +64,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
 - **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
 - **Enhancement** Added Percentage Volume Oscillator Indicator, PVOIndicator.
+- **Enhancement** Added new interface RuleWithCtx to define the trade price
+- **Enhancement** AndRule, OrRule, XorRule, NotRule implementing RuleWithCtx
+- **Enhancement** new StopGainRule2 that supports percentage and fixed gain and price is used as exit price
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.

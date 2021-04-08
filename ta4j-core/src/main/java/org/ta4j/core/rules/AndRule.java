@@ -24,6 +24,8 @@
 package org.ta4j.core.rules;
 
 import org.ta4j.core.Rule;
+import org.ta4j.core.RuleWithCtx;
+import org.ta4j.core.StrategyContext;
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -32,7 +34,7 @@ import org.ta4j.core.TradingRecord;
  * Satisfied when the two provided rules are satisfied as well.<br>
  * Warning: the second rule is not tested if the first rule is not satisfied.
  */
-public class AndRule extends AbstractRule {
+public class AndRule extends AbstractRule implements RuleWithCtx {
 
     private final Rule rule1;
     private final Rule rule2;
@@ -50,10 +52,15 @@ public class AndRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
+        return isSatisfied(index, tradingRecord, null);
+    }
+    
+	@Override
+	public boolean isSatisfied(int index, TradingRecord tradingRecord, StrategyContext ctx) {
+		final boolean satisfied = isSatisfied(rule1, index, tradingRecord, ctx) && isSatisfied(rule2, index, tradingRecord, ctx);
         traceIsSatisfied(index, satisfied);
         return satisfied;
-    }
+	}
 
     public Rule getRule1() {
         return rule1;

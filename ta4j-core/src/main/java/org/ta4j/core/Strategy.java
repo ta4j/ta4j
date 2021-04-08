@@ -112,6 +112,24 @@ public interface Strategy {
         }
         return false;
     }
+    
+    /**
+     * Returns a result object with specific parameters of enter or close a position.
+     * 
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @return true to recommend a trade, false otherwise (no recommendation)
+     */
+    default OperationResult shouldOperateWithContext(int index, TradingRecord tradingRecord) {
+    	OperationResult ctx = new OperationResult();
+        Position position = tradingRecord.getCurrentPosition();
+        if (position.isNew()) {
+        	ctx.setShouldOperate(shouldEnter(index, tradingRecord, ctx));
+        } else if (position.isOpened()) {
+        	ctx.setShouldOperate(shouldExit(index, tradingRecord, ctx));
+        }
+        return ctx;
+    }
 
     /**
      * @param index the bar index
@@ -127,7 +145,7 @@ public interface Strategy {
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
+    	return shouldDo(index, tradingRecord, null, getEntryRule());
     }
 
     /**
@@ -144,6 +162,40 @@ public interface Strategy {
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index, TradingRecord tradingRecord) {
-        return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+    	return shouldDo(index, tradingRecord, null, getExitRule());
     }
+    
+    /**
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @return true to recommend to exit, false otherwise
+     */
+    default boolean shouldExit(int index, TradingRecord tradingRecord, StrategyContext ctx) {
+    	return shouldDo(index, tradingRecord, ctx, getExitRule());
+    }
+    
+    /**
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @return true to recommend to enter, false otherwise
+     */
+    default boolean shouldEnter(int index, TradingRecord tradingRecord, StrategyContext ctx) {
+        return shouldDo(index, tradingRecord, ctx, getEntryRule());
+    }
+    
+    /**
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param ctx the context object to pass to the {@link RuleWithCtx}
+     * @param rule the {@link Rule} to check
+     * @return true to recommend to enter, false otherwise
+     */
+	default boolean shouldDo(int index, TradingRecord tradingRecord, StrategyContext ctx, Rule rule) {
+		if (isUnstableAt(index)) return false;
+        if (rule instanceof RuleWithCtx) {
+        	return ((RuleWithCtx)rule).isSatisfied(index, tradingRecord, ctx);
+        } else {
+        	return rule.isSatisfied(index, tradingRecord);
+        }
+	}
 }

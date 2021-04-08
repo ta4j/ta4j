@@ -24,6 +24,8 @@
 package org.ta4j.core.rules;
 
 import org.ta4j.core.Rule;
+import org.ta4j.core.RuleWithCtx;
+import org.ta4j.core.StrategyContext;
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -32,7 +34,7 @@ import org.ta4j.core.TradingRecord;
  * Satisfied when provided rule is not satisfied.<br>
  * Not satisfied when provided rule is satisfied.
  */
-public class NotRule extends AbstractRule {
+public class NotRule extends AbstractRule implements RuleWithCtx {
 
     private final Rule ruleToNegate;
 
@@ -47,7 +49,12 @@ public class NotRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = !ruleToNegate.isSatisfied(index, tradingRecord);
+    	return isSatisfied(index, tradingRecord, null);
+    }
+    
+    @Override
+	public boolean isSatisfied(int index, TradingRecord tradingRecord, StrategyContext ctx) {
+        final boolean satisfied = !isSatisfied(ruleToNegate, index, tradingRecord, ctx);
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

@@ -26,6 +26,9 @@ package org.ta4j.core.rules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
+import org.ta4j.core.RuleWithCtx;
+import org.ta4j.core.StrategyContext;
+import org.ta4j.core.TradingRecord;
 
 /**
  * An abstract trading {@link Rule rule}.
@@ -46,5 +49,22 @@ public abstract class AbstractRule implements Rule {
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+    }
+    
+    /**
+     * Convenient method for calling isSatisfied depending on implemented interface {@link Rule} or {@link RuleWithCtx} 
+     * 
+     * @param rule the rule
+     * @param index the current index
+     * @param tradingRecord the trading record
+     * @param ctx the context object, may be <code>null</code>
+     * @return
+     */
+    protected boolean isSatisfied(Rule rule, int index, TradingRecord tradingRecord, StrategyContext ctx) {
+    	if (rule instanceof RuleWithCtx) {
+    		return ((RuleWithCtx)rule).isSatisfied(index, tradingRecord, ctx);
+    	} else {
+    		return rule.isSatisfied(index, tradingRecord);
+    	}
     }
 }

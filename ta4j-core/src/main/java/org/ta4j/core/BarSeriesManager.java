@@ -178,10 +178,7 @@ public class BarSeriesManager {
                 tradeType);
         TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
-            // For each bar between both indexes...
-            if (strategy.shouldOperate(i, tradingRecord)) {
-                tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
-            }
+            checkAndOperate(strategy, amount, tradingRecord, i);
         }
 
         if (!tradingRecord.isClosed()) {
@@ -189,16 +186,28 @@ public class BarSeriesManager {
             // May works if the end index for this run was inferior to the actual number of
             // bars
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+            for (int i = runEndIndex + 1; i < seriesMaxSize && !tradingRecord.isClosed(); i++) {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
-                    break;
-                }
+            	checkAndOperate(strategy, amount, tradingRecord, i);
             }
         }
         return tradingRecord;
     }
+
+	private void checkAndOperate(Strategy strategy, Num amount, TradingRecord tradingRecord, int i) {
+		// For each bar between both indexes...
+		OperationResult result = strategy.shouldOperateWithContext(i, tradingRecord);
+		if (result.shouldOperate()) {
+			Num price;
+		    if (result.getTradePrice() != null) {
+		    	price = result.getTradePrice();
+		    } else {
+		    	// if no rule has set the trade exit price we use close price as default
+		    	price = barSeries.getBar(i).getClosePrice();
+		    }
+			tradingRecord.operate(i, price, amount);
+		}
+	}
 
 }

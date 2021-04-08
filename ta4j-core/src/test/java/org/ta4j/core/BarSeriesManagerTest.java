@@ -36,9 +36,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.rules.StopGainRule2;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -104,6 +106,21 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(1).getEntry());
         assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(1).getExit());
+    }
+    
+    @Test
+    public void runOnSeriesWithRuleWithCtx() {
+    	// prepare date
+    	seriesForRun = new MockBarSeries(numFunction);
+    	manager = new BarSeriesManager(seriesForRun);
+    	strategy = new BaseStrategy(new FixedRule(2), new StopGainRule2(new HighPriceIndicator(seriesForRun), numOf(0.3), false));
+    	strategy.setUnstablePeriod(1);
+    	//
+        List<Position> positions = manager.run(strategy, TradeType.BUY, 2, 5).getPositions();
+        assertEquals(1, positions.size());
+
+        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.sellAt(3, numOf(3.3), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
