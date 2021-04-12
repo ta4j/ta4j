@@ -272,7 +272,7 @@ public class Position implements Serializable {
 
     /**
      * Calculates the gross return of the position. If either the entry or the exit
-     * price are <code>NaN</code>, the close price from the supplies
+     * price are <code>NaN</code>, the close price from the supplied
      * {@link BarSeries} is used.
      * 
      * @param barSeries
@@ -301,7 +301,7 @@ public class Position implements Serializable {
      * @return the gross return in percent between entryPrice and exitPrice
      *         (includes the base)
      */
-    private Num getGrossReturn(Num entryPrice, Num exitPrice) {
+    public Num getGrossReturn(Num entryPrice, Num exitPrice) {
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {

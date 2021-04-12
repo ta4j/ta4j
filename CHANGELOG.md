@@ -36,6 +36,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `BarSeriesBuilder`**: removed the Serializable interface
 - **Fixed `ParabolicSarIndicator`**: problem with calculating in special cases
 - **Fixed `BaseTimeSeries`**: can now be serialized
+- **Fixed `ProfitLossPercentageCriterion`**: use entryPrice#getValue() instead of entryPrice#getPricePerAsset()
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
