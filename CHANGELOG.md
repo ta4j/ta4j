@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** package "trading/rules" renamed to "rules"
 - **Breaking:** remove Serializable from all indicators
+- **Breaking:** Bar#trades: changed type from int to long
 
 
 ### Fixed

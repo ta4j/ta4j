@@ -37,7 +37,7 @@ public class MockBar extends BaseBar {
 
     private static final long serialVersionUID = -4546486893163810212L;
 
-    private int trades = 0;
+    private long trades = 0;
 
     public MockBar(double closePrice, Function<Number, Num> numFunction) {
         this(ZonedDateTime.now(), closePrice, numFunction);
@@ -68,13 +68,13 @@ public class MockBar extends BaseBar {
     }
 
     public MockBar(ZonedDateTime endTime, double openPrice, double closePrice, double highPrice, double lowPrice,
-            double amount, double volume, int trades, Function<Number, Num> numFunction) {
+            double amount, double volume, long trades, Function<Number, Num> numFunction) {
         super(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, numFunction);
         this.trades = trades;
     }
 
     @Override
-    public int getTrades() {
+    public long getTrades() {
         return trades;
     }
 }

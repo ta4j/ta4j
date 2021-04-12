@@ -67,7 +67,7 @@ public interface Bar extends Serializable {
     /**
      * @return the number of trades in the period
      */
-    int getTrades();
+    long getTrades();
 
     /**
      * @return the whole traded amount of the period

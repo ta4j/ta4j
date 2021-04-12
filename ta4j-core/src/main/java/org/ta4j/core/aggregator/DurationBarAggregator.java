@@ -100,7 +100,7 @@ public class DurationBarAggregator implements BarAggregator {
             Num close = null;
             Num volume = zero;
             Num amount = zero;
-            int trades = 0;
+            long trades = 0;
             Duration sumDur = Duration.ZERO;
 
             while (sumDur.compareTo(timePeriod) < 0) {

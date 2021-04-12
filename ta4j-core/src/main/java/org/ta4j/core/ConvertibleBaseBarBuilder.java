@@ -50,7 +50,7 @@ public class ConvertibleBaseBarBuilder<T> extends BaseBarBuilder {
     }
 
     @Override
-    public ConvertibleBaseBarBuilder<T> trades(int trades) {
+    public ConvertibleBaseBarBuilder<T> trades(long trades) {
         super.trades(trades);
         return this;
     }
