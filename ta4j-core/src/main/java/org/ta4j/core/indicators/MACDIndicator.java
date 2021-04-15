@@ -36,6 +36,8 @@ import org.ta4j.core.num.Num;
  */
 public class MACDIndicator extends CachedIndicator<Num> {
 
+    private static final long serialVersionUID = -6899062131135971403L;
+
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 
@@ -62,6 +64,24 @@ public class MACDIndicator extends CachedIndicator<Num> {
         }
         shortTermEma = new EMAIndicator(indicator, shortBarCount);
         longTermEma = new EMAIndicator(indicator, longBarCount);
+    }
+
+    /**
+     * Short term EMA indicator
+     *
+     * @return the Short term EMA indicator
+     */
+    public EMAIndicator getShortTermEma() {
+        return shortTermEma;
+    }
+
+    /**
+     * Long term EMA indicator
+     *
+     * @return the Long term EMA indicator
+     */
+    public EMAIndicator getLongTermEma() {
+        return longTermEma;
     }
 
     @Override
