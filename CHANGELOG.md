@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - :tada: **Enhancement** Loggers in `BaseBarSeries` and `BarSeriesManager` made static for better performance.
+- :tada: **Enhancement** Exposed both EMA indicators in MACD to be usable in strategy.
 
 ### Removed/Deprecated
 
