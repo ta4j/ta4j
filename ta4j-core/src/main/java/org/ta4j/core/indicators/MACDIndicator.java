@@ -68,6 +68,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     /**
      * Short term EMA indicator
+     * 
      * @return the Short term EMA indicator
      */
     public EMAIndicator getShortTermEma() {
@@ -76,6 +77,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     /**
      * Long term EMA indicator
+     * 
      * @return the Long term EMA indicator
      */
     public EMAIndicator getLongTermEma() {
