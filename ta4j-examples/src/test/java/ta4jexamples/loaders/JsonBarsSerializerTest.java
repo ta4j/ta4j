@@ -31,6 +31,7 @@ import org.ta4j.core.BarSeries;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.Assert.*;
@@ -42,7 +43,7 @@ public class JsonBarsSerializerTest {
 
     @Test
     public void testJsonFileCanBeWrittenAndLoaded() throws IOException {
-        BarSeries series = CsvTradesLoader.loadBitstampSeries();
+        BarSeries series = CsvBarsLoader.loadAppleIncSeries();
         int initialSeriesBarCount = series.getBarCount();
         String testFilename = folder.getRoot().getAbsolutePath() + File.separator + "bitstamp_series.json";
         File fileToBeWritten = new File(testFilename);
@@ -51,18 +52,20 @@ public class JsonBarsSerializerTest {
         assertTrue(fileToBeWritten.exists());
 
         BarSeries loadedSeries = JsonBarsSerializer.loadSeries(testFilename);
-        assertEquals(loadedSeries.getBarCount(), initialSeriesBarCount);
+        assertEquals(initialSeriesBarCount, loadedSeries.getBarCount());
 
         int randomIndex = ThreadLocalRandom.current().nextInt(series.getBeginIndex(), series.getEndIndex());
         Bar randomInitialBar = series.getBar(randomIndex);
         Bar randomNewBar = loadedSeries.getBar(randomIndex);
-        assertEquals(randomNewBar.getEndTime(), randomInitialBar.getEndTime());
-        assertEquals(randomNewBar.getOpenPrice(), randomInitialBar.getOpenPrice());
-        assertEquals(randomNewBar.getHighPrice(), randomInitialBar.getHighPrice());
-        assertEquals(randomNewBar.getLowPrice(), randomInitialBar.getLowPrice());
-        assertEquals(randomNewBar.getClosePrice(), randomInitialBar.getClosePrice());
-        assertEquals(randomNewBar.getVolume(), randomInitialBar.getVolume());
-        assertEquals(randomNewBar.getAmount(), randomInitialBar.getAmount());
 
+        assertEquals(randomInitialBar.getEndTime(), randomNewBar.getEndTime());
+        assertEquals(randomInitialBar.getOpenPrice(), randomNewBar.getOpenPrice());
+        assertTrue(randomInitialBar.getOpenPrice().getDelegate() instanceof BigDecimal);
+        assertTrue(randomNewBar.getOpenPrice().getDelegate() instanceof BigDecimal);
+        assertEquals(randomInitialBar.getHighPrice(), randomNewBar.getHighPrice());
+        assertEquals(randomInitialBar.getLowPrice(), randomNewBar.getLowPrice());
+        assertEquals(randomInitialBar.getClosePrice(), randomNewBar.getClosePrice());
+        assertEquals(randomInitialBar.getVolume(), randomNewBar.getVolume());
+        assertEquals(randomInitialBar.getAmount(), randomNewBar.getAmount());
     }
 }
