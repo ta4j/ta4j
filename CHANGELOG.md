@@ -78,6 +78,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`GrossLossCriterion.class`**.
 - :tada: **Enhancement** added **`NetProfitCriterion.class`**.
 - :tada: **Enhancement** added chooseBest() method with parameter tradeType in AnalysisCriterion.
+- **Example** added a json serialization and deserialization example of BarSeries
 
 
 ## 0.13 (released November 5, 2019)
