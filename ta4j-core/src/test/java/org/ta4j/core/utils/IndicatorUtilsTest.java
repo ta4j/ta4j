@@ -41,6 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class IndicatorUtilsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -78,7 +79,7 @@ public class IndicatorUtilsTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         Assert.assertNotNull(stream);
         Assert.assertNotNull(collectedValues);
-        Assert.assertEquals(30, collectedValues.size());
+        assertEquals(30, collectedValues.size());
         assertNumEquals(typicalPrices[0], collectedValues.get(0));
         assertNumEquals(typicalPrices[1], collectedValues.get(1));
         assertNumEquals(typicalPrices[2], collectedValues.get(2));
@@ -91,16 +92,18 @@ public class IndicatorUtilsTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     public void shouldProvideStreamWithMapping() {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
 
-        final Function<IndicatorUtils.IndicatorContext<Num>, ValueWithTimestamp> mapFunction = (IndicatorUtils.IndicatorContext<Num> ctx) -> new ValueWithTimestamp(
-                indicator.getValue(ctx.getIndex()),
-                ctx.getIndicator().getBarSeries().getBar(ctx.getIndex()).getEndTime().toInstant());
+        final Function<IndicatorUtils.IndicatorContext<Num>, ValueWithTimestamp> mapFunction = (
+                IndicatorUtils.IndicatorContext<Num> ctx) -> new ValueWithTimestamp(indicator.getValue(ctx.getIndex()),
+                        ctx.getIndicator().getBarSeries().getBar(ctx.getIndex()).getEndTime().toInstant());
 
         Stream<ValueWithTimestamp> stream = IndicatorUtils.streamOf(indicator, mapFunction);
         List<ValueWithTimestamp> collectedValues = stream.collect(Collectors.toList());
 
         Assert.assertNotNull(stream);
         Assert.assertNotNull(collectedValues);
-        Assert.assertEquals(30, collectedValues.size());
+        assertEquals(30, collectedValues.size());
+        assertNumEquals(typicalPrices[0], collectedValues.get(0).value);
+        assertEquals(series.getBar(0).getEndTime().toInstant(), collectedValues.get(0).getTimestamp());
 
     }
 
