@@ -29,7 +29,13 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+/**
+ * Common utilities and helper methods for Indicator.
+ */
 public final class IndicatorUtils {
+
+    private IndicatorUtils() {
+    }
 
     /**
      * Creates a stream from the indicator values
@@ -46,13 +52,13 @@ public final class IndicatorUtils {
      * Creates a stream from the indicator values and applies a mapping function on
      * each element. Indicator context is passed together with the index, so other
      * values could be used for mapping.
-     * 
+     *
      * @param indicator   indicator to be used
      * @param mapFunction function that is applied in mapping receives a tuple in
      *                    argument; that contains the indicator and integer index
      * @param <T>         type of indicator value
      * @param <R>         result type
-     * @return the resulting type
+     * @return the resulting value
      */
     public static <T, R> Stream<R> streamOf(final Indicator<T> indicator,
             final Function<IndicatorContext<T>, R> mapFunction) {
