@@ -34,6 +34,7 @@ import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -44,7 +45,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class IndicatorUtilsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    private double[] typicalPrices = new double[] { 23.98, 23.92, 23.79, 23.67, 23.54, 23.36, 23.65, 23.72, 24.16,
+    private final double[] typicalPrices = new double[] { 23.98, 23.92, 23.79, 23.67, 23.54, 23.36, 23.65, 23.72, 24.16,
             23.91, 23.81, 23.92, 23.74, 24.68, 24.94, 24.93, 25.10, 25.12, 25.20, 25.06, 24.50, 24.31, 24.57, 24.62,
             24.49, 24.37, 24.41, 24.35, 23.75, 24.09 };
 
@@ -84,6 +85,40 @@ public class IndicatorUtilsTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertNumEquals(typicalPrices[10], collectedValues.get(10));
         assertNumEquals(typicalPrices[20], collectedValues.get(20));
         assertNumEquals(typicalPrices[29], collectedValues.get(29));
+    }
 
+    @Test
+    public void shouldProvideStreamWithMapping() {
+        ClosePriceIndicator indicator = new ClosePriceIndicator(series);
+
+        final Function<IndicatorUtils.IndicatorContext<Num>, ValueWithTimestamp> mapFunction = (IndicatorUtils.IndicatorContext<Num> ctx) -> new ValueWithTimestamp(
+                indicator.getValue(ctx.getIndex()),
+                ctx.getIndicator().getBarSeries().getBar(ctx.getIndex()).getEndTime().toInstant());
+
+        Stream<ValueWithTimestamp> stream = IndicatorUtils.streamOf(indicator, mapFunction);
+        List<ValueWithTimestamp> collectedValues = stream.collect(Collectors.toList());
+
+        Assert.assertNotNull(stream);
+        Assert.assertNotNull(collectedValues);
+        Assert.assertEquals(30, collectedValues.size());
+
+    }
+
+    static class ValueWithTimestamp {
+        private final Num value;
+        private final Instant timestamp;
+
+        public ValueWithTimestamp(Num value, Instant timestamp) {
+            this.value = value;
+            this.timestamp = timestamp;
+        }
+
+        public Num getValue() {
+            return value;
+        }
+
+        public Instant getTimestamp() {
+            return timestamp;
+        }
     }
 }

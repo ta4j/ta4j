@@ -25,6 +25,7 @@ package org.ta4j.core.utils;
 
 import org.ta4j.core.Indicator;
 
+import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -32,12 +33,49 @@ public final class IndicatorUtils {
 
     /**
      * Creates a stream from the indicator values
-     * 
+     *
      * @param indicator indicator to be used
      * @param <T>       Indicator type
      * @return the stream of values
      */
-    public static <T> Stream<T> streamOf(Indicator<T> indicator) {
-        return IntStream.range(0, indicator.getBarSeries().getBarCount()).mapToObj(indicator::getValue);
+    public static <T> Stream<T> streamOf(final Indicator<T> indicator) {
+        return IntStream.range(0, indicator.getBarSeries()
+                .getBarCount())
+                .mapToObj(indicator::getValue);
+    }
+
+    /**
+     * Creates a stream from the indicator values and applies a mapping function on each element.
+     * Indicator context is passed together with the index, so other values could be used for mapping.
+     * @param indicator indicator to be used
+     * @param mapFunction function that is applied in mapping receives a tuple in argument; that contains the indicator
+     *                   and integer index
+     * @param <T> type of indicator value
+     * @param <R> result type
+     * @return the resulting type
+     */
+    public static <T, R> Stream<R> streamOf(final Indicator<T> indicator,
+                                            final Function<IndicatorContext<T>, R> mapFunction) {
+        return IntStream.range(0, indicator.getBarSeries()
+                .getBarCount())
+                .mapToObj((int i) -> mapFunction.apply(new IndicatorContext<>(indicator, i)));
+    }
+
+    public static final class IndicatorContext<T> {
+        private final Indicator<T> indicator;
+        private final int index;
+
+        public IndicatorContext(Indicator<T> indicator, int index) {
+            this.indicator = indicator;
+            this.index = index;
+        }
+
+        public Indicator<T> getIndicator() {
+            return indicator;
+        }
+
+        public int getIndex() {
+            return index;
+        }
     }
 }
