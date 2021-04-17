@@ -79,4 +79,8 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
+    public BarSeries getSeries() {
+        return series;
+    }
+
 }

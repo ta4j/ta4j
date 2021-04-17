@@ -35,8 +35,6 @@ import org.ta4j.core.num.Num;
  */
 public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
-    private static final long serialVersionUID = -6196778603319962795L;
-
     /**
      * Select the type for transformation.
      */

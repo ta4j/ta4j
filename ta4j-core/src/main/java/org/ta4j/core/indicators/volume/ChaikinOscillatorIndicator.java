@@ -37,7 +37,6 @@ import org.ta4j.core.num.Num;
  */
 public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = 2235402541638515096L;
     private final EMAIndicator emaShort;
     private final EMAIndicator emaLong;
 

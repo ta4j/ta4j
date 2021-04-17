@@ -37,7 +37,6 @@ import org.ta4j.core.indicators.AbstractIndicator;
  */
 public class FixedIndicator<T> extends AbstractIndicator<T> {
 
-    private static final long serialVersionUID = -2946691798800328858L;
     private final List<T> values = new ArrayList<>();
 
     /**

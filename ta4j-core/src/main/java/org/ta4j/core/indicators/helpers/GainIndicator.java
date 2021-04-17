@@ -32,7 +32,6 @@ import org.ta4j.core.num.Num;
  */
 public class GainIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -4323131155633745356L;
     private final Indicator<Num> indicator;
 
     public GainIndicator(Indicator<Num> indicator) {

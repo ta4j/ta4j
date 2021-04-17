@@ -271,19 +271,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void addBarTest() {
         defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
-        Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d, numFunction);
-        Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d, numFunction);
+        Bar bar1 = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d, numFunction);
+        Bar bar2 = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d, numFunction);
 
         assertEquals(0, defaultSeries.getBarCount());
         assertEquals(-1, defaultSeries.getBeginIndex());
         assertEquals(-1, defaultSeries.getEndIndex());
 
-        defaultSeries.addBar(firstBar);
+        defaultSeries.addBar(bar1);
         assertEquals(1, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(0, defaultSeries.getEndIndex());
 
-        defaultSeries.addBar(secondBar);
+        defaultSeries.addBar(bar2);
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());

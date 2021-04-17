@@ -30,8 +30,6 @@ import org.ta4j.core.BarSeries;
  */
 public class FixedBooleanIndicator extends FixedIndicator<Boolean> {
 
-    private static final long serialVersionUID = 3841241374807117753L;
-
     /**
      * Constructor.
      * 
