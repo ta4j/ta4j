@@ -21,38 +21,33 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.Indicator;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Base class for Exponential Moving Average implementations.
+ * Calculates the percentage of positions which are not profitable.
+ *
+ * Defined as <code># of losing positions / total # of positions</code>.
  */
-public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
+public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final Indicator<Num> indicator;
-    private final int barCount;
-    private final Num multiplier;
-
-    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.multiplier = numOf(multiplier);
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        return position.hasLoss() ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
-    protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
-        }
-        Num prevValue = getValue(index - 1);
-        return indicator.getValue(index).minus(prevValue).multipliedBy(multiplier).plus(prevValue);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfLossPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
+        return series.numOf(numberOfLossPositions).dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
     @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }
