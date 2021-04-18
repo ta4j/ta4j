@@ -27,6 +27,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.cost.CostModel;
@@ -391,5 +392,30 @@ public class Position implements Serializable {
 
     private Num numOf(Number num) {
         return entry.getNetPrice().numOf(num);
+    }
+
+    /**
+     * Determines, if the position is profitable and return Optional<Boolean>.
+     * In case the profit cannot be determined (i.e. the position is still open), Optional.empty is returned.
+     * @return Optional of boolean
+     */
+    public Optional<Boolean> isProfitable() {
+        if (isClosed()) {
+            return Optional.of(getProfit().doubleValue() > 0);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Determines, if the position is NOT profitable and return Optional<Boolean>.
+     * In case the profit cannot be determined (i.e. the position is still open), Optional.empty is returned.
+     * (This is inverse of isProfitable, it merely adds syntactic sugar)
+     * @return Optional of boolean
+     */
+    public Optional<Boolean> isNotProfitable() {
+        if (isClosed()) {
+            return Optional.of(getProfit().doubleValue() < 0);
+        }
+        return Optional.empty();
     }
 }

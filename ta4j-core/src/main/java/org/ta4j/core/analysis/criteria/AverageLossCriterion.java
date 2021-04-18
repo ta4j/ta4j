@@ -29,18 +29,13 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.NumUtils;
 
+import java.util.function.Predicate;
+
 /**
  * This is simple average loss of all losing positions
  */
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
-    private boolean isLosingPosition(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num zero = series.numOf(0);
-            return position.getProfit().isLessThan(zero);
-        }
-        return false;
-    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -49,8 +44,12 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final Num value = tradingRecord.getPositions().stream().filter(t -> isLosingPosition(series, t))
-                .map(Position::getProfit).collect(NumUtils.averagingNum((Num t) -> t));
+        final Predicate<Position> isNotProfitable = (Position p)-> p.isNotProfitable().orElse(false);
+        final Num value = tradingRecord.getPositions()
+                .stream()
+                .filter(isNotProfitable)
+                .map(Position::getProfit)
+                .collect(NumUtils.averagingNum((Num t) -> t));
         return value.abs();
     }
 

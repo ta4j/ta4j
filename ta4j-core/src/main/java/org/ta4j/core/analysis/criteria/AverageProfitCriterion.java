@@ -29,18 +29,12 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.NumUtils;
 
+import java.util.function.Predicate;
+
 /**
  * This is simple average profit of all winning positions
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
-
-    private boolean isWinningPosition(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num zero = series.numOf(0);
-            return position.getProfit().isGreaterThan(zero);
-        }
-        return false;
-    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -49,7 +43,12 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(t -> isWinningPosition(series, t)).map(Position::getProfit)
+        final Predicate<Position> isProfitable = (Position p)-> p.isProfitable().orElse(false);
+
+        return tradingRecord.getPositions()
+                .stream()
+                .filter(isProfitable)
+                .map(Position::getProfit)
                 .collect(NumUtils.averagingNum((Num t) -> t));
     }
 

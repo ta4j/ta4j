@@ -337,4 +337,54 @@ public class PositionTest {
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalAfter);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalBefore);
     }
+
+    @Test
+    public void isProfitableTest() {
+
+        Position position = new Position(TradeType.BUY);
+
+        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+        position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+
+        final Num profit = position.getProfit();
+
+        assertEquals(DoubleNum.valueOf(4.0), profit);
+        assertTrue(position.isProfitable().isPresent());
+        assertTrue(position.isProfitable().get());
+    }
+
+    @Test
+    public void isProfitableTestStillOpen() {
+
+        Position position = new Position(TradeType.BUY);
+
+        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+
+        assertFalse(position.isProfitable().isPresent());
+    }
+
+    @Test
+    public void isNotProfitableTest() {
+
+        Position position = new Position(TradeType.BUY);
+
+        position.operate(0, DoubleNum.valueOf(12.00), DoubleNum.valueOf(2));
+        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+
+        final Num profit = position.getProfit();
+
+        assertEquals(DoubleNum.valueOf(-4.0), profit);
+        assertTrue(position.isNotProfitable().isPresent());
+        assertFalse(position.isProfitable().get());
+    }
+
+    @Test
+    public void isNotProfitableTestStillOpen() {
+
+        Position position = new Position(TradeType.BUY);
+
+        position.operate(0, DoubleNum.valueOf(10.00), DoubleNum.valueOf(2));
+
+        assertFalse(position.isNotProfitable().isPresent());
+    }
 }
