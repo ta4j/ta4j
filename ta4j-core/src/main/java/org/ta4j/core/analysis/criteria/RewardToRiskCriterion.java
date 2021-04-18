@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  */
 public class RewardToRiskCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion averageWin = new AverageWinCriterion();
+    private AnalysisCriterion averageWin = new AverageProfitCriterion();
     private AnalysisCriterion averageLoss = new AverageLossCriterion();
 
     @Override

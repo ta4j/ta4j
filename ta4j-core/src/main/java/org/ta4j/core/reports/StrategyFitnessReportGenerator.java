@@ -28,7 +28,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AverageLossCriterion;
 import org.ta4j.core.analysis.criteria.AverageProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.AverageWinCriterion;
+import org.ta4j.core.analysis.criteria.AverageProfitCriterion;
 import org.ta4j.core.analysis.criteria.ExpectancyCriterion;
 import org.ta4j.core.analysis.criteria.RewardToRiskCriterion;
 import org.ta4j.core.num.Num;
@@ -39,7 +39,7 @@ public class StrategyFitnessReportGenerator implements ReportGenerator<StrategyF
     public StrategyFitnessReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
         final Num rrRatio = new RewardToRiskCriterion().calculate(series, tradingRecord);
         final Num expectancy = new ExpectancyCriterion().calculate(series, tradingRecord);
-        final Num averageWin = new AverageWinCriterion().calculate(series, tradingRecord);
+        final Num averageWin = new AverageProfitCriterion().calculate(series, tradingRecord);
         final Num averageLoss = new AverageLossCriterion().calculate(series, tradingRecord);
         final Num averagePnl = new AverageProfitLossCriterion().calculate(series, tradingRecord);
 

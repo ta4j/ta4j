@@ -32,11 +32,8 @@ public class StrategyFitnessReport {
     private Num averageLoss;
     private Num averagePnl;
 
-    public StrategyFitnessReport(final Num rewardToRiskRatio,
-                                 final Num expectancy,
-                                 final Num averageWin,
-                                 final Num averageLoss,
-                                 final Num averagePnl) {
+    public StrategyFitnessReport(final Num rewardToRiskRatio, final Num expectancy, final Num averageWin,
+            final Num averageLoss, final Num averagePnl) {
         this.rewardToRiskRatio = rewardToRiskRatio;
         this.expectancy = expectancy;
         this.averageWin = averageWin;

@@ -21,28 +21,61 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.num;
+package org.ta4j.core.utils;
 
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
+
+import java.math.BigDecimal;
 import java.util.function.Function;
 import java.util.stream.Collector;
 
-/**
- * A collector for Num values.
- */
-public class NumCollector {
-    private NumCollector() {
+public class NumUtils {
+    private NumUtils() {
     }
 
     /**
      * Collector of {@link Num} values providing Avg
      *
-     * Disclaimer: currently only fork for
-     * homogenous values (Doubles with doubles, BigDecimals with BigDecimals)
+     * Disclaimer: currently only fork for homogenous values (Doubles with doubles,
+     * BigDecimals with BigDecimals)
      *
      * @param mapper function to provide Num
      * @return the average of Nums
      */
     public static Collector<Num, ?, Num> averagingNum(Function<?, Num> mapper) {
         return Collector.of(NumAverager::new, NumAverager::accept, NumAverager::combine, NumAverager::average);
+    }
+
+    static class NumAverager {
+
+        Double sumOfDoubles = 0d;
+        BigDecimal sumOfDecimals = new BigDecimal(0);
+        int count = 0;
+
+        void accept(final Num p) {
+            if (p.getDelegate() instanceof BigDecimal) {
+                sumOfDecimals = sumOfDecimals.add((BigDecimal) p.getDelegate());
+            } else {
+                sumOfDoubles += (Double) p.getDelegate();
+            }
+            count++;
+        }
+
+        NumAverager combine(final NumAverager other) {
+            sumOfDecimals = sumOfDecimals.add(other.sumOfDecimals);
+            sumOfDoubles += other.sumOfDoubles;
+            count += other.count;
+            return this;
+        }
+
+        Num average() {
+            if (sumOfDoubles != 0) {
+                return DoubleNum.valueOf(count == 0 ? 0 : sumOfDoubles / count);
+            } else {
+                return DecimalNum.valueOf(count == 0 ? 0 : sumOfDecimals.divide(new BigDecimal(count)));
+            }
+        }
     }
 }

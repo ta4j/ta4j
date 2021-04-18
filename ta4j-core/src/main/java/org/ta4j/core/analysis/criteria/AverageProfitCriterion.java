@@ -21,37 +21,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.num;
+package org.ta4j.core.analysis.criteria;
 
-import java.math.BigDecimal;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.NumUtils;
 
-class NumAverager {
+/**
+ * This is simple average profit of all winning positions
+ */
+public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
-    Double sumOfDoubles = 0d;
-    BigDecimal sumOfDecimals = new BigDecimal(0);
-    int count = 0;
-
-    void accept(final Num p) {
-        if (p.getDelegate() instanceof BigDecimal) {
-            sumOfDecimals = sumOfDecimals.add((BigDecimal) p.getDelegate());
-        } else {
-            sumOfDoubles += (Double) p.getDelegate();
+    private boolean isWinningPosition(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            Num zero = series.numOf(0);
+            return position.getProfit().isGreaterThan(zero);
         }
-        count++;
+        return false;
     }
 
-    NumAverager combine(final NumAverager other) {
-        sumOfDecimals = sumOfDecimals.add(other.sumOfDecimals);
-        sumOfDoubles += other.sumOfDoubles;
-        count += other.count;
-        return this;
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        return position.getProfit();
     }
 
-    Num average() {
-        if (sumOfDoubles != 0) {
-            return DoubleNum.valueOf(count == 0 ? 0 : sumOfDoubles / count);
-        } else {
-            return DecimalNum.valueOf(count == 0 ? 0 : sumOfDecimals.divide(new BigDecimal(count)));
-        }
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().filter(t -> isWinningPosition(series, t)).map(Position::getProfit)
+                .collect(NumUtils.averagingNum((Num t) -> t));
+    }
+
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 }
