@@ -215,7 +215,7 @@ public class Position implements Serializable {
     public String toString() {
         return "Entry: " + entry + " exit: " + exit;
     }
-    
+
     /**
      * @return true if position is closed and {@link #getProfit()} > 0
      */

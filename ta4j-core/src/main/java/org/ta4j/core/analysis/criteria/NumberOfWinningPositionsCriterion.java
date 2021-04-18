@@ -40,7 +40,6 @@ public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion
         return series.numOf(numberOfWinningPositions);
     }
 
-
     @Override
     public Num calculate(BarSeries series, Position position) {
         return position.hasProfit() ? series.numOf(1) : series.numOf(0);
