@@ -80,6 +80,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`ProfitLossRatioCriterion.class`**.
 - :tada: **Enhancement** added **`ExpectancyCriterion.class`**.
 - :tada: **Enhancement** added **`ConsecutiveWinningPositionsCriterion.class`**.
+- :tada: **Enhancement** added Position#isWinning.
+- :tada: **Enhancement** added Position#isLosing.
 
 
 ## 0.13 (released November 5, 2019)
