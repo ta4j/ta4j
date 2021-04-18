@@ -401,7 +401,7 @@ public class Position implements Serializable {
      */
     public Optional<Boolean> isProfitable() {
         if (isClosed()) {
-            return Optional.of(getProfit().doubleValue() > 0);
+            return Optional.of(getProfit().isPositive());
         }
         return Optional.empty();
     }
@@ -414,7 +414,7 @@ public class Position implements Serializable {
      */
     public Optional<Boolean> isNotProfitable() {
         if (isClosed()) {
-            return Optional.of(getProfit().doubleValue() < 0);
+            return Optional.of(getProfit().isNegative());
         }
         return Optional.empty();
     }
