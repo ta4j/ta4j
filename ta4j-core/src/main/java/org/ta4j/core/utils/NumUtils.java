@@ -38,7 +38,7 @@ public class NumUtils {
     /**
      * Collector of {@link Num} values providing Avg
      *
-     * Disclaimer: currently only fork for homogenous values (Doubles with doubles,
+     * Disclaimer: currently only works for homogenous values (Doubles with Doubles,
      * BigDecimals with BigDecimals)
      *
      * @param mapper function to provide Num
