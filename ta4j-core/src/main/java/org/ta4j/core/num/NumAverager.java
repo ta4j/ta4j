@@ -21,11 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.utils;
-
-import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
+package org.ta4j.core.num;
 
 import java.math.BigDecimal;
 

@@ -1,19 +1,19 @@
 /**
  * The MIT License (MIT)
- * <p>
+ *
  * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
- * <p>
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
  * the Software, and to permit persons to whom the Software is furnished to do so,
  * subject to the following conditions:
- * <p>
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * <p>
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -23,37 +23,28 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumCollector;
 
 /**
- * Expectancy is the expected return of the strategy.
- * The formula is average win * win % - average loss * loss %
- *
+ * This is simple average across all positions
  */
-public class ExpectancyCriterion extends AbstractAnalysisCriterion {
-
-    private final AverageWinCriterion averageWin = new AverageWinCriterion();
-    private final AverageLossCriterion averageLoss = new AverageLossCriterion();
-    private final AnalysisCriterion winRatio = new WinningPositionsRatioCriterion();
-    private final AnalysisCriterion lossRatio = new LosingPositionsRatioCriterion();
+public class AverageProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        throw new UnsupportedOperationException("Cannot calculate Reward to Risk ratio from one position");
+        return position.getProfit();
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        final Num avgWinValue = averageWin.calculate(series, tradingRecord);
-        final Num avgLossValue = averageLoss.calculate(series, tradingRecord);
-        final Num winRatioValue = winRatio.calculate(series, tradingRecord);
-        final Num lossRatioValue = lossRatio.calculate(series, tradingRecord);
-
-        return avgWinValue.multipliedBy(winRatioValue).minus(lossRatioValue.multipliedBy(avgLossValue));
+        return tradingRecord.getPositions()
+                .stream()
+                .map(Position::getProfit)
+                .collect(NumCollector.averagingNum((Num t) -> t));
     }
 
     @Override

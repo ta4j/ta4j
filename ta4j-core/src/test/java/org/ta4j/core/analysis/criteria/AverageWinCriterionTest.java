@@ -16,10 +16,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class ExpectancyCriterionTest extends AbstractCriterionTest {
+public class AverageWinCriterionTest extends AbstractCriterionTest {
 
-    public ExpectancyCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ExpectancyCriterion(), numFunction);
+    public AverageWinCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new AverageWinCriterion(), numFunction);
     }
 
     @Test
@@ -31,13 +31,12 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(4, series), Trade.sellAt(5, series), // winning +16
                 Trade.buyAt(6, series), Trade.sellAt(8, series) // losing -5
         );
-        // avg win: 9,5 ((3+16) / 2) , avg loss: 5 ((5+5) / 2) - > RR = 9.5 / 5 = 1.9
-        // 50% win ratio
-        // 9.5 * 0.5 - 5 * 0.5 = 2.25
+        // (-5 + 3 + 16 -5) / 4 = 2.25 avg pnl
+        // (3 + 16) / 2 = 9.5
 
-        AnalysisCriterion expectancy = getCriterion();
+        AnalysisCriterion avgWin = getCriterion();
 
-        assertNumEquals(2.25d, expectancy.calculate(series, tradingRecord));
+        assertNumEquals(9.5d, avgWin.calculate(series, tradingRecord));
     }
 
     @Test
@@ -46,18 +45,18 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(
                 Trade.sellAt(0, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series), Trade.buyAt(4, series));
-        AnalysisCriterion expectancy = getCriterion();
+        AnalysisCriterion avgWin = getCriterion();
 
-        assertNumEquals(3d, expectancy.calculate(series, tradingRecord));
+        assertNumEquals(8d, avgWin.calculate(series, tradingRecord));
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void calculateWithOnePosition() {
         BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
-        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        Position position = new Position(Trade.sellAt(0, series), Trade.buyAt(1, series));
 
         AnalysisCriterion average = getCriterion();
-        average.calculate(series, position);
+        assertNumEquals(5d, average.calculate(series, position));
     }
 
     @Test
@@ -67,7 +66,7 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
         assertFalse(criterion.betterThan(numOf(8), numOf(12)));
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }

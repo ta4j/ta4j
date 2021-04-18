@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.utils.NumCollector;
+import org.ta4j.core.num.NumCollector;
 
 /**
  * This is simple average profit of all winning positions
@@ -44,7 +44,7 @@ public class AverageWinCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return null;
+        return position.getProfit();
     }
 
     @Override

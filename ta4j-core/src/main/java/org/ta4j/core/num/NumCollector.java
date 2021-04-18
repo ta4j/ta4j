@@ -21,9 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.utils;
-
-import org.ta4j.core.num.Num;
+package org.ta4j.core.num;
 
 import java.util.function.Function;
 import java.util.stream.Collector;
@@ -36,7 +34,9 @@ public class NumCollector {
     }
 
     /**
-     * Collector of {@link Num} values Disclaimer: currently only fork for
+     * Collector of {@link Num} values providing Avg
+     *
+     * Disclaimer: currently only fork for
      * homogenous values (Doubles with doubles, BigDecimals with BigDecimals)
      *
      * @param mapper function to provide Num
