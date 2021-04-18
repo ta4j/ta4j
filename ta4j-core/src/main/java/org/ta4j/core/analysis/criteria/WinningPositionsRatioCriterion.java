@@ -50,7 +50,9 @@ public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfProfitable = tradingRecord.getPositions().stream().filter(t -> isProfitablePosition(series, t))
+        long numberOfProfitable = tradingRecord.getPositions()
+                .stream()
+                .filter(t -> isProfitablePosition(series, t))
                 .count();
         return series.numOf(numberOfProfitable).dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }

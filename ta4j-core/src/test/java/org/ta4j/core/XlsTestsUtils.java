@@ -97,7 +97,8 @@ public class XlsTestsUtils {
             if (evaluator.evaluate(row.getCell(0)).formatAsString().contains("Param")) {
                 // stream parameters into the second column of subsequent rows
                 // overwrites data section if there is not a large enough gap
-                Arrays.stream(params).mapToDouble(Num::doubleValue)
+                Arrays.stream(params)
+                        .mapToDouble(Num::doubleValue)
                         .forEach(d -> iterator.next().getCell(1).setCellValue(d));
                 return;
             }
@@ -186,7 +187,8 @@ public class XlsTestsUtils {
      */
     private static List<Num> getValues(Sheet sheet, int column, Function<Number, Num> numFunction, Object... params)
             throws DataFormatException {
-        Num[] NumParams = Arrays.stream(params).map(p -> numFunction.apply(new BigDecimal(p.toString())))
+        Num[] NumParams = Arrays.stream(params)
+                .map(p -> numFunction.apply(new BigDecimal(p.toString())))
                 .toArray(Num[]::new);
         return getValues(sheet, column, numFunction, NumParams);
     }

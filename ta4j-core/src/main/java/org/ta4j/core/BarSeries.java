@@ -115,7 +115,8 @@ public interface BarSeries extends Serializable {
         if (!getBarData().isEmpty()) {
             Bar firstBar = getFirstBar();
             Bar lastBar = getLastBar();
-            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)).append(" - ")
+            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                    .append(" - ")
                     .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));
         }
         return sb.toString();
