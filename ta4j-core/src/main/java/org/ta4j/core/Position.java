@@ -219,7 +219,7 @@ public class Position implements Serializable {
     /**
      * @return true if position is closed and {@link #getProfit()} > 0
      */
-    public boolean isWinning() {
+    public boolean hasProfit() {
         if (isClosed()) {
             return getProfit().isPositive();
         }
@@ -229,7 +229,7 @@ public class Position implements Serializable {
     /**
      * @return true if position is closed and {@link #getProfit()} < 0
      */
-    public boolean isLosing() {
+    public boolean hasLoss() {
         if (isClosed()) {
             return getProfit().isNegative();
         }
