@@ -56,7 +56,6 @@ public class NetProfitCriterion extends AbstractAnalysisCriterion {
         if (position.isClosed()) {
             Num profit = position.getProfit();
             return profit.isPositive() ? profit : series.numOf(0);
-
         }
         return series.numOf(0);
 

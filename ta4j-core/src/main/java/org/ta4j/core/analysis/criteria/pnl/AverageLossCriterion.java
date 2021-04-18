@@ -40,28 +40,28 @@ public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfLosingTrades = numberOfLosingPositionsCriterion.calculate(series, position);
-        if (numberOfLosingTrades.isZero()) {
+        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
+        if (numberOfLosingPositions.isZero()) {
             return series.numOf(0);
         }
         Num grossLoss = grossLossCriterion.calculate(series, position);
         if (grossLoss.isZero()) {
             return series.numOf(0);
         }
-        return grossLoss.dividedBy(numberOfLosingTrades);
+        return grossLoss.dividedBy(numberOfLosingPositions);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfLosingTrades = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
-        if (numberOfLosingTrades.isZero()) {
+        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
+        if (numberOfLosingPositions.isZero()) {
             return series.numOf(0);
         }
         Num grossLoss = grossLossCriterion.calculate(series, tradingRecord);
         if (grossLoss.isZero()) {
             return series.numOf(0);
         }
-        return grossLoss.dividedBy(numberOfLosingTrades);
+        return grossLoss.dividedBy(numberOfLosingPositions);
     }
 
     @Override

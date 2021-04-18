@@ -29,14 +29,13 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of winning positions criterion.
+ * Number of closed winning positions criterion.
  */
 public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .filter(Position::hasProfit).count();
+        long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::hasProfit).count();
         return series.numOf(numberOfWinningPositions);
     }
 
