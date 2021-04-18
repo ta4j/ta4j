@@ -29,27 +29,21 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of winning position criterion.
+ * Number of winning positions criterion.
  */
 public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .filter(this::isWinningPositions).count();
+                .filter(Position::isWinning).count();
         return series.numOf(numberOfWinningPositions);
     }
 
-    private boolean isWinningPositions(Position position) {
-        if (position.isClosed()) {
-            return position.getProfit().isPositive();
-        }
-        return false;
-    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isWinningPositions(position) ? series.numOf(1) : series.numOf(0);
+        return position.isWinning() ? series.numOf(1) : series.numOf(0);
     }
 
     @Override

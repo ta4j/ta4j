@@ -215,6 +215,26 @@ public class Position implements Serializable {
     public String toString() {
         return "Entry: " + entry + " exit: " + exit;
     }
+    
+    /**
+     * @return true if position is closed and {@link #getProfit()} > 0
+     */
+    public boolean isWinning() {
+        if (isClosed()) {
+            return getProfit().isPositive();
+        }
+        return false;
+    }
+
+    /**
+     * @return true if position is closed and {@link #getProfit()} < 0
+     */
+    public boolean isLosing() {
+        if (isClosed()) {
+            return getProfit().isNegative();
+        }
+        return false;
+    }
 
     /**
      * Calculate the profit of the position if it is closed
