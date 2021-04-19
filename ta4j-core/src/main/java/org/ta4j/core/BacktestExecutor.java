@@ -61,7 +61,7 @@ public class BacktestExecutor {
 
     /**
      * Executes given strategies and returns trading statements.
-     * 
+     *
      * @param strategies the strategies
      * @param amount     the amount used to open/close the position
      */
@@ -72,7 +72,7 @@ public class BacktestExecutor {
     /**
      * Executes given strategies with specified trade type to open the position and
      * return the trading statements.
-     * 
+     *
      * @param strategies the strategies
      * @param amount     the amount used to open/close the position
      * @param tradeType  the {@link Trade.TradeType} used to open the position
@@ -86,15 +86,5 @@ public class BacktestExecutor {
             tradingStatements.add(tradingStatement);
         }
         return tradingStatements;
-    }
-
-    public String generateReport(List<TradingStatement> statements) {
-        StringBuilder resultBuilder = new StringBuilder();
-        for (TradingStatement statement : statements) {
-            resultBuilder.append(statement.printReport());
-            resultBuilder.append(System.getProperty("line.separator"));
-        }
-
-        return resultBuilder.toString().trim();
     }
 }

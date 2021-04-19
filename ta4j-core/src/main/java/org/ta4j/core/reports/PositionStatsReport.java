@@ -58,11 +58,4 @@ public class PositionStatsReport {
     public Num getBreakEvenCount() {
         return breakEvenCount;
     }
-
-    public String printReport() {
-        return "--------- trade statistics report ---------" + System.getProperty("line.separator")
-                + "loss trade count: " + getLossCount() + System.getProperty("line.separator") + "profit trade count: "
-                + getProfitCount() + System.getProperty("line.separator") + "break even trade count: "
-                + getBreakEvenCount() + System.getProperty("line.separator") + "---------------------------";
-    }
 }
