@@ -64,6 +64,24 @@ public class MACDIndicator extends CachedIndicator<Num> {
         longTermEma = new EMAIndicator(indicator, longBarCount);
     }
 
+    /**
+     * Short term EMA indicator
+     *
+     * @return the Short term EMA indicator
+     */
+    public EMAIndicator getShortTermEma() {
+        return shortTermEma;
+    }
+
+    /**
+     * Long term EMA indicator
+     *
+     * @return the Long term EMA indicator
+     */
+    public EMAIndicator getLongTermEma() {
+        return longTermEma;
+    }
+
     @Override
     protected Num calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));

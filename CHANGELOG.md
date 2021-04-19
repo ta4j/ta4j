@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** package "trading/rules" renamed to "rules"
 - **Breaking:** remove Serializable from all indicators
+- **Breaking:** Bar#trades: changed type from int to long
 
 
 ### Fixed
@@ -35,6 +36,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed `BarSeriesBuilder`**: removed the Serializable interface
 - **Fixed `ParabolicSarIndicator`**: problem with calculating in special cases
 - **Fixed `BaseTimeSeries`**: can now be serialized
+- **Fixed `ProfitLossPercentageCriterion`**: use entryPrice#getValue() instead of entryPrice#getPricePerAsset()
 
 ### Changed
 - **Trade**: Changed the way Nums are created.
@@ -63,6 +65,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Enhancement** Added getters getLow() and getUp() in CrossedDownIndicatorRule
 - **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
 - **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
+- **Enhancement** Added Percentage Volume Oscillator Indicator, PVOIndicator.
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
@@ -83,6 +86,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`LosingPositionsRatioCriterion.class`**
 - :tada: **Enhancement** added Position#hasProfit.
 - :tada: **Enhancement** added Position#hasLoss.
+- :tada: **Enhancement** exposed both EMAs in MACD indicator
 
 
 ## 0.13 (released November 5, 2019)

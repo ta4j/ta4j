@@ -21,39 +21,52 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
-
-import static org.junit.Assert.assertEquals;
-
-import java.util.function.Function;
+package org.ta4j.core.indicators;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class TradeCountIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private TradeCountIndicator tradeIndicator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 
-    BarSeries barSeries;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
-    public TradeCountIndicatorTest(Function<Number, Num> numFunction) {
+public class PVOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    private BarSeries barSeries;
+
+    public PVOIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
     @Before
     public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
-        tradeIndicator = new TradeCountIndicator(barSeries);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(new MockBar(0, 10, numFunction));
+        bars.add(new MockBar(0, 11, numFunction));
+        bars.add(new MockBar(0, 12, numFunction));
+        bars.add(new MockBar(0, 13, numFunction));
+        bars.add(new MockBar(0, 150, numFunction));
+        bars.add(new MockBar(0, 155, numFunction));
+        bars.add(new MockBar(0, 160, numFunction));
+        barSeries = new MockBarSeries(bars);
     }
 
     @Test
-    public void indicatorShouldRetrieveBarTrade() {
-        for (int i = 0; i < 10; i++) {
-            assertEquals((long) tradeIndicator.getValue(i), barSeries.getBar(i).getTrades());
-        }
+    public void createPvoIndicator() {
+        PVOIndicator pvo = new PVOIndicator(barSeries);
+        assertNumEquals(0.791855204, pvo.getValue(1));
+        assertNumEquals(2.164434756, pvo.getValue(2));
+        assertNumEquals(3.925400464, pvo.getValue(3));
+        assertNumEquals(55.296120101, pvo.getValue(4));
+        assertNumEquals(66.511722064, pvo.getValue(5));
     }
 }
