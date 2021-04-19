@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 
-    private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
-    private GrossProfitCriterion grossProfitCriterion = new GrossProfitCriterion();
+    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final GrossProfitCriterion grossProfitCriterion = new GrossProfitCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

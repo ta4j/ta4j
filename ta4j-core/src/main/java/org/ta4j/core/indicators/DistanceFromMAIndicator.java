@@ -23,14 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.Num;
-
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
 
 /**
  * Distance From Moving Average (close - MA)/MA
@@ -41,18 +40,18 @@ import java.util.Set;
  *      </a>
  */
 public class DistanceFromMAIndicator extends CachedIndicator<Num> {
-    private static final Set<Class> supportedMovingAverages = new HashSet<>(
+    private static final Set<Class<?>> supportedMovingAverages = new HashSet<>(
             Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
                     WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
                     LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class));
-    private final CachedIndicator movingAverage;
+    private final CachedIndicator<?> movingAverage;
 
     /**
      *
      * @param series        the bar series {@link BarSeries}.
      * @param movingAverage the moving average.
      */
-    public DistanceFromMAIndicator(BarSeries series, CachedIndicator movingAverage) {
+    public DistanceFromMAIndicator(BarSeries series, CachedIndicator<?> movingAverage) {
         super(series);
         if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
             throw new IllegalArgumentException(

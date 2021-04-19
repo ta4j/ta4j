@@ -49,8 +49,11 @@ public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
+        return tradingRecord.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(position -> calculate(series, position))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     @Override

@@ -80,8 +80,9 @@ public class UnstableIndicatorStrategy {
 
     public static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
-        BarSeries series = new BaseBarSeriesBuilder().withBars(
-                closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0)).collect(Collectors.toList()))
+        BarSeries series = new BaseBarSeriesBuilder()
+                .withBars(closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0))
+                        .collect(Collectors.toList()))
                 .build();
 
         // Building the trading strategy

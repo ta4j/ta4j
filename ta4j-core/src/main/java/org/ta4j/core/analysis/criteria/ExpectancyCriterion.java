@@ -42,9 +42,9 @@ import org.ta4j.core.num.Num;
  */
 public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
-    private ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
-    private NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
-    private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
+    private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
+    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

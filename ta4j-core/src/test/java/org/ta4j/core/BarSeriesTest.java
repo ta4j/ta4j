@@ -82,7 +82,9 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         defaultName = "Series Name";
 
-        defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName(defaultName).withBars(bars)
+        defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction)
+                .withName(defaultName)
+                .withBars(bars)
                 .build();
 
         subSeries = defaultSeries.getSubSeries(2, 5);
@@ -147,8 +149,9 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         // Default series
         assertTrue(defaultSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
-        assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(
-                bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
+        assertTrue(defaultSeries.getSeriesPeriodDescription()
+                .startsWith(
+                        bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
         assertTrue(subSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
@@ -347,7 +350,9 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void subSeriesOfMaxBarCountSeriesTest() {
         final BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction)
-                .withName("Series with maxBar count").withMaxBarCount(20).build();
+                .withName("Series with maxBar count")
+                .withMaxBarCount(20)
+                .build();
         final int timespan = 5;
 
         IntStream.range(0, 100).forEach(i -> {
