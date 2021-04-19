@@ -34,6 +34,11 @@ import org.ta4j.core.num.Num;
 public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
+    public Num calculate(BarSeries series, Position position) {
+        return isWinningPosition(position) ? series.numOf(1) : series.numOf(0);
+    }
+
+    @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         int maxConsecutiveWins = 0;
         int consecutiveWins = 0;
@@ -54,11 +59,6 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
         }
 
         return series.numOf(maxConsecutiveWins);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        return isWinningPosition(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override

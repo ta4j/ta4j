@@ -39,14 +39,14 @@ import org.ta4j.core.num.Num;
 public class GrossReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().map(position -> calculateProfit(series, position))
-                .reduce(series.numOf(1), Num::multipliedBy);
+    public Num calculate(BarSeries series, Position position) {
+        return calculateProfit(series, position);
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return calculateProfit(series, position);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().map(position -> calculateProfit(series, position))
+                .reduce(series.numOf(1), Num::multipliedBy);
     }
 
     @Override

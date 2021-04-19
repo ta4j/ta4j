@@ -47,18 +47,18 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
     private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num profitLossRatio = profitLossRatioCriterion.calculate(series, tradingRecord);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
-        return calculate(series, profitLossRatio, numberOfWinningPositions, numberOfPositions);
-    }
-
-    @Override
     public Num calculate(BarSeries series, Position position) {
         Num profitLossRatio = profitLossRatioCriterion.calculate(series, position);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
         Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
+        return calculate(series, profitLossRatio, numberOfWinningPositions, numberOfPositions);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        Num profitLossRatio = profitLossRatioCriterion.calculate(series, tradingRecord);
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
         return calculate(series, profitLossRatio, numberOfWinningPositions, numberOfPositions);
     }
 

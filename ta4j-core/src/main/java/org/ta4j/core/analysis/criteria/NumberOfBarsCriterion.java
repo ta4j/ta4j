@@ -36,12 +36,6 @@ import org.ta4j.core.num.Num;
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(Position::isClosed).map(t -> calculate(series, t))
-                .reduce(series.numOf(0), Num::plus);
-    }
-
-    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             final int exitIndex = position.getExit().getIndex();
@@ -49,6 +43,12 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
             return series.numOf(exitIndex - entryIndex + 1);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().filter(Position::isClosed).map(t -> calculate(series, t))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     @Override

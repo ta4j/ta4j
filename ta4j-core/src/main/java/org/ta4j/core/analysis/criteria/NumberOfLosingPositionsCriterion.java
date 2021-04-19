@@ -34,14 +34,14 @@ import org.ta4j.core.num.Num;
 public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
-        return series.numOf(numberOfLosingPositions);
+    public Num calculate(BarSeries series, Position position) {
+        return position.hasLoss() ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return position.hasLoss() ? series.numOf(1) : series.numOf(0);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
+        return series.numOf(numberOfLosingPositions);
     }
 
     @Override

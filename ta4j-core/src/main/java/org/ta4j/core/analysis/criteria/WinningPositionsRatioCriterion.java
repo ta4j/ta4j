@@ -35,15 +35,17 @@ import org.ta4j.core.num.Num;
  */
 public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
+    private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return position.hasProfit() ? series.numOf(1) : series.numOf(0);
+        return numberOfWinningPositionsCriterion.calculate(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfProfitPositions = tradingRecord.getPositions().stream().filter(Position::hasProfit).count();
-        return series.numOf(numberOfProfitPositions).dividedBy(series.numOf(tradingRecord.getPositionCount()));
+        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
+        return numberOfWinningPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
     @Override

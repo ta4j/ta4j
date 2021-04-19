@@ -39,19 +39,6 @@ import org.ta4j.core.num.Num;
 public class NetLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
-    }
-
-    /**
-     * Calculates the net loss of the given position
-     *
-     * @param series   a bar series
-     * @param position a position
-     * @return the net loss of the position
-     */
-    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num loss = position.getProfit();
@@ -59,6 +46,12 @@ public class NetLossCriterion extends AbstractAnalysisCriterion {
         }
         return series.numOf(0);
 
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
     }
 
     @Override

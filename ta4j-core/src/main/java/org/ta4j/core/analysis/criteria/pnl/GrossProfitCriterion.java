@@ -39,25 +39,18 @@ import org.ta4j.core.num.Num;
 public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
-    }
-
-    /**
-     * Calculates the gross profit value of given position
-     *
-     * @param series   a bar series
-     * @param position a position to calculate profit
-     * @return the gross profit
-     */
-    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = position.getGrossProfit();
             return profit.isPositive() ? profit : series.numOf(0);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().filter(Position::isClosed)
+                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
     }
 
     @Override
