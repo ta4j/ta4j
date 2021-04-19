@@ -47,7 +47,8 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     private final CachedIndicator<Num> movingAverage;
 
     /**
-     *
+     * Constructor.
+     * 
      * @param series        the bar series {@link BarSeries}.
      * @param movingAverage the moving average.
      */
