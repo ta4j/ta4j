@@ -38,20 +38,20 @@ import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class NetLossCriterionTest extends AbstractCriterionTest {
+public class ProfitLossRatioCriterionTest extends AbstractCriterionTest {
 
-    public NetLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetLossCriterion(), numFunction);
+    public ProfitLossRatioCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new ProfitLossRatioCriterion(), numFunction);
     }
 
     @Test
     public void calculateOnlyWithProfitPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        MockBarSeries series = new MockBarSeries(numFunction, 120, 70, 100, 130, 105, 120);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(0, loss.calculate(series, tradingRecord));
+        AnalysisCriterion avtProfit = getCriterion();
+        assertNumEquals(0, avtProfit.calculate(series, tradingRecord));
     }
 
     @Test
@@ -60,18 +60,18 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion avtProfit = getCriterion();
+        assertNumEquals(0, avtProfit.calculate(series, tradingRecord));
     }
 
     @Test
     public void calculateProfitWithShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 95, 100, 70, 80, 85, 100);
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 85, 80, 70, 100, 95);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion avtProfit = getCriterion();
+        assertNumEquals(1, avtProfit.calculate(series, tradingRecord));
     }
 
     @Test

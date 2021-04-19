@@ -38,10 +38,10 @@ import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class NetLossCriterionTest extends AbstractCriterionTest {
+public class AverageLossCriterionTest extends AbstractCriterionTest {
 
-    public NetLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetLossCriterion(), numFunction);
+    public AverageLossCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new AverageLossCriterion(), numFunction);
     }
 
     @Test
@@ -50,8 +50,8 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(0, loss.calculate(series, tradingRecord));
+        AnalysisCriterion avgLoss = getCriterion();
+        assertNumEquals(0, avgLoss.calculate(series, tradingRecord));
     }
 
     @Test
@@ -60,8 +60,8 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion avgLoss = getCriterion();
+        assertNumEquals(-17.5, avgLoss.calculate(series, tradingRecord));
     }
 
     @Test
@@ -70,8 +70,8 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion avgLoss = getCriterion();
+        assertNumEquals(-17.5, avgLoss.calculate(series, tradingRecord));
     }
 
     @Test
@@ -85,4 +85,5 @@ public class NetLossCriterionTest extends AbstractCriterionTest {
     public void testCalculateOneOpenPositionShouldReturnZero() {
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
     }
+
 }

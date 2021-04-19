@@ -38,18 +38,18 @@ import org.ta4j.core.num.Num;
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        return calculateMaximumDrawdown(series, cashFlow);
-    }
-
-    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position != null && position.getEntry() != null && position.getExit() != null) {
             CashFlow cashFlow = new CashFlow(series, position);
             return calculateMaximumDrawdown(series, cashFlow);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        return calculateMaximumDrawdown(series, cashFlow);
     }
 
     @Override
