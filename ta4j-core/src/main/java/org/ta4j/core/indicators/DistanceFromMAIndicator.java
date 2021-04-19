@@ -44,14 +44,14 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
             Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
                     WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
                     LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class));
-    private final CachedIndicator<?> movingAverage;
+    private final CachedIndicator<Num> movingAverage;
 
     /**
      *
      * @param series        the bar series {@link BarSeries}.
      * @param movingAverage the moving average.
      */
-    public DistanceFromMAIndicator(BarSeries series, CachedIndicator<?> movingAverage) {
+    public DistanceFromMAIndicator(BarSeries series, CachedIndicator<Num> movingAverage) {
         super(series);
         if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
             throw new IllegalArgumentException(
