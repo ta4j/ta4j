@@ -36,7 +36,7 @@ public class PositionStatsReport {
 
     /**
      * Constructor.
-     * 
+     *
      * @param profitCount    the number of positions making a profit
      * @param lossCount      the number of positions making a loss
      * @param breakEvenCount the number of positions with a break even
@@ -59,4 +59,10 @@ public class PositionStatsReport {
         return breakEvenCount;
     }
 
+    public String printReport() {
+        return "--------- trade statistics report ---------" + System.getProperty("line.separator")
+                + "loss trade count: " + getLossCount() + System.getProperty("line.separator") + "profit trade count: "
+                + getProfitCount() + System.getProperty("line.separator") + "break even trade count: "
+                + getBreakEvenCount() + System.getProperty("line.separator") + "---------------------------";
+    }
 }

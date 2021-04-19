@@ -25,6 +25,8 @@ package org.ta4j.core.reports;
 
 import org.ta4j.core.Strategy;
 
+import java.util.List;
+
 /**
  * This class represents trading statement report which contains position and
  * performance statistics
@@ -52,5 +54,12 @@ public class TradingStatement {
 
     public PerformanceReport getPerformanceReport() {
         return performanceReport;
+    }
+
+    public String printReport() {
+        return "######### " + getStrategy().getName() + " #########" + System.getProperty("line.separator")
+                + getPerformanceReport().printReport() + System.getProperty("line.separator")
+                + getPositionStatsReport().printReport() + System.getProperty("line.separator")
+                + "###########################";
     }
 }

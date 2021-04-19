@@ -26,6 +26,8 @@ package ta4jexamples.backtesting;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BacktestExecutor;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -37,12 +39,15 @@ import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
 import ta4jexamples.loaders.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
+
+    private final static Logger log = LoggerFactory.getLogger(SimpleMovingAverageRangeBacktest.class);
 
     public static void main(String[] args) {
         BarSeries series = CsvBarsLoader.loadAppleIncSeries();
@@ -58,7 +63,9 @@ public class SimpleMovingAverageRangeBacktest {
             strategies.add(strategy);
         }
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Trade.TradeType.BUY);
+        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
+                Trade.TradeType.BUY);
+        log.info(System.getProperty("line.separator") + backtestExecutor.generateReport(tradingStatements));
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {

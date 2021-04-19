@@ -58,4 +58,11 @@ public class PerformanceReport {
         return totalLoss;
     }
 
+    public String printReport() {
+        return "--------- performance report ---------" + System.getProperty("line.separator") + "total loss: "
+                + getTotalLoss() + System.getProperty("line.separator") + "total profit: " + getTotalProfit()
+                + System.getProperty("line.separator") + "total profit loss: " + getTotalProfitLoss()
+                + System.getProperty("line.separator") + "total profit loss percentage: "
+                + getTotalProfitLossPercentage() + System.getProperty("line.separator") + "---------------------------";
+    }
 }

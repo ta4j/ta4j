@@ -23,12 +23,14 @@
  */
 package org.ta4j.core;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import org.ta4j.core.cost.CostModel;
+import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class enables backtesting of multiple strategies and comparing them to
@@ -43,8 +45,17 @@ public class BacktestExecutor {
         this(series, new TradingStatementGenerator());
     }
 
+    public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel) {
+        this(series, new TradingStatementGenerator(), transactionCostModel, holdingCostModel);
+    }
+
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
-        this.seriesManager = new BarSeriesManager(series);
+        this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
+        this.seriesManager = new BarSeriesManager(series, transactionCostModel, holdingCostModel);
         this.tradingStatementGenerator = tradingStatementGenerator;
     }
 
@@ -75,5 +86,15 @@ public class BacktestExecutor {
             tradingStatements.add(tradingStatement);
         }
         return tradingStatements;
+    }
+
+    public String generateReport(List<TradingStatement> statements) {
+        StringBuilder resultBuilder = new StringBuilder();
+        for (TradingStatement statement : statements) {
+            resultBuilder.append(statement.printReport());
+            resultBuilder.append(System.getProperty("line.separator"));
+        }
+
+        return resultBuilder.toString().trim();
     }
 }
