@@ -37,8 +37,8 @@ import org.ta4j.core.num.Num;
  * losing expectations.
  *
  * @see <a href=
- *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
- *
+ *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/">https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
+ * 
  */
 public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
