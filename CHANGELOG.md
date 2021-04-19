@@ -143,7 +143,6 @@ for currentStopLossLimitActivation
 - **Enhancement** Added license checker goal on CI's pipeline
 - **Enhancement** Added source format checker goal on CI's pipeline
 - **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
-- **Enhancement** BacktestExecutor can generate final reports as strings for logs and co.
 
 ### Removed/Deprecated
 
