@@ -31,6 +31,7 @@ import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.IndicatorUtils;
 
 /**
  * Tests for {@link Indicator}.
@@ -51,7 +52,7 @@ public class IndicatorTest {
         int index = 10;
         int barCount = 3;
 
-        Double[] doubles = Indicator.toDouble(indicator, index, barCount);
+        Double[] doubles = IndicatorUtils.toDouble(indicator, index, barCount);
 
         assertTrue(doubles.length == barCount);
         assertTrue(doubles[0] == 8d);

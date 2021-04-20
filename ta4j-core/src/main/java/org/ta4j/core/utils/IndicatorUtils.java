@@ -24,6 +24,7 @@
 package org.ta4j.core.utils;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.num.Num;
 
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -82,5 +83,23 @@ public final class IndicatorUtils {
         public int getIndex() {
             return index;
         }
+    }
+
+    /**
+     * Returns all values from an {@link Indicator} as an array of Doubles. The
+     * returned doubles could have a minor loss of precise, if {@link Indicator} was
+     * based on {@link Num Num}.
+     *
+     * @param ref      the indicator
+     * @param index    the index
+     * @param barCount the barCount
+     * @return array of Doubles within the barCount
+     */
+    public static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
+        int startIndex = Math.max(0, index - barCount + 1);
+        return IntStream.range(startIndex, startIndex + barCount)
+                .mapToObj(ref::getValue)
+                .map(Num::doubleValue)
+                .toArray(Double[]::new);
     }
 }
