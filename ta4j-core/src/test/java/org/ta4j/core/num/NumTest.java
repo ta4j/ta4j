@@ -55,6 +55,16 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     }
 
     @Test
+    public void testDefaultNums() {
+        Function<Number, Num> decimalNum = DecimalNum::valueOf;
+        Function<Number, Num> doubleNum = DoubleNum::valueOf;
+        Num decimalOne = decimalNum.apply(1);
+        assertNumEquals(1, decimalOne);
+        Num doubleOne = doubleNum.apply(1);
+        assertNumEquals(1, doubleOne);
+    }
+
+    @Test
     public void testStringNumPass() {
         assertNumEquals("1.234", numOf(1.234));
     }

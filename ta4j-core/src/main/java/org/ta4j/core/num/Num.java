@@ -42,6 +42,19 @@ import java.util.function.Function;
 public interface Num extends Comparable<Num>, Serializable {
 
     /**
+     * @param anyNum any Num (used only to determine the Num type)
+     * @return 1 with type of anyNum
+     */
+    static Num ONE(Num anyNum) {
+        if (anyNum.getClass() == DecimalNum.class) {
+            return DecimalNum.ONE;
+        } else if (anyNum.getClass() == DoubleNum.class) {
+            return DoubleNum.ONE;
+        }
+        return NaN.NaN;
+    }
+
+    /**
      * @return the delegate used from this <code>Num</code> implementation
      */
     Number getDelegate();
