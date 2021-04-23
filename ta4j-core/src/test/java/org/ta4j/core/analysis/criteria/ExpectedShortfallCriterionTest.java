@@ -72,7 +72,10 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithLossPosition() {
         // regularly decreasing prices
-        List<Double> prices = IntStream.rangeClosed(1, 100).asDoubleStream().boxed().sorted(Collections.reverseOrder())
+        List<Double> prices = IntStream.rangeClosed(1, 100)
+                .asDoubleStream()
+                .boxed()
+                .sorted(Collections.reverseOrder())
                 .collect(Collectors.toList());
         series = new MockBarSeries(numFunction, prices);
         Position position = new Position(Trade.buyAt(series.getBeginIndex(), series),

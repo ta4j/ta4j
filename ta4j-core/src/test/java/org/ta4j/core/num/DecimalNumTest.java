@@ -153,16 +153,26 @@ public class DecimalNumTest {
             endTime = endTime.plus(timePeriod);
             superPrecisionNum = superPrecisionNum.plus(DecimalNum.valueOf(deltas[i % 6]));
         }
-        superPrecisionSeries = new BaseBarSeriesBuilder().withName("superPrecision").withNumTypeOf(superPrecisionFunc)
-                .withBars(superPrecisionBarList).build();
-        precisionSeries = new BaseBarSeriesBuilder().withName("precision").withNumTypeOf(precisionFunc)
-                .withBars(precisionBarList).build();
-        precision32Series = new BaseBarSeriesBuilder().withName("precision32").withNumTypeOf(precision32Func)
-                .withBars(precision32BarList).build();
-        doubleSeries = new BaseBarSeriesBuilder().withName("double").withNumTypeOf(doubleFunc).withBars(doubleBarList)
+        superPrecisionSeries = new BaseBarSeriesBuilder().withName("superPrecision")
+                .withNumTypeOf(superPrecisionFunc)
+                .withBars(superPrecisionBarList)
                 .build();
-        lowPrecisionSeries = new BaseBarSeriesBuilder().withName("lowPrecision").withNumTypeOf(lowPrecisionFunc)
-                .withBars(lowPrecisionBarList).build();
+        precisionSeries = new BaseBarSeriesBuilder().withName("precision")
+                .withNumTypeOf(precisionFunc)
+                .withBars(precisionBarList)
+                .build();
+        precision32Series = new BaseBarSeriesBuilder().withName("precision32")
+                .withNumTypeOf(precision32Func)
+                .withBars(precision32BarList)
+                .build();
+        doubleSeries = new BaseBarSeriesBuilder().withName("double")
+                .withNumTypeOf(doubleFunc)
+                .withBars(doubleBarList)
+                .build();
+        lowPrecisionSeries = new BaseBarSeriesBuilder().withName("lowPrecision")
+                .withNumTypeOf(lowPrecisionFunc)
+                .withBars(lowPrecisionBarList)
+                .build();
     }
 
     public void test() {

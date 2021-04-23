@@ -154,11 +154,17 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // TATestsUtils.GENERAL_OFFSET);
         // second online calculation uses MMAs
         // MMA of average gain
-        double dividend = avgGain.getValue(14).multipliedBy(series.numOf(13)).plus(gain.getValue(15))
-                .dividedBy(series.numOf(14)).doubleValue();
+        double dividend = avgGain.getValue(14)
+                .multipliedBy(series.numOf(13))
+                .plus(gain.getValue(15))
+                .dividedBy(series.numOf(14))
+                .doubleValue();
         // MMA of average loss
-        double divisor = avgLoss.getValue(14).multipliedBy(series.numOf(13)).plus(loss.getValue(15))
-                .dividedBy(series.numOf(14)).doubleValue();
+        double divisor = avgLoss.getValue(14)
+                .multipliedBy(series.numOf(13))
+                .plus(loss.getValue(15))
+                .dividedBy(series.numOf(14))
+                .doubleValue();
         onlineRs = dividend / divisor;
         assertEquals(0.9409, onlineRs, TestUtils.GENERAL_OFFSET);
         onlineRsi = 100d - (100d / (1d + onlineRs));

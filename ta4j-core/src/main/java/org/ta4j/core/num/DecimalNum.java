@@ -73,6 +73,10 @@ public final class DecimalNum implements Num {
 
     private static final long serialVersionUID = 785564782721079992L;
 
+    public static final DecimalNum ZERO = DecimalNum.valueOf(0);
+    public static final DecimalNum ONE = DecimalNum.valueOf(1);
+    public static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
+
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
     private final MathContext mathContext;

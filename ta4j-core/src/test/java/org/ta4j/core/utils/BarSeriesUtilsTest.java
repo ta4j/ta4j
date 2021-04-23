@@ -121,9 +121,15 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Bar bar4 = new MockBar(time.plusDays(4), 3d, 4d, 4d, 5d, 6d, 4d, 4, numFunction);
         final Bar bar5 = new MockBar(time.plusDays(5), 5d, 5d, 5d, 5d, 5d, 5d, 5, numFunction);
         final Bar bar7 = new MockBar(time.plusDays(7), 0, 0, 0, 0, 0, 0, 0, numFunction);
-        Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class).timePeriod(Duration.ofDays(1))
-                .endTime(time.plusDays(8)).openPrice(NaN.NaN).highPrice(NaN.NaN).lowPrice(NaN.NaN).closePrice(NaN.NaN)
-                .volume(NaN.NaN).build();
+        Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+                .timePeriod(Duration.ofDays(1))
+                .endTime(time.plusDays(8))
+                .openPrice(NaN.NaN)
+                .highPrice(NaN.NaN)
+                .lowPrice(NaN.NaN)
+                .closePrice(NaN.NaN)
+                .volume(NaN.NaN)
+                .build();
 
         bars.add(bar0);
         bars.add(bar1);
@@ -158,8 +164,11 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.add(new MockBar(time.plusDays(1), 1d, 1d, 1d, 1d, 1d, 1d, 1, decimalNumFunction));
         bars.add(new MockBar(time.plusDays(2), 2d, 2d, 2d, 2d, 2d, 2d, 2, decimalNumFunction));
 
-        final BarSeries decimalBarSeries = new BaseBarSeriesBuilder().withBars(bars).withMaxBarCount(100)
-                .withNumTypeOf(DecimalNum.class).withName("useDecimalNum").build();
+        final BarSeries decimalBarSeries = new BaseBarSeriesBuilder().withBars(bars)
+                .withMaxBarCount(100)
+                .withNumTypeOf(DecimalNum.class)
+                .withName("useDecimalNum")
+                .build();
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
         final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNumFunction);
@@ -185,9 +194,15 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         final Bar bar0 = new MockBar(time, 1d, 2d, 3d, 4d, 5d, 0d, 7, numFunction);
         final Bar bar1 = new MockBar(time, 1d, 1d, 1d, 1d, 1d, 1d, 1, numFunction);
-        Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class).timePeriod(Duration.ofDays(1))
-                .endTime(time.plusDays(8)).openPrice(NaN.NaN).highPrice(NaN.NaN).lowPrice(NaN.NaN).closePrice(NaN.NaN)
-                .volume(NaN.NaN).build();
+        Bar bar8 = BaseBar.builder(DoubleNum::valueOf, Double.class)
+                .timePeriod(Duration.ofDays(1))
+                .endTime(time.plusDays(8))
+                .openPrice(NaN.NaN)
+                .highPrice(NaN.NaN)
+                .lowPrice(NaN.NaN)
+                .closePrice(NaN.NaN)
+                .volume(NaN.NaN)
+                .build();
 
         bars.add(bar0);
         bars.add(bar1);

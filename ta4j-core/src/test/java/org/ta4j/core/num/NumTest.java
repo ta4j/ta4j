@@ -60,6 +60,16 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     }
 
     @Test
+    public void testDefaultNums() {
+        Function<Number, Num> decimalNum = DecimalNum::valueOf;
+        Function<Number, Num> doubleNum = DoubleNum::valueOf;
+        Num decimalOne = decimalNum.apply(1);
+        assertNumEquals(1, decimalOne);
+        Num doubleOne = doubleNum.apply(1);
+        assertNumEquals(1, doubleOne);
+    }
+
+    @Test
     public void testDecimalNumPrecision() {
         String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
         Num num = numOf(highPrecisionString, HIGH_PRECISION);
