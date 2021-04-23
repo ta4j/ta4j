@@ -60,30 +60,6 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     }
 
     @Test
-    public void testDefaultNums() {
-        Function<Number, Num> decimalNum = DecimalNum::valueOf;
-        Function<Number, Num> doubleNum = DoubleNum::valueOf;
-
-        Num anyDecimalNum = decimalNum.apply(333);
-        Num anyDoubleNum = doubleNum.apply(333);
-
-        Num decimal0 = Num.ZERO(anyDecimalNum);
-        assertNumEquals(0, decimal0);
-        Num double0 = Num.ZERO(anyDoubleNum);
-        assertNumEquals(0, double0);
-
-        Num decimal1 = Num.ONE(anyDecimalNum);
-        assertNumEquals(1, decimal1);
-        Num double1 = Num.ONE(anyDoubleNum);
-        assertNumEquals(1, double1);
-
-        Num decimal100 = Num.HUNDRED(anyDecimalNum);
-        assertNumEquals(100, decimal100);
-        Num double100 = Num.HUNDRED(anyDoubleNum);
-        assertNumEquals(100, double100);
-    }
-
-    @Test
     public void testDecimalNumPrecision() {
         String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
         Num num = numOf(highPrecisionString, HIGH_PRECISION);

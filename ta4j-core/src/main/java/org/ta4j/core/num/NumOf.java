@@ -23,52 +23,64 @@
  */
 package org.ta4j.core.num;
 
-public enum NumOf {
-    ZERO {
-        @Override
-        public Num get(Num anyNum) {
-            if (isDecimalNum(anyNum)) {
-                return DecimalNum.ZERO;
-            } else if (isDoubleNum(anyNum)) {
-                return DoubleNum.ZERO;
-            }
-            return NaN.NaN;
-        }
-    },
-    ONE {
-        @Override
-        public Num get(Num anyNum) {
-            if (isDecimalNum(anyNum)) {
-                return DecimalNum.ONE;
-            } else if (isDoubleNum(anyNum)) {
-                return DoubleNum.ONE;
-            }
-            return NaN.NaN;
-        }
-    },
-    HUNDRED {
-        @Override
-        public Num get(Num anyNum) {
-            if (isDecimalNum(anyNum)) {
-                return DecimalNum.HUNDRED;
-            } else if (isDoubleNum(anyNum)) {
-                return DoubleNum.HUNDRED;
-            }
-            return NaN.NaN;
-        }
-    };
+public final class NumOf {
 
-    private static boolean isDecimalNum(Num anyNum) {
-        return anyNum.getClass() == DecimalNum.class;
-    }
-
-    private static boolean isDoubleNum(Num anyNum) {
-        return anyNum.getClass() == DoubleNum.class;
+    private NumOf() {
     }
 
     /**
      * @param anyNum any Num to determine the Num type
-     * @return the Num having the same type as anyNum
+     * @return 0 with type of anyNum
      */
-    public abstract Num get(Num anyNum);
+    public static Num ZERO(Num anyNum) {
+        if (isDecimalNum(anyNum)) {
+            return DecimalNum.ZERO;
+        } else if (isDoubleNum(anyNum)) {
+            return DoubleNum.ZERO;
+        }
+        return NaN.NaN;
+    }
+
+    /**
+     * @param anyNum any Num to determine the Num type
+     * @return 1 with type of anyNum
+     */
+    public static Num ONE(Num anyNum) {
+        if (isDecimalNum(anyNum)) {
+            return DecimalNum.ONE;
+        } else if (isDoubleNum(anyNum)) {
+            return DoubleNum.ONE;
+        }
+        return NaN.NaN;
+    }
+
+    /**
+     * @param anyNum any Num to determine the Num type
+     * @return 100 with type of anyNum
+     */
+    public static Num HUNDRED(Num anyNum) {
+        if (isDecimalNum(anyNum)) {
+            return DecimalNum.HUNDRED;
+        } else if (isDoubleNum(anyNum)) {
+            return DoubleNum.HUNDRED;
+        }
+        return NaN.NaN;
+    }
+
+    /**
+     * @param anyNum
+     * @return true if anyNum is of type DecimalNum
+     */
+    private static boolean isDecimalNum(Num anyNum) {
+        return anyNum.getClass() == DecimalNum.class;
+    }
+
+    /**
+     * @param anyNum
+     * @return true if anyNum is of type DoubleNum
+     */
+    private static boolean isDoubleNum(Num anyNum) {
+        return anyNum.getClass() == DoubleNum.class;
+    }
+
 }
