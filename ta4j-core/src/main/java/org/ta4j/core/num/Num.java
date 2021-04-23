@@ -42,14 +42,30 @@ import java.util.function.Function;
 public interface Num extends Comparable<Num>, Serializable {
 
     /**
-     * @param anyNum any Num (used only to determine the Num type)
+     * @param anyNum any Num to determine the Num type
+     * @return 0 with type of anyNum
+     */
+    static Num ZERO(Num anyNum) {
+        return NumOf.ZERO.get(anyNum);
+    }
+
+    /**
+     * @param anyNum any Num to determine the Num type
      * @return 1 with type of anyNum
      */
     static Num ONE(Num anyNum) {
+        return NumOf.ONE.get(anyNum);
+    }
+
+    /**
+     * @param anyNum any Num to determine the Num type
+     * @return 100 with type of anyNum
+     */
+    static Num HUNDRED(Num anyNum) {
         if (anyNum.getClass() == DecimalNum.class) {
-            return DecimalNum.ONE;
+            return DecimalNum.HUNDRED;
         } else if (anyNum.getClass() == DoubleNum.class) {
-            return DoubleNum.ONE;
+            return DoubleNum.HUNDRED;
         }
         return NaN.NaN;
     }
