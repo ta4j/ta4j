@@ -89,6 +89,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Position#hasProfit.
 - :tada: **Enhancement** added Position#hasLoss.
 - :tada: **Enhancement** exposed both EMAs in MACD indicator
+- :tada: **Enhancement** provide common static Num's in DecimalNum.class, DoubleNum.class, Num.class.
 
 
 ## 0.13 (released November 5, 2019)
