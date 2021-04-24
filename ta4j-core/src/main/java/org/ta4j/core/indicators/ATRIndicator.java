@@ -33,14 +33,31 @@ import org.ta4j.core.num.Num;
 public class ATRIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator averageTrueRangeIndicator;
+    private final int barCount;
 
     public ATRIndicator(BarSeries series, int barCount) {
         super(series);
         this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), barCount);
+        this.barCount = barCount;
     }
 
     @Override
     protected Num calculate(int index) {
         return averageTrueRangeIndicator.getValue(index);
     }
+    
+    /**
+     * Provide access to the bar count used to construct this ATR.
+     * Clients like PlusDI and MinusDI use this to ensure they average +/-DM 
+     * over the same number of periods.
+     */
+    public int getBarCount() {
+    	return barCount;
+    }
+    
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "barCount: " + barCount;
+    }
+
 }

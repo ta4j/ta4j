@@ -21,42 +21,80 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.adx.MinusDIIndicator;
-import org.ta4j.core.indicators.adx.PlusDIIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * DX indicator.
+ * DX indicator. 
+ * 
+ * This is part of the ADX indicator system.  
+ * Users should have no reason to instantiate this class directly.
+ * 
  */
 public class DXIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
     private final PlusDIIndicator plusDIIndicator;
     private final MinusDIIndicator minusDIIndicator;
+    private final Num zero;
+    private final Num hundred;
 
+    /*
+     * This constructor creates an ATR instance and PlusDI and MinusDI instances that share shared ATR.
+     * Users should not normally need to use this constructor.
+     */
     public DXIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.barCount = barCount;
-        plusDIIndicator = new PlusDIIndicator(series, barCount);
-        minusDIIndicator = new MinusDIIndicator(series, barCount);
+    	this(new ATRIndicator(series, barCount));
+    }
+    
+    /*   
+     * This constructor is called by ADXIndicator so that an ATR instance is shared by PlusDI and MinusDI.
+     */
+    public DXIndicator(ATRIndicator atr) {
+    	super(atr.getBarSeries());
+        this.barCount = atr.getBarCount();
+        this.plusDIIndicator = new PlusDIIndicator(atr);
+        this.minusDIIndicator = new MinusDIIndicator(atr);    	
+        this.zero = atr.numOf(0);
+        this.hundred = atr.numOf(100);
     }
 
     @Override
     protected Num calculate(int index) {
         Num pdiValue = plusDIIndicator.getValue(index);
         Num mdiValue = minusDIIndicator.getValue(index);
-        if (pdiValue.plus(mdiValue).equals(numOf(0))) {
-            return numOf(0);
+        if (pdiValue.plus(mdiValue).equals(zero)) {
+            return zero;
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(hundred);
     }
 
+    /**
+     * Provide access to PlusDI so it does not need to be recreated for an ADX strategy.
+     * 
+     * @return The PlusDIIndicator
+     */
+    public PlusDIIndicator getPlusDIIndicator() {
+    	return plusDIIndicator;
+    }
+    
+    /**
+     * Provide access to MinusDI so it does not need to be recreated for an ADX strategy.
+     * 
+     * @return The MinusDIIndicator
+     */
+    public MinusDIIndicator getMinusDIIndicator() {
+    	return minusDIIndicator;
+    }
+    
+    
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+    
 }

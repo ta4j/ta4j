@@ -28,6 +28,7 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.indicators.helpers.MinusDMIndicator;
+import org.ta4j.core.indicators.helpers.PlusDMIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,17 +45,36 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
     private final MMAIndicator avgMinusDMIndicator;
     private final ATRIndicator atrIndicator;
     private final int barCount;
+    private final Num hundred;
 
+    /*
+     * This constructor creates a unique ATR instance.
+     * Users should have little reason to create MinusDI instances directly.
+     * 
+     * MinusDI is created by ADX and has little if any independent value.
+     * Use the ADX getMinusDIIndicator() if you need access to MinusDI.
+     * 
+     */
     public MinusDIIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.barCount = barCount;
-        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(series), barCount);
-        this.atrIndicator = new ATRIndicator(series, barCount);
+    	this(new ATRIndicator(series, barCount));
+    }
+    
+    /*
+     * Create a MinudDIIndicator from an ATR.
+     * 
+     * This constructor can be used so PlusDI and MinusDI share the same ATR instance.
+     */    
+    public MinusDIIndicator(ATRIndicator atr) {
+    	super(atr.getBarSeries());
+    	this.atrIndicator = atr;
+        this.avgMinusDMIndicator = new MMAIndicator(new MinusDMIndicator(atr.getBarSeries()), atr.getBarCount());
+        this.barCount = atr.getBarCount();
+        this.hundred = atr.numOf(100);
     }
 
     @Override
     protected Num calculate(int index) {
-        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(numOf(100));
+        return avgMinusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(hundred);
     }
 
     @Override

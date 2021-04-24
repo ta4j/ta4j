@@ -24,9 +24,9 @@
 package org.ta4j.core.indicators.adx;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
-import org.ta4j.core.indicators.helpers.DXIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,26 +37,65 @@ import org.ta4j.core.num.Num;
  */
 public class ADXIndicator extends CachedIndicator<Num> {
 
+	private final DXIndicator dx;
     private final MMAIndicator averageDXIndicator;
     private final int diBarCount;
     private final int adxBarCount;
 
     public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
-        super(series);
-        this.diBarCount = diBarCount;
-        this.adxBarCount = adxBarCount;
-        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
-    }
+    	this(new ATRIndicator(series, diBarCount), adxBarCount);
+    } 
 
     public ADXIndicator(BarSeries series, int barCount) {
         this(series, barCount, barCount);
     }
+    
+    /*
+     * This constructor can be used in the unlikely event the user wants to share an ATR
+     * between ADX and another subsystem (Keltner channels, for example).
+     * 
+     * Users will normally use one of the bar series constructors,
+     * which will create all the necessary components.
+     * 
+     * Use getPlusDIIndicator and getMinusDIIndicator if you need access to those indicators.
+     * 
+     */
+    public ADXIndicator(ATRIndicator atr, int adxBarCount) {
+    	super(atr.getBarSeries());
+    	this.diBarCount = atr.getBarCount();
+        this.adxBarCount = adxBarCount;
+        this.dx = new DXIndicator(atr);
+        this.averageDXIndicator = new MMAIndicator(dx, adxBarCount);    	
+    }
 
+    /*
+     * This is obviously pure delegation.  
+     * ADX is caching the exact same values needlessly, I believe.
+     * ATR and 5-6 others do this too.
+     */
     @Override
     protected Num calculate(int index) {
         return averageDXIndicator.getValue(index);
     }
-
+    
+    /**
+     * Provide access to PlusDI so it does not need to be recreated for an ADX strategy.
+     * 
+     * @return The PlusDIIndicator
+     */
+    public PlusDIIndicator getPlusDIIndicator() {
+    	return dx.getPlusDIIndicator();
+    }
+    
+    /**
+     * Provide access to MinusDI so it does not need to be recreated for an ADX strategy.
+     * 
+     * @return The MinusDIIndicator
+     */
+    public MinusDIIndicator getMinusDIIndicator() {
+    	return dx.getMinusDIIndicator();
+    }
+    
     @Override
     public String toString() {
         return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;

@@ -44,17 +44,36 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
     private final MMAIndicator avgPlusDMIndicator;
     private final ATRIndicator atrIndicator;
     private final int barCount;
+    private final Num hundred;
 
+    /*
+     * This constructor creates a unique ATR instance.
+     * Users should have little reason to create PlusDI instances directly.
+     * 
+     * PlusDI is created by ADX and has little if any independent value.
+     * Use the ADX getPlusDIIndicator() if you need access to PlusDI.
+     * 
+     */
     public PlusDIIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
-        this.atrIndicator = new ATRIndicator(series, barCount);
-        this.barCount = barCount;
+    	this(new ATRIndicator(series, barCount));
+    }
+    
+    /*
+     * Create a PlusDIIndicator from an ATR.
+     * 
+     * This constructor can be used so PlusDI and MinusDI share the same ATR instance.
+     */    
+    public PlusDIIndicator(ATRIndicator atr) {
+    	super(atr.getBarSeries());
+    	this.atrIndicator = atr;
+        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(atr.getBarSeries()), atr.getBarCount());
+        this.barCount = atr.getBarCount();
+        this.hundred = atr.numOf(100);
     }
 
     @Override
     protected Num calculate(int index) {
-        return avgPlusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(numOf(100));
+        return avgPlusDMIndicator.getValue(index).dividedBy(atrIndicator.getValue(index)).multipliedBy(hundred);
     }
 
     @Override
