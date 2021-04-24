@@ -27,7 +27,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
-import org.ta4j.core.indicators.helpers.PlusDMIndicator;
 import org.ta4j.core.num.Num;
 
 /**
