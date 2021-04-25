@@ -45,23 +45,10 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Num hundred;
 
-    /*
-     * This constructor creates a unique ATR instance.
-     * Users should have little reason to create MinusDI instances directly.
-     * 
-     * MinusDI is created by ADX and has little if any independent value.
-     * Use the ADX getMinusDIIndicator() if you need access to MinusDI.
-     * 
-     */
     public MinusDIIndicator(BarSeries series, int barCount) {
     	this(new ATRIndicator(series, barCount));
     }
     
-    /*
-     * Create a MinudDIIndicator from an ATR.
-     * 
-     * This constructor can be used so PlusDI and MinusDI share the same ATR instance.
-     */    
     public MinusDIIndicator(ATRIndicator atr) {
     	super(atr.getBarSeries());
     	this.atrIndicator = atr;

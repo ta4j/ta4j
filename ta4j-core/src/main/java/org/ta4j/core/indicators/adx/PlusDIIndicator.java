@@ -45,23 +45,10 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Num hundred;
 
-    /*
-     * This constructor creates a unique ATR instance.
-     * Users should have little reason to create PlusDI instances directly.
-     * 
-     * PlusDI is created by ADX and has little if any independent value.
-     * Use the ADX getPlusDIIndicator() if you need access to PlusDI.
-     * 
-     */
     public PlusDIIndicator(BarSeries series, int barCount) {
     	this(new ATRIndicator(series, barCount));
     }
     
-    /*
-     * Create a PlusDIIndicator from an ATR.
-     * 
-     * This constructor can be used so PlusDI and MinusDI share the same ATR instance.
-     */    
     public PlusDIIndicator(ATRIndicator atr) {
     	super(atr.getBarSeries());
     	this.atrIndicator = atr;

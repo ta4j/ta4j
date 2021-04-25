@@ -46,11 +46,6 @@ public class ATRIndicator extends CachedIndicator<Num> {
         return averageTrueRangeIndicator.getValue(index);
     }
     
-    /**
-     * Provide access to the bar count used to construct this ATR.
-     * Clients like PlusDI and MinusDI use this to ensure they average +/-DM 
-     * over the same number of periods.
-     */
     public int getBarCount() {
     	return barCount;
     }

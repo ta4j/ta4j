@@ -43,17 +43,10 @@ public class DXIndicator extends CachedIndicator<Num> {
     private final Num zero;
     private final Num hundred;
 
-    /*
-     * This constructor creates an ATR instance and PlusDI and MinusDI instances that share shared ATR.
-     * Users should not normally need to use this constructor.
-     */
     public DXIndicator(BarSeries series, int barCount) {
     	this(new ATRIndicator(series, barCount));
     }
     
-    /*   
-     * This constructor is called by ADXIndicator so that an ATR instance is shared by PlusDI and MinusDI.
-     */
     public DXIndicator(ATRIndicator atr) {
     	super(atr.getBarSeries());
         this.barCount = atr.getBarCount();
@@ -73,20 +66,10 @@ public class DXIndicator extends CachedIndicator<Num> {
         return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(hundred);
     }
 
-    /**
-     * Provide access to PlusDI so it does not need to be recreated for an ADX strategy.
-     * 
-     * @return The PlusDIIndicator
-     */
     public PlusDIIndicator getPlusDIIndicator() {
     	return plusDIIndicator;
     }
     
-    /**
-     * Provide access to MinusDI so it does not need to be recreated for an ADX strategy.
-     * 
-     * @return The MinusDIIndicator
-     */
     public MinusDIIndicator getMinusDIIndicator() {
     	return minusDIIndicator;
     }

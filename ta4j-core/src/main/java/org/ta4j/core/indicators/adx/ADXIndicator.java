@@ -50,16 +50,6 @@ public class ADXIndicator extends CachedIndicator<Num> {
         this(series, barCount, barCount);
     }
     
-    /*
-     * This constructor can be used in the unlikely event the user wants to share an ATR
-     * between ADX and another subsystem (Keltner channels, for example).
-     * 
-     * Users will normally use one of the bar series constructors,
-     * which will create all the necessary components.
-     * 
-     * Use getPlusDIIndicator and getMinusDIIndicator if you need access to those indicators.
-     * 
-     */
     public ADXIndicator(ATRIndicator atr, int adxBarCount) {
     	super(atr.getBarSeries());
     	this.diBarCount = atr.getBarCount();
@@ -68,30 +58,15 @@ public class ADXIndicator extends CachedIndicator<Num> {
         this.averageDXIndicator = new MMAIndicator(dx, adxBarCount);    	
     }
 
-    /*
-     * This is obviously pure delegation.  
-     * ADX is caching the exact same values needlessly, I believe.
-     * ATR and 5-6 others do this too.
-     */
     @Override
     protected Num calculate(int index) {
         return averageDXIndicator.getValue(index);
     }
     
-    /**
-     * Provide access to PlusDI so it does not need to be recreated for an ADX strategy.
-     * 
-     * @return The PlusDIIndicator
-     */
     public PlusDIIndicator getPlusDIIndicator() {
     	return dx.getPlusDIIndicator();
     }
     
-    /**
-     * Provide access to MinusDI so it does not need to be recreated for an ADX strategy.
-     * 
-     * @return The MinusDIIndicator
-     */
     public MinusDIIndicator getMinusDIIndicator() {
     	return dx.getMinusDIIndicator();
     }
