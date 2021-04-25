@@ -42,18 +42,11 @@ public class BarSeriesManager {
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     /** The managed bar series */
-    private BarSeries barSeries;
+    private final BarSeries barSeries;
 
     /** The trading cost models */
     private CostModel transactionCostModel;
     private CostModel holdingCostModel;
-
-    /**
-     * Constructor.
-     */
-    public BarSeriesManager() {
-        this(null, new ZeroCostModel(), new ZeroCostModel());
-    }
 
     /**
      * Constructor.
@@ -75,13 +68,6 @@ public class BarSeriesManager {
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
-    }
-
-    /**
-     * @param barSeries the bar series to be managed
-     */
-    public void setBarSeries(BarSeries barSeries) {
-        this.barSeries = barSeries;
     }
 
     /**

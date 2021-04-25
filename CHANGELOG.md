@@ -11,7 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 
 ### Added
-
+- **BarSeriesManager**: Removed empty args constructor.
 
 ## 0.14 (released April 25, 2021)
 
