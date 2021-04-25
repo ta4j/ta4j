@@ -1,6 +1,19 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.14 (unreleased)
+## 0.15 (unreleased)
+
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Removed/Deprecated
+
+### Added
+
+
+## 0.14 (released April 25, 2021)
 
 ### Breaking
 - **Breaking:** **`PrecisionNum`** renamed to **`DecimalNum`**
