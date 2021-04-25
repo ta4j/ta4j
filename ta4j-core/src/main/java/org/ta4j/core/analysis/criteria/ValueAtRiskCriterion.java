@@ -54,18 +54,18 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
-        return calculateVaR(returns, confidence);
-    }
-
-    @Override
     public Num calculate(BarSeries series, Position position) {
         if (position != null && position.isClosed()) {
             Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
             return calculateVaR(returns, confidence);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
+        return calculateVaR(returns, confidence);
     }
 
     /**

@@ -49,7 +49,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      *
      * @param series the related bar series
      */
-    public RecursiveCachedIndicator(BarSeries series) {
+    protected RecursiveCachedIndicator(BarSeries series) {
         super(series);
     }
 
@@ -58,7 +58,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      *
      * @param indicator a related indicator (with a bar series)
      */
-    public RecursiveCachedIndicator(Indicator<?> indicator) {
+    protected RecursiveCachedIndicator(Indicator<?> indicator) {
         this(indicator.getBarSeries());
     }
 

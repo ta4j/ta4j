@@ -41,6 +41,17 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
     private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
 
     @Override
+    public Num calculate(BarSeries series, Position position) {
+        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        if (maxDrawdown.isZero()) {
+            return NaN.NaN;
+        } else {
+            final Num totalProfit = grossReturnCriterion.calculate(series, position);
+            return totalProfit.dividedBy(maxDrawdown);
+        }
+    }
+
+    @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         final Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
@@ -54,16 +65,5 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        final Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        if (maxDrawdown.isZero()) {
-            return NaN.NaN;
-        } else {
-            final Num totalProfit = grossReturnCriterion.calculate(series, position);
-            return totalProfit.dividedBy(maxDrawdown);
-        }
     }
 }

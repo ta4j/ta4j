@@ -29,31 +29,24 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of losing position criterion.
+ * Number of closed losing positions criterion.
  */
 public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        long numberOfLosingTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .filter(this::isLosingTrade).count();
-        return series.numOf(numberOfLosingTrades);
-    }
-
-    private boolean isLosingTrade(Position position) {
-        if (position.isClosed()) {
-            return position.getProfit().isNegative();
-        }
-        return false;
+    public Num calculate(BarSeries series, Position position) {
+        return position.hasLoss() ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return isLosingTrade(position) ? series.numOf(1) : series.numOf(0);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
+        return series.numOf(numberOfLosingPositions);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);
     }
+
 }

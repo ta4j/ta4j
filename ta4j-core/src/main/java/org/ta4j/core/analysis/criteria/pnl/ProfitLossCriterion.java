@@ -38,21 +38,14 @@ import org.ta4j.core.num.Num;
 public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
+    public Num calculate(BarSeries series, Position position) {
+        return position.getProfit();
+    }
+
+    @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions().stream().filter(Position::isClosed)
                 .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
-    }
-
-    /**
-     * Calculates the profit or loss on the position.
-     *
-     * @param series   a bar series
-     * @param position a position
-     * @return the profit or loss on the position
-     */
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        return position.getProfit();
     }
 
     @Override

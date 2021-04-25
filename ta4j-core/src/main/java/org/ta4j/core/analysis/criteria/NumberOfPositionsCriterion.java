@@ -34,13 +34,13 @@ import org.ta4j.core.num.Num;
 public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return series.numOf(tradingRecord.getPositionCount());
+    public Num calculate(BarSeries series, Position position) {
+        return series.numOf(1);
     }
 
     @Override
-    public Num calculate(BarSeries series, Position position) {
-        return series.numOf(1);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return series.numOf(tradingRecord.getPositionCount());
     }
 
     @Override

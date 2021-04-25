@@ -35,7 +35,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     private final int barCount;
     private final Num multiplier;
 
-    public AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
+    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;

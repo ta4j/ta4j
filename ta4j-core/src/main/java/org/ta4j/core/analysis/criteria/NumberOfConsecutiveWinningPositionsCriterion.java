@@ -21,32 +21,44 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.pnl;
+package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross return criterion (with commissions).
- *
- * <p>
- * The gross return of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * Number of maximum consecutive winning position criterion.
  */
-public class GrossReturnCriterion extends AbstractAnalysisCriterion {
+public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return calculateProfit(series, position);
+        return isWinningPosition(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().map(position -> calculateProfit(series, position))
-                .reduce(series.numOf(1), Num::multipliedBy);
+        int maxConsecutiveWins = 0;
+        int consecutiveWins = 0;
+        for (Position position : tradingRecord.getPositions()) {
+            if (isWinningPosition(position)) {
+                consecutiveWins = consecutiveWins + 1;
+            } else {
+                if (maxConsecutiveWins < consecutiveWins) {
+                    maxConsecutiveWins = consecutiveWins;
+                }
+                consecutiveWins = 0; // reset
+            }
+        }
+
+        // in case all positions are winning positions
+        if (maxConsecutiveWins < consecutiveWins) {
+            maxConsecutiveWins = consecutiveWins;
+        }
+
+        return series.numOf(maxConsecutiveWins);
     }
 
     @Override
@@ -54,17 +66,10 @@ public class GrossReturnCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /**
-     * Calculates the gross return of a position (Buy and sell).
-     *
-     * @param series   a bar series
-     * @param position a position
-     * @return the gross return of the position
-     */
-    private Num calculateProfit(BarSeries series, Position position) {
+    private boolean isWinningPosition(Position position) {
         if (position.isClosed()) {
-            return position.getGrossReturn(series);
+            return position.getProfit().isPositive();
         }
-        return series.numOf(1);
+        return false;
     }
 }
