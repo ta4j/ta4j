@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,15 +29,13 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.IsFallingRule;
-import org.ta4j.core.trading.rules.IsRisingRule;
+import org.ta4j.core.rules.IsFallingRule;
+import org.ta4j.core.rules.IsRisingRule;
 
 /**
  * Indicator-convergence-divergence.
  */
 public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
-
-    private static final long serialVersionUID = -6735646430246479066L;
 
     /**
      * Select the type of convergence or divergence.

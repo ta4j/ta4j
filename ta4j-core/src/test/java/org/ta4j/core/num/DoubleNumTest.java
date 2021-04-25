@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,21 +23,21 @@
  */
 package org.ta4j.core.num;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
 
 public class DoubleNumTest {
 
     @Test
-    public void testEqualsDoubleNumWithPrecisionNum() {
-        final PrecisionNum precisionNum = PrecisionNum.valueOf(3.0);
+    public void testEqualsDoubleNumWithDecimalNum() {
+        final DecimalNum decimalNum = DecimalNum.valueOf(3.0);
         final DoubleNum doubleNum = DoubleNum.valueOf(3.0);
-        
-        assertFalse(doubleNum.equals(precisionNum));
+
+        assertFalse(doubleNum.equals(decimalNum));
     }
-    
+
     @Test
     public void testZeroEquals() {
         final Num num1 = DoubleNum.valueOf(-0.0);

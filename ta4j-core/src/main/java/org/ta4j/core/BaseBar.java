@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,16 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.PrecisionNum;
-
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.function.Function;
+
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link Bar}.
@@ -50,16 +50,16 @@ public class BaseBar implements Bar {
     private Num openPrice = null;
     /** Close price of the period */
     private Num closePrice = null;
-    /** Max price of the period */
+    /** High price of the period */
     private Num highPrice = null;
-    /** Min price of the period */
+    /** Low price of the period */
     private Num lowPrice = null;
     /** Traded amount during the period */
     private Num amount;
     /** Volume of the period */
     private Num volume;
     /** Trade count */
-    private int trades = 0;
+    private long trades = 0;
 
     /**
      * Constructor.
@@ -125,7 +125,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, double openPrice, double highPrice, double lowPrice,
-            double closePrice, double volume, double amount, int trades, Function<Number, Num> numFunction) {
+            double closePrice, double volume, double amount, long trades, Function<Number, Num> numFunction) {
         this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
                 numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
                 numFunction.apply(amount), trades);
@@ -161,7 +161,7 @@ public class BaseBar implements Bar {
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
             BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, PrecisionNum::valueOf);
+        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, 0, DecimalNum::valueOf);
     }
 
     /**
@@ -179,7 +179,7 @@ public class BaseBar implements Bar {
      * @param numFunction the numbers precision
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, BigDecimal openPrice, BigDecimal highPrice,
-            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, int trades,
+            BigDecimal lowPrice, BigDecimal closePrice, BigDecimal volume, BigDecimal amount, long trades,
             Function<Number, Num> numFunction) {
         this(timePeriod, endTime, numFunction.apply(openPrice), numFunction.apply(highPrice),
                 numFunction.apply(lowPrice), numFunction.apply(closePrice), numFunction.apply(volume),
@@ -216,8 +216,7 @@ public class BaseBar implements Bar {
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice,
             String closePrice, String volume, String amount) {
-        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, "0",
-                PrecisionNum::valueOf);
+        this(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, "0", DecimalNum::valueOf);
     }
 
     /**
@@ -273,7 +272,7 @@ public class BaseBar implements Bar {
      * @param trades     the trades count of the bar period
      */
     public BaseBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
-            Num closePrice, Num volume, Num amount, int trades) {
+            Num closePrice, Num volume, Num amount, long trades) {
         checkTimeArguments(timePeriod, endTime);
         this.timePeriod = timePeriod;
         this.endTime = endTime;
@@ -343,7 +342,7 @@ public class BaseBar implements Bar {
     /**
      * @return the number of trades in the period
      */
-    public int getTrades() {
+    public long getTrades() {
         return trades;
     }
 
@@ -406,7 +405,7 @@ public class BaseBar implements Bar {
     @Override
     public String toString() {
         return String.format(
-                "{end time: %1s, close price: %2$f, open price: %3$f, min price: %4$f, max price: %5$f, volume: %6$f}",
+                "{end time: %1s, close price: %2$f, open price: %3$f, low price: %4$f, high price: %5$f, volume: %6$f}",
                 endTime.withZoneSameInstant(ZoneId.systemDefault()), closePrice.doubleValue(), openPrice.doubleValue(),
                 lowPrice.doubleValue(), highPrice.doubleValue(), volume.doubleValue());
     }

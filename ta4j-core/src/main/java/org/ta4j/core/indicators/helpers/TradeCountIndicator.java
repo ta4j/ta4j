@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,16 +29,14 @@ import org.ta4j.core.indicators.CachedIndicator;
 /**
  * Trade count indicator.
  */
-public class TradeCountIndicator extends CachedIndicator<Integer> {
-
-    private static final long serialVersionUID = -925772914642803594L;
+public class TradeCountIndicator extends CachedIndicator<Long> {
 
     public TradeCountIndicator(BarSeries series) {
         super(series);
     }
 
     @Override
-    protected Integer calculate(int index) {
+    protected Long calculate(int index) {
         return getBarSeries().getBar(index).getTrades();
     }
 }

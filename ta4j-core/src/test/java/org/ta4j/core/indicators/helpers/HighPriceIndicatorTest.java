@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static junit.framework.TestCase.assertEquals;
+
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -31,14 +35,10 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-import java.util.function.Function;
-
-import static junit.framework.TestCase.assertEquals;
-
 public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private HighPriceIndicator highPriceIndicator;
 
-    BarSeries barSeries;
+    private BarSeries barSeries;
 
     public HighPriceIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
@@ -52,7 +52,7 @@ public class HighPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void indicatorShouldRetrieveBarMaxPrice() {
+    public void indicatorShouldRetrieveBarHighPrice() {
         for (int i = 0; i < 10; i++) {
             assertEquals(highPriceIndicator.getValue(i), barSeries.getBar(i).getHighPrice());
         }

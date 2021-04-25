@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,11 +23,9 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Collections;
 import java.util.List;
@@ -35,9 +33,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     private MockBarSeries series;
@@ -48,33 +52,33 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateOnlyWithGainTrades() {
+    public void calculateOnlyWithGainPositions() {
         series = new MockBarSeries(numFunction, 100d, 105d, 106d, 107d, 108d, 115d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series),
-                Order.buyAt(3, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
+                Trade.buyAt(3, series), Trade.sellAt(5, series));
         AnalysisCriterion varCriterion = getCriterion();
         assertNumEquals(numOf(0.0), varCriterion.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateWithASimpleTrade() {
-        // if only one trade in tail, VaR = ES
+    public void calculateWithASimplePosition() {
+        // if only one position in tail, VaR = ES
         series = new MockBarSeries(numFunction, 100d, 104d, 90d, 100d, 95d, 105d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
         AnalysisCriterion esCriterion = getCriterion();
         assertNumEquals(numOf(Math.log(90d / 104)), esCriterion.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateOnlyWithLossTrade() {
+    public void calculateOnlyWithLossPosition() {
         // regularly decreasing prices
         List<Double> prices = IntStream.rangeClosed(1, 100).asDoubleStream().boxed().sorted(Collections.reverseOrder())
                 .collect(Collectors.toList());
         series = new MockBarSeries(numFunction, prices);
-        Trade trade = new Trade(Order.buyAt(series.getBeginIndex(), series),
-                Order.sellAt(series.getEndIndex(), series));
+        Position position = new Position(Trade.buyAt(series.getBeginIndex(), series),
+                Trade.sellAt(series.getEndIndex(), series));
         AnalysisCriterion esCriterion = getCriterion();
-        assertNumEquals(numOf(-0.35835189384561106), esCriterion.calculate(series, trade));
+        assertNumEquals(numOf(-0.35835189384561106), esCriterion.calculate(series, position));
     }
 
     @Test
@@ -87,9 +91,9 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithBuyAndHold() {
         series = new MockBarSeries(numFunction, 100d, 99d);
-        Trade trade = new Trade(Order.buyAt(0, series), Order.sellAt(1, series));
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion varCriterion = getCriterion();
-        assertNumEquals(numOf(Math.log(99d / 100)), varCriterion.calculate(series, trade));
+        assertNumEquals(numOf(Math.log(99d / 100)), varCriterion.calculate(series, position));
     }
 
     @Test

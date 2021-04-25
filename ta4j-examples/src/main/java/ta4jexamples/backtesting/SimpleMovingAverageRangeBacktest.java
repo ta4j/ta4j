@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,23 +23,24 @@
  */
 package ta4jexamples.backtesting;
 
-import org.ta4j.core.BacktestExecutor;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Order;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
-import org.ta4j.core.trading.rules.OverIndicatorRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvBarsLoader;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.ta4j.core.BacktestExecutor;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
+
+import ta4jexamples.loaders.CsvBarsLoader;
 
 public class SimpleMovingAverageRangeBacktest {
 
@@ -57,7 +58,7 @@ public class SimpleMovingAverageRangeBacktest {
             strategies.add(strategy);
         }
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        backtestExecutor.execute(strategies, PrecisionNum.valueOf(50), Order.OrderType.BUY);
+        backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Trade.TradeType.BUY);
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {

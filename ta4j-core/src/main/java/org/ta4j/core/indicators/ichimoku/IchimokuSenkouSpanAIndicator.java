@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -42,13 +43,16 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
     /** The Kijun-sen indicator */
     private final IchimokuKijunSenIndicator baseLine;
 
+    // Cloud offset
+    private final int offset;
+
     /**
      * Constructor.
      * 
      * @param series the series
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series) {
-        this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
+        this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series), 26);
     }
 
     /**
@@ -61,7 +65,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
         this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
-                new IchimokuKijunSenIndicator(series, barCountBaseLine));
+                new IchimokuKijunSenIndicator(series, barCountBaseLine), 26);
     }
 
     /**
@@ -70,16 +74,26 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param series         the series
      * @param conversionLine the conversion line
      * @param baseLine       the base line
+     * @param offset         kumo cloud displacement (offset) forward in time
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
-            IchimokuKijunSenIndicator baseLine) {
+            IchimokuKijunSenIndicator baseLine, int offset) {
+
         super(series);
         this.conversionLine = conversionLine;
         this.baseLine = baseLine;
+        this.offset = offset;
     }
 
     @Override
     protected Num calculate(int index) {
-        return conversionLine.getValue(index).plus(baseLine.getValue(index)).dividedBy(numOf(2));
+
+        // at index=7 we need index=3 when offset=5
+        int spanIndex = index - offset + 1;
+        if (spanIndex >= getBarSeries().getBeginIndex()) {
+            return conversionLine.getValue(spanIndex).plus(baseLine.getValue(spanIndex)).dividedBy(numOf(2));
+        } else {
+            return NaN.NaN;
+        }
     }
 }

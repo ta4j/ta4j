@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,18 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.*;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
  * Versus "buy and hold" criterion.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of a {@link BuyAndHoldCriterion "buy and hold" criterion}.
+ * value of a {@link BuyAndHoldReturnCriterion "buy and hold" criterion}.
  */
 public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
@@ -46,21 +50,21 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
+    public Num calculate(BarSeries series, Position position) {
+        TradingRecord fakeRecord = new BaseTradingRecord();
+        fakeRecord.enter(series.getBeginIndex());
+        fakeRecord.exit(series.getEndIndex());
+
+        return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
+    }
+
+    @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         TradingRecord fakeRecord = new BaseTradingRecord();
         fakeRecord.enter(series.getBeginIndex());
         fakeRecord.exit(series.getEndIndex());
 
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        TradingRecord fakeRecord = new BaseTradingRecord();
-        fakeRecord.enter(series.getBeginIndex());
-        fakeRecord.exit(series.getEndIndex());
-
-        return criterion.calculate(series, trade).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override

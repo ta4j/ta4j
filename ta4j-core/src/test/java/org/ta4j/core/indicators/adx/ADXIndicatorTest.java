@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,19 @@
  */
 package org.ta4j.core.indicators.adx;
 
-import org.junit.Test;
-import org.ta4j.core.ExternalIndicatorTest;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.TestUtils;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.XLSIndicatorTest;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.XLSIndicatorTest;
+import org.ta4j.core.num.Num;
 
 public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 

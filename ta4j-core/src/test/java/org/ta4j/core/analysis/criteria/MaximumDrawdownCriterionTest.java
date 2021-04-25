@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,15 +23,19 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
 public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
@@ -51,18 +55,18 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     public void calculateWithOnlyGains() {
         MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 8, 20, 3);
         AnalysisCriterion mdd = getCriterion();
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(2, series), Order.sellAt(5, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         assertNumEquals(0d, mdd.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateShouldWork() {
+    public void calculateWithGainsAndLosses() {
         MockBarSeries series = new MockBarSeries(numFunction, 1, 2, 3, 6, 5, 20, 3);
         AnalysisCriterion mdd = getCriterion();
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(3, series), Order.sellAt(4, series), Order.buyAt(5, series), Order.sellAt(6, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(3, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(6, series));
 
         assertNumEquals(.875d, mdd.calculate(series, tradingRecord));
 
@@ -79,8 +83,8 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     public void withTradesThatSellBeforeBuying() {
         MockBarSeries series = new MockBarSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
         AnalysisCriterion mdd = getCriterion();
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(3, series), Order.sellAt(4, series), Order.sellAt(5, series), Order.buyAt(6, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(3, series), Trade.sellAt(4, series), Trade.sellAt(5, series), Trade.buyAt(6, series));
         assertNumEquals(3.8d, mdd.calculate(series, tradingRecord));
     }
 
@@ -88,9 +92,9 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     public void withSimpleTrades() {
         MockBarSeries series = new MockBarSeries(numFunction, 1, 10, 5, 6, 1);
         AnalysisCriterion mdd = getCriterion();
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, series), Order.sellAt(1, series),
-                Order.buyAt(1, series), Order.sellAt(2, series), Order.buyAt(2, series), Order.sellAt(3, series),
-                Order.buyAt(3, series), Order.sellAt(4, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(1, series), Trade.sellAt(2, series), Trade.buyAt(2, series), Trade.sellAt(3, series),
+                Trade.buyAt(3, series), Trade.sellAt(4, series));
         assertNumEquals(.9d, mdd.calculate(series, tradingRecord));
     }
 

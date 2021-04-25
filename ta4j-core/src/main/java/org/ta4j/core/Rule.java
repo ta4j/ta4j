@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,10 +23,10 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.trading.rules.AndRule;
-import org.ta4j.core.trading.rules.NotRule;
-import org.ta4j.core.trading.rules.OrRule;
-import org.ta4j.core.trading.rules.XorRule;
+import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.NotRule;
+import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.XorRule;
 
 /**
  * A rule for strategy building.

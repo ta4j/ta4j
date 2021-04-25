@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>org.ta4j</groupId>
 		<artifactId>ta4j-parent</artifactId>
-		<version>0.13</version>
+		<version>0.14-SNAPSHOT</version>
 	</parent>
 	<artifactId>ta4j-core</artifactId>
 
@@ -36,6 +36,11 @@
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
 			<version>3.17</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

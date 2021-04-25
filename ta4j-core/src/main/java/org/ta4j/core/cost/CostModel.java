@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,25 +23,25 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Trade;
-import org.ta4j.core.num.Num;
-
 import java.io.Serializable;
+
+import org.ta4j.core.Position;
+import org.ta4j.core.num.Num;
 
 public interface CostModel extends Serializable {
 
     /**
-     * @param trade      the trade
-     * @param finalIndex final index of consideration for open trades
-     * @return Calculates the trading cost of a single trade
+     * @param position   the position
+     * @param finalIndex final index of consideration for open positions
+     * @return Calculates the trading cost of a single position
      */
-    Num calculate(Trade trade, int finalIndex);
+    Num calculate(Position position, int finalIndex);
 
     /**
-     * @param trade the trade
-     * @return Calculates the trading cost of a single trade
+     * @param position the position
+     * @return Calculates the trading cost of a single position
      */
-    Num calculate(Trade trade);
+    Num calculate(Position position);
 
     /**
      * @param price  the price per asset

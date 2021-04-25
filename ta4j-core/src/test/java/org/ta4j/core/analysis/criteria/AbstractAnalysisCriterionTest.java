@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,21 +23,23 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.BarSeriesManager;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.trading.rules.BooleanRule;
-import org.ta4j.core.trading.rules.FixedRule;
+import static junit.framework.TestCase.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static junit.framework.TestCase.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.rules.FixedRule;
 
 public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
 
@@ -48,7 +50,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     private List<Strategy> strategies;
 
     public AbstractAnalysisCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new TotalProfitCriterion(), numFunction);
+        super((params) -> new GrossReturnCriterion(), numFunction);
     }
 
     @Before
@@ -64,7 +66,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     public void bestShouldBeAlwaysOperateOnProfit() {
         MockBarSeries series = new MockBarSeries(numFunction, 6.0, 9.0, 6.0, 6.0);
         BarSeriesManager manager = new BarSeriesManager(series);
-        Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
+        Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(alwaysStrategy, bestStrategy);
     }
 
@@ -72,18 +74,18 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     public void bestShouldBeBuyAndHoldOnLoss() {
         MockBarSeries series = new MockBarSeries(numFunction, 6.0, 3.0, 6.0, 6.0);
         BarSeriesManager manager = new BarSeriesManager(series);
-        Strategy bestStrategy = getCriterion().chooseBest(manager, strategies);
+        Strategy bestStrategy = getCriterion().chooseBest(manager, TradeType.BUY, strategies);
         assertEquals(buyAndHoldStrategy, bestStrategy);
     }
 
     @Test
     public void toStringMethod() {
-        AbstractAnalysisCriterion c1 = new AverageProfitCriterion();
-        assertEquals("Average Profit", c1.toString());
-        AbstractAnalysisCriterion c2 = new BuyAndHoldCriterion();
-        assertEquals("Buy And Hold", c2.toString());
-        AbstractAnalysisCriterion c3 = new RewardRiskRatioCriterion();
-        assertEquals("Reward Risk Ratio", c3.toString());
+        AbstractAnalysisCriterion c1 = new AverageReturnPerBarCriterion();
+        assertEquals("Average Return Per Bar", c1.toString());
+        AbstractAnalysisCriterion c2 = new BuyAndHoldReturnCriterion();
+        assertEquals("Buy And Hold Return", c2.toString());
+        AbstractAnalysisCriterion c3 = new ReturnOverMaxDrawdownCriterion();
+        assertEquals("Return Over Max Drawdown", c3.toString());
     }
 
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,25 +23,27 @@
  */
 package ta4jexamples.walkforward;
 
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BarSeriesManager;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
-import org.ta4j.core.num.Num;
-import ta4jexamples.loaders.CsvTradesLoader;
-import ta4jexamples.strategies.CCICorrectionStrategy;
-import ta4jexamples.strategies.GlobalExtremaStrategy;
-import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.strategies.RSI2Strategy;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.num.Num;
+
+import ta4jexamples.loaders.CsvTradesLoader;
+import ta4jexamples.strategies.CCICorrectionStrategy;
+import ta4jexamples.strategies.GlobalExtremaStrategy;
+import ta4jexamples.strategies.MovingMomentumStrategy;
+import ta4jexamples.strategies.RSI2Strategy;
 
 /**
  * Walk-forward optimization example.
@@ -175,7 +177,7 @@ public class WalkForward {
         Map<Strategy, String> strategies = buildStrategiesMap(series);
 
         // The analysis criterion
-        AnalysisCriterion profitCriterion = new TotalProfitCriterion();
+        AnalysisCriterion returnCriterion = new GrossReturnCriterion();
 
         for (BarSeries slice : subseries) {
             // For each sub-series...
@@ -186,10 +188,10 @@ public class WalkForward {
                 String name = entry.getValue();
                 // For each strategy...
                 TradingRecord tradingRecord = sliceManager.run(strategy);
-                Num profit = profitCriterion.calculate(slice, tradingRecord);
+                Num profit = returnCriterion.calculate(slice, tradingRecord);
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
-            Strategy bestStrategy = profitCriterion.chooseBest(sliceManager,
+            Strategy bestStrategy = returnCriterion.chooseBest(sliceManager, TradeType.BUY,
                     new ArrayList<Strategy>(strategies.keySet()));
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,21 +23,20 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
+
 public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
-    private static final long serialVersionUID = 111164611841087550L;
     /**
      * Default Num type function
      **/
-    private static Function<Number, Num> defaultFunction = PrecisionNum::valueOf;
+    private static Function<Number, Num> defaultFunction = DecimalNum::valueOf;
     private List<Bar> bars;
     private String name;
     private Function<Number, Num> numFunction;
@@ -105,14 +104,14 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     public BaseBarSeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
-        if (abstractNumClass == PrecisionNum.class) {
-            numFunction = PrecisionNum::valueOf;
+        if (abstractNumClass == DecimalNum.class) {
+            numFunction = DecimalNum::valueOf;
             return this;
         } else if (abstractNumClass == DoubleNum.class) {
             numFunction = DoubleNum::valueOf;
             return this;
         }
-        numFunction = PrecisionNum::valueOf;
+        numFunction = DecimalNum::valueOf;
         return this;
     }
 
