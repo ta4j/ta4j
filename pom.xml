@@ -52,7 +52,7 @@
 		<connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
 		<developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
 		<url>http://github.com/ta4j/ta4j</url>
-		<tag>0.13</tag>
+		<tag>0.14</tag>
 	</scm>
 
 	<modules>
