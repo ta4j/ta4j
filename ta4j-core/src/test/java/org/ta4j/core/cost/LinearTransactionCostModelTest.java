@@ -23,16 +23,21 @@
  */
 package org.ta4j.core.cost;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
+import org.ta4j.core.*;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.rules.FixedRule;
+
+import java.math.BigDecimal;
+import java.time.ZonedDateTime;
+import java.util.LinkedList;
+import java.util.List;
 
 public class LinearTransactionCostModelTest {
 
@@ -115,5 +120,42 @@ public class LinearTransactionCostModelTest {
         assertTrue(equality);
         assertFalse(inequality1);
         assertFalse(inequality2);
+    }
+
+    @Test
+    public void testBacktesting() {
+        BaseBarSeries series = new BaseBarSeriesBuilder().withName("CostModel test").build();
+        ZonedDateTime now = ZonedDateTime.now();
+        Num one = series.numOf(1);
+        Num two = series.numOf(2);
+        Num three = series.numOf(3);
+        Num four = series.numOf(4);
+        series.addBar(now, one, one, one, one, one);
+        series.addBar(now.plusSeconds(1), two, two, two, two, two);
+        series.addBar(now.plusSeconds(2), three, three, three, three, three);
+        series.addBar(now.plusSeconds(3), four, four, four, four, four);
+
+        Rule entryRule = new FixedRule(0,2);
+        Rule exitRule = new FixedRule(1,3);
+        List<Strategy> strategies = new LinkedList<>();
+        strategies.add(new BaseStrategy("Cost model test strategy", entryRule, exitRule));
+
+        Num orderFee = series.numOf(new BigDecimal("0.0026"));
+        BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()), new ZeroCostModel());
+
+        Num amount = series.numOf(25);
+        TradingStatement strategyResult = executor.execute(strategies, amount).get(0);
+
+        Num firstPositionBuy = one.plus(one.multipliedBy(orderFee));
+        Num firstPositionSell = two.minus(two.multipliedBy(orderFee));
+        Num firstPositionProfit = firstPositionSell.minus(firstPositionBuy).multipliedBy(amount);
+
+        Num secondPositionBuy = three.plus(three.multipliedBy(orderFee));
+        Num secondPositionSell = four.minus(four.multipliedBy(orderFee));
+        Num secondPositionProfit = secondPositionSell.minus(secondPositionBuy).multipliedBy(amount);
+
+        Num overallProfit = firstPositionProfit.plus(secondPositionProfit);
+
+        assertEquals(overallProfit, strategyResult.getPerformanceReport().getTotalProfit());
     }
 }
