@@ -71,7 +71,7 @@ public class DoubleNum implements Num {
     public static DoubleNum valueOf(Number i) {
         return new DoubleNum(Double.parseDouble(i.toString()));
     }
-    
+
     @Override
     public Num zero() {
         return ZERO;
