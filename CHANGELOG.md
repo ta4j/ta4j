@@ -129,6 +129,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PrecisionNum**: improve performance for methods isZero/isPositive/isPositiveOrZero/isNegative/isNegativeOrZero.
 - **BaseTimeSeriesBuilder** moved from inner class to own class
 - **TrailingStopLossRule** added ability to look back the last x bars for calculating the trailing stop loss
+- **Num** removed Serializable
 
 ### Added
 - **Enhancement** Added getters for AroonDownIndicator and AroonUpIndicator in AroonOscillatorIndicator
