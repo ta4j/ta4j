@@ -6,7 +6,7 @@
         <version>0.15-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-examples</artifactId>
-
+ 
     <name>Ta4j Examples</name>
     <description>Provides examples that demonstrate how to use ta4j</description>
 
