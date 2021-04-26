@@ -39,7 +39,7 @@ import java.util.function.Function;
  * @see DecimalNum
  * 
  */
-public interface Num extends Comparable<Num>, Serializable {
+public interface Num extends Comparable<Num> {
 
     /**
      * @return the delegate used from this <code>Num</code> implementation

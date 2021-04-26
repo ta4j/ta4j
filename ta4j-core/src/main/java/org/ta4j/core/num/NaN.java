@@ -43,8 +43,6 @@ import java.util.function.Function;
  */
 public class NaN implements Num {
 
-    private static final long serialVersionUID = 9161474401436305600L;
-
     /** static Not-a-Number instance */
     public static final Num NaN = new NaN();
 
