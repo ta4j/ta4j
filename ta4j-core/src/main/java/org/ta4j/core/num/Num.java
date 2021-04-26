@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.num;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
