@@ -62,6 +62,24 @@ public class NaN implements Num {
         return NaN;
     }
 
+    /** @return {@link #NaN} */
+    @Override
+    public Num zero() {
+        return NaN;
+    }
+
+    /** @return {@link #NaN} */
+    @Override
+    public Num one() {
+        return NaN;
+    }
+
+    /** @return {@link #NaN} */
+    @Override
+    public Num hundred() {
+        return NaN;
+    }
+
     @Override
     public int compareTo(Num o) {
         return 0;

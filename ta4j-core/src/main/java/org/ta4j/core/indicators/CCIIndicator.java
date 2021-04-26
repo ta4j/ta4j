@@ -27,7 +27,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumOf;
 
 /**
  * Commodity Channel Index (CCI) indicator.
@@ -65,7 +64,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
         final Num typicalPriceAvg = smaInd.getValue(index);
         final Num meanDeviation = meanDeviationInd.getValue(index);
         if (meanDeviation.isZero()) {
-            return NumOf.ZERO(typicalPrice);
+            return meanDeviation.zero();
         }
         return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
     }

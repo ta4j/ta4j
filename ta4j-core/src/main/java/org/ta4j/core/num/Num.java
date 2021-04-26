@@ -42,6 +42,21 @@ import java.util.function.Function;
 public interface Num extends Comparable<Num>, Serializable {
 
     /**
+     * @return the Num of 0
+     */
+    Num zero();
+
+    /**
+     * @return the Num of 1
+     */
+    Num one();
+
+    /**
+     * @return the Num of 100
+     */
+    public Num hundred();
+
+    /**
      * @return the delegate used from this <code>Num</code> implementation
      */
     Number getDelegate();
