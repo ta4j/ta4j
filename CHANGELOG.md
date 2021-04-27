@@ -11,6 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 
 ### Added
+- **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
 
 
 ## 0.14 (released April 25, 2021)
@@ -155,7 +156,6 @@ for currentStopLossLimitActivation
 - **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - **Enhancement** Added license checker goal on CI's pipeline
 - **Enhancement** Added source format checker goal on CI's pipeline
-- **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
 
 ### Removed/Deprecated
 

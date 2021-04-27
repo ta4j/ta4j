@@ -135,13 +135,14 @@ public class LinearTransactionCostModelTest {
         series.addBar(now.plusSeconds(2), three, three, three, three, three);
         series.addBar(now.plusSeconds(3), four, four, four, four, four);
 
-        Rule entryRule = new FixedRule(0,2);
-        Rule exitRule = new FixedRule(1,3);
+        Rule entryRule = new FixedRule(0, 2);
+        Rule exitRule = new FixedRule(1, 3);
         List<Strategy> strategies = new LinkedList<>();
         strategies.add(new BaseStrategy("Cost model test strategy", entryRule, exitRule));
 
         Num orderFee = series.numOf(new BigDecimal("0.0026"));
-        BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()), new ZeroCostModel());
+        BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(orderFee.doubleValue()),
+                new ZeroCostModel());
 
         Num amount = series.numOf(25);
         TradingStatement strategyResult = executor.execute(strategies, amount).get(0);
