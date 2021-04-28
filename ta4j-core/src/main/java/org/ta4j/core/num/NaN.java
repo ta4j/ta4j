@@ -43,8 +43,6 @@ import java.util.function.Function;
  */
 public class NaN implements Num {
 
-    private static final long serialVersionUID = 9161474401436305600L;
-
     /** static Not-a-Number instance */
     public static final Num NaN = new NaN();
 
@@ -59,24 +57,6 @@ public class NaN implements Num {
      * @return {@link #NaN}
      */
     public static Num valueOf(Number val) {
-        return NaN;
-    }
-
-    /** @return {@link #NaN} */
-    @Override
-    public Num zero() {
-        return NaN;
-    }
-
-    /** @return {@link #NaN} */
-    @Override
-    public Num one() {
-        return NaN;
-    }
-
-    /** @return {@link #NaN} */
-    @Override
-    public Num hundred() {
         return NaN;
     }
 

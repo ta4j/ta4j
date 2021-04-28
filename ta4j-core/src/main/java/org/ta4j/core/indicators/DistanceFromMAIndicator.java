@@ -23,14 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.Num;
-
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
 
 /**
  * Distance From Moving Average (close - MA)/MA

@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.num;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -39,22 +38,28 @@ import java.util.function.Function;
  * @see DecimalNum
  * 
  */
-public interface Num extends Comparable<Num>, Serializable {
+public interface Num extends Comparable<Num> {
 
     /**
      * @return the Num of 0
      */
-    Num zero();
+    default Num zero() {
+        return numOf(0);
+    }
 
     /**
      * @return the Num of 1
      */
-    Num one();
+    default Num one() {
+        return numOf(1);
+    }
 
     /**
      * @return the Num of 100
      */
-    public Num hundred();
+    default Num hundred() {
+        return numOf(100);
+    }
 
     /**
      * @return the delegate used from this <code>Num</code> implementation

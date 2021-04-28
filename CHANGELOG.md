@@ -1,6 +1,22 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.14 (unreleased)
+## 0.15 (unreleased)
+
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Removed/Deprecated
+- **Num** removed Serializable
+
+### Added
+- :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
+- :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
+
+
+## 0.14 (released April 25, 2021)
 
 ### Breaking
 - **Breaking:** **`PrecisionNum`** renamed to **`DecimalNum`**
@@ -89,7 +105,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Position#hasProfit.
 - :tada: **Enhancement** added Position#hasLoss.
 - :tada: **Enhancement** exposed both EMAs in MACD indicator
-- :tada: **Enhancement** added Num#zero, Num#one, Num#hundred.
 
 
 ## 0.13 (released November 5, 2019)
