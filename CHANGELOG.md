@@ -9,6 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Changed
 
 ### Removed/Deprecated
+- **Num** removed Serializable
 
 ### Added
 
