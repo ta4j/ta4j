@@ -21,40 +21,14 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.reports;
+package ta4jexamples.backtesting;
 
-import org.ta4j.core.num.Num;
+import org.junit.Test;
 
-/**
- * This class represents report which contains performance statistics
- */
-public class PerformanceReport {
+public class SimpleMovingAverageRangeBacktestTest {
 
-    private final Num totalProfitLoss;
-    private final Num totalProfitLossPercentage;
-    private final Num totalProfit;
-    private final Num totalLoss;
-
-    public PerformanceReport(Num totalProfitLoss, Num totalProfitLossPercentage, Num totalProfit, Num totalLoss) {
-        this.totalProfitLoss = totalProfitLoss;
-        this.totalProfitLossPercentage = totalProfitLossPercentage;
-        this.totalProfit = totalProfit;
-        this.totalLoss = totalLoss;
-    }
-
-    public Num getTotalProfitLoss() {
-        return totalProfitLoss;
-    }
-
-    public Num getTotalProfitLossPercentage() {
-        return totalProfitLossPercentage;
-    }
-
-    public Num getTotalProfit() {
-        return totalProfit;
-    }
-
-    public Num getTotalLoss() {
-        return totalLoss;
+    @Test
+    public void test() throws InterruptedException {
+        SimpleMovingAverageRangeBacktest.main(null);
     }
 }
