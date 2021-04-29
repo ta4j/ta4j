@@ -27,26 +27,41 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross return criterion (with commissions).
- *
- * <p>
- * The gross return of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * Average gross profit (with commissions).
  */
-public class GrossReturnCriterion extends AbstractAnalysisCriterion {
+public class AverageProfitCriterion extends AbstractAnalysisCriterion {
+
+    private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private GrossProfitCriterion grossProfitCriterion = new GrossProfitCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return calculateProfit(series, position);
+        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, position);
+        if (numberOfWinningPositions.isZero()) {
+            return series.numOf(0);
+        }
+        Num grossProfit = grossProfitCriterion.calculate(series, position);
+        if (grossProfit.isZero()) {
+            return series.numOf(0);
+        }
+        return grossProfit.dividedBy(numberOfWinningPositions);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().map(position -> calculateProfit(series, position))
-                .reduce(series.numOf(1), Num::multipliedBy);
+        Num numberOfWinningPositions = numberOfWinningPositionsCriterion.calculate(series, tradingRecord);
+        if (numberOfWinningPositions.isZero()) {
+            return series.numOf(0);
+        }
+        Num grossProfit = grossProfitCriterion.calculate(series, tradingRecord);
+        if (grossProfit.isZero()) {
+            return series.numOf(0);
+        }
+        return grossProfit.dividedBy(numberOfWinningPositions);
     }
 
     @Override
@@ -54,17 +69,4 @@ public class GrossReturnCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /**
-     * Calculates the gross return of a position (Buy and sell).
-     *
-     * @param series   a bar series
-     * @param position a position
-     * @return the gross return of the position
-     */
-    private Num calculateProfit(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            return position.getGrossReturn(series);
-        }
-        return series.numOf(1);
-    }
 }

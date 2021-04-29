@@ -57,5 +57,4 @@ public class PerformanceReport {
     public Num getTotalLoss() {
         return totalLoss;
     }
-
 }

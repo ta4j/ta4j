@@ -36,7 +36,7 @@ public class PositionStatsReport {
 
     /**
      * Constructor.
-     * 
+     *
      * @param profitCount    the number of positions making a profit
      * @param lossCount      the number of positions making a loss
      * @param breakEvenCount the number of positions with a break even
@@ -58,5 +58,4 @@ public class PositionStatsReport {
     public Num getBreakEvenCount() {
         return breakEvenCount;
     }
-
 }

@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.pnl;
+package org.ta4j.core.analysis.criteria;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -31,54 +31,59 @@ import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class NetLossCriterionTest extends AbstractCriterionTest {
+public class LosingPositionsRatioCriterionTest extends AbstractCriterionTest {
 
-    public NetLossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetLossCriterion(), numFunction);
+    public LosingPositionsRatioCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new LosingPositionsRatioCriterion(), numFunction);
     }
 
     @Test
-    public void calculateOnlyWithProfitPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
-                Trade.buyAt(3, series), Trade.sellAt(5, series));
-
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(0, loss.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void calculateOnlyWithLossPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+    public void calculate() {
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(5, series));
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion average = getCriterion();
+
+        assertNumEquals(1d / 3, average.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateProfitWithShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 95, 100, 70, 80, 85, 100);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
-                Trade.sellAt(2, series), Trade.buyAt(5, series));
+    public void calculateWithShortPositions() {
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series), Trade.buyAt(4, series));
 
-        AnalysisCriterion loss = getCriterion();
-        assertNumEquals(-35, loss.calculate(series, tradingRecord));
+        AnalysisCriterion average = getCriterion();
+
+        assertNumEquals(0.5, average.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithOnePosition() {
+        BarSeries series = new MockBarSeries(numFunction, 100d, 95d, 102d, 105d, 97d, 113d);
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+
+        AnalysisCriterion average = getCriterion();
+        assertNumEquals(numOf(1), average.calculate(series, position));
+
+        position = new Position(Trade.buyAt(1, series), Trade.sellAt(2, series));
+        assertNumEquals(0, average.calculate(series, position));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
-        assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
+        assertTrue(criterion.betterThan(numOf(12), numOf(8)));
+        assertFalse(criterion.betterThan(numOf(8), numOf(12)));
     }
 
     @Test

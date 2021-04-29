@@ -1,6 +1,22 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.14 (unreleased)
+## 0.15 (unreleased)
+
+### Breaking
+
+### Fixed
+
+### Changed
+
+### Removed/Deprecated
+- **Num** removed Serializable
+
+### Added
+- **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
+- **Example** added a json serialization and deserialization example of BarSeries
+
+
+## 0.14 (released April 25, 2021)
 
 ### Breaking
 - **Breaking:** **`PrecisionNum`** renamed to **`DecimalNum`**
@@ -66,6 +82,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Enhancement** Added BarSeriesUtils: common helpers and shortcuts for BarSeries methods.
 - **Enhancement** Improvements for PreviousValueIndicator: more descriptive toString() method, validation of n-th previous bars in
 - **Enhancement** Added Percentage Volume Oscillator Indicator, PVOIndicator.
+- **Enhancement** Added Distance From Moving Average Indicator, DistanceFromMAIndicator.
+- **Enhancement** Added Know Sure Thing Indicator, KSTIndicator.
  constructor of PreviousValueIndicator 
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
@@ -78,7 +96,15 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`GrossLossCriterion.class`**.
 - :tada: **Enhancement** added **`NetProfitCriterion.class`**.
 - :tada: **Enhancement** added chooseBest() method with parameter tradeType in AnalysisCriterion.
-- **Example** added a json serialization and deserialization example of BarSeries
+- :tada: **Enhancement** added **`AverageLossCriterion.class`**.
+- :tada: **Enhancement** added **`AverageProfitCriterion.class`**.
+- :tada: **Enhancement** added **`ProfitLossRatioCriterion.class`**.
+- :tada: **Enhancement** added **`ExpectancyCriterion.class`**.
+- :tada: **Enhancement** added **`ConsecutiveWinningPositionsCriterion.class`**.
+- :tada: **Enhancement** added **`LosingPositionsRatioCriterion.class`**
+- :tada: **Enhancement** added Position#hasProfit.
+- :tada: **Enhancement** added Position#hasLoss.
+- :tada: **Enhancement** exposed both EMAs in MACD indicator
 
 
 ## 0.13 (released November 5, 2019)

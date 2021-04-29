@@ -43,16 +43,6 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
     private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num bars = numberOfBars.calculate(series, tradingRecord);
-        if (bars.isEqual(series.numOf(0))) {
-            return series.numOf(1);
-        }
-
-        return grossReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
-    }
-
-    @Override
     public Num calculate(BarSeries series, Position position) {
         Num bars = numberOfBars.calculate(series, position);
         if (bars.isEqual(series.numOf(0))) {
@@ -60,6 +50,16 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         }
 
         return grossReturn.calculate(series, position).pow(series.numOf(1).dividedBy(bars));
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        Num bars = numberOfBars.calculate(series, tradingRecord);
+        if (bars.isEqual(series.numOf(0))) {
+            return series.numOf(1);
+        }
+
+        return grossReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
     }
 
     @Override

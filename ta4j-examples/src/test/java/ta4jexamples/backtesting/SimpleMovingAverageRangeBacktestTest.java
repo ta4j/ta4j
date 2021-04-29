@@ -21,35 +21,14 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.pnl;
+package ta4jexamples.backtesting;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.num.Num;
+import org.junit.Test;
 
-/**
- * Profit and loss criterion (absolute PnL) (without commissions).
- *
- * <p>
- * The profit or loss over the provided {@link BarSeries series}.
- */
-public class ProfitLossCriterion extends AbstractAnalysisCriterion {
+public class SimpleMovingAverageRangeBacktestTest {
 
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        return position.getProfit();
-    }
-
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().filter(Position::isClosed)
-                .map(position -> calculate(series, position)).reduce(series.numOf(0), Num::plus);
-    }
-
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+    @Test
+    public void test() throws InterruptedException {
+        SimpleMovingAverageRangeBacktest.main(null);
     }
 }

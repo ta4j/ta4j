@@ -41,14 +41,14 @@ import org.ta4j.core.num.Num;
 public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return createBuyAndHoldTrade(series).getGrossReturn(series);
-    }
-
-    @Override
     public Num calculate(BarSeries series, Position position) {
         return createBuyAndHoldTrade(series, position.getEntry().getIndex(), position.getExit().getIndex())
                 .getGrossReturn(series);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return createBuyAndHoldTrade(series).getGrossReturn(series);
     }
 
     @Override

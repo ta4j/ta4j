@@ -21,50 +21,36 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.pnl;
+package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross return criterion (with commissions).
+ * Calculates the percentage of positions which are not profitable.
  *
- * <p>
- * The gross return of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * Defined as <code># of losing positions / total # of positions</code>.
  */
-public class GrossReturnCriterion extends AbstractAnalysisCriterion {
+public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
+
+    private NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return calculateProfit(series, position);
+        return numberOfLosingPositionsCriterion.calculate(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions().stream().map(position -> calculateProfit(series, position))
-                .reduce(series.numOf(1), Num::multipliedBy);
+        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
+        numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
+        return numberOfLosingPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
-    /**
-     * Calculates the gross return of a position (Buy and sell).
-     *
-     * @param series   a bar series
-     * @param position a position
-     * @return the gross return of the position
-     */
-    private Num calculateProfit(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            return position.getGrossReturn(series);
-        }
-        return series.numOf(1);
     }
 }

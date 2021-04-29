@@ -34,6 +34,11 @@ import org.ta4j.core.num.Num;
 public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
+    public Num calculate(BarSeries series, Position position) {
+        return isBreakEvenTrade(position) ? series.numOf(1) : series.numOf(0);
+    }
+
+    @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         long numberOfBreakEvenTrades = tradingRecord.getPositions().stream().filter(Position::isClosed)
                 .filter(this::isBreakEvenTrade).count();
@@ -45,11 +50,6 @@ public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriteri
             return position.getProfit().isZero();
         }
         return false;
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        return isBreakEvenTrade(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
