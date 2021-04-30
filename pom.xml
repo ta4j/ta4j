@@ -1,8 +1,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.dtech.ta4j-ext</groupId>
+	<groupId>com.dheemantech.ta4j</groupId>
 	<artifactId>ta4j-parent</artifactId>
-	<version>0.13</version>
+	<version>0.14-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<name>Ta4j Parent</name>
@@ -49,9 +49,9 @@
 	</ciManagement>
 
 	<scm>
-		<connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
-		<developerConnection>scm:git:git@github.com:ta4j/ta4j.git</developerConnection>
-		<url>http://github.com/ta4j/ta4j</url>
+		<connection>scm:git:git://github.com/anandaanv/ta4j-zerodha</connection>
+		<developerConnection>scm:git:git@github.com:anandaanv/ta4j-zerodha</developerConnection>
+		<url>http://github.com/anandaanv/ta4j-zerodha</url>
 		<tag>0.13</tag>
 	</scm>
 
@@ -92,6 +92,7 @@
 						<version>2.9.1</version>
 						<configuration>
 							<additionalparam>-Xdoclint:none</additionalparam>
+							<detectJavaApiLink>false</detectJavaApiLink>
 						</configuration>
 						<executions>
 							<execution>
