@@ -7,6 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 
 ### Changed
+- **BarSeriesManager** removed empty args constructor
 
 ### Removed/Deprecated
 - **Num** removed Serializable
