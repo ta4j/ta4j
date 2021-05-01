@@ -44,11 +44,6 @@ import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 
-/**
- * Tests for {@link Indicator}.
- *
- * @author Johnny Lim
- */
 public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     double[] typicalPrices = {
