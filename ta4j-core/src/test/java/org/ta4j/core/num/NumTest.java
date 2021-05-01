@@ -49,6 +49,39 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         super(numFunction);
     }
 
+    @Test
+    public void testZero() {
+        Num anyNaNNum = NaN;
+        Num anyDecimalNum = DecimalNum.valueOf(3);
+        Num anyDoubleNum = DoubleNum.valueOf(3);
+        assertNumEquals(NaN, anyNaNNum.zero());
+        assertNumEquals(0, numOf(3).zero());
+        assertNumEquals(0, anyDecimalNum.zero());
+        assertNumEquals(0, anyDoubleNum.zero());
+    }
+
+    @Test
+    public void testOne() {
+        Num anyNaNNum = NaN;
+        Num anyDecimalNum = DecimalNum.valueOf(3);
+        Num anyDoubleNum = DoubleNum.valueOf(3);
+        assertNumEquals(NaN, anyNaNNum.one());
+        assertNumEquals(1, numOf(3).one());
+        assertNumEquals(1, anyDecimalNum.one());
+        assertNumEquals(1, anyDoubleNum.one());
+    }
+
+    @Test
+    public void testHundred() {
+        Num anyNaNNum = NaN;
+        Num anyDecimalNum = DecimalNum.valueOf(3);
+        Num anyDoubleNum = DoubleNum.valueOf(3);
+        assertNumEquals(NaN, anyNaNNum.hundred());
+        assertNumEquals(100, numOf(3).hundred());
+        assertNumEquals(100, anyDecimalNum.hundred());
+        assertNumEquals(100, anyDoubleNum.hundred());
+    }
+
     @Test(expected = AssertionError.class)
     public void testStringNumFail() {
         assertNumEquals("1.234", numOf(4.321));
