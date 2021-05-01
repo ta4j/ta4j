@@ -71,10 +71,13 @@ import org.slf4j.LoggerFactory;
  */
 public final class DecimalNum implements Num {
 
-    private static final long serialVersionUID = 785564782721079992L;
-
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
+
+    private static final DecimalNum ZERO = DecimalNum.valueOf(0);
+    private static final DecimalNum ONE = DecimalNum.valueOf(1);
+    private static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
+
     private final MathContext mathContext;
     private final BigDecimal delegate;
 
@@ -129,6 +132,21 @@ public final class DecimalNum implements Num {
     private DecimalNum(BigDecimal val, int precision) {
         mathContext = new MathContext(precision, RoundingMode.HALF_UP);
         delegate = Objects.requireNonNull(val);
+    }
+
+    @Override
+    public Num zero() {
+        return ZERO;
+    }
+
+    @Override
+    public Num one() {
+        return ONE;
+    }
+
+    @Override
+    public Num hundred() {
+        return HUNDRED;
     }
 
     /**
