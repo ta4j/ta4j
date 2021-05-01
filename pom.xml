@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.dheemantech.ta4j</groupId>
 	<artifactId>ta4j-parent</artifactId>
-	<version>0.15-SNAPSHOT</version>
+	<version>0.14</version>
 	<packaging>pom</packaging>
 
 	<name>Ta4j Parent</name>
@@ -52,7 +52,7 @@
 		<connection>scm:git:git://github.com/anandaanv/ta4j-zerodha</connection>
 		<developerConnection>scm:git:git@github.com:anandaanv/ta4j-zerodha</developerConnection>
 		<url>http://github.com/anandaanv/ta4j-zerodha</url>
-		<tag>0.13</tag>
+		<tag>0.14</tag>
 	</scm>
 
 	<modules>
