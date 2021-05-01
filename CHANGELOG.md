@@ -15,7 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
-
+- :tada: **Enhancement** Added Indicator#stream() method
 
 ## 0.14 (released April 25, 2021)
 
