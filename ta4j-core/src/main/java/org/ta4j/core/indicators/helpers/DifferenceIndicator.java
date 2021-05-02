@@ -34,24 +34,23 @@ import org.ta4j.core.num.Num;
  */
 public class DifferenceIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> first;
-    private final Indicator<Num> second;
+    private final CombineIndicator minusIndicator;
 
     /**
      * Constructor. (first minus second)
      * 
      * @param first  the first indicator
      * @param second the second indicator
+     * @deprecated use {@link CombineIndicator#minus} instead
      */
     public DifferenceIndicator(Indicator<Num> first, Indicator<Num> second) {
         // TODO: check if first series is equal to second one
         super(first);
-        this.first = first;
-        this.second = second;
+        this.minusIndicator = CombineIndicator.minus(first, second);
     }
 
     @Override
     protected Num calculate(int index) {
-        return first.getValue(index).minus(second.getValue(index));
+        return minusIndicator.getValue(index);
     }
 }
