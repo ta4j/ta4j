@@ -36,9 +36,6 @@ import java.util.function.UnaryOperator;
  * <p>
  * Combines two Num indicators by using common math operations.
  *
- * @apiNote Minimal deviations in last decimal places possible. During some
- *          calculations this indicator converts {@link Num DecimalNum} to
- *          {@link Double double}
  */
 public class CombineIndicator extends CachedIndicator<Num> {
 
