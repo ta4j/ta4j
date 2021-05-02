@@ -41,6 +41,27 @@ import java.util.function.Function;
 public interface Num extends Comparable<Num> {
 
     /**
+     * @return the Num of 0
+     */
+    default Num zero() {
+        return numOf(0);
+    }
+
+    /**
+     * @return the Num of 1
+     */
+    default Num one() {
+        return numOf(1);
+    }
+
+    /**
+     * @return the Num of 100
+     */
+    default Num hundred() {
+        return numOf(100);
+    }
+
+    /**
      * @return the delegate used from this <code>Num</code> implementation
      */
     Number getDelegate();
