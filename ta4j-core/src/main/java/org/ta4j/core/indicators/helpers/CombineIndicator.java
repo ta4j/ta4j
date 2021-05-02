@@ -45,11 +45,14 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicatorLeft      the indicator for the left hand side of the calculation
-     * @param indicatorRight     the indicator for the right hand side of the calculation
-     * @param combination a {@link Function} describing the combination function to combine the values of the indicators
+     * @param indicatorLeft  the indicator for the left hand side of the calculation
+     * @param indicatorRight the indicator for the right hand side of the
+     *                       calculation
+     * @param combination    a {@link Function} describing the combination function
+     *                       to combine the values of the indicators
      */
-    public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight, BinaryOperator<Num> combination) {
+    public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight,
+            BinaryOperator<Num> combination) {
         // TODO check both indicators use the same series/num function
         super(indicatorLeft);
         this.indicatorLeft = indicatorLeft;
@@ -84,7 +87,8 @@ public class CombineIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Combines the two input indicators by indicatorLeft.multipliedBy(indicatorRight).
+     * Combines the two input indicators by
+     * indicatorLeft.multipliedBy(indicatorRight).
      */
     public static CombineIndicator multiply(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::multipliedBy);
