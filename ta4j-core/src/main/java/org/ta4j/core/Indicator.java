@@ -68,8 +68,9 @@ public interface Indicator<T> {
                 .toArray(Double[]::new);
     }
 
-    default Stream<T> stream(){
-        return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1).mapToObj(this::getValue);
+    default Stream<T> stream() {
+        return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
+                .mapToObj(this::getValue);
     }
 
 }
