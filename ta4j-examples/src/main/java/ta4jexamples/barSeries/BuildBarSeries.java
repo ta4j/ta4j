@@ -58,6 +58,9 @@ public class BuildBarSeries {
         BarSeries e = buildManuallyDoubleNum();
         BarSeries f = buildManuallyAndAddBarManually();
         BarSeries g = buildAndAddBarsFromList();
+        // Fix: Reset default function, such that this test case does not influence the
+        // following test cases in a combined test run
+        BaseBarSeriesBuilder.setDefaultFunction(DecimalNum::valueOf);
     }
 
     private static BarSeries buildAndAddData() {
