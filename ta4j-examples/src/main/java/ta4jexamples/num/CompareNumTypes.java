@@ -23,22 +23,13 @@
  */
 package ta4jexamples.num;
 
-import java.time.ZonedDateTime;
-import java.util.Random;
-
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BarSeriesManager;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Rule;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -46,6 +37,9 @@ import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.IsEqualRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+
+import java.time.ZonedDateTime;
+import java.util.Random;
 
 public class CompareNumTypes {
 
@@ -85,7 +79,7 @@ public class CompareNumTypes {
         MACDIndicator macdIndicator = new MACDIndicator(rsi);
         EMAIndicator ema = new EMAIndicator(rsi, 12);
         EMAIndicator emaLong = new EMAIndicator(rsi, 26);
-        DifferenceIndicator macdIndicator2 = new DifferenceIndicator(ema, emaLong);
+        CombineIndicator macdIndicator2 = CombineIndicator.minus(ema, emaLong);
 
         Rule entry = new IsEqualRule(macdIndicator, macdIndicator2);
         Rule exit = new UnderIndicatorRule(new LowPriceIndicator(series), new HighPriceIndicator(series));

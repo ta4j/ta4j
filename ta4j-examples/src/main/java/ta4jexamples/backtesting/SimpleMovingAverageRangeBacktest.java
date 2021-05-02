@@ -89,30 +89,50 @@ public class SimpleMovingAverageRangeBacktest {
 
     private static StringBuilder printStatementReport(TradingStatement statement) {
         StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("######### ").append(statement.getStrategy().getName()).append(" #########")
-                .append(System.lineSeparator()).append(printPerformanceReport(statement.getPerformanceReport()))
-                .append(System.lineSeparator()).append(printPositionStats(statement.getPositionStatsReport()))
-                .append(System.lineSeparator()).append("###########################");
+        resultBuilder.append("######### ")
+                .append(statement.getStrategy().getName())
+                .append(" #########")
+                .append(System.lineSeparator())
+                .append(printPerformanceReport(statement.getPerformanceReport()))
+                .append(System.lineSeparator())
+                .append(printPositionStats(statement.getPositionStatsReport()))
+                .append(System.lineSeparator())
+                .append("###########################");
         return resultBuilder;
     }
 
     private static StringBuilder printPerformanceReport(PerformanceReport report) {
         StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- performance report ---------").append(System.lineSeparator())
-                .append("total loss: ").append(report.getTotalLoss()).append(System.lineSeparator())
-                .append("total profit: ").append(report.getTotalProfit()).append(System.lineSeparator())
-                .append("total profit loss: " + report.getTotalProfitLoss()).append(System.lineSeparator())
-                .append("total profit loss percentage: ").append(report.getTotalProfitLossPercentage())
-                .append(System.lineSeparator()).append("---------------------------");
+        resultBuilder.append("--------- performance report ---------")
+                .append(System.lineSeparator())
+                .append("total loss: ")
+                .append(report.getTotalLoss())
+                .append(System.lineSeparator())
+                .append("total profit: ")
+                .append(report.getTotalProfit())
+                .append(System.lineSeparator())
+                .append("total profit loss: " + report.getTotalProfitLoss())
+                .append(System.lineSeparator())
+                .append("total profit loss percentage: ")
+                .append(report.getTotalProfitLossPercentage())
+                .append(System.lineSeparator())
+                .append("---------------------------");
         return resultBuilder;
     }
 
     private static StringBuilder printPositionStats(PositionStatsReport report) {
         StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- trade statistics report ---------").append(System.lineSeparator())
-                .append("loss trade count: ").append(report.getLossCount()).append(System.lineSeparator())
-                .append("profit trade count: ").append(report.getProfitCount()).append(System.lineSeparator())
-                .append("break even trade count: ").append(report.getBreakEvenCount()).append(System.lineSeparator())
+        resultBuilder.append("--------- trade statistics report ---------")
+                .append(System.lineSeparator())
+                .append("loss trade count: ")
+                .append(report.getLossCount())
+                .append(System.lineSeparator())
+                .append("profit trade count: ")
+                .append(report.getProfitCount())
+                .append(System.lineSeparator())
+                .append("break even trade count: ")
+                .append(report.getBreakEvenCount())
+                .append(System.lineSeparator())
                 .append("---------------------------");
         return resultBuilder;
     }
