@@ -54,10 +54,16 @@ public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<BarSeri
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new ConvertibleBaseBarBuilder<BigDecimal>(this::numOf).timePeriod(duration).endTime(endTime)
-                .openPrice(BigDecimal.valueOf(101.0)).highPrice(BigDecimal.valueOf(103))
-                .lowPrice(BigDecimal.valueOf(100)).closePrice(BigDecimal.valueOf(102)).trades(4)
-                .volume(BigDecimal.valueOf(40)).amount(BigDecimal.valueOf(4020)).build();
+        final BaseBar bar = new ConvertibleBaseBarBuilder<BigDecimal>(this::numOf).timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
+                .trades(4)
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
+                .build();
 
         assertEquals(duration, bar.getTimePeriod());
         assertEquals(beginTime, bar.getBeginTime());

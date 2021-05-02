@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  */
 public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
-    private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

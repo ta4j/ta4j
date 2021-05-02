@@ -96,13 +96,34 @@ public class IndicatorsToCsv {
          */
         final int nbBars = series.getBarCount();
         for (int i = 0; i < nbBars; i++) {
-            sb.append(series.getBar(i).getEndTime()).append(',').append(closePrice.getValue(i)).append(',')
-                    .append(typicalPrice.getValue(i)).append(',').append(priceVariation.getValue(i)).append(',')
-                    .append(shortSma.getValue(i)).append(',').append(longSma.getValue(i)).append(',')
-                    .append(shortEma.getValue(i)).append(',').append(longEma.getValue(i)).append(',')
-                    .append(ppo.getValue(i)).append(',').append(roc.getValue(i)).append(',').append(rsi.getValue(i))
-                    .append(',').append(williamsR.getValue(i)).append(',').append(atr.getValue(i)).append(',')
-                    .append(sd.getValue(i)).append('\n');
+            sb.append(series.getBar(i).getEndTime())
+                    .append(',')
+                    .append(closePrice.getValue(i))
+                    .append(',')
+                    .append(typicalPrice.getValue(i))
+                    .append(',')
+                    .append(priceVariation.getValue(i))
+                    .append(',')
+                    .append(shortSma.getValue(i))
+                    .append(',')
+                    .append(longSma.getValue(i))
+                    .append(',')
+                    .append(shortEma.getValue(i))
+                    .append(',')
+                    .append(longEma.getValue(i))
+                    .append(',')
+                    .append(ppo.getValue(i))
+                    .append(',')
+                    .append(roc.getValue(i))
+                    .append(',')
+                    .append(rsi.getValue(i))
+                    .append(',')
+                    .append(williamsR.getValue(i))
+                    .append(',')
+                    .append(atr.getValue(i))
+                    .append(',')
+                    .append(sd.getValue(i))
+                    .append('\n');
         }
 
         /*

@@ -37,14 +37,14 @@ import org.ta4j.core.num.Num;
  * losing expectations.
  *
  * @see <a href=
- *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
- *
+ *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/">https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
+ * 
  */
 public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
-    private ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
-    private NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
-    private NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
+    private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
+    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

@@ -51,8 +51,9 @@ public class TimeRangeRule extends AbstractRule {
         boolean satisfied = false;
         ZonedDateTime dateTime = this.timeIndicator.getValue(index);
         LocalTime localTime = dateTime.toLocalTime();
-        satisfied = this.timeRanges.stream().anyMatch(
-                timeRange -> !localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo()));
+        satisfied = this.timeRanges.stream()
+                .anyMatch(
+                        timeRange -> !localTime.isBefore(timeRange.getFrom()) && !localTime.isAfter(timeRange.getTo()));
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
