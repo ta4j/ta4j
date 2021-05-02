@@ -29,7 +29,6 @@ import org.ta4j.core.num.Num;
 
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 /**
  * Combine indicator.
@@ -41,26 +40,26 @@ public class CombineIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicatorLeft;
     private final Indicator<Num> indicatorRight;
-    private final BinaryOperator<Num> transformationFunction;
+    private final BinaryOperator<Num> combineFunction;
 
     /**
      * Constructor.
      *
      * @param indicatorLeft      the indicator for the left hand side of the calculation
      * @param indicatorRight     the indicator for the right hand side of the calculation
-     * @param transformation a {@link Function} describing the combination function to combine the values of the indicator
+     * @param combination a {@link Function} describing the combination function to combine the values of the indicators
      */
-    public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight, BinaryOperator<Num> transformation) {
+    public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight, BinaryOperator<Num> combination) {
         // TODO check both indicators use the same series/num function
         super(indicatorLeft);
         this.indicatorLeft = indicatorLeft;
         this.indicatorRight = indicatorRight;
-        this.transformationFunction = transformation;
+        this.combineFunction = combination;
     }
 
     @Override
     protected Num calculate(int index) {
-        return transformationFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
+        return combineFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
     }
 
     /**
