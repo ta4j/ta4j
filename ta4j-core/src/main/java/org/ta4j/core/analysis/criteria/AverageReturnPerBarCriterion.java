@@ -38,9 +38,8 @@ import org.ta4j.core.num.Num;
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion grossReturn = new GrossReturnCriterion();
-
-    private AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
+    private final AnalysisCriterion grossReturn = new GrossReturnCriterion();
+    private final AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

@@ -60,8 +60,8 @@ public class StrategyExecutionLogging {
         try {
             configurator.doConfigure(LOGBACK_CONF_FILE);
         } catch (JoranException je) {
-            Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE,
-                    "Unable to load Logback configuration", je);
+            Logger.getLogger(StrategyExecutionLogging.class.getName())
+                    .log(Level.SEVERE, "Unable to load Logback configuration", je);
         }
     }
 

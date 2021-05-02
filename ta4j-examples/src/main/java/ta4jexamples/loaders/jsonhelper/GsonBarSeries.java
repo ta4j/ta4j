@@ -21,44 +21,37 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.pnl;
+package ta4jexamples.loaders.jsonhelper;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 
-/**
- * Gross loss criterion (with commissions).
- *
- * <p>
- * The gross loss of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
- */
-public class GrossLossCriterion extends AbstractAnalysisCriterion {
+import java.util.LinkedList;
+import java.util.List;
 
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num loss = position.getGrossProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+public class GsonBarSeries {
+
+    private String name;
+    private List<GsonBarData> ohlc = new LinkedList<>();
+
+    public static GsonBarSeries from(BarSeries series) {
+        GsonBarSeries result = new GsonBarSeries();
+        result.name = series.getName();
+        List<Bar> barData = series.getBarData();
+        for (Bar bar : barData) {
+            GsonBarData exportableBarData = GsonBarData.from(bar);
+            result.ohlc.add(exportableBarData);
         }
-        return series.numOf(0);
+        return result;
     }
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+    public BarSeries toBarSeries() {
+        BaseBarSeries result = new BaseBarSeriesBuilder().withName(this.name).build();
+        for (GsonBarData data : ohlc) {
+            data.addTo(result);
+        }
+        return result;
     }
-
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
 }

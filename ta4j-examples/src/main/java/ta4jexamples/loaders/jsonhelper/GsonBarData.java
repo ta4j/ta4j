@@ -21,46 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package ta4jexamples.loaders.jsonhelper;
 
-import static junit.framework.TestCase.assertEquals;
-
-import java.util.function.Function;
-
-import org.junit.Before;
-import org.junit.Test;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.BaseBarSeries;
 
-public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
-    private TypicalPriceIndicator typicalPriceIndicator;
+public class GsonBarData {
+    private long endTime;
+    private Number openPrice;
+    private Number highPrice;
+    private Number lowPrice;
+    private Number closePrice;
+    private Number volume;
+    private Number amount;
 
-    private BarSeries barSeries;
-
-    public TypicalPriceIndicatorTest(Function<Number, Num> numFunction) {
-        super(numFunction);
+    public static GsonBarData from(Bar bar) {
+        GsonBarData result = new GsonBarData();
+        result.endTime = bar.getEndTime().toInstant().toEpochMilli();
+        result.openPrice = bar.getOpenPrice().getDelegate();
+        result.highPrice = bar.getHighPrice().getDelegate();
+        result.lowPrice = bar.getLowPrice().getDelegate();
+        result.closePrice = bar.getClosePrice().getDelegate();
+        result.volume = bar.getVolume().getDelegate();
+        result.amount = bar.getAmount().getDelegate();
+        return result;
     }
 
-    @Before
-    public void setUp() {
-        barSeries = new MockBarSeries(numFunction);
-        typicalPriceIndicator = new TypicalPriceIndicator(barSeries);
-    }
-
-    @Test
-    public void indicatorShouldRetrieveBarHighPrice() {
-        for (int i = 0; i < 10; i++) {
-            Bar bar = barSeries.getBar(i);
-            Num typicalPrice = bar.getHighPrice()
-                    .plus(bar.getLowPrice())
-                    .plus(bar.getClosePrice())
-                    .dividedBy(barSeries.numOf(3));
-            assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
-        }
+    public void addTo(BaseBarSeries barSeries) {
+        Instant endTimeInstant = Instant.ofEpochMilli(endTime);
+        ZonedDateTime endBarTime = ZonedDateTime.ofInstant(endTimeInstant, ZoneId.systemDefault());
+        barSeries.addBar(endBarTime, openPrice, highPrice, lowPrice, closePrice, volume, amount);
     }
 }

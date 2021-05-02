@@ -84,8 +84,14 @@ public class SimpleMovingAverageBacktest {
 
     private static BaseBar createBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
             Number closePrice, Number volume) {
-        return BaseBar.builder(DecimalNum::valueOf, Number.class).timePeriod(Duration.ofDays(1)).endTime(endTime)
-                .openPrice(openPrice).highPrice(highPrice).lowPrice(lowPrice).closePrice(closePrice).volume(volume)
+        return BaseBar.builder(DecimalNum::valueOf, Number.class)
+                .timePeriod(Duration.ofDays(1))
+                .endTime(endTime)
+                .openPrice(openPrice)
+                .highPrice(highPrice)
+                .lowPrice(lowPrice)
+                .closePrice(closePrice)
+                .volume(volume)
                 .build();
     }
 

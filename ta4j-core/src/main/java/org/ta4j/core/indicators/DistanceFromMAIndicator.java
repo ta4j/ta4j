@@ -40,18 +40,19 @@ import org.ta4j.core.num.Num;
  *      </a>
  */
 public class DistanceFromMAIndicator extends CachedIndicator<Num> {
-    private static final Set<Class> supportedMovingAverages = new HashSet<>(
+    private static final Set<Class<?>> supportedMovingAverages = new HashSet<>(
             Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
                     WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
                     LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class));
-    private final CachedIndicator movingAverage;
+    private final CachedIndicator<Num> movingAverage;
 
     /**
-     *
+     * Constructor.
+     * 
      * @param series        the bar series {@link BarSeries}.
      * @param movingAverage the moving average.
      */
-    public DistanceFromMAIndicator(BarSeries series, CachedIndicator movingAverage) {
+    public DistanceFromMAIndicator(BarSeries series, CachedIndicator<Num> movingAverage) {
         super(series);
         if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
             throw new IllegalArgumentException(
