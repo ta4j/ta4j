@@ -11,7 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - **Num** removed Serializable
-- **DifferenceIndicator(i1,i2)** is by the more flexiable CombineIndicator.minus(i1,i2)
+- **DifferenceIndicator(i1,i2)** is replaced by the more flexiable CombineIndicator.minus(i1,i2)
 
 ### Added
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
