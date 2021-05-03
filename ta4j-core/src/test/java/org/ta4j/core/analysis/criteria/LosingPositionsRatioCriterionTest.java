@@ -82,8 +82,8 @@ public class LosingPositionsRatioCriterionTest extends AbstractCriterionTest {
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(12), numOf(8)));
-        assertFalse(criterion.betterThan(numOf(8), numOf(12)));
+        assertTrue(criterion.betterThan(numOf(8), numOf(12)));
+        assertFalse(criterion.betterThan(numOf(12), numOf(8)));
     }
 
     @Test
