@@ -54,6 +54,7 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
                 .reduce(series.numOf(0), Num::plus);
     }
 
+    /** The lower the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);

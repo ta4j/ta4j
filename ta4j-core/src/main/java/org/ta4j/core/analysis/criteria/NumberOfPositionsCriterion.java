@@ -43,6 +43,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         return series.numOf(tradingRecord.getPositionCount());
     }
 
+    /** The lower the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);

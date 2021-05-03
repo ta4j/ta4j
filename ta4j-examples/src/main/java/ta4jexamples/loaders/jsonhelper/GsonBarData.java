@@ -23,12 +23,12 @@
  */
 package ta4jexamples.loaders.jsonhelper;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBarSeries;
-
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBarSeries;
 
 public class GsonBarData {
     private long endTime;

@@ -23,14 +23,14 @@
  */
 package org.ta4j.core;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class enables backtesting of multiple strategies and comparing them to
