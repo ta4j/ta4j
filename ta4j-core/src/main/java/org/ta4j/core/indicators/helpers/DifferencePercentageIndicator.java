@@ -38,22 +38,22 @@ import org.ta4j.core.num.Num;
  * percentage from the precious value.
  *
  */
-public class DifferencePercentage extends CachedIndicator<Num> {
+public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
     private final Num hundred;
     private Num lastNotification;
 
-    public DifferencePercentage(Indicator<Num> indicator) {
+    public DifferencePercentageIndicator(Indicator<Num> indicator) {
         this(indicator, indicator.numOf(0));
     }
 
-    public DifferencePercentage(Indicator<Num> indicator, Number percentageThreshold) {
+    public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
         this(indicator, indicator.numOf(percentageThreshold));
     }
 
-    public DifferencePercentage(Indicator<Num> indicator, Num percentageThreshold) {
+    public DifferencePercentageIndicator(Indicator<Num> indicator, Num percentageThreshold) {
         super(indicator);
         this.indicator = indicator;
         this.percentageThreshold = percentageThreshold;
