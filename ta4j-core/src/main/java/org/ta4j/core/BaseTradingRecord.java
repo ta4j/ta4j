@@ -85,9 +85,13 @@ public class BaseTradingRecord implements TradingRecord {
     private Position currentPosition;
 
     /**
-     * Trading cost models
+     * Trading cost model
      */
     private CostModel transactionCostModel;
+
+    /**
+     * Holding cost model
+     */
     private CostModel holdingCostModel;
 
     /**
@@ -263,6 +267,16 @@ public class BaseTradingRecord implements TradingRecord {
         return null;
     }
 
+    @Override
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    @Override
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
+    }
+
     /**
      * Records an trade and the corresponding position (if closed).
      *
@@ -301,9 +315,10 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord: " + name != null ? name : "" + "\n");
+        sb.append("BaseTradingRecord: " + name != null ? name : "");
+        sb.append(System.lineSeparator());
         for (Trade trade : trades) {
-            sb.append(trade.toString()).append("\n");
+            sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();
     }

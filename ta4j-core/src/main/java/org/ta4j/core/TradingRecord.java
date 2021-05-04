@@ -29,6 +29,7 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -167,4 +168,14 @@ public interface TradingRecord extends Serializable {
      * @return the last exit trade recorded
      */
     Trade getLastExit();
+
+    /**
+     * @return the transaction cost model
+     */
+    public CostModel getTransactionCostModel();
+
+    /**
+     * @return the holding cost model
+     */
+    public CostModel getHoldingCostModel();
 }

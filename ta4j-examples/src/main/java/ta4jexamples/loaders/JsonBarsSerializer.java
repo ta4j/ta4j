@@ -23,9 +23,6 @@
  */
 package ta4jexamples.loaders;
 
-import org.ta4j.core.BarSeries;
-import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
-
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -33,8 +30,12 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.ta4j.core.BarSeries;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import ta4jexamples.loaders.jsonhelper.GsonBarSeries;
 
 public class JsonBarsSerializer {
 

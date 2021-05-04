@@ -25,7 +25,9 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -35,8 +37,9 @@ import org.ta4j.core.num.Num;
  * 
  * <p>
  * Transforms any AnalysisCriterion into an Indicator. Returns <code>true</code>
- * if the calculated criterion value on a bar index is better than the
- * {@link #requiredCriterionValue}, otherwise returns <code>false</code>.
+ * if the calculated criterion value till a bar index is better than the
+ * {@link #requiredCriterionValue} or equal, otherwise returns
+ * <code>false</code>.
  */
 public final class CriterionIndicator extends CachedIndicator<Boolean> {
 
@@ -85,8 +88,36 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
-        Num calculatedCriterionValue = tradingRecord != null ? criterion.calculate(getBarSeries(), tradingRecord)
-                : criterion.calculate(getBarSeries(), position);
-        return criterion.betterThan(calculatedCriterionValue, requiredCriterionValue);
+        if (tradingRecord != null) {
+            TradingRecord tradingRecordTillIndex = new BaseTradingRecord(tradingRecord.getStartingType(),
+                    tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
+            for (Position pos : tradingRecord.getPositions()) {
+                // consider only those positions made till index
+                if (pos.getEntry().getIndex() <= index) {
+                    Trade entry = pos.getEntry();
+                    tradingRecordTillIndex.enter(entry.getIndex(), entry.getNetPrice(), entry.getAmount());
+                }
+                if (pos.getExit() != null && pos.getExit().getIndex() <= index) {
+                    Trade exit = pos.getExit();
+                    tradingRecordTillIndex.exit(exit.getIndex(), exit.getNetPrice(), exit.getAmount());
+                }
+            }
+
+            Num calculatedCriterionValue = criterion.calculate(getBarSeries(), tradingRecordTillIndex);
+            return criterion.betterThan(calculatedCriterionValue, requiredCriterionValue)
+                    || calculatedCriterionValue.isEqual(requiredCriterionValue);
+
+        } else if (position != null) {
+            boolean entryTradeWithinIndex = position.getEntry().getIndex() <= index;
+            boolean exitTradeWithinIndex = position.getExit() == null
+                    || position.getExit() != null && position.getExit().getIndex() <= index;
+            if (entryTradeWithinIndex && exitTradeWithinIndex) {
+                Num calculatedCriterionValue = criterion.calculate(getBarSeries(), position);
+                return criterion.betterThan(calculatedCriterionValue, requiredCriterionValue)
+                        || calculatedCriterionValue.isEqual(requiredCriterionValue);
+            }
+        }
+        return false;
     }
+
 }
