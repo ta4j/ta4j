@@ -5,6 +5,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 
 ### Fixed
+- **VersusBuyAndHoldCriterionTest** NaN-Error.
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
