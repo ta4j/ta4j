@@ -15,7 +15,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Added
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
-- **Example** added a json serialization and deserialization example of BarSeries using google-gson library
+- :tada: **Example** added a json serialization and deserialization example of BarSeries using google-gson library
+- :tada: **`CriterionIndicator`** to use any Criterion as an Indicator
 
 ## 0.14 (released April 25, 2021)
 

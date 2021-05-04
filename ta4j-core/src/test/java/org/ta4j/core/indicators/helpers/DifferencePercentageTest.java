@@ -35,10 +35,10 @@ import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
-public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class DifferencePercentageTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private DifferencePercentage percentageChangeIndicator;
 
-    public DifferencePercentageIndicatorTest(Function<Number, Num> numFunction) {
+    public DifferencePercentageTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
