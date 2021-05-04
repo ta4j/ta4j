@@ -23,13 +23,13 @@
  */
 package ta4jexamples.loaders.jsonhelper;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-
-import java.util.LinkedList;
-import java.util.List;
 
 public class GsonBarSeries {
 
