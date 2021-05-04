@@ -23,18 +23,20 @@
  */
 package ta4jexamples.loaders;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static org.junit.Assert.*;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
 
 public class JsonBarsSerializerTest {
 
