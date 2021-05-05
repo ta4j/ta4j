@@ -172,10 +172,10 @@ public interface TradingRecord extends Serializable {
     /**
      * @return the transaction cost model
      */
-    public CostModel getTransactionCostModel();
+    CostModel getTransactionCostModel();
 
     /**
      * @return the holding cost model
      */
-    public CostModel getHoldingCostModel();
+    CostModel getHoldingCostModel();
 }
