@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  * Transforms any AnalysisCriterion into an Indicator. Returns <code>true</code>
  * if the calculated criterion value till a bar index is better than the
  * {@link #requiredCriterionValue} or equal, otherwise returns
- * <code>false</code>.
+ * <code>false</code>. Returns always <code>null</code>
  */
 public final class CriterionIndicator extends CachedIndicator<Boolean> {
 
@@ -117,6 +117,7 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
                         || calculatedCriterionValue.isEqual(requiredCriterionValue);
             }
         }
+        // empty tradingRecords or no position must return always undefined
         return false;
     }
 

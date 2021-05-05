@@ -48,6 +48,24 @@ public class CriterionIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
+    public void testWithEmptyTradingRecord() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+        Num requiredCriterionValue = series.numOf(1);
+        criterionIndicator = new CriterionIndicator(series, tradingRecord, numberOfWinningPositionsCriterion,
+                requiredCriterionValue);
+
+        // empty tradingRecords must return always false
+        assertFalse(criterionIndicator.getValue(0));
+        assertFalse(criterionIndicator.getValue(1));
+        assertFalse(criterionIndicator.getValue(2));
+        assertFalse(criterionIndicator.getValue(3));
+        assertFalse(criterionIndicator.getValue(4));
+        assertFalse(criterionIndicator.getValue(5));
+    }
+
+    @Test
     public void testWithTradingRecord() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
