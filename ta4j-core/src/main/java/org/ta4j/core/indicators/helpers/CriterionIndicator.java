@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  * Transforms any AnalysisCriterion into an Indicator. Returns <code>true</code>
  * if the calculated criterion value till a bar index is better than the
  * {@link #requiredCriterionValue} or equal, otherwise returns
- * <code>false</code>. Returns always <code>null</code>
+ * <code>false</code>.
  */
 public final class CriterionIndicator extends CachedIndicator<Boolean> {
 
