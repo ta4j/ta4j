@@ -88,7 +88,7 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
-        if (tradingRecord != null) {
+        if (tradingRecord != null && !tradingRecord.getPositions().isEmpty()) {
             TradingRecord tradingRecordTillIndex = new BaseTradingRecord(tradingRecord.getStartingType(),
                     tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
             for (Position pos : tradingRecord.getPositions()) {
