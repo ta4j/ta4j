@@ -25,13 +25,20 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Close price indicator.
  */
-public class ClosePriceIndicator extends PriceIndicator {
+public class ClosePriceIndicator extends AbstractIndicator<Num> {
 
     public ClosePriceIndicator(BarSeries series) {
-        super(series, Bar::getClosePrice);
+        super(series);
+    }
+
+    @Override
+    public Num getValue(int index) {
+        return getBarSeries().getBar(index).getClosePrice();
     }
 }

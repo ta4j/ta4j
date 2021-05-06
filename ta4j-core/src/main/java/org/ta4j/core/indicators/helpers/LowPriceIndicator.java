@@ -25,14 +25,20 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Low price indicator.
  */
-public class LowPriceIndicator extends PriceIndicator {
+public class LowPriceIndicator extends AbstractIndicator<Num> {
 
     public LowPriceIndicator(BarSeries series) {
-        super(series, Bar::getLowPrice);
+        super(series);
     }
 
+    @Override
+    public Num getValue(int index) {
+        return getBarSeries().getBar(index).getLowPrice();
+    }
 }

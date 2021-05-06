@@ -9,9 +9,11 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
+- **Open|High|Low|Close** do not cache price values anymore
 
 ### Removed/Deprecated
 - **Num** removed Serializable
+- **PriceIndicator** removed
 
 ### Added
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor

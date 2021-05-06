@@ -29,6 +29,7 @@ import java.util.Set;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,7 +45,7 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
             Arrays.asList(EMAIndicator.class, DoubleEMAIndicator.class, TripleEMAIndicator.class, SMAIndicator.class,
                     WMAIndicator.class, ZLEMAIndicator.class, HMAIndicator.class, KAMAIndicator.class,
                     LWMAIndicator.class, AbstractEMAIndicator.class, MMAIndicator.class));
-    private final CachedIndicator<Num> movingAverage;
+    private final Indicator<Num> movingAverage;
 
     /**
      * Constructor.
@@ -52,7 +53,7 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
      * @param series        the bar series {@link BarSeries}.
      * @param movingAverage the moving average.
      */
-    public DistanceFromMAIndicator(BarSeries series, CachedIndicator<Num> movingAverage) {
+    public DistanceFromMAIndicator(BarSeries series, Indicator<Num> movingAverage) {
         super(series);
         if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
             throw new IllegalArgumentException(
