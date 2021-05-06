@@ -243,9 +243,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public Trade getLastTrade(TradeType tradeType) {
-        if (TradeType.BUY.equals(tradeType) && !buyTrades.isEmpty()) {
+        if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
             return buyTrades.get(buyTrades.size() - 1);
-        } else if (TradeType.SELL.equals(tradeType) && !sellTrades.isEmpty()) {
+        } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
             return sellTrades.get(sellTrades.size() - 1);
         }
         return null;
@@ -297,10 +297,10 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the new trade in trades list
         trades.add(trade);
-        if (TradeType.BUY.equals(trade.getType())) {
+        if (TradeType.BUY == trade.getType()) {
             // Storing the new trade in buy trades list
             buyTrades.add(trade);
-        } else if (TradeType.SELL.equals(trade.getType())) {
+        } else if (TradeType.SELL == trade.getType()) {
             // Storing the new trade in sell trades list
             sellTrades.add(trade);
         }
@@ -315,7 +315,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord: " + name != null ? name : "");
+        sb.append("BaseTradingRecord: " + (name == null ? "" : name));
         sb.append(System.lineSeparator());
         for (Trade trade : trades) {
             sb.append(trade.toString()).append(System.lineSeparator());

@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.15 (unreleased)
 
 ### Breaking
+- **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 
 ### Fixed
 
