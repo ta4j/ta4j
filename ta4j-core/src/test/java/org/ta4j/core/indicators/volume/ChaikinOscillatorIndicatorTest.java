@@ -62,6 +62,7 @@ public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
         BarSeries series = new MockBarSeries(bars);
         ChaikinOscillatorIndicator co = new ChaikinOscillatorIndicator(series);
+
         assertNumEquals(0.0, co.getValue(0));
         assertNumEquals(-361315.15734265576, co.getValue(1));
         assertNumEquals(-611288.0465670675, co.getValue(2));
