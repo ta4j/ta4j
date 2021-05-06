@@ -115,7 +115,8 @@ public interface BarSeries extends Serializable {
         if (!getBarData().isEmpty()) {
             Bar firstBar = getFirstBar();
             Bar lastBar = getLastBar();
-            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)).append(" - ")
+            sb.append(firstBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                    .append(" - ")
                     .append(lastBar.getEndTime().format(DateTimeFormatter.ISO_DATE_TIME));
         }
         return sb.toString();
@@ -355,5 +356,31 @@ public interface BarSeries extends Serializable {
      * @return a function Number -> Num
      */
     Function<Number, Num> function();
+    
+    /**
+     * @return any num to determine its Num type
+     */
+    Num numType();
+
+    /**
+     * @return the Num of 0
+     */
+    default Num zero() {
+        return numType().
+    }
+
+    /**
+     * @return the Num of 1
+     */
+    default Num one() {
+        return numOf(1);
+    }
+
+    /**
+     * @return the Num of 100
+     */
+    default Num hundred() {
+        return numOf(100);
+    }
 
 }
