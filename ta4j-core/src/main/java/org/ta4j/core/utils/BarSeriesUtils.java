@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Function;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -145,18 +144,18 @@ public final class BarSeriesUtils {
      * <code>beginIndex</code>, <code>endIndex</code> and
      * <code>maximumBarCount</code> from the provided barSeries.
      * 
-     * @param barSeries          the BarSeries
-     * @param conversionFunction the conversionFunction
-     * @return new cloned BarSeries with bars converted by conversionFunction
+     * @param barSeries the BarSeries
+     * @param numType   any Num to determine its type
+     * @return new cloned BarSeries with bars converted by numType
      */
-    public static BarSeries convertBarSeries(BarSeries barSeries, Function<Number, Num> conversionFunction) {
+    public static BarSeries convertBarSeries(BarSeries barSeries, Num numType) {
         List<Bar> bars = barSeries.getBarData();
         if (bars == null || bars.isEmpty())
             return barSeries;
         List<Bar> convertedBars = new ArrayList<>();
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
-            Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
+            Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(numType.function()::apply)
                     .timePeriod(bar.getTimePeriod())
                     .endTime(bar.getEndTime())
                     .openPrice(bar.getOpenPrice().getDelegate())
@@ -169,7 +168,7 @@ public final class BarSeriesUtils {
                     .build();
             convertedBars.add(convertedBar);
         }
-        BarSeries convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, conversionFunction);
+        BarSeries convertedBarSeries = new BaseBarSeries(barSeries.getName(), convertedBars, numType);
         if (barSeries.getMaximumBarCount() > 0) {
             convertedBarSeries.setMaximumBarCount(barSeries.getMaximumBarCount());
         }

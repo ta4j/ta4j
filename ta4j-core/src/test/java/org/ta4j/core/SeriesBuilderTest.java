@@ -42,7 +42,7 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         super(numFunction);
     }
 
-    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction);
+    private final BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0));
 
     @Test
     public void testBuilder() {

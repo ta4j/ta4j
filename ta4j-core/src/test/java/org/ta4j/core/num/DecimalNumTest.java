@@ -154,23 +154,23 @@ public class DecimalNumTest {
             superPrecisionNum = superPrecisionNum.plus(DecimalNum.valueOf(deltas[i % 6]));
         }
         superPrecisionSeries = new BaseBarSeriesBuilder().withName("superPrecision")
-                .withNumTypeOf(superPrecisionFunc)
+                .withNumTypeOf(superPrecisionFunc.apply(0))
                 .withBars(superPrecisionBarList)
                 .build();
         precisionSeries = new BaseBarSeriesBuilder().withName("precision")
-                .withNumTypeOf(precisionFunc)
+                .withNumTypeOf(precisionFunc.apply(0))
                 .withBars(precisionBarList)
                 .build();
         precision32Series = new BaseBarSeriesBuilder().withName("precision32")
-                .withNumTypeOf(precision32Func)
+                .withNumTypeOf(precision32Func.apply(0))
                 .withBars(precision32BarList)
                 .build();
         doubleSeries = new BaseBarSeriesBuilder().withName("double")
-                .withNumTypeOf(doubleFunc)
+                .withNumTypeOf(doubleFunc.apply(0))
                 .withBars(doubleBarList)
                 .build();
         lowPrecisionSeries = new BaseBarSeriesBuilder().withName("lowPrecision")
-                .withNumTypeOf(lowPrecisionFunc)
+                .withNumTypeOf(lowPrecisionFunc.apply(0))
                 .withBars(lowPrecisionBarList)
                 .build();
     }

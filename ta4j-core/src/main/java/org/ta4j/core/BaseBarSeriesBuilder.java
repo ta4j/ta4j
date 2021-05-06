@@ -25,7 +25,6 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
@@ -34,12 +33,12 @@ import org.ta4j.core.num.Num;
 public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
     /**
-     * Default Num type function
+     * Default Num type to determine the Num function
      **/
-    private static Function<Number, Num> defaultFunction = DecimalNum::valueOf;
+    private static Num defaultNumType = DecimalNum.ZERO;
+    private Num numType;
     private List<Bar> bars;
     private String name;
-    private Function<Number, Num> numFunction;
     private boolean constrained;
     private int maxBarCount;
 
@@ -47,14 +46,14 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         initValues();
     }
 
-    public static void setDefaultFunction(Function<Number, Num> defaultFunction) {
-        BaseBarSeriesBuilder.defaultFunction = defaultFunction;
+    public static void setDefaultNumType(Num defaultNumType) {
+        BaseBarSeriesBuilder.defaultNumType = defaultNumType;
     }
 
     private void initValues() {
         this.bars = new ArrayList<>();
         this.name = "unnamed_series";
-        this.numFunction = BaseBarSeriesBuilder.defaultFunction;
+        this.numType = BaseBarSeriesBuilder.defaultNumType;
         this.constrained = false;
         this.maxBarCount = Integer.MAX_VALUE;
     }
@@ -67,7 +66,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
             beginIndex = 0;
             endIndex = bars.size() - 1;
         }
-        BaseBarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
+        BaseBarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, numType);
         series.setMaximumBarCount(maxBarCount);
         initValues(); // reinitialize values for next series
         return series;
@@ -93,25 +92,20 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         return this;
     }
 
-    public BaseBarSeriesBuilder withNumTypeOf(Num type) {
-        numFunction = type.function();
-        return this;
-    }
-
-    public BaseBarSeriesBuilder withNumTypeOf(Function<Number, Num> function) {
-        numFunction = function;
+    public BaseBarSeriesBuilder withNumTypeOf(Num numType) {
+        this.numType = numType;
         return this;
     }
 
     public BaseBarSeriesBuilder withNumTypeOf(Class<? extends Num> abstractNumClass) {
         if (abstractNumClass == DecimalNum.class) {
-            numFunction = DecimalNum::valueOf;
+            numType = DecimalNum.ZERO;
             return this;
         } else if (abstractNumClass == DoubleNum.class) {
-            numFunction = DoubleNum::valueOf;
+            numType = DoubleNum.ZERO;
             return this;
         }
-        numFunction = DecimalNum::valueOf;
+        numType = DecimalNum.ZERO;
         return this;
     }
 

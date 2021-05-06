@@ -112,14 +112,15 @@ public class XlsTestsUtils {
      *
      * @param clazz    class containing the file resources
      * @param fileName file name of the file resource
+     * @param numType  any Num to determine its type
      * @return BarSeries of the data
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getSeries throws DataFormatException
      */
-    public static BarSeries getSeries(Class<?> clazz, String fileName, Function<Number, Num> numFunction)
+    public static BarSeries getSeries(Class<?> clazz, String fileName, Num numType)
             throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return getSeries(sheet, numFunction);
+        return getSeries(sheet, numType);
     }
 
     /**
@@ -127,13 +128,14 @@ public class XlsTestsUtils {
      * data section header and appears in the first six columns to the end of the
      * file. Empty cells in the data are forbidden.
      *
-     * @param sheet mutable Sheet
+     * @param sheet   mutable Sheet
+     * @param numType any Num to determine its type
      * @return BarSeries of the data
      * @throws DataFormatException if getData throws DataFormatException or if the
      *                             data contains empty cells
      */
-    private static BarSeries getSeries(Sheet sheet, Function<Number, Num> numFunction) throws DataFormatException {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+    private static BarSeries getSeries(Sheet sheet, Num numType) throws DataFormatException {
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numType).build();
         FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
         List<Row> rows = getData(sheet);
         int minInterval = Integer.MAX_VALUE;
@@ -166,11 +168,11 @@ public class XlsTestsUtils {
                     ZoneId.systemDefault());
             series.addBar(duration, endDateTime,
                     // open, high, low, close, volume
-                    numFunction.apply(new BigDecimal(cellValues[1].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[2].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[3].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[4].formatAsString())),
-                    numFunction.apply(new BigDecimal(cellValues[5].formatAsString())), numFunction.apply(0));
+                    numType.numOf(new BigDecimal(cellValues[1].formatAsString())),
+                    numType.numOf(new BigDecimal(cellValues[2].formatAsString())),
+                    numType.numOf(new BigDecimal(cellValues[3].formatAsString())),
+                    numType.numOf(new BigDecimal(cellValues[4].formatAsString())),
+                    numType.numOf(new BigDecimal(cellValues[5].formatAsString())), numType.numOf(0));
         }
         return series;
     }
@@ -287,16 +289,17 @@ public class XlsTestsUtils {
      * @param clazz    class containing the file resource
      * @param fileName file name of the file resource
      * @param column   column number of the indicator values
+     * @param numType  any Num to determine its type
      * @param params   indicator parameters
      * @return Indicator<Num> as calculated by the XLS file given the parameters
      * @throws IOException         if getSheet throws IOException
      * @throws DataFormatException if getSeries or getValues throws
      *                             DataFormatException
      */
-    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column,
-            Function<Number, Num> numFunction, Object... params) throws IOException, DataFormatException {
+    public static Indicator<Num> getIndicator(Class<?> clazz, String fileName, int column, Num numType,
+            Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
-        return new MockIndicator(getSeries(sheet, numFunction), getValues(sheet, column, numFunction, params));
+        return new MockIndicator(getSeries(sheet, numType), getValues(sheet, column, numType.function(), params));
     }
 
     /**

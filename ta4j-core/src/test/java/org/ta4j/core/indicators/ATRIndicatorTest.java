@@ -49,7 +49,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void testDummy() throws Exception {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build();
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(5), 0, 12, 15, 8, 0, 0, 0, numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(4), 0, 8, 11, 6, 0, 0, 0, numFunction));
         series.addBar(new MockBar(ZonedDateTime.now().minusSeconds(3), 0, 15, 17, 14, 0, 0, 0, numFunction));

@@ -74,7 +74,7 @@ public final class DecimalNum implements Num {
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
 
-    private static final DecimalNum ZERO = DecimalNum.valueOf(0);
+    public static final DecimalNum ZERO = DecimalNum.valueOf(0);
     private static final DecimalNum ONE = DecimalNum.valueOf(1);
     private static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
 

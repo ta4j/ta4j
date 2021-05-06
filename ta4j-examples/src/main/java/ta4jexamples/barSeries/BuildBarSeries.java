@@ -49,7 +49,7 @@ public class BuildBarSeries {
     public static void main(String[] args) {
         BarSeries a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
-        BaseBarSeriesBuilder.setDefaultFunction(DoubleNum::valueOf);
+        BaseBarSeriesBuilder.setDefaultNumType(DoubleNum.valueOf(0));
         a = buildAndAddData();
         System.out.println("a: " + a.getBar(0).getClosePrice().getName());
         BarSeries b = buildWithDouble();
@@ -60,7 +60,7 @@ public class BuildBarSeries {
         BarSeries g = buildAndAddBarsFromList();
         // Fix: Reset default function, such that this test case does not influence the
         // following test cases in a combined test run
-        BaseBarSeriesBuilder.setDefaultFunction(DecimalNum::valueOf);
+        BaseBarSeriesBuilder.setDefaultNumType(DecimalNum.valueOf(0));
     }
 
     private static BarSeries buildAndAddData() {
@@ -111,7 +111,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyDoubleNum() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        BarSeries series = new BaseBarSeries("mySeries", DoubleNum.valueOf(0)); // uses DoubleNum
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
         series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
@@ -122,7 +122,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyAndAddBarManually() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        BarSeries series = new BaseBarSeries("mySeries", DoubleNum.valueOf(0)); // uses DoubleNum
 
         // create bars and add them to the series. The bars must have the same Num type
         // as the series
@@ -194,7 +194,7 @@ public class BuildBarSeries {
         List<Bar> bars = Arrays.asList(b1, b2, b3);
 
         return new BaseBarSeriesBuilder().withName("mySeries")
-                .withNumTypeOf(DoubleNum::valueOf)
+                .withNumTypeOf(DoubleNum.valueOf(0))
                 .withMaxBarCount(5)
                 .withBars(bars)
                 .build();

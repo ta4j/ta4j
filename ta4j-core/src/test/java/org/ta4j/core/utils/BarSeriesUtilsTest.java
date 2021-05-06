@@ -81,7 +81,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.add(bar5);
         bars.add(bar6);
 
-        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Series Name").withBars(bars).build();
+        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).withName("Series Name").withBars(bars).build();
 
         final Bar newBar3 = new MockBar(bar3.getEndTime(), 1d, 1d, 1d, 1d, 1d, 1d, 33, numFunction);
         final Bar newBar5 = new MockBar(bar5.getEndTime(), 1d, 1d, 1d, 1d, 1d, 1d, 55, numFunction);
@@ -138,7 +138,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.add(bar7);
         bars.add(bar8);
 
-        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Series Name").withBars(bars).build();
+        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).withName("Series Name").withBars(bars).build();
 
         // return the beginTime of each missing bar
         List<ZonedDateTime> missingBars = BarSeriesUtils.findMissingBars(series, false);
@@ -171,14 +171,14 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .build();
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
-        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNumFunction);
+        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNumFunction.apply(0));
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
         final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
-                decimalNumFunction);
+                decimalNumFunction.apply(0));
 
         // convert barSeries with DoubleNum to barSeries with NaNNum
-        final BarSeries doubleToNaNSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, nanNumFunction);
+        final BarSeries doubleToNaNSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, nanNumFunction.apply(0));
 
         assertEquals(decimalBarSeries.getFirstBar().getClosePrice().getClass(), DecimalNum.class);
         assertEquals(decimalToDoubleSeries.getFirstBar().getClosePrice().getClass(), DoubleNum.class);
@@ -208,7 +208,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.add(bar1);
         bars.add(bar8);
 
-        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Series Name").withBars(bars).build();
+        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).withName("Series Name").withBars(bars).build();
         List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(series);
 
         // there must be 1 overlapping bars (bar1)
@@ -217,7 +217,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void addBars() {
-        BarSeries barSeries = new BaseBarSeries("1day", numFunction);
+        BarSeries barSeries = new BaseBarSeries("1day", numFunction.apply(0));
 
         List<Bar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());

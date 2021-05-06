@@ -72,7 +72,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void getValueWithNullBarSeries() {
 
         ConstantIndicator<Num> constant = new ConstantIndicator<>(
-                new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build(), numFunction.apply(10));
+                new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build(), numFunction.apply(10));
         assertEquals(numFunction.apply(10), constant.getValue(0));
         assertEquals(numFunction.apply(10), constant.getValue(100));
         assertNotNull(constant.getBarSeries());

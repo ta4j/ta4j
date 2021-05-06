@@ -67,7 +67,7 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      */
     public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
-            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction);
+            cachedSeries = XlsTestsUtils.getSeries(clazz, fileName, numFunction.apply(0));
         }
         return cachedSeries;
     }
