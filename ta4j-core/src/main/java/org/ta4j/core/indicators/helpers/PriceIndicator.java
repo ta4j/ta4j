@@ -37,7 +37,7 @@ public abstract class PriceIndicator extends CachedIndicator<Num> {
 
     private final Function<Bar, Num> priceFunction;
 
-    public PriceIndicator(BarSeries series, Function<Bar, Num> priceFunction) {
+    protected PriceIndicator(BarSeries series, Function<Bar, Num> priceFunction) {
         super(series);
         this.priceFunction = priceFunction;
     }
