@@ -44,7 +44,8 @@ import org.ta4j.core.num.Num;
 public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     protected BarSeries series;
-    protected final BaseBarSeriesBuilder BarSeriesBuilder = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0));
+    protected final BaseBarSeriesBuilder BarSeriesBuilder = new BaseBarSeriesBuilder()
+            .withNumTypeOf(numFunction.apply(0));
 
     public ChopIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
