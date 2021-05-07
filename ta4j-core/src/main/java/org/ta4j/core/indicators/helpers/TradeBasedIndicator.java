@@ -32,11 +32,11 @@ import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-public abstract class PositionBasedIndicator extends CachedIndicator<Num> {
+public abstract class TradeBasedIndicator extends CachedIndicator<Num> {
 
     private final TradingRecord tradingRecord;
 
-    public PositionBasedIndicator(BarSeries series, TradingRecord tradingRecord) {
+    public TradeBasedIndicator(BarSeries series, TradingRecord tradingRecord) {
         super(series);
         this.tradingRecord = tradingRecord;
     }
@@ -46,7 +46,7 @@ public abstract class PositionBasedIndicator extends CachedIndicator<Num> {
         Trade lastTrade = tradingRecord.getLastTrade();
         if (lastTrade != null) {
             Position lastPosition = tradingRecord.getLastPosition();
-            if (lastPosition == null) {// || lastTrade.getIndex() > lastPosition.getExit().getIndex()) {
+            if (lastPosition == null || lastTrade.getIndex() > lastPosition.getExit().getIndex()) {
                 return calculateLastTradeWasEntry(lastTrade, index);
             } else {
                 return calculateLastTradeWasExit(lastTrade, index);
