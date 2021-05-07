@@ -11,12 +11,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - **Num** removed Serializable
+- **`NumberOfConsecutiveWinningPositionsCriterion`** removed in favour of **`NumberOfConsecutivePositionsCriterion`**
 
 ### Added
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
 - :tada: **Example** added a json serialization and deserialization example of BarSeries using google-gson library
-- :tada: **Enhancement** added **`NumberOfConsecutiveLosingPositionsCriterion`**
+- :tada: **Enhancement** added **`NumberOfConsecutivePositionsCriterion`**
 
 ## 0.14 (released April 25, 2021)
 

@@ -29,13 +29,22 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of maximum consecutive winning position criterion.
+ * Number of maximum consecutive losing or winning position criterion.
  */
-public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalysisCriterion {
+public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCriterion {
+
+    private final PositionFilter positionFilter;
+
+    /**
+     * @param positionFilter consider either the winning or loosing positions
+     */
+    public NumberOfConsecutivePositionsCriterion(PositionFilter positionFilter) {
+        this.positionFilter = positionFilter;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isWinningPosition(position) ? series.numOf(1) : series.numOf(0);
+        return isConsecutive(position) ? series.numOf(1) : series.numOf(0);
     }
 
     @Override
@@ -43,7 +52,7 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
         int maxConsecutive = 0;
         int consecutives = 0;
         for (Position position : tradingRecord.getPositions()) {
-            if (isWinningPosition(position)) {
+            if (isConsecutive(position)) {
                 consecutives = consecutives + 1;
             } else {
                 if (maxConsecutive < consecutives) {
@@ -53,7 +62,7 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
             }
         }
 
-        // in case all positions are winning positions
+        // in case all positions are losing positions
         if (maxConsecutive < consecutives) {
             maxConsecutive = consecutives;
         }
@@ -61,16 +70,19 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
         return series.numOf(maxConsecutive);
     }
 
-    /** The higher the criterion value, the better. */
+    /** The lower the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return positionFilter == PositionFilter.PROFIT ? criterionValue1.isGreaterThan(criterionValue2)
+                : criterionValue1.isLessThan(criterionValue2);
     }
 
-    private boolean isWinningPosition(Position position) {
+    private boolean isConsecutive(Position position) {
         if (position.isClosed()) {
-            return position.getProfit().isPositive();
+            Num pnl = position.getProfit();
+            return positionFilter == PositionFilter.PROFIT ? pnl.isPositive() : pnl.isNegative();
         }
         return false;
     }
+
 }
