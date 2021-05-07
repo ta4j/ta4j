@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  */
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 
-    private NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
-    private GrossLossCriterion grossLossCriterion = new GrossLossCriterion();
+    private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
+    private final GrossLossCriterion grossLossCriterion = new GrossLossCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

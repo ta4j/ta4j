@@ -67,7 +67,7 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateShortOnlyWithProfitPositions() {
+    public void calculateOnlyWithProfitShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series, series.numOf(50)),
                 Trade.buyAt(2, series, series.numOf(50)), Trade.sellAt(3, series, series.numOf(50)),
@@ -78,7 +78,7 @@ public class ProfitLossCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void calculateShortOnlyWithLossPositions() {
+    public void calculateOnlyWithLossShortPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series, series.numOf(50)),
                 Trade.buyAt(1, series, series.numOf(50)), Trade.sellAt(2, series, series.numOf(50)),

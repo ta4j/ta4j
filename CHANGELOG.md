@@ -3,10 +3,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.15 (unreleased)
 
 ### Breaking
+- **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 
 ### Fixed
+- :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
 
 ### Changed
+- **BarSeriesManager** removed empty args constructor
 
 ### Removed/Deprecated
 - **Num** removed Serializable
@@ -16,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
 - :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** Added Indicator#stream() method
+- **Example** added a json serialization and deserialization example of BarSeries using google-gson library
 
 ## 0.14 (released April 25, 2021)
 

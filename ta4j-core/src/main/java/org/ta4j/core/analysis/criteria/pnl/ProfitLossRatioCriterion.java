@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
-    private AverageProfitCriterion averageProfitCriterion = new AverageProfitCriterion();
-    private AverageLossCriterion averageLossCriterion = new AverageLossCriterion();
+    private final AverageProfitCriterion averageProfitCriterion = new AverageProfitCriterion();
+    private final AverageLossCriterion averageLossCriterion = new AverageLossCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

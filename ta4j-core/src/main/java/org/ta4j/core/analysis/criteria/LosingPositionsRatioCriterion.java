@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  */
 public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
 
-    private NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
+    private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {

@@ -157,10 +157,15 @@ public final class BarSeriesUtils {
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
             Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
-                    .timePeriod(bar.getTimePeriod()).endTime(bar.getEndTime())
-                    .openPrice(bar.getOpenPrice().getDelegate()).highPrice(bar.getHighPrice().getDelegate())
-                    .lowPrice(bar.getLowPrice().getDelegate()).closePrice(bar.getClosePrice().getDelegate())
-                    .volume(bar.getVolume().getDelegate()).amount(bar.getAmount().getDelegate()).trades(bar.getTrades())
+                    .timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(bar.getOpenPrice().getDelegate())
+                    .highPrice(bar.getHighPrice().getDelegate())
+                    .lowPrice(bar.getLowPrice().getDelegate())
+                    .closePrice(bar.getClosePrice().getDelegate())
+                    .volume(bar.getVolume().getDelegate())
+                    .amount(bar.getAmount().getDelegate())
+                    .trades(bar.getTrades())
                     .build();
             convertedBars.add(convertedBar);
         }
