@@ -26,7 +26,7 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
@@ -48,7 +48,7 @@ import org.ta4j.core.num.Num;
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
-    private final DifferenceIndicator indicatorMinusPreviousSMAIndicator;
+    private final CombineIndicator indicatorMinusPreviousSMAIndicator;
     private final String name;
 
     /**
@@ -74,7 +74,7 @@ public class DPOIndicator extends CachedIndicator<Num> {
         final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
                 timeFrame);
 
-        this.indicatorMinusPreviousSMAIndicator = new DifferenceIndicator(price, previousSimpleMovingAverage);
+        this.indicatorMinusPreviousSMAIndicator = CombineIndicator.minus(price, previousSimpleMovingAverage);
         this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
     }
 

@@ -65,4 +65,4 @@ Here are some ways for you to contribute to ta4j:
   * [Fork this repository](http://help.github.com/forking/) and submit pull requests.
   * Take a look at [How to contribute](https://ta4j.github.io/ta4j-wiki/How-to-contribute)
 
-See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Cunduct](CODE_OF_CONDUCT.md)
+See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md)

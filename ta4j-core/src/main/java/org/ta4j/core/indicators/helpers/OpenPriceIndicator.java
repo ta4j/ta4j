@@ -25,13 +25,20 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Open price indicator.
  */
-public class OpenPriceIndicator extends PriceIndicator {
+public class OpenPriceIndicator extends AbstractIndicator<Num> {
 
     public OpenPriceIndicator(BarSeries series) {
-        super(series, Bar::getOpenPrice);
+        super(series);
+    }
+
+    @Override
+    public Num getValue(int index) {
+        return getBarSeries().getBar(index).getOpenPrice();
     }
 }
