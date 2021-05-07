@@ -85,8 +85,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Trading cost models
      */
-    private CostModel transactionCostModel;
-    private CostModel holdingCostModel;
+    private final CostModel transactionCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
@@ -277,6 +277,16 @@ public class BaseTradingRecord implements TradingRecord {
             return exitTrades.get(exitTrades.size() - 1);
         }
         return null;
+    }
+
+    @Override
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    @Override
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
     }
 
     /**
