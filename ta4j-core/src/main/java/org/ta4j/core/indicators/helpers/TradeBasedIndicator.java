@@ -28,9 +28,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 public abstract class TradeBasedIndicator<T> extends CachedIndicator<T> {
 
@@ -43,17 +40,28 @@ public abstract class TradeBasedIndicator<T> extends CachedIndicator<T> {
 
     @Override
     protected T calculate(int index) {
-        Trade lastTrade = tradingRecord.getLastTrade();
-        if (lastTrade != null) {
-            Position lastPosition = tradingRecord.getLastPosition();
-            if (lastPosition == null || lastTrade.getIndex() > lastPosition.getExit().getIndex()) {
-                return calculateLastTradeWasEntry(lastTrade, index);
+        if (isLastTradeAvailable()) {
+            if (isLastTradeAnEntryTrade()) {
+                return calculateLastTradeWasEntry(getLastTrade(), index);
             } else {
-                return calculateLastTradeWasExit(lastTrade, index);
+                return calculateLastTradeWasExit(getLastTrade(), index);
             }
         }
 
         return calculateNoLastTradeAvailable(index);
+    }
+
+    private boolean isLastTradeAvailable() {
+        return getLastTrade() != null;
+    }
+
+    private boolean isLastTradeAnEntryTrade() {
+        Position lastPosition = tradingRecord.getLastPosition();
+        return lastPosition == null || getLastTrade().getIndex() > lastPosition.getExit().getIndex();
+    }
+
+    private Trade getLastTrade() {
+        return tradingRecord.getLastTrade();
     }
 
     protected abstract T calculateNoLastTradeAvailable(int index);
