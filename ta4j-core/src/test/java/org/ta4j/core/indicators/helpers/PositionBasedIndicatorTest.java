@@ -25,10 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
+import org.ta4j.core.*;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -60,21 +57,47 @@ public class PositionBasedIndicatorTest extends AbstractIndicatorTest<Indicator<
     public void indicatorReturnNanIfNoTradeAvailable() {
         for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
             assertEquals(NaN, positionIndicator.getValue(index));
-            assertNull(positionIndicator.lastCalledEntryPosition);
-            assertNull(positionIndicator.lastCalledExitPosition);
+            assertNull(positionIndicator.lastCalledEntryTrade);
+            assertNull(positionIndicator.lastCalledExitTrade);
             assertEquals(-1, positionIndicator.lastCalledExitIndex);
             assertEquals(-1, positionIndicator.lastCalledEntryIndex);
             positionIndicator.reset();
         }
     }
 
+    @Test
+    public void indicatorReturnsCorrectEntryCalculations() {
+
+        assertEquals(NaN, positionIndicator.getValue(0));
+        assertNull(positionIndicator.lastCalledEntryTrade);
+        assertNull(positionIndicator.lastCalledExitTrade);
+        assertEquals(-1, positionIndicator.lastCalledExitIndex);
+        assertEquals(-1, positionIndicator.lastCalledEntryIndex);
+        positionIndicator.reset();
+        tradingRecord.enter(1, NaN, NaN);
+
+        for (int index = series.getBeginIndex() + 1; index <= series.getEndIndex(); index++) {
+
+            Num actualValue = positionIndicator.getValue(index);
+            assertEquals(positionIndicator.lastReturnedEntryNumber, actualValue);
+
+            assertEquals(tradingRecord.getCurrentPosition().getEntry(), positionIndicator.lastCalledEntryTrade);
+            assertEquals(index, positionIndicator.lastCalledEntryIndex);
+
+            assertNull(positionIndicator.lastCalledExitTrade);
+            assertEquals(-1, positionIndicator.lastCalledExitIndex);
+
+            positionIndicator.reset();
+        }
+    }
+
     private class TestPositionIndicator extends PositionBasedIndicator {
         int lastCalledEntryIndex;
-        Position lastCalledEntryPosition;
+        Trade lastCalledEntryTrade;
         Num lastReturnedEntryNumber;
 
         int lastCalledExitIndex;
-        Position lastCalledExitPosition;
+        Trade lastCalledExitTrade;
         Num lastReturnedExitNumber;
 
         public TestPositionIndicator(BarSeries series, BaseTradingRecord tradingRecord) {
@@ -83,16 +106,16 @@ public class PositionBasedIndicatorTest extends AbstractIndicatorTest<Indicator<
         }
 
         @Override
-        Num calculateLastPositionWasEntry(Position entryPosition, int index) {
-            lastCalledEntryPosition = entryPosition;
+        Num calculateLastTradeWasEntry(Trade entryTrade, int index) {
+            lastCalledEntryTrade = entryTrade;
             lastCalledEntryIndex = index;
             lastReturnedEntryNumber = getBarSeries().numOf(Math.random());
             return lastReturnedEntryNumber;
         }
 
         @Override
-        Num calculateLastPositionWasExit(Position exitPosition, int index) {
-            lastCalledExitPosition = exitPosition;
+        Num calculateLastTradeWasExit(Trade exitTrade, int index) {
+            lastCalledExitTrade = exitTrade;
             lastCalledExitIndex = index;
             lastReturnedExitNumber = getBarSeries().numOf(Math.random());
             return lastReturnedExitNumber;
@@ -100,11 +123,11 @@ public class PositionBasedIndicatorTest extends AbstractIndicatorTest<Indicator<
 
         void reset() {
             lastCalledEntryIndex = -1;
-            lastCalledEntryPosition = null;
+            lastCalledEntryTrade = null;
             lastReturnedEntryNumber = null;
 
             lastCalledExitIndex = -1;
-            lastCalledExitPosition = null;
+            lastCalledExitTrade = null;
             lastReturnedExitNumber = null;
         }
     }

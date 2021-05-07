@@ -25,6 +25,7 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -42,10 +43,19 @@ public abstract class PositionBasedIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Trade lastTrade = tradingRecord.getLastTrade();
+        if (lastTrade != null) {
+            Position lastPosition = tradingRecord.getLastPosition();
+            if (lastPosition == null || lastTrade.getIndex() == lastPosition.getExit().getIndex()) {
+                return calculateLastTradeWasEntry(lastTrade, index);
+            } else {
+                return NaN;
+            }
+        }
         return NaN;
     }
 
-    abstract Num calculateLastPositionWasEntry(Position entryPosition, int index);
+    abstract Num calculateLastTradeWasEntry(Trade entryTrade, int index);
 
-    abstract Num calculateLastPositionWasExit(Position exitPosition, int index);
+    abstract Num calculateLastTradeWasExit(Trade exitTrade, int index);
 }
