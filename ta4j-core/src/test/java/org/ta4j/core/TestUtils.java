@@ -47,9 +47,9 @@ public class TestUtils {
      * Verifies that the actual {@code Num} value is equal to the given
      * {@code String} representation.
      *
-     * @param actual   the actual {@code Num} value
      * @param expected the given {@code String} representation to compare the actual
      *                 value to
+     * @param actual   the actual {@code Num} value
      * @throws AssertionError if the actual value is not equal to the given
      *                        {@code String} representation
      */
@@ -60,9 +60,9 @@ public class TestUtils {
     /**
      * Verifies that the actual {@code Num} value is equal to the given {@code Num}.
      *
-     * @param actual   the actual {@code Num} value
      * @param expected the given {@code Num} representation to compare the actual
      *                 value to
+     * @param actual   the actual {@code Num} value
      * @throws AssertionError if the actual value is not equal to the given
      *                        {@code Num} representation
      */
@@ -74,9 +74,10 @@ public class TestUtils {
      * Verifies that the actual {@code Num} value is equal to the given {@code int}
      * representation.
      *
-     * @param actual   the actual {@code Num} value
+     * 
      * @param expected the given {@code int} representation to compare the actual
      *                 value to
+     * @param actual   the actual {@code Num} value
      * @throws AssertionError if the actual value is not equal to the given
      *                        {@code int} representation
      */
@@ -88,9 +89,9 @@ public class TestUtils {
      * Verifies that the actual {@code Num} value is equal (within a positive
      * offset) to the given {@code double} representation.
      *
-     * @param actual   the actual {@code Num} value
      * @param expected the given {@code double} representation to compare the actual
      *                 value to
+     * @param actual   the actual {@code Num} value
      * @throws AssertionError if the actual value is not equal to the given
      *                        {@code double} representation
      */
