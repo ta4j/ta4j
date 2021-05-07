@@ -23,6 +23,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.num.NaN.NaN;
+
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -34,11 +39,6 @@ import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.num.NaN.NaN;
 
 public class BreakEvenIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries series;

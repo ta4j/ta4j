@@ -23,12 +23,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
-import static org.ta4j.core.num.NaN.NaN;
 
 public class BreakEvenIndicator extends TradeBasedIndicator<Num> {
     private final TransformIndicator breakEvenCalculator;

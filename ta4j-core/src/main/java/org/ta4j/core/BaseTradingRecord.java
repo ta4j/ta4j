@@ -23,12 +23,16 @@
  */
 package org.ta4j.core;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
-
-import java.util.*;
 
 /**
  * Base implementation of a {@link TradingRecord}.
