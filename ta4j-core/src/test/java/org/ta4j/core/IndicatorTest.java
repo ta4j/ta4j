@@ -62,7 +62,8 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void toDouble() {
-        List<Num> expectedValues = Arrays.stream(typicalPrices).mapToObj(numFunction::apply)
+        List<Num> expectedValues = Arrays.stream(typicalPrices)
+                .mapToObj(numFunction::apply)
                 .collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 
@@ -77,7 +78,8 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void shouldProvideStream() {
-        List<Num> expectedValues = Arrays.stream(typicalPrices).mapToObj(numFunction::apply)
+        List<Num> expectedValues = Arrays.stream(typicalPrices)
+                .mapToObj(numFunction::apply)
                 .collect(Collectors.toList());
         MockIndicator closePriceMockIndicator = new MockIndicator(data, expectedValues);
 
