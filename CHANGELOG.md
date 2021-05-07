@@ -10,10 +10,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
+- **Open|High|Low|Close** do not cache price values anymore
+- **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
 
 ### Removed/Deprecated
 - **Num** removed Serializable
-- **DifferenceIndicator(i1,i2)** is replaced by the more flexible CombineIndicator.minus(i1,i2)
+- **PriceIndicator** removed
 
 ### Added
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor

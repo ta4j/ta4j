@@ -45,11 +45,11 @@
  */
 package org.ta4j.core.rules;
 
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
-import org.ta4j.core.indicators.helpers.PriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -62,7 +62,7 @@ public class TrailingStopLossRule extends AbstractRule {
     /**
      * The price indicator
      */
-    private final PriceIndicator priceIndicator;
+    private final Indicator<Num> priceIndicator;
     /**
      * the current price extremum
      */
@@ -83,7 +83,7 @@ public class TrailingStopLossRule extends AbstractRule {
      * @param lossPercentage the loss percentage
      * @param barCount       number of bars to look back for the calculation
      */
-    public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage, int barCount) {
+    public TrailingStopLossRule(Indicator<Num> priceIndicator, Num lossPercentage, int barCount) {
         this.priceIndicator = priceIndicator;
         this.barCount = barCount;
         this.lossPercentage = lossPercentage;
@@ -95,7 +95,7 @@ public class TrailingStopLossRule extends AbstractRule {
      * @param closePrice     the close price indicator
      * @param lossPercentage the loss percentage
      */
-    public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage) {
+    public TrailingStopLossRule(Indicator<Num> priceIndicator, Num lossPercentage) {
         this(priceIndicator, lossPercentage, Integer.MAX_VALUE);
     }
 
