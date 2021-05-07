@@ -209,7 +209,7 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         }
     }
 
-    private class TestTradeIndicator extends TradeBasedIndicator {
+    private class TestTradeIndicator extends TradeBasedIndicator<Num> {
         int lastCalledEntryIndex;
         Trade lastCalledEntryTrade;
         Num lastReturnedEntryNumber;
@@ -224,7 +224,12 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         }
 
         @Override
-        Num calculateLastTradeWasEntry(Trade entryTrade, int index) {
+        protected Num calculateNoLastTradeAvailable(int index) {
+            return NaN;
+        }
+
+        @Override
+        protected Num calculateLastTradeWasEntry(Trade entryTrade, int index) {
             lastCalledEntryTrade = entryTrade;
             lastCalledEntryIndex = index;
             lastReturnedEntryNumber = getBarSeries().numOf(Math.random());
@@ -232,7 +237,7 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         }
 
         @Override
-        Num calculateLastTradeWasExit(Trade exitTrade, int index) {
+        protected Num calculateLastTradeWasExit(Trade exitTrade, int index) {
             lastCalledExitTrade = exitTrade;
             lastCalledExitIndex = index;
             lastReturnedExitNumber = getBarSeries().numOf(Math.random());
