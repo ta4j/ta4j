@@ -40,28 +40,33 @@ public abstract class TradeBasedIndicator<T> extends CachedIndicator<T> {
 
     @Override
     protected T calculate(int index) {
-        if (isLastTradeAvailable()) {
-            if (isLastTradeAnEntryTrade()) {
-                return calculateLastTradeWasEntry(getLastTrade(), index);
+        if (isLastTradeForIndexAvailable(index)) {
+            if (isLastTradeForIndexAnEntryTrade(index)) {
+                return calculateLastTradeWasEntry(getLastTradeForIndex(index), index);
             } else {
-                return calculateLastTradeWasExit(getLastTrade(), index);
+                return calculateLastTradeWasExit(getLastTradeForIndex(index), index);
             }
         }
 
         return calculateNoLastTradeAvailable(index);
     }
 
-    private boolean isLastTradeAvailable() {
-        return getLastTrade() != null;
+    private boolean isLastTradeForIndexAvailable(int index) {
+        return getLastTradeForIndex(index) != null;
     }
 
-    private boolean isLastTradeAnEntryTrade() {
-        Position lastPosition = tradingRecord.getLastPosition();
-        return lastPosition == null || getLastTrade().getIndex() > lastPosition.getExit().getIndex();
+    private boolean isLastTradeForIndexAnEntryTrade(int index) {
+        Position lastPositionForIndex = getLastPositionForIndex(index);
+        return lastPositionForIndex == null
+                || getLastTradeForIndex(index).getIndex() > lastPositionForIndex.getExit().getIndex();
     }
 
-    private Trade getLastTrade() {
-        return tradingRecord.getLastTrade();
+    private Position getLastPositionForIndex(int index) {
+        return tradingRecord.getLastPositionRegardingIndex(index);
+    }
+
+    private Trade getLastTradeForIndex(int index) {
+        return tradingRecord.getLastTradeRegardingIndex(index);
     }
 
     protected abstract T calculateNoLastTradeAvailable(int index);

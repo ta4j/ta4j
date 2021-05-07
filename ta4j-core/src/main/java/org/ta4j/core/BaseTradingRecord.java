@@ -23,17 +23,15 @@
  */
 package org.ta4j.core;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
+import java.util.*;
+
 /**
  * Base implementation of a {@link TradingRecord}.
- *
  */
 public class BaseTradingRecord implements TradingRecord {
 
@@ -47,7 +45,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded trades
      */
-    private List<Trade> trades = new ArrayList<>();
+    private TreeMap<Integer, Trade> sortedTrades = new TreeMap<>();
 
     /**
      * The recorded BUY trades
@@ -77,7 +75,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded positions
      */
-    private List<Position> positions = new ArrayList<>();
+    private TreeMap<Integer, Position> sortedPositions = new TreeMap<>();
 
     /**
      * The current non-closed position (there's always one)
@@ -110,9 +108,9 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param name           the name of the trading record
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param name      the name of the trading record
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(String name, TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -122,8 +120,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -226,13 +224,31 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public List<Position> getPositions() {
-        return positions;
+        return new LinkedList<>(sortedPositions.values());
+    }
+
+    @Override
+    public Position getLastPositionRegardingIndex(int index) {
+        Map.Entry<Integer, Position> positionEntry = sortedPositions.floorEntry(index);
+        if (positionEntry != null) {
+            return positionEntry.getValue();
+        }
+        return null;
     }
 
     @Override
     public Trade getLastTrade() {
-        if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+        if (sortedTrades.isEmpty()) {
+            return null;
+        }
+        return sortedTrades.lastEntry().getValue();
+    }
+
+    @Override
+    public Trade getLastTradeRegardingIndex(int index) {
+        Map.Entry<Integer, Trade> tradeEntry = sortedTrades.floorEntry(index);
+        if (tradeEntry != null) {
+            return tradeEntry.getValue();
         }
         return null;
     }
@@ -282,7 +298,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         // Storing the new trade in trades list
-        trades.add(trade);
+        sortedTrades.put(trade.getIndex(), trade);
         if (TradeType.BUY == trade.getType()) {
             // Storing the new trade in buy trades list
             buyTrades.add(trade);
@@ -293,7 +309,7 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the position if closed
         if (currentPosition.isClosed()) {
-            positions.add(currentPosition);
+            sortedPositions.put(currentPosition.getExit().getIndex(), currentPosition);
             currentPosition = new Position(startingType, transactionCostModel, holdingCostModel);
         }
     }
@@ -303,7 +319,7 @@ public class BaseTradingRecord implements TradingRecord {
         StringBuilder sb = new StringBuilder();
         sb.append("BaseTradingRecord: " + (name == null ? "" : name));
         sb.append(System.lineSeparator());
-        for (Trade trade : trades) {
+        for (Trade trade : sortedTrades.values()) {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();

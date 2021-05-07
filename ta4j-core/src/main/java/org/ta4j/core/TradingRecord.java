@@ -148,6 +148,11 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
+     * @return the last position recorded at the given time of 'index'
+     */
+    Position getLastPositionRegardingIndex(int index);
+
+    /**
      * @return the last trade recorded
      */
     Trade getLastTrade();
@@ -159,6 +164,11 @@ public interface TradingRecord extends Serializable {
     Trade getLastTrade(TradeType tradeType);
 
     /**
+     * @return the last trade recorded at the given time of 'index'
+     */
+    Trade getLastTradeRegardingIndex(int index);
+
+    /**
      * @return the last entry trade recorded
      */
     Trade getLastEntry();
@@ -167,4 +177,5 @@ public interface TradingRecord extends Serializable {
      * @return the last exit trade recorded
      */
     Trade getLastExit();
+
 }
