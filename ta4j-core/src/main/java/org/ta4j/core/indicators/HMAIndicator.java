@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
@@ -46,7 +46,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
         WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
         WMAIndicator origWma = new WMAIndicator(indicator, barCount);
 
-        Indicator<Num> indicatorForSqrtWma = new DifferenceIndicator(TransformIndicator.multiply(halfWma, 2), origWma);
+        Indicator<Num> indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
         sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());
     }
 

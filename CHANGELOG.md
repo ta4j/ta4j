@@ -13,12 +13,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - **Num** removed Serializable
+- **DifferenceIndicator(i1,i2)** is replaced by the more flexible CombineIndicator.minus(i1,i2)
 
 ### Added
-- :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
+- :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
-- :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
-- :tada: **Enhancement** Added Indicator#stream() method
+- :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
+- :tada: **Enhancement** added Indicator#stream() method
+- :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
 
 ## 0.14 (released April 25, 2021)
