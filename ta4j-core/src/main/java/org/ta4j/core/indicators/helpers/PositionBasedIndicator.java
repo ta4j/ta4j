@@ -46,10 +46,10 @@ public abstract class PositionBasedIndicator extends CachedIndicator<Num> {
         Trade lastTrade = tradingRecord.getLastTrade();
         if (lastTrade != null) {
             Position lastPosition = tradingRecord.getLastPosition();
-            if (lastPosition == null || lastTrade.getIndex() == lastPosition.getExit().getIndex()) {
+            if (lastPosition == null) {// || lastTrade.getIndex() > lastPosition.getExit().getIndex()) {
                 return calculateLastTradeWasEntry(lastTrade, index);
             } else {
-                return NaN;
+                return calculateLastTradeWasExit(lastTrade, index);
             }
         }
         return NaN;

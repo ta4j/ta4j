@@ -91,6 +91,48 @@ public class PositionBasedIndicatorTest extends AbstractIndicatorTest<Indicator<
         }
     }
 
+    @Test
+    public void indicatorReturnsCorrectExitCalculations() {
+        // no trade
+        assertEquals(NaN, positionIndicator.getValue(0));
+        assertNull(positionIndicator.lastCalledEntryTrade);
+        assertNull(positionIndicator.lastCalledExitTrade);
+        assertEquals(-1, positionIndicator.lastCalledExitIndex);
+        assertEquals(-1, positionIndicator.lastCalledEntryIndex);
+        positionIndicator.reset();
+
+        // entry trade
+        tradingRecord.enter(1, NaN, NaN);
+
+        Num actualEntryValue = positionIndicator.getValue(1);
+        assertEquals(positionIndicator.lastReturnedEntryNumber, actualEntryValue);
+
+        assertEquals(tradingRecord.getCurrentPosition().getEntry(), positionIndicator.lastCalledEntryTrade);
+        assertEquals(1, positionIndicator.lastCalledEntryIndex);
+
+        assertNull(positionIndicator.lastCalledExitTrade);
+        assertEquals(-1, positionIndicator.lastCalledExitIndex);
+
+        positionIndicator.reset();
+
+        // exit trade
+        tradingRecord.exit(2, NaN, NaN);
+
+        for (int index = series.getBeginIndex() + 2; index <= series.getEndIndex(); index++) {
+
+            Num actualExitValue = positionIndicator.getValue(index);
+            assertEquals(positionIndicator.lastReturnedExitNumber, actualExitValue);
+
+            assertEquals(tradingRecord.getLastPosition().getExit(), positionIndicator.lastCalledExitTrade);
+            assertEquals(index, positionIndicator.lastCalledExitIndex);
+
+            assertNull(positionIndicator.lastCalledEntryTrade);
+            assertEquals(-1, positionIndicator.lastCalledEntryIndex);
+
+            positionIndicator.reset();
+        }
+    }
+
     private class TestPositionIndicator extends PositionBasedIndicator {
         int lastCalledEntryIndex;
         Trade lastCalledEntryTrade;
