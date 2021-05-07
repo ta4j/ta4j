@@ -23,23 +23,60 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
-import java.util.function.Function;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
-public class DifferenceIndicatorTest {
+import java.util.function.Function;
 
-    private DifferenceIndicator differenceIndicator;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    private CombineIndicator combinePlus;
+    private CombineIndicator combineMinus;
+    private CombineIndicator combineMultiply;
+    private CombineIndicator combineDivide;
+    private CombineIndicator combineMax;
+    private CombineIndicator combineMin;
+
+    public CombineIndicatorTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void setUp() {
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
+        ConstantIndicator<Num> constantIndicatorTwo = new ConstantIndicator<>(series, numOf(2));
+
+        combinePlus = CombineIndicator.plus(constantIndicator, constantIndicatorTwo);
+        combineMinus = CombineIndicator.minus(constantIndicator, constantIndicatorTwo);
+        combineMultiply = CombineIndicator.multiply(constantIndicator, constantIndicatorTwo);
+        combineDivide = CombineIndicator.divide(constantIndicator, constantIndicatorTwo);
+        combineMax = CombineIndicator.max(constantIndicator, constantIndicatorTwo);
+        combineMin = CombineIndicator.min(constantIndicator, constantIndicatorTwo);
+    }
+
+    @Test
+    public void testAllDefaultMathCombineFunctions() {
+        assertNumEquals(6, combinePlus.getValue(0));
+        assertNumEquals(2, combineMinus.getValue(0));
+        assertNumEquals(8, combineMultiply.getValue(0));
+        assertNumEquals(2, combineDivide.getValue(0));
+        assertNumEquals(4, combineMax.getValue(0));
+        assertNumEquals(2, combineMin.getValue(0));
+    }
+
+    @Test
+    public void testDifferenceIndicator() {
+
         Function<Number, Num> numFunction = DecimalNum::valueOf;
 
         BarSeries series = new BaseBarSeries();
@@ -47,11 +84,8 @@ public class DifferenceIndicatorTest {
                 numFunction.apply(0.00), numFunction.apply(1.00), numFunction.apply(2.53), numFunction.apply(5.87),
                 numFunction.apply(6.00), numFunction.apply(10.0));
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<Num>(series, numFunction.apply(6));
-        differenceIndicator = new DifferenceIndicator(constantIndicator, mockIndicator);
-    }
+        CombineIndicator differenceIndicator = CombineIndicator.minus(constantIndicator, mockIndicator);
 
-    @Test
-    public void getValue() {
         assertNumEquals("8", differenceIndicator.getValue(0));
         assertNumEquals("6", differenceIndicator.getValue(1));
         assertNumEquals("5", differenceIndicator.getValue(2));
