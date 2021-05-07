@@ -58,6 +58,10 @@ public class Ta4jCache<T> {
 
         actualCache.put(index, result);
 
+        removeFirstEntriesIfNeeded();
+    }
+
+    private void removeFirstEntriesIfNeeded() {
         int currentLimit = series.getMaximumBarCount();
         while (actualCache.size() > currentLimit) {
             actualCache.pollFirstEntry();
