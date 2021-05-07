@@ -216,9 +216,13 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     public void indicatorCalculationWorksBackwardsOnPrefilledTrades() {
         // prefill the trades
         tradingRecord.enter(1, NaN, NaN);
+        Trade firstEnterTrade = tradingRecord.getLastTrade();
         tradingRecord.exit(2, NaN, NaN);
+        Trade firstExitTrade = tradingRecord.getLastTrade();
         tradingRecord.enter(5, NaN, NaN);
+        Trade secondEnterTrade = tradingRecord.getLastTrade();
         tradingRecord.exit(9, NaN, NaN);
+        Trade secondExitTrade = tradingRecord.getLastTrade();
 
         // expect the calculated values to work although the trades are not filled
         // "real-time"/in between.
@@ -237,7 +241,7 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         Num actualEntryValue = positionIndicator.getValue(1);
         assertEquals(positionIndicator.lastReturnedEntryNumber, actualEntryValue);
 
-        assertEquals(tradingRecord.getLastTradeRegardingIndex(1), positionIndicator.lastCalledEntryTrade);
+        assertEquals(firstEnterTrade, positionIndicator.lastCalledEntryTrade);
         assertEquals(1, positionIndicator.lastCalledEntryIndex);
 
         assertNull(positionIndicator.lastCalledExitTrade);
@@ -250,8 +254,7 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
             Num actualExitValue = positionIndicator.getValue(index);
             assertEquals(positionIndicator.lastReturnedExitNumber, actualExitValue);
 
-            assertEquals(tradingRecord.getLastPositionRegardingIndex(index).getExit(),
-                    positionIndicator.lastCalledExitTrade);
+            assertEquals(firstExitTrade, positionIndicator.lastCalledExitTrade);
             assertEquals(index, positionIndicator.lastCalledExitIndex);
 
             assertNull(positionIndicator.lastCalledEntryTrade);
@@ -266,7 +269,7 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
             actualEntryValue = positionIndicator.getValue(index);
             assertEquals(positionIndicator.lastReturnedEntryNumber, actualEntryValue);
 
-            assertEquals(tradingRecord.getLastTradeRegardingIndex(index), positionIndicator.lastCalledEntryTrade);
+            assertEquals(secondEnterTrade, positionIndicator.lastCalledEntryTrade);
             assertEquals(index, positionIndicator.lastCalledEntryIndex);
 
             assertNull(positionIndicator.lastCalledExitTrade);
@@ -281,8 +284,7 @@ public class TradeBasedIndicatorTest extends AbstractIndicatorTest<Indicator<Num
             Num actualExitValue = positionIndicator.getValue(index);
             assertEquals(positionIndicator.lastReturnedExitNumber, actualExitValue);
 
-            assertEquals(tradingRecord.getLastPositionRegardingIndex(index).getExit(),
-                    positionIndicator.lastCalledExitTrade);
+            assertEquals(secondExitTrade, positionIndicator.lastCalledExitTrade);
             assertEquals(index, positionIndicator.lastCalledExitIndex);
 
             assertNull(positionIndicator.lastCalledEntryTrade);
