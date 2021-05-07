@@ -6,16 +6,23 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 
 ### Fixed
+- :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
+- **Open|High|Low|Close** do not cache price values anymore
+- **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
 
 ### Removed/Deprecated
 - **Num** removed Serializable
+- **PriceIndicator** removed
 
 ### Added
-- :tada: **Enhancement** Added possibility to use CostModels when backtesting with the BacktestExecutor
+- :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
+- :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
+- :tada: **Enhancement** added Indicator#stream() method
+- :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
 - :tada: **Enhancement** Implemented an (abstract) TradeBasedIndicator, which can perform calculations based on the last trade
 - :tada: **Enhancement** Implemented a BreakEvenIndicator, which returns the needed break even regarding the last trade according to given transaction fees
