@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.AnalysisCriterion.PositionPart;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AverageReturnPerBarCriterion;
 import org.ta4j.core.analysis.criteria.BuyAndHoldReturnCriterion;
 import org.ta4j.core.analysis.criteria.LinearTransactionCostCriterion;
