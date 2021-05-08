@@ -62,7 +62,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
             }
         }
 
-        // in case all positions are losing positions
+        // in case all positions are consecutive positions
         if (maxConsecutive < consecutives) {
             maxConsecutive = consecutives;
         }
@@ -70,7 +70,14 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
         return series.numOf(maxConsecutive);
     }
 
-    /** The lower the criterion value, the better. */
+    /**
+     * <ul>
+     * <li>For {@link PositionFilter#PROFIT}: The higher the criterion value, the
+     * better.
+     * <li>For {@link PositionFilter#LOSS}: The lower the criterion value, the
+     * better.
+     * </ul>
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return positionFilter == PositionFilter.PROFIT ? criterionValue1.isGreaterThan(criterionValue2)
