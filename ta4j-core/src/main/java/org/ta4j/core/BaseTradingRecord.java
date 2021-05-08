@@ -85,9 +85,13 @@ public class BaseTradingRecord implements TradingRecord {
     private Position currentPosition;
 
     /**
-     * Trading cost models
+     * Trading cost model
      */
     private CostModel transactionCostModel;
+
+    /**
+     * Holding cost model
+     */
     private CostModel holdingCostModel;
 
     /**
@@ -193,6 +197,16 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Position getCurrentPosition() {
         return currentPosition;
+    }
+
+    @Override
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    @Override
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
     }
 
     @Override

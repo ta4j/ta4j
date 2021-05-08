@@ -29,6 +29,7 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.cost.CostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -53,6 +54,16 @@ public interface TradingRecord extends Serializable {
      * @return the name of the TradingRecord
      */
     String getName();
+
+    /**
+     * @return the Trading cost model
+     */
+    CostModel getTransactionCostModel();
+
+    /**
+     * @return the Holding cost model
+     */
+    CostModel getHoldingCostModel();
 
     /**
      * Places a trade in the trading record.
