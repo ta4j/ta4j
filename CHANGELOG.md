@@ -16,6 +16,16 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Removed/Deprecated
 - **Num** removed Serializable
 - **PriceIndicator** removed
+- **NumberOfWinningPositionsCriterion** removed in favour of **NumberOfPositionsCriterion**
+- **NumberOfLosingPositionsCriterion** removed in favour of **NumberOfPositionsCriterion**
+- **WinningPositionsRatioCriterion** removed in favour of **PositionsRatioCriterion**
+- **LosingPositionsRatioCriterion** removed in favour of **PositionsRatioCriterion**
+- **NetProfitCriterion** removed in favour of **NetCriterion**
+- **NetLossCriterion** removed in favour of **NetCriterion**
+- **GrossProfitCriterion** removed in favour of **GrossCriterion**
+- **GrossLossCriterion** removed in favour of **GrossCriterion**
+- **AverageProfitCriterion** removed in favour of **AverageCriterion**
+- **AverageLossCriterion** removed in favour of **AverageCriterion**
 
 ### Added
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor

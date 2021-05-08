@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  */
 public interface AnalysisCriterion {
 
-    /** Filter to differentiate between won and lost positions. */
+    /** Filter to differentiate between winning and losing positions. */
     public enum PositionFilter {
         /** Consider all winning positions. */
         PROFIT,

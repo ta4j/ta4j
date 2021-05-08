@@ -65,6 +65,9 @@ public abstract class AbstractCriterionTest {
      * @return AnalysisCriterion given parameters
      */
     public AnalysisCriterion getCriterion(Object... params) {
+        if (params == null || params.length == 0 || params[0] == null) {
+            factory.getCriterion();
+        }
         return factory.getCriterion(params);
     }
 

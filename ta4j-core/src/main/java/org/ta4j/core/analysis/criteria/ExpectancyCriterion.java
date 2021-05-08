@@ -44,7 +44,7 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
     private final ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
-    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final NumberOfPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfPositionsCriterion(PositionFilter.PROFIT);
 
     @Override
     public Num calculate(BarSeries series, Position position) {

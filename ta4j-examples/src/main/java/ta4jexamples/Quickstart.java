@@ -31,7 +31,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
-import org.ta4j.core.analysis.criteria.WinningPositionsRatioCriterion;
+import org.ta4j.core.analysis.criteria.PositionsRatioCriterion;
 import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -98,7 +98,7 @@ public class Quickstart {
         // Analysis
 
         // Getting the winning positions ratio
-        AnalysisCriterion winningPositionsRatio = new WinningPositionsRatioCriterion();
+        AnalysisCriterion winningPositionsRatio = new PositionsRatioCriterion();
         System.out.println("Winning positions ratio: " + winningPositionsRatio.calculate(series, tradingRecord));
         // Getting a risk-reward ratio
         AnalysisCriterion romad = new ReturnOverMaxDrawdownCriterion();

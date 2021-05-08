@@ -27,38 +27,56 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net loss criterion (without commissions).
- *
- * <p>
- * The net loss of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
+ * Average gross profit or loss (with commissions).
  */
-public class NetLossCriterion extends AbstractAnalysisCriterion {
+public class AverageCriterion extends AbstractAnalysisCriterion {
+
+    private final NumberOfPositionsCriterion numberOfPositionsCriterion;
+    private final GrossCriterion grossCriterion;
+
+    /**
+     * Constructor.
+     * 
+     * @param positionFilter consider either the profit or the loss position
+     */
+    public AverageCriterion(PositionFilter positionFilter) {
+        numberOfPositionsCriterion = new NumberOfPositionsCriterion(positionFilter);
+        grossCriterion = new GrossCriterion(positionFilter);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num loss = position.getProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        if (numberOfPositions.isZero()) {
+            return series.numOf(0);
         }
-        return series.numOf(0);
-
+        Num gross = grossCriterion.calculate(series, position);
+        if (gross.isZero()) {
+            return series.numOf(0);
+        }
+        return gross.dividedBy(numberOfPositions);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        if (numberOfPositions.isZero()) {
+            return series.numOf(0);
+        }
+        Num gross = grossCriterion.calculate(series, tradingRecord);
+        if (gross.isZero()) {
+            return series.numOf(0);
+        }
+        return gross.dividedBy(numberOfPositions);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
+
 }

@@ -23,42 +23,22 @@
  */
 package org.ta4j.core.analysis.criteria.pnl;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
+import java.util.function.Function;
+
+import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion.PositionFilter;
+import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.num.Num;
 
-/**
- * Gross loss criterion (with commissions).
- *
- * <p>
- * The gross loss of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
- */
-public class GrossLossCriterion extends AbstractAnalysisCriterion {
+public class GrossCriterionTest extends AbstractCriterionTest {
 
-    @Override
-    public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num loss = position.getGrossProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
-        }
-        return series.numOf(0);
+    public GrossCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new GrossCriterion((PositionFilter) params[0]), numFunction);
     }
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+    @Test
+    public void testCalculateOneOpenPositionShouldReturnZero() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(PositionFilter.PROFIT), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(PositionFilter.LOSS), 0);
     }
-
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
 }

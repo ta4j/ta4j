@@ -35,7 +35,7 @@ import org.ta4j.core.analysis.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.analysis.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.VersusBuyAndHoldCriterion;
-import org.ta4j.core.analysis.criteria.WinningPositionsRatioCriterion;
+import org.ta4j.core.analysis.criteria.PositionsRatioCriterion;
 import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -73,7 +73,7 @@ public class StrategyAnalysis {
         System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
         // Profitable position ratio
         System.out.println(
-                "Winning positions ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
+                "Winning positions ratio: " + new PositionsRatioCriterion().calculate(series, tradingRecord));
         // Maximum drawdown
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
         // Reward-risk ratio

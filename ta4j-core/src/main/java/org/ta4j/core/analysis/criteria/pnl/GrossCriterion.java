@@ -23,47 +23,62 @@
  */
 package org.ta4j.core.analysis.criteria.pnl;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfLosingPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Average gross loss (with commissions).
+ * Gross profit or loss criterion (with commissions).
+ *
+ * <p>
+ * The gross profit or loss of the provided {@link Position position(s)} over the
+ * provided {@link BarSeries series}.
  */
-public class AverageLossCriterion extends AbstractAnalysisCriterion {
-
-    private final NumberOfLosingPositionsCriterion numberOfLosingPositionsCriterion = new NumberOfLosingPositionsCriterion();
-    private final GrossLossCriterion grossLossCriterion = new GrossLossCriterion();
+public class GrossCriterion extends AbstractAnalysisCriterion {
+    
+    private final PositionFilter positionFilter;
+    
+    /**
+     * Constructor.
+     * 
+     * @param positionFilter consider either the profit or the loss position
+     */
+    public GrossCriterion(PositionFilter positionFilter) {
+        this.positionFilter = Objects.requireNonNull(positionFilter);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, position);
-        if (numberOfLosingPositions.isZero()) {
-            return series.numOf(0);
+        if (position.isClosed()) {
+            Num profit = position.getGrossProfit();
+            boolean hasGross = positionFilter == PositionFilter.PROFIT ? profit.isPositive() : profit.isNegative();
+            return hasGross ? profit : series.numOf(0);
         }
-        Num grossLoss = grossLossCriterion.calculate(series, position);
-        if (grossLoss.isZero()) {
-            return series.numOf(0);
-        }
-        return grossLoss.dividedBy(numberOfLosingPositions);
+        return series.numOf(0);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
-        if (numberOfLosingPositions.isZero()) {
-            return series.numOf(0);
-        }
-        Num grossLoss = grossLossCriterion.calculate(series, tradingRecord);
-        if (grossLoss.isZero()) {
-            return series.numOf(0);
-        }
-        return grossLoss.dividedBy(numberOfLosingPositions);
+        return tradingRecord.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(position -> calculate(series, position))
+                .reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * <ul>
+     * <li>For {@link PositionFilter#PROFIT}: The higher the criterion value, the
+     * better.
+     * <li>For {@link PositionFilter#LOSS}: The higher the criterion value, the
+     * better.
+     * </ul>
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
