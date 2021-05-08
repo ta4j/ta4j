@@ -7,6 +7,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
 
 ### Fixed
+- **LosingPositionsRatioCriterion** correct betterThan
+- **VersusBuyAndHoldCriterionTest** NaN-Error.
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
 
 ### Changed

@@ -64,6 +64,7 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
         return grossProfit.dividedBy(numberOfWinningPositions);
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

@@ -32,7 +32,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion total
+ * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion gross
  * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
@@ -62,6 +62,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         }
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

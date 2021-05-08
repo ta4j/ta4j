@@ -42,7 +42,7 @@ public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return createBuyAndHoldTrade(series, position.getEntry().getIndex(), position.getExit().getIndex())
+        return createBuyAndHoldPosition(series, position.getEntry().getIndex(), position.getExit().getIndex())
                 .getGrossReturn(series);
     }
 
@@ -51,16 +51,17 @@ public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
         return createBuyAndHoldTrade(series).getGrossReturn(series);
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
     private Position createBuyAndHoldTrade(BarSeries series) {
-        return createBuyAndHoldTrade(series, series.getBeginIndex(), series.getEndIndex());
+        return createBuyAndHoldPosition(series, series.getBeginIndex(), series.getEndIndex());
     }
 
-    private Position createBuyAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
+    private Position createBuyAndHoldPosition(BarSeries series, int beginIndex, int endIndex) {
         Position position = new Position(Trade.TradeType.BUY);
         position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
         position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));

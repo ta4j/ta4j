@@ -34,11 +34,11 @@ import org.ta4j.core.num.Num;
  * Versus "buy and hold" criterion.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of a {@link BuyAndHoldReturnCriterion "buy and hold" criterion}.
+ * value of a "buy and hold".
  */
 public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
-    private AnalysisCriterion criterion;
+    private final AnalysisCriterion criterion;
 
     /**
      * Constructor.
@@ -51,24 +51,30 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        TradingRecord fakeRecord = new BaseTradingRecord();
-        fakeRecord.enter(series.getBeginIndex());
-        fakeRecord.exit(series.getEndIndex());
-
+        TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
         return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        TradingRecord fakeRecord = new BaseTradingRecord();
-        fakeRecord.enter(series.getBeginIndex());
-        fakeRecord.exit(series.getEndIndex());
-
+        TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    private TradingRecord createBuyAndHoldTradingRecord(BarSeries series) {
+        return createBuyAndHoldTradingRecord(series, series.getBeginIndex(), series.getEndIndex());
+    }
+
+    private TradingRecord createBuyAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
+        TradingRecord fakeRecord = new BaseTradingRecord();
+        fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
+        fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
+        return fakeRecord;
     }
 }
