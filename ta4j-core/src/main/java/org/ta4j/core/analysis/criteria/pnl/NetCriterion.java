@@ -57,8 +57,8 @@ public class NetCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = position.getProfit();
-            boolean isNet = positionType == PositionType.PROFIT ? profit.isPositive() : profit.isNegative();
-            return isNet ? profit : series.numOf(0);
+            boolean hasNet = positionType == PositionType.PROFIT ? profit.isPositive() : profit.isNegative();
+            return hasNet ? profit : series.numOf(0);
         }
         return series.numOf(0);
 
