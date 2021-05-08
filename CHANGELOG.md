@@ -7,6 +7,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan
+- **VersusBuyAndHoldCriterionTest** NaN-Error.
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
 
 ### Changed
