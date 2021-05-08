@@ -6,6 +6,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 
 ### Fixed
+- **VersusBuyAndHoldCriterionTest** NaN-Error.
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
 
 ### Changed
