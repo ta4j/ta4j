@@ -49,7 +49,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded trades
      */
-    private TreeMap<Integer, Trade> sortedTrades = new TreeMap<>();
+    private TreeMap<Integer, Trade> allTrades = new TreeMap<>();
 
     /**
      * The recorded BUY trades
@@ -79,7 +79,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded positions
      */
-    private TreeMap<Integer, Position> sortedPositions = new TreeMap<>();
+    private TreeMap<Integer, Position> allPositions = new TreeMap<>();
 
     /**
      * The current non-closed position (there's always one)
@@ -228,12 +228,12 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public List<Position> getPositions() {
-        return new LinkedList<>(sortedPositions.values());
+        return new ArrayList<>(allPositions.values());
     }
 
     @Override
-    public Position getLastPositionRegardingIndex(int index) {
-        Map.Entry<Integer, Position> positionEntry = sortedPositions.floorEntry(index);
+    public Position getLastPositionFor(int index) {
+        Map.Entry<Integer, Position> positionEntry = allPositions.floorEntry(index);
         if (positionEntry != null) {
             return positionEntry.getValue();
         }
@@ -242,15 +242,15 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public Trade getLastTrade() {
-        if (sortedTrades.isEmpty()) {
+        if (allTrades.isEmpty()) {
             return null;
         }
-        return sortedTrades.lastEntry().getValue();
+        return allTrades.lastEntry().getValue();
     }
 
     @Override
-    public Trade getLastTradeRegardingIndex(int index) {
-        Map.Entry<Integer, Trade> tradeEntry = sortedTrades.floorEntry(index);
+    public Trade getLastTradeFor(int index) {
+        Map.Entry<Integer, Trade> tradeEntry = allTrades.floorEntry(index);
         if (tradeEntry != null) {
             return tradeEntry.getValue();
         }
@@ -312,7 +312,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         // Storing the new trade in trades list
-        sortedTrades.put(trade.getIndex(), trade);
+        allTrades.put(trade.getIndex(), trade);
         if (TradeType.BUY == trade.getType()) {
             // Storing the new trade in buy trades list
             buyTrades.add(trade);
@@ -323,7 +323,7 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the position if closed
         if (currentPosition.isClosed()) {
-            sortedPositions.put(currentPosition.getExit().getIndex(), currentPosition);
+            allPositions.put(currentPosition.getExit().getIndex(), currentPosition);
             currentPosition = new Position(startingType, transactionCostModel, holdingCostModel);
         }
     }
@@ -333,7 +333,7 @@ public class BaseTradingRecord implements TradingRecord {
         StringBuilder sb = new StringBuilder();
         sb.append("BaseTradingRecord: " + (name == null ? "" : name));
         sb.append(System.lineSeparator());
-        for (Trade trade : sortedTrades.values()) {
+        for (Trade trade : allTrades.values()) {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();

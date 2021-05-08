@@ -62,11 +62,11 @@ public abstract class TradeBasedIndicator<T> extends CachedIndicator<T> {
     }
 
     private Position getLastPositionForIndex(int index) {
-        return tradingRecord.getLastPositionRegardingIndex(index);
+        return tradingRecord.getLastPositionFor(index);
     }
 
     private Trade getLastTradeForIndex(int index) {
-        return tradingRecord.getLastTradeRegardingIndex(index);
+        return tradingRecord.getLastTradeFor(index);
     }
 
     protected abstract T calculateNoLastTradeAvailable(int index);
