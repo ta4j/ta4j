@@ -43,8 +43,6 @@ public class Position implements Serializable {
 
     private static final long serialVersionUID = -5484709075767220358L;
 
-    /** To differentiate between winning and losing positions. */
-
     /**
      * The type of an {@link Position positiion}.
      *
