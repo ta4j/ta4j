@@ -245,6 +245,20 @@ public class Position implements Serializable {
     }
 
     /**
+     * @return the PositionType or <code>null</code> if position has neither or
+     *         profit nor a loss
+     */
+    public PositionType getPositionType() {
+        if (hasProfit()) {
+            return PositionType.PROFIT;
+        }
+        if (hasLoss()) {
+            return PositionType.LOSS;
+        }
+        return null;
+    }
+
+    /**
      * Calculate the profit of the position if it is closed
      *
      * @return the profit or loss of the position
