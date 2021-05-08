@@ -23,7 +23,6 @@
  */
 package org.ta4j.core.analysis.criteria;
 
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -33,13 +32,14 @@ import org.ta4j.core.num.Num;
 /**
  * Calculates the average return per bar criterion.
  *
- * The {@link GrossReturnCriterion total return} raised to the power of 1
+ * <p>
+ * The {@link GrossReturnCriterion gross return} raised to the power of 1
  * divided by {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion grossReturn = new GrossReturnCriterion();
-    private final AnalysisCriterion numberOfBars = new NumberOfBarsCriterion();
+    private final GrossReturnCriterion grossReturn = new GrossReturnCriterion();
+    private final NumberOfBarsCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -61,6 +61,7 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         return grossReturn.calculate(series, tradingRecord).pow(series.numOf(1).dividedBy(bars));
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

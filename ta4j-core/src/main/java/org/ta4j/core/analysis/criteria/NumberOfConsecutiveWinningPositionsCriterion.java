@@ -61,6 +61,7 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
         return series.numOf(maxConsecutiveWins);
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

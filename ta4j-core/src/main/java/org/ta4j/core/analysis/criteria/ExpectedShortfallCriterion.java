@@ -105,6 +105,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
         return expectedShortfall;
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

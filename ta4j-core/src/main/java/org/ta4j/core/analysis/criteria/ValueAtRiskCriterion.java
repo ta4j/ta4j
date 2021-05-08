@@ -39,6 +39,7 @@ import org.ta4j.core.num.Num;
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>
  */
 public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
+
     /**
      * Confidence level as absolute value (e.g. 0.95)
      */
@@ -97,6 +98,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         return var;
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         // because it represents a loss, VaR is non-positive

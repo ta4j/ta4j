@@ -49,8 +49,9 @@ public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
         return numberOfLosingPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
+    /** The lower the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isLessThan(criterionValue2);
     }
 }
