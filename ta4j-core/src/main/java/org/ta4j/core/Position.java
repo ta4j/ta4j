@@ -44,7 +44,7 @@ public class Position implements Serializable {
     private static final long serialVersionUID = -5484709075767220358L;
 
     /**
-     * The type of an {@link Position positiion}.
+     * The type of a {@link Position position}.
      *
      * <p>
      * A PROFIT corresponds to a <i>WINNING</i> position. A LOSS corresponds to a
