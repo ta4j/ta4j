@@ -24,9 +24,9 @@
 package org.ta4j.core.reports;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.NumberOfBreakEvenPositionsCriterion;
 import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
@@ -41,9 +41,9 @@ public class PositionStatsReportGenerator implements ReportGenerator<PositionSta
 
     @Override
     public PositionStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num winningPositions = new NumberOfPositionsCriterion(PositionPart.PROFIT).calculate(series,
+        final Num winningPositions = new NumberOfPositionsCriterion(PositionType.PROFIT).calculate(series,
                 tradingRecord);
-        final Num losingPositions = new NumberOfPositionsCriterion(PositionPart.LOSS).calculate(series, tradingRecord);
+        final Num losingPositions = new NumberOfPositionsCriterion(PositionType.LOSS).calculate(series, tradingRecord);
         final Num breakEvenPositions = new NumberOfBreakEvenPositionsCriterion().calculate(series, tradingRecord);
         return new PositionStatsReport(winningPositions, losingPositions, breakEvenPositions);
     }

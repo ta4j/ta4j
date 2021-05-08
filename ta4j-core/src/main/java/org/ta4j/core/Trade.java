@@ -49,6 +49,7 @@ public class Trade implements Serializable {
     /**
      * The type of an {@link Trade trade}.
      *
+     * <p>
      * A BUY corresponds to a <i>BID</i> trade. A SELL corresponds to an <i>ASK</i>
      * trade.
      */

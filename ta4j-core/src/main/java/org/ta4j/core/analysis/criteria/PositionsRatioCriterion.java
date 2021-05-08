@@ -28,36 +28,36 @@ import java.util.Objects;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.num.Num;
 
 /**
  * Calculates the percentage of profitable or not profitable positions.
  *
  * <ul>
- * <li>For {@link PositionPart#PROFIT}: Defined as
+ * <li>For {@link PositionType#PROFIT}: Defined as
  * <code># of winning positions / total # of positions</code>.
- * <li>For {@link PositionPart#LOSS}: Defined as
+ * <li>For {@link PositionType#LOSS}: Defined as
  * <code># of losing positions / total # of positions</code>.
  * </ul>
  */
 public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final PositionPart positionPart;
+    private final PositionType positionType;
     private final AnalysisCriterion numberOfPositionsCriterion;
 
     /**
      * Constructor.
      * 
-     * @param positionPart the PositionPart to select either profit or loss
+     * @param positionType the PositionType to select either profit or loss
      *                     positions
      */
-    public PositionsRatioCriterion(PositionPart positionPart) {
-        this.positionPart = Objects.requireNonNull(positionPart);
-        this.numberOfPositionsCriterion = positionPart == PositionPart.PROFIT
-                ? new NumberOfPositionsCriterion(PositionPart.PROFIT)
-                : new NumberOfPositionsCriterion(PositionPart.LOSS);
+    public PositionsRatioCriterion(PositionType positionType) {
+        this.positionType = Objects.requireNonNull(positionType);
+        this.numberOfPositionsCriterion = positionType == PositionType.PROFIT
+                ? new NumberOfPositionsCriterion(PositionType.PROFIT)
+                : new NumberOfPositionsCriterion(PositionType.LOSS);
     }
 
     @Override
@@ -73,19 +73,19 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     /**
      * <ul>
-     * <li>For {@link PositionPart#PROFIT}: The higher the criterion value, the
+     * <li>For {@link PositionType#PROFIT}: The higher the criterion value, the
      * better.
-     * <li>For {@link PositionPart#LOSS}: The lower the criterion value, the better.
+     * <li>For {@link PositionType#LOSS}: The lower the criterion value, the better.
      * </ul>
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return positionPart == PositionPart.PROFIT ? criterionValue1.isGreaterThan(criterionValue2)
+        return positionType == PositionType.PROFIT ? criterionValue1.isGreaterThan(criterionValue2)
                 : criterionValue1.isLessThan(criterionValue2);
     }
 
-    /** @return the {@link #positionPart} */
-    public PositionPart getPositionPart() {
-        return positionPart;
+    /** @return the {@link #positionType} */
+    public PositionType getPositionType() {
+        return positionType;
     }
 }

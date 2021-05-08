@@ -27,8 +27,8 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -41,23 +41,23 @@ import org.ta4j.core.num.Num;
  */
 public class GrossCriterion extends AbstractAnalysisCriterion {
 
-    private final PositionPart positionPart;
+    private final PositionType positionType;
 
     /**
      * Constructor.
      * 
-     * @param positionPart the PositionPart to select either profit or loss
+     * @param positionType the PositionType to select either profit or loss
      *                     positions
      */
-    public GrossCriterion(PositionPart positionPart) {
-        this.positionPart = Objects.requireNonNull(positionPart);
+    public GrossCriterion(PositionType positionType) {
+        this.positionType = Objects.requireNonNull(positionType);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = position.getGrossProfit();
-            boolean hasGross = positionPart == PositionPart.PROFIT ? profit.isPositive() : profit.isNegative();
+            boolean hasGross = positionType == PositionType.PROFIT ? profit.isPositive() : profit.isNegative();
             return hasGross ? profit : series.numOf(0);
         }
         return series.numOf(0);
@@ -74,9 +74,9 @@ public class GrossCriterion extends AbstractAnalysisCriterion {
 
     /**
      * <ul>
-     * <li>For {@link PositionPart#PROFIT}: The higher the criterion value, the
+     * <li>For {@link PositionType#PROFIT}: The higher the criterion value, the
      * better.
-     * <li>For {@link PositionPart#LOSS}: The higher the criterion value, the
+     * <li>For {@link PositionType#LOSS}: The higher the criterion value, the
      * better.
      * </ul>
      */
@@ -85,9 +85,9 @@ public class GrossCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    /** @return the {@link #positionPart} */
-    public PositionPart getPositionPart() {
-        return positionPart;
+    /** @return the {@link #positionType} */
+    public PositionType getPositionType() {
+        return positionType;
     }
 
 }

@@ -25,9 +25,9 @@ package ta4jexamples.analysis;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AverageReturnPerBarCriterion;
 import org.ta4j.core.analysis.criteria.BuyAndHoldReturnCriterion;
 import org.ta4j.core.analysis.criteria.LinearTransactionCostCriterion;
@@ -74,7 +74,7 @@ public class StrategyAnalysis {
         System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
         // Profitable position ratio
         System.out.println("Winning positions ratio: "
-                + new PositionsRatioCriterion(PositionPart.PROFIT).calculate(series, tradingRecord));
+                + new PositionsRatioCriterion(PositionType.PROFIT).calculate(series, tradingRecord));
         // Maximum drawdown
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
         // Reward-risk ratio

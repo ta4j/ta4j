@@ -26,21 +26,21 @@ package org.ta4j.core.analysis.criteria.pnl;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.ta4j.core.analysis.PositionPart;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.num.Num;
 
 public class GrossCriterionTest extends AbstractCriterionTest {
 
     public GrossCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new GrossCriterion((PositionPart) params[0]), numFunction);
+        super((params) -> new GrossCriterion((PositionType) params[0]), numFunction);
     }
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(PositionPart.PROFIT), 0);
+                getCriterion(PositionType.PROFIT), 0);
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(PositionPart.LOSS), 0);
+                getCriterion(PositionType.LOSS), 0);
     }
 }

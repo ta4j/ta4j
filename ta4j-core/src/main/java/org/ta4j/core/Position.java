@@ -43,6 +43,22 @@ public class Position implements Serializable {
 
     private static final long serialVersionUID = -5484709075767220358L;
 
+    /** To differentiate between winning and losing positions. */
+
+    /**
+     * The type of an {@link Position positiion}.
+     *
+     * <p>
+     * A PROFIT corresponds to a <i>WINNING</i> position. A LOSS corresponds to a
+     * <i>LOSING</i> position.
+     */
+    public enum PositionType {
+        /** A winning position. */
+        PROFIT,
+        /** A losing position. */
+        LOSS;
+    }
+
     /** The entry trade */
     private Trade entry;
 
