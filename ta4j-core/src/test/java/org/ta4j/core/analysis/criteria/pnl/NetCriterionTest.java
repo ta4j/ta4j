@@ -31,10 +31,10 @@ import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class NetCriterionTest extends AbstractCriterionTest {
 
     public NetCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetCriterion((PositionFilter) params[0]), numFunction);
+        super((params) -> new NetCriterion((PositionPart) params[0]), numFunction);
     }
 
     @Test
@@ -51,10 +51,10 @@ public class NetCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion(PositionFilter.PROFIT);
+        AnalysisCriterion profit = getCriterion(PositionPart.PROFIT);
         assertNumEquals(15, profit.calculate(series, tradingRecord));
 
-        AnalysisCriterion loss = getCriterion(PositionFilter.LOSS);
+        AnalysisCriterion loss = getCriterion(PositionPart.LOSS);
         assertNumEquals(0, loss.calculate(series, tradingRecord));
     }
 
@@ -64,7 +64,7 @@ public class NetCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion(PositionFilter.PROFIT);
+        AnalysisCriterion profit = getCriterion(PositionPart.PROFIT);
         assertNumEquals(25, profit.calculate(series, tradingRecord));
     }
 
@@ -74,7 +74,7 @@ public class NetCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion(PositionFilter.LOSS);
+        AnalysisCriterion loss = getCriterion(PositionPart.LOSS);
         assertNumEquals(-35, loss.calculate(series, tradingRecord));
     }
 
@@ -84,20 +84,20 @@ public class NetCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion profit = getCriterion(PositionFilter.PROFIT);
+        AnalysisCriterion profit = getCriterion(PositionPart.PROFIT);
         assertNumEquals(0, profit.calculate(series, tradingRecord));
 
-        AnalysisCriterion loss = getCriterion(PositionFilter.LOSS);
+        AnalysisCriterion loss = getCriterion(PositionPart.LOSS);
         assertNumEquals(-35, loss.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterionProfit = getCriterion(PositionFilter.PROFIT);
+        AnalysisCriterion criterionProfit = getCriterion(PositionPart.PROFIT);
         assertTrue(criterionProfit.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterionProfit.betterThan(numOf(1.5), numOf(2.0)));
 
-        AnalysisCriterion criterionLoss = getCriterion(PositionFilter.LOSS);
+        AnalysisCriterion criterionLoss = getCriterion(PositionPart.LOSS);
         assertTrue(criterionLoss.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterionLoss.betterThan(numOf(1.5), numOf(2.0)));
     }
@@ -105,8 +105,8 @@ public class NetCriterionTest extends AbstractCriterionTest {
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(PositionFilter.PROFIT), 0);
+                getCriterion(PositionPart.PROFIT), 0);
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(PositionFilter.LOSS), 0);
+                getCriterion(PositionPart.LOSS), 0);
     }
 }

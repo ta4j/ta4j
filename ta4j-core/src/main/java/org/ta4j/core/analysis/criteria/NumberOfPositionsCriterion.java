@@ -28,6 +28,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +36,7 @@ import org.ta4j.core.num.Num;
  */
 public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
-    private final PositionFilter positionFilter;
+    private final PositionPart positionPart;
 
     /**
      * Constructor.
@@ -44,24 +45,25 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * For counting the number of all positions.
      */
     public NumberOfPositionsCriterion() {
-        this.positionFilter = null;
+        this.positionPart = null;
     }
 
     /**
      * Constructor.
      * 
-     * @param positionFilter consider either the profit or the loss position
+     * @param positionPart the PositionPart to select either profit or loss
+     *                     positions
      */
-    public NumberOfPositionsCriterion(PositionFilter positionFilter) {
-        this.positionFilter = Objects.requireNonNull(positionFilter);
+    public NumberOfPositionsCriterion(PositionPart positionPart) {
+        this.positionPart = Objects.requireNonNull(positionPart);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (positionFilter == PositionFilter.PROFIT) {
+        if (positionPart == PositionPart.PROFIT) {
             return position.hasProfit() ? series.numOf(1) : series.numOf(0);
         }
-        if (positionFilter == PositionFilter.LOSS) {
+        if (positionPart == PositionPart.LOSS) {
             return position.hasLoss() ? series.numOf(1) : series.numOf(0);
         }
         return series.numOf(1);
@@ -69,11 +71,11 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        if (positionFilter == PositionFilter.PROFIT) {
+        if (positionPart == PositionPart.PROFIT) {
             long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::hasProfit).count();
             return series.numOf(numberOfWinningPositions);
         }
-        if (positionFilter == PositionFilter.LOSS) {
+        if (positionPart == PositionPart.LOSS) {
             long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
             return series.numOf(numberOfLosingPositions);
         }
@@ -81,14 +83,28 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     }
 
+    /**
+     * <ul>
+     * <li>For {@link PositionPart#PROFIT}: The higher the criterion value, the
+     * better.
+     * <li>For {@link PositionPart#LOSS}: The lower the criterion value, the better.
+     * <li>For no give {@link PositionPart}: The lower the criterion value, the
+     * better.
+     * </ul>
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        if (positionFilter == PositionFilter.PROFIT) {
+        if (positionPart == PositionPart.PROFIT) {
             return criterionValue1.isGreaterThan(criterionValue2);
         }
-        if (positionFilter == PositionFilter.LOSS) {
+        if (positionPart == PositionPart.LOSS) {
             return criterionValue1.isLessThan(criterionValue2);
         }
         return criterionValue1.isLessThan(criterionValue2);
+    }
+
+    /** @return the {@link #positionPart} */
+    public PositionPart getPositionPart() {
+        return positionPart;
     }
 }

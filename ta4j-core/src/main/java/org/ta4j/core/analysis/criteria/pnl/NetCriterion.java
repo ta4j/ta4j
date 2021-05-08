@@ -28,7 +28,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.AnalysisCriterion.PositionFilter;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -41,22 +41,23 @@ import org.ta4j.core.num.Num;
  */
 public class NetCriterion extends AbstractAnalysisCriterion {
 
-    private final PositionFilter positionFilter;
+    private final PositionPart positionPart;
 
     /**
      * Constructor.
      * 
-     * @param positionFilter consider either the profit or the loss position
+     * @param positionPart the PositionPart to select either profit or loss
+     *                     positions
      */
-    public NetCriterion(PositionFilter positionFilter) {
-        this.positionFilter = Objects.requireNonNull(positionFilter);
+    public NetCriterion(PositionPart positionPart) {
+        this.positionPart = Objects.requireNonNull(positionPart);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = position.getProfit();
-            boolean isNet = positionFilter == PositionFilter.PROFIT ? profit.isPositive() : profit.isNegative();
+            boolean isNet = positionPart == PositionPart.PROFIT ? profit.isPositive() : profit.isNegative();
             return isNet ? profit : series.numOf(0);
         }
         return series.numOf(0);
@@ -74,14 +75,19 @@ public class NetCriterion extends AbstractAnalysisCriterion {
 
     /**
      * <ul>
-     * <li>For {@link PositionFilter#PROFIT}: The higher the criterion value, the
+     * <li>For {@link PositionPart#PROFIT}: The higher the criterion value, the
      * better.
-     * <li>For {@link PositionFilter#LOSS}: The higher the criterion value, the
+     * <li>For {@link PositionPart#LOSS}: The higher the criterion value, the
      * better.
      * </ul>
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    /** @return the {@link #positionPart} */
+    public PositionPart getPositionPart() {
+        return positionPart;
     }
 }

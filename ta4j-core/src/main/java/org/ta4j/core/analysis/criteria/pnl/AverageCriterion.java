@@ -26,6 +26,7 @@ package org.ta4j.core.analysis.criteria.pnl;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
@@ -37,15 +38,18 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
 
     private final NumberOfPositionsCriterion numberOfPositionsCriterion;
     private final GrossCriterion grossCriterion;
+    private final PositionPart positionPart;
 
     /**
      * Constructor.
      * 
-     * @param positionFilter consider either the profit or the loss position
+     * @param positionPart the PositionPart to select either profit or loss
+     *                     positions
      */
-    public AverageCriterion(PositionFilter positionFilter) {
-        numberOfPositionsCriterion = new NumberOfPositionsCriterion(positionFilter);
-        grossCriterion = new GrossCriterion(positionFilter);
+    public AverageCriterion(PositionPart positionPart) {
+        this.positionPart = positionPart;
+        numberOfPositionsCriterion = new NumberOfPositionsCriterion(positionPart);
+        grossCriterion = new GrossCriterion(positionPart);
     }
 
     @Override
@@ -77,6 +81,11 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    /** @return the {@link #positionPart} */
+    public PositionPart getPositionPart() {
+        return positionPart;
     }
 
 }

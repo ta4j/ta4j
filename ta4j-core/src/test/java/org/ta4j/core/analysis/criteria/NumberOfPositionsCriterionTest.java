@@ -35,7 +35,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.AnalysisCriterion.PositionFilter;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
@@ -43,7 +43,7 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
     public NumberOfPositionsCriterionTest(Function<Number, Num> numFunction) {
         super((params) -> params.length == 0 ? new NumberOfPositionsCriterion()
-                : new NumberOfPositionsCriterion((PositionFilter) params[0]), numFunction);
+                : new NumberOfPositionsCriterion((PositionPart) params[0]), numFunction);
     }
 
     @Test
@@ -52,8 +52,8 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0, buyAndHold.calculate(series, new BaseTradingRecord()));
-        assertNumEquals(0, getCriterion(PositionFilter.PROFIT).calculate(series, new BaseTradingRecord()));
-        assertNumEquals(0, getCriterion(PositionFilter.LOSS).calculate(series, new BaseTradingRecord()));
+        assertNumEquals(0, getCriterion(PositionPart.PROFIT).calculate(series, new BaseTradingRecord()));
+        assertNumEquals(0, getCriterion(PositionPart.LOSS).calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -64,11 +64,11 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(2, buyAndHold.calculate(series, tradingRecord));
-        assertNumEquals(2, getCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord));
+        assertNumEquals(2, getCriterion(PositionPart.PROFIT).calculate(series, tradingRecord));
 
         TradingRecord tradingRecordLoss = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(3, series),
                 Trade.buyAt(3, series), Trade.sellAt(4, series));
-        assertNumEquals(2, getCriterion(PositionFilter.LOSS).calculate(series, tradingRecordLoss));
+        assertNumEquals(2, getCriterion(PositionPart.LOSS).calculate(series, tradingRecordLoss));
     }
 
     @Test
@@ -80,10 +80,10 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
         assertNumEquals(1, positionsCriterion.calculate(series, position));
 
         Position positionProfit = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        assertNumEquals(1, getCriterion(PositionFilter.PROFIT).calculate(series, positionProfit));
+        assertNumEquals(1, getCriterion(PositionPart.PROFIT).calculate(series, positionProfit));
 
         Position positionLoss = new Position(Trade.buyAt(1, series), Trade.sellAt(3, series));
-        assertNumEquals(1, getCriterion(PositionFilter.LOSS).calculate(series, positionLoss));
+        assertNumEquals(1, getCriterion(PositionPart.LOSS).calculate(series, positionLoss));
     }
 
     @Test
@@ -91,7 +91,7 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
         MockBarSeries seriesProfit = new MockBarSeries(numFunction, 110, 105, 110, 100, 95, 105);
         TradingRecord tradingRecordProfit = new BaseTradingRecord(Trade.sellAt(0, seriesProfit),
                 Trade.buyAt(1, seriesProfit), Trade.sellAt(2, seriesProfit), Trade.buyAt(4, seriesProfit));
-        assertNumEquals(2, getCriterion(PositionFilter.PROFIT).calculate(seriesProfit, tradingRecordProfit));
+        assertNumEquals(2, getCriterion(PositionPart.PROFIT).calculate(seriesProfit, tradingRecordProfit));
 
         MockBarSeries seriesLoss = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, seriesLoss), Trade.buyAt(1, seriesLoss),
@@ -105,11 +105,11 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
         assertTrue(criterion.betterThan(numOf(3), numOf(6)));
         assertFalse(criterion.betterThan(numOf(7), numOf(4)));
 
-        AnalysisCriterion criterionProfit = getCriterion(PositionFilter.PROFIT);
+        AnalysisCriterion criterionProfit = getCriterion(PositionPart.PROFIT);
         assertTrue(criterionProfit.betterThan(numOf(6), numOf(3)));
         assertFalse(criterionProfit.betterThan(numOf(4), numOf(7)));
 
-        AnalysisCriterion criterionLoss = getCriterion(PositionFilter.LOSS);
+        AnalysisCriterion criterionLoss = getCriterion(PositionPart.LOSS);
         assertTrue(criterionLoss.betterThan(numOf(3), numOf(6)));
         assertFalse(criterionLoss.betterThan(numOf(7), numOf(4)));
     }
@@ -117,8 +117,8 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(PositionFilter.PROFIT), 0);
+                getCriterion(PositionPart.PROFIT), 0);
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(PositionFilter.LOSS), 0);
+                getCriterion(PositionPart.LOSS), 0);
     }
 }

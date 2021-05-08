@@ -26,6 +26,7 @@ package org.ta4j.core.analysis.criteria.pnl;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.PositionPart;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -35,8 +36,8 @@ import org.ta4j.core.num.Num;
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final AverageCriterion averageProfitCriterion = new AverageCriterion(PositionFilter.PROFIT);
-    private final AverageCriterion averageLossCriterion = new AverageCriterion(PositionFilter.LOSS);
+    private final AverageCriterion averageProfitCriterion = new AverageCriterion(PositionPart.PROFIT);
+    private final AverageCriterion averageLossCriterion = new AverageCriterion(PositionPart.LOSS);
 
     @Override
     public Num calculate(BarSeries series, Position position) {
