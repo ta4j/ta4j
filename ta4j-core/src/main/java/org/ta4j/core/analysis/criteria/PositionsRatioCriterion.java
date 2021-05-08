@@ -25,6 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import java.util.Objects;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Position.PositionType;
@@ -32,21 +33,19 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of position criterion.
+ * Calculates the percentage of profitable or not profitable positions.
+ *
+ * <ul>
+ * <li>For {@link PositionType#PROFIT}: Defined as
+ * <code># of winning positions / total # of positions</code>.
+ * <li>For {@link PositionType#LOSS}: Defined as
+ * <code># of losing positions / total # of positions</code>.
+ * </ul>
  */
-public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
+public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     private final PositionType positionType;
-
-    /**
-     * Constructor.
-     * 
-     * <p>
-     * For counting the number of all positions.
-     */
-    public NumberOfPositionsCriterion() {
-        this.positionType = null;
-    }
+    private final AnalysisCriterion numberOfPositionsCriterion;
 
     /**
      * Constructor.
@@ -54,33 +53,22 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * @param positionType the PositionType to select either profit or loss
      *                     positions
      */
-    public NumberOfPositionsCriterion(PositionType positionType) {
+    public PositionsRatioCriterion(PositionType positionType) {
         this.positionType = Objects.requireNonNull(positionType);
+        this.numberOfPositionsCriterion = positionType == PositionType.PROFIT
+                ? new NumberOfPositionsCriterion(PositionType.PROFIT)
+                : new NumberOfPositionsCriterion(PositionType.LOSS);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (positionType == PositionType.PROFIT) {
-            return position.hasProfit() ? series.numOf(1) : series.numOf(0);
-        }
-        if (positionType == PositionType.LOSS) {
-            return position.hasLoss() ? series.numOf(1) : series.numOf(0);
-        }
-        return series.numOf(1);
+        return numberOfPositionsCriterion.calculate(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        if (positionType == PositionType.PROFIT) {
-            long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::hasProfit).count();
-            return series.numOf(numberOfWinningPositions);
-        }
-        if (positionType == PositionType.LOSS) {
-            long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
-            return series.numOf(numberOfLosingPositions);
-        }
-        return series.numOf(tradingRecord.getPositionCount());
-
+        Num numberPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        return numberPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
     }
 
     /**
@@ -88,19 +76,12 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * <li>For {@link PositionType#PROFIT}: The higher the criterion value, the
      * better.
      * <li>For {@link PositionType#LOSS}: The lower the criterion value, the better.
-     * <li>For no give {@link PositionType}: The lower the criterion value, the
-     * better.
      * </ul>
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        if (positionType == PositionType.PROFIT) {
-            return criterionValue1.isGreaterThan(criterionValue2);
-        }
-        if (positionType == PositionType.LOSS) {
-            return criterionValue1.isLessThan(criterionValue2);
-        }
-        return criterionValue1.isLessThan(criterionValue2);
+        return positionType == PositionType.PROFIT ? criterionValue1.isGreaterThan(criterionValue2)
+                : criterionValue1.isLessThan(criterionValue2);
     }
 
     /** @return the {@link #positionType} */

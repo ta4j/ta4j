@@ -25,6 +25,7 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.pnl.ProfitLossRatioCriterion;
 import org.ta4j.core.num.Num;
@@ -44,7 +45,8 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
 
     private final ProfitLossRatioCriterion profitLossRatioCriterion = new ProfitLossRatioCriterion();
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
-    private final NumberOfWinningPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
+    private final NumberOfPositionsCriterion numberOfWinningPositionsCriterion = new NumberOfPositionsCriterion(
+            PositionType.PROFIT);
 
     @Override
     public Num calculate(BarSeries series, Position position) {

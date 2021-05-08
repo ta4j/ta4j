@@ -23,28 +23,45 @@
  */
 package org.ta4j.core.analysis.criteria.pnl;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Position.PositionType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross profit criterion (with commissions).
+ * Net profit or loss criterion (without commissions).
  *
  * <p>
- * The gross profit of the provided {@link Position position(s)} over the
+ * The net profit or loss of the provided {@link Position position(s)} over the
  * provided {@link BarSeries series}.
  */
-public class GrossProfitCriterion extends AbstractAnalysisCriterion {
+public class NetCriterion extends AbstractAnalysisCriterion {
+
+    private final PositionType positionType;
+
+    /**
+     * Constructor.
+     * 
+     * @param positionType the PositionType to select either profit or loss
+     *                     positions
+     */
+    public NetCriterion(PositionType positionType) {
+        this.positionType = Objects.requireNonNull(positionType);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num profit = position.getGrossProfit();
-            return profit.isPositive() ? profit : series.numOf(0);
+            Num profit = position.getProfit();
+            boolean hasNet = positionType == PositionType.PROFIT ? profit.isPositive() : profit.isNegative();
+            return hasNet ? profit : series.numOf(0);
         }
         return series.numOf(0);
+
     }
 
     @Override
@@ -56,9 +73,21 @@ public class GrossProfitCriterion extends AbstractAnalysisCriterion {
                 .reduce(series.numOf(0), Num::plus);
     }
 
+    /**
+     * <ul>
+     * <li>For {@link PositionType#PROFIT}: The higher the criterion value, the
+     * better.
+     * <li>For {@link PositionType#LOSS}: The higher the criterion value, the
+     * better.
+     * </ul>
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
+    /** @return the {@link #positionType} */
+    public PositionType getPositionType() {
+        return positionType;
+    }
 }

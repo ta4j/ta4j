@@ -43,6 +43,20 @@ public class Position implements Serializable {
 
     private static final long serialVersionUID = -5484709075767220358L;
 
+    /**
+     * The type of a {@link Position position}.
+     *
+     * <p>
+     * A PROFIT corresponds to a <i>WINNING</i> position. A LOSS corresponds to a
+     * <i>LOSING</i> position.
+     */
+    public enum PositionType {
+        /** A winning position. */
+        PROFIT,
+        /** A losing position. */
+        LOSS;
+    }
+
     /** The entry trade */
     private Trade entry;
 
@@ -228,6 +242,20 @@ public class Position implements Serializable {
      */
     public boolean hasLoss() {
         return getProfit().isNegative();
+    }
+
+    /**
+     * @return the PositionType or <code>null</code> if position has neither or
+     *         profit nor a loss
+     */
+    public PositionType getType() {
+        if (hasProfit()) {
+            return PositionType.PROFIT;
+        }
+        if (hasLoss()) {
+            return PositionType.LOSS;
+        }
+        return null;
     }
 
     /**
