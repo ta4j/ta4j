@@ -36,13 +36,13 @@ import org.ta4j.core.num.Num;
  * Gross profit or loss criterion (with commissions).
  *
  * <p>
- * The gross profit or loss of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * The gross profit or loss of the provided {@link Position position(s)} over
+ * the provided {@link BarSeries series}.
  */
 public class GrossCriterion extends AbstractAnalysisCriterion {
-    
+
     private final PositionFilter positionFilter;
-    
+
     /**
      * Constructor.
      * 

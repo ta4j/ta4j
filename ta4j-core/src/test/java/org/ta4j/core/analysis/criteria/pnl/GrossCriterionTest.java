@@ -38,7 +38,9 @@ public class GrossCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(PositionFilter.PROFIT), 0);
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(PositionFilter.LOSS), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
+                getCriterion(PositionFilter.PROFIT), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
+                getCriterion(PositionFilter.LOSS), 0);
     }
 }

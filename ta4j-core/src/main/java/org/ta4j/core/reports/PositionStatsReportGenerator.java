@@ -41,8 +41,10 @@ public class PositionStatsReportGenerator implements ReportGenerator<PositionSta
 
     @Override
     public PositionStatsReport generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series) {
-        final Num winningPositions = new NumberOfPositionsCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord);
-        final Num losingPositions = new NumberOfPositionsCriterion(PositionFilter.LOSS).calculate(series, tradingRecord);
+        final Num winningPositions = new NumberOfPositionsCriterion(PositionFilter.PROFIT).calculate(series,
+                tradingRecord);
+        final Num losingPositions = new NumberOfPositionsCriterion(PositionFilter.LOSS).calculate(series,
+                tradingRecord);
         final Num breakEvenPositions = new NumberOfBreakEvenPositionsCriterion().calculate(series, tradingRecord);
         return new PositionStatsReport(winningPositions, losingPositions, breakEvenPositions);
     }

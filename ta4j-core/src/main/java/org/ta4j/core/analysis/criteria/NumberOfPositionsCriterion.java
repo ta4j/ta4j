@@ -34,9 +34,9 @@ import org.ta4j.core.num.Num;
  * Number of position criterion.
  */
 public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
-    
+
     private final PositionFilter positionFilter;
-    
+
     /**
      * Constructor.
      * 
@@ -46,7 +46,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
     public NumberOfPositionsCriterion() {
         this.positionFilter = null;
     }
-    
+
     /**
      * Constructor.
      * 
@@ -58,10 +58,10 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if(positionFilter == PositionFilter.PROFIT) {
+        if (positionFilter == PositionFilter.PROFIT) {
             return position.hasProfit() ? series.numOf(1) : series.numOf(0);
         }
-        if(positionFilter == PositionFilter.LOSS) {
+        if (positionFilter == PositionFilter.LOSS) {
             return position.hasLoss() ? series.numOf(1) : series.numOf(0);
         }
         return series.numOf(1);
@@ -69,24 +69,24 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        if(positionFilter == PositionFilter.PROFIT) {
+        if (positionFilter == PositionFilter.PROFIT) {
             long numberOfWinningPositions = tradingRecord.getPositions().stream().filter(Position::hasProfit).count();
             return series.numOf(numberOfWinningPositions);
         }
-        if(positionFilter == PositionFilter.LOSS) {
+        if (positionFilter == PositionFilter.LOSS) {
             long numberOfLosingPositions = tradingRecord.getPositions().stream().filter(Position::hasLoss).count();
             return series.numOf(numberOfLosingPositions);
         }
         return series.numOf(tradingRecord.getPositionCount());
-        
+
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        if(positionFilter == PositionFilter.PROFIT) {
+        if (positionFilter == PositionFilter.PROFIT) {
             return criterionValue1.isGreaterThan(criterionValue2);
         }
-        if(positionFilter == PositionFilter.LOSS) {
+        if (positionFilter == PositionFilter.LOSS) {
             return criterionValue1.isLessThan(criterionValue2);
         }
         return criterionValue1.isLessThan(criterionValue2);
