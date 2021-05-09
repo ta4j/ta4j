@@ -28,7 +28,7 @@ import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AverageReturnPerBarCriterion;
-import org.ta4j.core.analysis.criteria.BuyAndHoldReturnCriterion;
+import org.ta4j.core.analysis.criteria.EnterAndHoldReturnCriterion;
 import org.ta4j.core.analysis.criteria.LinearTransactionCostCriterion;
 import org.ta4j.core.analysis.criteria.MaximumDrawdownCriterion;
 import org.ta4j.core.analysis.criteria.NumberOfBarsCriterion;
@@ -83,7 +83,8 @@ public class StrategyAnalysis {
         System.out.println("Total transaction cost (from $1000): "
                 + new LinearTransactionCostCriterion(1000, 0.005).calculate(series, tradingRecord));
         // Buy-and-hold
-        System.out.println("Buy-and-hold return: " + new BuyAndHoldReturnCriterion().calculate(series, tradingRecord));
+        System.out
+                .println("Buy-and-hold return: " + new EnterAndHoldReturnCriterion().calculate(series, tradingRecord));
         // Total profit vs buy-and-hold
         System.out.println("Custom strategy return vs buy-and-hold strategy return: "
                 + new VersusBuyAndHoldCriterion(totalReturn).calculate(series, tradingRecord));

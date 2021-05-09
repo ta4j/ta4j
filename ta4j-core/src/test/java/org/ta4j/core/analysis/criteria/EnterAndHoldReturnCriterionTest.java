@@ -34,14 +34,16 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
+public class EnterAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
-    public BuyAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new BuyAndHoldReturnCriterion(), numFunction);
+    public EnterAndHoldReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> params.length == 0 ? new EnterAndHoldReturnCriterion()
+                : new EnterAndHoldReturnCriterion((TradeType) params[0]), numFunction);
     }
 
     @Test
@@ -52,6 +54,9 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(1.05, buyAndHold.calculate(series, tradingRecord));
+
+        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
+        assertNumEquals(0.95, sellAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -62,6 +67,9 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0.7, buyAndHold.calculate(series, tradingRecord));
+
+        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
+        assertNumEquals(1.3, sellAndHold.calculate(series, tradingRecord));
     }
 
     @Test
@@ -70,6 +78,9 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(0.7, buyAndHold.calculate(series, new BaseTradingRecord()));
+
+        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
+        assertNumEquals(1.3, sellAndHold.calculate(series, new BaseTradingRecord()));
     }
 
     @Test
@@ -78,12 +89,19 @@ public class BuyAndHoldReturnCriterionTest extends AbstractCriterionTest {
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         AnalysisCriterion buyAndHold = getCriterion();
         assertNumEquals(105d / 100, buyAndHold.calculate(series, position));
+
+        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
+        assertNumEquals(0.95, sellAndHold.calculate(series, position));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion();
-        assertTrue(criterion.betterThan(numOf(1.3), numOf(1.1)));
-        assertFalse(criterion.betterThan(numOf(0.6), numOf(0.9)));
+        AnalysisCriterion buyAndHold = getCriterion();
+        assertTrue(buyAndHold.betterThan(numOf(1.3), numOf(1.1)));
+        assertFalse(buyAndHold.betterThan(numOf(0.6), numOf(0.9)));
+
+        AnalysisCriterion sellAndHold = getCriterion(TradeType.SELL);
+        assertTrue(sellAndHold.betterThan(numOf(1.3), numOf(1.1)));
+        assertFalse(sellAndHold.betterThan(numOf(0.6), numOf(0.9)));
     }
 }
