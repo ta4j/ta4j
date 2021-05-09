@@ -9,6 +9,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LosingPositionsRatioCriterion** correct betterThan
 - **VersusBuyAndHoldCriterionTest** NaN-Error.
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
+- :tada: **Fixed** **`Returns.class`** include endIndex in calculation
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
