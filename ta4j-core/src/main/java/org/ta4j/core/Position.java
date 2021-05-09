@@ -211,11 +211,6 @@ public class Position implements Serializable {
         return (entry == null) && (exit == null);
     }
 
-    @Override
-    public String toString() {
-        return "Entry: " + entry + " exit: " + exit;
-    }
-
     /**
      * @return true if position is closed and {@link #getProfit()} > 0
      */
@@ -403,7 +398,23 @@ public class Position implements Serializable {
         return holdingCostModel.calculate(this, finalIndex);
     }
 
+    /**
+     * @return the {@link #startingType}
+     */
+    public TradeType getStartingType() {
+        return startingType;
+    }
+
+    /**
+     * @param num the Number to be converted to a Num
+     * @return the Num of num
+     */
     private Num numOf(Number num) {
         return entry.getNetPrice().numOf(num);
+    }
+
+    @Override
+    public String toString() {
+        return "Entry: " + entry + " exit: " + exit;
     }
 }
