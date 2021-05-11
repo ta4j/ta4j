@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
+- **DXIndicator** moved to adx-package
 
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan
