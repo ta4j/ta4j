@@ -264,7 +264,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     /**
-     * Records an trade and the corresponding position (if closed).
+     * Records a trade and the corresponding position (if closed).
      *
      * @param trade   the trade to be recorded
      * @param isEntry true if the trade is an entry, false otherwise (exit)
