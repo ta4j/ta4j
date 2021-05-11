@@ -28,7 +28,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
 - :tada: **Enhancement** added **`SqnCriterion`**
 - :tada: **Enhancement** added **`StandardDeviationCriterion`**
+- :tada: **Enhancement** added **`StandardErrorCriterion`**
 - :tada: **Enhancement** added **`VarianceCriterion`**
+
 
 ## 0.14 (released April 25, 2021)
 
