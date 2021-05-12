@@ -50,13 +50,13 @@ public class Position implements Serializable {
     private Trade exit;
 
     /** The type of the entry trade */
-    private TradeType startingType;
+    private final TradeType startingType;
 
     /** The cost model for transactions of the asset */
-    private CostModel transactionCostModel;
+    private final CostModel transactionCostModel;
 
     /** The cost model for holding the asset */
-    private CostModel holdingCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
