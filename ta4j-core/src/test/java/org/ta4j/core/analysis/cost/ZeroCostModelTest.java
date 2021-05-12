@@ -30,9 +30,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.Test;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.analysis.cost.CostModel;
-import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 

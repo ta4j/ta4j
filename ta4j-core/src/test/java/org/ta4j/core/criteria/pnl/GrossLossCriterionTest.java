@@ -27,7 +27,6 @@ import java.util.function.Function;
 
 import org.junit.Test;
 import org.ta4j.core.criteria.AbstractCriterionTest;
-import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.num.Num;
 
 public class GrossLossCriterionTest extends AbstractCriterionTest {
