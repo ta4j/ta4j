@@ -28,7 +28,7 @@ import org.ta4j.core.num.Num;
 /**
  * Common formulas for Math and Finance.
  */
-public final class MathUtils {
+public final class NumUtils {
 
     /**
      * Calculates the compound interest by the following formula:
