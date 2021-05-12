@@ -38,10 +38,10 @@ import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class StandardDeviationCriterionTest extends AbstractCriterionTest {
+public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTest {
 
-    public StandardDeviationCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new StandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
+    public RelativeStandardDeviationCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
@@ -52,7 +52,7 @@ public class StandardDeviationCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(5, series, series.numOf(1)));
 
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
-        assertNumEquals(2.5, criterion.calculate(series, tradingRecord));
+        assertNumEquals(0.3333333333333333, criterion.calculate(series, tradingRecord));
     }
 
     @Test

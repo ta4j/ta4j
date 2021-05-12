@@ -52,24 +52,21 @@ public class VarianceCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series, series.numOf(1)), Trade.buyAt(3, series, series.numOf(1)),
                 Trade.sellAt(5, series, series.numOf(1)));
 
-        final ProfitLossCriterion pnlCriterion = new ProfitLossCriterion();
-        AnalysisCriterion variance = getCriterion(pnlCriterion);
+        AnalysisCriterion variance = getCriterion(new ProfitLossCriterion());
         assertNumEquals(6.25, variance.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        ProfitLossCriterion pnlCriterion = new ProfitLossCriterion();
-        AnalysisCriterion criterion = getCriterion(pnlCriterion);
+        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
         assertTrue(criterion.betterThan(numOf(5000), numOf(4500)));
         assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));
     }
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        ProfitLossCriterion pnlCriterion = new ProfitLossCriterion();
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(pnlCriterion), 0);
+                getCriterion(new ProfitLossCriterion()), 0);
     }
 
 }

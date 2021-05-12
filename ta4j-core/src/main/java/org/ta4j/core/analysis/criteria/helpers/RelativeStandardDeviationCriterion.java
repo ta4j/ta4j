@@ -28,30 +28,42 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Standard deviation criterion.
+ * Standard deviation criterion in percentage (also known as Coefficient of
+ * Variation (CV)).
  * 
  * <p>
- * Calculates the standard deviation for a Criterion.
+ * Calculates the standard deviation in percentage for a Criterion.
+ * 
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/c/coefficientofvariation.asp">https://www.investopedia.com/terms/c/coefficientofvariation.asp</a>
  */
-public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
+public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterion {
 
-    private final VarianceCriterion varianceCriterion;
+    private final AnalysisCriterion criterion;
+    private final StandardDeviationCriterion standardDeviationCriterion;
+    private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
      * Constructor.
      * 
-     * @param criterion the criterion to calculate the standard deviation
+     * @param criterion the criterion to calculate the relative standard deviation
      */
-    public StandardDeviationCriterion(AnalysisCriterion criterion) {
-        this.varianceCriterion = new VarianceCriterion(criterion);
+    public RelativeStandardDeviationCriterion(AnalysisCriterion criterion) {
+        this.criterion = criterion;
+        this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return varianceCriterion.calculate(series, position).sqrt();
+        Num criterionValue = criterion.calculate(series, position);
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        Num average = criterionValue.dividedBy(numberOfPositions);
+
+        return standardDeviationCriterion.calculate(series, position).dividedBy(average);
     }
 
     @Override
@@ -59,7 +71,11 @@ public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numOf(0);
         }
-        return varianceCriterion.calculate(series, tradingRecord).sqrt();
+        Num criterionValue = criterion.calculate(series, tradingRecord);
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        Num average = criterionValue.dividedBy(numberOfPositions);
+
+        return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(average);
     }
 
     /** The higher the criterion value, the better. */

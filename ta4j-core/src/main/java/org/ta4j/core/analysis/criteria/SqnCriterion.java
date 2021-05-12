@@ -28,7 +28,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.helpers.StandardDeviationCriterion;
-import org.ta4j.core.analysis.criteria.helpers.VarianceCriterion;
 import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.num.Num;
 
@@ -51,7 +50,6 @@ import org.ta4j.core.num.Num;
 public class SqnCriterion extends AbstractAnalysisCriterion {
 
     private final AnalysisCriterion criterion;
-    private final VarianceCriterion varianceCriterion;
     private final StandardDeviationCriterion standardDeviationCriterion;
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
@@ -93,8 +91,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     public SqnCriterion(AnalysisCriterion criterion, Integer nPositions) {
         this.criterion = criterion;
         this.nPositions = nPositions;
-        this.varianceCriterion = new VarianceCriterion(criterion);
-        this.standardDeviationCriterion = new StandardDeviationCriterion(varianceCriterion);
+        this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
     }
 
     @Override

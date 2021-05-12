@@ -49,7 +49,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
-        assertNumEquals(3.394112549695428, sqnCriterion.calculate(series, tradingRecord));
+        assertNumEquals(4.242640687119286, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test
@@ -59,7 +59,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
-        assertNumEquals(-0.31678383797157333, sqnCriterion.calculate(series, tradingRecord));
+        assertNumEquals(-1.9798989873223332, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test
@@ -69,7 +69,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
-        assertNumEquals(0.023532513677888302, sqnCriterion.calculate(series, tradingRecord));
+        assertNumEquals(0.7353910524340095, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test
@@ -79,7 +79,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
-        assertNumEquals(3.394112549695428, sqnCriterion.calculate(series, tradingRecord));
+        assertNumEquals(4.242640687119286, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test
@@ -89,7 +89,7 @@ public class SqnCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series), Trade.buyAt(3, series));
 
         AnalysisCriterion sqnCriterion = getCriterion();
-        assertNumEquals(-3.394112549695428, sqnCriterion.calculate(series, tradingRecord));
+        assertNumEquals(-4.242640687119286, sqnCriterion.calculate(series, tradingRecord));
     }
 
     @Test

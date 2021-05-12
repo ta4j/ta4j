@@ -41,7 +41,7 @@ import org.ta4j.core.num.Num;
 public class StandardErrorCriterionTest extends AbstractCriterionTest {
 
     public StandardErrorCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new StandardErrorCriterion((StandardDeviationCriterion) params[0]), numFunction);
+        super((params) -> new StandardErrorCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
@@ -51,27 +51,21 @@ public class StandardErrorCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series, series.numOf(1)), Trade.buyAt(3, series, series.numOf(1)),
                 Trade.sellAt(5, series, series.numOf(1)));
 
-        VarianceCriterion varianceCriterion = new VarianceCriterion(new ProfitLossCriterion());
-        AnalysisCriterion standardDeviationCriteron = new StandardDeviationCriterion(varianceCriterion);
-        AnalysisCriterion standardErrorCriterion = getCriterion(standardDeviationCriteron);
-        assertNumEquals(2.2097086912079607, standardErrorCriterion.calculate(series, tradingRecord));
+        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
+        assertNumEquals(1.7677669529663687, criterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        VarianceCriterion varianceCriterion = new VarianceCriterion(new ProfitLossCriterion());
-        AnalysisCriterion standardDeviationCriteron = new StandardDeviationCriterion(varianceCriterion);
-        AnalysisCriterion standardErrorCriterion = getCriterion(standardDeviationCriteron);
-        assertFalse(standardErrorCriterion.betterThan(numOf(5000), numOf(4500)));
-        assertTrue(standardErrorCriterion.betterThan(numOf(4500), numOf(5000)));
+        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
+        assertFalse(criterion.betterThan(numOf(5000), numOf(4500)));
+        assertTrue(criterion.betterThan(numOf(4500), numOf(5000)));
     }
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        VarianceCriterion varianceCriterion = new VarianceCriterion(new ProfitLossCriterion());
-        AnalysisCriterion standardDeviationCriteron = new StandardDeviationCriterion(varianceCriterion);
         openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction,
-                getCriterion(standardDeviationCriteron), 0);
+                getCriterion(new ProfitLossCriterion()), 0);
     }
 
 }

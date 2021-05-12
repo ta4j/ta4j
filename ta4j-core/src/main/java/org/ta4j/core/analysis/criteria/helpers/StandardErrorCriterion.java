@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.analysis.criteria.helpers;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -34,7 +35,7 @@ import org.ta4j.core.num.Num;
  * Standard error criterion.
  * 
  * <p>
- * Calculates the standard error for a StandardDeviationCriterion.
+ * Calculates the standard deviation for a Criterion.
  */
 public class StandardErrorCriterion extends AbstractAnalysisCriterion {
 
@@ -44,11 +45,10 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      * 
-     * @param standardDeviationCriterion the standard deviation criterion to
-     *                                   calculate the standard error
+     * @param criterion the criterion to calculate the standard deviation error
      */
-    public StandardErrorCriterion(StandardDeviationCriterion standardDeviationCriterion) {
-        this.standardDeviationCriterion = standardDeviationCriterion;
+    public StandardErrorCriterion(AnalysisCriterion criterion) {
+        this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
     }
 
     @Override
