@@ -34,16 +34,6 @@ import org.ta4j.core.num.Num;
 /**
  * The SQN ("System Quality Number") Criterion.
  * 
- * <ul>
- * <li>< 1 Very hard to trade
- * <li>1.6 - 1.9 Below average
- * <li>2.0 - 2.4 Average
- * <li>2.5 - 2.9 Good
- * <li>3.0 - 5.0 Excellent
- * <li>5.1 - 6.9 Superb
- * <li>7.0 - Very easy to trade (Holy Grail!)
- * </ul>
- * 
  * @see <a href=
  *      "https://indextrader.com.au/van-tharps-sqn/">https://indextrader.com.au/van-tharps-sqn/</a>
  */
@@ -55,11 +45,11 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * The number to be used for the part of <code>√(numberOfPositions)</code>
-     * within the SQN-Formula when there are more then 100 trades. If this value is
+     * within the SQN-Formula when there are more than 100 trades. If this value is
      * <code>null</code>, then the number of positions calculated by
      * {@link #numberOfPositionsCriterion} is used instead.
      */
-    private Integer nPositions;
+    private final Integer nPositions;
 
     /**
      * Constructor.
@@ -118,7 +108,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
         if (stdDevPnl.isZero()) {
             return series.numOf(0);
         }
-        if (numberOfPositions.isGreaterThan(series.numOf(100)) && nPositions != null) {
+        if (nPositions != null && numberOfPositions.isGreaterThan(series.numOf(100))) {
             numberOfPositions = series.numOf(nPositions);
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
