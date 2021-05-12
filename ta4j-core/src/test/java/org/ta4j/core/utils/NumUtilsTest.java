@@ -14,10 +14,10 @@ public class NumUtilsTest {
     @Test
     public final void testCompoundInterest() {
         Num initialCapital = function.apply(1000);
-        Num percentGrowth = function.apply(0.01);
-        int days = 100;
-        Num compoundInterest = NumUtils.compoundInterest(initialCapital, percentGrowth, days);
-        TestUtils.assertNumEquals(10.0496620928765688550188629073, compoundInterest);
+        Num percentGrowth = function.apply(5);
+        int years = 1;
+        Num compoundInterest = NumUtils.compoundInterest(initialCapital, percentGrowth, years);
+        TestUtils.assertNumEquals(50, compoundInterest);
     }
 
 }
