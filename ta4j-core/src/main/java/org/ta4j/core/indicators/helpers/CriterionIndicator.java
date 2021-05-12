@@ -117,7 +117,6 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
                         || calculatedCriterionValue.isEqual(requiredCriterionValue);
             }
         }
-        // empty tradingRecords or no position must return undefined
         return false;
     }
 
