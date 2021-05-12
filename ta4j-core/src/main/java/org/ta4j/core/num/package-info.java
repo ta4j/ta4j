@@ -30,7 +30,7 @@
  * delegates (Double, {@link java.math.BigDecimal BigDecimal}, ...) for storage
  * and calculations in {@link org.ta4j.core.BarSeries BarSeries},
  * {@link org.ta4j.core.Bar Bars}, {@link org.ta4j.core.Indicator Indicators}
- * and {@link org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion
+ * and {@link org.ta4j.core.criteria.AbstractAnalysisCriterion
  * AnalysisCriterions}
  */
 package org.ta4j.core.num;

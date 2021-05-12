@@ -26,8 +26,8 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.cost.CostModel;
-import org.ta4j.core.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
