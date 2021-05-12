@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Indicator#stream() method
 - :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
+-:tada: **MathUtils** to provide common finanical/statistical/math formulas with Num
 
 ## 0.14 (released April 25, 2021)
 
