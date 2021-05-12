@@ -80,7 +80,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         Num zero = returns.numOf(0);
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
-        Num var = zero;
+        Num valueAtRisk = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)
             int nInBody = (int) (returns.getSize() * confidence);
@@ -88,14 +88,14 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
             // The series is not empty, nInTail > 0
             Collections.sort(returnRates);
-            var = returnRates.get(nInTail - 1);
+            valueAtRisk = returnRates.get(nInTail - 1);
 
             // VaR is non-positive
-            if (var.isGreaterThan(zero)) {
-                var = zero;
+            if (valueAtRisk.isGreaterThan(zero)) {
+                valueAtRisk = zero;
             }
         }
-        return var;
+        return valueAtRisk;
     }
 
     /** The higher the criterion value, the better. */
