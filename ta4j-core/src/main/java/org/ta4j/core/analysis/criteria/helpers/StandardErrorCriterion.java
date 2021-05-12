@@ -45,7 +45,8 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      * 
-     * @param criterion the criterion to calculate the standard deviation error
+     * @param criterion the criterion from which the "standard deviation error" is
+     *                  calculated
      */
     public StandardErrorCriterion(AnalysisCriterion criterion) {
         this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);

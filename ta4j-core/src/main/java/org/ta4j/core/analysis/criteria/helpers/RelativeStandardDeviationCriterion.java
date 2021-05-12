@@ -28,7 +28,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -43,26 +42,23 @@ import org.ta4j.core.num.Num;
  */
 public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion criterion;
     private final StandardDeviationCriterion standardDeviationCriterion;
-    private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
+    private final AverageCriterion averageCriterion;
 
     /**
      * Constructor.
      * 
-     * @param criterion the criterion to calculate the relative standard deviation
+     * @param criterion the criterion from which the "relative standard deviation"
+     *                  is calculated
      */
     public RelativeStandardDeviationCriterion(AnalysisCriterion criterion) {
-        this.criterion = criterion;
         this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
+        this.averageCriterion = new AverageCriterion(criterion);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num criterionValue = criterion.calculate(series, position);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
-        Num average = criterionValue.dividedBy(numberOfPositions);
-
+        Num average = averageCriterion.calculate(series, position);
         return standardDeviationCriterion.calculate(series, position).dividedBy(average);
     }
 
@@ -71,10 +67,7 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numOf(0);
         }
-        Num criterionValue = criterion.calculate(series, tradingRecord);
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        Num average = criterionValue.dividedBy(numberOfPositions);
-
+        Num average = averageCriterion.calculate(series, tradingRecord);
         return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(average);
     }
 

@@ -45,7 +45,7 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      * 
-     * @param criterion the criterion to calculate the variance
+     * @param criterion the criterion from which the "variance" is calculated
      */
     public VarianceCriterion(AnalysisCriterion criterion) {
         this.criterion = criterion;

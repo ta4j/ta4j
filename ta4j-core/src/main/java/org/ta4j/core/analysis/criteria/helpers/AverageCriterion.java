@@ -28,31 +28,33 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Standard deviation criterion.
+ * Average criterion.
  * 
  * <p>
- * Calculates the standard deviation for a Criterion.
+ * Calculates the average of a Criterion.
  */
-public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
+public class AverageCriterion extends AbstractAnalysisCriterion {
 
-    private final VarianceCriterion varianceCriterion;
+    private final AnalysisCriterion criterion;
+    private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
      * Constructor.
      * 
-     * @param criterion the criterion from which the "standard deviation" is
-     *                  calculated
+     * @param criterion the criterion from which the "average" is calculated
      */
-    public StandardDeviationCriterion(AnalysisCriterion criterion) {
-        this.varianceCriterion = new VarianceCriterion(criterion);
+    public AverageCriterion(AnalysisCriterion criterion) {
+        this.criterion = criterion;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return varianceCriterion.calculate(series, position).sqrt();
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
+        return criterion.calculate(series, position).dividedBy(numberOfPositions);
     }
 
     @Override
@@ -60,7 +62,8 @@ public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numOf(0);
         }
-        return varianceCriterion.calculate(series, tradingRecord).sqrt();
+        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
+        return criterion.calculate(series, tradingRecord).dividedBy(numberOfPositions);
     }
 
     /** The higher the criterion value, the better. */
