@@ -21,36 +21,40 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * +DM indicator.
+ * DX indicator.
  */
-public class PlusDMIndicator extends CachedIndicator<Num> {
+public class DXIndicator extends CachedIndicator<Num> {
 
-    public PlusDMIndicator(BarSeries series) {
+    private final int barCount;
+    private final PlusDIIndicator plusDIIndicator;
+    private final MinusDIIndicator minusDIIndicator;
+
+    public DXIndicator(BarSeries series, int barCount) {
         super(series);
+        this.barCount = barCount;
+        plusDIIndicator = new PlusDIIndicator(series, barCount);
+        minusDIIndicator = new MinusDIIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
+        Num pdiValue = plusDIIndicator.getValue(index);
+        Num mdiValue = minusDIIndicator.getValue(index);
+        if (pdiValue.plus(mdiValue).equals(numOf(0))) {
             return numOf(0);
         }
-        final Bar prevBar = getBarSeries().getBar(index - 1);
-        final Bar currentBar = getBarSeries().getBar(index);
+        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
+    }
 
-        final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
-        final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
-        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numOf(0))) {
-            return upMove;
-        } else {
-            return numOf(0);
-        }
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 }

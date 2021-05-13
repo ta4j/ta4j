@@ -23,41 +23,34 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * ADX indicator. Part of the Directional Movement System.
- *
- * @see <a
- *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>
+ * +DM indicator.
  */
-public class ADXIndicator extends CachedIndicator<Num> {
+public class PlusDMIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator averageDXIndicator;
-    private final int diBarCount;
-    private final int adxBarCount;
-
-    public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
+    public PlusDMIndicator(BarSeries series) {
         super(series);
-        this.diBarCount = diBarCount;
-        this.adxBarCount = adxBarCount;
-        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
-    }
-
-    public ADXIndicator(BarSeries series, int barCount) {
-        this(series, barCount, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        return averageDXIndicator.getValue(index);
-    }
+        if (index == 0) {
+            return numOf(0);
+        }
+        final Bar prevBar = getBarSeries().getBar(index - 1);
+        final Bar currentBar = getBarSeries().getBar(index);
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
+        final Num upMove = currentBar.getHighPrice().minus(prevBar.getHighPrice());
+        final Num downMove = prevBar.getLowPrice().minus(currentBar.getLowPrice());
+        if (upMove.isGreaterThan(downMove) && upMove.isGreaterThan(numOf(0))) {
+            return upMove;
+        } else {
+            return numOf(0);
+        }
     }
 }
