@@ -26,7 +26,6 @@ package org.ta4j.core.indicators.adx;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
-import org.ta4j.core.indicators.helpers.DXIndicator;
 import org.ta4j.core.num.Num;
 
 /**
