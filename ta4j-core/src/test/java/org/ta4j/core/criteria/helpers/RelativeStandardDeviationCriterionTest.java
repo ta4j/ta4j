@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.helpers;
+package org.ta4j.core.criteria.helpers;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -34,26 +34,26 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.AbstractCriterionTest;
+import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class VarianceCriterionTest extends AbstractCriterionTest {
+public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTest {
 
-    public VarianceCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new VarianceCriterion((AnalysisCriterion) params[0]), numFunction);
+    public RelativeStandardDeviationCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new RelativeStandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
-    public void calculateVariancePnL() {
+    public void calculateStandardDeviationPnL() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.numOf(1)),
                 Trade.sellAt(2, series, series.numOf(1)), Trade.buyAt(3, series, series.numOf(1)),
                 Trade.sellAt(5, series, series.numOf(1)));
 
-        AnalysisCriterion variance = getCriterion(new ProfitLossCriterion());
-        assertNumEquals(6.25, variance.calculate(series, tradingRecord));
+        AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
+        assertNumEquals(0.3333333333333333, criterion.calculate(series, tradingRecord));
     }
 
     @Test

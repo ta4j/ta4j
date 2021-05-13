@@ -21,47 +21,41 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.helpers;
+package org.ta4j.core.criteria.helpers;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Variance criterion.
+ * Standard error criterion.
  * 
  * <p>
  * Calculates the standard deviation for a Criterion.
  */
-public class VarianceCriterion extends AbstractAnalysisCriterion {
+public class StandardErrorCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion criterion;
+    private final StandardDeviationCriterion standardDeviationCriterion;
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
      * Constructor.
      * 
-     * @param criterion the criterion from which the "variance" is calculated
+     * @param criterion the criterion from which the "standard deviation error" is
+     *                  calculated
      */
-    public VarianceCriterion(AnalysisCriterion criterion) {
-        this.criterion = criterion;
+    public StandardErrorCriterion(AnalysisCriterion criterion) {
+        this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num criterionValue = criterion.calculate(series, position);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
-
-        Num variance = series.numOf(0);
-        Num average = criterionValue.dividedBy(numberOfPositions);
-        Num pow = criterion.calculate(series, position).minus(average).pow(2);
-        variance = variance.plus(pow);
-        variance = variance.dividedBy(numberOfPositions);
-        return variance;
+        return standardDeviationCriterion.calculate(series, position).dividedBy(numberOfPositions.sqrt());
     }
 
     @Override
@@ -69,24 +63,14 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numOf(0);
         }
-        Num criterionValue = criterion.calculate(series, tradingRecord);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-
-        Num variance = series.numOf(0);
-        Num average = criterionValue.dividedBy(numberOfPositions);
-
-        for (Position position : tradingRecord.getPositions()) {
-            Num pow = criterion.calculate(series, position).minus(average).pow(2);
-            variance = variance.plus(pow);
-        }
-        variance = variance.dividedBy(numberOfPositions);
-        return variance;
+        return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(numberOfPositions.sqrt());
     }
 
-    /** The higher the criterion value, the better. */
+    /** The lower the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isLessThan(criterionValue2);
     }
 
 }

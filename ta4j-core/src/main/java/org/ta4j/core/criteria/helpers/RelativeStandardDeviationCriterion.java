@@ -21,40 +21,45 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.helpers;
+package org.ta4j.core.criteria.helpers;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Average criterion.
+ * Standard deviation criterion in percentage (also known as Coefficient of
+ * Variation (CV)).
  * 
  * <p>
- * Calculates the average of a Criterion.
+ * Calculates the standard deviation in percentage for a Criterion.
+ * 
+ * @see <a href=
+ *      "https://www.investopedia.com/terms/c/coefficientofvariation.asp">https://www.investopedia.com/terms/c/coefficientofvariation.asp</a>
  */
-public class AverageCriterion extends AbstractAnalysisCriterion {
+public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion criterion;
-    private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
+    private final StandardDeviationCriterion standardDeviationCriterion;
+    private final AverageCriterion averageCriterion;
 
     /**
      * Constructor.
      * 
-     * @param criterion the criterion from which the "average" is calculated
+     * @param criterion the criterion from which the "relative standard deviation"
+     *                  is calculated
      */
-    public AverageCriterion(AnalysisCriterion criterion) {
-        this.criterion = criterion;
+    public RelativeStandardDeviationCriterion(AnalysisCriterion criterion) {
+        this.standardDeviationCriterion = new StandardDeviationCriterion(criterion);
+        this.averageCriterion = new AverageCriterion(criterion);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
-        return criterion.calculate(series, position).dividedBy(numberOfPositions);
+        Num average = averageCriterion.calculate(series, position);
+        return standardDeviationCriterion.calculate(series, position).dividedBy(average);
     }
 
     @Override
@@ -62,8 +67,8 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numOf(0);
         }
-        Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
-        return criterion.calculate(series, tradingRecord).dividedBy(numberOfPositions);
+        Num average = averageCriterion.calculate(series, tradingRecord);
+        return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(average);
     }
 
     /** The higher the criterion value, the better. */

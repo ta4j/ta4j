@@ -21,9 +21,10 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.criteria.helpers;
+package org.ta4j.core.criteria.helpers;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
@@ -33,33 +34,33 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.AbstractCriterionTest;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.AbstractCriterionTest;
+import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class StandardErrorCriterionTest extends AbstractCriterionTest {
+public class StandardDeviationCriterionTest extends AbstractCriterionTest {
 
-    public StandardErrorCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new StandardErrorCriterion((AnalysisCriterion) params[0]), numFunction);
+    public StandardDeviationCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new StandardDeviationCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
-    public void calculateStandardErrorPnL() {
+    public void calculateStandardDeviationPnL() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.numOf(1)),
                 Trade.sellAt(2, series, series.numOf(1)), Trade.buyAt(3, series, series.numOf(1)),
                 Trade.sellAt(5, series, series.numOf(1)));
 
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
-        assertNumEquals(1.7677669529663687, criterion.calculate(series, tradingRecord));
+        assertNumEquals(2.5, criterion.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
-        assertFalse(criterion.betterThan(numOf(5000), numOf(4500)));
-        assertTrue(criterion.betterThan(numOf(4500), numOf(5000)));
+        assertTrue(criterion.betterThan(numOf(5000), numOf(4500)));
+        assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));
     }
 
     @Test
