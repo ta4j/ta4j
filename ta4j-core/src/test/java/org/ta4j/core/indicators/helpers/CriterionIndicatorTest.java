@@ -31,7 +31,6 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.criteria.NumberOfWinningPositionsCriterion;
@@ -86,34 +85,6 @@ public class CriterionIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         assertFalse(criterionIndicator.getValue(1));
         // till index 2, at least one winning position is made
         assertTrue(criterionIndicator.getValue(2));
-        // till index 3, at least one winning position is made
-        assertTrue(criterionIndicator.getValue(3));
-        // till index 4, at least one winning position is made
-        assertTrue(criterionIndicator.getValue(4));
-        // till index 5, at least one winning position is made
-        assertTrue(criterionIndicator.getValue(5));
-    }
-
-    @Test
-    public void testWithPosition() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 115, 105, 110);
-
-        // Position is a winning position
-        Position position = new Position(Trade.buyAt(2, series), Trade.sellAt(3, series));
-
-        numberOfWinningPositionsCriterion = new NumberOfWinningPositionsCriterion();
-
-        // you need at least 1 winning position
-        Num requiredCriterionValue = series.numOf(1);
-        criterionIndicator = new CriterionIndicator(series, position, numberOfWinningPositionsCriterion,
-                requiredCriterionValue);
-
-        // till index 0, no winning position is made
-        assertFalse(criterionIndicator.getValue(0));
-        // till index 1, no winning position is made
-        assertFalse(criterionIndicator.getValue(1));
-        // till index 2, no winning position is made
-        assertFalse(criterionIndicator.getValue(2));
         // till index 3, at least one winning position is made
         assertTrue(criterionIndicator.getValue(3));
         // till index 4, at least one winning position is made

@@ -46,7 +46,6 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
     private final AnalysisCriterion criterion;
     private final Num requiredCriterionValue;
     private final TradingRecord tradingRecord;
-    private final Position position;
 
     /**
      * Constructor.
@@ -64,7 +63,6 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
         this.tradingRecord = tradingRecord;
         this.criterion = criterion;
         this.requiredCriterionValue = requiredCriterionValue;
-        this.position = null;
     }
 
     /**
@@ -83,41 +81,31 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
         this.tradingRecord = null;
         this.criterion = criterion;
         this.requiredCriterionValue = requiredCriterionValue;
-        this.position = position;
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (tradingRecord != null && !tradingRecord.getPositions().isEmpty()) {
-            TradingRecord tradingRecordTillIndex = new BaseTradingRecord(tradingRecord.getStartingType(),
-                    tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
-            for (Position pos : tradingRecord.getPositions()) {
-                // consider only those positions made till index
-                if (pos.getEntry().getIndex() <= index) {
-                    Trade entry = pos.getEntry();
-                    tradingRecordTillIndex.enter(entry.getIndex(), entry.getNetPrice(), entry.getAmount());
-                }
-                if (pos.getExit() != null && pos.getExit().getIndex() <= index) {
-                    Trade exit = pos.getExit();
-                    tradingRecordTillIndex.exit(exit.getIndex(), exit.getNetPrice(), exit.getAmount());
-                }
+        if (tradingRecord.getPositions().isEmpty()) {
+            return false;
+        }
+
+        TradingRecord tradingRecordTillIndex = new BaseTradingRecord(tradingRecord.getStartingType(),
+                tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
+        for (Position pos : tradingRecord.getPositions()) {
+            // consider only those positions made till index
+            if (pos.getEntry().getIndex() <= index) {
+                Trade entry = pos.getEntry();
+                tradingRecordTillIndex.enter(entry.getIndex(), entry.getNetPrice(), entry.getAmount());
             }
-
-            Num calculatedCriterionValue = criterion.calculate(getBarSeries(), tradingRecordTillIndex);
-            return criterion.betterThan(calculatedCriterionValue, requiredCriterionValue)
-                    || calculatedCriterionValue.isEqual(requiredCriterionValue);
-
-        } else if (position != null) {
-            boolean entryTradeWithinIndex = position.getEntry().getIndex() <= index;
-            boolean exitTradeWithinIndex = position.getExit() == null
-                    || position.getExit() != null && position.getExit().getIndex() <= index;
-            if (entryTradeWithinIndex && exitTradeWithinIndex) {
-                Num calculatedCriterionValue = criterion.calculate(getBarSeries(), position);
-                return criterion.betterThan(calculatedCriterionValue, requiredCriterionValue)
-                        || calculatedCriterionValue.isEqual(requiredCriterionValue);
+            if (pos.getExit() != null && pos.getExit().getIndex() <= index) {
+                Trade exit = pos.getExit();
+                tradingRecordTillIndex.exit(exit.getIndex(), exit.getNetPrice(), exit.getAmount());
             }
         }
-        return false;
+
+        Num calculatedCriterionValue = criterion.calculate(getBarSeries(), tradingRecordTillIndex);
+        return criterion.betterThan(calculatedCriterionValue, requiredCriterionValue)
+                || calculatedCriterionValue.isEqual(requiredCriterionValue);
     }
 
 }
