@@ -39,7 +39,6 @@ import org.ta4j.core.num.Num;
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>
  */
 public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
-
     /**
      * Confidence level as absolute value (e.g. 0.95)
      */
@@ -80,7 +79,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         Num zero = returns.numOf(0);
         // select non-NaN returns
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
-        Num var = zero;
+        Num valueAtRisk = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)
             int nInBody = (int) (returns.getSize() * confidence);
@@ -88,17 +87,16 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
             // The series is not empty, nInTail > 0
             Collections.sort(returnRates);
-            var = returnRates.get(nInTail - 1);
+            valueAtRisk = returnRates.get(nInTail - 1);
 
             // VaR is non-positive
-            if (var.isGreaterThan(zero)) {
-                var = zero;
+            if (valueAtRisk.isGreaterThan(zero)) {
+                valueAtRisk = zero;
             }
         }
-        return var;
+        return valueAtRisk;
     }
 
-    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         // because it represents a loss, VaR is non-positive
