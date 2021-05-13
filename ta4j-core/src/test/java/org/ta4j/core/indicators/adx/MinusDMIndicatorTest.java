@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.indicators.adx;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -33,13 +33,14 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.adx.MinusDMIndicator;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
-    public PlusDMIndicatorTest(Function<Number, Num> numFunction) {
+    public MinusDMIndicatorTest(Function<Number, Num> numFunction) {
         super(numFunction);
     }
 
@@ -51,8 +52,8 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);
-        PlusDMIndicator dup = new PlusDMIndicator(series);
-        assertNumEquals(0, dup.getValue(1));
+        MinusDMIndicator down = new MinusDMIndicator(series);
+        assertNumEquals(0, down.getValue(1));
     }
 
     @Test
@@ -63,31 +64,31 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);
-        PlusDMIndicator dup = new PlusDMIndicator(series);
-        assertNumEquals(0, dup.getValue(1));
+        MinusDMIndicator down = new MinusDMIndicator(series);
+        assertNumEquals(0, down.getValue(1));
     }
 
     @Test
     public void zeroDirectionalMovement3() {
-        MockBar yesterdayBar = new MockBar(0, 0, 6, 20, numFunction);
-        MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
-        List<Bar> bars = new ArrayList<Bar>();
-        bars.add(yesterdayBar);
-        bars.add(todayBar);
-        MockBarSeries series = new MockBarSeries(bars);
-        PlusDMIndicator dup = new PlusDMIndicator(series);
-        assertNumEquals(0, dup.getValue(1));
-    }
-
-    @Test
-    public void positiveDirectionalMovement() {
         MockBar yesterdayBar = new MockBar(0, 0, 6, 6, numFunction);
         MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
         List<Bar> bars = new ArrayList<Bar>();
         bars.add(yesterdayBar);
         bars.add(todayBar);
         MockBarSeries series = new MockBarSeries(bars);
-        PlusDMIndicator dup = new PlusDMIndicator(series);
-        assertNumEquals(6, dup.getValue(1));
+        MinusDMIndicator down = new MinusDMIndicator(series);
+        assertNumEquals(0, down.getValue(1));
+    }
+
+    @Test
+    public void positiveDirectionalMovement() {
+        MockBar yesterdayBar = new MockBar(0, 0, 6, 20, numFunction);
+        MockBar todayBar = new MockBar(0, 0, 12, 4, numFunction);
+        List<Bar> bars = new ArrayList<Bar>();
+        bars.add(yesterdayBar);
+        bars.add(todayBar);
+        MockBarSeries series = new MockBarSeries(bars);
+        MinusDMIndicator down = new MinusDMIndicator(series);
+        assertNumEquals(16, down.getValue(1));
     }
 }

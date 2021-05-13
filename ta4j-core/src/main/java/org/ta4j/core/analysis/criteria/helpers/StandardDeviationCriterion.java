@@ -21,42 +21,52 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.helpers;
+package org.ta4j.core.analysis.criteria.helpers;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.adx.MinusDIIndicator;
-import org.ta4j.core.indicators.adx.PlusDIIndicator;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * DX indicator.
+ * Standard deviation criterion.
+ * 
+ * <p>
+ * Calculates the standard deviation for a Criterion.
  */
-public class DXIndicator extends CachedIndicator<Num> {
+public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
 
-    private final int barCount;
-    private final PlusDIIndicator plusDIIndicator;
-    private final MinusDIIndicator minusDIIndicator;
+    private final VarianceCriterion varianceCriterion;
 
-    public DXIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.barCount = barCount;
-        plusDIIndicator = new PlusDIIndicator(series, barCount);
-        minusDIIndicator = new MinusDIIndicator(series, barCount);
+    /**
+     * Constructor.
+     * 
+     * @param criterion the criterion from which the "standard deviation" is
+     *                  calculated
+     */
+    public StandardDeviationCriterion(AnalysisCriterion criterion) {
+        this.varianceCriterion = new VarianceCriterion(criterion);
     }
 
     @Override
-    protected Num calculate(int index) {
-        Num pdiValue = plusDIIndicator.getValue(index);
-        Num mdiValue = minusDIIndicator.getValue(index);
-        if (pdiValue.plus(mdiValue).equals(numOf(0))) {
-            return numOf(0);
+    public Num calculate(BarSeries series, Position position) {
+        return varianceCriterion.calculate(series, position).sqrt();
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        if (tradingRecord.getPositions().isEmpty()) {
+            return series.numOf(0);
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
+        return varianceCriterion.calculate(series, tradingRecord).sqrt();
     }
 
+    /** The higher the criterion value, the better. */
     @Override
-    public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
+
 }
