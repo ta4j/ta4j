@@ -26,6 +26,13 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Indicator#stream() method
 - :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
+- :tada: **Enhancement** added **`SqnCriterion`**
+- :tada: **Enhancement** added **`StandardDeviationCriterion`**
+- :tada: **Enhancement** added **`RelativeStandardDeviationCriterion`**
+- :tada: **Enhancement** added **`StandardErrorCriterion`**
+- :tada: **Enhancement** added **`VarianceCriterion`**
+- :tada: **Enhancement** added **`AverageCriterion`**
+
 
 ## 0.14 (released April 25, 2021)
 
