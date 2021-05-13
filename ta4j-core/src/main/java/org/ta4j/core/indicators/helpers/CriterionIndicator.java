@@ -65,24 +65,6 @@ public final class CriterionIndicator extends CachedIndicator<Boolean> {
         this.requiredCriterionValue = requiredCriterionValue;
     }
 
-    /**
-     * Constructor.
-     * 
-     * @param series                 the bar series
-     * @param position               the position
-     * @param criterion              the criterion to get the calculated criterion
-     *                               value on a bar index
-     * @param requiredCriterionValue the required criterion value to test against
-     *                               the calculated criterion value
-     */
-    public CriterionIndicator(BarSeries series, Position position, AnalysisCriterion criterion,
-            Num requiredCriterionValue) {
-        super(series);
-        this.tradingRecord = null;
-        this.criterion = criterion;
-        this.requiredCriterionValue = requiredCriterionValue;
-    }
-
     @Override
     protected Boolean calculate(int index) {
         if (tradingRecord.getPositions().isEmpty()) {
