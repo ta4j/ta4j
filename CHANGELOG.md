@@ -35,6 +35,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`StandardErrorCriterion`**
 - :tada: **Enhancement** added **`VarianceCriterion`**
 - :tada: **Enhancement** added **`AverageCriterion`**
+- :tada: **Enhancement** added **`BeforeRule`**
 
 
 ## 0.14 (released April 25, 2021)
