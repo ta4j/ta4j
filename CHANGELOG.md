@@ -23,6 +23,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PriceIndicator** removed
 
 ### Added
+- **AbstractEMAIndicator** added getBarCount() to support future enhancements 
+- **ATRIndicator** "uncached" by changing superclass to AbstractIndicator; added constructor to accept TRIndicator and getter for same; added toString(); added getBarCount() to support future enhancements
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
