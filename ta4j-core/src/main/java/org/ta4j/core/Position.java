@@ -50,13 +50,13 @@ public class Position implements Serializable {
     private Trade exit;
 
     /** The type of the entry trade */
-    private TradeType startingType;
+    private final TradeType startingType;
 
     /** The cost model for transactions of the asset */
-    private CostModel transactionCostModel;
+    private final CostModel transactionCostModel;
 
     /** The cost model for holding the asset */
-    private CostModel holdingCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
@@ -209,11 +209,6 @@ public class Position implements Serializable {
      */
     public boolean isNew() {
         return (entry == null) && (exit == null);
-    }
-
-    @Override
-    public String toString() {
-        return "Entry: " + entry + " exit: " + exit;
     }
 
     /**
@@ -403,7 +398,23 @@ public class Position implements Serializable {
         return holdingCostModel.calculate(this, finalIndex);
     }
 
+    /**
+     * @return the {@link #startingType}
+     */
+    public TradeType getStartingType() {
+        return startingType;
+    }
+
+    /**
+     * @param num the Number to be converted to a Num
+     * @return the Num of num
+     */
     private Num numOf(Number num) {
         return entry.getNetPrice().numOf(num);
+    }
+
+    @Override
+    public String toString() {
+        return "Entry: " + entry + " exit: " + exit;
     }
 }
