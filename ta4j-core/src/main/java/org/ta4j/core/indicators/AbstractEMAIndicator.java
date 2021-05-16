@@ -55,4 +55,8 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+
+    public int getBarCount() {
+        return barCount;
+    }
 }
