@@ -26,9 +26,9 @@ package org.ta4j.core.reports;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.NumberOfBreakEvenPositionsCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfLosingPositionsCriterion;
-import org.ta4j.core.analysis.criteria.NumberOfWinningPositionsCriterion;
+import org.ta4j.core.criteria.NumberOfBreakEvenPositionsCriterion;
+import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
+import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.num.Num;
 
 /**

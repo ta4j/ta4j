@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.CCIIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;

@@ -26,10 +26,10 @@ package org.ta4j.core.reports;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.pnl.NetLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossCriterion;
-import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
+import org.ta4j.core.criteria.pnl.NetLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.ProfitLossPercentageCriterion;
 import org.ta4j.core.num.Num;
 
 /**
