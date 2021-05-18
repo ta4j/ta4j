@@ -63,28 +63,27 @@ public class TrailingStopLossRule extends AbstractRule {
      * The price indicator
      */
     private final Indicator<Num> priceIndicator;
-    /**
-     * the current price extremum
-     */
-    private Num currentExtremum = null;
-    /**
-     * the current stop loss price activation
-     */
-    private Num currentStopLossLimitActivation = null;
+
     /** The barCount */
-    private int barCount;
+    private final int barCount;
+
     /** the loss-distance as percentage */
     private final Num lossPercentage;
 
     /**
+     * the current stop loss price activation
+     */
+    private Num currentStopLossLimitActivation;
+
+    /**
      * Constructor.
      * 
-     * @param closePrice     the close price indicator
+     * @param indicator      the (close price) indicator
      * @param lossPercentage the loss percentage
      * @param barCount       number of bars to look back for the calculation
      */
-    public TrailingStopLossRule(Indicator<Num> priceIndicator, Num lossPercentage, int barCount) {
-        this.priceIndicator = priceIndicator;
+    public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage, int barCount) {
+        this.priceIndicator = indicator;
         this.barCount = barCount;
         this.lossPercentage = lossPercentage;
     }
@@ -92,11 +91,11 @@ public class TrailingStopLossRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param closePrice     the close price indicator
+     * @param indicator      the (close price) indicator
      * @param lossPercentage the loss percentage
      */
-    public TrailingStopLossRule(Indicator<Num> priceIndicator, Num lossPercentage) {
-        this(priceIndicator, lossPercentage, Integer.MAX_VALUE);
+    public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage) {
+        this(indicator, lossPercentage, Integer.MAX_VALUE);
     }
 
     @Override
