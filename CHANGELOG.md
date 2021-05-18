@@ -14,6 +14,9 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
 
 ### Changed
+- **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
+- **KeltnerChannelUpperIndicator** changed superclass to AbstractIndicator; add constructor to accept pre-constructed ATR; add GetBarCount() and toString()
+- **KeltnerChannelLowerIndicator** changed superclass to AbstractIndicator; add constructor to accept pre-constructed ATR; add GetBarCount() and toString()
 - **BarSeriesManager** removed empty args constructor
 - **Open|High|Low|Close** do not cache price values anymore
 - **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)

@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
-public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
+public class KeltnerChannelUpperIndicator extends AbstractIndicator<Num> {
 
     private final ATRIndicator averageTrueRangeIndicator;
 
@@ -42,18 +42,29 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final Num ratio;
 
-    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, double ratio,
-            int barCountATR) {
-        super(keltnerMiddleIndicator);
+    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator middle, double ratio, int barCountATR) {
+        this(middle, new ATRIndicator(middle.getBarSeries(), barCountATR), ratio);
+    }
+
+    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator middle, ATRIndicator atr, double ratio) {
+        super(middle.getBarSeries());
+        this.keltnerMiddleIndicator = middle;
+        this.averageTrueRangeIndicator = atr;
         this.ratio = numOf(ratio);
-        this.keltnerMiddleIndicator = keltnerMiddleIndicator;
-        averageTrueRangeIndicator = new ATRIndicator(keltnerMiddleIndicator.getBarSeries(), barCountATR);
     }
 
     @Override
-    protected Num calculate(int index) {
+    public Num getValue(int index) {
         return keltnerMiddleIndicator.getValue(index)
                 .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
 
+    public int getBarCount() {
+        return keltnerMiddleIndicator.getBarCount();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + getBarCount();
+    }
 }
