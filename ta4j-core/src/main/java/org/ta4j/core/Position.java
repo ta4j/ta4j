@@ -29,8 +29,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.cost.CostModel;
-import org.ta4j.core.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**

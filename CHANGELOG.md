@@ -8,6 +8,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DXIndicator** moved to adx-package
 - **PlusDMIndicator** moved to adx-package
 - **MinusDMIndicator** moved to adx-package
+- `analysis/criterion`-package moved to root
+- `cost`-package moved to `analysis/cost`-package
 
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan

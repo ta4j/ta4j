@@ -23,8 +23,17 @@
  */
 package ta4jexamples.num;
 
-import org.ta4j.core.*;
-import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
+import java.time.ZonedDateTime;
+import java.util.Random;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -37,9 +46,6 @@ import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.IsEqualRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-
-import java.time.ZonedDateTime;
-import java.util.Random;
 
 public class CompareNumTypes {
 
