@@ -82,8 +82,8 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
     public void toStringMethod() {
         AbstractAnalysisCriterion c1 = new AverageReturnPerBarCriterion();
         assertEquals("Average Return Per Bar", c1.toString());
-        AbstractAnalysisCriterion c2 = new BuyAndHoldReturnCriterion();
-        assertEquals("Buy And Hold Return", c2.toString());
+        AbstractAnalysisCriterion c2 = new EnterAndHoldReturnCriterion();
+        assertEquals("Enter And Hold Return", c2.toString());
         AbstractAnalysisCriterion c3 = new ReturnOverMaxDrawdownCriterion();
         assertEquals("Return Over Max Drawdown", c3.toString());
     }

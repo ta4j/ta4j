@@ -4,6 +4,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
+- **BuyAndHoldCriterion** renamed to **`EnterAndHoldCriterion`**
 - **DXIndicator** moved to adx-package
 - **PlusDMIndicator** moved to adx-package
 - **MinusDMIndicator** moved to adx-package
@@ -31,6 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added Indicator#stream() method
 - :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
+- **EnterAndHoldCriterion** added constructor with TradeType to begin with buy or sell
 - :tada: **Enhancement** added Position#getStartingType() method
 - :tada: **Enhancement** added **`SqnCriterion`**
 - :tada: **Enhancement** added **`StandardDeviationCriterion`**

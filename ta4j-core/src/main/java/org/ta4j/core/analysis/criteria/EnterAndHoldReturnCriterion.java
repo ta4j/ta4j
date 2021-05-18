@@ -25,44 +25,71 @@ package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Buy and hold criterion.
+ * Enter and hold criterion.
  *
- * Calculates the return if a buy-and-hold strategy was used, buying on the
- * first bar and selling on the last bar.
+ * Calculates the return if a enter-and-hold strategy was used:
+ * 
+ * <ul>
+ * <li>For {@link #tradeType} = {@link TradeType#BUY}: buying on the first bar
+ * and selling on the last bar.
+ * <li>For {@link #tradeType} = {@link TradeType#SELL}: selling on the first bar
+ * and buying on the last bar.
+ * </ul>
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
  */
-public class BuyAndHoldReturnCriterion extends AbstractAnalysisCriterion {
+public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
+
+    private final TradeType tradeType;
+
+    /**
+     * Constructor
+     * 
+     * <p>
+     * For buy-and-hold strategy.
+     */
+    public EnterAndHoldReturnCriterion() {
+        this(TradeType.BUY);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param tradeType the {@link TradeType} used to open the position
+     */
+    public EnterAndHoldReturnCriterion(TradeType tradeType) {
+        this.tradeType = tradeType;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return createBuyAndHoldPosition(series, position.getEntry().getIndex(), position.getExit().getIndex())
+        return createEnterAndHoldTrade(series, position.getEntry().getIndex(), position.getExit().getIndex())
                 .getGrossReturn(series);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return createBuyAndHoldTrade(series).getGrossReturn(series);
+        return createEnterAndHoldTrade(series).getGrossReturn(series);
     }
 
-    /** The higher the criterion value, the better. */
+    /** The higher the criterion value the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Position createBuyAndHoldTrade(BarSeries series) {
-        return createBuyAndHoldPosition(series, series.getBeginIndex(), series.getEndIndex());
+    private Position createEnterAndHoldTrade(BarSeries series) {
+        return createEnterAndHoldTrade(series, series.getBeginIndex(), series.getEndIndex());
     }
 
-    private Position createBuyAndHoldPosition(BarSeries series, int beginIndex, int endIndex) {
-        Position position = new Position(Trade.TradeType.BUY);
+    private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
+        Position position = new Position(this.tradeType);
         position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
         position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
         return position;
