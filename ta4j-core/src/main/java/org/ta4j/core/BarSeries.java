@@ -357,4 +357,30 @@ public interface BarSeries extends Serializable {
      */
     Function<Number, Num> function();
 
+    /**
+     * @return any num to determine its Num type
+     */
+    Num numType();
+
+    /**
+     * @return the Num of 0
+     */
+    default Num zero() {
+        return numType().zero();
+    }
+
+    /**
+     * @return the Num of 1
+     */
+    default Num one() {
+        return numType().one();
+    }
+
+    /**
+     * @return the Num of 100
+     */
+    default Num hundred() {
+        return numType().hundred();
+    }
+
 }

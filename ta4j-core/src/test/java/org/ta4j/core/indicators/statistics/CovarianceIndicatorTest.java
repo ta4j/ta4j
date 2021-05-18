@@ -49,7 +49,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Before
     public void setUp() {
-        BarSeries data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build();
         int i = 20;
         // close, volume
         data.addBar(new MockBar(ZonedDateTime.now().minusSeconds(i--), 6, 100, numFunction));

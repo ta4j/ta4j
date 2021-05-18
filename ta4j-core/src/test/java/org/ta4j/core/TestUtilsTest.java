@@ -74,7 +74,7 @@ public class TestUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries randomSeries() {
         BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder();
-        BarSeries series = builder.withNumTypeOf(numFunction).build();
+        BarSeries series = builder.withNumTypeOf(numOf(0)).build();
         ZonedDateTime time = ZonedDateTime.of(1970, 1, 1, 1, 1, 1, 1, ZoneId.systemDefault());
         double random;
         for (int i = 0; i < 1000; i++) {

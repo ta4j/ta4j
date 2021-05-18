@@ -54,7 +54,7 @@ public class TransformIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void setUp() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numOf(0)).build();
         ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(series, numOf(4));
 
         transPlus = TransformIndicator.plus(constantIndicator, 10);

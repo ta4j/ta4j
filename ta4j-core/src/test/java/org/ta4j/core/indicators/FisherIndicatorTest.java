@@ -47,7 +47,7 @@ public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Before
     public void setUp() {
 
-        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
+        series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).withName("NaN test").build();
         int i = 20;
         // open, close, max, min
         series.addBar(

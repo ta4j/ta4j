@@ -82,13 +82,13 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         defaultName = "Series Name";
 
-        defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction)
+        defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0))
                 .withName(defaultName)
                 .withBars(bars)
                 .build();
 
         subSeries = defaultSeries.getSubSeries(2, 5);
-        emptySeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        emptySeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build();
 
         Strategy strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
         strategy.setUnstablePeriod(2); // Strategy would need a real test class
@@ -100,7 +100,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
      */
     @Test
     public void replaceBarTest() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d, numFunction), true);
         assertEquals(1, series.getBarCount());
         TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
@@ -273,7 +273,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void addBarTest() {
-        defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build();
         Bar bar1 = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d, numFunction);
         Bar bar2 = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d, numFunction);
 
@@ -325,7 +325,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
      */
     @Test
     public void addTradeTest() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0)).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d, numFunction));
         series.addTrade(200, 11.5);
         TestUtils.assertNumEquals(series.numOf(200), series.getLastBar().getVolume());
@@ -343,13 +343,13 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimalTest() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DecimalNum::valueOf).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DecimalNum.valueOf(0)).build();
         series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DoubleNum::valueOf));
     }
 
     @Test
     public void subSeriesOfMaxBarCountSeriesTest() {
-        final BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction)
+        final BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction.apply(0))
                 .withName("Series with maxBar count")
                 .withMaxBarCount(20)
                 .build();

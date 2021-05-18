@@ -50,9 +50,9 @@ public class BaseBarSeries implements BarSeries {
      */
     private static final String UNNAMED_SERIES_NAME = "unnamed_series";
     /**
-     * Num type function
-     **/
-    protected final transient Function<Number, Num> numFunction;
+     * Any Num to determine its type
+     */
+    protected final transient Num numType;
     /**
      * The logger
      */
@@ -124,23 +124,23 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * Constructor.
-     * 
-     * @param name        the name of the series
-     * @param numFunction a {@link Function} to convert a {@link Number} to a
-     *                    {@link Num Num implementation}
+     *
+     * @param name    the name of the series
+     * @param numType any Num to determine {@link #numFunction}
      */
-    public BaseBarSeries(String name, Function<Number, Num> numFunction) {
-        this(name, new ArrayList<>(), numFunction);
+    public BaseBarSeries(String name, Num numType) {
+        this(name, new ArrayList<>(), numType);
     }
 
     /**
      * Constructor.
      *
-     * @param name the name of the series
-     * @param bars the list of bars of the series
+     * @param name    the name of the series
+     * @param bars    the list of bars of the series
+     * @param numType any Num to determine {@link #numFunction}
      */
-    public BaseBarSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
-        this(name, bars, 0, bars.size() - 1, false, numFunction);
+    public BaseBarSeries(String name, List<Bar> bars, Num numType) {
+        this(name, bars, 0, bars.size() - 1, false, numType);
     }
 
     /**
@@ -157,7 +157,7 @@ public class BaseBarSeries implements BarSeries {
      *                         change), false otherwise
      */
     private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum::valueOf);
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum.ZERO);
     }
 
     /**
@@ -169,12 +169,13 @@ public class BaseBarSeries implements BarSeries {
      * @param seriesEndIndex   the end index (inclusive) of the bar series
      * @param constrained      true to constrain the bar series (i.e. indexes cannot
      *                         change), false otherwise
-     * @param numFunction      a {@link Function} to convert a {@link Number} to a
+     * @param numType          the Num type to convert a {@link Number} to a
      *                         {@link Num Num implementation}
      */
     BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-            Function<Number, Num> numFunction) {
+            Num numType) {
         this.name = name;
+        this.numType = numType;
 
         this.bars = bars;
         if (bars.isEmpty()) {
@@ -182,11 +183,10 @@ public class BaseBarSeries implements BarSeries {
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
-            this.numFunction = numFunction;
             return;
         }
         // Bar list not empty: take Function of first bar
-        this.numFunction = bars.get(0).getClosePrice().function();
+        Function<Number, Num> numFunction = bars.get(0).getClosePrice().function();
         // Bar list not empty: checking num types
         if (!checkBars(bars)) {
             throw new IllegalArgumentException(String.format(
@@ -257,20 +257,25 @@ public class BaseBarSeries implements BarSeries {
         if (!bars.isEmpty()) {
             int start = Math.max(startIndex - getRemovedBarsCount(), this.getBeginIndex());
             int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
-            return new BaseBarSeries(getName(), cut(bars, start, end), numFunction);
+            return new BaseBarSeries(getName(), cut(bars, start, end), numType);
         }
-        return new BaseBarSeries(name, numFunction);
+        return new BaseBarSeries(name, numType);
 
     }
 
     @Override
     public Num numOf(Number number) {
-        return this.numFunction.apply(number);
+        return function().apply(number);
+    }
+
+    @Override
+    public Num numType() {
+        return numType;
     }
 
     @Override
     public Function<Number, Num> function() {
-        return numFunction;
+        return numType.function();
     }
 
     /**
