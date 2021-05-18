@@ -24,6 +24,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PriceIndicator** removed
 
 ### Added
+- **AbstractEMAIndicator** added getBarCount() to support future enhancements 
+- **ATRIndicator** "uncached" by changing superclass to AbstractIndicator; added constructor to accept TRIndicator and getter for same; added toString(); added getBarCount() to support future enhancements
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
@@ -31,6 +33,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
 - **Example** added a json serialization and deserialization example of BarSeries using google-gson library
 - **EnterAndHoldCriterion** added constructor with TradeType to begin with buy or sell
+- :tada: **Enhancement** added Position#getStartingType() method
 - :tada: **Enhancement** added **`SqnCriterion`**
 - :tada: **Enhancement** added **`StandardDeviationCriterion`**
 - :tada: **Enhancement** added **`RelativeStandardDeviationCriterion`**
