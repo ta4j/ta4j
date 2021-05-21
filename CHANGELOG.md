@@ -15,6 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LosingPositionsRatioCriterion** correct betterThan
 - **VersusBuyAndHoldCriterionTest** NaN-Error.
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
+- :tada: **Fixed** IchimokuIndicators can be used in rules. No moew incorrect offsets and future time indeces
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
