@@ -15,7 +15,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LosingPositionsRatioCriterion** correct betterThan
 - **VersusBuyAndHoldCriterionTest** NaN-Error.
 - :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
-- :tada: **Fixed** IchimokuIndicators can be used in rules. No moew incorrect offsets and future time indeces
+- :tada: **Fixed** IchimokuIndicators can be used in rules. No incorrect offsets and future time indeces anymore
 
 ### Changed
 - **BarSeriesManager** removed empty args constructor
@@ -43,6 +43,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`StandardErrorCriterion`**
 - :tada: **Enhancement** added **`VarianceCriterion`**
 - :tada: **Enhancement** added **`AverageCriterion`**
+- :tada: **Example** added **`IchimokuCloudStrategy`**
 
 ## 0.14 (released April 25, 2021)
 
