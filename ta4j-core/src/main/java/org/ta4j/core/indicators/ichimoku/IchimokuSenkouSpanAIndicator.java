@@ -29,7 +29,6 @@ import static org.ta4j.core.indicators.helpers.TransformIndicator.divide;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**

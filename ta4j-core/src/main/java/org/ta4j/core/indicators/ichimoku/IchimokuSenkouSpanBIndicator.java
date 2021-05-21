@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -45,7 +44,7 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the series
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series) {
@@ -54,8 +53,19 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Constructor.
-     * 
+     * Constructor. This indicator returns the values in dependency to the current
+     * time 'index'. This means, it is the 'future' cloud indicator (when printed)
+     * The values are calculated for the current bar, but the values are printed
+     * into the future
+     *
+     * To create an indicator which returns the values of the 'current' cloud (when
+     * printed), use new PreviousValueIndicator(ichimokuSenkouSpanBIndicator,
+     * senkunSpanBarCount/2))
+     *
+     * To create an indicator which contains the values of the 'past' cloud (when
+     * printed), use new PreviousValueIndicator(ichimokuSenkouSpanBIndicator,
+     * senkunSpanBarCount))
+     *
      * @param series   the series
      * @param barCount the time frame (usually 52)
      */
