@@ -79,9 +79,7 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         IchimokuTenkanSenIndicator tenkanSen = new IchimokuTenkanSenIndicator(data, 3);
         IchimokuKijunSenIndicator kijunSen = new IchimokuKijunSenIndicator(data, 5);
         IchimokuSenkouSpanAIndicator senkouSpanA = new IchimokuSenkouSpanAIndicator(tenkanSen, kijunSen);
-        IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9);
-        final int chikouSpanTimeDelay = 5;
-        IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data);
+        IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 5);
 
         assertNumEquals(45.155, tenkanSen.getValue(3));
         assertNumEquals(45.18, tenkanSen.getValue(4));
@@ -103,45 +101,22 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(44.305, kijunSen.getValue(17));
         assertNumEquals(44.05, kijunSen.getValue(18));
 
-        assertNumEquals(NaN.NaN, senkouSpanA.getValue(3));
-        assertNumEquals(45.065, senkouSpanA.getValue(4));
-        assertNumEquals(45.1475, senkouSpanA.getValue(7));
-        assertNumEquals(45.16, senkouSpanA.getValue(8));
-        assertNumEquals(45.15, senkouSpanA.getValue(9));
-        assertNumEquals(45.1575, senkouSpanA.getValue(10));
-        assertNumEquals(45.4275, senkouSpanA.getValue(16));
-        assertNumEquals(45.205, senkouSpanA.getValue(17));
-        assertNumEquals(44.89, senkouSpanA.getValue(18));
+        for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
+            assertNumEquals(
+                    tenkanSen.getValue(i)
+                            .plus(kijunSen.getValue(i))
+                            .dividedBy(numOf(2)),
+                    senkouSpanA.getValue(i));
+        }
 
-        assertNumEquals(NaN.NaN, senkouSpanB.getValue(3));
-        assertNumEquals(45.065, senkouSpanB.getValue(4));
-        assertNumEquals(45.065, senkouSpanB.getValue(5));
-        assertNumEquals(45.14, senkouSpanB.getValue(6));
-        assertNumEquals(45.14, senkouSpanB.getValue(7));
-        assertNumEquals(45.22, senkouSpanB.getValue(13));
-        assertNumEquals(45.34, senkouSpanB.getValue(16));
-        assertNumEquals(45.205, senkouSpanB.getValue(17));
-        assertNumEquals(44.89, senkouSpanB.getValue(18));
+        Num lowestInFive = numOf(44.96);
+        Num highestInFive = numOf(45.32);
 
-        assertNumEquals(data.getBar(chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(0));
-        assertNumEquals(data.getBar(1 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(1));
-        assertNumEquals(data.getBar(2 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(2));
-        assertNumEquals(data.getBar(3 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(3));
-        assertNumEquals(data.getBar(4 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(4));
-        assertNumEquals(data.getBar(5 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(5));
-        assertNumEquals(data.getBar(6 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(6));
-        assertNumEquals(data.getBar(7 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(7));
-        assertNumEquals(data.getBar(8 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(8));
-        assertNumEquals(data.getBar(9 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(9));
-        assertNumEquals(data.getBar(10 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(10));
-        assertNumEquals(data.getBar(11 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(11));
-        assertNumEquals(data.getBar(12 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(12));
-        assertNumEquals(data.getBar(13 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(13));
-        assertNumEquals(data.getBar(14 + chikouSpanTimeDelay).getClosePrice(), chikouSpan.getValue(14));
-        assertNumEquals(NaN.NaN, chikouSpan.getValue(15));
-        assertNumEquals(NaN.NaN, chikouSpan.getValue(16));
-        assertNumEquals(NaN.NaN, chikouSpan.getValue(17));
-        assertNumEquals(NaN.NaN, chikouSpan.getValue(18));
-        assertNumEquals(NaN.NaN, chikouSpan.getValue(19));
+        assertNumEquals(lowestInFive.plus(highestInFive).dividedBy(numOf(2)), senkouSpanB.getValue(4));
+        assertNumEquals((44.99+45.32)/2, senkouSpanB.getValue(5));
+        assertNumEquals((44.8+45.61)/2, senkouSpanB.getValue(13));
+        assertNumEquals((43.08+45.61)/2, senkouSpanB.getValue(16));
+        assertNumEquals((43.06+45.55)/2, senkouSpanB.getValue(17));
+        assertNumEquals((43.06+45.04)/2, senkouSpanB.getValue(18));
     }
 }
