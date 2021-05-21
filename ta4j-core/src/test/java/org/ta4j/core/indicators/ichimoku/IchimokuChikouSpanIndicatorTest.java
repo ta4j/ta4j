@@ -63,15 +63,16 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSe
         // the span indicator returns always the value of the current close price.
         // The indicator is only PRINTED in the past.
         // In strategies, this indicator should therefore be compared to past values,
-        // e.g. new OverIndicatorRule(chikouSpanIndicator, new PreviousValueIndicator(closePrice, 26))
+        // e.g. new OverIndicatorRule(chikouSpanIndicator, new
+        // PreviousValueIndicator(closePrice, 26))
         final IchimokuChikouSpanIndicator chikouSpanIndicator = new IchimokuChikouSpanIndicator(barSeries);
         final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(barSeries);
 
         boolean loopEntered = false;
 
-        for(int i = barSeries.getBeginIndex(); i<=barSeries.getEndIndex(); i++) {
+        for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             assertEquals(closePriceIndicator.getValue(i), chikouSpanIndicator.getValue(i));
-            loopEntered=true;
+            loopEntered = true;
         }
 
         assertTrue(loopEntered);

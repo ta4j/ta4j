@@ -102,10 +102,7 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(44.05, kijunSen.getValue(18));
 
         for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
-            assertNumEquals(
-                    tenkanSen.getValue(i)
-                            .plus(kijunSen.getValue(i))
-                            .dividedBy(numOf(2)),
+            assertNumEquals(tenkanSen.getValue(i).plus(kijunSen.getValue(i)).dividedBy(numOf(2)),
                     senkouSpanA.getValue(i));
         }
 
@@ -113,10 +110,10 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         Num highestInFive = numOf(45.32);
 
         assertNumEquals(lowestInFive.plus(highestInFive).dividedBy(numOf(2)), senkouSpanB.getValue(4));
-        assertNumEquals((44.99+45.32)/2, senkouSpanB.getValue(5));
-        assertNumEquals((44.8+45.61)/2, senkouSpanB.getValue(13));
-        assertNumEquals((43.08+45.61)/2, senkouSpanB.getValue(16));
-        assertNumEquals((43.06+45.55)/2, senkouSpanB.getValue(17));
-        assertNumEquals((43.06+45.04)/2, senkouSpanB.getValue(18));
+        assertNumEquals((44.99 + 45.32) / 2, senkouSpanB.getValue(5));
+        assertNumEquals((44.8 + 45.61) / 2, senkouSpanB.getValue(13));
+        assertNumEquals((43.08 + 45.61) / 2, senkouSpanB.getValue(16));
+        assertNumEquals((43.06 + 45.55) / 2, senkouSpanB.getValue(17));
+        assertNumEquals((43.06 + 45.04) / 2, senkouSpanB.getValue(18));
     }
 }
