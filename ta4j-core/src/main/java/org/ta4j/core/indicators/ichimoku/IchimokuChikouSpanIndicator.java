@@ -44,39 +44,25 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
     private final ClosePriceIndicator closePriceIndicator;
 
     /**
-     * The time delay
-     */
-    private final int timeDelay;
-
-    /**
-     * Constructor.
+     * Constructor. The ichimoku chikou span returns for an index i always the
+     * current close price for i. Only its usage and comparison against other prices
+     * takes into account the past. E.g. new OverIndicatorRule(chikouSpanIndicator,
+     * new PreviousValueIndicator(closePriceIndicator, chikouSpanDelay)) This rule
+     * is satisfied, if the current value of the span is over the old close price.
+     *
+     * The chikou span calculation is always based on the current values, but only
+     * printed into the past!
      *
      * @param series the series
      */
     public IchimokuChikouSpanIndicator(BarSeries series) {
-        this(series, 26);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param series    the series
-     * @param timeDelay the time delay (usually 26)
-     */
-    public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
         super(series);
         this.closePriceIndicator = new ClosePriceIndicator(series);
-        this.timeDelay = timeDelay;
     }
 
     @Override
-    protected Num calculate(int index) {
-        int spanIndex = index + timeDelay;
-        if (spanIndex <= getBarSeries().getEndIndex()) {
-            return closePriceIndicator.getValue(spanIndex);
-        } else {
-            return NaN.NaN;
-        }
+    protected Num calculate(int i) {
+        return closePriceIndicator.getValue(i);
     }
 
 }

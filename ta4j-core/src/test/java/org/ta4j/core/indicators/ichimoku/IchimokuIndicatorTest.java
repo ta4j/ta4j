@@ -78,10 +78,10 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     public void ichimoku() {
         IchimokuTenkanSenIndicator tenkanSen = new IchimokuTenkanSenIndicator(data, 3);
         IchimokuKijunSenIndicator kijunSen = new IchimokuKijunSenIndicator(data, 5);
-        IchimokuSenkouSpanAIndicator senkouSpanA = new IchimokuSenkouSpanAIndicator(data, tenkanSen, kijunSen, 5);
-        IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9, 5);
+        IchimokuSenkouSpanAIndicator senkouSpanA = new IchimokuSenkouSpanAIndicator(tenkanSen, kijunSen);
+        IchimokuSenkouSpanBIndicator senkouSpanB = new IchimokuSenkouSpanBIndicator(data, 9);
         final int chikouSpanTimeDelay = 5;
-        IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data, chikouSpanTimeDelay);
+        IchimokuChikouSpanIndicator chikouSpan = new IchimokuChikouSpanIndicator(data);
 
         assertNumEquals(45.155, tenkanSen.getValue(3));
         assertNumEquals(45.18, tenkanSen.getValue(4));

@@ -93,7 +93,7 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSe
     public void testCalculateWithSpecifiedValue() {
         final BarSeries barSeries = barSeries(11);
 
-        final IchimokuChikouSpanIndicator indicator = new IchimokuChikouSpanIndicator(barSeries, 3);
+        final IchimokuChikouSpanIndicator indicator = new IchimokuChikouSpanIndicator(barSeries);
 
         assertEquals(numOf(3), indicator.getValue(0));
         assertEquals(numOf(4), indicator.getValue(1));

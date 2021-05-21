@@ -23,8 +23,12 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
+import static org.ta4j.core.indicators.helpers.CombineIndicator.plus;
+import static org.ta4j.core.indicators.helpers.TransformIndicator.divide;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -37,14 +41,8 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
 
-    /** The Tenkan-sen indicator */
-    private final IchimokuTenkanSenIndicator conversionLine;
-
-    /** The Kijun-sen indicator */
-    private final IchimokuKijunSenIndicator baseLine;
-
-    // Cloud offset
-    private final int offset;
+    /** The actual indicator which contains the calculation */
+    private final TransformIndicator senkouSpanAFutureCalculator;
 
     /**
      * Constructor.
@@ -52,11 +50,22 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param series the series
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series) {
-        this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series), 26);
+        this(new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series));
     }
 
     /**
-     * Constructor.
+     * Constructor. This indicator returns the values in dependency to the current
+     * time 'index'. This means, it is the 'future' cloud indicator (when printed)
+     * The values are calculated for the current bar, but the values are printed
+     * into the future
+     *
+     * To create an indicator which returns the values of the 'current' cloud (when
+     * printed), use new PreviousValueIndicator(ichimokuSenkouSpanAIndicator,
+     * senkunSpanBarCount/2))
+     *
+     * To create an indicator which contains the values of the 'past' cloud (when
+     * printed), use new PreviousValueIndicator(ichimokuSenkouSpanAIndicator,
+     * senkunSpanBarCount))
      * 
      * @param series                 the series
      * @param barCountConversionLine the time frame for the conversion line (usually
@@ -64,36 +73,23 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param barCountBaseLine       the time frame for the base line (usually 26)
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
-        this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
-                new IchimokuKijunSenIndicator(series, barCountBaseLine), 26);
+        this(new IchimokuTenkanSenIndicator(series, barCountConversionLine),
+                new IchimokuKijunSenIndicator(series, barCountBaseLine));
     }
 
     /**
      * Constructor.
-     * 
-     * @param series         the series
+     *
      * @param conversionLine the conversion line
      * @param baseLine       the base line
-     * @param offset         kumo cloud displacement (offset) forward in time
      */
-    public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
-            IchimokuKijunSenIndicator baseLine, int offset) {
-
-        super(series);
-        this.conversionLine = conversionLine;
-        this.baseLine = baseLine;
-        this.offset = offset;
+    public IchimokuSenkouSpanAIndicator(IchimokuTenkanSenIndicator conversionLine, IchimokuKijunSenIndicator baseLine) {
+        super(conversionLine.getBarSeries());
+        senkouSpanAFutureCalculator = divide(plus(conversionLine, baseLine), 2);
     }
 
     @Override
     protected Num calculate(int index) {
-
-        // at index=7 we need index=3 when offset=5
-        int spanIndex = index - offset + 1;
-        if (spanIndex >= getBarSeries().getBeginIndex()) {
-            return conversionLine.getValue(spanIndex).plus(baseLine.getValue(spanIndex)).dividedBy(numOf(2));
-        } else {
-            return NaN.NaN;
-        }
+        return senkouSpanAFutureCalculator.getValue(index);
     }
 }
