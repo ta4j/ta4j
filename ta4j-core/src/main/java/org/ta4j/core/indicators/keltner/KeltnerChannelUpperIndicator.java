@@ -24,7 +24,7 @@
 package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
-public class KeltnerChannelUpperIndicator extends AbstractIndicator<Num> {
+public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final ATRIndicator averageTrueRangeIndicator;
 
@@ -54,7 +54,7 @@ public class KeltnerChannelUpperIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public Num getValue(int index) {
+    protected Num calculate(int index) {
         return keltnerMiddleIndicator.getValue(index)
                 .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
