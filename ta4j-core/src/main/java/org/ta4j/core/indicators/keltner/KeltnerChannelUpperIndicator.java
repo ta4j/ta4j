@@ -42,12 +42,15 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final Num ratio;
 
-    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, double ratio,
-            int barCountATR) {
-        super(keltnerMiddleIndicator);
+    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator middle, double ratio, int barCountATR) {
+        this(middle, new ATRIndicator(middle.getBarSeries(), barCountATR), ratio);
+    }
+
+    public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator middle, ATRIndicator atr, double ratio) {
+        super(middle.getBarSeries());
+        this.keltnerMiddleIndicator = middle;
+        this.averageTrueRangeIndicator = atr;
         this.ratio = numOf(ratio);
-        this.keltnerMiddleIndicator = keltnerMiddleIndicator;
-        averageTrueRangeIndicator = new ATRIndicator(keltnerMiddleIndicator.getBarSeries(), barCountATR);
     }
 
     @Override
@@ -56,4 +59,12 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
                 .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
 
+    public int getBarCount() {
+        return keltnerMiddleIndicator.getBarCount();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + getBarCount();
+    }
 }
