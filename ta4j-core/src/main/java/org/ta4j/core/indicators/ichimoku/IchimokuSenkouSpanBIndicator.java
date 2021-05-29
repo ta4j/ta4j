@@ -25,7 +25,6 @@ package org.ta4j.core.indicators.ichimoku;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -37,56 +36,46 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
-    // ichimoku avg line indicator
-    IchimokuLineIndicator lineIndicator;
-
     /**
-     * Displacement on the chart (usually 26)
+     * The actual indicator which contains the calculation ( ichimoku avg line
+     * indicator )
      */
-    private final int offset;
+    IchimokuLineIndicator senkouSpanBFutureCalculator;
 
     /**
      * Constructor.
-     * 
+     *
      * @param series the series
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series) {
 
-        this(series, 52, 26);
+        this(series, 52);
     }
 
     /**
-     * Constructor.
-     * 
+     * Constructor. This indicator returns the values in dependency to the current
+     * time 'index'. This means, it is the 'future' cloud indicator (when printed)
+     * The values are calculated for the current bar, but the values are printed
+     * into the future
+     *
+     * To create an indicator which returns the values of the 'current' cloud (when
+     * printed), use new PreviousValueIndicator(ichimokuSenkouSpanBIndicator,
+     * senkunSpanBarCount/2))
+     *
+     * To create an indicator which contains the values of the 'past' cloud (when
+     * printed), use new PreviousValueIndicator(ichimokuSenkouSpanBIndicator,
+     * senkunSpanBarCount))
+     *
      * @param series   the series
      * @param barCount the time frame (usually 52)
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount) {
-
-        this(series, barCount, 26);
-    }
-
-    /**
-     * Constructor.
-     * 
-     * @param series   the series
-     * @param barCount the time frame (usually 52)
-     * @param offset   displacement on the chart
-     */
-    public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
-
         super(series);
-        lineIndicator = new IchimokuLineIndicator(series, barCount);
-        this.offset = offset;
+        senkouSpanBFutureCalculator = new IchimokuLineIndicator(series, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        int spanIndex = index - offset + 1;
-        if (spanIndex >= getBarSeries().getBeginIndex()) {
-            return lineIndicator.getValue(spanIndex);
-        } else {
-            return NaN.NaN;
-        }
+        return senkouSpanBFutureCalculator.getValue(index);
     }
 }
