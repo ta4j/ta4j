@@ -26,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Removed/Deprecated
 - **Num** removed Serializable
+- **`NumberOfConsecutiveWinningPositionsCriterion`** removed in favour of **`NumberOfConsecutivePositionsCriterion`**
 - **PriceIndicator** removed
 
 ### Added
@@ -33,6 +34,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **ATRIndicator** "uncached" by changing superclass to AbstractIndicator; added constructor to accept TRIndicator and getter for same; added toString(); added getBarCount() to support future enhancements
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Num#zero, Num#one, Num#hundred
+- :tada: **Example** added a json serialization and deserialization example of BarSeries using google-gson library
+- :tada: **Enhancement** added **`NumberOfConsecutivePositionsCriterion`**
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
 - :tada: **Enhancement** added Indicator#stream() method
 - :tada: **Enhancement** added a new CombineIndicator, which can combine the values of two Num Indicators with a given combine-function
