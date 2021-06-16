@@ -72,6 +72,7 @@ public class StopGainRule extends AbstractRule {
         HUNDRED = closePrice.numOf(100);
     }
 
+    /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
