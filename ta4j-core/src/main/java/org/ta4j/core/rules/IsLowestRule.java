@@ -56,6 +56,7 @@ public class IsLowestRule extends AbstractRule {
         this.barCount = barCount;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         LowestValueIndicator lowest = new LowestValueIndicator(ref, barCount);

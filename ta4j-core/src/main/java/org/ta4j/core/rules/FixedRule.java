@@ -45,6 +45,7 @@ public class FixedRule extends AbstractRule {
         this.indexes = Arrays.copyOf(indexes, indexes.length);
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;

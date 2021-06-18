@@ -44,6 +44,7 @@ public class BooleanIndicatorRule extends AbstractRule {
         this.indicator = indicator;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         final boolean satisfied = indicator.getValue(index);

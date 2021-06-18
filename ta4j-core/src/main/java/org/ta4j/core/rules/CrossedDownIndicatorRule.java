@@ -70,6 +70,7 @@ public class CrossedDownIndicatorRule extends AbstractRule {
         this.cross = new CrossIndicator(first, second);
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         final boolean satisfied = cross.getValue(index);

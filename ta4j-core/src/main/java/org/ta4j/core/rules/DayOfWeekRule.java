@@ -48,6 +48,7 @@ public class DayOfWeekRule extends AbstractRule {
         this.timeIndicator = timeIndicator;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         ZonedDateTime dateTime = this.timeIndicator.getValue(index);

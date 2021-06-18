@@ -56,6 +56,7 @@ public class IsHighestRule extends AbstractRule {
         this.barCount = barCount;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);

@@ -72,6 +72,7 @@ public class StopGainRule extends AbstractRule {
         HUNDRED = closePrice.numOf(100);
     }
 
+    /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
@@ -94,15 +95,15 @@ public class StopGainRule extends AbstractRule {
         return satisfied;
     }
 
-    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
-        return currentPrice.isLessThanOrEqual(threshold);
-    }
-
     private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
         Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
         Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(threshold);
+    }
+
+    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
+        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        return currentPrice.isLessThanOrEqual(threshold);
     }
 }

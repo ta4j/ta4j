@@ -66,6 +66,7 @@ public class IsRisingRule extends AbstractRule {
         this.minStrenght = minStrenght;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (minStrenght >= 1) {

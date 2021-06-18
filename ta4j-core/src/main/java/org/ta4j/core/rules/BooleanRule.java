@@ -54,6 +54,7 @@ public class BooleanRule extends AbstractRule {
         this.satisfied = satisfied;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         traceIsSatisfied(index, satisfied);

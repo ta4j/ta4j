@@ -51,6 +51,7 @@ public class ChainRule extends AbstractRule {
         rulesInChain.addAll(Arrays.asList(chainLinks));
     }
 
+    /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         int lastRuleWasSatisfiedAfterBars = 0;

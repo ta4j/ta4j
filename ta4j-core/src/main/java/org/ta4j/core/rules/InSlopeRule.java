@@ -102,6 +102,7 @@ public class InSlopeRule extends AbstractRule {
         this.maxSlope = maxSlope;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         CombineIndicator diff = CombineIndicator.minus(ref, prev);
