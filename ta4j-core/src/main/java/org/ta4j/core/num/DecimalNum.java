@@ -371,6 +371,9 @@ public final class DecimalNum implements Num {
      */
     @Override
     public Num remainder(Num divisor) {
+        if (divisor.isNaN()) {
+            return NaN;
+        }
         BigDecimal bigDecimal = ((DecimalNum) divisor).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
