@@ -14,7 +14,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan
 - **VersusBuyAndHoldCriterionTest** NaN-Error.
-- :tada: **Fixed** **`ChaikinOscillatorIndicatorTest`**
+- **Fixed** **`ChaikinOscillatorIndicatorTest`**
+- **DecimalNum#remainder()** adds NaN-check 
 
 ### Changed
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
