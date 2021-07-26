@@ -76,6 +76,7 @@ public class TrailingStopLossRule extends AbstractRule {
         this(indicator, lossPercentage, Integer.MAX_VALUE);
     }
 
+    /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;

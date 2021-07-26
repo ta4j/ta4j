@@ -50,7 +50,7 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
      * {@link OpenedPositionMinimumBarCountRule#barCount}
      *
      * @param index         the bar index
-     * @param tradingRecord the potentially needed trading history
+     * @param tradingRecord the required trading history
      * @return true if opened trade reached minimum bar count specified in
      *         {@link OpenedPositionMinimumBarCountRule#barCount}, otherwise false
      */
@@ -64,6 +64,7 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
         return false;
     }
 
+    /** @return the {@link #barCount} */
     public int getBarCount() {
         return barCount;
     }

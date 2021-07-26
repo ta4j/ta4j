@@ -46,6 +46,7 @@ public class TimeRangeRule extends AbstractRule {
         this.timeIndicator = beginTimeIndicator;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;

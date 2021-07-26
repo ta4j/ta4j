@@ -57,6 +57,7 @@ public class WaitForRule extends AbstractRule {
         this.numberOfBars = numberOfBars;
     }
 
+    /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;

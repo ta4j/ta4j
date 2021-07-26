@@ -76,6 +76,7 @@ public class IsEqualRule extends AbstractRule {
         this.second = second;
     }
 
+    /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         final boolean satisfied = first.getValue(index).isEqual(second.getValue(index));
