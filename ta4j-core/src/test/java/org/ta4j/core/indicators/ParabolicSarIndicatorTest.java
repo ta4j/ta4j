@@ -46,41 +46,41 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void startUpAndDownTrendTest() {
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(0, 75.1, 74.06, 75.11, numFunction));
-        bars.add(new MockBar(0, 75.9, 76.030000, 74.640000, numFunction));
-        bars.add(new MockBar(0, 75.24, 76.269900, 75.060000, numFunction));
-        bars.add(new MockBar(0, 75.17, 75.280000, 74.500000, numFunction));
-        bars.add(new MockBar(0, 74.6, 75.310000, 74.540000, numFunction));
-        bars.add(new MockBar(0, 74.1, 75.467000, 74.010000, numFunction));
-        bars.add(new MockBar(0, 73.740000, 74.700000, 73.546000, numFunction));
-        bars.add(new MockBar(0, 73.390000, 73.830000, 72.720000, numFunction));
-        bars.add(new MockBar(0, 73.25, 73.890000, 72.86, numFunction));
-        bars.add(new MockBar(0, 74.36, 74.410000, 73, 26, numFunction));
 
-        bars.add(new MockBar(0, 76.510000, 76.830000, 74.820000, numFunction));
-        bars.add(new MockBar(0, 75.590000, 76.850000, 74.540000, numFunction));
-        bars.add(new MockBar(0, 75.910000, 76.960000, 75.510000, numFunction));
-        bars.add(new MockBar(0, 74.610000, 77.070000, 74.560000, numFunction));
-        bars.add(new MockBar(0, 75.330000, 75.530000, 74.010000, numFunction));
-        bars.add(new MockBar(0, 75.010000, 75.500000, 74.510000, numFunction));
-        bars.add(new MockBar(0, 75.620000, 76.210000, 75.250000, numFunction));
-        bars.add(new MockBar(0, 76.040000, 76.460000, 75.092800, numFunction));
-        bars.add(new MockBar(0, 76.450000, 76.450000, 75.435000, numFunction));
-        bars.add(new MockBar(0, 76.260000, 76.470000, 75.840000, numFunction));
-        bars.add(new MockBar(0, 76.850000, 77.000000, 76.190000, numFunction));
+        bars.add(new MockBar(74.5, 75.1, 75.11, 74.06, numFunction));
+        bars.add(new MockBar(75.09, 75.9, 76.030000, 74.640000, numFunction));
+        bars.add(new MockBar(79.99, 75.24, 76.269900, 75.060000, numFunction));
+        bars.add(new MockBar(75.30, 75.17, 75.280000, 74.500000, numFunction));
+        bars.add(new MockBar(75.16, 74.6, 75.310000, 74.540000, numFunction));
+        bars.add(new MockBar(74.58, 74.1, 75.467000, 74.010000, numFunction));
+        bars.add(new MockBar(74.01, 73.740000, 74.700000, 73.546000, numFunction));
+        bars.add(new MockBar(73.71, 73.390000, 73.830000, 72.720000, numFunction));
+        bars.add(new MockBar(73.35, 73.25, 73.890000, 72.86, numFunction));
+        bars.add(new MockBar(73.24, 74.36, 74.410000, 73, 26, numFunction));
+        bars.add(new MockBar(74.36, 76.510000, 76.830000, 74.820000, numFunction));
+        bars.add(new MockBar(76.5, 75.590000, 76.850000, 74.540000, numFunction));
+        bars.add(new MockBar(75.60, 75.910000, 76.960000, 75.510000, numFunction));
+        bars.add(new MockBar(75.82, 74.610000, 77.070000, 74.560000, numFunction));
+        bars.add(new MockBar(74.75, 75.330000, 75.530000, 74.010000, numFunction));
+        bars.add(new MockBar(75.33, 75.010000, 75.500000, 74.510000, numFunction));
+        bars.add(new MockBar(75.0, 75.620000, 76.210000, 75.250000, numFunction));
+        bars.add(new MockBar(75.63, 76.040000, 76.460000, 75.092800, numFunction));
+        bars.add(new MockBar(76.0, 76.450000, 76.450000, 75.435000, numFunction));
+        bars.add(new MockBar(76.45, 76.260000, 76.470000, 75.840000, numFunction));
+        bars.add(new MockBar(76.30, 76.850000, 77.000000, 76.190000, numFunction));
 
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockBarSeries(bars));
 
         assertEquals("NaN", sar.getValue(0).toString());
-        assertNumEquals(74.64, sar.getValue(1));
-        assertNumEquals(74.64, sar.getValue(2)); // start with up trend
-        assertNumEquals(76.2699, sar.getValue(3)); // switch to downtrend
-        assertNumEquals(76.234502000000006773916538804770, sar.getValue(4)); // hold trend...
-        assertNumEquals(76.19981196, sar.getValue(5));
-        assertNumEquals(76.11221948160001, sar.getValue(6));
-        assertNumEquals(75.958246312704, sar.getValue(7));
-        assertNumEquals(75.69918660768768, sar.getValue(8));
-        assertNumEquals(75.46085167907266, sar.getValue(9)); // switch to up trend
+        assertNumEquals(74.06, sar.getValue(1));
+        assertNumEquals(74.06, sar.getValue(2)); // start with up trend
+        assertNumEquals(74.148396, sar.getValue(3)); // switch to downtrend
+        assertNumEquals(74.23325616000001, sar.getValue(4)); // hold trend...
+        assertNumEquals(76.2699, sar.getValue(5));
+        assertNumEquals(76.22470200000001, sar.getValue(6));
+        assertNumEquals(76.11755392, sar.getValue(7));
+        assertNumEquals(75.9137006848, sar.getValue(8));
+        assertNumEquals(75.72207864371201, sar.getValue(9)); // switch to up trend
         assertNumEquals(72.72, sar.getValue(10));// hold trend
         assertNumEquals(72.8022, sar.getValue(11));
         assertNumEquals(72.964112, sar.getValue(12));
