@@ -32,6 +32,8 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * The Fisher Indicator.
  *
@@ -62,7 +64,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
      * @param series the series
      */
     public FisherIndicator(BarSeries series) {
-        this(new MedianPriceIndicator(series), 10);
+        this(median(series), 10);
     }
 
     /**
@@ -146,10 +148,10 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
         Num alpha = numOf(alphaD);
         Num beta = numOf(betaD);
-        final Indicator<Num> periodHigh = new HighestValueIndicator(
-                isPriceIndicator ? new HighPriceIndicator(ref.getBarSeries()) : ref, barCount);
-        final Indicator<Num> periodLow = new LowestValueIndicator(
-                isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
+        final Indicator<Num> periodHigh = highest(
+                isPriceIndicator ? high(ref.getBarSeries()) : ref, barCount);
+        final Indicator<Num> periodLow = lowest(
+                isPriceIndicator ? low(ref.getBarSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
 

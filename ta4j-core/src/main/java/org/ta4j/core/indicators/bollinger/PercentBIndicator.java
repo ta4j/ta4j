@@ -29,6 +29,8 @@ import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * %B indicator.
  * 
@@ -54,10 +56,10 @@ public class PercentBIndicator extends CachedIndicator<Num> {
     public PercentBIndicator(Indicator<Num> indicator, int barCount, double k) {
         super(indicator);
         this.indicator = indicator;
-        BollingerBandsMiddleIndicator bbm = new BollingerBandsMiddleIndicator(new SMAIndicator(indicator, barCount));
-        StandardDeviationIndicator sd = new StandardDeviationIndicator(indicator, barCount);
-        this.bbu = new BollingerBandsUpperIndicator(bbm, sd, numOf(k));
-        this.bbl = new BollingerBandsLowerIndicator(bbm, sd, numOf(k));
+        BollingerBandsMiddleIndicator bbm = bollingerBandsMiddle(sma(indicator, barCount));
+        StandardDeviationIndicator sd = standardDeviation(indicator, barCount);
+        this.bbu = bollingerBandsUpper(bbm, sd, numOf(k));
+        this.bbl = bollingerBandsLower(bbm, sd, numOf(k));
     }
 
     @Override

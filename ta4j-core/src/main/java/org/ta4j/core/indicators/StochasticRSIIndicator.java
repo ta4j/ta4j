@@ -30,6 +30,9 @@ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.close;
+import static org.ta4j.core.utils.Analysis.rsi;
+
 /**
  * The Stochastic RSI Indicator.
  * 
@@ -49,7 +52,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public StochasticRSIIndicator(BarSeries series, int barCount) {
-        this(new ClosePriceIndicator(series), barCount);
+        this(close(series), barCount);
     }
 
     /**
@@ -59,7 +62,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
-        this(new RSIIndicator(indicator, barCount), barCount);
+        this(rsi(indicator, barCount), barCount);
     }
 
     /**

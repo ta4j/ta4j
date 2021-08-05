@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.sma;
+
 /**
  * Covariance indicator.
  */
@@ -51,8 +53,8 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = barCount;
-        sma1 = new SMAIndicator(indicator1, barCount);
-        sma2 = new SMAIndicator(indicator2, barCount);
+        sma1 = sma(indicator1, barCount);
+        sma2 = sma(indicator2, barCount);
     }
 
     @Override

@@ -30,6 +30,9 @@ import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.realBody;
+import static org.ta4j.core.utils.Analysis.sma;
+
 /**
  * Doji indicator.
  *
@@ -63,8 +66,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);
-        bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
-        averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
+        bodyHeightInd = TransformIndicator.abs(realBody(series));
+        averageBodyHeightInd = sma(bodyHeightInd, barCount);
         factor = numOf(bodyFactor);
     }
 

@@ -28,6 +28,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.sma;
+import static org.ta4j.core.utils.Analysis.standardDeviation;
+
 /**
  * Sigma-Indicator (also called, "z-score" or "standard score").
  *
@@ -51,8 +54,8 @@ public class SigmaIndicator extends CachedIndicator<Num> {
         super(ref);
         this.ref = ref;
         this.barCount = barCount;
-        mean = new SMAIndicator(ref, barCount);
-        sd = new StandardDeviationIndicator(ref, barCount);
+        mean = sma(ref, barCount);
+        sd = standardDeviation(ref, barCount);
     }
 
     @Override

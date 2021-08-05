@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.closeLocation;
+
 /**
  * Accumulation-distribution indicator.
  */
@@ -37,7 +39,7 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
 
     public AccumulationDistributionIndicator(BarSeries series) {
         super(series);
-        this.clvIndicator = new CloseLocationValueIndicator(series);
+        this.clvIndicator = closeLocation(series);
     }
 
     @Override

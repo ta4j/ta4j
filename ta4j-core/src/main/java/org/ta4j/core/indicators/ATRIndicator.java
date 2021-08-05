@@ -27,6 +27,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.mma;
+import static org.ta4j.core.utils.Analysis.tr;
+
 /**
  * Average true range indicator.
  */
@@ -36,13 +39,13 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     private final MMAIndicator averageTrueRangeIndicator;
 
     public ATRIndicator(BarSeries series, int barCount) {
-        this(new TRIndicator(series), barCount);
+        this(tr(series), barCount);
     }
 
     public ATRIndicator(TRIndicator tr, int barCount) {
         super(tr.getBarSeries());
         this.trIndicator = tr;
-        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(tr.getBarSeries()), barCount);
+        this.averageTrueRangeIndicator = mma(tr(tr.getBarSeries()), barCount);
     }
 
     @Override

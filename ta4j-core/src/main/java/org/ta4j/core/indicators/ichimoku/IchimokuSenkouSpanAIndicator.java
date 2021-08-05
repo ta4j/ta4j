@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Ichimoku clouds: Senkou Span A (Leading Span A) indicator
  *
@@ -52,7 +54,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param series the series
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series) {
-        this(series, new IchimokuTenkanSenIndicator(series), new IchimokuKijunSenIndicator(series), 26);
+        this(series, ichimokuTenkanSen(series), ichimokuKijunSen(series), 26);
     }
 
     /**
@@ -64,8 +66,8 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * @param barCountBaseLine       the time frame for the base line (usually 26)
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
-        this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
-                new IchimokuKijunSenIndicator(series, barCountBaseLine), 26);
+        this(series, ichimokuTenkanSen(series, barCountConversionLine),
+                ichimokuKijunSen(series, barCountBaseLine), 26);
     }
 
     /**
@@ -93,7 +95,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
         if (spanIndex >= getBarSeries().getBeginIndex()) {
             return conversionLine.getValue(spanIndex).plus(baseLine.getValue(spanIndex)).dividedBy(numOf(2));
         } else {
-            return NaN.NaN;
+            return NaN;
         }
     }
 }

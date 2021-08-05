@@ -29,6 +29,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * +DI indicator. Part of the Directional Movement System
  *
@@ -46,8 +48,8 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
 
     public PlusDIIndicator(BarSeries series, int barCount) {
         super(series);
-        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
-        this.atrIndicator = new ATRIndicator(series, barCount);
+        this.avgPlusDMIndicator = mma(plusDM(series), barCount);
+        this.atrIndicator = atr(series, barCount);
         this.barCount = barCount;
     }
 

@@ -27,6 +27,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.covariance;
+import static org.ta4j.core.utils.Analysis.variance;
+
 /**
  * Correlation coefficient indicator.
  *
@@ -49,9 +52,9 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);
-        variance1 = new VarianceIndicator(indicator1, barCount);
-        variance2 = new VarianceIndicator(indicator2, barCount);
-        covariance = new CovarianceIndicator(indicator1, indicator2, barCount);
+        variance1 = variance(indicator1, barCount);
+        variance2 = variance(indicator2, barCount);
+        covariance = covariance(indicator1, indicator2, barCount);
     }
 
     @Override

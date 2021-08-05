@@ -24,6 +24,8 @@
 package org.ta4j.core.indicators;
 
 import static org.ta4j.core.num.NaN.NaN;
+import static org.ta4j.core.utils.Analysis.low;
+import static org.ta4j.core.utils.Analysis.lowest;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -57,7 +59,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         this.lowPriceIndicator = lowPriceIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
+        this.lowestLowPriceIndicator = lowest(lowPriceIndicator, barCount + 1);
     }
 
     /**
@@ -67,7 +69,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public AroonDownIndicator(BarSeries series, int barCount) {
-        this(new LowPriceIndicator(series), barCount);
+        this(low(series), barCount);
     }
 
     @Override

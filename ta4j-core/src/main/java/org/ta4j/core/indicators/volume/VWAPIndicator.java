@@ -30,6 +30,9 @@ import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.typicalPrice;
+import static org.ta4j.core.utils.Analysis.volume;
+
 /**
  * The volume-weighted average price (VWAP) Indicator.
  * 
@@ -58,8 +61,8 @@ public class VWAPIndicator extends CachedIndicator<Num> {
     public VWAPIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.typicalPrice = new TypicalPriceIndicator(series);
-        this.volume = new VolumeIndicator(series);
+        this.typicalPrice = typicalPrice(series);
+        this.volume = volume(series);
         this.zero = numOf(0);
     }
 

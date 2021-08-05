@@ -27,6 +27,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.standardDeviation;
+
 /**
  * Standard error indicator.
  */
@@ -45,7 +47,7 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.barCount = barCount;
-        this.sdev = new StandardDeviationIndicator(indicator, barCount);
+        this.sdev = standardDeviation(indicator, barCount);
     }
 
     @Override

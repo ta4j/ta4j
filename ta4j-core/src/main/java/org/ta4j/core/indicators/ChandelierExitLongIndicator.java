@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * The Chandelier Exit (long) Indicator.
  *
@@ -59,8 +61,8 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
      */
     public ChandelierExitLongIndicator(BarSeries series, int barCount, double k) {
         super(series);
-        high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-        atr = new ATRIndicator(series, barCount);
+        high = highest(high(series), barCount);
+        atr = atr(series, barCount);
         this.k = numOf(k);
     }
 

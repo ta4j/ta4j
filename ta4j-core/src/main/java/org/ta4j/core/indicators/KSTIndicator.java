@@ -26,6 +26,9 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.roc;
+import static org.ta4j.core.utils.Analysis.sma;
+
 /**
  * Know Sure Thing (KST) RCMA1 = X1-Period SMA of Y1-Period Rate-of-Change RCMA2
  * = X2-Period SMA of Y2-Period Rate-of-Change RCMA3 = X3-Period SMA of
@@ -53,10 +56,10 @@ public class KSTIndicator extends CachedIndicator<Num> {
      */
     public KSTIndicator(Indicator<Num> indicator) {
         super(indicator);
-        this.RCMA1 = new SMAIndicator(new ROCIndicator(indicator, 10), 10);
-        this.RCMA2 = new SMAIndicator(new ROCIndicator(indicator, 15), 10);
-        this.RCMA3 = new SMAIndicator(new ROCIndicator(indicator, 20), 10);
-        this.RCMA4 = new SMAIndicator(new ROCIndicator(indicator, 30), 15);
+        this.RCMA1 = sma(roc(indicator, 10), 10);
+        this.RCMA2 = sma(roc(indicator, 15), 10);
+        this.RCMA3 = sma(roc(indicator, 20), 10);
+        this.RCMA4 = sma(roc(indicator, 30), 15);
     }
 
     /**
@@ -75,10 +78,10 @@ public class KSTIndicator extends CachedIndicator<Num> {
             int rcma2ROCBarCount, int rcma3SMABarCount, int rcma3ROCBarCount, int rcma4SMABarCount,
             int rcma4ROCBarCount) {
         super(indicator);
-        this.RCMA1 = new SMAIndicator(new ROCIndicator(indicator, rcma1ROCBarCount), rcma1SMABarCount);
-        this.RCMA2 = new SMAIndicator(new ROCIndicator(indicator, rcma2ROCBarCount), rcma2SMABarCount);
-        this.RCMA3 = new SMAIndicator(new ROCIndicator(indicator, rcma3ROCBarCount), rcma3SMABarCount);
-        this.RCMA4 = new SMAIndicator(new ROCIndicator(indicator, rcma4ROCBarCount), rcma4SMABarCount);
+        this.RCMA1 = sma(roc(indicator, rcma1ROCBarCount), rcma1SMABarCount);
+        this.RCMA2 = sma(roc(indicator, rcma2ROCBarCount), rcma2SMABarCount);
+        this.RCMA3 = sma(roc(indicator, rcma3ROCBarCount), rcma3SMABarCount);
+        this.RCMA4 = sma(roc(indicator, rcma4ROCBarCount), rcma4SMABarCount);
     }
 
     @Override

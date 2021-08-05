@@ -30,6 +30,9 @@ import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.ema;
+import static org.ta4j.core.utils.Analysis.typicalPrice;
+
 /**
  * Keltner Channel (middle line) indicator
  *
@@ -42,12 +45,12 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
     private final EMAIndicator emaIndicator;
 
     public KeltnerChannelMiddleIndicator(BarSeries series, int barCountEMA) {
-        this(new TypicalPriceIndicator(series), barCountEMA);
+        this(typicalPrice(series), barCountEMA);
     }
 
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
         super(indicator.getBarSeries());
-        emaIndicator = new EMAIndicator(indicator, barCountEMA);
+        emaIndicator = ema(indicator, barCountEMA);
     }
 
     @Override

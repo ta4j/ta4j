@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.ichimokuLine;
+
 /**
  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
  *
@@ -76,7 +78,7 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
 
         super(series);
-        lineIndicator = new IchimokuLineIndicator(series, barCount);
+        lineIndicator = ichimokuLine(series, barCount);
         this.offset = offset;
     }
 

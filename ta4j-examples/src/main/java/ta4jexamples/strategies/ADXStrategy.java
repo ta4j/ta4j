@@ -42,6 +42,8 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 
 import ta4jexamples.loaders.CsvTradesLoader;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * ADX indicator based strategy
  *
@@ -60,15 +62,15 @@ public class ADXStrategy {
             throw new IllegalArgumentException("Series cannot be null");
         }
 
-        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
-        final SMAIndicator smaIndicator = new SMAIndicator(closePriceIndicator, 50);
+        final ClosePriceIndicator closePriceIndicator = close(series);
+        final SMAIndicator smaIndicator = sma(closePriceIndicator, 50);
 
         final int adxBarCount = 14;
-        final ADXIndicator adxIndicator = new ADXIndicator(series, adxBarCount);
+        final ADXIndicator adxIndicator = adx(series, adxBarCount);
         final OverIndicatorRule adxOver20Rule = new OverIndicatorRule(adxIndicator, 20);
 
-        final PlusDIIndicator plusDIIndicator = new PlusDIIndicator(series, adxBarCount);
-        final MinusDIIndicator minusDIIndicator = new MinusDIIndicator(series, adxBarCount);
+        final PlusDIIndicator plusDIIndicator = plusDI(series, adxBarCount);
+        final MinusDIIndicator minusDIIndicator = minusDI(series, adxBarCount);
 
         final Rule plusDICrossedUpMinusDI = new CrossedUpIndicatorRule(plusDIIndicator, minusDIIndicator);
         final Rule plusDICrossedDownMinusDI = new CrossedDownIndicatorRule(plusDIIndicator, minusDIIndicator);
@@ -90,7 +92,7 @@ public class ADXStrategy {
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        BarSeriesManager seriesManager = barSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 

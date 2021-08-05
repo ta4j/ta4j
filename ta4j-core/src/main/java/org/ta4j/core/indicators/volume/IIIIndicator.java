@@ -31,6 +31,8 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Intraday Intensity Index
  *
@@ -47,10 +49,10 @@ public class IIIIndicator extends CachedIndicator<Num> {
 
     public IIIIndicator(BarSeries series) {
         super(series);
-        this.closePriceIndicator = new ClosePriceIndicator(series);
-        this.highPriceIndicator = new HighPriceIndicator(series);
-        this.lowPriceIndicator = new LowPriceIndicator(series);
-        this.volumeIndicator = new VolumeIndicator(series);
+        this.closePriceIndicator = close(series);
+        this.highPriceIndicator = high(series);
+        this.lowPriceIndicator = low(series);
+        this.volumeIndicator = volume(series);
         this.two = numOf(2);
     }
 

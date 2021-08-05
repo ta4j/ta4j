@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.wma;
+
 /**
  * Hull moving average (HMA) indicator.
  *
@@ -43,8 +45,8 @@ public class HMAIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.barCount = barCount;
 
-        WMAIndicator halfWma = new WMAIndicator(indicator, barCount / 2);
-        WMAIndicator origWma = new WMAIndicator(indicator, barCount);
+        WMAIndicator halfWma = wma(indicator, barCount / 2);
+        WMAIndicator origWma = wma(indicator, barCount);
 
         Indicator<Num> indicatorForSqrtWma = CombineIndicator.minus(TransformIndicator.multiply(halfWma, 2), origWma);
         sqrtWma = new WMAIndicator(indicatorForSqrtWma, numOf(barCount).sqrt().intValue());

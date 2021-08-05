@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.sma;
+
 /**
  * Mean deviation indicator.
  *
@@ -51,7 +53,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        sma = new SMAIndicator(indicator, barCount);
+        sma = sma(indicator, barCount);
     }
 
     @Override

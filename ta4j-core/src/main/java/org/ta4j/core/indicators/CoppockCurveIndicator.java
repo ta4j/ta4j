@@ -27,6 +27,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.SumIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Coppock Curve indicator.
  *
@@ -60,9 +62,9 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);
-        SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
-                new ROCIndicator(indicator, shortRoCBarCount));
-        wma = new WMAIndicator(sum, wmaBarCount);
+        SumIndicator sum = sum(roc(indicator, longRoCBarCount),
+                roc(indicator, shortRoCBarCount));
+        wma = wma(sum, wmaBarCount);
     }
 
     @Override

@@ -30,6 +30,8 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * The "CHOP" index is used to indicate side-ways markets see <a href=
  * "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
@@ -64,9 +66,9 @@ public class ChopIndicator extends CachedIndicator<Num> {
      */
     public ChopIndicator(BarSeries barSeries, int ciTimeFrame, int scaleTo) {
         super(barSeries);
-        this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
-        hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
-        lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
+        this.atrIndicator = atr(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
+        hvi = highest(high(barSeries), ciTimeFrame);
+        lvi = lowest(low(barSeries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
         this.log10n = numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = numOf(scaleTo);

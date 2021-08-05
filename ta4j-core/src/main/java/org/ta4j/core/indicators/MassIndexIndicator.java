@@ -30,6 +30,8 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Mass index indicator.
  *
@@ -52,10 +54,10 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
      */
     public MassIndexIndicator(BarSeries series, int emaBarCount, int barCount) {
         super(series);
-        Indicator<Num> highLowDifferential = CombineIndicator.minus(new HighPriceIndicator(series),
-                new LowPriceIndicator(series));
-        singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
-        doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
+        Indicator<Num> highLowDifferential = CombineIndicator.minus(high(series),
+                low(series));
+        singleEma = ema(highLowDifferential, emaBarCount);
+        doubleEma = ema(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
         this.barCount = barCount;
     }
 

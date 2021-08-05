@@ -28,6 +28,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Awesome oscillator. (AO)
  *
@@ -48,8 +50,8 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator, int barCountSma1, int barCountSma2) {
         super(indicator);
-        this.sma5 = new SMAIndicator(indicator, barCountSma1);
-        this.sma34 = new SMAIndicator(indicator, barCountSma2);
+        this.sma5 = sma(indicator, barCountSma1);
+        this.sma34 = sma(indicator, barCountSma2);
     }
 
     /**
@@ -67,7 +69,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * @param series the bar series
      */
     public AwesomeOscillatorIndicator(BarSeries series) {
-        this(new MedianPriceIndicator(series), 5, 34);
+        this(median(series), 5, 34);
     }
 
     @Override

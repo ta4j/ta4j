@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import static org.ta4j.core.num.NaN.NaN;
+import static org.ta4j.core.utils.Analysis.*;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -85,8 +86,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      */
     public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA, Num increment) {
         super(series);
-        highPriceIndicator = new HighPriceIndicator(series);
-        lowPriceIndicator = new LowPriceIndicator(series);
+        highPriceIndicator = high(series);
+        lowPriceIndicator = low(series);
         maxAcceleration = maxA;
         accelerationFactor = aF;
         accelerationIncrement = increment;
@@ -103,12 +104,12 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                     .getClosePrice()
                     .isLessThan(getBarSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
-                sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index); // put the highest high value of
+                sar = highest(highPriceIndicator, 2).getValue(index); // put the highest high value of
                                                                                         // two first bars
                 currentExtremePoint = sar;
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend
-                sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index); // put the lowest low value of two
+                sar = lowest(lowPriceIndicator, 2).getValue(index); // put the lowest low value of two
                                                                                       // first bars
                 currentExtremePoint = sar;
                 minMaxExtremePoint = currentExtremePoint;
@@ -132,11 +133,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getBarSeries().getBar(index).getLowPrice(); // put point on max
                 minMaxExtremePoint = currentExtremePoint;
             } else { // up trend is going on
-                Num lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator,
+                Num lowestPriceOfTwoPreviousBars = lowest(lowPriceIndicator,
                         Math.min(2, index - startTrendIndex)).getValue(index - 1);
                 if (sar.isGreaterThan(lowestPriceOfTwoPreviousBars))
                     sar = lowestPriceOfTwoPreviousBars;
-                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex + 1)
+                currentExtremePoint = highest(highPriceIndicator, index - startTrendIndex + 1)
                         .getValue(index);
                 if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
                     incrementAcceleration();
@@ -157,11 +158,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
                 currentExtremePoint = getBarSeries().getBar(index).getHighPrice();
                 minMaxExtremePoint = currentExtremePoint;
             } else { // down trend io going on
-                Num highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator,
+                Num highestPriceOfTwoPreviousBars = highest(highPriceIndicator,
                         Math.min(2, index - startTrendIndex)).getValue(index - 1);
                 if (sar.isLessThan(highestPriceOfTwoPreviousBars))
                     sar = highestPriceOfTwoPreviousBars;
-                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex + 1)
+                currentExtremePoint = lowest(lowPriceIndicator, index - startTrendIndex + 1)
                         .getValue(index);
                 if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
                     incrementAcceleration();

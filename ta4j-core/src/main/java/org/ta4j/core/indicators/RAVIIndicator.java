@@ -26,6 +26,8 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.sma;
+
 /**
  * Chande's Range Action Verification Index (RAVI) indicator.
  * 
@@ -45,8 +47,8 @@ public class RAVIIndicator extends CachedIndicator<Num> {
      */
     public RAVIIndicator(Indicator<Num> price, int shortSmaBarCount, int longSmaBarCount) {
         super(price);
-        shortSma = new SMAIndicator(price, shortSmaBarCount);
-        longSma = new SMAIndicator(price, longSmaBarCount);
+        shortSma = sma(price, shortSmaBarCount);
+        longSma = sma(price, longSmaBarCount);
     }
 
     @Override

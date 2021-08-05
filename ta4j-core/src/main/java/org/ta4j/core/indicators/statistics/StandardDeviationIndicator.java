@@ -27,6 +27,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.variance;
+
 /**
  * Standard deviation indicator.
  *
@@ -46,7 +48,7 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        variance = new VarianceIndicator(indicator, barCount);
+        variance = variance(indicator, barCount);
     }
 
     @Override

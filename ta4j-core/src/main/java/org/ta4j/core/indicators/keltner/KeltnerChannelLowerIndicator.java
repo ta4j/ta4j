@@ -27,6 +27,8 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.atr;
+
 /**
  * Keltner Channel (lower line) indicator
  *
@@ -43,7 +45,7 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
     private final Num ratio;
 
     public KeltnerChannelLowerIndicator(KeltnerChannelMiddleIndicator middle, double ratio, int barCountATR) {
-        this(middle, new ATRIndicator(middle.getBarSeries(), barCountATR), ratio);
+        this(middle, atr(middle.getBarSeries(), barCountATR), ratio);
     }
 
     public KeltnerChannelLowerIndicator(KeltnerChannelMiddleIndicator middle, ATRIndicator atr, double ratio) {

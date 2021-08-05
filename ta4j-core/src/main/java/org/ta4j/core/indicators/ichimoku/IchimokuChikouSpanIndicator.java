@@ -29,6 +29,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.close;
+
 /**
  * Ichimoku clouds: Chikou Span indicator
  *
@@ -65,7 +67,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
      */
     public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
         super(series);
-        this.closePriceIndicator = new ClosePriceIndicator(series);
+        this.closePriceIndicator = close(series);
         this.timeDelay = timeDelay;
     }
 

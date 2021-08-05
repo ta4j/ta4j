@@ -26,6 +26,8 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.ema;
+
 /**
  * Percentage price oscillator (PPO) indicator. <br/>
  * Aka. MACD Percentage Price Oscillator (MACD-PPO).
@@ -59,8 +61,8 @@ public class PPOIndicator extends CachedIndicator<Num> {
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
-        this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
-        this.longTermEma = new EMAIndicator(indicator, longBarCount);
+        this.shortTermEma = ema(indicator, shortBarCount);
+        this.longTermEma = ema(indicator, longBarCount);
     }
 
     @Override

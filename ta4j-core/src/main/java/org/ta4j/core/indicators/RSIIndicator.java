@@ -23,10 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.num.Num;
+
+import static org.ta4j.core.utils.Analysis.*;
 
 /**
  * Relative strength index indicator.
@@ -40,8 +43,12 @@ public class RSIIndicator extends CachedIndicator<Num> {
 
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
-        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
-        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
+        this.averageGainIndicator = mma(gain(indicator), barCount);
+        this.averageLossIndicator = mma(loss(indicator), barCount);
+    }
+
+    public RSIIndicator(BarSeries series) {
+        this(close(series), 14);
     }
 
     @Override

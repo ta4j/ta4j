@@ -41,7 +41,7 @@ import java.util.function.Function;
  * {@link UnsupportedOperationException}</li>
  * </ul>
  */
-public class NaN implements Num {
+public final class NaN implements Num {
 
     /** static Not-a-Number instance */
     public static final Num NaN = new NaN();

@@ -29,6 +29,8 @@ import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Chaikin Money Flow (CMF) indicator.
  *
@@ -48,8 +50,8 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     public ChaikinMoneyFlowIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.clvIndicator = new CloseLocationValueIndicator(series);
-        this.volumeIndicator = new VolumeIndicator(series, barCount);
+        this.clvIndicator = closeLocation(series);
+        this.volumeIndicator = volume(series, barCount);
     }
 
     @Override

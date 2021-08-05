@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Chaikin Oscillator.
  *
@@ -49,8 +51,8 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      */
     public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
         super(series);
-        this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
-        this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
+        this.emaShort = ema(accumulationDistribution(series), shortBarCount);
+        this.emaLong = ema(accumulationDistribution(series), longBarCount);
     }
 
     /**

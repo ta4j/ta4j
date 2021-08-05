@@ -27,6 +27,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.highest;
+
 /**
  * Ulcer index indicator.
  *
@@ -54,7 +56,7 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        highestValueInd = new HighestValueIndicator(indicator, barCount);
+        highestValueInd = highest(indicator, barCount);
     }
 
     @Override

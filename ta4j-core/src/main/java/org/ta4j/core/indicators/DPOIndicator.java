@@ -30,6 +30,8 @@ import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * The Detrended Price Oscillator (DPO) indicator.
  *
@@ -58,7 +60,7 @@ public class DPOIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public DPOIndicator(BarSeries series, int barCount) {
-        this(new ClosePriceIndicator(series), barCount);
+        this(close(series), barCount);
     }
 
     /**
@@ -70,8 +72,8 @@ public class DPOIndicator extends CachedIndicator<Num> {
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
         int timeFrame = barCount / 2 + 1;
-        final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
-        final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
+        final SMAIndicator simpleMovingAverage = sma(price, barCount);
+        final PreviousValueIndicator previousSimpleMovingAverage = previous(simpleMovingAverage,
                 timeFrame);
 
         this.indicatorMinusPreviousSMAIndicator = CombineIndicator.minus(price, previousSimpleMovingAverage);

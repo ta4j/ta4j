@@ -29,6 +29,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.sma;
+import static org.ta4j.core.utils.Analysis.upperShadow;
+
 /**
  * Three white soldiers indicator.
  *
@@ -62,8 +65,8 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeWhiteSoldiersIndicator(BarSeries series, int barCount, Num factor) {
         super(series);
-        upperShadowInd = new UpperShadowIndicator(series);
-        averageUpperShadowInd = new SMAIndicator(upperShadowInd, barCount);
+        upperShadowInd = upperShadow(series);
+        averageUpperShadowInd = sma(upperShadowInd, barCount);
         this.factor = factor;
     }
 

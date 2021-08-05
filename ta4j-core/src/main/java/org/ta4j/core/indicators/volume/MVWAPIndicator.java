@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.sma;
+
 /**
  * The Moving volume weighted average price (MVWAP) Indicator.
  * 
@@ -47,7 +49,7 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);
-        this.sma = new SMAIndicator(vwap, barCount);
+        this.sma = sma(vwap, barCount);
     }
 
     @Override

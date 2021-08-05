@@ -27,6 +27,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.minusDI;
+import static org.ta4j.core.utils.Analysis.plusDI;
+
 /**
  * DX indicator.
  */
@@ -39,8 +42,8 @@ public class DXIndicator extends CachedIndicator<Num> {
     public DXIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        plusDIIndicator = new PlusDIIndicator(series, barCount);
-        minusDIIndicator = new MinusDIIndicator(series, barCount);
+        plusDIIndicator = plusDI(series, barCount);
+        minusDIIndicator = minusDI(series, barCount);
     }
 
     @Override

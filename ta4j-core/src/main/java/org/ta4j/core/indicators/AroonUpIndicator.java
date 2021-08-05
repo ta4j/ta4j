@@ -24,6 +24,8 @@
 package org.ta4j.core.indicators;
 
 import static org.ta4j.core.num.NaN.NaN;
+import static org.ta4j.core.utils.Analysis.high;
+import static org.ta4j.core.utils.Analysis.highest;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -57,7 +59,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         this.highPriceIndicator = highPriceIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);
+        this.highestHighPriceIndicator = highest(highPriceIndicator, barCount + 1);
     }
 
     /**
@@ -67,7 +69,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public AroonUpIndicator(BarSeries series, int barCount) {
-        this(new HighPriceIndicator(series), barCount);
+        this(high(series), barCount);
     }
 
     @Override

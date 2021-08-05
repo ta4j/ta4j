@@ -26,6 +26,8 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.ema;
+
 /**
  * Moving average convergence divergence (MACDIndicator) indicator. <br/>
  * Aka. MACD Absolute Price Oscillator (APO).
@@ -60,8 +62,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
-        shortTermEma = new EMAIndicator(indicator, shortBarCount);
-        longTermEma = new EMAIndicator(indicator, longBarCount);
+        shortTermEma = ema(indicator, shortBarCount);
+        longTermEma = ema(indicator, longBarCount);
     }
 
     /**

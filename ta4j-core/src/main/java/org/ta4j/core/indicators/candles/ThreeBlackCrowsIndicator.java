@@ -29,6 +29,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.utils.Analysis.*;
+
 /**
  * Three black crows indicator.
  *
@@ -62,8 +64,8 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeBlackCrowsIndicator(BarSeries series, int barCount, double factor) {
         super(series);
-        lowerShadowInd = new LowerShadowIndicator(series);
-        averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
+        lowerShadowInd = lowerShadow(series);
+        averageLowerShadowInd = sma(lowerShadowInd, barCount);
         this.factor = numOf(factor);
     }
 

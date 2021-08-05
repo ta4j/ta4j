@@ -33,7 +33,7 @@ import java.util.function.Function;
  * @apiNote the delegate should never become a NaN value. No self NaN checks
  *          provided
  */
-public class DoubleNum implements Num {
+public final class DoubleNum implements Num {
 
     private static final DoubleNum ZERO = DoubleNum.valueOf(0);
     private static final DoubleNum ONE = DoubleNum.valueOf(1);
@@ -47,7 +47,7 @@ public class DoubleNum implements Num {
     }
 
     public static DoubleNum valueOf(int i) {
-        return new DoubleNum((double) i);
+        return new DoubleNum(i);
     }
 
     public static DoubleNum valueOf(long i) {
@@ -55,15 +55,19 @@ public class DoubleNum implements Num {
     }
 
     public static DoubleNum valueOf(short i) {
-        return new DoubleNum((double) i);
+        return new DoubleNum(i);
     }
 
     public static DoubleNum valueOf(float i) {
-        return new DoubleNum((double) i);
+        return new DoubleNum(i);
     }
 
     public static DoubleNum valueOf(String i) {
         return new DoubleNum(Double.parseDouble(i));
+    }
+
+    public static DoubleNum valueOf(double i) {
+        return new DoubleNum(i);
     }
 
     public static DoubleNum valueOf(Number i) {

@@ -39,7 +39,7 @@ public class ChainLink implements Serializable {
     private static final long serialVersionUID = -436033401669929601L;
 
     private Rule rule;
-    private int threshold = 0;
+    private int threshold;
 
     /**
      * Threshold is the number of bars the provided rule has to be satisfied after
