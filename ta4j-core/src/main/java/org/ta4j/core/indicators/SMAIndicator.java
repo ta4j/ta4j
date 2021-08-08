@@ -46,13 +46,18 @@ public class SMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num sum = numOf(0);
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-            sum = sum.plus(indicator.getValue(i));
+        if (index < barCount) {
+            Num sum = numOf(0);
+            for (int i = 0; i <= index; i++) {
+                sum = sum.plus(indicator.getValue(i));
+            }
+            return sum.dividedBy(numOf(index + 1));
         }
-
-        final int realBarCount = Math.min(barCount, index + 1);
-        return sum.dividedBy(numOf(realBarCount));
+        Num count = numOf(barCount);
+        Num currentValue = indicator.getValue(index).dividedBy(count);
+        Num nPeriodsAgoValue = indicator.getValue(index - barCount).dividedBy(count);
+        Num prevValue = getValue(index - 1);
+        return prevValue.minus(nPeriodsAgoValue).plus(currentValue);
     }
 
     @Override
