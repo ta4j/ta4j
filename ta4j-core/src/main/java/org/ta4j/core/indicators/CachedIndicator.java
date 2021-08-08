@@ -83,7 +83,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // (e.g. simple computation of the value)
             // --> Calculating the value
             T result = calculate(index);
-            log.trace("{}({}): {}", this, index, result);
+            if (log.isTraceEnabled()) {
+                log.trace("{}({}): {}", this, index, result);
+            }
             return result;
         }
 
@@ -95,8 +97,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         T result;
         if (index < removedBarsCount) {
             // Result already removed from cache
-            log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
-                    getClass().getSimpleName(), index, removedBarsCount);
+            if (log.isTraceEnabled()) {
+                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+                        getClass().getSimpleName(), index, removedBarsCount);
+            }
             increaseLengthTo(removedBarsCount, maximumResultCount);
             highestResultIndex = removedBarsCount;
             result = results.get(0);
@@ -130,7 +134,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
         }
-        log.trace("{}({}): {}", this, index, result);
+        if (log.isTraceEnabled()) {
+            log.trace("{}({}): {}", this, index, result);
+        }
         return result;
     }
 
