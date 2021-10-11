@@ -449,12 +449,12 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addTrade(Number price, Number amount) {
-        addTrade(numOf(price), numOf(amount));
+        addTrade(numOf(amount), numOf(price));
     }
 
     @Override
     public void addTrade(String price, String amount) {
-        addTrade(numOf(new BigDecimal(price)), numOf(new BigDecimal(amount)));
+        addTrade(numOf(new BigDecimal(amount)), numOf(new BigDecimal(price)));
     }
 
     @Override
