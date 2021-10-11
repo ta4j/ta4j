@@ -67,7 +67,7 @@ public class DoubleNum implements Num {
     }
 
     public static DoubleNum valueOf(Number i) {
-        return new DoubleNum(Double.parseDouble(i.toString()));
+        return new DoubleNum(i.doubleValue());
     }
 
     @Override

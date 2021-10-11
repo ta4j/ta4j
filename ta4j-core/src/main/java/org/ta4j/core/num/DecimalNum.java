@@ -465,7 +465,9 @@ public final class DecimalNum implements Num {
                     : new BigDecimal(6);
             BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
             String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
-            log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            if (log.isTraceEnabled()) {
+                log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            }
             DecimalFormat format = new DecimalFormat();
             format.setParseBigDecimal(true);
             try {
@@ -635,8 +637,10 @@ public final class DecimalNum implements Num {
         if (thisNum.toString().equals(otherNum.toString())) {
             return true;
         }
-        log.debug("{} from {} does not match", thisNum, this);
-        log.debug("{} from {} to precision {}", otherNum, other, precision);
+        if (log.isDebugEnabled()) {
+            log.debug("{} from {} does not match", thisNum, this);
+            log.debug("{} from {} to precision {}", otherNum, other, precision);
+        }
         return false;
     }
 
@@ -653,8 +657,10 @@ public final class DecimalNum implements Num {
         if (!result.isGreaterThan(delta)) {
             return true;
         }
-        log.debug("{} does not match", this);
-        log.debug("{} within offset {}", other, delta);
+        if (log.isDebugEnabled()) {
+            log.debug("{} does not match", this);
+            log.debug("{} within offset {}", other, delta);
+        }
         return false;
     }
 

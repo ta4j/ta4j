@@ -16,6 +16,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **VersusBuyAndHoldCriterionTest** NaN-Error.
 - **Fixed** **`ChaikinOscillatorIndicatorTest`**
 - **DecimalNum#remainder()** adds NaN-check 
+- **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice
 
 ### Changed
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
@@ -25,6 +26,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Open|High|Low|Close** do not cache price values anymore
 - **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
 - **SMAIndicator** use the previously cached sma value to calculate
+- **DoubleNum** replace redundant `toString()` call in `DoubleNum.valueOf(Number i)` with `i.doubleValue()`
 
 ### Removed/Deprecated
 - **Num** removed Serializable
@@ -48,6 +50,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`VarianceCriterion`**
 - :tada: **Enhancement** added **`AverageCriterion`**
 - :tada: **Enhancement** added javadoc for all rules to make clear which rule makes use of a TradingRecord
+- **Enhancement** prevent Object[] allocation for varargs log.trace and log.debug calls by wrapping them in `if` blocks
 
 ## 0.14 (released April 25, 2021)
 
