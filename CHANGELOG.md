@@ -25,6 +25,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **BarSeriesManager** removed empty args constructor
 - **Open|High|Low|Close** do not cache price values anymore
 - **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
+- **DoubleNum** replace redundant `toString()` call in `DoubleNum.valueOf(Number i)` with `i.doubleValue()`
 
 ### Removed/Deprecated
 - **Num** removed Serializable
