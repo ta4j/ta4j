@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.14 (released April 25, 2021)
 
 ### Breaking
+- **Breaking:** **Changed order of parameters for addTrade in `BaseBarSeries` to match abstract and description
 - **Breaking:** **`PrecisionNum`** renamed to **`DecimalNum`**
 - **Breaking:** **`AverageProfitableTradesCriterion`** renamed to **`WinningTradesRatioCriterion`**
 - **Breaking:** **`AverageProfitCriterion`** renamed to **`AverageReturnPerBarCriterion`**
@@ -68,7 +69,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Enhancement** Added Percentage Volume Oscillator Indicator, PVOIndicator.
 - **Enhancement** Added Distance From Moving Average Indicator, DistanceFromMAIndicator.
 - **Enhancement** Added Know Sure Thing Indicator, KSTIndicator.
- constructor of PreviousValueIndicator 
+ constructor of PreviousValueIndicator
 - :tada: **Enhancement** added getGrossProfit() and getGrossProfit(BarSeries) on Trade.
 - :tada: **Enhancement** added getPricePerAsset(BarSeries) on Order.
 - :tada: **Enhancement** added convertBarSeries(BarSeries, conversionFunction) to BarSeriesUtils.
@@ -122,22 +123,22 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Enhancement** Added common constructors in BaseBar for BigDecimal, Double and String values
 - **Enhancement** Added constructor in BaseBar with trades property
 - **Enhancement** Added BaseBarBuilder and ConvertibleBaseBarBuilder - BaseBar builder classes
-- **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series 
+- **Enhancement** Added BarAggregator and TimeSeriesAggregator to allow aggregates bars and time series
 - **Enhancement** Added LWMA Linearly Weighted Moving Average Indicator
 - **Enhancement** Implemented trading cost models (linear transaction and borrowing cost models)
 - **Enhancement** Implemented Value at Risk Analysis Criterion
 - **Enhancement** Implemented Expected Shortfall Analysis Criterion
 - **Enhancement** Implemented Returns class to analyze the time series of return rates. Supports logarithmic and arithmetic returns
 - **Enhancement** Implemented a way to find the best result for multiple strategies by submitting a range of numbers while backtesting
-- **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades 
+- **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades
 - **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
-- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
-- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades 
-- **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades 
-- **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades 
+- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades
+- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades
+- **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades
+- **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades
 - **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
-- **Enhancement** Added ADX indicator based strategy to ta4j-examples  
-- **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter 
+- **Enhancement** Added ADX indicator based strategy to ta4j-examples
+- **Enhancement** TrailingStopLossRule: added possibility of calculations of TrailingStopLossRule also for open, high, low price. Added getter
 for currentStopLossLimitActivation
 - **Enhancement** Add constructors with parameters to allow custom implementation of ReportGenerators in BacktestExecutor
 - **Enhancement** Added license checker goal on CI's pipeline
@@ -147,8 +148,8 @@ for currentStopLossLimitActivation
 
 ## 0.12 (released September 10, 2018)
 
-### Breaking: 
-   - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations. 
+### Breaking:
+   - `Decimal` class has been replaced by new `Num` interface. Enables using `Double`, `BigDecimal` and custom data types for calculations.
    - Big changes in `TimeSeries` and `BaseTimeSeries`. Multiple new `addBar(..)` functions in `TimeSeries` allow to add data directly to the series
 
 
