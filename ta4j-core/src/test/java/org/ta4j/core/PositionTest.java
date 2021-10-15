@@ -23,15 +23,13 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoint;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
@@ -268,6 +266,43 @@ public class PositionTest {
     @Test(expected = IllegalArgumentException.class)
     public void testCostModelExitInconsistent() {
         new Position(enter, exitDifferentType, transactionModel, holdingModel);
+    }
+
+    @Test
+    public void testNullCustomPositionDataOnInitialization(){
+        Position p = new Position(enter, exitSameType);
+        assertNull(p.getCustomPositionData());
+
+        p = new Position();
+        assertNull(p.getCustomPositionData());
+    }
+
+    @Test
+    public void testUpdateCustomPositionData(){
+        Position p = new Position();
+        assertNull(p.getCustomPositionData());
+
+        p.setCustomPositionData(new CustomPositionData());
+        assertNotNull(p.getCustomPositionData());
+    }
+
+    @Test
+    public void testInitCustomPositionData(){
+        CustomPositionData customPositionData = new CustomPositionData();
+        assertNull(customPositionData.getStopLossPrice());
+        assertNull(customPositionData.getTakeProfitPrice());
+
+        customPositionData = new CustomPositionData(DoubleNum.valueOf("102.34"), DoubleNum.valueOf("110.75"));
+        assertNumEquals(102.34, customPositionData.getStopLossPrice());
+        assertNumEquals(110.75, customPositionData.getTakeProfitPrice());
+
+        customPositionData.setStopLossPrice(DoubleNum.valueOf("103.15"));
+        assertNumEquals(103.15, customPositionData.getStopLossPrice());
+        assertNumEquals(110.75, customPositionData.getTakeProfitPrice());
+
+        customPositionData.setTakeProfitPrice(DoubleNum.valueOf("117.99"));
+        assertNumEquals(103.15, customPositionData.getStopLossPrice());
+        assertNumEquals(117.99, customPositionData.getTakeProfitPrice());
     }
 
     @Test

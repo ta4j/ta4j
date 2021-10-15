@@ -58,6 +58,9 @@ public class Position implements Serializable {
     /** The cost model for holding the asset */
     private final CostModel holdingCostModel;
 
+    /** Additional position data */
+    private CustomPositionData customPositionData;
+
     /**
      * Constructor.
      */
@@ -403,6 +406,24 @@ public class Position implements Serializable {
      */
     public TradeType getStartingType() {
         return startingType;
+    }
+
+    /**
+     * Returns the custom position data object.
+     *
+     * @return the custom position data object.
+     */
+    public CustomPositionData getCustomPositionData() {
+        return customPositionData;
+    }
+
+    /**
+     * Sets the custom position data object.
+     *
+     * @param customPositionData the custom position data object to set.
+     */
+    public void setCustomPositionData(CustomPositionData customPositionData) {
+        this.customPositionData = customPositionData;
     }
 
     /**
