@@ -42,6 +42,22 @@ import org.ta4j.core.rules.IsHighestRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
+/**
+ * NumericIndicator is a "fluent decorator" for Indicator<Num>.
+ * It provides methods to create rules and other "lightweight" indicators,
+ * using a (hopefully) natural-looking and expressive series of method calls.
+ * <p>
+ * Methods like plus(), minus() and sqrt() correspond directly to methods in the Num interface.
+ * These methods create "lightweight" (not cached) indicators to add, subtract, etc.
+ * Many methods are overloaded to accept either Indicator<Num> or Number arguments.
+ * <p>
+ * Methods like sma() and ema() simply create the corresponding indicator objects,
+ * (SMAIndicator or EMAIndicator, for example) with "this" as the first argument.
+ * These methods usually instantiate cached objects.
+ * <p>
+ * Another set of methods, like crossedOver() and isGreaterThan() create Rule objects.
+ * These are also overloaded to accept both Indicator<Num> and Number arguments.
+ */
 public class NumericIndicator implements Indicator<Num> {
 
     public static NumericIndicator of(Indicator<Num> delegate) {
@@ -53,8 +69,8 @@ public class NumericIndicator implements Indicator<Num> {
         return of(new ClosePriceIndicator(bs));
     }
 
-    // shortcut... volume is also used fairly often... I don't think we need any
-    // more like this
+    // shortcut... volume is also used fairly often... 
+    // I would prefer not to have too many shortcuts like this
     public static NumericIndicator volume(BarSeries bs) {
         return of(new VolumeIndicator(bs));
     }
@@ -64,7 +80,7 @@ public class NumericIndicator implements Indicator<Num> {
     protected NumericIndicator(Indicator<Num> delegate) {
         this.delegate = delegate;
     }
-
+    
     public NumericIndicator plus(Indicator<Num> other) {
         return NumericIndicator.of(BinaryOperation.sum(this, other));
     }
@@ -145,7 +161,7 @@ public class NumericIndicator implements Indicator<Num> {
     // comparisons should be OK
     // we can unwrap later after testing
     public NumericIndicator previous(int n) {
-        return NumericIndicator.of(new PreviousValueIndicator(this));
+        return NumericIndicator.of(new PreviousValueIndicator(this, n));
     }
 
     public Indicator<Num> previous() {
