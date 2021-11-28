@@ -46,7 +46,7 @@ public class BollingerDemo {
 
         // rules inspired by
         // https://school.stockcharts.com/doku.php?id=technical_indicators:bollinger_bands#bullish_bollinger_band_crossover
-        // these might be very sensible rules; this is just an example to show the
+        // these might not be very sensible rules; this is just an example to show the
         // fluent methods
 
         Rule buy = price.crossedOver(bb.upper())
