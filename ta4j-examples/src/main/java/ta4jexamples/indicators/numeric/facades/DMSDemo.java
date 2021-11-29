@@ -24,8 +24,12 @@
 package ta4jexamples.indicators.numeric.facades;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.CCIIndicator;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 
 import ta4jexamples.indicators.numeric.NumericIndicator;
 import ta4jexamples.loaders.CsvTradesLoader;
@@ -36,17 +40,33 @@ public class DMSDemo {
 
         BarSeries bs = CsvTradesLoader.loadBitstampSeries();
 
-        KeltnerChannels kc = new KeltnerChannels(bs, 20, 10, 2.0);
-
+        // inspired by the ADXStrategy example
         DirectionalMovementSystem dms = new DirectionalMovementSystem(bs, 14, 14);
+        NumericIndicator close = NumericIndicator.closePrice(bs);
+        NumericIndicator sma50 = close.sma(50);
+        
+        Rule entryRule = dms.adx().isGreaterThan(20)
+        		.and(dms.plusDI().crossedOver(dms.minusDI()))
+        		.and(close.isGreaterThan(sma50));
 
-        // print the numbers
-        for (int i = 0; i < bs.getBarCount(); i++) {
-            System.out.print(" ADX " + dms.adx().getValue(i));
-            System.out.print(" PlusDI " + dms.plusDI().getValue(i));
-            System.out.print(" MinusDI " + dms.minusDI().getValue(i));
-            System.out.println();
-        }
+        Rule exitRule = dms.adx().isGreaterThan(20)
+    			.and(dms.plusDI().crossedUnder(dms.minusDI()))
+    			.and(close.isLessThan(sma50));
+        
+        //with pretty indicator and rule toString() (issue #813) this would print like
+        // ADX(14,14) > 20 AND PlusDI(14) crossedOver MinusDI(14) AND Close > SMA(Close,50)
+        // ADX(14,14) > 20 AND PlusDI(14) crossedUnder MinusDI(14) AND Close < SMA(Close,50)
+
+        Strategy strategy = new BaseStrategy(entryRule, exitRule); 
+        
+        BarSeriesManager seriesManager = new BarSeriesManager(bs);
+        TradingRecord tradingRecord = seriesManager.run(strategy);
+        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+
+        // Analysis
+        System.out.println(
+                "Total return for the strategy: " + new GrossReturnCriterion().calculate(bs, tradingRecord));
+
 
     }
 }
