@@ -44,29 +44,31 @@ public class DMSDemo {
         DirectionalMovementSystem dms = new DirectionalMovementSystem(bs, 14, 14);
         NumericIndicator close = NumericIndicator.closePrice(bs);
         NumericIndicator sma50 = close.sma(50);
-        
-        Rule entryRule = dms.adx().isGreaterThan(20)
-        		.and(dms.plusDI().crossedOver(dms.minusDI()))
-        		.and(close.isGreaterThan(sma50));
 
-        Rule exitRule = dms.adx().isGreaterThan(20)
-    			.and(dms.plusDI().crossedUnder(dms.minusDI()))
-    			.and(close.isLessThan(sma50));
-        
-        //with pretty indicator and rule toString() (issue #813) this would print like
-        // ADX(14,14) > 20 AND PlusDI(14) crossedOver MinusDI(14) AND Close > SMA(Close,50)
-        // ADX(14,14) > 20 AND PlusDI(14) crossedUnder MinusDI(14) AND Close < SMA(Close,50)
+        Rule entryRule = dms.adx()
+                .isGreaterThan(20)
+                .and(dms.plusDI().crossedOver(dms.minusDI()))
+                .and(close.isGreaterThan(sma50));
 
-        Strategy strategy = new BaseStrategy(entryRule, exitRule); 
-        
+        Rule exitRule = dms.adx()
+                .isGreaterThan(20)
+                .and(dms.plusDI().crossedUnder(dms.minusDI()))
+                .and(close.isLessThan(sma50));
+
+        // with pretty indicator and rule toString() (issue #813) this would print like
+        // ADX(14,14) > 20 AND PlusDI(14) crossedOver MinusDI(14) AND Close >
+        // SMA(Close,50)
+        // ADX(14,14) > 20 AND PlusDI(14) crossedUnder MinusDI(14) AND Close <
+        // SMA(Close,50)
+
+        Strategy strategy = new BaseStrategy(entryRule, exitRule);
+
         BarSeriesManager seriesManager = new BarSeriesManager(bs);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
-        System.out.println(
-                "Total return for the strategy: " + new GrossReturnCriterion().calculate(bs, tradingRecord));
-
+        System.out.println("Total return for the strategy: " + new GrossReturnCriterion().calculate(bs, tradingRecord));
 
     }
 }
