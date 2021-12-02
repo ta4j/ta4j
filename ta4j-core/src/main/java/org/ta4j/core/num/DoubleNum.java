@@ -172,6 +172,16 @@ public class DoubleNum implements Num {
         return new DoubleNum(-delegate);
     }
 
+    /**
+     * Checks if this number is a NaN. Uses Double.isNaN()
+     * 
+     * @return true if this number is a NaN, false otherwise.
+     */
+    @Override
+    public boolean isNaN() {
+        return Double.isNaN(delegate);
+    }
+
     @Override
     public boolean isZero() {
         return delegate == 0;

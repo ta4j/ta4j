@@ -613,6 +613,19 @@ public final class DecimalNum implements Num {
     }
 
     /**
+     * Checks if this number is a NaN.
+     * 
+     * @return true if the value is a NaN, false otherwise.
+     */
+    @Override
+    public boolean isNaN() {
+        if (delegate != null) {
+            return Double.isNaN(delegate.doubleValue());
+        }
+        return false;
+    }
+
+    /**
      * Checks if this value is equal to another.
      *
      * @param other the other value, not null
