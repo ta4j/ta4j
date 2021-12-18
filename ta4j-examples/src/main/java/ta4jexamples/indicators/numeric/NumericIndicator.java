@@ -61,17 +61,31 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  */
 public class NumericIndicator implements Indicator<Num> {
 
+	/**
+	 * Creates a fluent NumericIndicator wrapped around a "regular" indicator.
+	 * 
+	 * @param delegate an indicator
+	 * 
+	 * @return a fluent NumericIndicator wrapped around the argument
+	 */
     public static NumericIndicator of(Indicator<Num> delegate) {
         return new NumericIndicator(delegate);
     }
 
-    // shortcut... close price is used a lot
+    /**
+     * Creates a fluent version of the ClosePriceIndicator
+     * 
+     * @return a NumericIndicator wrapped around a ClosePriceIndicator
+     */
     public static NumericIndicator closePrice(BarSeries bs) {
         return of(new ClosePriceIndicator(bs));
     }
 
-    // shortcut... volume is also used fairly often...
-    // I would prefer not to have too many shortcuts like this
+    /**
+     * Creates a fluent version of the VolumeIndicator
+     * 
+     * @return a NumericIndicator wrapped around a VolumeIndicator
+     */
     public static NumericIndicator volume(BarSeries bs) {
         return of(new VolumeIndicator(bs));
     }
@@ -199,15 +213,6 @@ public class NumericIndicator implements Indicator<Num> {
 
     public Rule isLessThan(Number n) {
         return isLessThan(createConstant(n));
-    }
-
-    public Indicator<Boolean> isZero() {
-        return new PredicateOperation(Num::isZero, this);
-    }
-
-    // experimental
-    public NumericIndicator cached() {
-        return new FIFOIndicator(this);
     }
 
     private Indicator<Num> createConstant(Number n) {

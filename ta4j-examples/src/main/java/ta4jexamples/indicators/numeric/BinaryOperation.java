@@ -33,9 +33,9 @@ import org.ta4j.core.num.Num;
  * Objects of this class defer evaluation of an arithmetic operation.
  * 
  * This is a lightweight version of the CombineIndicator; it doesn't cache.
- *
+ * 
  */
-public class BinaryOperation implements Indicator<Num> {
+class BinaryOperation implements Indicator<Num> {
 
     public static BinaryOperation sum(Indicator<Num> left, Indicator<Num> right) {
         return new BinaryOperation(Num::plus, left, right);

@@ -31,9 +31,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Objects of this class defer the evaluation of a unary operator, like sqrt().
+ * 
+ * There may be other unary operations on NUm that could be added here.
  *
  */
-public class UnaryOperation implements Indicator<Num> {
+class UnaryOperation implements Indicator<Num> {
 
     public static UnaryOperation sqrt(Indicator<Num> operand) {
         return new UnaryOperation(Num::sqrt, operand);

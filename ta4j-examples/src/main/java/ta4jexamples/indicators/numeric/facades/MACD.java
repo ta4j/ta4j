@@ -31,6 +31,12 @@ import org.ta4j.core.num.Num;
 
 import ta4jexamples.indicators.numeric.NumericIndicator;
 
+/**
+ * A facade to create the MACD indicator, signal and histogram.
+ *
+ * This class creates lightweight "fluent" numeric indicators. These objects are
+ * not cached, although they are wrapped around cached EMA objects. 
+ */
 public class MACD {
 
     private final NumericIndicator line;
@@ -46,10 +52,23 @@ public class MACD {
         return line;
     }
 
+    /**
+     * Creates an exponential moving average to act as a signal line for this MACD.
+     * 
+     * @param n the number of periods used to average MACD
+     * @return a NumericIndicator wrapped around cached EMA indicator
+     */
     public NumericIndicator signal(int n) {
         return NumericIndicator.of(new EMAIndicator(line, n));
     }
 
+    /**
+     * Creates an object to calculate the MACD histogram.
+     * 
+     * @param n the number of periods used for the signal line
+     * 
+     * @return an object to calculate the difference between this MACD and its signal
+     */
     public NumericIndicator histogram(int n) {
         return line.minus(signal(n));
     }

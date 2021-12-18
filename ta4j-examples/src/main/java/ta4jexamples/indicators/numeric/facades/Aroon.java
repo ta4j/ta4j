@@ -39,14 +39,29 @@ public class Aroon {
         this.down = NumericIndicator.of(new AroonDownIndicator(bs, n));
     }
 
+    /**
+     * A fluent AroonUp indicator. 
+     * 
+     * @return a NumericIndicator wrapped around a cached AroonUpIndicator
+     */
     public NumericIndicator up() {
         return up;
     }
 
+    /**
+     * A fluent AroonDown indicator.
+     *  
+     * @return a NumericIndicator wrapped around a cached AroonDownIndicator
+     */
     public NumericIndicator down() {
         return down;
     }
 
+    /**
+     * A lightweight fluent AroonOscillator.
+     * 
+     * @return an uncached object that calculates the difference between AoonUp and AroonDown
+     */
     public NumericIndicator oscillator() {
         return up.minus(down);
     }

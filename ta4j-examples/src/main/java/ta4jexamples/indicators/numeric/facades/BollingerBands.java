@@ -29,8 +29,9 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import ta4jexamples.indicators.numeric.NumericIndicator;
 
 /**
- * A facade to create the 3 Bollinger Band indicators, as well as BB bandwidth
- * and %B.
+ * A facade to create the 3 Bollinger Band indicators.
+ * A simple moving average of close price is used as the middle band.
+ * The BB bandwidth and %B indicators can be created on demand.
  *
  * This class creates lightweight "fluent" numeric indicators. These objects are
  * not cached, although they may be wrapped around cached objects. Overall there
@@ -52,24 +53,47 @@ public class BollingerBands {
         this.lower = middle.minus(stdev.multipliedBy(k));
     }
 
+    /**
+     * A fluent BB middle band
+     * 
+     * @return a NumericIndicator wrapped around a cached SMAIndicator of close price.
+     */
     public NumericIndicator middle() {
         return middle;
     }
 
+    /**
+     * A fluent BB upper band
+     * 
+     * @return an object that calculates the sum of BB middle and a multiple of standard deviation.
+     */
     public NumericIndicator upper() {
         return upper;
     }
 
+    /**
+     * A fluent BB lower band
+     * 
+     * @return an object that calculates the difference between BB middle and a multiple of standard deviation.
+     */
     public NumericIndicator lower() {
         return lower;
     }
 
-    // bandwidth and percentB are created lazily; keep them in variables if they are
-    // used more than once
+    /**
+     * A fluent BB Bandwidth indicator
+     * 
+     * @return an object that calculates BB bandwidth from upper, lower and middle
+     */
     public NumericIndicator bandwidth() {
         return upper.minus(lower).dividedBy(middle).multipliedBy(100);
     }
 
+    /**
+     * A fluent %B indicator
+     * 
+     * @return an object that calculates %B from close price, upper and lower
+     */
     public NumericIndicator percentB() {
         return price.minus(lower).dividedBy(upper.minus(lower));
     }

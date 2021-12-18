@@ -24,12 +24,19 @@
 package ta4jexamples.indicators.numeric.facades;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 import ta4jexamples.indicators.numeric.NumericIndicator;
 
+/**
+ * A facade to create the 3 Keltner Channel indicators.
+ * An exponential moving average of close price is used as the middle channel.
+ *
+ * This class creates lightweight "fluent" numeric indicators. These objects are
+ * not cached, although they may be wrapped around cached objects. Overall there
+ * is less caching and probably better performance.
+ */
 public class KeltnerChannels {
 
     private final NumericIndicator middle;
