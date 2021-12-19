@@ -21,51 +21,53 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.numeric;
+
+import java.util.function.UnaryOperator;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Aroon Oscillator.
+ * Objects of this class defer the evaluation of a unary operator, like sqrt().
+ * 
+ * There may be other unary operations on NUm that could be added here.
  *
- * @see <a href=
- *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator">
- *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator</a>
  */
-public class AroonOscillatorIndicator extends CachedIndicator<Num> {
+class UnaryOperation implements Indicator<Num> {
 
-	public static final String KEYWORD = "AroonOscillator";
+    public static UnaryOperation sqrt(Indicator<Num> operand) {
+        return new UnaryOperation(Num::sqrt, operand);
+    }
 
-    private final AroonDownIndicator aroonDownIndicator;
-    private final AroonUpIndicator aroonUpIndicator;
-    private final int barCount;
+    public static UnaryOperation abs(Indicator<Num> operand) {
+        return new UnaryOperation(Num::abs, operand);
+    }
 
-    private final String representation;  //cache for toString
+    private final UnaryOperator<Num> operator;
+    private final Indicator<Num> operand;
 
-    public AroonOscillatorIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.barCount = barCount;
-        this.aroonDownIndicator = new AroonDownIndicator(series, barCount);
-        this.aroonUpIndicator = new AroonUpIndicator(series, barCount);
-        this.representation = KEYWORD + "(" + barCount + ")";
+    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
+        this.operator = operator;
+        this.operand = operand;
     }
 
     @Override
-    protected Num calculate(int index) {
-        return aroonUpIndicator.getValue(index).minus(aroonDownIndicator.getValue(index));
+    public Num getValue(int index) {
+        Num n = operand.getValue(index);
+        return operator.apply(n);
     }
 
     @Override
-    public String toString() {
-        return representation;
+    public BarSeries getBarSeries() {
+        return operand.getBarSeries();
     }
 
-    public AroonDownIndicator getAroonDownIndicator() {
-        return aroonDownIndicator;
+    // make this a default method in the Indicator interface...
+    @Override
+    public Num numOf(Number number) {
+        return operand.numOf(number);
     }
 
-    public AroonUpIndicator getAroonUpIndicator() {
-        return aroonUpIndicator;
-    }
 }

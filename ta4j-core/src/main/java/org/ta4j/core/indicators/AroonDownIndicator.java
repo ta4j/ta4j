@@ -39,10 +39,15 @@ import org.ta4j.core.num.Num;
  */
 public class AroonDownIndicator extends CachedIndicator<Num> {
 
+	public static final String KEYWORD = "AroonDown";
+
     private final int barCount;
     private final LowestValueIndicator lowestLowPriceIndicator;
     private final Indicator<Num> lowPriceIndicator;
     private final Num hundred;
+    private final Num barCountNum;
+
+    private final String representation;  //cache for toString
 
     /**
      * Constructor.
@@ -56,9 +61,11 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.lowPriceIndicator = lowPriceIndicator;
         this.hundred = numOf(100);
+        this.barCountNum = numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
-    }
+        this.representation = KEYWORD + "(" + barCount + ")";
+ }
 
     /**
      * Default Constructor that is using the low price
@@ -85,11 +92,11 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        return numOf(barCount - nbBars).dividedBy(numOf(barCount)).multipliedBy(hundred);
+        return numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(hundred);
     }
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+    	return representation;
     }
 }

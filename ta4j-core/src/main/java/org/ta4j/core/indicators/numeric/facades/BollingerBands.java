@@ -1,0 +1,85 @@
+package org.ta4j.core.indicators.numeric.facades;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+
+/**
+ * A facade to create the 3 Bollinger Band indicators.
+ * A simple moving average of close price is used as the middle band.
+ * The BB bandwidth and %B indicators can also be created on demand.
+ * 
+ *  <p>
+ * This class creates lightweight "fluent" numeric indicators. These objects are
+ * not cached, although they may be wrapped around cached objects. Overall there
+ * is less caching and probably better performance.
+ */
+public class BollingerBands {
+
+    private final NumericIndicator price;
+    private final NumericIndicator middle;
+    private final NumericIndicator upper;
+    private final NumericIndicator lower;
+
+    /**
+     * Create the BollingerBands facade
+     * 
+     * @param bs a bar series
+     * @param n the number of periods (barCount) used for the indicators
+     * @param k the multiplier used to calculate the upper and lower bands
+     */
+    public BollingerBands(BarSeries bs, int n, Number k) {
+        this.price = NumericIndicator.of(new ClosePriceIndicator(bs));
+        this.middle = NumericIndicator.of(price.sma(n));
+        NumericIndicator stdev = price.stddev(n);
+        // StdDevIndicator creates another SMA(n); hard to fix with current design
+        this.upper = middle.plus(stdev.multipliedBy(k));
+        this.lower = middle.minus(stdev.multipliedBy(k));
+    }
+
+    /**
+     * A fluent BB middle band
+     * 
+     * @return a NumericIndicator wrapped around a cached SMAIndicator of close price.
+     */
+    public NumericIndicator middle() {
+        return middle;
+    }
+
+    /**
+     * A fluent BB upper band
+     * 
+     * @return an object that calculates the sum of BB middle and a multiple of standard deviation.
+     */
+    public NumericIndicator upper() {
+        return upper;
+    }
+
+    /**
+     * A fluent BB lower band
+     * 
+     * @return an object that calculates the difference between BB middle and a multiple of standard deviation.
+     */
+    public NumericIndicator lower() {
+        return lower;
+    }
+
+    /**
+     * A fluent BB Bandwidth indicator
+     * 
+     * @return an object that calculates BB bandwidth from BB upper, lower and middle
+     */
+    public NumericIndicator bandwidth() {
+        return upper.minus(lower).dividedBy(middle).multipliedBy(100);
+    }
+
+    /**
+     * A fluent %B indicator
+     * 
+     * @return an object that calculates %B from close price, BB upper and lower
+     */
+    public NumericIndicator percentB() {
+        return price.minus(lower).dividedBy(upper.minus(lower));
+    }
+
+}
