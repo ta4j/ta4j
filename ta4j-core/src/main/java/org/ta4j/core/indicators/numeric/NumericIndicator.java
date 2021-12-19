@@ -63,13 +63,13 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  */
 public class NumericIndicator implements Indicator<Num>, IntToDoubleFunction {
 
-	/**
-	 * Creates a fluent NumericIndicator wrapped around a "regular" indicator.
-	 * 
-	 * @param delegate an indicator
-	 * 
-	 * @return a fluent NumericIndicator wrapped around the argument
-	 */
+    /**
+     * Creates a fluent NumericIndicator wrapped around a "regular" indicator.
+     * 
+     * @param delegate an indicator
+     * 
+     * @return a fluent NumericIndicator wrapped around the argument
+     */
     public static NumericIndicator of(Indicator<Num> delegate) {
         return new NumericIndicator(delegate);
     }
@@ -155,8 +155,8 @@ public class NumericIndicator implements Indicator<Num>, IntToDoubleFunction {
     }
 
     public NumericIndicator squared() {
-    	//TODO: implement pow(n); a few others
-    	return this.multipliedBy(this);
+        // TODO: implement pow(n); a few others
+        return this.multipliedBy(this);
     }
 
     public NumericIndicator sma(int n) {
@@ -241,15 +241,14 @@ public class NumericIndicator implements Indicator<Num>, IntToDoubleFunction {
         return delegate.numOf(number);
     }
 
-	@Override
-	public String toString() {
-		return delegate.toString();  
-	}
+    @Override
+    public String toString() {
+        return delegate.toString();
+    }
 
-	@Override
-	public double applyAsDouble(int value) {
-		return apply(value).doubleValue();
-	}
+    @Override
+    public double applyAsDouble(int value) {
+        return apply(value).doubleValue();
+    }
 
-    
 }

@@ -36,12 +36,12 @@ import org.ta4j.core.num.Num;
  */
 public class MACDIndicator extends CachedIndicator<Num> {
 
-	public static final String KEYWORD = "MACD";
+    public static final String KEYWORD = "MACD";
 
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 
-    private final String representation;  //cache for toString
+    private final String representation; // cache for toString
 
     /**
      * Constructor with shortBarCount "12" and longBarCount "26".
@@ -86,13 +86,13 @@ public class MACDIndicator extends CachedIndicator<Num> {
     public EMAIndicator getLongTermEma() {
         return longTermEma;
     }
-    
-    @Override
-	public String toString() {
-		return representation;
-	}
 
-	@Override
+    @Override
+    public String toString() {
+        return representation;
+    }
+
+    @Override
     protected Num calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }

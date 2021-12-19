@@ -38,20 +38,22 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
  */
 public class AroonUpIndicator extends CachedIndicator<Num> {
-	
-	public static final String KEYWORD = "AroonUp";
+
+    public static final String KEYWORD = "AroonUp";
 
     private final int barCount;
     private final HighestValueIndicator highestHighPriceIndicator;
     private final Indicator<Num> highPriceIndicator;
     private final Num hundred;
     private final Num barCountNum;
-    
-    //TODO: many indicators need numOf(1...barCount-1) as they calculate for the first few bars
-    //a static cache (array, maybe) of Nums from 1 to 200 or so would help SMA, EMA, this class, etc.
 
-    private final String representation;  //cache for toString
-    
+    // TODO: many indicators need numOf(1...barCount-1) as they calculate for the
+    // first few bars
+    // a static cache (array, maybe) of Nums from 1 to 200 or so would help SMA,
+    // EMA, this class, etc.
+
+    private final String representation; // cache for toString
+
     /**
      * Constructor.
      *
@@ -100,6 +102,6 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-    	return representation;
+        return representation;
     }
 }

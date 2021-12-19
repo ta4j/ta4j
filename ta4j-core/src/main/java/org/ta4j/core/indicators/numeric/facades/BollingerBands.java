@@ -1,3 +1,26 @@
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.indicators.numeric.facades;
 
 import org.ta4j.core.BarSeries;
@@ -5,11 +28,11 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
- * A facade to create the 3 Bollinger Band indicators.
- * A simple moving average of close price is used as the middle band.
- * The BB bandwidth and %B indicators can also be created on demand.
+ * A facade to create the 3 Bollinger Band indicators. A simple moving average
+ * of close price is used as the middle band. The BB bandwidth and %B indicators
+ * can also be created on demand.
  * 
- *  <p>
+ * <p>
  * This class creates lightweight "fluent" numeric indicators. These objects are
  * not cached, although they may be wrapped around cached objects. Overall there
  * is less caching and probably better performance.
@@ -25,8 +48,8 @@ public class BollingerBands {
      * Create the BollingerBands facade
      * 
      * @param bs a bar series
-     * @param n the number of periods (barCount) used for the indicators
-     * @param k the multiplier used to calculate the upper and lower bands
+     * @param n  the number of periods (barCount) used for the indicators
+     * @param k  the multiplier used to calculate the upper and lower bands
      */
     public BollingerBands(BarSeries bs, int n, Number k) {
         this.price = NumericIndicator.of(new ClosePriceIndicator(bs));
@@ -40,7 +63,8 @@ public class BollingerBands {
     /**
      * A fluent BB middle band
      * 
-     * @return a NumericIndicator wrapped around a cached SMAIndicator of close price.
+     * @return a NumericIndicator wrapped around a cached SMAIndicator of close
+     *         price.
      */
     public NumericIndicator middle() {
         return middle;
@@ -49,7 +73,8 @@ public class BollingerBands {
     /**
      * A fluent BB upper band
      * 
-     * @return an object that calculates the sum of BB middle and a multiple of standard deviation.
+     * @return an object that calculates the sum of BB middle and a multiple of
+     *         standard deviation.
      */
     public NumericIndicator upper() {
         return upper;
@@ -58,7 +83,8 @@ public class BollingerBands {
     /**
      * A fluent BB lower band
      * 
-     * @return an object that calculates the difference between BB middle and a multiple of standard deviation.
+     * @return an object that calculates the difference between BB middle and a
+     *         multiple of standard deviation.
      */
     public NumericIndicator lower() {
         return lower;
@@ -67,7 +93,8 @@ public class BollingerBands {
     /**
      * A fluent BB Bandwidth indicator
      * 
-     * @return an object that calculates BB bandwidth from BB upper, lower and middle
+     * @return an object that calculates BB bandwidth from BB upper, lower and
+     *         middle
      */
     public NumericIndicator bandwidth() {
         return upper.minus(lower).dividedBy(middle).multipliedBy(100);

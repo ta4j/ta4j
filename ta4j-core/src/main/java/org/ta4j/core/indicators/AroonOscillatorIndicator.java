@@ -35,13 +35,13 @@ import org.ta4j.core.num.Num;
  */
 public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
-	public static final String KEYWORD = "AroonOscillator";
+    public static final String KEYWORD = "AroonOscillator";
 
     private final AroonDownIndicator aroonDownIndicator;
     private final AroonUpIndicator aroonUpIndicator;
     private final int barCount;
 
-    private final String representation;  //cache for toString
+    private final String representation; // cache for toString
 
     public AroonOscillatorIndicator(BarSeries series, int barCount) {
         super(series);

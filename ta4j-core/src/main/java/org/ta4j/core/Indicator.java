@@ -75,14 +75,14 @@ public interface Indicator<T> extends IntFunction<T> {
         return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
                 .mapToObj(this::getValue);
     }
-    
+
     /**
      * IntFunction interface
      * 
      * Provides a generic interface to access the elements provided by getValue().
      */
     default T apply(int index) {
-    	return getValue(index);
+        return getValue(index);
     }
 
 }
