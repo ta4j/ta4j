@@ -24,7 +24,6 @@
 package ta4jexamples.indicators.numeric;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
