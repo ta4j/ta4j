@@ -19,6 +19,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice
 
 ### Changed
+- **Aroon** 3 indicators "pretty" toString
+- **MACDIndicator" "pretty" toString
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
 - **KeltnerChannelUpperIndicator** add constructor to accept pre-constructed ATR; add GetBarCount() and toString()
 - **KeltnerChannelLowerIndicator** add constructor to accept pre-constructed ATR; add GetBarCount() and toString()
@@ -32,6 +34,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PriceIndicator** removed
 
 ### Added
+- **NumericIndicator** new class
 - **AbstractEMAIndicator** added getBarCount() to support future enhancements 
 - **ATRIndicator** "uncached" by changing superclass to AbstractIndicator; added constructor to accept TRIndicator and getter for same; added toString(); added getBarCount() to support future enhancements
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
