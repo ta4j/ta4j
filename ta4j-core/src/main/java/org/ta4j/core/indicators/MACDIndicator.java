@@ -81,8 +81,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
     public EMAIndicator getLongTermEma() {
         return longTermEma;
     }
-    
-	@Override
+
+    @Override
     protected Num calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }
