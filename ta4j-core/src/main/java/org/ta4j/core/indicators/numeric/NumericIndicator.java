@@ -61,7 +61,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * objects. These are also overloaded to accept both Indicator<Num> and Number
  * arguments.
  */
-public class NumericIndicator implements Indicator<Num>, IntToDoubleFunction {
+public class NumericIndicator implements Indicator<Num> {
 
     /**
      * Creates a fluent NumericIndicator wrapped around a "regular" indicator.
@@ -244,11 +244,6 @@ public class NumericIndicator implements Indicator<Num>, IntToDoubleFunction {
     @Override
     public String toString() {
         return delegate.toString();
-    }
-
-    @Override
-    public double applyAsDouble(int value) {
-        return apply(value).doubleValue();
     }
 
 }

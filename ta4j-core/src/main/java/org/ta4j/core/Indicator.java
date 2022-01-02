@@ -23,7 +23,6 @@
  */
 package org.ta4j.core;
 
-import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -35,7 +34,7 @@ import org.ta4j.core.num.Num;
  *
  * @param <T> the type of returned value (Double, Boolean, etc.)
  */
-public interface Indicator<T> extends IntFunction<T> {
+public interface Indicator<T> {
 
     /**
      * @param index the bar index
@@ -74,15 +73,6 @@ public interface Indicator<T> extends IntFunction<T> {
     default Stream<T> stream() {
         return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
                 .mapToObj(this::getValue);
-    }
-
-    /**
-     * IntFunction interface
-     * 
-     * Provides a generic interface to access the elements provided by getValue().
-     */
-    default T apply(int index) {
-        return getValue(index);
     }
 
 }

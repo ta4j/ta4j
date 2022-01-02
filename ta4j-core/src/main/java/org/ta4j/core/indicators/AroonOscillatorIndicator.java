@@ -35,20 +35,15 @@ import org.ta4j.core.num.Num;
  */
 public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
-    public static final String KEYWORD = "AroonOscillator";
-
     private final AroonDownIndicator aroonDownIndicator;
     private final AroonUpIndicator aroonUpIndicator;
     private final int barCount;
-
-    private final String representation; // cache for toString
 
     public AroonOscillatorIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
         this.aroonDownIndicator = new AroonDownIndicator(series, barCount);
         this.aroonUpIndicator = new AroonUpIndicator(series, barCount);
-        this.representation = KEYWORD + "(" + barCount + ")";
     }
 
     @Override
@@ -58,7 +53,7 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return representation;
+        return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
     public AroonDownIndicator getAroonDownIndicator() {
