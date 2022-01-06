@@ -96,7 +96,7 @@ public class WalkForward {
     }
 
     /**
-     * Returns a new bar series which is a view of a subset of the current series.
+     * Returns a new bar series which is a copy from a subset of the current series.
      *
      * The new series has begin and end indexes which correspond to the bounds of
      * the sub-set into the full series.<br>
