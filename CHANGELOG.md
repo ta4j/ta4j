@@ -27,6 +27,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Open|High|Low|Close** do not cache price values anymore
 - **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
 - **DoubleNum** replace redundant `toString()` call in `DoubleNum.valueOf(Number i)` with `i.doubleValue()`
+- **ZeroCostModel** now extends from `FixedTransactionCostModel`
 
 ### Removed/Deprecated
 - **Num** removed Serializable
@@ -53,6 +54,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added **`AverageCriterion`**
 - :tada: **Enhancement** added javadoc for all rules to make clear which rule makes use of a TradingRecord
 - **Enhancement** prevent Object[] allocation for varargs log.trace and log.debug calls by wrapping them in `if` blocks
+- :tada: **Enhancement** added **`FixedTransactionCostModel`**
 
 ## 0.14 (released April 25, 2021)
 

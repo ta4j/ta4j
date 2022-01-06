@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,42 +23,20 @@
  */
 package org.ta4j.core.analysis.cost;
 
-import org.ta4j.core.Position;
-import org.ta4j.core.num.Num;
-
-public class ZeroCostModel implements CostModel {
+public class ZeroCostModel extends FixedTransactionCostModel {
 
     private static final long serialVersionUID = -331246208177262596L;
+
+    private static final double ZERO_FEE_PER_TRADE = 0.0;
 
     /**
      * Constructor for a trading cost-free model.
      *
+     * @see FixedTransactionCostModel fixedTransactionCostModel
+     *
      */
     public ZeroCostModel() {
+        super(ZERO_FEE_PER_TRADE);
     }
 
-    public Num calculate(Position position) {
-        return calculate(position, 0);
-    }
-
-    public Num calculate(Position position, int currentIndex) {
-        return position.getEntry().getPricePerAsset().numOf(0);
-    }
-
-    public Num calculate(Num price, Num amount) {
-        return price.numOf(0);
-    }
-
-    /**
-     * Evaluate if two models are equal
-     * 
-     * @param otherModel model to compare with
-     */
-    public boolean equals(CostModel otherModel) {
-        boolean equality = false;
-        if (this.getClass().equals(otherModel.getClass())) {
-            equality = true;
-        }
-        return equality;
-    }
 }
