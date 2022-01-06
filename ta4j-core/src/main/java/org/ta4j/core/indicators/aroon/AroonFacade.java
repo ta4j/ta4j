@@ -21,56 +21,60 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.numeric.facades;
+package org.ta4j.core.indicators.aroon;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.EMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.num.Num;
 
 /**
- * A facade to create the MACD indicator, signal and histogram.
+ * A facade to create the 2 Aroon indicators. The Aroon Oscillator can also be
+ * created on demand.
  *
  * <p>
  * This class creates lightweight "fluent" numeric indicators. These objects are
- * not cached, although they are wrapped around cached EMA objects.
+ * not cached, although they may be wrapped around cached objects.
  */
-public class MACD {
+public class AroonFacade {
+    private final NumericIndicator up;
+    private final NumericIndicator down;
 
-    private final NumericIndicator line;
-
-    public MACD(BarSeries bs, int n1, int n2) {
-        Indicator<Num> price = new ClosePriceIndicator(bs);
-        NumericIndicator ema1 = NumericIndicator.of(new EMAIndicator(price, n1));
-        NumericIndicator ema2 = NumericIndicator.of(new EMAIndicator(price, n2));
-        this.line = ema1.minus(ema2);
-    }
-
-    public NumericIndicator line() {
-        return line;
+    /**
+     * Create the Aroon facade.
+     * 
+     * @param bs a bar series
+     * @param n  the number of periods (barCount) used for the indicators
+     */
+    public AroonFacade(BarSeries bs, int n) {
+        this.up = NumericIndicator.of(new AroonUpIndicator(bs, n));
+        this.down = NumericIndicator.of(new AroonDownIndicator(bs, n));
     }
 
     /**
-     * Creates an exponential moving average to act as a signal line for this MACD.
+     * A fluent AroonUp indicator.
      * 
-     * @param n the number of periods used to average MACD
-     * @return a NumericIndicator wrapped around cached EMA indicator
+     * @return a NumericIndicator wrapped around a cached AroonUpIndicator
      */
-    public NumericIndicator signal(int n) {
-        return NumericIndicator.of(new EMAIndicator(line, n));
+    public NumericIndicator up() {
+        return up;
     }
 
     /**
-     * Creates an object to calculate the MACD histogram.
+     * A fluent AroonDown indicator.
      * 
-     * @param n the number of periods used for the signal line
-     * 
-     * @return an object to calculate the difference between this MACD and its
-     *         signal
+     * @return a NumericIndicator wrapped around a cached AroonDownIndicator
      */
-    public NumericIndicator histogram(int n) {
-        return line.minus(signal(n));
+    public NumericIndicator down() {
+        return down;
     }
+
+    /**
+     * A lightweight fluent AroonOscillator.
+     * 
+     * @return an uncached object that calculates the difference between AoonUp and
+     *         AroonDown
+     */
+    public NumericIndicator oscillator() {
+        return up.minus(down);
+    }
+
 }

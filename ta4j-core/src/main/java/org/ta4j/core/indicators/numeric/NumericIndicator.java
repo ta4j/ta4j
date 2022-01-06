@@ -23,8 +23,6 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import java.util.function.IntToDoubleFunction;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
@@ -179,9 +177,6 @@ public class NumericIndicator implements Indicator<Num> {
         return NumericIndicator.of(new LowestValueIndicator(this, n));
     }
 
-    // wrap this as numeric; it has questionable semantics for arithmetic?
-    // comparisons should be OK
-    // we can unwrap later after testing
     public NumericIndicator previous(int n) {
         return NumericIndicator.of(new PreviousValueIndicator(this, n));
     }

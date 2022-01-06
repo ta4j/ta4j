@@ -21,62 +21,46 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.numeric.facades;
+package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.AroonDownIndicator;
-import org.ta4j.core.indicators.AroonUpIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
- * A facade to create the 2 Aroon indicators. The Aroon Oscillator can also be
- * created on demand.
+ * A facade to create the 3 Keltner Channel indicators. An exponential moving
+ * average of close price is used as the middle channel.
  *
  * <p>
  * This class creates lightweight "fluent" numeric indicators. These objects are
- * not cached, although they may be wrapped around cached objects.
+ * not cached, although they may be wrapped around cached objects. Overall there
+ * is less caching and probably better performance.
  */
-public class Aroon {
-    private final NumericIndicator up;
-    private final NumericIndicator down;
+public class KeltnerChannelFacade {
 
-    /**
-     * Create the Aroon facade.
-     * 
-     * @param bs a bar series
-     * @param n  the number of periods (barCount) used for the indicators
-     */
-    public Aroon(BarSeries bs, int n) {
-        this.up = NumericIndicator.of(new AroonUpIndicator(bs, n));
-        this.down = NumericIndicator.of(new AroonDownIndicator(bs, n));
+    private final NumericIndicator middle;
+    private final NumericIndicator upper;
+    private final NumericIndicator lower;
+
+    public KeltnerChannelFacade(BarSeries bs, int emaCount, int atrCount, Number k) {
+        NumericIndicator price = NumericIndicator.of(new ClosePriceIndicator(bs));
+        NumericIndicator atr = NumericIndicator.of(new ATRIndicator(bs, atrCount));
+        this.middle = price.ema(emaCount);
+        this.upper = middle.plus(atr.multipliedBy(k));
+        this.lower = middle.minus(atr.multipliedBy(k));
     }
 
-    /**
-     * A fluent AroonUp indicator.
-     * 
-     * @return a NumericIndicator wrapped around a cached AroonUpIndicator
-     */
-    public NumericIndicator up() {
-        return up;
+    public NumericIndicator middle() {
+        return middle;
     }
 
-    /**
-     * A fluent AroonDown indicator.
-     * 
-     * @return a NumericIndicator wrapped around a cached AroonDownIndicator
-     */
-    public NumericIndicator down() {
-        return down;
+    public NumericIndicator upper() {
+        return upper;
     }
 
-    /**
-     * A lightweight fluent AroonOscillator.
-     * 
-     * @return an uncached object that calculates the difference between AoonUp and
-     *         AroonDown
-     */
-    public NumericIndicator oscillator() {
-        return up.minus(down);
+    public NumericIndicator lower() {
+        return lower;
     }
 
 }

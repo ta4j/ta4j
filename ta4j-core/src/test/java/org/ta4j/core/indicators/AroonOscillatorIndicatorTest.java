@@ -36,6 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.indicators.aroon.AroonOscillatorIndicator;
 
 public class AroonOscillatorIndicatorTest {
     private BarSeries data;

@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators.numeric.facades;
+package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -37,7 +37,7 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
  * not cached, although they may be wrapped around cached objects. Overall there
  * is less caching and probably better performance.
  */
-public class BollingerBands {
+public class BollingerBandFacade {
 
     private final NumericIndicator price;
     private final NumericIndicator middle;
@@ -51,7 +51,7 @@ public class BollingerBands {
      * @param n  the number of periods (barCount) used for the indicators
      * @param k  the multiplier used to calculate the upper and lower bands
      */
-    public BollingerBands(BarSeries bs, int n, Number k) {
+    public BollingerBandFacade(BarSeries bs, int n, Number k) {
         this.price = NumericIndicator.of(new ClosePriceIndicator(bs));
         this.middle = NumericIndicator.of(price.sma(n));
         NumericIndicator stdev = price.stddev(n);

@@ -33,7 +33,6 @@ import org.ta4j.core.num.Num;
  * Objects of this class defer evaluation of an arithmetic operation.
  * 
  * This is a lightweight version of the CombineIndicator; it doesn't cache.
- * 
  */
 class BinaryOperation implements Indicator<Num> {
 
