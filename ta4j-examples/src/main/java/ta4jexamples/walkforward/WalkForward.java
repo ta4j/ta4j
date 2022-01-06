@@ -97,7 +97,7 @@ public class WalkForward {
      *
      * The new series has begin and end indexes which correspond to the bounds of
      * the sub-set into the full series.<br>
-     * The bar of the series are shared between the original bar series and the
+     * The bars of the series are shared between the original bar series and the
      * returned one (i.e. no copy).
      *
      * @param series     the bar series to get a sub-series of
