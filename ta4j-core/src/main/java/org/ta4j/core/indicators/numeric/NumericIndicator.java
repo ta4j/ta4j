@@ -96,6 +96,10 @@ public class NumericIndicator implements Indicator<Num> {
         this.delegate = delegate;
     }
 
+    public Indicator<Num> delegate() {
+        return delegate;
+    }
+
     public NumericIndicator plus(Indicator<Num> other) {
         return NumericIndicator.of(BinaryOperation.sum(this, other));
     }
