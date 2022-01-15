@@ -38,10 +38,10 @@ import org.ta4j.core.num.Num;
  */
 public class UlcerIndexIndicator extends CachedIndicator<Num> {
 
+    private final Num hundred;
+    private final Num zero;
+
     private Indicator<Num> indicator;
-
-    private HighestValueIndicator highestValueInd;
-
     private int barCount;
 
     /**
@@ -54,18 +54,22 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        highestValueInd = new HighestValueIndicator(indicator, barCount);
+        this.zero = numOf(0);
+        this.hundred = numOf(100);
     }
 
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        Num squaredAverage = numOf(0);
+        Num squaredAverage = zero;
+        Num highestValue = indicator.getValue(startIndex);
         for (int i = startIndex; i <= index; i++) {
             Num currentValue = indicator.getValue(i);
-            Num highestValue = highestValueInd.getValue(i);
-            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(numOf(100));
+            if (currentValue.isGreaterThan(highestValue)) {
+                highestValue = currentValue;
+            }
+            Num percentageDrawdown = currentValue.minus(highestValue).dividedBy(highestValue).multipliedBy(hundred);
             squaredAverage = squaredAverage.plus(percentageDrawdown.pow(2));
         }
         squaredAverage = squaredAverage.dividedBy(numOf(numberOfObservations));
