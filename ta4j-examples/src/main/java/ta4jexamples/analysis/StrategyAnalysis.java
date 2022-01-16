@@ -34,7 +34,7 @@ import org.ta4j.core.criteria.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
-import org.ta4j.core.criteria.VersusBuyAndHoldCriterion;
+import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.WinningPositionsRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 
@@ -87,6 +87,6 @@ public class StrategyAnalysis {
                 .println("Buy-and-hold return: " + new EnterAndHoldReturnCriterion().calculate(series, tradingRecord));
         // Total profit vs buy-and-hold
         System.out.println("Custom strategy return vs buy-and-hold strategy return: "
-                + new VersusBuyAndHoldCriterion(totalReturn).calculate(series, tradingRecord));
+                + new VersusEnterAndHoldCriterion(totalReturn).calculate(series, tradingRecord));
     }
 }

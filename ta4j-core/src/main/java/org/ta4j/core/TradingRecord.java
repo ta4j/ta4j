@@ -167,4 +167,14 @@ public interface TradingRecord extends Serializable {
      * @return the last exit trade recorded
      */
     Trade getLastExit();
+
+    /**
+     * @return the start of the recording (included)
+     */
+    int getStartIndex();
+
+    /**
+     * @return the end of the recording (included)
+     */
+    int getEndIndex();
 }

@@ -45,6 +45,16 @@ public class BaseTradingRecord implements TradingRecord {
     private String name;
 
     /**
+     * The start of the recording (included)
+     */
+    private final int startIndex;
+
+    /**
+     * The start of the recording (included)
+     */
+    private final int endIndex;
+
+    /**
      * The recorded trades
      */
     private List<Trade> trades = new ArrayList<>();
@@ -138,10 +148,27 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
+        this(entryTradeType, 0, 0, transactionCostModel, holdingCostModel);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param entryTradeType       the {@link TradeType trade type} of entries in
+     *                             the trading session
+     * @param startIndex           the start of the recording (included)
+     * @param endIndex             the end of the recording (included)
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     */
+    public BaseTradingRecord(TradeType entryTradeType, int startIndex, int endIndex, CostModel transactionCostModel,
+            CostModel holdingCostModel) {
         if (entryTradeType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
         this.startingType = entryTradeType;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         currentPosition = new Position(entryTradeType, transactionCostModel, holdingCostModel);
@@ -307,5 +334,15 @@ public class BaseTradingRecord implements TradingRecord {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();
+    }
+
+    @Override
+    public int getStartIndex() {
+        return startIndex;
+    }
+
+    @Override
+    public int getEndIndex() {
+        return endIndex;
     }
 }
