@@ -10,6 +10,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **MinusDMIndicator** moved to adx-package
 - `analysis/criterion`-package moved to root
 - `cost`-package moved to `analysis/cost`-package
+- **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
 
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan
