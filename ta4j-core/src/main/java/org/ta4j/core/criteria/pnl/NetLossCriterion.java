@@ -31,10 +31,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Net loss criterion (without commissions).
- *
- * <p>
- * The net loss of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
  */
 public class NetLossCriterion extends AbstractAnalysisCriterion {
 

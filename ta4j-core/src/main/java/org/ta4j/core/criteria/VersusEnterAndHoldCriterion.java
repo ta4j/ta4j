@@ -71,12 +71,8 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        int beginIndex = series.getBeginIndex();
-        int endIndex = series.getEndIndex();
-        if (tradingRecord.getEndIndex() != 0) {
-            beginIndex = tradingRecord.getStartIndex();
-            endIndex = tradingRecord.getEndIndex();
-        }
+        int beginIndex = Math.max(tradingRecord.getStartIndex(), series.getBeginIndex());
+        int endIndex = Math.min(tradingRecord.getEndIndex(), series.getEndIndex());
         TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }

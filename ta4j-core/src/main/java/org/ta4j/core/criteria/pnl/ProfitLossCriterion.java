@@ -31,9 +31,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Profit and loss criterion (absolute PnL) (without commissions).
- *
- * <p>
- * The profit or loss over the provided {@link BarSeries series}.
  */
 public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 

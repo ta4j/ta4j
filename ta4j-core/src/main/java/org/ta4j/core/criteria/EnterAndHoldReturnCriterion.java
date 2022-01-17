@@ -75,12 +75,8 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        int beginIndex = series.getBeginIndex();
-        int endIndex = series.getEndIndex();
-        if (tradingRecord.getEndIndex() != 0) {
-            beginIndex = tradingRecord.getStartIndex();
-            endIndex = tradingRecord.getEndIndex();
-        }
+        int beginIndex = Math.max(tradingRecord.getStartIndex(), series.getBeginIndex());
+        int endIndex = Math.min(tradingRecord.getEndIndex(), series.getEndIndex());
         return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
     }
 

@@ -31,10 +31,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gross loss criterion (with commissions).
- *
- * <p>
- * The gross loss of the provided {@link Position position(s)} over the provided
- * {@link BarSeries series}.
  */
 public class GrossLossCriterion extends AbstractAnalysisCriterion {
 

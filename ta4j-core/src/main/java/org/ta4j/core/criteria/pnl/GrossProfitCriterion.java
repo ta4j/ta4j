@@ -31,10 +31,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gross profit criterion (with commissions).
- *
- * <p>
- * The gross profit of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
  */
 public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 

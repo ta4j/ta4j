@@ -31,10 +31,6 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gross return criterion (with commissions).
- *
- * <p>
- * The gross return of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
  */
 public class GrossReturnCriterion extends AbstractAnalysisCriterion {
 
