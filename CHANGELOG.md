@@ -18,6 +18,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **`ChaikinOscillatorIndicatorTest`**
 - **DecimalNum#remainder()** adds NaN-check 
 - **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice
+- **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
+- **Fixed** **Returns** fixed calculation with custom startIndex and endIndex
+- **Fixed** **ExpectedShortfallCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **MaximumDrawDownCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
 
 ### Changed
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
