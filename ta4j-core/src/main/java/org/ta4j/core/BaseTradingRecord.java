@@ -47,12 +47,12 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The start of the recording (included)
      */
-    private final int startIndex;
+    private final Integer startIndex;
 
     /**
      * The start of the recording (included)
      */
-    private final int endIndex;
+    private final Integer endIndex;
 
     /**
      * The recorded trades
