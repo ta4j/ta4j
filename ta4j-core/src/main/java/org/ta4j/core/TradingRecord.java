@@ -171,10 +171,10 @@ public interface TradingRecord extends Serializable {
     /**
      * @return the start of the recording (included)
      */
-    int getStartIndex();
+    Integer getStartIndex();
 
     /**
      * @return the end of the recording (included)
      */
-    int getEndIndex();
+    Integer getEndIndex();
 }

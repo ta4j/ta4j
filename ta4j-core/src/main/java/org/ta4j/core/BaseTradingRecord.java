@@ -148,7 +148,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
-        this(entryTradeType, 0, 0, transactionCostModel, holdingCostModel);
+        this(entryTradeType, null, null, transactionCostModel, holdingCostModel);
     }
 
     /**
@@ -161,8 +161,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public BaseTradingRecord(TradeType entryTradeType, int startIndex, int endIndex, CostModel transactionCostModel,
-            CostModel holdingCostModel) {
+    public BaseTradingRecord(TradeType entryTradeType, Integer startIndex, Integer endIndex,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
         if (entryTradeType == null) {
             throw new IllegalArgumentException("Starting type must not be null");
         }
@@ -290,6 +290,16 @@ public class BaseTradingRecord implements TradingRecord {
         return null;
     }
 
+    @Override
+    public Integer getStartIndex() {
+        return startIndex;
+    }
+
+    @Override
+    public Integer getEndIndex() {
+        return endIndex;
+    }
+
     /**
      * Records a trade and the corresponding position (if closed).
      *
@@ -334,15 +344,5 @@ public class BaseTradingRecord implements TradingRecord {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();
-    }
-
-    @Override
-    public int getStartIndex() {
-        return startIndex;
-    }
-
-    @Override
-    public int getEndIndex() {
-        return endIndex;
     }
 }
