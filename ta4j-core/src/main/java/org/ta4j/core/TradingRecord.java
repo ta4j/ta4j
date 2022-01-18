@@ -177,4 +177,24 @@ public interface TradingRecord extends Serializable {
      * @return the end of the recording (included)
      */
     Integer getEndIndex();
+
+    /**
+     * @param series a bar series, not null
+     * @return the {@link #getStartIndex()} if not null and greater than
+     *         {@link BarSeries#getBeginIndex()}, otherwise
+     *         {@link BarSeries#getBeginIndex()}
+     */
+    default int getStartIndex(BarSeries series) {
+        return getStartIndex() == null ? series.getBeginIndex() : Math.max(getStartIndex(), series.getBeginIndex());
+    }
+
+    /**
+     * @param series a bar series, not null
+     * @return the {@link #getEndIndex()} if not null and less than
+     *         {@link BarSeries#getEndIndex()}, otherwise
+     *         {@link BarSeries#getEndIndex()}
+     */
+    default int getEndIndex(BarSeries series) {
+        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
+    }
 }
