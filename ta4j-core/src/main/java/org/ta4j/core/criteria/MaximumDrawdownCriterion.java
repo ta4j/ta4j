@@ -41,7 +41,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position != null && position.getEntry() != null && position.getExit() != null) {
             CashFlow cashFlow = new CashFlow(series, position);
-            return calculateMaximumDrawdown(series, cashFlow);
+            return calculateMaximumDrawdown(series, null, cashFlow);
         }
         return series.numOf(0);
     }
@@ -49,7 +49,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        return calculateMaximumDrawdown(series, cashFlow);
+        return calculateMaximumDrawdown(series, tradingRecord, cashFlow);
     }
 
     /** The lower the criterion value, the better. */
@@ -61,16 +61,19 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     /**
      * Calculates the maximum drawdown from a cash flow over a series.
      *
-     * @param series   the bar series
-     * @param cashFlow the cash flow
+     * @param series        the bar series
+     * @param tradingRecord the trading record (optional)
+     * @param cashFlow      the cash flow
      * @return the maximum drawdown from a cash flow over a series
      */
-    private Num calculateMaximumDrawdown(BarSeries series, CashFlow cashFlow) {
+    private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
         Num maximumDrawdown = series.numOf(0);
         Num maxPeak = series.numOf(0);
+        int beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
         if (!series.isEmpty()) {
             // The series is not empty
-            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            for (int i = beginIndex; i <= endIndex; i++) {
                 Num value = cashFlow.getValue(i);
                 if (value.isGreaterThan(maxPeak)) {
                     maxPeak = value;
