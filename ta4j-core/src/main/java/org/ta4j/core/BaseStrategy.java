@@ -95,6 +95,7 @@ public class BaseStrategy implements Strategy {
      * @param exitRule       the exit rule
      * @param unstablePeriod strategy will ignore possible signals at
      *                       <code>index</code> < <code>unstablePeriod</code>
+     * @throws IllegalArgumentException if entryRule or exitRule is null
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
         if (entryRule == null || exitRule == null) {

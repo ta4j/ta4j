@@ -768,7 +768,7 @@ public final class DecimalNum implements Num {
         // a is a whole number (make sure it doesn't overflow int)
         // remainder 0 <= b < 1
         // So:
-        // x^a uses PrecisionNum ((PrecisionNum) x).pow(int a) cannot overflow Num
+        // x^a uses DecimalNum ((DecimalNum) x).pow(int a) cannot overflow Num
         // x^b uses double Math.pow(double x, double b) cannot overflow double because b
         // < 1.
         // As suggested: https://stackoverflow.com/a/3590314
