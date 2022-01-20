@@ -30,32 +30,42 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss in percentage criterion (relative PnL) (without commissions).
- * 
- * <p>
- * Defined as the position profit over the purchase price. The profit or loss in
- * percentage over the provided {@link Position position(s)}.
- * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
+ * Ratio gross profit and loss criterion = Average gross profit (with added
+ * trading costs) / Average gross loss (with added trading costs).
  */
-public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
+public class GrossProfitLossRatioCriterion extends AbstractAnalysisCriterion {
+
+    private final AverageProfitCriterion averageProfitCriterion = new AverageProfitCriterion();
+    private final AverageLossCriterion averageLossCriterion = new AverageLossCriterion();
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num entryPrice = position.getEntry().getValue();
-            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
-            return pnl;
+        Num averageProfit = averageProfitCriterion.calculate(series, position);
+        if (averageProfit.isZero()) {
+            // only loosing positions means a ratio of 0
+            return series.numOf(0);
         }
-        return series.numOf(0);
+        Num averageLoss = averageLossCriterion.calculate(series, position);
+        if (averageLoss.isZero()) {
+            // only winning positions means a ratio of 1
+            return series.numOf(1);
+        }
+        return averageProfit.dividedBy(averageLoss).abs();
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+        Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
+        if (averageProfit.isZero()) {
+            // only loosing positions means a ratio of 0
+            return series.numOf(0);
+        }
+        Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
+        if (averageLoss.isZero()) {
+            // only winning positions means a ratio of 1
+            return series.numOf(1);
+        }
+        return averageProfit.dividedBy(averageLoss).abs();
     }
 
     /** The higher the criterion value, the better. */

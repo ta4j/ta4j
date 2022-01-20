@@ -30,12 +30,12 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss criterion (absolute PnL) (without commissions).
+ * Net Profit and loss criterion (absolute PnL with substracted trading costs).
  *
  * <p>
  * The profit or loss over the provided {@link BarSeries series}.
  */
-public class ProfitLossCriterion extends AbstractAnalysisCriterion {
+public class NetProfitLossCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {

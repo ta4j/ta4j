@@ -38,10 +38,10 @@ import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class ProfitLossRatioCriterionTest extends AbstractCriterionTest {
+public class GrossProfitLossRatioCriterionTest extends AbstractCriterionTest {
 
-    public ProfitLossRatioCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new ProfitLossRatioCriterion(), numFunction);
+    public GrossProfitLossRatioCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new GrossProfitLossRatioCriterion(), numFunction);
     }
 
     @Test

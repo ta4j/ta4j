@@ -28,7 +28,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.helpers.StandardDeviationCriterion;
-import org.ta4j.core.criteria.pnl.ProfitLossCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -58,7 +58,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
      * Uses ProfitLossCriterion for {@link #criterion}.
      */
     public SqnCriterion() {
-        this(new ProfitLossCriterion());
+        this(new NetProfitLossCriterion());
     }
 
     /**

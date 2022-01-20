@@ -30,7 +30,7 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross return criterion (with commissions).
+ * Gross return (in percentage) criterion (with added trading costs).
  *
  * <p>
  * The gross return of the provided {@link Position position(s)} over the

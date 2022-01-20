@@ -30,42 +30,33 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Ratio Profit Loss Criterion = Average gross profit (with commissions) /
- * Average gross loss (with commissions)
+ * Net profit and loss in percentage criterion (relative PnL with substracted
+ * trading costs).
+ * 
+ * <p>
+ * Defined as the position profit over the purchase price. The profit or loss in
+ * percentage over the provided {@link Position position(s)}.
+ * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
  */
-public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
-
-    private final AverageProfitCriterion averageProfitCriterion = new AverageProfitCriterion();
-    private final AverageLossCriterion averageLossCriterion = new AverageLossCriterion();
+public class NetProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num averageProfit = averageProfitCriterion.calculate(series, position);
-        if (averageProfit.isZero()) {
-            // only loosing positions means a ratio of 0
-            return series.numOf(0);
+        if (position.isClosed()) {
+            Num entryPrice = position.getEntry().getValue();
+            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
+            return pnl;
         }
-        Num averageLoss = averageLossCriterion.calculate(series, position);
-        if (averageLoss.isZero()) {
-            // only winning positions means a ratio of 1
-            return series.numOf(1);
-        }
-        return averageProfit.dividedBy(averageLoss).abs();
+        return series.numOf(0);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
-        if (averageProfit.isZero()) {
-            // only loosing positions means a ratio of 0
-            return series.numOf(0);
-        }
-        Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
-        if (averageLoss.isZero()) {
-            // only winning positions means a ratio of 1
-            return series.numOf(1);
-        }
-        return averageProfit.dividedBy(averageLoss).abs();
+        return tradingRecord.getPositions()
+                .stream()
+                .filter(Position::isClosed)
+                .map(position -> calculate(series, position))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     /** The higher the criterion value, the better. */
