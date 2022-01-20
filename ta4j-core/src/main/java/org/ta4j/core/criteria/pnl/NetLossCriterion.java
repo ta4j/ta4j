@@ -30,7 +30,7 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net loss criterion (with substracted trading costs).
+ * Net loss criterion (excludes trading costs).
  *
  * <p>
  * The net loss of the provided {@link Position position(s)} over the provided

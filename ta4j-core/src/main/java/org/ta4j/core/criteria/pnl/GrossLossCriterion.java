@@ -30,7 +30,7 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross loss criterion (with added trading costs).
+ * Gross loss criterion (includes trading costs).
  *
  * <p>
  * The gross loss of the provided {@link Position position(s)} over the provided
