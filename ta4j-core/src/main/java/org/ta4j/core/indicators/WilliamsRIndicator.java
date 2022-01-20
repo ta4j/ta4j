@@ -71,7 +71,7 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
         Num lowestLowPrice = lowestMin.getValue(index);
 
         return ((highestHighPrice.minus(closePriceIndicator.getValue(index)))
-                .dividedBy(highestHighPrice.minus(lowestLowPrice))).multipliedBy(multiplier);
+                .divide(highestHighPrice.minus(lowestLowPrice))).multiply(multiplier);
     }
 
     @Override

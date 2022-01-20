@@ -164,10 +164,10 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                 Num currentRef = FisherIndicator.this.ref.getValue(index);
                 Num minL = periodLow.getValue(index);
                 Num maxH = periodHigh.getValue(index);
-                Num term1 = currentRef.minus(minL).dividedBy(maxH.minus(minL)).minus(numOf(ZERO_DOT_FIVE));
-                Num term2 = alpha.multipliedBy(numOf(2)).multipliedBy(term1);
-                Num term3 = term2.plus(beta.multipliedBy(getValue(index - 1)));
-                return term3.dividedBy(FisherIndicator.this.densityFactor);
+                Num term1 = currentRef.minus(minL).divide(maxH.minus(minL)).minus(numOf(ZERO_DOT_FIVE));
+                Num term2 = alpha.multiply(numOf(2)).multiply(term1);
+                Num term3 = term2.plus(beta.multiply(getValue(index - 1)));
+                return term3.divide(FisherIndicator.this.densityFactor);
             }
         };
     }
@@ -187,9 +187,9 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         // Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
-        Num term1 = numOf((Math.log(numOf(1).plus(value).dividedBy(numOf(1).minus(value)).doubleValue())));
+        Num term1 = numOf((Math.log(numOf(1).plus(value).divide(numOf(1).minus(value)).doubleValue())));
         Num term2 = getValue(index - 1);
-        return gamma.multipliedBy(term1).plus(delta.multipliedBy(term2));
+        return gamma.multiply(term1).plus(delta.multiply(term2));
     }
 
 }

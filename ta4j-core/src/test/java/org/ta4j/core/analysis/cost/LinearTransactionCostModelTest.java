@@ -156,13 +156,13 @@ public class LinearTransactionCostModelTest {
         Num amount = series.numOf(25);
         TradingStatement strategyResult = executor.execute(strategies, amount).get(0);
 
-        Num firstPositionBuy = one.plus(one.multipliedBy(orderFee));
-        Num firstPositionSell = two.minus(two.multipliedBy(orderFee));
-        Num firstPositionProfit = firstPositionSell.minus(firstPositionBuy).multipliedBy(amount);
+        Num firstPositionBuy = one.plus(one.multiply(orderFee));
+        Num firstPositionSell = two.minus(two.multiply(orderFee));
+        Num firstPositionProfit = firstPositionSell.minus(firstPositionBuy).multiply(amount);
 
-        Num secondPositionBuy = three.plus(three.multipliedBy(orderFee));
-        Num secondPositionSell = four.minus(four.multipliedBy(orderFee));
-        Num secondPositionProfit = secondPositionSell.minus(secondPositionBuy).multipliedBy(amount);
+        Num secondPositionBuy = three.plus(three.multiply(orderFee));
+        Num secondPositionSell = four.minus(four.multiply(orderFee));
+        Num secondPositionProfit = secondPositionSell.minus(secondPositionBuy).multiply(amount);
 
         Num overallProfit = firstPositionProfit.plus(secondPositionProfit);
 

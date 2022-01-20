@@ -259,7 +259,7 @@ public class Trade implements Serializable {
         this.pricePerAsset = pricePerAsset;
         this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
 
-        Num costPerAsset = cost.dividedBy(amount);
+        Num costPerAsset = cost.divide(amount);
         // add transaction costs to the pricePerAsset at the trade
         if (type.equals(TradeType.BUY)) {
             this.netPrice = this.pricePerAsset.plus(costPerAsset);
@@ -409,6 +409,6 @@ public class Trade implements Serializable {
      * @return the value of a trade (without transaction cost)
      */
     public Num getValue() {
-        return pricePerAsset.multipliedBy(amount);
+        return pricePerAsset.multiply(amount);
     }
 }

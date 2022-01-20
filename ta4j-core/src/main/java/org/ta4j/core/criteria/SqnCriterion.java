@@ -88,13 +88,13 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, position);
         Num pnl = criterion.calculate(series, position);
-        Num avgPnl = pnl.dividedBy(numberOfPositions);
+        Num avgPnl = pnl.divide(numberOfPositions);
         Num stdDevPnl = standardDeviationCriterion.calculate(series, position);
         if (stdDevPnl.isZero()) {
             return series.numOf(0);
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
-        return avgPnl.dividedBy(stdDevPnl).multipliedBy(numberOfPositions.sqrt());
+        return avgPnl.divide(stdDevPnl).multiply(numberOfPositions.sqrt());
     }
 
     @Override
@@ -103,7 +103,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
             return series.numOf(0);
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         Num pnl = criterion.calculate(series, tradingRecord);
-        Num avgPnl = pnl.dividedBy(numberOfPositions);
+        Num avgPnl = pnl.divide(numberOfPositions);
         Num stdDevPnl = standardDeviationCriterion.calculate(series, tradingRecord);
         if (stdDevPnl.isZero()) {
             return series.numOf(0);
@@ -112,7 +112,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
             numberOfPositions = series.numOf(nPositions);
         }
         // SQN = (Average (PnL) / StdDev(PnL)) * SquareRoot(NumberOfTrades)
-        return avgPnl.dividedBy(stdDevPnl).multipliedBy(numberOfPositions.sqrt());
+        return avgPnl.divide(stdDevPnl).multiply(numberOfPositions.sqrt());
     }
 
     /** The higher the criterion value, the better. */

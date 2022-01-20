@@ -5,6 +5,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 - **BuyAndHoldCriterion** renamed to **`EnterAndHoldCriterion`**
+- **Num#multipliedBy** renamed to **`Num#multiply`**
+- **Num#dividedBy** renamed to **`Num#divide`**
 - **DXIndicator** moved to adx-package
 - **PlusDMIndicator** moved to adx-package
 - **MinusDMIndicator** moved to adx-package

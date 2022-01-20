@@ -67,6 +67,6 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
         Bar currentBar = getBarSeries().getBar(index);
         Num closePrice = currentBar.getClosePrice();
         Num maValue = (Num) movingAverage.getValue(index);
-        return (closePrice.minus(maValue)).dividedBy(maValue);
+        return (closePrice.minus(maValue)).divide(maValue);
     }
 }

@@ -46,14 +46,14 @@ public class Returns implements Indicator<Num> {
             @Override
             public Num calculate(Num xNew, Num xOld) {
                 // r_i = ln(P_i/P_(i-1))
-                return (xNew.dividedBy(xOld)).log();
+                return (xNew.divide(xOld)).log();
             }
         },
         ARITHMETIC {
             @Override
             public Num calculate(Num xNew, Num xOld) {
                 // r_i = P_i/P_(i-1) - 1
-                return xNew.dividedBy(xOld).minus(one);
+                return xNew.divide(xOld).minus(one);
             }
         };
 
@@ -168,7 +168,7 @@ public class Returns implements Indicator<Num> {
         int startingIndex = Math.max(begin, 1);
         int nPeriods = endIndex - entryIndex;
         Num holdingCost = position.getHoldingCost(endIndex);
-        Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
+        Num avgCost = holdingCost.divide(holdingCost.numOf(nPeriods));
 
         // returns are per period (iterative). Base price needs to be updated
         // accordingly
@@ -181,7 +181,7 @@ public class Returns implements Indicator<Num> {
             if (position.getEntry().isBuy()) {
                 strategyReturn = assetReturn;
             } else {
-                strategyReturn = assetReturn.multipliedBy(minusOne);
+                strategyReturn = assetReturn.multiply(minusOne);
             }
             values.add(strategyReturn);
             // update base price
@@ -201,7 +201,7 @@ public class Returns implements Indicator<Num> {
         if (position.getEntry().isBuy()) {
             strategyReturn = assetReturn;
         } else {
-            strategyReturn = assetReturn.multipliedBy(minusOne);
+            strategyReturn = assetReturn.multiply(minusOne);
         }
         values.add(strategyReturn);
     }

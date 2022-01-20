@@ -56,8 +56,8 @@ public class RSIIndicator extends CachedIndicator<Num> {
                 return numOf(100);
             }
         }
-        Num relativeStrength = averageGain.dividedBy(averageLoss);
+        Num relativeStrength = averageGain.divide(averageLoss);
         // compute relative strength index
-        return numOf(100).minus(numOf(100).dividedBy(numOf(1).plus(relativeStrength)));
+        return numOf(100).minus(numOf(100).divide(numOf(1).plus(relativeStrength)));
     }
 }

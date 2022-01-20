@@ -87,7 +87,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         // We use the white candle index to remove to bias of the previous crows
         Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
 
-        return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
+        return currentLowerShadow.isLessThan(averageLowerShadow.multiply(factor));
     }
 
     /**

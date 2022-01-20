@@ -78,8 +78,8 @@ public class ChopIndicator extends CachedIndicator<Num> {
         for (int i = 1; i < timeFrame; ++i) {
             summ = summ.plus(atrIndicator.getValue(index - i));
         }
-        Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
+        Num a = summ.divide((hvi.getValue(index).minus(lvi.getValue(index))));
         // TODO: implement Num.log10(Num)
-        return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
+        return scaleUpTo.multiply(numOf(Math.log10(a.doubleValue()))).divide(log10n);
     }
 }

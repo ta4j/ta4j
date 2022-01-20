@@ -50,7 +50,7 @@ public class DXIndicator extends CachedIndicator<Num> {
         if (pdiValue.plus(mdiValue).equals(numOf(0))) {
             return numOf(0);
         }
-        return pdiValue.minus(mdiValue).abs().dividedBy(pdiValue.plus(mdiValue)).multipliedBy(numOf(100));
+        return pdiValue.minus(mdiValue).abs().divide(pdiValue.plus(mdiValue)).multiply(numOf(100));
     }
 
     @Override

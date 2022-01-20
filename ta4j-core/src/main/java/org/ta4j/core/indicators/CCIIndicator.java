@@ -66,7 +66,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
         if (meanDeviation.isZero()) {
             return meanDeviation.zero();
         }
-        return (typicalPrice.minus(typicalPriceAvg)).dividedBy(meanDeviation.multipliedBy(factor));
+        return (typicalPrice.minus(typicalPriceAvg)).divide(meanDeviation.multiply(factor));
     }
 
     @Override

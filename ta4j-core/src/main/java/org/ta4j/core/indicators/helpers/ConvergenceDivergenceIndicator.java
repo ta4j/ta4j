@@ -326,7 +326,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
         boolean isConvergent = cc.getValue(index).isGreaterThanOrEqual(minStrength);
 
         Num slope = calculateSlopeRel(index);
-        boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
+        boolean isNegative = slope.isLessThanOrEqual(minSlope.abs().multiply(numOf(-1)));
 
         return isConvergent && isNegative;
     }
@@ -338,7 +338,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     private Boolean calculatePositiveDivergence(int index) {
 
         CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(numOf(-1)));
+        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multiply(numOf(-1)));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
@@ -356,12 +356,12 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     private Boolean calculateNegativeDivergence(int index) {
 
         CorrelationCoefficientIndicator cc = new CorrelationCoefficientIndicator(ref, other, barCount);
-        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multipliedBy(numOf(-1)));
+        boolean isDivergent = cc.getValue(index).isLessThanOrEqual(minStrength.multiply(numOf(-1)));
 
         if (isDivergent) {
             // If "isDivergent" and "ref" is positive, then "other" must be negative.
             Num slope = calculateSlopeRel(index);
-            return slope.isLessThanOrEqual(minSlope.abs().multipliedBy(numOf(-1)));
+            return slope.isLessThanOrEqual(minSlope.abs().multiply(numOf(-1)));
         }
 
         return false;
@@ -374,7 +374,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     private Num calculateSlopeRel(int index) {
         SimpleLinearRegressionIndicator slrRef = new SimpleLinearRegressionIndicator(ref, barCount);
         int firstIndex = Math.max(0, index - barCount + 1);
-        return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex))).dividedBy(slrRef.getValue(index));
+        return (slrRef.getValue(index).minus(slrRef.getValue(firstIndex))).divide(slrRef.getValue(index));
     }
 
 }

@@ -76,7 +76,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
                     maxPeak = value;
                 }
 
-                Num drawdown = maxPeak.minus(value).dividedBy(maxPeak);
+                Num drawdown = maxPeak.minus(value).divide(maxPeak);
                 if (drawdown.isGreaterThan(maximumDrawdown)) {
                     maximumDrawdown = drawdown;
                 }

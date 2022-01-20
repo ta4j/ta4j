@@ -64,7 +64,7 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
         final int startIndex = Math.max(0, index - barCount + 1);
         Num massIndex = numOf(0);
         for (int i = startIndex; i <= index; i++) {
-            Num emaRatio = singleEma.getValue(i).dividedBy(doubleEma.getValue(i));
+            Num emaRatio = singleEma.getValue(i).divide(doubleEma.getValue(i));
             massIndex = massIndex.plus(emaRatio);
         }
         return massIndex;

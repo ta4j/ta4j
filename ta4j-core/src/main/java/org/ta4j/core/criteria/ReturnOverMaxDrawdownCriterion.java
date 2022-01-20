@@ -47,7 +47,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
             return NaN.NaN;
         } else {
             final Num totalProfit = grossReturnCriterion.calculate(series, position);
-            return totalProfit.dividedBy(maxDrawdown);
+            return totalProfit.divide(maxDrawdown);
         }
     }
 
@@ -58,7 +58,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
             return NaN.NaN;
         } else {
             final Num totalProfit = grossReturnCriterion.calculate(series, tradingRecord);
-            return totalProfit.dividedBy(maxDrawdown);
+            return totalProfit.divide(maxDrawdown);
         }
     }
 

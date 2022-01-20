@@ -55,7 +55,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
         int nIndex = Math.max(index - barCount, 0);
         Num nPeriodsAgoValue = getBarSeries().getBar(nIndex).getVolume();
         Num currentValue = getBarSeries().getBar(index).getVolume();
-        return currentValue.minus(nPeriodsAgoValue).dividedBy(nPeriodsAgoValue).multipliedBy(hundred);
+        return currentValue.minus(nPeriodsAgoValue).divide(nPeriodsAgoValue).multiply(hundred);
     }
 
     @Override

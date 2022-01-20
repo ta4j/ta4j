@@ -73,8 +73,8 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
         return indicator.getValue(index)
                 .minus(lowestLowPrice)
-                .dividedBy(highestHighPrice.minus(lowestLowPrice))
-                .multipliedBy(numOf(100));
+                .divide(highestHighPrice.minus(lowestLowPrice))
+                .multiply(numOf(100));
     }
 
     @Override

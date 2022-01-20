@@ -332,7 +332,7 @@ public final class DecimalNum implements Num {
      * @see BigDecimal#multiply(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
-    public Num multipliedBy(Num multiplicand) {
+    public Num multiply(Num multiplicand) {
         if (multiplicand.isNaN()) {
             return NaN;
         }
@@ -351,7 +351,7 @@ public final class DecimalNum implements Num {
      * @see BigDecimal#divide(java.math.BigDecimal, java.math.MathContext)
      */
     @Override
-    public Num dividedBy(Num divisor) {
+    public Num divide(Num divisor) {
         if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }

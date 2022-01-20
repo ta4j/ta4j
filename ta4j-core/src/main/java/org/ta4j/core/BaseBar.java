@@ -384,7 +384,7 @@ public class BaseBar implements Bar {
         addPrice(tradePrice);
 
         volume = volume.plus(tradeVolume);
-        amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
+        amount = amount.plus(tradeVolume.multiply(tradePrice));
         trades++;
     }
 

@@ -72,7 +72,7 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return bbm.getValue(index).plus(deviation.getValue(index).multipliedBy(k));
+        return bbm.getValue(index).plus(deviation.getValue(index).multiply(k));
     }
 
     /**

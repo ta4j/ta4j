@@ -83,7 +83,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
      * Combines the two input indicators by indicatorLeft.dividedBy(indicatorRight).
      */
     public static CombineIndicator divide(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::dividedBy);
+        return new CombineIndicator(indicatorLeft, indicatorRight, Num::divide);
     }
 
     /**
@@ -91,7 +91,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
      * indicatorLeft.multipliedBy(indicatorRight).
      */
     public static CombineIndicator multiply(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
-        return new CombineIndicator(indicatorLeft, indicatorRight, Num::multipliedBy);
+        return new CombineIndicator(indicatorLeft, indicatorRight, Num::multiply);
     }
 
     /**

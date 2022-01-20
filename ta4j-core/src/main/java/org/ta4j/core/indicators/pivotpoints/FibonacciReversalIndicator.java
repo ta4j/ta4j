@@ -114,8 +114,8 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         if (fibReversalTyp == FibReversalTyp.RESISTANCE) {
-            return pivotPointIndicator.getValue(index).plus(fibonacciFactor.multipliedBy(high.minus(low)));
+            return pivotPointIndicator.getValue(index).plus(fibonacciFactor.multiply(high.minus(low)));
         }
-        return pivotPointIndicator.getValue(index).minus(fibonacciFactor.multipliedBy(high.minus(low)));
+        return pivotPointIndicator.getValue(index).minus(fibonacciFactor.multiply(high.minus(low)));
     }
 }

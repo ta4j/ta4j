@@ -95,7 +95,7 @@ public interface Num extends Comparable<Num> {
      * @param multiplicand value to be multiplied by this {@code num}.
      * @return {@code this * multiplicand}, rounded as necessary
      */
-    Num multipliedBy(Num multiplicand);
+    Num multiply(Num multiplicand);
 
     /**
      * Returns a {@code num} whose value is {@code (this / divisor)},
@@ -103,7 +103,7 @@ public interface Num extends Comparable<Num> {
      * @param divisor value by which this {@code num} is to be divided.
      * @return {@code this / divisor}, rounded as necessary
      */
-    Num dividedBy(Num divisor);
+    Num divide(Num divisor);
 
     /**
      * Returns a {@code num} whose value is {@code (this % divisor)},

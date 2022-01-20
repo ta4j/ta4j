@@ -70,7 +70,7 @@ public class RWILowIndicator extends CachedIndicator<Num> {
         Num atrN = new ATRIndicator(series, n).getValue(index);
         Num sqrtN = numOf(n).sqrt();
 
-        return highN.minus(low).dividedBy(atrN.multipliedBy(sqrtN));
+        return highN.minus(low).divide(atrN.multiply(sqrtN));
     }
 
     @Override

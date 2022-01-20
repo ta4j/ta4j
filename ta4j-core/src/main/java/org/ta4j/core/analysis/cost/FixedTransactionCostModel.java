@@ -62,7 +62,7 @@ public class FixedTransactionCostModel implements CostModel {
         if (position.isClosed()) {
             multiplier = pricePerAsset.numOf(2);
         }
-        return pricePerAsset.numOf(feePerTrade).multipliedBy(multiplier);
+        return pricePerAsset.numOf(feePerTrade).multiply(multiplier);
     }
 
     /**

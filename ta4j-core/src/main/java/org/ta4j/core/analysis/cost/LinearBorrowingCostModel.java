@@ -94,8 +94,7 @@ public class LinearBorrowingCostModel implements CostModel {
      * @return the absolute borrowing cost
      */
     private Num getHoldingCostForPeriods(int tradingPeriods, Num tradedValue) {
-        return tradedValue
-                .multipliedBy(tradedValue.numOf(tradingPeriods).multipliedBy(tradedValue.numOf(feePerPeriod)));
+        return tradedValue.multiply(tradedValue.numOf(tradingPeriods).multiply(tradedValue.numOf(feePerPeriod)));
     }
 
     /**

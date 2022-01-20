@@ -61,7 +61,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
         }
         Num sumOfVolume = volumeIndicator.getValue(index);
 
-        return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
+        return sumOfMoneyFlowVolume.divide(sumOfVolume);
     }
 
     /**
@@ -69,7 +69,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
      * @return the money flow volume for the i-th period/bar
      */
     private Num getMoneyFlowVolume(int index) {
-        return clvIndicator.getValue(index).multipliedBy(getBarSeries().getBar(index).getVolume());
+        return clvIndicator.getValue(index).multiply(getBarSeries().getBar(index).getVolume());
     }
 
     @Override

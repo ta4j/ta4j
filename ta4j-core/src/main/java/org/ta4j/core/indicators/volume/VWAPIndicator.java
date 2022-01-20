@@ -73,10 +73,10 @@ public class VWAPIndicator extends CachedIndicator<Num> {
         Num cumulativeVolume = zero;
         for (int i = startIndex; i <= index; i++) {
             Num currentVolume = volume.getValue(i);
-            cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multipliedBy(currentVolume));
+            cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multiply(currentVolume));
             cumulativeVolume = cumulativeVolume.plus(currentVolume);
         }
-        return cumulativeTPV.dividedBy(cumulativeVolume);
+        return cumulativeTPV.divide(cumulativeVolume);
     }
 
     @Override

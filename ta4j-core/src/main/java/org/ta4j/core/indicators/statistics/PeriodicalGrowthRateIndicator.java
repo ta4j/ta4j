@@ -97,11 +97,11 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             // Skip NaN at the end of a series
             if (currentReturn != NaN) {
                 currentReturn = currentReturn.plus(one);
-                totalProduct = totalProduct.multipliedBy(currentReturn);
+                totalProduct = totalProduct.multiply(currentReturn);
             }
         }
 
-        return totalProduct.pow(one.dividedBy(numOf(completeTimeFrames)));
+        return totalProduct.pow(one.divide(numOf(completeTimeFrames)));
     }
 
     @Override
@@ -112,10 +112,10 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         int helpPartialTimeframe = index % barCount;
         // TODO: implement Num.floor()
         Num helpFullTimeframes = numOf(
-                Math.floor(numOf(indicator.getBarSeries().getBarCount()).dividedBy(numOf(barCount)).doubleValue()));
-        Num helpIndexTimeframes = numOf(index).dividedBy(numOf(barCount));
+                Math.floor(numOf(indicator.getBarSeries().getBarCount()).divide(numOf(barCount)).doubleValue()));
+        Num helpIndexTimeframes = numOf(index).divide(numOf(barCount));
 
-        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).dividedBy(numOf(barCount));
+        Num helpPartialTimeframeHeld = numOf(helpPartialTimeframe).divide(numOf(barCount));
         Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
 
         // Avoid calculations of returns:
@@ -125,9 +125,9 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         Num timeframedReturn = NaN;
         if ((index >= barCount) /* (a) */ && (helpIndexTimeframes.isLessThan(helpFullTimeframes)) /* (b) */) {
             Num movingValue = indicator.getValue(index - barCount);
-            Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
+            Num movingSimpleReturn = (currentValue.minus(movingValue)).divide(movingValue);
 
-            timeframedReturn = one.plus(movingSimpleReturn).pow(one.dividedBy(partialTimeframeHeld)).minus(one);
+            timeframedReturn = one.plus(movingSimpleReturn).pow(one.divide(partialTimeframeHeld)).minus(one);
         }
 
         return timeframedReturn;

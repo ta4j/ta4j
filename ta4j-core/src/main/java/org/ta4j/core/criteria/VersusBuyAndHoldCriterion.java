@@ -52,13 +52,13 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
-        return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, position).divide(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
-        return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
+        return criterion.calculate(series, tradingRecord).divide(criterion.calculate(series, fakeRecord));
     }
 
     /** The higher the criterion value, the better. */

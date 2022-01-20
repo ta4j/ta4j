@@ -96,14 +96,14 @@ public class StopLossRule extends AbstractRule {
     }
 
     private boolean isBuyStopSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.minus(lossPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        Num lossRatioThreshold = HUNDRED.minus(lossPercentage).divide(HUNDRED);
+        Num threshold = entryPrice.multiply(lossRatioThreshold);
         return currentPrice.isLessThanOrEqual(threshold);
     }
 
     private boolean isSellStopSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.plus(lossPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        Num lossRatioThreshold = HUNDRED.plus(lossPercentage).divide(HUNDRED);
+        Num threshold = entryPrice.multiply(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(threshold);
     }
 }

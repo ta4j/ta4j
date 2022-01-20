@@ -74,7 +74,7 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             result = barSeries.getBar(i)
                     .getHighPrice()
                     .plus(barSeries.getBar(i).getLowPrice())
-                    .dividedBy(barSeries.numOf(2));
+                    .divide(barSeries.numOf(2));
             assertEquals(average.getValue(i), result);
         }
     }

@@ -67,6 +67,6 @@ public class PPOIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num shortEmaValue = shortTermEma.getValue(index);
         Num longEmaValue = longTermEma.getValue(index);
-        return shortEmaValue.minus(longEmaValue).dividedBy(longEmaValue).multipliedBy(numOf(100));
+        return shortEmaValue.minus(longEmaValue).divide(longEmaValue).multiply(numOf(100));
     }
 }

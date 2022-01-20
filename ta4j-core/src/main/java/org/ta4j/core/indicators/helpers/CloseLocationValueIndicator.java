@@ -51,6 +51,6 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
         final Num diffHighLow = high.minus(low);
 
-        return diffHighLow.isNaN() ? zero : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);
+        return diffHighLow.isNaN() ? zero : ((close.minus(low)).minus(high.minus(close))).divide(diffHighLow);
     }
 }

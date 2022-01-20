@@ -48,7 +48,7 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
         if (grossProfit.isZero()) {
             return series.numOf(0);
         }
-        return grossProfit.dividedBy(numberOfWinningPositions);
+        return grossProfit.divide(numberOfWinningPositions);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class AverageProfitCriterion extends AbstractAnalysisCriterion {
         if (grossProfit.isZero()) {
             return series.numOf(0);
         }
-        return grossProfit.dividedBy(numberOfWinningPositions);
+        return grossProfit.divide(numberOfWinningPositions);
     }
 
     /** The higher the criterion value, the better. */

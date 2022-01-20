@@ -82,7 +82,7 @@ public class LinearTransactionCostModel implements CostModel {
      * @return the absolute trade transaction cost
      */
     public Num calculate(Num price, Num amount) {
-        return amount.numOf(feePerPosition).multipliedBy(price).multipliedBy(amount);
+        return amount.numOf(feePerPosition).multiply(price).multiply(amount);
     }
 
     /**

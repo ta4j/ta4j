@@ -40,6 +40,6 @@ public class PriceVariationIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num previousBarClosePrice = getBarSeries().getBar(Math.max(0, index - 1)).getClosePrice();
         Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
-        return currentBarClosePrice.dividedBy(previousBarClosePrice);
+        return currentBarClosePrice.divide(previousBarClosePrice);
     }
 }

@@ -312,10 +312,10 @@ public class Position implements Serializable {
      */
     public Num getGrossReturn(Num entryPrice, Num exitPrice) {
         if (getEntry().isBuy()) {
-            return exitPrice.dividedBy(entryPrice);
+            return exitPrice.divide(entryPrice);
         } else {
             Num one = entryPrice.numOf(1);
-            return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
+            return ((exitPrice.divide(entryPrice).minus(one)).negate()).plus(one);
         }
     }
 
@@ -342,7 +342,7 @@ public class Position implements Serializable {
     public Num getGrossProfit(Num finalPrice) {
         Num grossProfit;
         if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+            grossProfit = entry.getAmount().multiply(finalPrice).minus(entry.getValue());
         } else {
             grossProfit = exit.getValue().minus(entry.getValue());
         }

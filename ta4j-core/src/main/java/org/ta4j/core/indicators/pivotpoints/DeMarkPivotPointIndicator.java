@@ -104,14 +104,14 @@ public class DeMarkPivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
         Num x;
         if (close.isLessThan(open)) {
-            x = high.plus(two.multipliedBy(low)).plus(close);
+            x = high.plus(two.multiply(low)).plus(close);
         } else if (close.isGreaterThan(open)) {
-            x = two.multipliedBy(high).plus(low).plus(close);
+            x = two.multiply(high).plus(low).plus(close);
         } else {
-            x = high.plus(low).plus(two.multipliedBy(close));
+            x = high.plus(low).plus(two.multiply(close));
         }
 
-        return x.dividedBy(numOf(4));
+        return x.divide(numOf(4));
     }
 
     /**

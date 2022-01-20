@@ -59,8 +59,8 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
         if (currentBar.getVolume().isLessThan(previousBar.getVolume())) {
             Num currentPrice = currentBar.getClosePrice();
             Num previousPrice = previousBar.getClosePrice();
-            Num priceChangeRatio = currentPrice.minus(previousPrice).dividedBy(previousPrice);
-            return previousValue.plus(priceChangeRatio.multipliedBy(previousValue));
+            Num priceChangeRatio = currentPrice.minus(previousPrice).divide(previousPrice);
+            return previousValue.plus(priceChangeRatio.multiply(previousValue));
         }
         return previousValue;
     }

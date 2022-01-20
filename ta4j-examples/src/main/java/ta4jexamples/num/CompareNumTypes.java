@@ -74,9 +74,9 @@ public class CompareNumTypes {
         Num P = DecimalNum.valueOf(test(seriesP).toString(), 256);
         Num standard = DecimalNum.valueOf(test(seriesPH).toString(), 256);
         System.out.println(seriesD.getName() + " error: "
-                + D.minus(standard).dividedBy(standard).multipliedBy(DecimalNum.valueOf(100)));
+                + D.minus(standard).divide(standard).multiply(DecimalNum.valueOf(100)));
         System.out.println(seriesP.getName() + " error: "
-                + P.minus(standard).dividedBy(standard).multipliedBy(DecimalNum.valueOf(100)));
+                + P.minus(standard).divide(standard).multiply(DecimalNum.valueOf(100)));
     }
 
     public static Num test(BarSeries series) {

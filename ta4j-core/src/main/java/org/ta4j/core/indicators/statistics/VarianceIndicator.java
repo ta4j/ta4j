@@ -60,7 +60,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
             Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(numOf(numberOfObservations));
+        variance = variance.divide(numOf(numberOfObservations));
         return variance;
     }
 

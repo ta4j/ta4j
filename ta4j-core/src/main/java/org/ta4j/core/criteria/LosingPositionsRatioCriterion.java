@@ -46,7 +46,7 @@ public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num numberOfLosingPositions = numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
         numberOfLosingPositionsCriterion.calculate(series, tradingRecord);
-        return numberOfLosingPositions.dividedBy(series.numOf(tradingRecord.getPositionCount()));
+        return numberOfLosingPositions.divide(series.numOf(tradingRecord.getPositionCount()));
     }
 
     /** The lower the criterion value, the better. */
