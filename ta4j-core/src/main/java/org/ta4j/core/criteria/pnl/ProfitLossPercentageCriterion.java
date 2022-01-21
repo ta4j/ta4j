@@ -30,7 +30,8 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss in percentage criterion (relative PnL) (without commissions).
+ * Net profit and loss in percentage criterion (relative PnL, excludes trading
+ * costs).
  * 
  * <p>
  * Defined as the position profit over the purchase price. The profit or loss in
