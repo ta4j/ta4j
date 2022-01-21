@@ -29,7 +29,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Number of maximum consecutive losing or winning position criterion.
+ * Number of maximum consecutive winning or losing positions criterion.
  */
 public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCriterion {
 
@@ -38,7 +38,7 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
     /**
      * Constructor.
      * 
-     * @param positionFilter consider either the winning or loosing positions
+     * @param positionFilter consider either the winning or losing positions
      */
     public NumberOfConsecutivePositionsCriterion(PositionFilter positionFilter) {
         this.positionFilter = positionFilter;
