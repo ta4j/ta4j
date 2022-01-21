@@ -239,8 +239,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the net profit of the position. If it is open, calculates the profit
-     * until the final bar.
+     * Calculates the net profit of the position. If it is open, calculates the
+     * profit until the final bar.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -281,7 +281,7 @@ public class Position implements Serializable {
         } else {
             grossProfit = exit.getValue().minus(entry.getValue());
         }
-    
+
         // Profits of long position are losses of short
         if (entry.isSell()) {
             grossProfit = grossProfit.negate();
