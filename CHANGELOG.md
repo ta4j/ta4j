@@ -8,6 +8,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DXIndicator** moved to adx-package
 - **PlusDMIndicator** moved to adx-package
 - **MinusDMIndicator** moved to adx-package
+- **NumberOfConsecutiveWinningPositions** renamed to **`NumberOfConsecutivePositions`**
 - `analysis/criterion`-package moved to root
 - `cost`-package moved to `analysis/cost`-package
 
@@ -52,6 +53,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added javadoc for all rules to make clear which rule makes use of a TradingRecord
 - **Enhancement** prevent Object[] allocation for varargs log.trace and log.debug calls by wrapping them in `if` blocks
 - :tada: **Enhancement** added **`FixedTransactionCostModel`**
+- :tada: **Enhancement** added **`AnalysisCriterion.PositionFilter`** to handle both sides within one Criterion.
 
 ## 0.14 (released April 25, 2021)
 
