@@ -24,6 +24,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **MaximumDrawDownCriterion** fixed calculation with custom startIndex and endIndex
 - **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
 - **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
+- **UlcerIndexIndicator** using the max price of current period instead of the highest value of last n bars
 
 ### Changed
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
