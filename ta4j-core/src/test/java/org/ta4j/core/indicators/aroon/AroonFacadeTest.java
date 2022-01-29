@@ -21,27 +21,39 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
-
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.num.NaN.NaN;
-
-import java.time.ZonedDateTime;
+package org.ta4j.core.indicators.aroon;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.keltner.KeltnerChannelFacade;
+import org.ta4j.core.indicators.keltner.KeltnerChannelLowerIndicator;
+import org.ta4j.core.indicators.keltner.KeltnerChannelMiddleIndicator;
+import org.ta4j.core.indicators.keltner.KeltnerChannelUpperIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
-public class AroonUpIndicatorTest {
+import java.time.ZonedDateTime;
+import java.util.function.Function;
 
-    private BarSeries data;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    private BaseBarSeries data;
+
+    public AroonFacadeTest(Function<Number, Num> numFunction) {
+        super(numFunction);
+    }
 
     @Before
     public void init() {
-        data = new BaseBarSeries();
+        data = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Aroon data").build();
         data.addBar(ZonedDateTime.now().plusDays(1), 168.28, 169.87, 167.15, 169.64, 0);
         data.addBar(ZonedDateTime.now().plusDays(2), 168.84, 169.36, 168.2, 168.71, 0);
         data.addBar(ZonedDateTime.now().plusDays(3), 168.88, 169.29, 166.41, 167.74, 0);
@@ -66,54 +78,26 @@ public class AroonUpIndicatorTest {
     }
 
     @Test
-    public void upAndSlowDown() {
-        AroonUpIndicator arronUp = new AroonUpIndicator(data, 5);
-        assertNumEquals(0, arronUp.getValue(19));
-        assertNumEquals(20, arronUp.getValue(18));
-        assertNumEquals(40, arronUp.getValue(17));
-        assertNumEquals(60, arronUp.getValue(16));
-        assertNumEquals(80, arronUp.getValue(15));
-        assertNumEquals(100, arronUp.getValue(14));
-        assertNumEquals(100, arronUp.getValue(13));
-        assertNumEquals(100, arronUp.getValue(12));
-        assertNumEquals(100, arronUp.getValue(11));
-        assertNumEquals(60, arronUp.getValue(10));
-        assertNumEquals(80, arronUp.getValue(9));
-        assertNumEquals(100, arronUp.getValue(8));
-        assertNumEquals(100, arronUp.getValue(7));
-        assertNumEquals(100, arronUp.getValue(6));
-        assertNumEquals(0, arronUp.getValue(5));
-
+    public void testCreation() {
+        final AroonFacade facade = new AroonFacade(data, 5);
+        assertEquals(data, facade.down().getBarSeries());
     }
 
     @Test
-    public void onlyNaNValues() {
-        BaseBarSeries series = new BaseBarSeries("NaN test");
-        for (long i = 0; i <= 1000; i++) {
-            series.addBar(ZonedDateTime.now().plusDays(i), NaN, NaN, NaN, NaN, NaN);
-        }
+    public void testNumericFacadesSameAsDefaultIndicators() {
+        final AroonDownIndicator aroonDownIndicator = new AroonDownIndicator(data, 5);
+        final AroonUpIndicator aroonUpIndicator = new AroonUpIndicator(data, 5);
+        final AroonOscillatorIndicator aroonOscillatorIndicator = new AroonOscillatorIndicator(data, 5);
 
-        AroonUpIndicator aroonUpIndicator = new AroonUpIndicator(series, 5);
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertEquals(NaN.toString(), aroonUpIndicator.getValue(i).toString());
-        }
-    }
+        final AroonFacade facade = new AroonFacade(data, 5);
+        final NumericIndicator aroonUpNumeric = facade.up();
+        final NumericIndicator aroonDownNumeric = facade.down();
+        final NumericIndicator oscillatorNumeric = facade.oscillator();
 
-    @Test
-    public void naNValuesInInterval() {
-        BaseBarSeries series = new BaseBarSeries("NaN test");
-        for (long i = 0; i <= 10; i++) { // (0, NaN, 2, NaN, 4, NaN, 6, NaN, 8, ...)
-            Num highPrice = i % 2 == 0 ? series.numOf(i) : NaN;
-            series.addBar(ZonedDateTime.now().plusDays(i), NaN, highPrice, NaN, NaN, NaN);
-        }
-
-        AroonUpIndicator aroonUpIndicator = new AroonUpIndicator(series, 5);
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            if (i % 2 != 0) {
-                assertEquals(NaN.toString(), aroonUpIndicator.getValue(i).toString());
-            } else {
-                assertNumEquals(aroonUpIndicator.getValue(i).toString(), series.numOf(100));
-            }
+        for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
+            assertNumEquals(aroonDownIndicator.getValue(i), aroonDownNumeric.getValue(i));
+            assertNumEquals(aroonUpIndicator.getValue(i), aroonUpNumeric.getValue(i));
+            assertNumEquals(aroonOscillatorIndicator.getValue(i), oscillatorNumeric.getValue(i));
         }
     }
 }
