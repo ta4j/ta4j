@@ -24,8 +24,10 @@
 package org.ta4j.core.indicators.bollinger;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * A facade to create the 3 Bollinger Band indicators. A simple moving average
@@ -45,17 +47,31 @@ public class BollingerBandFacade {
     private final NumericIndicator lower;
 
     /**
-     * Create the BollingerBands facade
+     * Create the BollingerBands facade based on the close price of a bar series
      * 
-     * @param bs a bar series
-     * @param n  the number of periods (barCount) used for the indicators
-     * @param k  the multiplier used to calculate the upper and lower bands
+     * @param barSeries a bar series
+     * @param barCount  the number of periods used for the indicators
+     * @param k         the multiplier used to calculate the upper and lower bands
      */
-    public BollingerBandFacade(BarSeries bs, int n, Number k) {
-        this.price = NumericIndicator.of(new ClosePriceIndicator(bs));
-        this.middle = NumericIndicator.of(price.sma(n));
-        NumericIndicator stdev = price.stddev(n);
-        // StdDevIndicator creates another SMA(n); hard to fix with current design
+    public BollingerBandFacade(BarSeries barSeries, int barCount, Number k) {
+        this.price = NumericIndicator.of(new ClosePriceIndicator(barSeries));
+        this.middle = NumericIndicator.of(price.sma(barCount));
+        final NumericIndicator stdev = price.stddev(barCount);
+        this.upper = middle.plus(stdev.multipliedBy(k));
+        this.lower = middle.minus(stdev.multipliedBy(k));
+    }
+
+    /**
+     * Create the BollingerBands facade based on the provided indicator
+     *
+     * @param indicator an indicator
+     * @param barCount  the number of periods used for the indicators
+     * @param k         the multiplier used to calculate the upper and lower bands
+     */
+    public BollingerBandFacade(Indicator<Num> indicator, int barCount, Number k) {
+        this.price = NumericIndicator.of(indicator);
+        this.middle = NumericIndicator.of(price.sma(barCount));
+        final NumericIndicator stdev = price.stddev(barCount);
         this.upper = middle.plus(stdev.multipliedBy(k));
         this.lower = middle.minus(stdev.multipliedBy(k));
     }

@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
- * A facade to create the 2 Aroon indicators. The Aroon Oscillator can also be
+ * A facade to create the two Aroon indicators. The Aroon Oscillator can also be
  * created on demand.
  *
  * <p>
