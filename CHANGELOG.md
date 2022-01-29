@@ -11,6 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - `analysis/criterion`-package moved to root
 - `cost`-package moved to `analysis/cost`-package
 - **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
+- **AroonXXX** indicators moved to aroon package
 
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan
@@ -42,6 +43,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **PriceIndicator** removed
 
 ### Added
+- **NumericIndicator** new class providing a fluent and lightweight api for indicator creation
+- **AroonFacade**, **BollingerBandFacade**, **KeltnerChannelFacade** new classes providing a facade for indicator groups by using lightweight `NumericIndicators`
 - **AbstractEMAIndicator** added getBarCount() to support future enhancements 
 - **ATRIndicator** "uncached" by changing superclass to AbstractIndicator; added constructor to accept TRIndicator and getter for same; added toString(); added getBarCount() to support future enhancements
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
