@@ -35,7 +35,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - **NumericIndicator** new class providing a fluent and lightweight api for indicator creation
-- **AroonFacade**, **BolingerBandFacade**, **KeltnerChannelFacade** new classes providing a facade for indicator groups by using lightweight `NumericIndicators`
+- **AroonFacade**, **BollingerBandFacade**, **KeltnerChannelFacade** new classes providing a facade for indicator groups by using lightweight `NumericIndicators`
 - **AbstractEMAIndicator** added getBarCount() to support future enhancements 
 - **ATRIndicator** "uncached" by changing superclass to AbstractIndicator; added constructor to accept TRIndicator and getter for same; added toString(); added getBarCount() to support future enhancements
 - :tada: **Enhancement** added possibility to use CostModels when backtesting with the BacktestExecutor
