@@ -43,6 +43,20 @@ public class WaitForRuleTest {
     }
 
     @Test
+    public void noWaitIfNoTradeExistsIsSatisfied() {
+
+        // No need to wait because no BUY-trade exists
+        rule = new WaitForRule(Trade.TradeType.BUY, 3, true);
+        assertTrue(rule.isSatisfied(0, null));
+        assertTrue(rule.isSatisfied(1, tradingRecord));
+
+        // No need to wait because no SELL-trade exists
+        rule = new WaitForRule(Trade.TradeType.SELL, 3, true);
+        assertTrue(rule.isSatisfied(0, null));
+        assertTrue(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
     public void waitForSinceLastBuyRuleIsSatisfied() {
         // Waits for 3 bars since last buy trade
         rule = new WaitForRule(Trade.TradeType.BUY, 3);

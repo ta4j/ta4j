@@ -52,6 +52,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added javadoc for all rules to make clear which rule makes use of a TradingRecord
 - **Enhancement** prevent Object[] allocation for varargs log.trace and log.debug calls by wrapping them in `if` blocks
 - :tada: **Enhancement** added **`FixedTransactionCostModel`**
+- :tada: **Enhancement** added **`WaitForRule#noWaitIfNoTradeExists`** no need to wait if no trade exists
 
 ## 0.14 (released April 25, 2021)
 

@@ -47,20 +47,39 @@ public class WaitForRule extends AbstractRule {
     private final int numberOfBars;
 
     /**
+     * If true, then the rule is satisfied when there is no last trade with
+     * {@link #tradeType}
+     */
+    private final boolean noWaitIfNoTradeExists;
+
+    /**
      * Constructor.
      *
      * @param tradeType    the type of the trade since we have to wait for
      * @param numberOfBars the number of bars to wait for
      */
     public WaitForRule(TradeType tradeType, int numberOfBars) {
+        this(tradeType, numberOfBars, false);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param tradeType             the type of the trade since we have to wait for
+     * @param numberOfBars          the number of bars to wait for
+     * @param noWaitIfNoTradeExists if true, then the rule is satisfied when there
+     *                              is no last trade with {@link #tradeType}.
+     */
+    public WaitForRule(TradeType tradeType, int numberOfBars, boolean noWaitIfNoTradeExists) {
         this.tradeType = tradeType;
         this.numberOfBars = numberOfBars;
+        this.noWaitIfNoTradeExists = noWaitIfNoTradeExists;
     }
 
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
+        boolean satisfied = noWaitIfNoTradeExists ? true : false;
         // No trading history, no need to wait
         if (tradingRecord != null) {
             Trade lastTrade = tradingRecord.getLastTrade(tradeType);
