@@ -3,12 +3,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.15 (unreleased)
 
 ### Breaking
+- **NumberOfConsecutiveWinningPositions** renamed to **`NumberOfConsecutivePositions`**
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 - **BuyAndHoldCriterion** renamed to **`EnterAndHoldCriterion`**
 - **DXIndicator** moved to adx-package
 - **PlusDMIndicator** moved to adx-package
 - **MinusDMIndicator** moved to adx-package
-- **NumberOfConsecutiveWinningPositions** renamed to **`NumberOfConsecutivePositions`**
 - `analysis/criterion`-package moved to root
 - `cost`-package moved to `analysis/cost`-package
 
