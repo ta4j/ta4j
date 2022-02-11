@@ -193,5 +193,4 @@ public class WalkForward {
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }
     }
-
 }
