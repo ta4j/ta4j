@@ -63,6 +63,10 @@ public class DoubleNum implements Num {
         return new DoubleNum(Double.parseDouble(i));
     }
 
+    public static DoubleNum valueOf(Double i) {
+        return new DoubleNum(i);
+    }
+
     public static DoubleNum valueOf(Number i) {
         return new DoubleNum(Double.parseDouble(i.toString()));
     }
