@@ -82,7 +82,7 @@ public class TestUtils {
      *                        {@code int} representation
      */
     public static void assertNumEquals(int expected, Num actual) {
-        if(actual.isNaN()) {
+        if (actual.isNaN()) {
             throw new AssertionError("Expected: " + expected + " Actual: " + actual);
         }
         assertEquals(actual.numOf(expected), actual);

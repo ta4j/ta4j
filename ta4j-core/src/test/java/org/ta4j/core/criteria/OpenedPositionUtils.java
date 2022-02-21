@@ -48,7 +48,8 @@ public class OpenedPositionUtils {
     }
 
     public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
-                                                                      AnalysisCriterion criterion, int expectedValue) {
-        this.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, criterion, numFunction.apply(expectedValue));
+            AnalysisCriterion criterion, int expectedValue) {
+        this.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, criterion,
+                numFunction.apply(expectedValue));
     }
 }
