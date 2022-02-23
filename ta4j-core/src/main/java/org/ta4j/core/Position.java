@@ -226,7 +226,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the profit of the position if it is closed
+     * Calculates the net profit of the position if it is closed.
      *
      * @return the profit or loss of the position
      */
@@ -239,8 +239,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the profit of the position. If it is open, calculates the profit
-     * until the final bar.
+     * Calculates the net profit of the position. If it is open, calculates the
+     * profit until the final bar.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -255,7 +255,42 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the position if it is closed
+     * Calculate the gross profit of the position if it is closed
+     *
+     * @return the gross profit of the position
+     */
+    public Num getGrossProfit() {
+        if (isOpened()) {
+            return numOf(0);
+        } else {
+            return getGrossProfit(exit.getPricePerAsset());
+        }
+    }
+
+    /**
+     * Calculate the gross profit of the position.
+     * 
+     * @param finalPrice the price of the final bar to be considered (if position is
+     *                   open)
+     * @return the profit or loss of the position
+     */
+    public Num getGrossProfit(Num finalPrice) {
+        Num grossProfit;
+        if (isOpened()) {
+            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+        } else {
+            grossProfit = exit.getValue().minus(entry.getValue());
+        }
+
+        // Profits of long position are losses of short
+        if (entry.isSell()) {
+            grossProfit = grossProfit.negate();
+        }
+        return grossProfit;
+    }
+
+    /**
+     * Calculates the gross return of the position if it is closed.
      *
      * @return the gross return of the position in percent
      */
@@ -268,7 +303,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the position, if it exited at the provided
+     * Calculates the gross return of the position, if it exited at the provided
      * price.
      *
      * @param finalPrice the price of the final bar to be considered (if position is
@@ -317,41 +352,6 @@ public class Position implements Serializable {
             Num one = entryPrice.numOf(1);
             return ((exitPrice.dividedBy(entryPrice).minus(one)).negate()).plus(one);
         }
-    }
-
-    /**
-     * Calculate the gross profit of the position if it is closed
-     *
-     * @return the gross profit of the position
-     */
-    public Num getGrossProfit() {
-        if (isOpened()) {
-            return numOf(0);
-        } else {
-            return getGrossProfit(exit.getPricePerAsset());
-        }
-    }
-
-    /**
-     * Calculate the gross (w/o trading costs) profit of the position.
-     * 
-     * @param finalPrice the price of the final bar to be considered (if position is
-     *                   open)
-     * @return the profit or loss of the position
-     */
-    public Num getGrossProfit(Num finalPrice) {
-        Num grossProfit;
-        if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        } else {
-            grossProfit = exit.getValue().minus(entry.getValue());
-        }
-
-        // Profits of long position are losses of short
-        if (entry.isSell()) {
-            grossProfit = grossProfit.negate();
-        }
-        return grossProfit;
     }
 
     /**
