@@ -19,6 +19,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DecimalNum#remainder()** adds NaN-check 
 - **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice
 - **UlcerIndexIndicator** using the max price of current period instead of the highest value of last n bars
+- **DurationBarAggregator** fixed aggregation of bars with gaps
 
 ### Changed
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
