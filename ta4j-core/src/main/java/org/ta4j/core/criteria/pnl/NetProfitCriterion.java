@@ -30,7 +30,11 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net profit criterion (without commissions).
+ * Net profit criterion (excludes trading costs).
+ *
+ * <p>
+ * The net profit of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
 public class NetProfitCriterion extends AbstractAnalysisCriterion {
 

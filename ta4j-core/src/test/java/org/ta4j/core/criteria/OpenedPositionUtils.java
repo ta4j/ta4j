@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
 public class OpenedPositionUtils {
 
     public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
-            AnalysisCriterion criterion, int expectedValue) {
+            AnalysisCriterion criterion, Num expectedValue) {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
 
         Position trade = new Position(Trade.TradeType.BUY);
@@ -45,5 +45,11 @@ public class OpenedPositionUtils {
         final Num value = criterion.calculate(series, trade);
 
         assertNumEquals(expectedValue, value);
+    }
+
+    public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
+            AnalysisCriterion criterion, int expectedValue) {
+        this.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, criterion,
+                numFunction.apply(expectedValue));
     }
 }
