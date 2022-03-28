@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -45,6 +45,8 @@ public abstract class AbstractRule implements Rule {
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+        if (log.isTraceEnabled()) {
+            log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);
+        }
     }
 }

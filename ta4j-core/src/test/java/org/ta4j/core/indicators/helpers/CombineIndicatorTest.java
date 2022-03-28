@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -32,10 +36,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-
-import java.util.function.Function;
-
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class CombineIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

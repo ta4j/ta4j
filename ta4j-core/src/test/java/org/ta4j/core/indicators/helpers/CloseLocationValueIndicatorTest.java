@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -37,6 +37,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -75,7 +76,7 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
     @Test
     public void returnZeroIfHighEqualsLow() {
         CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
-        assertNumEquals(0, clv.getValue(5));
+        assertNumEquals(NaN.NaN, clv.getValue(5));
         assertNumEquals(1, clv.getValue(6));
         assertNumEquals(0, clv.getValue(7));
     }

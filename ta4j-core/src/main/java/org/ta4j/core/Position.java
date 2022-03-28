@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,8 +29,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.cost.CostModel;
-import org.ta4j.core.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -50,13 +50,13 @@ public class Position implements Serializable {
     private Trade exit;
 
     /** The type of the entry trade */
-    private TradeType startingType;
+    private final TradeType startingType;
 
     /** The cost model for transactions of the asset */
-    private CostModel transactionCostModel;
+    private final CostModel transactionCostModel;
 
     /** The cost model for holding the asset */
-    private CostModel holdingCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
@@ -211,11 +211,6 @@ public class Position implements Serializable {
         return (entry == null) && (exit == null);
     }
 
-    @Override
-    public String toString() {
-        return "Entry: " + entry + " exit: " + exit;
-    }
-
     /**
      * @return true if position is closed and {@link #getProfit()} > 0
      */
@@ -231,7 +226,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the profit of the position if it is closed
+     * Calculates the net profit of the position if it is closed.
      *
      * @return the profit or loss of the position
      */
@@ -244,8 +239,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the profit of the position. If it is open, calculates the profit
-     * until the final bar.
+     * Calculates the net profit of the position. If it is open, calculates the
+     * profit until the final bar.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -260,7 +255,42 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the position if it is closed
+     * Calculate the gross profit of the position if it is closed
+     *
+     * @return the gross profit of the position
+     */
+    public Num getGrossProfit() {
+        if (isOpened()) {
+            return numOf(0);
+        } else {
+            return getGrossProfit(exit.getPricePerAsset());
+        }
+    }
+
+    /**
+     * Calculate the gross profit of the position.
+     * 
+     * @param finalPrice the price of the final bar to be considered (if position is
+     *                   open)
+     * @return the profit or loss of the position
+     */
+    public Num getGrossProfit(Num finalPrice) {
+        Num grossProfit;
+        if (isOpened()) {
+            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+        } else {
+            grossProfit = exit.getValue().minus(entry.getValue());
+        }
+
+        // Profits of long position are losses of short
+        if (entry.isSell()) {
+            grossProfit = grossProfit.negate();
+        }
+        return grossProfit;
+    }
+
+    /**
+     * Calculates the gross return of the position if it is closed.
      *
      * @return the gross return of the position in percent
      */
@@ -273,7 +303,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the gross return of the position, if it exited at the provided
+     * Calculates the gross return of the position, if it exited at the provided
      * price.
      *
      * @param finalPrice the price of the final bar to be considered (if position is
@@ -325,41 +355,6 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculate the gross profit of the position if it is closed
-     *
-     * @return the gross profit of the position
-     */
-    public Num getGrossProfit() {
-        if (isOpened()) {
-            return numOf(0);
-        } else {
-            return getGrossProfit(exit.getPricePerAsset());
-        }
-    }
-
-    /**
-     * Calculate the gross (w/o trading costs) profit of the position.
-     * 
-     * @param finalPrice the price of the final bar to be considered (if position is
-     *                   open)
-     * @return the profit or loss of the position
-     */
-    public Num getGrossProfit(Num finalPrice) {
-        Num grossProfit;
-        if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        } else {
-            grossProfit = exit.getValue().minus(entry.getValue());
-        }
-
-        // Profits of long position are losses of short
-        if (entry.isSell()) {
-            grossProfit = grossProfit.negate();
-        }
-        return grossProfit;
-    }
-
-    /**
      * Calculates the total cost of the position
      * 
      * @param finalIndex the index of the final bar to be considered (if position is
@@ -403,7 +398,23 @@ public class Position implements Serializable {
         return holdingCostModel.calculate(this, finalIndex);
     }
 
+    /**
+     * @return the {@link #startingType}
+     */
+    public TradeType getStartingType() {
+        return startingType;
+    }
+
+    /**
+     * @param num the Number to be converted to a Num
+     * @return the Num of num
+     */
     private Num numOf(Number num) {
         return entry.getNetPrice().numOf(num);
+    }
+
+    @Override
+    public String toString() {
+        return "Entry: " + entry + " exit: " + exit;
     }
 }

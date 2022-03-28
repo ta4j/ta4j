@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -72,6 +72,7 @@ public class StopGainRule extends AbstractRule {
         HUNDRED = closePrice.numOf(100);
     }
 
+    /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
@@ -94,15 +95,15 @@ public class StopGainRule extends AbstractRule {
         return satisfied;
     }
 
-    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
-        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
-        return currentPrice.isLessThanOrEqual(threshold);
-    }
-
     private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
         Num lossRatioThreshold = HUNDRED.plus(gainPercentage).dividedBy(HUNDRED);
         Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
         return currentPrice.isGreaterThanOrEqual(threshold);
+    }
+
+    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
+        Num lossRatioThreshold = HUNDRED.minus(gainPercentage).dividedBy(HUNDRED);
+        Num threshold = entryPrice.multipliedBy(lossRatioThreshold);
+        return currentPrice.isLessThanOrEqual(threshold);
     }
 }

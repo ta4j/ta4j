@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -120,24 +120,24 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
-     * @return the recorded positions
+     * @return the recorded closed positions
      */
     List<Position> getPositions();
 
     /**
-     * @return the number of recorded positions
+     * @return the number of recorded closed positions
      */
     default int getPositionCount() {
         return getPositions().size();
     }
 
     /**
-     * @return the current position
+     * @return the current (open) position
      */
     Position getCurrentPosition();
 
     /**
-     * @return the last position recorded
+     * @return the last closed position recorded
      */
     default Position getLastPosition() {
         List<Position> positions = getPositions();

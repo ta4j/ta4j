@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -191,7 +191,9 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
+        if (log.isTraceEnabled()) {
+            log.trace(">>> {}#shouldEnter({}): {}", className, index, enter);
+        }
     }
 
     /**
@@ -201,6 +203,8 @@ public class BaseStrategy implements Strategy {
      * @param exit  true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
+        if (log.isTraceEnabled()) {
+            log.trace(">>> {}#shouldExit({}): {}", className, index, exit);
+        }
     }
 }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -67,7 +67,7 @@ public class DoubleNum implements Num {
     }
 
     public static DoubleNum valueOf(Number i) {
-        return new DoubleNum(Double.parseDouble(i.toString()));
+        return new DoubleNum(i.doubleValue());
     }
 
     @Override

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -42,12 +42,15 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
     private final Num ratio;
 
-    public KeltnerChannelLowerIndicator(KeltnerChannelMiddleIndicator keltnerMiddleIndicator, double ratio,
-            int barCountATR) {
-        super(keltnerMiddleIndicator);
+    public KeltnerChannelLowerIndicator(KeltnerChannelMiddleIndicator middle, double ratio, int barCountATR) {
+        this(middle, new ATRIndicator(middle.getBarSeries(), barCountATR), ratio);
+    }
+
+    public KeltnerChannelLowerIndicator(KeltnerChannelMiddleIndicator middle, ATRIndicator atr, double ratio) {
+        super(middle.getBarSeries());
+        this.keltnerMiddleIndicator = middle;
+        this.averageTrueRangeIndicator = atr;
         this.ratio = numOf(ratio);
-        this.keltnerMiddleIndicator = keltnerMiddleIndicator;
-        averageTrueRangeIndicator = new ATRIndicator(keltnerMiddleIndicator.getBarSeries(), barCountATR);
     }
 
     @Override
@@ -56,4 +59,12 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
                 .minus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
 
+    public int getBarCount() {
+        return keltnerMiddleIndicator.getBarCount();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + getBarCount();
+    }
 }

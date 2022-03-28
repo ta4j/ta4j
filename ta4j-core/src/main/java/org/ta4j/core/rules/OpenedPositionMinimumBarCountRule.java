@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -50,7 +50,7 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
      * {@link OpenedPositionMinimumBarCountRule#barCount}
      *
      * @param index         the bar index
-     * @param tradingRecord the potentially needed trading history
+     * @param tradingRecord the required trading history
      * @return true if opened trade reached minimum bar count specified in
      *         {@link OpenedPositionMinimumBarCountRule#barCount}, otherwise false
      */
@@ -64,6 +64,7 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
         return false;
     }
 
+    /** @return the {@link #barCount} */
     public int getBarCount() {
         return barCount;
     }

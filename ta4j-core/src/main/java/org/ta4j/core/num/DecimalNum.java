@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -371,6 +371,9 @@ public final class DecimalNum implements Num {
      */
     @Override
     public Num remainder(Num divisor) {
+        if (divisor.isNaN()) {
+            return NaN;
+        }
         BigDecimal bigDecimal = ((DecimalNum) divisor).delegate;
         int precision = mathContext.getPrecision();
         BigDecimal result = delegate.remainder(bigDecimal, new MathContext(precision, RoundingMode.HALF_UP));
@@ -462,7 +465,9 @@ public final class DecimalNum implements Num {
                     : new BigDecimal(6);
             BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
             String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
-            log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            if (log.isTraceEnabled()) {
+                log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
+            }
             DecimalFormat format = new DecimalFormat();
             format.setParseBigDecimal(true);
             try {
@@ -632,8 +637,10 @@ public final class DecimalNum implements Num {
         if (thisNum.toString().equals(otherNum.toString())) {
             return true;
         }
-        log.debug("{} from {} does not match", thisNum, this);
-        log.debug("{} from {} to precision {}", otherNum, other, precision);
+        if (log.isDebugEnabled()) {
+            log.debug("{} from {} does not match", thisNum, this);
+            log.debug("{} from {} to precision {}", otherNum, other, precision);
+        }
         return false;
     }
 
@@ -650,8 +657,10 @@ public final class DecimalNum implements Num {
         if (!result.isGreaterThan(delta)) {
             return true;
         }
-        log.debug("{} does not match", this);
-        log.debug("{} within offset {}", other, delta);
+        if (log.isDebugEnabled()) {
+            log.debug("{} does not match", this);
+            log.debug("{} within offset {}", other, delta);
+        }
         return false;
     }
 
