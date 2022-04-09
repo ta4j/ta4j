@@ -74,7 +74,7 @@ public class ZigZagIndicator extends CachedIndicator<Num> {
             if (lastExtreme.isZero()) {
                 // Treat this case separately
                 // because one cannot divide by zero
-                return lastExtreme;
+                return NaN.NaN;
             } else {
                 Num indicatorValue = indicator.getValue(index);
                 Num differenceRatio = indicatorValue.minus(lastExtreme).dividedBy(lastExtreme);
