@@ -46,6 +46,12 @@ public class ZigZagIndicator extends CachedIndicator<Num> {
 
     private Num lastExtreme;
 
+    /**
+     * Constructor.
+     *
+     * @param indicator      the indicator to provide values
+     * @param thresholdRatio the threshold ratio, must be positive
+     */
     public ZigZagIndicator(Indicator<Num> indicator, Num thresholdRatio) {
         super(indicator);
         this.indicator = indicator;
@@ -63,8 +69,11 @@ public class ZigZagIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Calculate the Zig Zag indicator's value for the current index.
+     *
      * @param index the bar index
-     * @return the indicator's value if it changes over the threshold, otherwise {@link NaN}
+     * @return the indicator's value if it's ratio from last extreme
+     * is equals or bigger than the threshold, otherwise {@link NaN}
      */
     @Override protected Num calculate(int index) {
         if (index == 0) {
