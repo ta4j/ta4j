@@ -1,4 +1,7 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
+## 0.15 (unreleased)
+### Added
+- **Enhancement** Added Zig Zag Indicator
 
 ## 0.14 (released April 25, 2021)
 
