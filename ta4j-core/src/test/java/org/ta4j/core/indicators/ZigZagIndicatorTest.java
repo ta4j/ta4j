@@ -24,8 +24,6 @@
 package org.ta4j.core.indicators;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -44,8 +42,7 @@ public class ZigZagIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         super(numFunction);
     }
 
-    @Test
-    public void testCalculate_BellowThreshold_ReturnNan() {
+    @Test public void testCalculate_BellowThreshold_ReturnNan() {
         BarSeries data = new MockBarSeries(numFunction, 0.4, 0.5);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         ZigZagIndicator zigZagIndicator = new ZigZagIndicator(closePrice, numFunction.apply(0.5));
@@ -53,8 +50,7 @@ public class ZigZagIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertEquals(NaN.NaN, zigZagIndicator.getValue(1));
     }
 
-    @Test
-    public void testCalculate_AboveThreshold_ReturnValue() {
+    @Test public void testCalculate_AboveThreshold_ReturnValue() {
         BarSeries data = new MockBarSeries(numFunction, 0.4, 0.5);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(data);
         ZigZagIndicator zigZagIndicator = new ZigZagIndicator(closePrice, numFunction.apply(0.2));
