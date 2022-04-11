@@ -75,7 +75,8 @@ public class ZigZagIndicator extends CachedIndicator<Num> {
      * @return the indicator's value if it's ratio from last extreme
      * is equals or bigger than the threshold, otherwise {@link NaN}
      */
-    @Override protected Num calculate(int index) {
+    @Override
+    protected Num calculate(int index) {
         if (index == 0) {
             lastExtreme = indicator.getValue(0);
             return lastExtreme;
