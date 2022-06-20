@@ -78,7 +78,7 @@ public class Returns implements Indicator<Num> {
     /**
      * Unit element for efficient arithmetic return computation
      */
-    private static Num one;
+    static Num one;
 
     /**
      * Constructor.

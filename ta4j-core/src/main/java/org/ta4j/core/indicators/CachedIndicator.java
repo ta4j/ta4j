@@ -168,8 +168,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (resultCount > maximumResultCount) {
             // Removing old results
             final int nbResultsToRemove = resultCount - maximumResultCount;
-            for (int i = 0; i < nbResultsToRemove; i++) {
-                results.remove(0);
+            if (nbResultsToRemove > 0) {
+                results.subList(0, nbResultsToRemove).clear();
             }
         }
     }

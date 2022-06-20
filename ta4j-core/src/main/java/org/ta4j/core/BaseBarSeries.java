@@ -475,8 +475,8 @@ public class BaseBarSeries implements BarSeries {
         if (barCount > maximumBarCount) {
             // Removing old bars
             int nbBarsToRemove = barCount - maximumBarCount;
-            for (int i = 0; i < nbBarsToRemove; i++) {
-                bars.remove(0);
+            if (nbBarsToRemove > 0) {
+                bars.subList(0, nbBarsToRemove).clear();
             }
             // Updating removed bars count
             removedBarsCount += nbBarsToRemove;

@@ -50,9 +50,9 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     private static final double VALUE_MAX = 0.999;
     private static final double VALUE_MIN = -0.999;
 
-    private final Indicator<Num> ref;
+    final Indicator<Num> ref;
     private final Indicator<Num> intermediateValue;
-    private final Num densityFactor;
+    final Num densityFactor;
     private final Num gamma;
     private final Num delta;
 
