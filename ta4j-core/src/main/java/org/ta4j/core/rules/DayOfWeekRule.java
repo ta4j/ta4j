@@ -26,6 +26,7 @@ package org.ta4j.core.rules;
 import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -46,6 +47,11 @@ public class DayOfWeekRule extends AbstractRule {
     public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
         this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
         this.timeIndicator = timeIndicator;
+    }
+
+    public  DayOfWeekRule(DateTimeIndicator timeIndicator, EnumSet<DayOfWeek> dowSet) {
+          this.daysOfWeekSet =dowSet;
+          this.timeIndicator = timeIndicator;
     }
 
     @Override
