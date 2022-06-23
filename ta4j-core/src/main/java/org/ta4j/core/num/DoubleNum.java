@@ -40,19 +40,23 @@ public class DoubleNum implements Num {
     public static final DoubleNum DNZERO = new DoubleNum(-0.0d);
     public static final DoubleNum D1_0 = new DoubleNum(1d);
     public static Map<Double, DoubleNum> cache = new WeakHashMap<>();
-    public static boolean useCache=false;
+    public static boolean useCache = false;
+
     public static DoubleNum bind(double delegate) {
         if (0d == delegate) return DZERO;
         if (1d == delegate) return D1_0;
         if (-0.0d == delegate) return DNZERO;
+        if (!useCache) return new DoubleNum(delegate); //this should be a basic case for the C2 var profiler inlining
 
         DoubleNum ref = cache.get(delegate);
-        if (null != ref) return ref;
+        if (null == ref) {
+            ref = new DoubleNum(delegate);
+            cache.put(delegate, ref);
+        }
+        return ref;
 
-        DoubleNum doubleNum = new DoubleNum(delegate);
-        if(useCache)cache.put(delegate, doubleNum);
-        return doubleNum;
     }
+
     private static final long serialVersionUID = -2611177221813615070L;
     private final static double EPS = 0.00001; // precision
     public static final long negativeZeroDoubleBits = Double.doubleToRawLongBits(-0.0d);
@@ -107,7 +111,7 @@ public class DoubleNum implements Num {
 
         if (0d == delegate || -0d == delegate) return augend;
         double v = augend.doubleValue();
-        if (0d== v || -0d== v) return this;
+        if (0d == v || -0d == v) return this;
         return bind(delegate + v);
     }
 
