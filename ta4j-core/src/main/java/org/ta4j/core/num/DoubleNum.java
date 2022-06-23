@@ -40,6 +40,7 @@ public class DoubleNum implements Num {
     public static final DoubleNum DNZERO = new DoubleNum(-0.0d);
     public static final DoubleNum D1_0 = new DoubleNum(1d);
     public static Map<Double, DoubleNum> cache = new WeakHashMap<>();
+    public static boolean useCache=false;
     public static DoubleNum bind(double delegate) {
         if (0d == delegate) return DZERO;
         if (1d == delegate) return D1_0;
@@ -49,7 +50,7 @@ public class DoubleNum implements Num {
         if (null != ref) return ref;
 
         DoubleNum doubleNum = new DoubleNum(delegate);
-        cache.put(delegate, doubleNum);
+        if(useCache)cache.put(delegate, doubleNum);
         return doubleNum;
     }
     private static final long serialVersionUID = -2611177221813615070L;
