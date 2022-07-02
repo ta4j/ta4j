@@ -10,7 +10,8 @@ log/
 bin/
 target/
 out/
-
+build/
+.gradle/
 *.class
 
 # Package Files #
@@ -20,3 +21,5 @@ out/
 
 # temp files #
 ta4j-examples/indicators.csv
+ta4j-examples/build/
+ta4j-core/build/

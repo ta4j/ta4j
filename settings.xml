@@ -1,0 +1,22 @@
+<settings>
+  <servers>
+    <server>
+      <id>ossrh</id>
+      <username>anand1711</username>
+      <password>Dheem@ns0fttech</password>
+    </server>
+  </servers>
+  <profiles>
+    <profile>
+      <id>ossrh</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <gpg.executable>gpg</gpg.executable>
+        <gpg.passphrase>ppdada17</gpg.passphrase>
+      </properties>
+    </profile>
+  </profiles>
+
+</settings>
