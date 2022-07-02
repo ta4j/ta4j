@@ -23,3 +23,4 @@ build/
 ta4j-examples/indicators.csv
 ta4j-examples/build/
 ta4j-core/build/
+release.properties
