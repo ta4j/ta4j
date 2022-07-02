@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,16 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.PrecisionNum;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 
 public class DifferenceIndicatorTest {
 
@@ -40,7 +40,7 @@ public class DifferenceIndicatorTest {
 
     @Before
     public void setUp() {
-        Function<Number, Num> numFunction = PrecisionNum::valueOf;
+        Function<Number, Num> numFunction = DecimalNum::valueOf;
 
         BarSeries series = new BaseBarSeries();
         FixedIndicator<Num> mockIndicator = new FixedIndicator<Num>(series, numFunction.apply(-2.0),

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.aggregator;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.num.Num;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.num.Num;
 
 /**
  * Bar aggregator basing on duration.
@@ -78,8 +78,9 @@ public class DurationBarAggregator implements BarAggregator {
         if (bars.isEmpty()) {
             return aggregated;
         }
+        final Bar firstBar = bars.get(0);
         // get the actual time period
-        final Duration actualDur = bars.iterator().next().getTimePeriod();
+        final Duration actualDur = firstBar.getTimePeriod();
         // check if new timePeriod is a multiplication of actual time period
         final boolean isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
         if (!isMultiplication) {
@@ -88,7 +89,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = bars.iterator().next().getOpenPrice().numOf(0);
+        final Num zero = firstBar.getOpenPrice().numOf(0);
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final ZonedDateTime beginTime = bar.getBeginTime();
@@ -99,6 +100,7 @@ public class DurationBarAggregator implements BarAggregator {
             Num close = null;
             Num volume = zero;
             Num amount = zero;
+            long trades = 0;
             Duration sumDur = Duration.ZERO;
 
             while (sumDur.compareTo(timePeriod) < 0) {
@@ -112,8 +114,17 @@ public class DurationBarAggregator implements BarAggregator {
                         low = bar.getLowPrice();
                     }
                     close = bar.getClosePrice();
-                    volume = volume.plus(bar.getVolume());
-                    amount = amount.plus(bar.getAmount());
+
+                    if (bar.getVolume() != null) {
+                        volume = volume.plus(bar.getVolume());
+                    }
+                    if (bar.getAmount() != null) {
+                        amount = amount.plus(bar.getAmount());
+                    }
+                    if (bar.getTrades() != 0) {
+                        trades = trades + bar.getTrades();
+                    }
+
                 }
                 sumDur = sumDur.plus(actualDur);
                 i++;
@@ -121,7 +132,7 @@ public class DurationBarAggregator implements BarAggregator {
 
             if (!onlyFinalBars || i <= bars.size()) {
                 final Bar aggregatedBar = new BaseBar(timePeriod, beginTime.plus(timePeriod), open, high, low, close,
-                        volume, amount);
+                        volume, amount, trades);
                 aggregated.add(aggregatedBar);
             }
         }

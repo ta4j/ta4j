@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,18 +23,18 @@
  */
 package org.ta4j.core;
 
-import org.junit.Test;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.assertNumNotEquals;
 
 import java.time.ZonedDateTime;
 import java.util.function.Function;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.assertNumNotEquals;
+import org.junit.Test;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -51,7 +51,7 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
                                                                                  // BigDecimal as delegate
         BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class)
                 .withName("useDoubleNum").build();
-        BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(PrecisionNum.class)
+        BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DecimalNum.class)
                 .withName("usePrecisionNum").build();
 
         for (int i = 1000; i >= 0; i--) {
@@ -73,13 +73,13 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries series = seriesBuilder.withNumTypeOf(DoubleNum.class).build();
         assertNumEquals(series.numOf(12), DoubleNum.valueOf(12));
 
-        BarSeries seriesB = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
-        assertNumEquals(seriesB.numOf(12), PrecisionNum.valueOf(12));
+        BarSeries seriesB = seriesBuilder.withNumTypeOf(DecimalNum.class).build();
+        assertNumEquals(seriesB.numOf(12), DecimalNum.valueOf(12));
     }
 
     @Test
     public void testWrongNumType() {
-        BarSeries series = seriesBuilder.withNumTypeOf(PrecisionNum.class).build();
+        BarSeries series = seriesBuilder.withNumTypeOf(DecimalNum.class).build();
         assertNumNotEquals(series.numOf(12), DoubleNum.valueOf(12));
     }
 }

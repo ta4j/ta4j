@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.mocks;
 
+import java.util.List;
+
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-
-import java.util.List;
 
 public class MockAnalysisCriterion implements AnalysisCriterion {
 
@@ -50,10 +50,10 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
     /**
      * Gets the final criterion value.
      * 
-     * @param series BarSeries is ignored
-     * @param trade  is ignored
+     * @param series   BarSeries is ignored
+     * @param position is ignored
      */
-    public Num calculate(BarSeries series, Trade trade) {
+    public Num calculate(BarSeries series, Position position) {
         return values.get(values.size() - 1);
     }
 
@@ -77,6 +77,10 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      */
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    public BarSeries getSeries() {
+        return series;
     }
 
 }

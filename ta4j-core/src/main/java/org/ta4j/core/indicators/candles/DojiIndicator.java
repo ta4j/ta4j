@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
-import org.ta4j.core.indicators.helpers.AbsoluteIndicator;
+import org.ta4j.core.indicators.helpers.TransformIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -63,7 +63,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);
-        bodyHeightInd = new AbsoluteIndicator(new RealBodyIndicator(series));
+        bodyHeightInd = TransformIndicator.abs(new RealBodyIndicator(series));
         averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
         factor = numOf(bodyFactor);
     }

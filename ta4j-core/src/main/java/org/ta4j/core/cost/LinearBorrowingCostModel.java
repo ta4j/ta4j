@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,12 +23,13 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Order;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 public class LinearBorrowingCostModel implements CostModel {
 
+    private static final long serialVersionUID = -2839623394737567618L;
     /**
      * Slope of the linear model - fee per period
      */
@@ -49,39 +50,40 @@ public class LinearBorrowingCostModel implements CostModel {
     }
 
     /**
-     * Calculates the borrowing cost of a closed trade.
+     * Calculates the borrowing cost of a closed position.
      * 
-     * @param trade the trade
-     * @return the absolute order cost
+     * @param position the position
+     * @return the absolute trade cost
      */
-    public Num calculate(Trade trade) {
-        if (trade.isOpened()) {
-            throw new IllegalArgumentException("Trade is not closed. Final index of observation needs to be provided.");
+    public Num calculate(Position position) {
+        if (position.isOpened()) {
+            throw new IllegalArgumentException(
+                    "Position is not closed. Final index of observation needs to be provided.");
         }
-        return calculate(trade, trade.getExit().getIndex());
+        return calculate(position, position.getExit().getIndex());
     }
 
     /**
-     * Calculates the borrowing cost of a trade.
+     * Calculates the borrowing cost of a position.
      * 
-     * @param trade        the trade
-     * @param currentIndex final bar index to be considered (for open trades)
-     * @return the absolute order cost
+     * @param position     the position
+     * @param currentIndex final bar index to be considered (for open positions)
+     * @return the absolute trade cost
      */
-    public Num calculate(Trade trade, int currentIndex) {
-        Order entryOrder = trade.getEntry();
-        Order exitOrder = trade.getExit();
-        Num borrowingCost = trade.getEntry().getNetPrice().numOf(0);
+    public Num calculate(Position position, int currentIndex) {
+        Trade entryTrade = position.getEntry();
+        Trade exitTrade = position.getExit();
+        Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
 
         // borrowing costs apply for short positions only
-        if (entryOrder != null && entryOrder.getType().equals(Order.OrderType.SELL) && entryOrder.getAmount() != null) {
+        if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {
             int tradingPeriods = 0;
-            if (trade.isClosed()) {
-                tradingPeriods = exitOrder.getIndex() - entryOrder.getIndex();
-            } else if (trade.isOpened()) {
-                tradingPeriods = currentIndex - entryOrder.getIndex();
+            if (position.isClosed()) {
+                tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
+            } else if (position.isOpened()) {
+                tradingPeriods = currentIndex - entryTrade.getIndex();
             }
-            borrowingCost = getHoldingCostForPeriods(tradingPeriods, trade.getEntry().getValue());
+            borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }
         return borrowingCost;
     }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,14 +23,14 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
-
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Value at Risk criterion.
@@ -54,18 +54,18 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
-        return calculateVaR(returns, confidence);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade != null && trade.isClosed()) {
-            Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
+    public Num calculate(BarSeries series, Position position) {
+        if (position != null && position.isClosed()) {
+            Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
             return calculateVaR(returns, confidence);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
+        return calculateVaR(returns, confidence);
     }
 
     /**

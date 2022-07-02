@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,51 +23,52 @@
  */
 package org.ta4j.core.analysis.criteria;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 
-import java.util.Collections;
-import java.util.List;
-
 /**
  * Expected Shortfall criterion.
+ *
+ * Measures the expected shortfall of the strategy log-return time-series.
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Expected_shortfall">https://en.wikipedia.org/wiki/Expected_shortfall</a>
  *
- *      Measures the expected shortfall of the strategy log-return time-series
  */
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /**
      * Confidence level as absolute value (e.g. 0.95)
      */
-    private final Double confidence;
+    private final double confidence;
 
     /**
      * Constructor
      *
      * @param confidence the confidence level
      */
-    public ExpectedShortfallCriterion(Double confidence) {
+    public ExpectedShortfallCriterion(double confidence) {
         this.confidence = confidence;
+    }
+
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        if (position != null && position.getEntry() != null && position.getExit() != null) {
+            Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
+            return calculateES(returns, confidence);
+        }
+        return series.numOf(0);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Returns returns = new Returns(series, tradingRecord, Returns.ReturnType.LOG);
         return calculateES(returns, confidence);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-            Returns returns = new Returns(series, trade, Returns.ReturnType.LOG);
-            return calculateES(returns, confidence);
-        }
-        return series.numOf(0);
     }
 
     /**

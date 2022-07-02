@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,24 +23,25 @@
  */
 package ta4jexamples.bots;
 
+import java.time.Duration;
+import java.time.ZonedDateTime;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Order;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
-import org.ta4j.core.trading.rules.OverIndicatorRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
-import ta4jexamples.loaders.CsvTradesLoader;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
 
-import java.time.Duration;
-import java.time.ZonedDateTime;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class is an example of a dummy trading bot using ta4j.
@@ -100,7 +101,7 @@ public class TradingBotOnMovingBarSeries {
         Num randomDecimal = null;
         if (min != null && max != null && min.isLessThan(max)) {
             Num range = max.minus(min);
-            Num position = range.multipliedBy(PrecisionNum.valueOf(Math.random()));
+            Num position = range.multipliedBy(DecimalNum.valueOf(Math.random()));
             randomDecimal = min.plus(position);
         }
         return randomDecimal;
@@ -112,14 +113,14 @@ public class TradingBotOnMovingBarSeries {
      * @return a random bar
      */
     private static Bar generateRandomBar() {
-        final Num maxRange = PrecisionNum.valueOf("0.03"); // 3.0%
+        final Num maxRange = DecimalNum.valueOf("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
-        Num minPrice = openPrice.minus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
-        Num maxPrice = openPrice.plus(maxRange.multipliedBy(PrecisionNum.valueOf(Math.random())));
-        Num closePrice = randDecimal(minPrice, maxPrice);
+        Num lowPrice = openPrice.minus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
+        Num highPrice = openPrice.plus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
+        Num closePrice = randDecimal(lowPrice, highPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
-        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, maxPrice, minPrice, closePrice,
-                PrecisionNum.valueOf(1), PrecisionNum.valueOf(1));
+        return new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), openPrice, highPrice, lowPrice, closePrice,
+                DecimalNum.valueOf(1), DecimalNum.valueOf(1));
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -151,18 +152,18 @@ public class TradingBotOnMovingBarSeries {
             if (strategy.shouldEnter(endIndex)) {
                 // Our strategy should enter
                 System.out.println("Strategy should ENTER on " + endIndex);
-                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), PrecisionNum.valueOf(10));
+                boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
                 if (entered) {
-                    Order entry = tradingRecord.getLastEntry();
+                    Trade entry = tradingRecord.getLastEntry();
                     System.out.println("Entered on " + entry.getIndex() + " (price=" + entry.getNetPrice().doubleValue()
                             + ", amount=" + entry.getAmount().doubleValue() + ")");
                 }
             } else if (strategy.shouldExit(endIndex)) {
                 // Our strategy should exit
                 System.out.println("Strategy should EXIT on " + endIndex);
-                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), PrecisionNum.valueOf(10));
+                boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
                 if (exited) {
-                    Order exit = tradingRecord.getLastExit();
+                    Trade exit = tradingRecord.getLastExit();
                     System.out.println("Exited on " + exit.getIndex() + " (price=" + exit.getNetPrice().doubleValue()
                             + ", amount=" + exit.getAmount().doubleValue() + ")");
                 }

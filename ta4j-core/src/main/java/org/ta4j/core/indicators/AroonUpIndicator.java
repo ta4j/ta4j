@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,13 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Aroon up indicator.
@@ -40,28 +40,28 @@ import static org.ta4j.core.num.NaN.NaN;
 public class AroonUpIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final HighestValueIndicator highestMaxPriceIndicator;
-    private final Indicator<Num> maxValueIndicator;
+    private final HighestValueIndicator highestHighPriceIndicator;
+    private final Indicator<Num> highPriceIndicator;
     private final Num hundred;
 
     /**
      * Constructor.
      *
-     * @param maxValueIndicator the indicator for the maximum price (default
-     *                          {@link HighPriceIndicator})
-     * @param barCount          the time frame
+     * @param highPriceIndicator the indicator for the high price (default
+     *                           {@link HighPriceIndicator})
+     * @param barCount           the time frame
      */
-    public AroonUpIndicator(Indicator<Num> maxValueIndicator, int barCount) {
-        super(maxValueIndicator);
+    public AroonUpIndicator(Indicator<Num> highPriceIndicator, int barCount) {
+        super(highPriceIndicator);
         this.barCount = barCount;
-        this.maxValueIndicator = maxValueIndicator;
+        this.highPriceIndicator = highPriceIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
-        highestMaxPriceIndicator = new HighestValueIndicator(maxValueIndicator, barCount + 1);
+        this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);
     }
 
     /**
-     * Default Constructor that is using the maximum price
+     * Default Constructor that is using the high price
      *
      * @param series   the bar series
      * @param barCount the time frame
@@ -79,7 +79,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         int endIndex = Math.max(0, index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {
-            if (maxValueIndicator.getValue(i).isEqual(highestMaxPriceIndicator.getValue(index))) {
+            if (highPriceIndicator.getValue(i).isEqual(highestHighPriceIndicator.getValue(index))) {
                 break;
             }
             nbBars++;

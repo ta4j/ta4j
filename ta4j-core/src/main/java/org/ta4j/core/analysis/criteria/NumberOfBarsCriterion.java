@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,31 +24,31 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
  * Number of bars criterion.
  *
- * Returns the number of bars during the provided trade(s).
+ * Returns the total number of bars in all the positions.
  */
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return tradingRecord.getTrades().stream().filter(Trade::isClosed).map(t -> calculate(series, t))
-                .reduce(series.numOf(0), Num::plus);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade.isClosed()) {
-            final int exitIndex = trade.getExit().getIndex();
-            final int entryIndex = trade.getEntry().getIndex();
+    public Num calculate(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            final int exitIndex = position.getExit().getIndex();
+            final int entryIndex = position.getEntry().getIndex();
             return series.numOf(exitIndex - entryIndex + 1);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return tradingRecord.getPositions().stream().filter(Position::isClosed).map(t -> calculate(series, t))
+                .reduce(series.numOf(0), Num::plus);
     }
 
     @Override

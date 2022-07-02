@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,17 +23,17 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.Num;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.Num;
 
 public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,15 +23,19 @@
  */
 package ta4jexamples.barSeries;
 
-import org.ta4j.core.*;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.PrecisionNum;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ConvertibleBaseBarBuilder;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 
 public class BuildBarSeries {
 
@@ -80,7 +84,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildWithBigDecimal() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").withNumTypeOf(PrecisionNum.class).build();
+        BarSeries series = new BaseBarSeriesBuilder().withName("mySeries").withNumTypeOf(DecimalNum.class).build();
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,15 +23,16 @@
  */
 package org.ta4j.core.cost;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 
 public class LinearBorrowingCostModelTest {
 
@@ -53,49 +54,49 @@ public class LinearBorrowingCostModelTest {
     }
 
     @Test
-    public void calculateBuyTrade() {
-        // Holding a bought stock should not incur borrowing costs
+    public void calculateBuyPosition() {
+        // Holding a bought asset should not incur borrowing costs
         int holdingPeriod = 2;
-        Order entry = Order.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Order exit = Order.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
 
-        Trade trade = new Trade(entry, exit, new ZeroCostModel(), borrowingModel);
+        Position position = new Position(entry, exit, new ZeroCostModel(), borrowingModel);
 
-        Num costsFromTrade = trade.getHoldingCost();
-        Num costsFromModel = borrowingModel.calculate(trade, holdingPeriod);
+        Num costsFromPosition = position.getHoldingCost();
+        Num costsFromModel = borrowingModel.calculate(position, holdingPeriod);
 
-        assertNumEquals(costsFromModel, costsFromTrade);
+        assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(0));
     }
 
     @Test
-    public void calculateSellTrade() {
+    public void calculateSellPosition() {
         // Short selling incurs borrowing costs
         int holdingPeriod = 2;
-        Order entry = Order.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Order exit = Order.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
 
-        Trade trade = new Trade(entry, exit, new ZeroCostModel(), borrowingModel);
+        Position position = new Position(entry, exit, new ZeroCostModel(), borrowingModel);
 
-        Num costsFromTrade = trade.getHoldingCost();
-        Num costsFromModel = borrowingModel.calculate(trade, holdingPeriod);
+        Num costsFromPosition = position.getHoldingCost();
+        Num costsFromModel = borrowingModel.calculate(position, holdingPeriod);
 
-        assertNumEquals(costsFromModel, costsFromTrade);
+        assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(2));
     }
 
     @Test
-    public void calculateOpenSellTrade() {
-        // Short selling incurs borrowing costs. Since trade is still open, accounted
+    public void calculateOpenSellPosition() {
+        // Short selling incurs borrowing costs. Since position is still open, accounted
         // for until current index
         int currentIndex = 4;
-        Trade trade = new Trade(Order.OrderType.SELL, new ZeroCostModel(), borrowingModel);
-        trade.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Position position = new Position(Trade.TradeType.SELL, new ZeroCostModel(), borrowingModel);
+        position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 
-        Num costsFromTrade = trade.getHoldingCost(currentIndex);
-        Num costsFromModel = borrowingModel.calculate(trade, currentIndex);
+        Num costsFromPosition = position.getHoldingCost(currentIndex);
+        Num costsFromModel = borrowingModel.calculate(position, currentIndex);
 
-        assertNumEquals(costsFromModel, costsFromTrade);
+        assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(4));
     }
 

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,6 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -32,6 +30,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
+
+import org.ta4j.core.num.Num;
 
 /**
  * Sequence of {@link Bar bars} separated by a predefined period (e.g. 15

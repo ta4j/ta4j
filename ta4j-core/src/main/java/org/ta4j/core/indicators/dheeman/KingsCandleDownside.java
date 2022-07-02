@@ -6,7 +6,6 @@ import org.ta4j.core.indicators.pivotpoints.TimeLevel;
 import org.ta4j.core.indicators.range.OpeningRange;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 import java.util.Comparator;
 import java.util.List;

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,6 +22,12 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 package ta4jexamples.indicators;
+
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.GridLayout;
+import java.awt.Stroke;
+import java.util.Date;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -45,10 +51,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import ta4jexamples.loaders.CsvTradesLoader;
 
-import java.awt.*;
-import java.util.Date;
+import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a traditional candlestick chart.

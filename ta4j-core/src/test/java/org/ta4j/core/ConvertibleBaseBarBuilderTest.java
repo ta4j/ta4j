@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,12 +23,8 @@
  */
 package org.ta4j.core;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -36,8 +32,12 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 
 @RunWith(Parameterized.class)
 public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
@@ -48,7 +48,7 @@ public class ConvertibleBaseBarBuilderTest extends AbstractIndicatorTest<BarSeri
 
     @Test
     public void testBuildBigDecimal() {
-        new ConvertibleBaseBarBuilder<BigDecimal>(PrecisionNum::valueOf);
+        new ConvertibleBaseBarBuilder<BigDecimal>(DecimalNum::valueOf);
 
         final ZonedDateTime beginTime = ZonedDateTime.of(2014, 6, 25, 0, 0, 0, 0, ZoneId.systemDefault());
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());

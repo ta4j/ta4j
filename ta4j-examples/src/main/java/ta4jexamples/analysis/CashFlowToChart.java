@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,6 +23,11 @@
  */
 package ta4jexamples.analysis;
 
+import java.awt.Color;
+import java.awt.Dimension;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -43,12 +48,9 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
-
-import java.awt.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * This class builds a graphical chart showing the cash flow of a strategy.
@@ -119,7 +121,7 @@ public class CashFlowToChart {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        // Getting the cash flow of the resulting trades
+        // Getting the cash flow of the resulting positions
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         /*

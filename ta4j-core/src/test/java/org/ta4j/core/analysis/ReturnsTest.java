@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,23 @@
  */
 package org.ta4j.core.analysis;
 
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarSeries;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -54,21 +58,21 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void singleReturnTradeArith() {
+    public void singleReturnPositionArith() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+                Trade.sellAt(1, sampleBarSeries));
         Returns return1 = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
         assertNumEquals(NaN.NaN, return1.getValue(0));
         assertNumEquals(1.0, return1.getValue(1));
     }
 
     @Test
-    public void returnsWithSellAndBuyOrders() {
+    public void returnsWithSellAndBuyTrades() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 2, 1, 3, 5, 6, 3, 20);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.buyAt(0, sampleBarSeries),
-                Order.sellAt(1, sampleBarSeries), Order.buyAt(3, sampleBarSeries), Order.sellAt(4, sampleBarSeries),
-                Order.sellAt(5, sampleBarSeries), Order.buyAt(6, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+                Trade.sellAt(1, sampleBarSeries), Trade.buyAt(3, sampleBarSeries), Trade.sellAt(4, sampleBarSeries),
+                Trade.sellAt(5, sampleBarSeries), Trade.buyAt(6, sampleBarSeries));
 
         Returns strategyReturns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.ARITHMETIC);
 
@@ -84,8 +88,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void returnsWithGaps() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Order.sellAt(2, sampleBarSeries),
-                Order.buyAt(5, sampleBarSeries), Order.buyAt(8, sampleBarSeries), Order.sellAt(10, sampleBarSeries));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(2, sampleBarSeries),
+                Trade.buyAt(5, sampleBarSeries), Trade.buyAt(8, sampleBarSeries), Trade.sellAt(10, sampleBarSeries));
 
         Returns returns = new Returns(sampleBarSeries, tradingRecord, Returns.ReturnType.LOG);
 
@@ -105,7 +109,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void returnsWithNoTrades() {
+    public void returnsWithNoPositions() {
         BarSeries sampleBarSeries = new MockBarSeries(numFunction, 3d, 2d, 5d, 4d, 7d, 6d, 7d, 8d, 5d, 6d);
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), Returns.ReturnType.LOG);
         assertNumEquals(NaN.NaN, returns.getValue(0));
@@ -117,7 +121,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void returnsPrecision() {
         BarSeries doubleSeries = new MockBarSeries(numFunction, 1.2d, 1.1d);
-        BarSeries precisionSeries = new MockBarSeries(PrecisionNum::valueOf, 1.2d, 1.1d);
+        BarSeries precisionSeries = new MockBarSeries(DecimalNum::valueOf, 1.2d, 1.1d);
 
         TradingRecord fullRecordDouble = new BaseTradingRecord();
         fullRecordDouble.enter(doubleSeries.getBeginIndex(), doubleSeries.getBar(0).getClosePrice(),
@@ -140,9 +144,9 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(arithDouble, DoubleNum.valueOf(-0.08333333333333326));
         assertNumEquals(arithPrecision,
-                PrecisionNum.valueOf(1.1).dividedBy(PrecisionNum.valueOf(1.2)).minus(PrecisionNum.valueOf(1)));
+                DecimalNum.valueOf(1.1).dividedBy(DecimalNum.valueOf(1.2)).minus(DecimalNum.valueOf(1)));
 
         assertNumEquals(logDouble, DoubleNum.valueOf(-0.08701137698962969));
-        assertNumEquals(logPrecision, PrecisionNum.valueOf("-0.087011376989629766167765901873746"));
+        assertNumEquals(logPrecision, DecimalNum.valueOf("-0.087011376989629766167765901873746"));
     }
 }

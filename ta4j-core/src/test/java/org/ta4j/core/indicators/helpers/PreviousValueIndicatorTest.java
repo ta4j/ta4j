@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,17 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.EMAIndicator;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.time.ZonedDateTime;
 import java.util.Random;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.indicators.EMAIndicator;
 
 public class PreviousValueIndicatorTest {
 
@@ -78,14 +79,14 @@ public class PreviousValueIndicatorTest {
             assertEquals(prevValueIndicator.getValue(i), openPriceIndicator.getValue(i - 1));
         }
 
-        // test 2 with minPrice-indicator
+        // test 2 with lowPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), lowPriceIndicator.getValue(i - 1));
         }
 
-        // test 3 with maxPrice-indicator
+        // test 3 with highPrice-indicator
         prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
@@ -95,7 +96,7 @@ public class PreviousValueIndicatorTest {
 
     @Test
     public void shouldBeNthPreviousValueFromIndicator() {
-        for (int i = 0; i < this.series.getBarCount(); i++) {
+        for (int i = 1; i < this.series.getBarCount(); i++) {
             testWithN(i);
         }
     }
@@ -119,5 +120,30 @@ public class PreviousValueIndicatorTest {
         for (int i = n; i < this.series.getBarCount(); i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(i - n));
         }
+    }
+
+    @Test
+    public void testToStringMethodWithN1() {
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
+
+        final String prevValueIndicatorAsString = prevValueIndicator.toString();
+
+        assertTrue(prevValueIndicatorAsString.startsWith("PreviousValueIndicator["));
+        assertTrue(prevValueIndicatorAsString.endsWith("]"));
+    }
+
+    @Test
+    public void testToStringMethodWithNGreaterThen1() {
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 2);
+
+        final String prevValueIndicatorAsString = prevValueIndicator.toString();
+
+        assertTrue(prevValueIndicatorAsString.startsWith("PreviousValueIndicator(2)["));
+        assertTrue(prevValueIndicatorAsString.endsWith("]"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testPreviousValueIndicatorWithNonPositiveN() {
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 0);
     }
 }
