@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,10 +23,7 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -36,18 +33,18 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static org.ta4j.core.num.NaN.NaN;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link BarSeries}.
+ * </p>
  */
 public class BaseBarSeries implements BarSeries {
 
     private static final long serialVersionUID = -1878027009398790126L;
-    /**
-     * The logger
-     */
-    private static final Logger log = LoggerFactory.getLogger(BaseBarSeries.class);
     /**
      * Name for unnamed series
      */
@@ -55,7 +52,11 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Num type function
      **/
-    protected final Function<Number, Num> numFunction;
+    protected final transient Function<Number, Num> numFunction;
+    /**
+     * The logger
+     */
+    private final transient Logger log = LoggerFactory.getLogger(getClass());
     /**
      * Name of the series
      */
@@ -124,7 +125,9 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      *
-     * @param name the name of the series
+     * @param name        the name of the series
+     * @param numFunction a {@link Function} to convert a {@link Number} to a
+     *                    {@link Num Num implementation}
      */
     public BaseBarSeries(String name, Function<Number, Num> numFunction) {
         this(name, new ArrayList<>(), numFunction);
@@ -143,8 +146,8 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      * <p/>
-     * Creates a BaseBarSeries with default {@link PrecisionNum} as type for the
-     * data and all operations on it
+     * Creates a BaseBarSeries with default {@link DecimalNum} as type for the data
+     * and all operations on it
      *
      * @param name             the name of the series
      * @param bars             the list of bars of the series
@@ -154,7 +157,7 @@ public class BaseBarSeries implements BarSeries {
      *                         change), false otherwise
      */
     private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, PrecisionNum::valueOf);
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum::valueOf);
     }
 
     /**
@@ -445,13 +448,13 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public void addTrade(Number price, Number amount) {
-        addTrade(numOf(price), numOf(amount));
+    public void addTrade(Number amount, Number price) {
+        addTrade(numOf(amount), numOf(price));
     }
 
     @Override
-    public void addTrade(String price, String amount) {
-        addTrade(numOf(new BigDecimal(price)), numOf(new BigDecimal(amount)));
+    public void addTrade(String amount, String price) {
+        addTrade(numOf(new BigDecimal(amount)), numOf(new BigDecimal(price)));
     }
 
     @Override

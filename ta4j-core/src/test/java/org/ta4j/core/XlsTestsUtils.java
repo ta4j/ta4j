@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,17 +23,6 @@
  */
 package org.ta4j.core;
 
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.CellValue;
-import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.mocks.MockTradingRecord;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -48,6 +37,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.zip.DataFormatException;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.CellValue;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.mocks.MockTradingRecord;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 
 public class XlsTestsUtils {
 

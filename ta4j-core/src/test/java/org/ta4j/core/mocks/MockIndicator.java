@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,15 +23,14 @@
  */
 package org.ta4j.core.mocks;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
-import java.util.List;
-
 public class MockIndicator implements Indicator<Num> {
 
-    private static final long serialVersionUID = -1083818948051189894L;
     private BarSeries series;
     private List<Num> values;
 

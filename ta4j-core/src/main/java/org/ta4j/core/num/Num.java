@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,7 +36,7 @@ import java.util.function.Function;
  * @see Num
  * @see Num#function()
  * @see DoubleNum
- * @see PrecisionNum
+ * @see DecimalNum
  * 
  */
 public interface Num extends Comparable<Num>, Serializable {
@@ -94,40 +94,55 @@ public interface Num extends Comparable<Num>, Serializable {
     Num remainder(Num divisor);
 
     /**
-     * Returns a {@code num} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * Returns a {@code Num} whose value is rounded down to the nearest whole
+     * number.
+     *
+     * @return <code>this</code> to whole Num rounded down
+     */
+    Num floor();
+
+    /**
+     * Returns a {@code Num} whose value is rounded up to the nearest whole number.
+     * 
+     * @return <code>this</code> to whole Num rounded up
+     */
+    Num ceil();
+
+    /**
+     * Returns a {@code num} whose value is <code>(this<sup>n</sup>)</code>.
      * 
      * @param n power to raise this {@code num} to.
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      */
     Num pow(int n);
 
     /**
-     * Returns a {@code num} whose value is <tt>(this<sup>n</sup>)</tt>.
+     * Returns a {@code num} whose value is <code>(this<sup>n</sup>)</code>.
      * 
      * @param n power to raise this {@code num} to.
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      */
     Num pow(Num n);
 
     /**
-     * Returns a {@code num} whose value is <tt>ln(this)</tt>.
+     * Returns a {@code num} whose value is <code>ln(this)</code>.
      * 
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      */
     Num log();
 
     /**
-     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * Returns a {@code num} whose value is <code>√(this)</code>.
      * 
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      */
     Num sqrt();
 
     /**
-     * Returns a {@code num} whose value is <tt>√(this)</tt>.
+     * Returns a {@code num} whose value is <code>√(this)</code>.
      * 
      * @param precision to calculate.
-     * @return <tt>this<sup>n</sup></tt>
+     * @return <code>this<sup>n</sup></code>
      */
     Num sqrt(int precision);
 
@@ -137,6 +152,14 @@ public interface Num extends Comparable<Num>, Serializable {
      * @return {@code abs(this)}
      */
     Num abs();
+
+    /**
+     * Returns a {@code num} whose value is (-this), and whose scale is
+     * this.scale().
+     * 
+     * @return {@code negate(this)}
+     */
+    Num negate();
 
     /**
      * Checks if the value is zero.
@@ -177,7 +200,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is equal to another.
      * 
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     boolean isEqual(Num other);
 
@@ -185,7 +208,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is greater than another.
      * 
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     boolean isGreaterThan(Num other);
 
@@ -193,7 +216,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is greater than or equal to another.
      * 
      * @param other the other value, not null
-     * @return true is this is greater than or equal to the specified value, false
+     * @return true if this is greater than or equal to the specified value, false
      *         otherwise
      */
     boolean isGreaterThanOrEqual(Num other);
@@ -202,7 +225,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is less than another.
      * 
      * @param other the other value, not null
-     * @return true is this is less than the specified value, false otherwise
+     * @return true if this is less than the specified value, false otherwise
      */
     boolean isLessThan(Num other);
 
@@ -210,7 +233,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * Checks if this value is less than another.
      * 
      * @param other the other value, not null
-     * @return true is this is less than or equal the specified value, false
+     * @return true if this is less than or equal the specified value, false
      *         otherwise
      */
     boolean isLessThanOrEqual(Num other);

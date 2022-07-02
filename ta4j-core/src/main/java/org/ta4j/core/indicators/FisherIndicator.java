@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,8 +23,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -45,8 +45,6 @@ import org.ta4j.core.num.Num;
  *      https://www.investopedia.com/terms/f/fisher-transform.asp</a>
  */
 public class FisherIndicator extends RecursiveCachedIndicator<Num> {
-
-    private static final long serialVersionUID = 4622250625267906228L;
 
     private static final double ZERO_DOT_FIVE = 0.5;
     private static final double VALUE_MAX = 0.999;
@@ -154,8 +152,6 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                 isPriceIndicator ? new LowPriceIndicator(ref.getBarSeries()) : ref, barCount);
 
         intermediateValue = new RecursiveCachedIndicator<Num>(ref) {
-
-            private static final long serialVersionUID = 1242564751445450654L;
 
             @Override
             protected Num calculate(int index) {

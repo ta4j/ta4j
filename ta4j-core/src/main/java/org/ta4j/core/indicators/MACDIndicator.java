@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,8 +36,6 @@ import org.ta4j.core.num.Num;
  */
 public class MACDIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -6899062131135971403L;
-
     private final EMAIndicator shortTermEma;
     private final EMAIndicator longTermEma;
 
@@ -64,6 +62,24 @@ public class MACDIndicator extends CachedIndicator<Num> {
         }
         shortTermEma = new EMAIndicator(indicator, shortBarCount);
         longTermEma = new EMAIndicator(indicator, longBarCount);
+    }
+
+    /**
+     * Short term EMA indicator
+     *
+     * @return the Short term EMA indicator
+     */
+    public EMAIndicator getShortTermEma() {
+        return shortTermEma;
+    }
+
+    /**
+     * Long term EMA indicator
+     *
+     * @return the Long term EMA indicator
+     */
+    public EMAIndicator getLongTermEma() {
+        return longTermEma;
     }
 
     @Override

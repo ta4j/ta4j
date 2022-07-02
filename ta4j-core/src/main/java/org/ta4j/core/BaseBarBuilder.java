@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,10 +23,10 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.num.Num;
-
 import java.time.Duration;
 import java.time.ZonedDateTime;
+
+import org.ta4j.core.num.Num;
 
 public class BaseBarBuilder {
 
@@ -38,7 +38,7 @@ public class BaseBarBuilder {
     private Num lowPrice;
     private Num amount;
     private Num volume;
-    private int trades;
+    private long trades;
 
     BaseBarBuilder() {
     }
@@ -83,7 +83,7 @@ public class BaseBarBuilder {
         return this;
     }
 
-    public BaseBarBuilder trades(int trades) {
+    public BaseBarBuilder trades(long trades) {
         this.trades = trades;
         return this;
     }

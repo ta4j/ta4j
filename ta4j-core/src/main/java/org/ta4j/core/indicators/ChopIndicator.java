@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -49,7 +49,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
 
     private final ATRIndicator atrIndicator;
     private final int timeFrame;
-    private final Num LOG10n;
+    private final Num log10n;
     private final HighestValueIndicator hvi;
     private final LowestValueIndicator lvi;
     private final Num scaleUpTo;
@@ -68,7 +68,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
         hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
         lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
         this.timeFrame = ciTimeFrame;
-        this.LOG10n = numOf(Math.log10(ciTimeFrame));
+        this.log10n = numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = numOf(scaleTo);
     }
 
@@ -80,6 +80,6 @@ public class ChopIndicator extends CachedIndicator<Num> {
         }
         Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
         // TODO: implement Num.log10(Num)
-        return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(LOG10n);
+        return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
     }
 }

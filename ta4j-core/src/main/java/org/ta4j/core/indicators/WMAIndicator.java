@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -28,11 +28,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * WMA indicator.
- *
  */
 public class WMAIndicator extends CachedIndicator<Num> {
 
-    private static final long serialVersionUID = -1610206345404758687L;
     private final int barCount;
     private final Indicator<Num> indicator;
 
@@ -47,21 +45,16 @@ public class WMAIndicator extends CachedIndicator<Num> {
         if (index == 0) {
             return indicator.getValue(0);
         }
+
         Num value = numOf(0);
-        if (index - barCount < 0) {
-
-            for (int i = index + 1; i > 0; i--) {
-                value = value.plus(numOf(i).multipliedBy(indicator.getValue(i - 1)));
-            }
-            return value.dividedBy(numOf(((index + 1) * (index + 2)) / 2));
-        }
-
+        int loopLength = (index - barCount < 0) ? index + 1 : barCount;
         int actualIndex = index;
-        for (int i = barCount; i > 0; i--) {
+        for (int i = loopLength; i > 0; i--) {
             value = value.plus(numOf(i).multipliedBy(indicator.getValue(actualIndex)));
             actualIndex--;
         }
-        return value.dividedBy(numOf((barCount * (barCount + 1)) / 2));
+
+        return value.dividedBy(numOf((loopLength * (loopLength + 1)) / 2));
     }
 
     @Override

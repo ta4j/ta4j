@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -34,8 +34,6 @@ import org.ta4j.core.num.Num;
  * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
 public class SigmaIndicator extends CachedIndicator<Num> {
-
-    private static final long serialVersionUID = 6283425887025798038L;
 
     private Indicator<Num> ref;
     private int barCount;

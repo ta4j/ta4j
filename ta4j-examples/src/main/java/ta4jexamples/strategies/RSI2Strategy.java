@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -29,14 +29,15 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.TotalProfitCriterion;
+import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.trading.rules.CrossedDownIndicatorRule;
-import org.ta4j.core.trading.rules.CrossedUpIndicatorRule;
-import org.ta4j.core.trading.rules.OverIndicatorRule;
-import org.ta4j.core.trading.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
+
 import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
@@ -93,11 +94,11 @@ public class RSI2Strategy {
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of trades for the strategy: " + tradingRecord.getTradeCount());
+        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
         System.out.println(
-                "Total profit for the strategy: " + new TotalProfitCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 
 }

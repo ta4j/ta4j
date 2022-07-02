@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,20 @@
  */
 package ta4jexamples.logging;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.core.joran.spi.JoranException;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
 import org.ta4j.core.Strategy;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.CCICorrectionStrategy;
-
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Strategy execution logging example.

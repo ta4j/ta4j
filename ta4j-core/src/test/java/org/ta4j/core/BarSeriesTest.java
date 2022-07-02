@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,12 @@
  */
 package org.ta4j.core;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.indicators.helpers.LowPriceIndicator;
-import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
-import org.ta4j.core.mocks.MockBar;
-import org.ta4j.core.num.DoubleNum;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
-import org.ta4j.core.trading.rules.FixedRule;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -47,12 +40,19 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.FixedRule;
 
 public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -271,19 +271,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void addBarTest() {
         defaultSeries = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
-        Bar firstBar = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d, numFunction);
-        Bar secondBar = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d, numFunction);
+        Bar bar1 = new MockBar(ZonedDateTime.of(2014, 6, 13, 0, 0, 0, 0, ZoneId.systemDefault()), 1d, numFunction);
+        Bar bar2 = new MockBar(ZonedDateTime.of(2014, 6, 14, 0, 0, 0, 0, ZoneId.systemDefault()), 2d, numFunction);
 
         assertEquals(0, defaultSeries.getBarCount());
         assertEquals(-1, defaultSeries.getBeginIndex());
         assertEquals(-1, defaultSeries.getEndIndex());
 
-        defaultSeries.addBar(firstBar);
+        defaultSeries.addBar(bar1);
         assertEquals(1, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(0, defaultSeries.getEndIndex());
 
-        defaultSeries.addBar(secondBar);
+        defaultSeries.addBar(bar2);
         assertEquals(2, defaultSeries.getBarCount());
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(1, defaultSeries.getEndIndex());
@@ -335,12 +335,12 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeDoubleTest() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DoubleNum.class).build();
-        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, PrecisionNum::valueOf));
+        series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DecimalNum::valueOf));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void wrongBarTypeBigDecimalTest() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(PrecisionNum::valueOf).build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(DecimalNum::valueOf).build();
         series.addBar(new BaseBar(Duration.ofDays(1), ZonedDateTime.now(), 1, 1, 1, 1, 1, 1, 1, DoubleNum::valueOf));
     }
 

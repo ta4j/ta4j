@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,7 +24,7 @@
 package org.ta4j.core.analysis.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
@@ -38,18 +38,18 @@ import org.ta4j.core.num.Num;
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        return calculateMaximumDrawdown(series, cashFlow);
-    }
-
-    @Override
-    public Num calculate(BarSeries series, Trade trade) {
-        if (trade != null && trade.getEntry() != null && trade.getExit() != null) {
-            CashFlow cashFlow = new CashFlow(series, trade);
+    public Num calculate(BarSeries series, Position position) {
+        if (position != null && position.getEntry() != null && position.getExit() != null) {
+            CashFlow cashFlow = new CashFlow(series, position);
             return calculateMaximumDrawdown(series, cashFlow);
         }
         return series.numOf(0);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        return calculateMaximumDrawdown(series, cashFlow);
     }
 
     @Override

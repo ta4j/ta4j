@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,18 +23,20 @@
  */
 package org.ta4j.core;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.Num;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.junit.Before;
+import org.junit.Test;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.Num;
 
 public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 

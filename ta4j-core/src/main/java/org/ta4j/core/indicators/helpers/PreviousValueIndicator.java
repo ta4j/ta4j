@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -37,7 +37,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator of which the previous value should be
      *                  calculated
      */
@@ -47,13 +47,16 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
-     * 
+     *
      * @param indicator the indicator of which the previous value should be
      *                  calculated
      * @param n         parameter defines the previous n-th value
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
         super(indicator);
+        if (n < 1) {
+            throw new IllegalArgumentException("n must be positive number, but was: " + n);
+        }
         this.n = n;
         this.indicator = indicator;
     }
@@ -61,5 +64,11 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         int previousValue = Math.max(0, (index - n));
         return this.indicator.getValue(previousValue);
+    }
+
+    @Override
+    public String toString() {
+        final String nInfo = n == 1 ? "" : "(" + n + ")";
+        return getClass().getSimpleName() + nInfo + "[" + this.indicator + "]";
     }
 }

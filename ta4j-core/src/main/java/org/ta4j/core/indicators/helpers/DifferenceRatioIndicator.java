@@ -25,8 +25,8 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
 
 /**
  * Difference indicator.
@@ -54,6 +54,6 @@ public class DifferenceRatioIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num difference = first.getValue(index).minus(second.getValue(index));
-        return difference.dividedBy(second.getValue(index)).multipliedBy(PrecisionNum.valueOf(100));
+        return difference.dividedBy(second.getValue(index)).multipliedBy(DecimalNum.valueOf(100));
     }
 }

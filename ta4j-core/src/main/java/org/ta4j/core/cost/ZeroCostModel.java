@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,10 +23,12 @@
  */
 package org.ta4j.core.cost;
 
-import org.ta4j.core.Trade;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 public class ZeroCostModel implements CostModel {
+
+    private static final long serialVersionUID = -331246208177262596L;
 
     /**
      * Constructor for a trading cost-free model.
@@ -35,12 +37,12 @@ public class ZeroCostModel implements CostModel {
     public ZeroCostModel() {
     }
 
-    public Num calculate(Trade trade) {
-        return calculate(trade, 0);
+    public Num calculate(Position position) {
+        return calculate(position, 0);
     }
 
-    public Num calculate(Trade trade, int currentIndex) {
-        return trade.getEntry().getPricePerAsset().numOf(0);
+    public Num calculate(Position position, int currentIndex) {
+        return position.getEntry().getPricePerAsset().numOf(0);
     }
 
     public Num calculate(Num price, Num amount) {

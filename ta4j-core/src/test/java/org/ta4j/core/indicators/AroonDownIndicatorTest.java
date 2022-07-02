@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,19 +23,19 @@
  */
 package org.ta4j.core.indicators;
 
+import static junit.framework.TestCase.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.num.NaN.NaN;
+
+import java.time.ZonedDateTime;
+import java.util.function.Function;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
-
-import java.time.ZonedDateTime;
-import java.util.function.Function;
-
-import static junit.framework.TestCase.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.num.NaN.NaN;
 
 public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -108,8 +108,8 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void naNValuesInIntervall() {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
         for (long i = 10; i >= 0; i--) { // (10, NaN, 9, NaN, 8, NaN, 7, NaN)
-            Num minPrice = i % 2 == 0 ? series.numOf(i) : NaN;
-            series.addBar(ZonedDateTime.now().plusDays(10 - i), NaN, NaN, minPrice, NaN, NaN);
+            Num lowPrice = i % 2 == 0 ? series.numOf(i) : NaN;
+            series.addBar(ZonedDateTime.now().plusDays(10 - i), NaN, NaN, lowPrice, NaN, NaN);
         }
         series.addBar(ZonedDateTime.now().plusDays(11), NaN, NaN, series.numOf(10), NaN, NaN);
 

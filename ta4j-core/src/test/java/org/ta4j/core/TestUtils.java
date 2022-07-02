@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2019 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,16 +23,15 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.PrecisionNum;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import java.math.BigDecimal;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.Num;
 
 /**
  * Utility class for {@code Num} tests.
@@ -43,16 +42,6 @@ public class TestUtils {
     public static final double GENERAL_OFFSET = 0.0001;
 
     private static Logger log = LoggerFactory.getLogger(TestUtils.class);
-
-    /**
-     * Verifies that the actual {@code Num} value is not equal to {@link NaN}.
-     *
-     * @param actual   the actual {@code Num} value
-     * @throws AssertionError if the actual value is equal to {@link NaN}
-     */
-    public static void assertNotNaN(Num actual) {
-        assertFalse(actual.isNaN());
-    }
 
     /**
      * Verifies that the actual {@code Num} value is equal to the given
@@ -92,7 +81,6 @@ public class TestUtils {
      *                        {@code int} representation
      */
     public static void assertNumEquals(int expected, Num actual) {
-        assertNotNaN(actual);
         assertEquals(actual.numOf(expected), actual);
     }
 
@@ -208,10 +196,10 @@ public class TestUtils {
         org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
                 actual.getBarSeries().getBarCount());
         for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
-            // convert to PrecisionNum via String (auto-precision) avoids Cast Class
+            // convert to DecimalNum via String (auto-precision) avoids Cast Class
             // Exception
-            Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
-            Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
+            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
+            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 log.debug("{} expected does not match", exp);
@@ -243,8 +231,8 @@ public class TestUtils {
             return;
         }
         for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
-            Num exp = PrecisionNum.valueOf(expected.getValue(i).toString());
-            Num act = PrecisionNum.valueOf(actual.getValue(i).toString());
+            Num exp = DecimalNum.valueOf(expected.getValue(i).toString());
+            Num act = DecimalNum.valueOf(actual.getValue(i).toString());
             Num result = exp.minus(act).abs();
             if (result.isGreaterThan(delta)) {
                 return;
