@@ -86,8 +86,11 @@ public class DoubleNum implements Num {
         return bind(Double.parseDouble(i));
     }
 
+
     public static DoubleNum valueOf(Number i) {
-        return bind(Double.parseDouble(i.toString()));
+        /*@see https://github.com/ta4j/ta4j/issues/731#issuecomment-1172802423*/
+        /*double delegate1 = Double.parseDouble(i.toString());*/
+        return bind(i.doubleValue());
     }
 
     @Override
