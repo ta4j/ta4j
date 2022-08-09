@@ -11,6 +11,7 @@ log/
 bin/
 target/
 out/
+build
 
 # Compiled class file
 *.class
