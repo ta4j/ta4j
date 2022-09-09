@@ -39,6 +39,14 @@ import org.ta4j.core.num.Num;
  */
 public interface AnalysisCriterion {
 
+    /** Filter to differentiate between winning or losing positions. */
+    public enum PositionFilter {
+        /** Consider only winning positions. */
+        PROFIT,
+        /** Consider only losing positions. */
+        LOSS;
+    }
+
     /**
      * @param series   a bar series, not null
      * @param position a position, not null

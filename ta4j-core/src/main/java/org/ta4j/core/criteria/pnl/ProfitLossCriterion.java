@@ -30,7 +30,7 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Profit and loss criterion (absolute PnL) (without commissions).
+ * Net Profit and loss criterion (absolute PnL, excludes trading costs).
  *
  * <p>
  * The profit or loss over the provided {@link BarSeries series}.

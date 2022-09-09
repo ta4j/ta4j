@@ -30,8 +30,8 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Ratio Profit Loss Criterion = Average gross profit (with commissions) /
- * Average gross loss (with commissions)
+ * Ratio gross profit and loss criterion = Average gross profit (includes
+ * trading costs) / Average gross loss (includes trading costs).
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
