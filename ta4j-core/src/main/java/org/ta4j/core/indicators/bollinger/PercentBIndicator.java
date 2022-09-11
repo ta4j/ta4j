@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * %B indicator.
  * 
  * @see <a
- *      href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce>
+ *      href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce</a>
  */
 public class PercentBIndicator extends CachedIndicator<Num> {
