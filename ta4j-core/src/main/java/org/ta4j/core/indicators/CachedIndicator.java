@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -83,7 +83,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // (e.g. simple computation of the value)
             // --> Calculating the value
             T result = calculate(index);
-            log.trace("{}({}): {}", this, index, result);
+            if (log.isTraceEnabled()) {
+                log.trace("{}({}): {}", this, index, result);
+            }
             return result;
         }
 
@@ -95,8 +97,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         T result;
         if (index < removedBarsCount) {
             // Result already removed from cache
-            log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
-                    getClass().getSimpleName(), index, removedBarsCount);
+            if (log.isTraceEnabled()) {
+                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
+                        getClass().getSimpleName(), index, removedBarsCount);
+            }
             increaseLengthTo(removedBarsCount, maximumResultCount);
             highestResultIndex = removedBarsCount;
             result = results.get(0);
@@ -130,7 +134,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
         }
-        log.trace("{}({}): {}", this, index, result);
+        if (log.isTraceEnabled()) {
+            log.trace("{}({}): {}", this, index, result);
+        }
         return result;
     }
 
@@ -168,8 +174,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (resultCount > maximumResultCount) {
             // Removing old results
             final int nbResultsToRemove = resultCount - maximumResultCount;
-            for (int i = 0; i < nbResultsToRemove; i++) {
+            if (nbResultsToRemove == 1) {
                 results.remove(0);
+            } else {
+                results.subList(0, nbResultsToRemove).clear();
             }
         }
     }

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -71,7 +71,9 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void indicatorShouldRetrieveBarClosePrice() {
         Num result;
         for (int i = 0; i < 10; i++) {
-            result = barSeries.getBar(i).getHighPrice().plus(barSeries.getBar(i).getLowPrice())
+            result = barSeries.getBar(i)
+                    .getHighPrice()
+                    .plus(barSeries.getBar(i).getLowPrice())
                     .dividedBy(barSeries.numOf(2));
             assertEquals(average.getValue(i), result);
         }

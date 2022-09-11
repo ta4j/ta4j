@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -38,6 +38,14 @@ import org.ta4j.core.num.Num;
  * </ul>
  */
 public interface AnalysisCriterion {
+
+    /** Filter to differentiate between winning or losing positions. */
+    public enum PositionFilter {
+        /** Consider only winning positions. */
+        PROFIT,
+        /** Consider only losing positions. */
+        LOSS;
+    }
 
     /**
      * @param series   a bar series, not null

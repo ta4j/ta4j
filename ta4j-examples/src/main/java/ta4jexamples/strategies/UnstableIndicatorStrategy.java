@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -80,8 +80,9 @@ public class UnstableIndicatorStrategy {
 
     public static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
-        BarSeries series = new BaseBarSeriesBuilder().withBars(
-                closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0)).collect(Collectors.toList()))
+        BarSeries series = new BaseBarSeriesBuilder()
+                .withBars(closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0))
+                        .collect(Collectors.toList()))
                 .build();
 
         // Building the trading strategy

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -35,7 +35,10 @@ import java.util.function.Function;
  */
 public class DoubleNum implements Num {
 
-    private static final long serialVersionUID = -2611177221813615070L;
+    private static final DoubleNum ZERO = DoubleNum.valueOf(0);
+    private static final DoubleNum ONE = DoubleNum.valueOf(1);
+    private static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
+
     private final static double EPS = 0.00001; // precision
     private final double delegate;
 
@@ -64,7 +67,22 @@ public class DoubleNum implements Num {
     }
 
     public static DoubleNum valueOf(Number i) {
-        return new DoubleNum(Double.parseDouble(i.toString()));
+        return new DoubleNum(i.doubleValue());
+    }
+
+    @Override
+    public Num zero() {
+        return ZERO;
+    }
+
+    @Override
+    public Num one() {
+        return ONE;
+    }
+
+    @Override
+    public Num hundred() {
+        return HUNDRED;
     }
 
     @Override

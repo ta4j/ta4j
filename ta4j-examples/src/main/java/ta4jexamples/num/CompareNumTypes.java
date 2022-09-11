@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -33,12 +33,12 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.CombineIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -53,12 +53,15 @@ public class CompareNumTypes {
 
     public static void main(String args[]) {
         BaseBarSeriesBuilder barSeriesBuilder = new BaseBarSeriesBuilder();
-        BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
+        BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ")
+                .withNumTypeOf(DoubleNum::valueOf)
                 .build();
-        BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32").withNumTypeOf(DecimalNum::valueOf)
+        BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32")
+                .withNumTypeOf(DecimalNum::valueOf)
                 .build();
         BarSeries seriesPH = barSeriesBuilder.withName("Sample Series DecimalNum 256")
-                .withNumTypeOf(number -> DecimalNum.valueOf(number.toString(), 256)).build();
+                .withNumTypeOf(number -> DecimalNum.valueOf(number.toString(), 256))
+                .build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();
         for (int i = 0; i < randoms.length; i++) {
@@ -82,7 +85,7 @@ public class CompareNumTypes {
         MACDIndicator macdIndicator = new MACDIndicator(rsi);
         EMAIndicator ema = new EMAIndicator(rsi, 12);
         EMAIndicator emaLong = new EMAIndicator(rsi, 26);
-        DifferenceIndicator macdIndicator2 = new DifferenceIndicator(ema, emaLong);
+        CombineIndicator macdIndicator2 = CombineIndicator.minus(ema, emaLong);
 
         Rule entry = new IsEqualRule(macdIndicator, macdIndicator2);
         Rule exit = new UnderIndicatorRule(new LowPriceIndicator(series), new HighPriceIndicator(series));

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,7 +30,7 @@
  * delegates (Double, {@link java.math.BigDecimal BigDecimal}, ...) for storage
  * and calculations in {@link org.ta4j.core.BarSeries BarSeries},
  * {@link org.ta4j.core.Bar Bars}, {@link org.ta4j.core.Indicator Indicators}
- * and {@link org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion
+ * and {@link org.ta4j.core.criteria.AbstractAnalysisCriterion
  * AnalysisCriterions}
  */
 package org.ta4j.core.num;

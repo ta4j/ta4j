@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -157,10 +157,15 @@ public final class BarSeriesUtils {
         for (int i = barSeries.getBeginIndex(); i <= barSeries.getEndIndex(); i++) {
             Bar bar = bars.get(i);
             Bar convertedBar = new ConvertibleBaseBarBuilder<Number>(conversionFunction::apply)
-                    .timePeriod(bar.getTimePeriod()).endTime(bar.getEndTime())
-                    .openPrice(bar.getOpenPrice().getDelegate()).highPrice(bar.getHighPrice().getDelegate())
-                    .lowPrice(bar.getLowPrice().getDelegate()).closePrice(bar.getClosePrice().getDelegate())
-                    .volume(bar.getVolume().getDelegate()).amount(bar.getAmount().getDelegate()).trades(bar.getTrades())
+                    .timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(bar.getOpenPrice().getDelegate())
+                    .highPrice(bar.getHighPrice().getDelegate())
+                    .lowPrice(bar.getLowPrice().getDelegate())
+                    .closePrice(bar.getClosePrice().getDelegate())
+                    .volume(bar.getVolume().getDelegate())
+                    .amount(bar.getAmount().getDelegate())
+                    .trades(bar.getTrades())
                     .build();
             convertedBars.add(convertedBar);
         }

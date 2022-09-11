@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -24,6 +24,7 @@
 package org.ta4j.core.aggregator;
 
 import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.ZoneId;
@@ -35,6 +36,7 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
@@ -91,29 +93,29 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         // bar 1 must have ohlcv (1, 6, 4, 9, 25)
         final Bar bar1 = bars.get(0);
         final Num num1 = bar1.getOpenPrice();
-        TestUtils.assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
-        TestUtils.assertNumEquals(num1.numOf(6), bar1.getHighPrice());
-        TestUtils.assertNumEquals(num1.numOf(4), bar1.getLowPrice());
-        TestUtils.assertNumEquals(num1.numOf(9), bar1.getClosePrice());
-        TestUtils.assertNumEquals(num1.numOf(33), bar1.getVolume());
+        assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
+        assertNumEquals(num1.numOf(6), bar1.getHighPrice());
+        assertNumEquals(num1.numOf(4), bar1.getLowPrice());
+        assertNumEquals(num1.numOf(9), bar1.getClosePrice());
+        assertNumEquals(num1.numOf(33), bar1.getVolume());
 
         // bar 2 must have ohlcv (6, 91, 4, 10, 260)
         final Bar bar2 = bars.get(1);
         final Num num2 = bar2.getOpenPrice();
-        TestUtils.assertNumEquals(num2.numOf(6), bar2.getOpenPrice());
-        TestUtils.assertNumEquals(num2.numOf(91), bar2.getHighPrice());
-        TestUtils.assertNumEquals(num2.numOf(4), bar2.getLowPrice());
-        TestUtils.assertNumEquals(num2.numOf(10), bar2.getClosePrice());
-        TestUtils.assertNumEquals(num2.numOf(260), bar2.getVolume());
+        assertNumEquals(num2.numOf(6), bar2.getOpenPrice());
+        assertNumEquals(num2.numOf(91), bar2.getHighPrice());
+        assertNumEquals(num2.numOf(4), bar2.getLowPrice());
+        assertNumEquals(num2.numOf(10), bar2.getClosePrice());
+        assertNumEquals(num2.numOf(260), bar2.getVolume());
 
         // bar 3 must have ohlcv (1d, 6d, 4d, 9d, 25)
         Bar bar3 = bars.get(2);
         Num num3 = bar3.getOpenPrice();
-        TestUtils.assertNumEquals(num3.numOf(4), bar3.getOpenPrice());
-        TestUtils.assertNumEquals(num3.numOf(991), bar3.getHighPrice());
-        TestUtils.assertNumEquals(num3.numOf(43), bar3.getLowPrice());
-        TestUtils.assertNumEquals(num3.numOf(10), bar3.getClosePrice());
-        TestUtils.assertNumEquals(num3.numOf(1010), bar3.getVolume());
+        assertNumEquals(num3.numOf(4), bar3.getOpenPrice());
+        assertNumEquals(num3.numOf(991), bar3.getHighPrice());
+        assertNumEquals(num3.numOf(43), bar3.getLowPrice());
+        assertNumEquals(num3.numOf(10), bar3.getClosePrice());
+        assertNumEquals(num3.numOf(1010), bar3.getVolume());
     }
 
     /**
@@ -130,11 +132,11 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         // bar 1 must have ohlcv (1, 91, 4, 10, 293)
         final Bar bar1 = bars.get(0);
         final Num num1 = bar1.getOpenPrice();
-        TestUtils.assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
-        TestUtils.assertNumEquals(num1.numOf(91), bar1.getHighPrice());
-        TestUtils.assertNumEquals(num1.numOf(4), bar1.getLowPrice());
-        TestUtils.assertNumEquals(num1.numOf(10), bar1.getClosePrice());
-        TestUtils.assertNumEquals(num1.numOf(293), bar1.getVolume());
+        assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
+        assertNumEquals(num1.numOf(91), bar1.getHighPrice());
+        assertNumEquals(num1.numOf(4), bar1.getLowPrice());
+        assertNumEquals(num1.numOf(10), bar1.getClosePrice());
+        assertNumEquals(num1.numOf(293), bar1.getVolume());
     }
 
     /**
@@ -148,6 +150,37 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
 
         // must be 2 bars
         assertEquals(2, bars.size());
+    }
+
+    @Test
+    public void testWithGapsInSeries() {
+        ZonedDateTime now = ZonedDateTime.now();
+        BarSeries barSeries = new BaseBarSeries();
+
+        barSeries.addBar(Duration.ofMinutes(1), now.plusMinutes(1), 1, 1, 1, 2, 1);
+        barSeries.addBar(Duration.ofMinutes(1), now.plusMinutes(2), 1, 1, 1, 3, 1);
+        barSeries.addBar(Duration.ofMinutes(1), now.plusMinutes(60), 1, 1, 1, 1, 1);
+
+        BarSeries aggregated2MinSeries = new BaseBarSeriesAggregator(
+                new DurationBarAggregator(Duration.ofMinutes(2), false)).aggregate(barSeries, "");
+        BarSeries aggregated4MinSeries = new BaseBarSeriesAggregator(
+                new DurationBarAggregator(Duration.ofMinutes(4), false)).aggregate(barSeries, "");
+
+        assertEquals(2, aggregated2MinSeries.getBarCount());
+        assertEquals(2, aggregated4MinSeries.getBarCount());
+
+        assertNumEquals(3, aggregated2MinSeries.getBar(0).getClosePrice());
+        assertNumEquals(3, aggregated4MinSeries.getBar(0).getClosePrice());
+
+        assertNumEquals(2, aggregated2MinSeries.getBar(0).getVolume());
+        assertNumEquals(2, aggregated4MinSeries.getBar(0).getVolume());
+
+        assertNumEquals(1, aggregated2MinSeries.getBar(1).getClosePrice());
+        assertNumEquals(1, aggregated4MinSeries.getBar(1).getClosePrice());
+
+        assertNumEquals(1, aggregated2MinSeries.getBar(1).getVolume());
+        assertNumEquals(1, aggregated4MinSeries.getBar(1).getVolume());
+
     }
 
 }

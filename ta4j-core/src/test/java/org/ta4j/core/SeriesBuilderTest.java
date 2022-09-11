@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -49,10 +49,14 @@ public class SeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries defaultSeries = seriesBuilder.build(); // build a new empty unnamed bar series
         BarSeries defaultSeriesName = seriesBuilder.withName("default").build(); // build a new empty bar series using
                                                                                  // BigDecimal as delegate
-        BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DoubleNum.class)
-                .withName("useDoubleNum").build();
-        BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100).withNumTypeOf(DecimalNum.class)
-                .withName("usePrecisionNum").build();
+        BarSeries doubleSeries = seriesBuilder.withMaxBarCount(100)
+                .withNumTypeOf(DoubleNum.class)
+                .withName("useDoubleNum")
+                .build();
+        BarSeries precisionSeries = seriesBuilder.withMaxBarCount(100)
+                .withNumTypeOf(DecimalNum.class)
+                .withName("usePrecisionNum")
+                .build();
 
         for (int i = 1000; i >= 0; i--) {
             defaultSeries.addBar(ZonedDateTime.now().minusSeconds(i), i, i, i, i, i);

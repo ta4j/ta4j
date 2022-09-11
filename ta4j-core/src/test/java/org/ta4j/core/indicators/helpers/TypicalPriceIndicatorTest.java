@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -56,7 +56,9 @@ public class TypicalPriceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void indicatorShouldRetrieveBarHighPrice() {
         for (int i = 0; i < 10; i++) {
             Bar bar = barSeries.getBar(i);
-            Num typicalPrice = bar.getHighPrice().plus(bar.getLowPrice()).plus(bar.getClosePrice())
+            Num typicalPrice = bar.getHighPrice()
+                    .plus(bar.getLowPrice())
+                    .plus(bar.getClosePrice())
                     .dividedBy(barSeries.numOf(3));
             assertEquals(typicalPrice, typicalPriceIndicator.getValue(i));
         }

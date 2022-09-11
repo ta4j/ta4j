@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -77,7 +77,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     @Test
     public void runOnWholeSeries() {
         BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager.setBarSeries(series);
+        manager = new BarSeriesManager(series);
         List<Position> allPositions = manager.run(strategy).getPositions();
         assertEquals(2, allPositions.size());
     }
@@ -85,7 +85,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     @Test
     public void runOnWholeSeriesWithAmount() {
         BarSeries series = new MockBarSeries(numFunction, 20d, 40d, 60d, 10d, 30d, 50d, 0d, 20d, 40d);
-        manager.setBarSeries(series);
+        manager = new BarSeriesManager(series);
         List<Position> allPositions = manager.run(strategy, TradeType.BUY, HUNDRED).getPositions();
 
         assertEquals(2, allPositions.size());
@@ -151,7 +151,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                         dateTime.withYear(2001), dateTime.withYear(2002), dateTime.withYear(2002),
                         dateTime.withYear(2002), dateTime.withYear(2003), dateTime.withYear(2004),
                         dateTime.withYear(2005) });
-        manager.setBarSeries(series);
+        manager = new BarSeriesManager(series);
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 

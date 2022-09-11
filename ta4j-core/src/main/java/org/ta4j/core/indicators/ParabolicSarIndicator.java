@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -99,7 +99,8 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         if (index == getBarSeries().getBeginIndex()) {
             return sar; // no trend detection possible for the first value
         } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection
-            currentTrend = getBarSeries().getBar(getBarSeries().getBeginIndex()).getClosePrice()
+            currentTrend = getBarSeries().getBar(getBarSeries().getBeginIndex())
+                    .getClosePrice()
                     .isLessThan(getBarSeries().getBar(index).getClosePrice());
             if (!currentTrend) { // down trend
                 sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index); // put the highest high value of

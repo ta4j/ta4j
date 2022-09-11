@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -27,8 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.cost.CostModel;
-import org.ta4j.core.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -239,9 +239,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public Trade getLastTrade(TradeType tradeType) {
-        if (TradeType.BUY.equals(tradeType) && !buyTrades.isEmpty()) {
+        if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
             return buyTrades.get(buyTrades.size() - 1);
-        } else if (TradeType.SELL.equals(tradeType) && !sellTrades.isEmpty()) {
+        } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
             return sellTrades.get(sellTrades.size() - 1);
         }
         return null;
@@ -264,7 +264,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     /**
-     * Records an trade and the corresponding position (if closed).
+     * Records a trade and the corresponding position (if closed).
      *
      * @param trade   the trade to be recorded
      * @param isEntry true if the trade is an entry, false otherwise (exit)
@@ -283,10 +283,10 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the new trade in trades list
         trades.add(trade);
-        if (TradeType.BUY.equals(trade.getType())) {
+        if (TradeType.BUY == trade.getType()) {
             // Storing the new trade in buy trades list
             buyTrades.add(trade);
-        } else if (TradeType.SELL.equals(trade.getType())) {
+        } else if (TradeType.SELL == trade.getType()) {
             // Storing the new trade in sell trades list
             sellTrades.add(trade);
         }
@@ -301,9 +301,10 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord: " + name != null ? name : "" + "\n");
+        sb.append("BaseTradingRecord: " + (name == null ? "" : name));
+        sb.append(System.lineSeparator());
         for (Trade trade : trades) {
-            sb.append(trade.toString()).append("\n");
+            sb.append(trade.toString()).append(System.lineSeparator());
         }
         return sb.toString();
     }

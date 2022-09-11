@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -46,9 +46,16 @@ public class BaseBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         final ZonedDateTime endTime = ZonedDateTime.of(2014, 6, 25, 1, 0, 0, 0, ZoneId.systemDefault());
         final Duration duration = Duration.between(beginTime, endTime);
 
-        final BaseBar bar = new BaseBarBuilder().timePeriod(duration).endTime(endTime).openPrice(numOf(101))
-                .highPrice(numOf(103)).lowPrice(numOf(100)).closePrice(numOf(102)).trades(4).volume(numOf(40))
-                .amount(numOf(4020)).build();
+        final BaseBar bar = new BaseBarBuilder().timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(numOf(101))
+                .highPrice(numOf(103))
+                .lowPrice(numOf(100))
+                .closePrice(numOf(102))
+                .trades(4)
+                .volume(numOf(40))
+                .amount(numOf(4020))
+                .build();
 
         assertEquals(duration, bar.getTimePeriod());
         assertEquals(beginTime, bar.getBeginTime());

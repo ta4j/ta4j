@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -36,7 +36,7 @@ public class PositionStatsReport {
 
     /**
      * Constructor.
-     * 
+     *
      * @param profitCount    the number of positions making a profit
      * @param lossCount      the number of positions making a loss
      * @param breakEvenCount the number of positions with a break even
@@ -58,5 +58,4 @@ public class PositionStatsReport {
     public Num getBreakEvenCount() {
         return breakEvenCount;
     }
-
 }

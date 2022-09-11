@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
+ * Copyright (c) 2017-2022 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -30,17 +30,36 @@ import org.ta4j.core.num.Num;
 /**
  * Average true range indicator.
  */
-public class ATRIndicator extends CachedIndicator<Num> {
+public class ATRIndicator extends AbstractIndicator<Num> {
 
+    private final TRIndicator trIndicator;
     private final MMAIndicator averageTrueRangeIndicator;
 
     public ATRIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(series), barCount);
+        this(new TRIndicator(series), barCount);
+    }
+
+    public ATRIndicator(TRIndicator tr, int barCount) {
+        super(tr.getBarSeries());
+        this.trIndicator = tr;
+        this.averageTrueRangeIndicator = new MMAIndicator(new TRIndicator(tr.getBarSeries()), barCount);
     }
 
     @Override
-    protected Num calculate(int index) {
+    public Num getValue(int index) {
         return averageTrueRangeIndicator.getValue(index);
+    }
+
+    public TRIndicator getTRIndicator() {
+        return trIndicator;
+    }
+
+    public int getBarCount() {
+        return averageTrueRangeIndicator.getBarCount();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " barCount: " + getBarCount();
     }
 }
