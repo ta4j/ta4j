@@ -29,84 +29,88 @@ import org.ta4j.core.num.Num;
 
 /**
  * Simple boolean transform indicator.
+ * 简单的布尔变换指標。
  *
- * Transforms any decimal indicator to a boolean indicator by using common
- * logical operators.
+ * Transforms any decimal indicator to a boolean indicator by using common logical operators.
+ * * 使用通用逻辑运算符将任何十进制指标转换为布尔指标。
  */
 public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Select the type for transformation.
+     * 选择转换类型。
      */
     public enum BooleanTransformType {
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.equals(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.equals(coefficient).
+         * 通过 indicator.equals(coefficient) 将小数指标转换为布尔指标。
          */
         equals,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isGreaterThan(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isGreaterThan(coefficient).
+         * 通过 indicator.isGreaterThan(coefficient) 将小数指标转换为布尔指标。
          */
         isGreaterThan,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isGreaterThanOrEqual(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isGreaterThanOrEqual(coefficient).
+         * 通过 indicator.isGreaterThanOrEqual(coefficient) 将小数指标转换为布尔指标。
          */
         isGreaterThanOrEqual,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isLessThan(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isLessThan(coefficient).
+         * 通过 indicator.isLessThan(coefficient) 将小数指标转换为布尔指标。
          */
         isLessThan,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isLessThanOrEqual(coefficient).
+         * Transforms the decimal indicator to a boolean indicator by indicator.isLessThanOrEqual(coefficient).
+         * 通过 indicator.isLessThanOrEqual(coefficient) 将十进制指标转换为布尔指标。
          */
         isLessThanOrEqual
     }
 
     /**
      * Select the type for transformation.
+     * 选择转换类型。
      */
     public enum BooleanTransformSimpleType {
         /**
          * Transforms the decimal indicator to a boolean indicator by indicator.isNaN().
+         * 通过 indicator.isNaN() 将十进制指标转换为布尔指标。
          */
         isNaN,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isNegative().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNegative().
+         * 通过indicator.isNegative() 将十进制指标转换为布尔指标。
          */
         isNegative,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isNegativeOrZero().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isNegativeOrZero().
+         * 通过indicator.isNegativeOrZero() 将十进制指标转换为布尔指标。
          */
         isNegativeOrZero,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isPositive().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isPositive().
+         * 通过 indicator.isPositive() 将小数指标转换为布尔指标。
          */
         isPositive,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isPositiveOrZero().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isPositiveOrZero().
+         * 通过indicator.isPositiveOrZero() 将十进制指标转换为布尔指标。
          */
         isPositiveOrZero,
 
         /**
-         * Transforms the decimal indicator to a boolean indicator by
-         * indicator.isZero().
+         * Transforms the decimal indicator to a boolean indicator by indicator.isZero().
+         * 通过indicator.isZero() 将十进制指标转换为布尔指标。
          */
         isZero
     }
@@ -120,8 +124,11 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      * Constructor.
      * 
      * @param indicator   the indicator
+     *                    指标
      * @param coefficient the value for transformation
+     *                    转型价值
      * @param type        the type of the transformation
+     *                    转换的类型
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, Num coefficient, BooleanTransformType type) {
         super(indicator);
@@ -134,7 +141,9 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
      * Constructor.
      * 
      * @param indicator the indicator
+     *                  指标
      * @param type      the type of the transformation
+     *                  转换的类型
      */
     public BooleanTransformIndicator(Indicator<Num> indicator, BooleanTransformSimpleType type) {
         super(indicator);
@@ -189,8 +198,8 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
     @Override
     public String toString() {
         if (type != null) {
-            return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";
+            return getClass().getSimpleName() + " Coefficient 系数: " + coefficient + " Transform 转换(" + type.name() + ")";
         }
-        return getClass().getSimpleName() + "Transform(" + simpleType.name() + ")";
+        return getClass().getSimpleName() + "Transform 转换(" + simpleType.name() + ")";
     }
 }

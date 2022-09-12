@@ -32,9 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * A linear transaction cost criterion.
+ * 线性交易成本标准。
  *
- * Calculates the transaction cost according to an initial traded amount and a
- * linear function defined by a and b (a * x + b).
+ * Calculates the transaction cost according to an initial traded amount and a linear function defined by a and b (a * x + b).
+ * * 根据初始交易金额和由 a 和 b (a * x + b) 定义的线性函数计算交易成本。
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
@@ -47,10 +48,12 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor. (a * x)
+     * * 构造函数。 (a * x)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade
-     *                      trade})
+     *                      * @param initialAmount 初始交易金额
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade  trade})
+     *                      * @param a a 系数（例如，每 {@link Trade trade} 0.5% 为 0.005）
      */
     public LinearTransactionCostCriterion(double initialAmount, double a) {
         this(initialAmount, a, 0);
@@ -58,12 +61,14 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor. (a * x + b)
+     * * 构造函数。 (a * x + b)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade
-     *                      trade})
-     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Trade
-     *                      trade})
+     *                      * @param initialAmount 初始交易金额
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade    trade})
+     *                      * @param a a 系数（例如，每 {@link Trade trade} 0.5% 为 0.005）
+     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Trade   trade})
+     *                      @param b b 常数（例如，每 {@link Trade trade} 0.2 美元为 0.2）
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
         this.initialAmount = initialAmount;
@@ -86,15 +91,20 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             Num tradeCost = getTradeCost(series, position, tradedAmount);
             totalCosts = totalCosts.plus(tradeCost);
             // To calculate the new traded amount:
+            // 计算新的交易量：
             // - Remove the cost of the *first* trade
+            // - 移除 *first* 交易的成本
             // - Multiply by the profit ratio
+            // - 乘以利润率
             // - Remove the cost of the *second* trade
+            // - 移除*第二*交易的成本
             tradedAmount = tradedAmount.minus(getTradeCost(position.getEntry(), tradedAmount));
             tradedAmount = tradedAmount.multipliedBy(grossReturn.calculate(series, position));
             tradedAmount = tradedAmount.minus(getTradeCost(position.getExit(), tradedAmount));
         }
 
         // Special case: if the current position is open
+        // 特殊情况：如果当前持仓未平仓
         Position currentPosition = tradingRecord.getCurrentPosition();
         if (currentPosition.isOpened()) {
             totalCosts = totalCosts.plus(getTradeCost(currentPosition.getEntry(), tradedAmount));
@@ -110,8 +120,11 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * @param trade        the trade
+     *                     交易
      * @param tradedAmount the amount of the trade
+     *                     交易金额
      * @return the absolute trade cost
+     * @return 绝对交易成本
      */
     private Num getTradeCost(Trade trade, Num tradedAmount) {
         Num tradeCost = tradedAmount.numOf(0);
@@ -123,9 +136,13 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     /**
      * @param series        the bar series
+     *                      bar系列
      * @param position      the position
+     *                      位置
      * @param initialAmount the initially traded amount for the position
+     *                      头寸的初始交易金额
      * @return the absolute total cost of all trades in the position
+     * * @return 持仓所有交易的绝对总成本
      */
     private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
         Num totalTradeCost = series.numOf(0);
@@ -134,8 +151,11 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
                 totalTradeCost = getTradeCost(position.getEntry(), initialAmount);
                 if (position.getExit() != null) {
                     // To calculate the new traded amount:
+                    // 计算新的交易量：
                     // - Remove the cost of the first trade
+                    // - 删除第一笔交易的成本
                     // - Multiply by the profit ratio
+                    // - 乘以利润率
                     Num newTradedAmount = initialAmount.minus(totalTradeCost)
                             .multipliedBy(grossReturn.calculate(series, position));
                     totalTradeCost = totalTradeCost.plus(getTradeCost(position.getExit(), newTradedAmount));

@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Accumulation-distribution indicator.
+ * 累积分布指标。
  */
 public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -47,9 +48,11 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
         }
 
         // Calculating the money flow multiplier
+        // 计算资金流量乘数
         Num moneyFlowMultiplier = clvIndicator.getValue(index);
 
         // Calculating the money flow volume
+        // 计算资金流量
         Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
 
         return moneyFlowVolume.plus(getValue(index - 1));

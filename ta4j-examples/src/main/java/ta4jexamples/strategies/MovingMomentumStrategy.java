@@ -43,6 +43,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * Moving momentum strategy.
+ * 动量策略。
  *
  * @see <a href=
  *      "http://stockcharts.com/help/doku.php?id=chart_school:trading_strategies:moving_momentum">
@@ -52,19 +53,21 @@ public class MovingMomentumStrategy {
 
     /**
      * @param series the bar series
+     *               酒吧系列
      * @return the moving momentum strategy
+     * @return 动量策略
      */
     public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
-            throw new IllegalArgumentException("Series cannot be null");
+            throw new IllegalArgumentException("Series cannot be null 系列不能为空");
         }
 
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
 
-        // The bias is bullish when the shorter-moving average moves above the longer
-        // moving average.
-        // The bias is bearish when the shorter-moving average moves below the longer
-        // moving average.
+        // The bias is bullish when the shorter-moving average moves above the longer moving average.
+        // 当较短的移动平均线高于较长的移动平均线时，偏向是看涨的。
+        // The bias is bearish when the shorter-moving average moves below the longer moving average.
+        // 当较短的移动平均线低于较长的移动平均线时，偏向是看跌的。
         EMAIndicator shortEma = new EMAIndicator(closePrice, 9);
         EMAIndicator longEma = new EMAIndicator(closePrice, 26);
 
@@ -74,14 +77,16 @@ public class MovingMomentumStrategy {
         EMAIndicator emaMacd = new EMAIndicator(macd, 18);
 
         // Entry rule
-        Rule entryRule = new OverIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedDownIndicatorRule(stochasticOscillK, 20)) // Signal 1
+        //进入规则
+        Rule entryRule = new OverIndicatorRule(shortEma, longEma) // Trend // 趋势
+                .and(new CrossedDownIndicatorRule(stochasticOscillK, 20)) // Signal 1 // 信号 1
                 .and(new OverIndicatorRule(macd, emaMacd)); // Signal 2
 
         // Exit rule
-        Rule exitRule = new UnderIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedUpIndicatorRule(stochasticOscillK, 80)) // Signal 1
-                .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2
+        // 退出规则
+        Rule exitRule = new UnderIndicatorRule(shortEma, longEma) // Trend / 趋势
+                .and(new CrossedUpIndicatorRule(stochasticOscillK, 80)) // Signal 1 // 信号 1
+                .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2 // 信号 2
 
         return new BaseStrategy(entryRule, exitRule);
     }
@@ -89,18 +94,22 @@ public class MovingMomentumStrategy {
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        System.out.println("Number of positions for the strategy 策略的职位数: " + tradingRecord.getPositionCount());
 
         // Analysis
+        // 分析
         System.out.println(
-                "Total profit for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+                "Total profit for the strategy 策略的总利润: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 }

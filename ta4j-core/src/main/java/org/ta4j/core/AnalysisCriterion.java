@@ -30,34 +30,50 @@ import org.ta4j.core.num.Num;
 
 /**
  * An analysis criterion.
+ * 分析标准。
  *
  * Can be used to:
+ * * 可用于：
  * <ul>
  * <li>Analyze the performance of a {@link Strategy strategy}
+ * * <li>分析 {@link 策略策略} 的表现
  * <li>Compare several {@link Strategy strategies} together
+ * * <li>比较几个{@link Strategy strategy}
  * </ul>
  */
 public interface AnalysisCriterion {
 
     /**
      * @param series   a bar series, not null
+     *                 一个酒吧系列，不为空
      * @param position a position, not null
+     *                 一个位置，不为空
      * @return the criterion value for the position
+     *              位置的标准值
      */
     Num calculate(BarSeries series, Position position);
 
     /**
      * @param series        a bar series, not null
+     *                      一个酒吧系列，不为空
+     *
      * @param tradingRecord a trading record, not null
+     *                      交易记录，不为空
+     *
      * @return the criterion value for the positions
+     *          位置的标准值
      */
     Num calculate(BarSeries series, TradingRecord tradingRecord);
 
     /**
      * @param manager    the bar series manager with entry type of BUY
+     *                   条目类型为 BUY 的酒吧系列经理
+     *
      * @param strategies a list of strategies
-     * @return the best strategy (among the provided ones) according to the
-     *         criterion
+     *                   策略列表
+     *
+     * @return the best strategy (among the provided ones) according to the  criterion
+     * * @return 根据标准返回最佳策略（在提供的策略中）
      */
     default Strategy chooseBest(BarSeriesManager manager, List<Strategy> strategies) {
         return chooseBest(manager, TradeType.BUY, strategies);
@@ -65,11 +81,15 @@ public interface AnalysisCriterion {
 
     /**
      * @param manager    the bar series manager
-     * @param tradeType  the entry type (BUY or SELL) of the first trade in the
-     *                   trading session
+     *                   酒吧系列经理
+     *
+     * @param tradeType  the entry type (BUY or SELL) of the first trade in the  trading session
+     *                   交易时段内第一笔交易的入场类型（买入或卖出）
+     *
      * @param strategies a list of strategies
-     * @return the best strategy (among the provided ones) according to the
-     *         criterion
+     *                   策略列表
+     * @return the best strategy (among the provided ones) according to the     criterion
+     * @return 根据标准返回最佳策略（在提供的策略中）
      */
     default Strategy chooseBest(BarSeriesManager manager, TradeType tradeType, List<Strategy> strategies) {
 
@@ -91,12 +111,11 @@ public interface AnalysisCriterion {
 
     /**
      * @param criterionValue1 the first value
-     * @param criterionValue2
+     *                        第一个值
+     * @param criterionValue2 the second value 第二个值
      * 
-     * 
-     *                        the second value
-     * @return true if the first value is better than (according to the criterion)
-     *         the second one, false otherwise
+     * @return true if the first value is better than (according to the criterion)  the second one, false otherwise
+     * * @return 如果第一个值优于（根据标准）第二个值，则返回 true，否则返回 false
      */
     boolean betterThan(Num criterionValue1, Num criterionValue2);
 }

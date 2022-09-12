@@ -31,9 +31,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Profit and loss criterion (absolute PnL) (without commissions).
+ * 损益标准（绝对 PnL）（不含佣金）。
  *
  * <p>
  * The profit or loss over the provided {@link BarSeries series}.
+ * 提供的 {@link BarSeries series} 的损益。
  */
 public class ProfitLossCriterion extends AbstractAnalysisCriterion {
 

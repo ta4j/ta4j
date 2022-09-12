@@ -32,9 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Doji indicator.
+ * 十字线 /十字星 /无实体线 指标。
  *
- * A candle/bar is considered Doji if its body height is lower than the average
- * multiplied by a factor.
+ * A candle/bar is considered Doji if its body height is lower than the average multiplied by a factor.
+ * * 如果烛身高度低于平均值乘以一个因子，则它被视为十字星。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
@@ -44,10 +45,12 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Body height
+     * 身高
      */
     private final Indicator<Num> bodyHeightInd;
     /**
      * Average body height
+     * 平均身高
      */
     private final SMAIndicator averageBodyHeightInd;
 
@@ -57,9 +60,11 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      * Constructor.
      *
      * @param series     the bar series
-     * @param barCount   the number of bars used to calculate the average body
-     *                   height
+     *                  bar 系列
+     * @param barCount   the number of bars used to calculate the average body  height
+     *                   用于计算平均身高的条数
      * @param bodyFactor the factor used when checking if a candle is Doji
+     *                   检查蜡烛是否为十字星时使用的因素
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);

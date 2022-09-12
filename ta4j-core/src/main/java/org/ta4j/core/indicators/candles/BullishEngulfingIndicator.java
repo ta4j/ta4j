@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Bullish engulfing pattern indicator.
+ * 看涨吞没形态指标。
  *
  * @see <a href=
  *      "http://www.investopedia.com/terms/b/bullishengulfingpattern.asp">
@@ -50,6 +51,7 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
     protected Boolean calculate(int index) {
         if (index < 1) {
             // Engulfing is a 2-candle pattern
+            // 吞没是一个 2 蜡烛形态
             return false;
         }
         Bar prevBar = getBarSeries().getBar(index - 1);

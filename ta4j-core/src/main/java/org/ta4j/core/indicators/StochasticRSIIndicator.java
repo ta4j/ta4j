@@ -32,8 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Stochastic RSI Indicator.
+ * 随机 RSI 指标。
  * 
  * Stoch RSI = (RSI - MinimumRSIn) / (MaximumRSIn - MinimumRSIn)
+ * 随机 RSI = (RSI - 最小 RSIn) / (最大 RAIn - 最小 RAIn)
  */
 public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
@@ -42,11 +44,11 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     private final HighestValueIndicator maxRsi;
 
     /**
-     * Constructor. In most cases, this should be used to avoid confusion over what
-     * Indicator parameters should be used.
+     * Constructor. In most cases, this should be used to avoid confusion over what Indicator parameters should be used.
+     * * 构造函数。 在大多数情况下，这应该用来避免混淆应该使用哪些指标参数。
      * 
-     * @param series   the series
-     * @param barCount the time frame
+     * @param series   the series 序列
+     * @param barCount the time frame 時間範圍
      */
     public StochasticRSIIndicator(BarSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
@@ -56,7 +58,8 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param indicator the Indicator, in practice is always a ClosePriceIndicator.
-     * @param barCount  the time frame
+     *                  指标，在实践中始终是 ClosePriceIndicator。
+     * @param barCount  the time frame  時間範圍
      */
     public StochasticRSIIndicator(Indicator<Num> indicator, int barCount) {
         this(new RSIIndicator(indicator, barCount), barCount);
@@ -65,8 +68,8 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param rsiIndicator the rsi indicator
-     * @param barCount     the time frame
+     * @param rsiIndicator the rsi indicator  rsi 指标
+     * @param barCount     the time frame 時間指標
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
         super(rsiIndicator);

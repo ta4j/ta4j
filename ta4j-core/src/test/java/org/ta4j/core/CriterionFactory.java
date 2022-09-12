@@ -28,9 +28,12 @@ public interface CriterionFactory {
 
     /**
      * Applies parameters to a CriterionFactory and returns the AnalysisCriterion.
-     * 
+     * * 将参数应用于 CriterionFactory 并返回 AnalysisCriterion。
+     *
      * @param params criteria parameters
+     *               标准参数
      * @return AnalysisCriterion with the parameters applied
+     * * @return AnalysisCriterion 应用了参数
      */
     AnalysisCriterion getCriterion(Object... params);
 

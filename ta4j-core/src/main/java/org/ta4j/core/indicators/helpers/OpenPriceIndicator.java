@@ -28,6 +28,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Open price indicator.
+ * 打开价格指标。
  */
 public class OpenPriceIndicator extends PriceIndicator {
 

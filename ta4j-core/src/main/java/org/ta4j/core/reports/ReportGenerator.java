@@ -29,18 +29,24 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * Generic interface for generating trading reports
+ * * 生成交易报告的通用接口
  *
  * @param <T> type of report to be generated
+ *           * @param <T> 要生成的报告类型
  */
 public interface ReportGenerator<T> {
 
     /**
      * Generate report
+     * 生成报告
      *
-     * @param tradingRecord the trading record which is a source to generate report,
-     *                      not null
+     * @param tradingRecord the trading record which is a source to generate report, not null
+     *                      作为生成报告来源的交易记录，不为空
      * @param series        the bar series, not null
+     *                      酒吧系列，不为空
+     *
      * @return generated report
+     *                  @return 生成的报告
      */
     T generate(Strategy strategy, TradingRecord tradingRecord, BarSeries series);
 }

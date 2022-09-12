@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Typical price indicator.
+ * 典型的价格指标。
  */
 public class TypicalPriceIndicator extends CachedIndicator<Num> {
 

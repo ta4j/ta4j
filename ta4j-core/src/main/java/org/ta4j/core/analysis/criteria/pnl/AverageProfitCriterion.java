@@ -32,6 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average gross profit (with commissions).
+ * 平均毛利润（含佣金）。
  */
 public class AverageProfitCriterion extends AbstractAnalysisCriterion {
 

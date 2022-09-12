@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Chaikin Oscillator.
+ * 柴金振荡器。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_oscillator">
@@ -44,8 +45,11 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series        the {@link BarSeries}
+     *                      {@link BarSeries}
      * @param shortBarCount (usually 3)
+     *                      （通常是 3 个）
      * @param longBarCount  (usually 10)
+     *                      （通常为 10 个）
      */
     public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
         super(series);
@@ -57,6 +61,7 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series the {@link BarSeries}
+     *               {@link BarSeries}
      */
     public ChaikinOscillatorIndicator(BarSeries series) {
         this(series, 3, 10);

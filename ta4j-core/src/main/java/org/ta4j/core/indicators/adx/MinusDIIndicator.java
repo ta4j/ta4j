@@ -32,6 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * -DI indicator. Part of the Directional Movement System
+ * * -DI 指标。 定向运动系统的一部分
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">

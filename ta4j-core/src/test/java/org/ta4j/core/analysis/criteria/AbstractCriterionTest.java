@@ -45,8 +45,8 @@ public abstract class AbstractCriterionTest {
     /**
      * Constructor.
      *
-     * @param factory CriterionFactory for building an AnalysisCriterion given
-     *                parameters
+     * @param factory CriterionFactory for building an AnalysisCriterion given  parameters
+     *                @param factory CriterionFactory 用于构建 AnalysisCriterion 给定参数
      */
     public AbstractCriterionTest(CriterionFactory factory, Function<Number, Num> numFunction) {
         this.factory = factory;
@@ -60,9 +60,12 @@ public abstract class AbstractCriterionTest {
 
     /**
      * Generates an AnalysisCriterion given criterion parameters.
+     * * 生成一个 AnalysisCriterion 给定的标准参数。
      *
      * @param params criterion parameters
+     *               标准参数
      * @return AnalysisCriterion given parameters
+     * @return AnalysisCriterion 给定参数
      */
     public AnalysisCriterion getCriterion(Object... params) {
         return factory.getCriterion(params);

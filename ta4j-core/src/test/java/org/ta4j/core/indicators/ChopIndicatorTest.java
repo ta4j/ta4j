@@ -52,10 +52,11 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     /**
      * this will assert that choppiness is high if market price is not moving
+     * * 如果市场价格没有变动，这将断言波动性很高
      */
     @Test
     public void testChoppy() {
-        series = BarSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
+        series = BarSeriesBuilder.withName("low volatility series 低波动系列").withNumTypeOf(numFunction).build();
         for (int i = 0; i < 50; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
             series.addBar(date, 21.5, 21.5 + 1, 21.5 - 1, 21.5);
@@ -66,12 +67,12 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     /**
-     * this will assert that choppiness is low if market price is trending
-     * significantly
+     * this will assert that choppiness is low if market price is trending significantly
+     * * 如果市场价格趋势显着，则表明波动性较低
      */
     @Test
     public void testTradeableTrend() {
-        series = BarSeriesBuilder.withName("low volatility series").withNumTypeOf(numFunction).build();
+        series = BarSeriesBuilder.withName("low volatility series 低波动系列").withNumTypeOf(numFunction).build();
         float value = 21.5f;
         for (int i = 0; i < 50; i++) {
             ZonedDateTime date = ZonedDateTime.now().minusSeconds(100000 - i);
@@ -84,5 +85,6 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     // TODO: this test class needs better cases
+    // TODO: 这个测试类需要更好的用例
 
 }

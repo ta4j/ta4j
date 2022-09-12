@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Acceleration-deceleration indicator.
+ * * 加减速指示器。
  */
 public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
 

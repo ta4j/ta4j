@@ -94,8 +94,8 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
     }
 
     /**
-     * This bar aggregator created only for test purposes is returning first and
-     * last bar.
+     * This bar aggregator created only for test purposes is returning first and last bar.
+     * * 仅为测试目的创建的此条聚合器返回第一个和最后一个条。
      */
     private static class BarAggregatorForTest implements BarAggregator {
         @Override

@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Aroon up indicator.
+ * * 阿隆向上指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
@@ -47,9 +48,9 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param highPriceIndicator the indicator for the high price (default
-     *                           {@link HighPriceIndicator})
-     * @param barCount           the time frame
+     * @param highPriceIndicator the indicator for the high price (default  {@link HighPriceIndicator})
+     *                           * @param highPriceIndicator 高价指标（默认 {@link HighPriceIndicator}）
+     * @param barCount           the time frame 時間範圍
      */
     public AroonUpIndicator(Indicator<Num> highPriceIndicator, int barCount) {
         super(highPriceIndicator);
@@ -57,14 +58,18 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         this.highPriceIndicator = highPriceIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
+        // + 1 循环中最后一次可能的迭代需要
         this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);
     }
 
     /**
      * Default Constructor that is using the high price
+     * 使用高价的默认构造函数
      *
      * @param series   the bar series
+     *                 酒吧系列
      * @param barCount the time frame
+     *                 时间范围
      */
     public AroonUpIndicator(BarSeries series, int barCount) {
         this(new HighPriceIndicator(series), barCount);
@@ -76,6 +81,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the highest close price
+        // 获取自最高收盘价以来的柱数
         int endIndex = Math.max(0, index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {

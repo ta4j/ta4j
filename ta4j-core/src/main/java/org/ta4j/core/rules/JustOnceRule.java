@@ -28,8 +28,10 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A one-shot rule.
+ * 一次性规则。
  *
  * Satisfied the first time it's checked then never again.
+ * 第一次检查满意，以后再也不满意了。
  */
 public class JustOnceRule extends AbstractRule {
 
@@ -40,8 +42,10 @@ public class JustOnceRule extends AbstractRule {
      * Constructor.
      *
      * Satisfied the first time the inner rule is satisfied then never again.
+     * * 第一次满足内在规则，然后再也不会满足。
      *
      * @param rule the rule that should be satisfied only the first time
+     *             * @param rule 应该只在第一次满足的规则
      */
     public JustOnceRule(Rule rule) {
         this.rule = rule;
@@ -51,6 +55,7 @@ public class JustOnceRule extends AbstractRule {
      * Constructor.
      *
      * Satisfied the first time it's checked then never again.
+     * *第一次检查时满意，以后再也不满意了。
      */
     public JustOnceRule() {
         this.rule = null;

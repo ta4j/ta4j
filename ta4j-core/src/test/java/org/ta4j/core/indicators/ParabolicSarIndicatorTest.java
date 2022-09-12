@@ -73,15 +73,15 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         assertEquals("NaN", sar.getValue(0).toString());
         assertNumEquals(74.64, sar.getValue(1));
-        assertNumEquals(74.64, sar.getValue(2)); // start with up trend
-        assertNumEquals(76.2699, sar.getValue(3)); // switch to downtrend
-        assertNumEquals(76.234502000000006773916538804770, sar.getValue(4)); // hold trend...
+        assertNumEquals(74.64, sar.getValue(2)); // start with up trend // 从上升趋势开始
+        assertNumEquals(76.2699, sar.getValue(3)); // switch to downtrend  // 切换到下降趋势
+        assertNumEquals(76.234502000000006773916538804770, sar.getValue(4)); // hold trend...  // 保持趋势...
         assertNumEquals(76.19981196, sar.getValue(5));
         assertNumEquals(76.11221948160001, sar.getValue(6));
         assertNumEquals(75.958246312704, sar.getValue(7));
         assertNumEquals(75.69918660768768, sar.getValue(8));
-        assertNumEquals(75.46085167907266, sar.getValue(9)); // switch to up trend
-        assertNumEquals(72.72, sar.getValue(10));// hold trend
+        assertNumEquals(75.46085167907266, sar.getValue(9)); // switch to up trend  // 切换到上升趋势
+        assertNumEquals(72.72, sar.getValue(10));// hold trend  // 保持趋势
         assertNumEquals(72.8022, sar.getValue(11));
         assertNumEquals(72.964112, sar.getValue(12));
         assertNumEquals(73.20386528, sar.getValue(13));
@@ -97,17 +97,18 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void startWithDownAndUpTrendTest() {
         List<Bar> bars = new ArrayList<Bar>();
-        bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction)); // The first daily candle of BTCUSDT in
-                                                                                // the Binance cryptocurrency exchange.
-                                                                                // 17 Aug 2017
-        bars.add(new MockBar(4285.08, 4108.37, 4371.52, 3938.77, numFunction)); // starting with down trend
-        bars.add(new MockBar(4108.37, 4139.98, 4184.69, 3850.00, numFunction)); // hold trend...
+        // The first daily candle of BTCUSDT in the Binance cryptocurrency exchange. 17 Aug 2017
+        // BTCUSDT 在币安加密货币交易所的每日第一根蜡烛。 2017 年 8 月 17 日
+        bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction));
+
+        bars.add(new MockBar(4285.08, 4108.37, 4371.52, 3938.77, numFunction)); // starting with down trend // 从下降趋势开始
+        bars.add(new MockBar(4108.37, 4139.98, 4184.69, 3850.00, numFunction)); // hold trend...  // 保持趋势...
         bars.add(new MockBar(4120.98, 4086.29, 4211.08, 4032.62, numFunction));
         bars.add(new MockBar(4069.13, 4016.00, 4119.62, 3911.79, numFunction));
         bars.add(new MockBar(4016.00, 4040.00, 4104.82, 3400.00, numFunction));
         bars.add(new MockBar(4040.00, 4114.01, 4265.80, 4013.89, numFunction));
-        bars.add(new MockBar(4147.00, 4316.01, 4371.68, 4085.01, numFunction)); // switch to up trend
-        bars.add(new MockBar(4316.01, 4280.68, 4453.91, 4247.48, numFunction)); // hold trend
+        bars.add(new MockBar(4147.00, 4316.01, 4371.68, 4085.01, numFunction)); // switch to up trend  // 切换到上升趋势
+        bars.add(new MockBar(4316.01, 4280.68, 4453.91, 4247.48, numFunction)); // hold trend  // 保持趋势
         bars.add(new MockBar(4280.71, 4337.44, 4367.00, 4212.41, numFunction));
 
         ParabolicSarIndicator sar = new ParabolicSarIndicator(new MockBarSeries(bars));

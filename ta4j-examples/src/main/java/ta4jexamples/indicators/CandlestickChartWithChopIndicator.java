@@ -56,6 +56,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a traditional candlestick chart.
+ * * 本课程构建传统烛台图。
  */
 public class CandlestickChartWithChopIndicator {
     private static final int CHOP_INDICATOR_TIMEFRAME = 14;
@@ -74,9 +75,11 @@ public class CandlestickChartWithChopIndicator {
 
     /**
      * Builds a JFreeChart OHLC dataset from a ta4j bar series.
+     * * 从 ta4j bar 系列构建 JFreeChart OHLC 数据集。
      *
-     * @param series a bar series
+     * @param series a bar series 酒吧系列
      * @return an Open-High-Low-Close dataset
+     * * @return 一个开-高-低-关数据集
      */
     private static OHLCDataset createOHLCDataset(BarSeries series) {
         final int nbBars = series.getBarCount();
@@ -103,9 +106,12 @@ public class CandlestickChartWithChopIndicator {
 
     /**
      * Builds an additional JFreeChart dataset from a ta4j bar series.
+     *      * Builds an additional JFreeChart dataset from a ta4j bar series.
      *
      * @param series a bar series
+     *               * @param series 一个条形系列
      * @return an additional dataset
+     * * @return 一个额外的数据集
      */
     private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
@@ -137,6 +143,7 @@ public class CandlestickChartWithChopIndicator {
 
     /**
      * Displays a chart in a frame.
+     * * 在框架中显示图表。
      *
      * @param ohlcDataset
      * @param xyDataset
@@ -145,30 +152,32 @@ public class CandlestickChartWithChopIndicator {
     private static void displayChart(XYDataset ohlcDataset, XYDataset xyDataset, XYDataset chopSeries) {
         /*
          * Create the chart
+         * * 创建图表
          */
         CandlestickRenderer renderer = new CandlestickRenderer();
         XYPlot pricePlot = new XYPlot(ohlcDataset, xAxis, new NumberAxis("Price"), renderer);
         renderer.setAutoWidthMethod(CandlestickRenderer.WIDTHMETHOD_SMALLEST);
         // volume dataset
+        // 体积数据集
         pricePlot.setDataset(VOLUME_DATASET_INDEX, xyDataset);
         pricePlot.mapDatasetToRangeAxis(VOLUME_DATASET_INDEX, 0);
         // plot.setDomainAxis( xAxis );
         XYLineAndShapeRenderer renderer2 = new XYLineAndShapeRenderer(true, false);
         renderer2.setSeriesPaint(VOLUME_DATASET_INDEX, Color.blue);
         pricePlot.setRenderer(VOLUME_DATASET_INDEX, renderer2);
-        // Misc
+        // Misc // 杂项
         pricePlot.setRangeGridlinePaint(Color.lightGray);
         pricePlot.setBackgroundPaint(Color.white);
         NumberAxis numberAxis = (NumberAxis) pricePlot.getRangeAxis();
         pricePlot.setDatasetRenderingOrder(DatasetRenderingOrder.FORWARD);
         renderer.setAutoWidthMethod(CandlestickRenderer.WIDTHMETHOD_SMALLEST);
-        // Misc
+        // Misc // 杂项
         pricePlot.setRangeGridlinePaint(Color.lightGray);
         pricePlot.setBackgroundPaint(Color.white);
         numberAxis.setAutoRangeIncludesZero(false);
         pricePlot.setDatasetRenderingOrder(DatasetRenderingOrder.FORWARD);
-        // secondary study plot
-        indicatorXYPlot = new XYPlot( /* null, xAxis, yAxis, renderer */);
+        // secondary study plot // 二次研究图
+        indicatorXYPlot = new XYPlot( /* null, xAxis, yAxis, renderer 空，xAxis，yAxis，渲染器 */);
         indicatorXYPlot.setDataset(chopSeries);
         indicatorXYPlot.setRangeAxis(0, new NumberAxis(""));
         indicatorXYPlot.setRenderer(0, new XYLineAndShapeRenderer());
@@ -177,7 +186,8 @@ public class CandlestickChartWithChopIndicator {
         indicatorXYPlot.setRangeAxis(0, yIndicatorAxis);
 
         // combinedPlot
-        combinedPlot = new CombinedDomainXYPlot(xAxis); // DateAxis
+        // 组合图
+        combinedPlot = new CombinedDomainXYPlot(xAxis); // DateAxis  // 日期轴
         combinedPlot.setGap(10.0);
         // combinedPlot.setDomainAxis( xAxis );
         combinedPlot.setBackgroundPaint(Color.LIGHT_GRAY);
@@ -188,33 +198,37 @@ public class CandlestickChartWithChopIndicator {
         combinedPlot.add(indicatorXYPlot, 30);
 
         // Now create the chart that contains the combinedPlot
-        combinedChart = new JFreeChart("Bitstamp BTC price with Chop indicator", null, combinedPlot, true);
+        // 现在创建包含组合图的图表
+        combinedChart = new JFreeChart("Bitstamp BTC price with Chop indicator 带有 Chop 指标的 Bitstamp BTC 价格", null, combinedPlot, true);
         combinedChart.setBackgroundPaint(Color.LIGHT_GRAY);
 
         // combinedChartPanel to contain combinedChart
+        // combineChartPanel 包含 combineChart
         combinedChartPanel = new ChartPanel(combinedChart);
         combinedChartPanel.setLayout(new GridLayout(0, 1));
         combinedChartPanel.setBackground(Color.LIGHT_GRAY);
         combinedChartPanel.setPreferredSize(new java.awt.Dimension(740, 300));
 
         // Application frame
-        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Candlestick chart");
+        // 应用框架
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Candlestick chart Ta4j 示例 - 烛台图");
         frame.setContentPane(combinedChartPanel);
         frame.pack();
         RefineryUtilities.centerFrameOnScreen(frame);
         frame.setVisible(true);
 
         // CHOP oscillator upper/lower threshold guidelines
+        // CHOP 振荡器上/下阈值指南
         XYLineAnnotation lineAnnotation = new XYLineAnnotation(
                 (double) series.getFirstBar().getBeginTime().toEpochSecond() * 1000d, CHOP_LOWER_THRESHOLD,
                 (double) series.getLastBar().getEndTime().toEpochSecond() * 1000d, CHOP_LOWER_THRESHOLD,
                 dashedThinLineStyle, Color.GREEN);
-        lineAnnotation.setToolTipText("tradable below this");
+        lineAnnotation.setToolTipText("tradable below this 低于此可交易");
         indicatorXYPlot.addAnnotation(lineAnnotation);
         lineAnnotation = new XYLineAnnotation((double) series.getFirstBar().getBeginTime().toEpochSecond() * 1000d,
                 CHOP_UPPER_THRESHOLD, (double) series.getLastBar().getEndTime().toEpochSecond() * 1000d,
                 CHOP_UPPER_THRESHOLD, dashedThinLineStyle, Color.RED);
-        lineAnnotation.setToolTipText("too choppy above this");
+        lineAnnotation.setToolTipText("too choppy above this 上面太波涛汹涌");
         indicatorXYPlot.addAnnotation(lineAnnotation);
     }
 
@@ -222,18 +236,22 @@ public class CandlestickChartWithChopIndicator {
         series = CsvTradesLoader.loadBitstampSeries();
         /*
          * Create the OHLC dataset from the data series
+         * * 从数据系列创建 OHLC 数据集
          */
         OHLCDataset ohlcDataset = createOHLCDataset(series);
         /*
          * Create volume dataset
+         * * 创建卷数据集
          */
         TimeSeriesCollection xyDataset = createAdditionalDataset(series);
         /*
          * add the CHOP Indicator
+         * * 添加CHOP指标
          */
         TimeSeriesCollection chopSeries = createChopDataset(series);
         /*
          * Display the chart
+         * * 显示图表
          */
         displayChart(ohlcDataset, xyDataset, chopSeries);
     }

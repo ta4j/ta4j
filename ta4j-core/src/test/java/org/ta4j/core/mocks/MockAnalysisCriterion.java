@@ -40,7 +40,9 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
      * Constructor.
      * 
      * @param series BarSeries of the AnalysisCriterion
+     *               分析准则的 BarSeries
      * @param values AnalysisCriterion values
+     *               分析标准值
      */
     public MockAnalysisCriterion(BarSeries series, List<Num> values) {
         this.series = series;
@@ -49,9 +51,12 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
 
     /**
      * Gets the final criterion value.
+     * * 获取最终的标准值。
      * 
      * @param series   BarSeries is ignored
+     *                 BarSeries 被忽略
      * @param position is ignored
+     *                 被忽略
      */
     public Num calculate(BarSeries series, Position position) {
         return values.get(values.size() - 1);
@@ -59,21 +64,26 @@ public class MockAnalysisCriterion implements AnalysisCriterion {
 
     /**
      * Gets the final criterion value.
+     * * 获取最终的标准值。
      * 
      * @param series        BarSeries is ignored
-     * @param tradingRecord is ignored
+     *                      BarSeries 被忽略
+     * @param tradingRecord is ignored 被忽略
      */
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return values.get(values.size() - 1);
     }
 
     /**
-     * Compares two criterion values and returns true if first value is greater than
-     * second value, false otherwise.
+     * Compares two criterion values and returns true if first value is greater than second value, false otherwise.
+     * * 比较两个标准值，如果第一个值大于第二个值，则返回 true，否则返回 false。
      * 
      * @param criterionValue1 first value
+     *                        第一个值
      * @param criterionValue2 second value
+     *                        第二个值
      * @return boolean indicating first value is greater than second value
+     * * @return 布尔值表示第一个值大于第二个值
      */
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

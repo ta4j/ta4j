@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A fixed decimal indicator.
+ * 一个固定的小数指示符。
  */
 public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
@@ -37,6 +38,7 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
      * Constructor.
      * 
      * @param values the values to be returned by this indicator
+     *               该指标要返回的值
      */
     public FixedDecimalIndicator(BarSeries series, double... values) {
         super(series);
@@ -47,8 +49,10 @@ public class FixedDecimalIndicator extends FixedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数
      * 
      * @param values the values to be returned by this indicator
+     *               该指标要返回的值
      */
     public FixedDecimalIndicator(BarSeries series, String... values) {
         super(series);

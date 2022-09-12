@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator that returns NaN in unstable period
+ * 在不稳定时期返回 NaN 的指标
  */
 public class UnstableIndicator extends CachedIndicator<Num> {
 

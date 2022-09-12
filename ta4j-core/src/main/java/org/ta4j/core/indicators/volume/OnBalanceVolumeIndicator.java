@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * On-balance volume indicator.
+ * * 平衡音量指示器。
  *
  * @see <a href="https://www.investopedia.com/terms/o/onbalancevolume.asp">
  *      https://www.investopedia.com/terms/o/onbalancevolume.asp</a>

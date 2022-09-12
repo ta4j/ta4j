@@ -39,17 +39,16 @@ import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 /**
- * Abstract test class to extend BarSeries, Indicator an other test cases. The
- * extending class will be called twice. First time with
- * {@link DecimalNum#valueOf}, second time with {@link DoubleNum#valueOf} as
- * <code>Function<Number, Num></></code> parameter. This should ensure that the
- * defined test case is valid for both data types.
+ * Abstract test class to extend BarSeries, Indicator an other test cases. The extending class will be called twice. First time with {@link DecimalNum#valueOf},
+ second time with {@link DoubleNum#valueOf} as <code>Function<Number, Num></></code> parameter. This should ensure that the defined test case is valid for both data types.
+ 抽象测试类以扩展 BarSeries、Indicator 和其他测试用例。 扩展类将被调用两次。 第一次使用 {@link DecimalNum#valueOf}，
+ 第二次使用 {@link DoubleNum#valueOf} 作为 <code>Function<Number, Num></></code> 参数。 这应该确保定义的测试用例对两种数据类型都有效。
  *
- * @param <D> Data source of test object, needed for Excel-Sheet validation
- *            (could be <code>Indicator<Num></code> or <code>BarSeries</code>,
- *            ...)
- * @param <I> The generic class of the test indicator (could be
- *            <code>Num</code>, <code>Boolean</code>, ...)
+ * @param <D> Data source of test object, needed for Excel-Sheet validation  (could be <code>Indicator<Num></code> or <code>BarSeries</code>, ...)
+ *           * @param <D> Excel-Sheet 验证所需的测试对象的数据源（可以是 <code>Indicator<Num></code> 或 <code>BarSeries</code>，...）
+ *
+ * @param <I> The generic class of the test indicator (could be <code>Num</code>, <code>Boolean</code>, ...)
+ *           * @param <I> 测试指标的通用类（可以是 <code>Num</code>, <code>Boolean</code>, ...）
  */
 @RunWith(Parameterized.class)
 public abstract class AbstractIndicatorTest<D, I> {
@@ -66,10 +65,11 @@ public abstract class AbstractIndicatorTest<D, I> {
     /**
      * Constructor.
      * 
-     * @param factory     IndicatorFactory for building an Indicator given data and
-     *                    parameters.
-     * @param numFunction the function to convert a Number into a Num implementation
-     *                    (automatically inserted by Junit)
+     * @param factory     IndicatorFactory for building an Indicator given data and   parameters.
+     *                    * @param factory IndicatorFactory 用于在给定数据和参数的情况下构建指标。
+     *
+     * @param numFunction the function to convert a Number into a Num implementation  (automatically inserted by Junit)
+     *                    将 Number 转换为 Num 实现的函数（由 Junit 自动插入）
      */
     public AbstractIndicatorTest(IndicatorFactory<D, I> factory, Function<Number, Num> numFunction) {
         this.numFunction = numFunction;
@@ -79,8 +79,8 @@ public abstract class AbstractIndicatorTest<D, I> {
     /**
      * Constructor
      *
-     * @param numFunction the function to convert a Number into a Num implementation
-     *                    (automatically inserted by Junit)
+     * @param numFunction the function to convert a Number into a Num implementation   (automatically inserted by Junit)
+     *                    将 Number 转换为 Num 实现的函数（由 Junit 自动插入）
      */
     public AbstractIndicatorTest(Function<Number, Num> numFunction) {
         this.numFunction = numFunction;
@@ -89,10 +89,16 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     /**
      * Generates an Indicator from data and parameters.
+     * * 从数据和参数生成指标。
      * 
      * @param data   indicator data
+     *               指标数据
+     *
      * @param params indicator parameters
+     *               指标参数
+     *
      * @return Indicator<I> from data given parameters
+     * @return Indicator<I> 来自给定参数的数据
      */
     public Indicator<I> getIndicator(D data, Object... params) {
         assert factory != null;

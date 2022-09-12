@@ -29,27 +29,37 @@ public interface ExternalCriterionTest {
 
     /**
      * Gets the BarSeries used by an external criterion calculator.
+     * 获取外部标准计算器使用的 BarSeries。
      * 
      * @return BarSeries from the external criterion calculator
+     * * @return BarSeries 从外部标准计算器
      * @throws Exception if the external calculator throws an Exception
+     * * @throws Exception 如果外部计算器抛出异常
      */
     BarSeries getSeries() throws Exception;
 
     /**
-     * Sends criterion parameters to an external criterion calculator and returns
-     * the final value of the externally calculated criterion.
+     * Sends criterion parameters to an external criterion calculator and returns the final value of the externally calculated criterion.
+     * * 将标准参数发送到外部标准计算器并返回外部计算标准的最终值。
      * 
      * @param params criterion parameters
+     *               标准参数
      * @return Num final criterion value
+     *          @return Num 最终标准值
+     *
      * @throws Exception if the external calculator throws an Exception
+     *          如果外部计算器抛出异常
      */
     Num getFinalCriterionValue(Object... params) throws Exception;
 
     /**
      * Gets the trading record used by an external criterion calculator.
+     * * 获取外部标准计算器使用的交易记录。
      * 
      * @return TradingRecord from the external criterion calculator
+     * * @return TradingRecord 来自外部标准计算器
      * @throws Exception if the external calculator throws an Exception
+     * * @throws Exception 如果外部计算器抛出异常
      */
     TradingRecord getTradingRecord() throws Exception;
 

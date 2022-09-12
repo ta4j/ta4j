@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Chande Momentum Oscillator indicator.
+ * Chande 动量振荡器指标。
  *
  * @see <a href=
  *      "http://tradingsim.com/blog/chande-momentum-oscillator-cmo-technical-indicator/">
@@ -48,7 +49,9 @@ public class CMOIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator a price indicator
+     *                  价格指标
      * @param barCount  the time frame
+     *                  时间范围
      */
     public CMOIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

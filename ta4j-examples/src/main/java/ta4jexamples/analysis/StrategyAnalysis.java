@@ -42,50 +42,55 @@ import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
 
 /**
- * This class diplays analysis criterion values after running a trading strategy
- * over a bar series.
+ * This class diplays analysis criterion values after running a trading strategy over a bar series.
+ * * 此类显示在条形系列上运行交易策略后的分析标准值。
  */
 public class StrategyAnalysis {
 
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
 
         /*
          * Analysis criteria
+         * * 分析标准
          */
 
         // Total profit
+        // 总利润
         GrossReturnCriterion totalReturn = new GrossReturnCriterion();
-        System.out.println("Total return: " + totalReturn.calculate(series, tradingRecord));
-        // Number of bars
-        System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
-        // Average profit (per bar)
+        System.out.println("Total return 总回报: " + totalReturn.calculate(series, tradingRecord));
+        // Number of bars 条数
+        System.out.println("Number of bars 条数: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
+        // Average profit (per bar) 平均回报（每根柱）
         System.out.println(
-                "Average return (per bar): " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
-        // Number of positions
-        System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
-        // Profitable position ratio
+                "Average return (per bar) 平均回报（每根柱）: " + new AverageReturnPerBarCriterion().calculate(series, tradingRecord));
+        // Number of positions  持仓数
+        System.out.println("Number of positions  持仓数: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
+        // Profitable position ratio 赢得倉位比
         System.out.println(
-                "Winning positions ratio: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
-        // Maximum drawdown
-        System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
-        // Reward-risk ratio
-        System.out.println("Return over maximum drawdown: "
+                "Winning positions ratio 赢得倉位比: " + new WinningPositionsRatioCriterion().calculate(series, tradingRecord));
+        // Maximum drawdown 最大回撤
+        System.out.println("Maximum drawdown 最大回撤: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
+        // Reward-risk ratio 回报风险比
+        System.out.println("Return over maximum drawdown 返回超过最大回撤: "
                 + new ReturnOverMaxDrawdownCriterion().calculate(series, tradingRecord));
-        // Total transaction cost
-        System.out.println("Total transaction cost (from $1000): "
+        // Total transaction cost 总交易成本（1000 美元起）
+        System.out.println("Total transaction cost (from $1000) 总交易成本（1000 美元起）: "
                 + new LinearTransactionCostCriterion(1000, 0.005).calculate(series, tradingRecord));
-        // Buy-and-hold
-        System.out.println("Buy-and-hold return: " + new BuyAndHoldReturnCriterion().calculate(series, tradingRecord));
-        // Total profit vs buy-and-hold
-        System.out.println("Custom strategy return vs buy-and-hold strategy return: "
+        // Buy-and-hold 买入并持有
+        System.out.println("Buy-and-hold return 买入并持有回报: " + new BuyAndHoldReturnCriterion().calculate(series, tradingRecord));
+        // Total profit vs buy-and-hold 总利润与买入并持有
+        System.out.println("Custom strategy return vs buy-and-hold strategy return 自定义策略回报与买入并持有策略回报: "
                 + new VersusBuyAndHoldCriterion(totalReturn).calculate(series, tradingRecord));
     }
 }

@@ -29,19 +29,28 @@ public interface ExternalIndicatorTest {
 
     /**
      * Gets the BarSeries used by an external indicator calculator.
+     * * 获取外部指标计算器使用的 BarSeries。
      * 
      * @return BarSeries from the external indicator calculator
+     * @return BarSeries 从外部指标计算器
+     *
      * @throws Exception if the external calculator throws an Exception
+     * * @throws Exception 如果外部计算器抛出异常
      */
     BarSeries getSeries() throws Exception;
 
     /**
-     * Sends indicator parameters to an external indicator calculator and returns
-     * the externally calculated indicator.
+     * Sends indicator parameters to an external indicator calculator and returns the externally calculated indicator.
+     * * 将指标参数发送到外部指标计算器并返回外部计算的指标。
      * 
      * @param params indicator parameters
+     *               指标参数
+     *
      * @return Indicator<Num> from the external indicator calculator
+     * * @return Indicator<Num> 来自外部指标计算器
+     *
      * @throws Exception if the external calculator throws an Exception
+     * * @throws Exception 如果外部计算器抛出异常
      */
     Indicator<Num> getIndicator(Object... params) throws Exception;
 

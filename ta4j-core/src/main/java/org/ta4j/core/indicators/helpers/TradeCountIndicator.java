@@ -28,6 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Trade count indicator.
+ * 贸易计数指标。
  */
 public class TradeCountIndicator extends CachedIndicator<Long> {
 

@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Positive Volume Index (PVI) indicator.
+ * * 正成交量指数 (PVI) 指标。
  *
  * @see <a href=
  *      "http://www.metastock.com/Customer/Resources/TAAZ/Default.aspx?p=92">

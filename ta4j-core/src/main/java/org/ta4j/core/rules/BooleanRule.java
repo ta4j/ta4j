@@ -27,18 +27,22 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A simple boolean rule.
+ * 一个简单的布尔规则。
  *
  * Satisfied when it has been initialized with true.
+ * 当它被初始化为true时满足。
  */
 public class BooleanRule extends AbstractRule {
 
     /**
      * An always-true rule
+     * 永远正确的规则
      */
     public static final BooleanRule TRUE = new BooleanRule(true);
 
     /**
      * An always-false rule
+     * 永远错误的规则
      */
     public static final BooleanRule FALSE = new BooleanRule(false);
 
@@ -47,8 +51,8 @@ public class BooleanRule extends AbstractRule {
     /**
      * Constructor.
      *
-     * @param satisfied true for the rule to be always satisfied, false to be never
-     *                  satisfied
+     * @param satisfied true for the rule to be always satisfied, false to be never satisfied
+     *                  true 表示总是满足规则，false 表示永远不满足
      */
     public BooleanRule(boolean satisfied) {
         this.satisfied = satisfied;

@@ -29,10 +29,10 @@ import java.util.Objects;
 import org.ta4j.core.Rule;
 
 /**
- * A ChainLink is part of a {@link org.ta4j.core.rules.ChainRule}. Every
- * Chainlink has a {@link Rule} and a threshold. ChainLinks are evaluated in the
- * trade they are added to the ChainRule and the rule has to be satisfied within
- * the threshold number of bars.
+ * A ChainLink is part of a {@link org.ta4j.core.rules.ChainRule}. Every Chainlink has a {@link Rule} and a threshold. ChainLinks are evaluated in the
+ trade they are added to the ChainRule and the rule has to be satisfied within  the threshold number of bars.
+ ChainLink 是 {@link org.ta4j.core.rules.ChainRule} 的一部分。 每个 Chainlink 都有一个 {@link Rule} 和一个阈值。 ChainLinks 在
+ 交易它们被添加到 ChainRule 并且规则必须在柱的阈值数量内得到满足。
  */
 public class ChainLink implements Serializable {
 
@@ -42,12 +42,14 @@ public class ChainLink implements Serializable {
     private int threshold = 0;
 
     /**
-     * Threshold is the number of bars the provided rule has to be satisfied after
-     * the preceding rule
+     * Threshold is the number of bars the provided rule has to be satisfied after the preceding rule
+     * * 阈值是在前面的规则之后必须满足所提供规则的柱数
      *
      * @param rule      A {@link Rule} that has to be satisfied within the threshold
-     * @param threshold Number of bars the rule has to be satisfied in. The current
-     *                  index is included.
+     *                  必须在阈值内满足的 {@link Rule}
+     *
+     * @param threshold Number of bars the rule has to be satisfied in. The current  index is included.
+     *                  必须满足规则的柱数。包括当前索引。
      */
     public ChainLink(Rule rule, int threshold) {
         this.rule = rule;

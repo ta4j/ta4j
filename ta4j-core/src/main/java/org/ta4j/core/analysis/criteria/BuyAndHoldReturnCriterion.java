@@ -31,9 +31,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Buy and hold criterion.
+ * 买入并持有标准。
  *
- * Calculates the return if a buy-and-hold strategy was used, buying on the
- * first bar and selling on the last bar.
+ * Calculates the return if a buy-and-hold strategy was used, buying on the first bar and selling on the last bar.
+ * * 如果使用买入并持有策略，在第一根柱买入并在最后一根柱卖出，计算回报。
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>

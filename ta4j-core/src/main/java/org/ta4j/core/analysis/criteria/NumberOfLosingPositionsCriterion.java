@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Number of closed losing positions criterion.
+ * 关闭的亏损头寸标准的数量。
  */
 public class NumberOfLosingPositionsCriterion extends AbstractAnalysisCriterion {
 

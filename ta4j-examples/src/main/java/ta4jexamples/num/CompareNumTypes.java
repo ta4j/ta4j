@@ -53,11 +53,11 @@ public class CompareNumTypes {
 
     public static void main(String args[]) {
         BaseBarSeriesBuilder barSeriesBuilder = new BaseBarSeriesBuilder();
-        BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double    ").withNumTypeOf(DoubleNum::valueOf)
+        BarSeries seriesD = barSeriesBuilder.withName("Sample Series Double 样品系列双    ").withNumTypeOf(DoubleNum::valueOf)
                 .build();
-        BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32").withNumTypeOf(DecimalNum::valueOf)
+        BarSeries seriesP = barSeriesBuilder.withName("Sample Series DecimalNum 32 样本系列 DecimalNum 32").withNumTypeOf(DecimalNum::valueOf)
                 .build();
-        BarSeries seriesPH = barSeriesBuilder.withName("Sample Series DecimalNum 256")
+        BarSeries seriesPH = barSeriesBuilder.withName("Sample Series DecimalNum 256 样本系列 DecimalNum 256")
                 .withNumTypeOf(number -> DecimalNum.valueOf(number.toString(), 256)).build();
 
         int[] randoms = new Random().ints(NUMBARS, 80, 100).toArray();

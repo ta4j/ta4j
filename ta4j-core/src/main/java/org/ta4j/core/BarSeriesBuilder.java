@@ -25,12 +25,14 @@ package org.ta4j.core;
 
 /**
  * Interface to build a bar series
+ * 界面搭建条形序列
  */
 public interface BarSeriesBuilder {
     /**
      * Builds the bar series with corresponding parameters
+     * * 构建具有相应参数的条形系列
      *
-     * @return bar series
+     * @return bar series 條形序列
      */
     BarSeries build();
 }

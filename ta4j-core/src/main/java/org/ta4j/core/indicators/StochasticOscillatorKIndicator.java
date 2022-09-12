@@ -34,11 +34,17 @@ import org.ta4j.core.num.Num;
 
 /**
  * Stochastic oscillator K.
+ * 随机震荡指标 K。
  *
  * Receives barSeries and barCount and calculates the
- * StochasticOscillatorKIndicator over ClosePriceIndicator, or receives an
- * indicator, HighPriceIndicator and LowPriceIndicator and returns
- * StochasticOsiclatorK over this indicator.
+ StochasticOscillatorKIndicator over ClosePriceIndicator, or receives an
+ indicator, HighPriceIndicator and LowPriceIndicator and returns
+ StochasticOsiclatorK over this indicator.
+
+ 接收 barSeries 和 barCount 并计算
+ StochasticOscillatorKIndicator 超过 ClosePriceIndicator，或接收
+ 指标、HighPriceIndicator 和 LowPriceIndicator 并返回
+ StochasticOsiclatorK 超过该指标。
  */
 public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;

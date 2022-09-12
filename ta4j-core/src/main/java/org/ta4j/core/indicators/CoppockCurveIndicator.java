@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Coppock Curve indicator.
+ * 科波克曲线指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve">
@@ -40,11 +41,15 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with default values: <br/>
-     * - longRoCBarCount=14 <br/>
-     * - shortRoCBarCount=11 <br/>
-     * - wmaBarCount=10
+      - longRoCBarCount=14 <br/>
+      - shortRoCBarCount=11 <br/>
+      - wmaBarCount=10
+     具有默认值的构造函数：<br/>
+     - longRoCBarCount=14 <br/>
+     - shortRoCBarCount=11 <br/>
+     - wmaBarCount=10
      *
-     * @param indicator the indicator
+     * @param indicator the indicator 指标
      */
     public CoppockCurveIndicator(Indicator<Num> indicator) {
         this(indicator, 14, 11, 10);
@@ -54,9 +59,14 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param indicator        the indicator (usually close price)
+     *                         指标（通常是收盘价）
      * @param longRoCBarCount  the time frame for long term RoC
+     *                         长期的时间框架 Roc
+     *                         长期中华民国的时间框架
      * @param shortRoCBarCount the time frame for short term RoC
+     *                         短期时间框架 RoC
      * @param wmaBarCount      the time frame (for WMA)
+     *                         时间范围（对于 WMA）
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);

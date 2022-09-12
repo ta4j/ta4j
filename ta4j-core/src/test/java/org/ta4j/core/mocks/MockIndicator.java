@@ -38,7 +38,9 @@ public class MockIndicator implements Indicator<Num> {
      * Constructor.
      * 
      * @param series BarSeries of the Indicator
+     *               指标的 BarSeries
      * @param values Indicator values
+     *               指标值
      */
     public MockIndicator(BarSeries series, List<Num> values) {
         this.series = series;
@@ -47,9 +49,12 @@ public class MockIndicator implements Indicator<Num> {
 
     /**
      * Gets a value from the Indicator
+     * * 从指标中获取一个值
      * 
      * @param index Indicator value to get
+     *              要获取的指标值
      * @return Num Indicator value at index
+     *          索引处的 Num 指标值
      */
     public Num getValue(int index) {
         return values.get(index);
@@ -57,8 +62,10 @@ public class MockIndicator implements Indicator<Num> {
 
     /**
      * Gets the Indicator TimeSeries.
+     * * 获取指标时间序列。
      * 
      * @return TimeSeries of the Indicator
+     * * @return 指标的时间序列
      */
     public BarSeries getBarSeries() {
         return series;

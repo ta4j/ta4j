@@ -28,9 +28,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Modified moving average indicator.
+ * 修正的移动平均线指标。
  *
- * It is similar to exponential moving average but smooths more slowly. Used in
- * Welles Wilder's indicators like ADX, RSI.
+ * It is similar to exponential moving average but smooths more slowly. Used in Welles Wilder's indicators like ADX, RSI.
+ * * 它类似于指数移动平均线，但平滑更慢。 用于 Welles Wilder 的指标，如 ADX、RSI。
  */
 public class MMAIndicator extends AbstractEMAIndicator {
 
@@ -38,7 +39,9 @@ public class MMAIndicator extends AbstractEMAIndicator {
      * Constructor.
      *
      * @param indicator an indicator
+     *                  一个指标
      * @param barCount  the MMA time frame
+     *                  MMA时间框架
      */
     public MMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator, barCount, 1.0 / barCount);

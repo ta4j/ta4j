@@ -28,7 +28,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Moving average convergence divergence (MACDIndicator) indicator. <br/>
+ * 移动平均收敛散度 (MACDIndicator) 指标。 <br/>
  * Aka. MACD Absolute Price Oscillator (APO).
+ * 阿卡。 MACD 绝对价格震荡指标 (APO)。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_average_convergence_divergence_macd">
@@ -41,8 +43,10 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with shortBarCount "12" and longBarCount "26".
+     * shortBarCount "12" 和 longBarCount "26" 的构造函数。
      *
      * @param indicator the indicator
+     *                  指标
      */
     public MACDIndicator(Indicator<Num> indicator) {
         this(indicator, 12, 26);
@@ -52,13 +56,16 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator     the indicator
+     *                      指标
      * @param shortBarCount the short time frame (normally 12)
+     *                      短时间框架（通常为 12）
      * @param longBarCount  the long time frame (normally 26)
+     *                      较长的时间范围（通常为 26）
      */
     public MACDIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
         super(indicator);
         if (shortBarCount > longBarCount) {
-            throw new IllegalArgumentException("Long term period count must be greater than short term period count");
+            throw new IllegalArgumentException("Long term period count must be greater than short term period count 长期周期计数必须大于短期周期计数");
         }
         shortTermEma = new EMAIndicator(indicator, shortBarCount);
         longTermEma = new EMAIndicator(indicator, longBarCount);
@@ -66,8 +73,10 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     /**
      * Short term EMA indicator
+     * * 短期 EMA 指标
      *
      * @return the Short term EMA indicator
+     * @return 短期 EMA 指标
      */
     public EMAIndicator getShortTermEma() {
         return shortTermEma;
@@ -75,8 +84,10 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     /**
      * Long term EMA indicator
+     * 长期EMA指标
      *
      * @return the Long term EMA indicator
+     * @return 长期 EMA 指标
      */
     public EMAIndicator getLongTermEma() {
         return longTermEma;

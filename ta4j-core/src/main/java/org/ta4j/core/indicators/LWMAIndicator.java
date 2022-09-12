@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Linearly Weighted Moving Average (LWMA).
+ * 线性加权移动平均线 (LWMA)。
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp">

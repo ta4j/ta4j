@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Base class for Exponential Moving Average implementations.
+ * * 指数移动平均线实现的基类。
  */
 public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
 

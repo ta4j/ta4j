@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Hull moving average (HMA) indicator.
+ * * 赫尔移动平均线 (HMA) 指标。
  *
  * @see <a href="http://alanhull.com/hull-moving-average">
  *      http://alanhull.com/hull-moving-average</a>

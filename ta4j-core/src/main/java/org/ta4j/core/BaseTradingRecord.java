@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link TradingRecord}.
+ * * {@link TradingRecord} 的基本实现。
  *
  */
 public class BaseTradingRecord implements TradingRecord {
@@ -41,51 +42,61 @@ public class BaseTradingRecord implements TradingRecord {
 
     /**
      * The name of the trading record
+     * * 交易记录名称
      */
     private String name;
 
     /**
      * The recorded trades
+     * 记录的交易
      */
     private List<Trade> trades = new ArrayList<>();
 
     /**
      * The recorded BUY trades
+     * 记录的买入交易
      */
     private List<Trade> buyTrades = new ArrayList<>();
 
     /**
      * The recorded SELL trades
+     * 记录的卖出交易
      */
     private List<Trade> sellTrades = new ArrayList<>();
 
     /**
      * The recorded entry trades
+     * 记录的入场交易
      */
     private List<Trade> entryTrades = new ArrayList<>();
 
     /**
      * The recorded exit trades
+     * 记录的退出交易
      */
     private List<Trade> exitTrades = new ArrayList<>();
 
     /**
      * The entry type (BUY or SELL) in the trading session
+     * 交易时段的入场类型（买入或卖出）
      */
     private TradeType startingType;
 
     /**
      * The recorded positions
+     * 记录的位置
      */
     private List<Position> positions = new ArrayList<>();
 
     /**
      * The current non-closed position (there's always one)
+     * 当前未平仓（总有一个）
      */
     private Position currentPosition;
 
     /**
      * Trading cost models
+     * 交易成本模型
      */
     private CostModel transactionCostModel;
     private CostModel holdingCostModel;
@@ -101,6 +112,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param name the name of the tradingRecord
+     *             * @param name 交易记录的名称
      */
     public BaseTradingRecord(String name) {
         this(TradeType.BUY);
@@ -111,8 +123,10 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param name           the name of the trading record
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     *                       交易记录的名称
+     *
+     * @param entryTradeType the {@link TradeType trade type} of entries in the trading session
+     *                       * @param entryTradeType {@link TradeType trade type} 交易时段的条目
      */
     public BaseTradingRecord(String name, TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -122,8 +136,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param entryTradeType the {@link TradeType trade type} of entries in the  trading session
+     *                       交易时段中条目的 {@link TradeType trade type}
      */
     public BaseTradingRecord(TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -132,14 +146,18 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryTradeType       the {@link TradeType trade type} of entries in
-     *                             the trading session
+     * @param entryTradeType       the {@link TradeType trade type} of entries in  the trading session
+     *                             交易时段中条目的 {@link TradeType trade type}
+     *
      * @param transactionCostModel the cost model for transactions of the asset
+     *                             资产交易的成本模型
+     *
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     *                             持有资产的成本模型（例如借款）
      */
     public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
         if (entryTradeType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
+            throw new IllegalArgumentException("Starting type must not be null 起始类型不能为空");
         }
         this.startingType = entryTradeType;
         this.transactionCostModel = transactionCostModel;
@@ -151,6 +169,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param trades the trades to be recorded (cannot be empty)
+     *               要记录的交易（不能为空）
      */
     public BaseTradingRecord(Trade... trades) {
         this(new ZeroCostModel(), new ZeroCostModel(), trades);
@@ -160,8 +179,13 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param transactionCostModel the cost model for transactions of the asset
+     *                             资产交易的成本模型
+     *
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     *                             持有资产的成本模型（例如借款）
+     *
      * @param trades               the trades to be recorded (cannot be empty)
+     *                             要记录的交易（不能为空）
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
         this(trades[0].getType(), transactionCostModel, holdingCostModel);
@@ -169,10 +193,15 @@ public class BaseTradingRecord implements TradingRecord {
             boolean newTradeWillBeAnEntry = currentPosition.isNew();
             if (newTradeWillBeAnEntry && o.getType() != startingType) {
                 // Special case for entry/exit types reversal
+                // 进入/退出类型反转的特殊情况
                 // E.g.: BUY, SELL,
+                // 例如：买，卖，
                 // BUY, SELL,
+                // 买,卖
                 // SELL, BUY,
-                // BUY, SELL
+                // 卖,买
+                // BUY , SELL
+                //买，卖
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
             Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
@@ -199,7 +228,8 @@ public class BaseTradingRecord implements TradingRecord {
     public void operate(int index, Num price, Num amount) {
         if (currentPosition.isClosed()) {
             // Current position closed, should not occur
-            throw new IllegalStateException("Current position should not be closed");
+            // 当前仓位已平仓，不应发生
+            throw new IllegalStateException("Current position should not be closed 当前仓位不应平仓");
         }
         boolean newTradeWillBeAnEntry = currentPosition.isNew();
         Trade newTrade = currentPosition.operate(index, price, amount);
@@ -265,16 +295,21 @@ public class BaseTradingRecord implements TradingRecord {
 
     /**
      * Records an trade and the corresponding position (if closed).
+     * * 记录一笔交易和相应的头寸（如果平仓）。
      *
      * @param trade   the trade to be recorded
+     *                要记录的交易
+     *
      * @param isEntry true if the trade is an entry, false otherwise (exit)
+     *                如果交易是一个条目，则为 true，否则为 false（退出）
      */
     private void recordTrade(Trade trade, boolean isEntry) {
         if (trade == null) {
-            throw new IllegalArgumentException("Trade should not be null");
+            throw new IllegalArgumentException("Trade should not be null 贸易不应该为空");
         }
 
         // Storing the new trade in entries/exits lists
+        // 将新交易存储在进入/退出列表中
         if (isEntry) {
             entryTrades.add(trade);
         } else {
@@ -282,16 +317,20 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         // Storing the new trade in trades list
+        // 在交易列表中存储新的交易
         trades.add(trade);
         if (TradeType.BUY.equals(trade.getType())) {
             // Storing the new trade in buy trades list
+            // 将新交易存储在买入交易列表中
             buyTrades.add(trade);
         } else if (TradeType.SELL.equals(trade.getType())) {
             // Storing the new trade in sell trades list
+            // 在卖出交易列表中存储新的交易
             sellTrades.add(trade);
         }
 
         // Storing the position if closed
+        // 如果关闭则保存仓位
         if (currentPosition.isClosed()) {
             positions.add(currentPosition);
             currentPosition = new Position(startingType, transactionCostModel, holdingCostModel);
@@ -301,7 +340,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord: " + name != null ? name : "" + "\n");
+        sb.append("BaseTradingRecord 基础交易记录: " + name != null ? name : "" + "\n");
         for (Trade trade : trades) {
             sb.append(trade.toString()).append("\n");
         }

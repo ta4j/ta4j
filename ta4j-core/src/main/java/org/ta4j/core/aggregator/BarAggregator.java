@@ -29,14 +29,18 @@ import org.ta4j.core.Bar;
 
 /**
  * Bar aggregator interface to aggregate list of bars into another list of bars.
+ * 条形聚合器接口将条形列表聚合到另一个条形列表中。
  */
 public interface BarAggregator {
 
     /**
      * Aggregate bars.
+     * 聚合条。
      *
      * @param bars bars to aggregate bars
      * @return aggregated bars
+     * @param 条形条聚合条形
+     *       * @return 聚合条形图
      */
     List<Bar> aggregate(List<Bar> bars);
 }

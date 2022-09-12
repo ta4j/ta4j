@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Chandelier Exit (short) Indicator.
+ * *枝形吊灯出口（空头）指示器。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chandelier_exit">
@@ -45,6 +46,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series the bar series
+     *               酒吧系列
      */
     public ChandelierExitShortIndicator(BarSeries series) {
         this(series, 22, 3d);
@@ -54,8 +56,11 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series   the bar series
+     *                 酒吧系列
      * @param barCount the time frame (usually 22)
+     *                 时间范围（通常为 22）
      * @param k        the K multiplier for ATR (usually 3.0)
+     *                 ATR 的 K 乘数（通常为 3.0）
      */
     public ChandelierExitShortIndicator(BarSeries series, int barCount, double k) {
         super(series);

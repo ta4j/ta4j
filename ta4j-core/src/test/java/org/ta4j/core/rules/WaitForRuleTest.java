@@ -45,6 +45,7 @@ public class WaitForRuleTest {
     @Test
     public void waitForSinceLastBuyRuleIsSatisfied() {
         // Waits for 3 bars since last buy trade
+        // 自上次买入交易后等待 3 个柱
         rule = new WaitForRule(Trade.TradeType.BUY, 3);
 
         assertFalse(rule.isSatisfied(0, null));
@@ -71,6 +72,7 @@ public class WaitForRuleTest {
     @Test
     public void waitForSinceLastSellRuleIsSatisfied() {
         // Waits for 2 bars since last sell trade
+        // 自上次卖出交易以来等待 2 个柱
         rule = new WaitForRule(Trade.TradeType.SELL, 2);
 
         assertFalse(rule.isSatisfied(0, null));

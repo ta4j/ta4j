@@ -32,6 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Keltner Channel (middle line) indicator
+ * 凯尔特纳通道（中线）指标
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">

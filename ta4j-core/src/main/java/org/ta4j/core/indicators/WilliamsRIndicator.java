@@ -34,6 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * William's R indicator.
+ * 威廉 R 指标。
  *
  *
  * @see <a href=

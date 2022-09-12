@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Aroon down indicator.
+ * 阿隆下跌指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon">chart_school:technical_indicators:aroon</a>
@@ -47,9 +48,10 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param lowPriceIndicator the indicator for the low price (default
-     *                          {@link LowPriceIndicator})
+     * @param lowPriceIndicator the indicator for the low price (default  {@link LowPriceIndicator})
+     *                          低价指标（默认 {@link LowPriceIndicator}）
      * @param barCount          the time frame
+     *                          时间范围
      */
     public AroonDownIndicator(Indicator<Num> lowPriceIndicator, int barCount) {
         super(lowPriceIndicator);
@@ -57,14 +59,18 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         this.lowPriceIndicator = lowPriceIndicator;
         this.hundred = numOf(100);
         // + 1 needed for last possible iteration in loop
+        // + 1 循环中最后一次可能的迭代需要
         this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
     }
 
     /**
      * Default Constructor that is using the low price
+     * 使用低价的默认构造函数
      *
      * @param series   the bar series
+     *                 酒吧系列
      * @param barCount the time frame
+     *                 時間範圍
      */
     public AroonDownIndicator(BarSeries series, int barCount) {
         this(new LowPriceIndicator(series), barCount);
@@ -76,6 +82,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             return NaN;
 
         // Getting the number of bars since the lowest close price
+        // 获取自最低收盘价以来的柱数
         int endIndex = Math.max(0, index - barCount);
         int nbBars = 0;
         for (int i = index; i > endIndex; i--) {

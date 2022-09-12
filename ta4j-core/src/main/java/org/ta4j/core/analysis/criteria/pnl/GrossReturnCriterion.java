@@ -31,10 +31,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gross return criterion (with commissions).
+ * 总回报标准（含佣金）。
  *
  * <p>
- * The gross return of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * The gross return of the provided {@link Position position(s)} over the provided {@link BarSeries series}.
+ * 提供的 {@link Position Position(s)} 相对于提供的 {@link BarSeries series} 的总回报。
  */
 public class GrossReturnCriterion extends AbstractAnalysisCriterion {
 
@@ -56,10 +57,14 @@ public class GrossReturnCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the gross return of a position (Buy and sell).
+     * 计算头寸的总回报（买入和卖出）。
      *
      * @param series   a bar series
+     *                 @param series 一个条形系列
      * @param position a position
+     *                 @param position 一个位置
      * @return the gross return of the position
+     * @return 仓位的总收益
      */
     private Num calculateProfit(BarSeries series, Position position) {
         if (position.isClosed()) {

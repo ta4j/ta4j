@@ -32,6 +32,7 @@ public class ZeroCostModel implements CostModel {
 
     /**
      * Constructor for a trading cost-free model.
+     * * 无交易成本模型的构造函数。
      *
      */
     public ZeroCostModel() {
@@ -51,8 +52,10 @@ public class ZeroCostModel implements CostModel {
 
     /**
      * Evaluate if two models are equal
+     * * 评估两个模型是否相等
      * 
      * @param otherModel model to compare with
+     *                   * @param otherModel 模型比较
      */
     public boolean equals(CostModel otherModel) {
         boolean equality = false;

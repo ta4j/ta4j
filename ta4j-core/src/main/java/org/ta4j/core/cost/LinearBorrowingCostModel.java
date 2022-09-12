@@ -32,13 +32,16 @@ public class LinearBorrowingCostModel implements CostModel {
     private static final long serialVersionUID = -2839623394737567618L;
     /**
      * Slope of the linear model - fee per period
+     * * 线性模型的斜率 - 每期费用
      */
     private double feePerPeriod;
 
     /**
      * Constructor. (feePerPeriod * nPeriod)
+     * * 构造函数。 (feePerPeriod * nPeriod)
      * 
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
+     *                     * @param feePerPeriod 系数（例如，0.0001 表示每周期 1 个基点）
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
         this.feePerPeriod = feePerPeriod;
@@ -46,29 +49,33 @@ public class LinearBorrowingCostModel implements CostModel {
 
     public Num calculate(Num price, Num amount) {
         // borrowing costs depend on borrowed period
+        // 借款成本取决于借款期限
         return price.numOf(0);
     }
 
     /**
      * Calculates the borrowing cost of a closed position.
+     * 计算平仓的借贷成本。
      * 
      * @param position the position
+     *                 位置
      * @return the absolute trade cost
+     *          绝对贸易成本
      */
     public Num calculate(Position position) {
         if (position.isOpened()) {
             throw new IllegalArgumentException(
-                    "Position is not closed. Final index of observation needs to be provided.");
+                    "Position is not closed. Final index of observation needs to be provided. 持仓未平仓。 需要提供最终的观察指标。");
         }
         return calculate(position, position.getExit().getIndex());
     }
 
     /**
-     * Calculates the borrowing cost of a position.
+     * Calculates the borrowing cost of a position. 计算头寸的借贷成本。
      * 
-     * @param position     the position
-     * @param currentIndex final bar index to be considered (for open positions)
-     * @return the absolute trade cost
+     * @param position     the position 位置
+     * @param currentIndex final bar index to be considered (for open positions) 要考虑的最终柱线指数（针对未平仓头寸）
+     * @return the absolute trade cost 绝对贸易成本
      */
     public Num calculate(Position position, int currentIndex) {
         Trade entryTrade = position.getEntry();
@@ -76,6 +83,7 @@ public class LinearBorrowingCostModel implements CostModel {
         Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
 
         // borrowing costs apply for short positions only
+        // 借贷成本仅适用于空头头寸
         if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {
             int tradingPeriods = 0;
             if (position.isClosed()) {
@@ -90,8 +98,11 @@ public class LinearBorrowingCostModel implements CostModel {
 
     /**
      * @param tradingPeriods number of periods
+     *                       周期数
      * @param tradedValue    value of the trade initial trade position
+     *                       交易初始交易头寸的价值
      * @return the absolute borrowing cost
+     *          * @return 绝对借贷成本
      */
     private Num getHoldingCostForPeriods(int tradingPeriods, Num tradedValue) {
         return tradedValue
@@ -100,6 +111,7 @@ public class LinearBorrowingCostModel implements CostModel {
 
     /**
      * Evaluate if two models are equal
+     *  * 评估两个模型是否相等
      * 
      * @param otherModel model to compare with
      */

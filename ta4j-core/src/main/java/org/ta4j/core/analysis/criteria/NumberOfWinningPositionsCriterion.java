@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Number of closed winning positions criterion.
+ * 已关闭获胜头寸标准的数量。
  */
 public class NumberOfWinningPositionsCriterion extends AbstractAnalysisCriterion {
 

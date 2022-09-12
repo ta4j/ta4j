@@ -32,21 +32,29 @@ public interface CostModel extends Serializable {
 
     /**
      * @param position   the position
+     *                   位置
      * @param finalIndex final index of consideration for open positions
+     *                   未平仓头寸的最终考虑指数
      * @return Calculates the trading cost of a single position
+     *                  计算单个头寸的交易成本
      */
     Num calculate(Position position, int finalIndex);
 
     /**
      * @param position the position
+     *                 位置
      * @return Calculates the trading cost of a single position
+     * 计算单个头寸的交易成本
      */
     Num calculate(Position position);
 
     /**
      * @param price  the price per asset
+     *               每项资产的价格
      * @param amount number of traded assets
+     *               交易资产数量
      * @return Calculates the trading cost for a certain traded amount
+     *          计算特定交易金额的交易成本
      */
     Num calculate(Num price, Num amount);
 

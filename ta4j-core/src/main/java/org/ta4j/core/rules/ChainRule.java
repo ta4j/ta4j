@@ -32,8 +32,11 @@ import org.ta4j.core.rules.helper.ChainLink;
 
 /**
  * A chainrule has an initial rule that has to be satisfied before chain links
- * are evaluated. If the initial rule is satisfied every rule of chain link has
- * to be satisfied within a specified amount of bars (threshold).
+  are evaluated. If the initial rule is satisfied every rule of chain link has
+  to be satisfied within a specified amount of bars (threshold).
+ 链式规则有一个初始规则，必须在链式链接之前满足该规则
+ 被评估。 如果满足初始规则，则链环的每个规则都有
+ 在指定数量的柱（阈值）内得到满足。
  *
  */
 public class ChainRule extends AbstractRule {
@@ -41,10 +44,11 @@ public class ChainRule extends AbstractRule {
     LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
     /**
-     * @param initialRule the first rule that has to be satisfied before
-     *                    {@link ChainLink} are evaluated
-     * @param chainLinks  {@link ChainLink} that has to be satisfied after the
-     *                    inital rule within their thresholds
+     * @param initialRule the first rule that has to be satisfied before  {@link ChainLink} are evaluated
+     *                    在评估 {@link ChainLink} 之前必须满足的第一条规则
+     *
+     * @param chainLinks  {@link ChainLink} that has to be satisfied after the   inital rule within their thresholds
+     *                                     {@link ChainLink} 必须在初始规则之后满足其阈值
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
         this.initialRule = initialRule;

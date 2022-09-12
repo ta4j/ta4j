@@ -31,11 +31,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Profit and loss in percentage criterion (relative PnL) (without commissions).
+ * 百分比标准中的损益（相对 PnL）（不含佣金）。
  * 
  * <p>
- * Defined as the position profit over the purchase price. The profit or loss in
- * percentage over the provided {@link Position position(s)}.
+ * Defined as the position profit over the purchase price. The profit or loss in percentage over the provided {@link Position position(s)}.
+ * 定义为高于买入价的头寸利润。 提供的{@link Position position(s)}的盈亏百分比。
  * https://www.investopedia.com/ask/answers/how-do-you-calculate-percentage-gain-or-loss-investment/
+ * HTTPS://呜呜呜.invest op Edi A.com/ask/answers/how-do-有-calculate-percentage-概念-or-loss-investment/
  */
 public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
 

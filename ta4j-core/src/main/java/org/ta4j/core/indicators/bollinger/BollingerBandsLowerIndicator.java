@@ -28,9 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Buy - Occurs when the price line crosses from below to above the Lower
- * Bollinger Band. Sell - Occurs when the price line crosses from above to below
- * the Upper Bollinger Band.
+ * Buy - Occurs when the price line crosses from below to above the Lower Bollinger Band. Sell - Occurs when the price line crosses from above to below  the Upper Bollinger Band.
+ * * 买入 - 当价格线从下布林带下方穿越到上方布林带时发生。 卖出 - 当价格线从上布林带上方向下穿过时发生。
  * 
  */
 public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
@@ -41,11 +40,14 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor. Defaults k value to 2.
+     * * 构造函数。 默认 k 值为 2。
      * 
-     * @param bbm       the middle band Indicator. Typically an SMAIndicator is
-     *                  used.
+     * @param bbm       the middle band Indicator. Typically an SMAIndicator is  used.
+     *                  中带指标。 通常使用 SMAIndicator。
      * @param indicator the deviation above and below the middle, factored by k.
+     *                  中间上方和下方的偏差，以 k 为因数。
      *                  Typically a StandardDeviationIndicator is used.
+     *                  通常使用 StandardDeviationIndicator。
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator) {
         this(bbm, indicator, bbm.getBarSeries().numOf(2));
@@ -54,12 +56,14 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param bbm       the middle band Indicator. Typically an SMAIndicator is
-     *                  used.
+     * @param bbm       the middle band Indicator. Typically an SMAIndicator is   used.
+     *                  中带指标。 通常使用 SMAIndicator。
      * @param indicator the deviation above and below the middle, factored by k.
+     *                  中间上方和下方的偏差，以 k 为因数。
      *                  Typically a StandardDeviationIndicator is used.
-     * @param k         the scaling factor to multiply the deviation by. Typically
-     *                  2.
+     *                  通常使用 StandardDeviationIndicator。
+     * @param k         the scaling factor to multiply the deviation by. Typically  2.
+     *                  将偏差乘以的比例因子。 通常为 2。
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator, Num k) {
         super(indicator);
@@ -75,6 +79,7 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
 
     /**
      * @return the K multiplier
+     * * @return K 乘数
      */
     public Num getK() {
         return k;

@@ -29,21 +29,24 @@ import org.ta4j.core.num.Num;
 
 /**
  * Cross indicator.
+ * 交叉指标。
  *
  * Boolean indicator which monitors two-indicators crossings.
+ * 监控两个指标交叉点的布尔指标。
  */
 public class CrossIndicator extends CachedIndicator<Boolean> {
 
-    /** Upper indicator */
+    /** Upper indicator 上指标 */
     private final Indicator<Num> up;
-    /** Lower indicator */
+    /** Lower indicator 下指标 */
     private final Indicator<Num> low;
 
     /**
      * Constructor.
-     * 
-     * @param up  the upper indicator
-     * @param low the lower indicator
+     * 构造函数
+     *
+     * @param up  the upper indicator 上指标
+     * @param low the lower indicator 较低的指标
      */
     public CrossIndicator(Indicator<Num> up, Indicator<Num> low) {
         // TODO: check if up series is equal to low series
@@ -72,6 +75,7 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
 
     /**
      * @return the initial lower indicator
+     * @return 初始下限指标
      */
     public Indicator<Num> getLow() {
         return low;
@@ -79,6 +83,7 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
 
     /**
      * @return the initial upper indicator
+     * @return 初始上限指标
      */
     public Indicator<Num> getUp() {
         return up;

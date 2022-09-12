@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Returns the previous (n-th) value of an indicator
+ * 返回指标的前一个（第 n 个）值
  */
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
@@ -38,8 +39,8 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator of which the previous value should be
-     *                  calculated
+     * @param indicator the indicator of which the previous value should be   calculated
+     *                       *
      */
     public PreviousValueIndicator(Indicator<Num> indicator) {
         this(indicator, 1);
@@ -47,15 +48,17 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数
      *
-     * @param indicator the indicator of which the previous value should be
-     *                  calculated
+     * @param indicator the indicator of which the previous value should be   calculated
+     *                  应计算其先前值的指标
      * @param n         parameter defines the previous n-th value
+     *                  参数定义前第 n 个值
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
         super(indicator);
         if (n < 1) {
-            throw new IllegalArgumentException("n must be positive number, but was: " + n);
+            throw new IllegalArgumentException("n must be positive number, but was n 必须是正数，但是是: " + n);
         }
         this.n = n;
         this.indicator = indicator;

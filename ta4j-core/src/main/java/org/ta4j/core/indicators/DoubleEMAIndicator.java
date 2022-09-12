@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Double exponential moving average indicator.
+ * 双指数移动平均线指标。
  * </p/>
  *
  * @see <a href=
@@ -44,7 +45,9 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator
+     *                  指标
      * @param barCount  the time frame
+     *                  時間範圍
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

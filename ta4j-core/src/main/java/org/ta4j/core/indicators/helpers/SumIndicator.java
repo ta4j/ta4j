@@ -29,8 +29,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Sum indicator.
+ * 总数指标。
  *
  * I.e.: operand0 + operand1 + ... + operandN
+ * 即：操作数0 +操作数1 + ... +操作数N
  */
 public class SumIndicator extends CachedIndicator<Num> {
 
@@ -38,12 +40,15 @@ public class SumIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor. (operand0 plus operand1 plus ... plus operandN)
+     * * 构造函数。 （操作数 0 加上操作数 1 加上 ... 加上操作数 N）
      * 
      * @param operands the operand indicators for the sum
+     *                 * @param operands 求和的操作数指示符
      */
     @SafeVarargs
     public SumIndicator(Indicator<Num>... operands) {
         // TODO: check if first series is equal to the other ones
+        // TODO: 检查第一个系列是否等于其他系列
         super(operands[0]);
         this.operands = operands;
     }

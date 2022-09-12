@@ -43,6 +43,7 @@ public class CoppockCurveIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void coppockCurveWithRoc14Roc11Wma10() {
         // Example from
+        // 示例来自
         // http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve
         BarSeries data = new MockBarSeries(numFunction, 872.81, 919.14, 919.32, 987.48, 1020.62, 1057.08, 1036.19,
                 1095.63, 1115.1, 1073.87, 1104.49, 1169.43, 1186.69, 1089.41, 1030.71, 1101.6, 1049.33, 1141.2, 1183.26,

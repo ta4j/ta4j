@@ -43,8 +43,11 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      * Constructor.
      * 
      * @param clazz    class containing the file resources
+     *                 包含文件资源的类
      * @param fileName file name of the file containing the workbook
+     *                 包含工作簿的文件的文件名
      * @param column   column number containing the calculated indicator values
+     *                 包含计算的指标值的列号
      */
     public XLSIndicatorTest(Class<?> clazz, String fileName, int column, Function<Number, Num> numFunction) {
         this.clazz = clazz;
@@ -55,9 +58,12 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     /**
      * Gets the BarSeries from the XLS file.
+     * * 从 XLS 文件中获取 BarSeries。
      * 
      * @return BarSeries from the file
+     *      文件中的 BarSeries
      * @throws Exception if getSeries throws IOException or DataFormatException
+     * * @throws Exception 如果 getSeries 抛出 IOException 或 DataFormatException
      */
     public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
@@ -68,10 +74,14 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
 
     /**
      * Gets the Indicator from the XLS file given the parameters.
+     * * 从给定参数的 XLS 文件中获取指标。
      * 
      * @param params indicator parameters
+     *               指标参数
      * @return Indicator from the file given the parameters
+     * * @return 来自给定参数的文件中的指标
      * @throws Exception if getIndicator throws IOException or DataFormatException
+     * * @throws Exception 如果 getIndicator 抛出 IOException 或 DataFormatException
      */
     public Indicator<Num> getIndicator(Object... params) throws Exception {
         return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().function(), params);

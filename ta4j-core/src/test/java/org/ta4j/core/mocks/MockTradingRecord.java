@@ -33,11 +33,11 @@ public class MockTradingRecord extends BaseTradingRecord {
     private static final long serialVersionUID = 6220278197931451635L;
 
     /*
-     * Constructor. Builds a TradingRecord from a list of states. Initial state
-     * value is zero. Then at each index where the state value changes, the
-     * TradingRecord operates at that index.
+     * Constructor. Builds a TradingRecord from a list of states. Initial state value is zero. Then at each index where the state value changes, the TradingRecord operates at that index.
+     * * 构造函数。 从状态列表构建一个 TradingRecord。 初始状态值为零。 然后在状态值发生变化的每个索引处，TradingRecord 在该索引处运行。
      *
      * @param states List<Num> of state values
+     * @param states List<Num> 个状态值
      */
     public MockTradingRecord(List<Num> states) {
         super();

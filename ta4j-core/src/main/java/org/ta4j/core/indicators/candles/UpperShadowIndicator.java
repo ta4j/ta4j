@@ -30,9 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Upper shadow height indicator.
+ * 上阴影高度指標。
  *
- * Provides the (absolute) difference between the high price and the highest
- * price of the candle body. I.e.: high price - max(open price, close price)
+ * Provides the (absolute) difference between the high price and the highest price of the candle body. I.e.: high price - max(open price, close price)
+ * * 提供蜡烛实体的最高价和最高价之间的（绝对）差值。 即：高价 - 最高价（开盘价，收盘价）
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
@@ -44,6 +45,7 @@ public class UpperShadowIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series the bar series
+     *               bar 系列
      */
     public UpperShadowIndicator(BarSeries series) {
         super(series);
@@ -56,9 +58,11 @@ public class UpperShadowIndicator extends CachedIndicator<Num> {
         final Num closePrice = t.getClosePrice();
         if (closePrice.isGreaterThan(openPrice)) {
             // Bullish
+            // 看涨
             return t.getHighPrice().minus(closePrice);
         } else {
             // Bearish
+            // 看跌
             return t.getHighPrice().minus(openPrice);
         }
     }

@@ -30,18 +30,21 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-lowest-indicator rule.
+ * 指标-最低-指标规则。
  *
- * Satisfied when the value of the {@link Indicator indicator} is the lowest
- * within the barCount.
+ * Satisfied when the value of the {@link Indicator indicator} is the lowest within the barCount.
+ * * 当 {@link Indicator indicator} 的值在 barCount 内最低时满足。
  */
 public class IsLowestRule extends AbstractRule {
 
     /**
      * The actual indicator
+     * 实际指标
      */
     private final Indicator<Num> ref;
     /**
      * The barCount
+     * 酒吧计数
      */
     private final int barCount;
 
@@ -49,7 +52,9 @@ public class IsLowestRule extends AbstractRule {
      * Constructor.
      *
      * @param ref      the indicator
+     *                 指标
      * @param barCount the time frame
+     *                 時間範圍
      */
     public IsLowestRule(Indicator<Num> ref, int barCount) {
         this.ref = ref;

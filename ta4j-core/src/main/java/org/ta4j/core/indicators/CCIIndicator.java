@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Commodity Channel Index (CCI) indicator.
+ * 商品通道指数 (CCI) 指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:commodity_channel_in">
@@ -46,8 +47,9 @@ public class CCIIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the bar series
+     * @param series   the bar series 酒吧系列
      * @param barCount the time frame (normally 20)
+     *                 时间范围（通常为 20）
      */
     public CCIIndicator(BarSeries series, int barCount) {
         super(series);

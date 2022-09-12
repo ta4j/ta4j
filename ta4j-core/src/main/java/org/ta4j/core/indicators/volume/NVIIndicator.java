@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Negative Volume Index (NVI) indicator.
+ * 负体积指数 (NVI) 指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:negative_volume_inde">

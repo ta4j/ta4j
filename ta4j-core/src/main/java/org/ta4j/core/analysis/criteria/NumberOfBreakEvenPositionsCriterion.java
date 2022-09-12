@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Number of break even position criterion.
+ * 盈亏平衡位置标准的数量。
  */
 public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriterion {
 

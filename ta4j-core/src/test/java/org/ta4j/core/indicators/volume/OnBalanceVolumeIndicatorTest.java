@@ -72,8 +72,8 @@ public class OnBalanceVolumeIndicatorTest extends AbstractIndicatorTest<Indicato
         }
         MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(bigSeries);
-        // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // If a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
+        // 如果此处抛出 StackOverflowError，则 RecursiveCachedIndicator 无法按预期工作。
         assertNumEquals(0, obv.getValue(9999));
     }
 }

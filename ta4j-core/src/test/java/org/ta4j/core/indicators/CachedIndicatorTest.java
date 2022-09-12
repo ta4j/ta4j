@@ -68,7 +68,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertEquals(firstTime, secondTime);
     }
 
-    @Test // should be not null
+    @Test // should be not null // 不应该为空
     public void getValueWithNullBarSeries() {
 
         ConstantIndicator<Num> constant = new ConstantIndicator<>(
@@ -108,23 +108,35 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         BarSeries barSeries = new MockBarSeries(numFunction, 0, 1, 2, 3, 4, 5, 6, 7);
         SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 2);
         // Theoretical values for SMA(2) cache: 0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
+        // SMA(2) 缓存的理论值：0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5
         barSeries.setMaximumBarCount(6);
         // Theoretical values for SMA(2) cache: null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
+        // SMA(2) 缓存的理论值：null, null, 2, 2.5, 3.5, 4.5, 5.5, 6.5
 
         Strategy strategy = new BaseStrategy(new OverIndicatorRule(sma, sma.numOf(3)),
                 new UnderIndicatorRule(sma, sma.numOf(3)));
         // Theoretical shouldEnter results: false, false, false, false, true, true,
-        // true, true
+        // 理论应该输入结果：false, false, false, false, true, true, true, true
         // Theoretical shouldExit results: false, false, true, true, false, false,
-        // false, false
+        // 理论上的 shouldExit 结果：false, false, true, true, false, false, false, false
 
         // As we return the first bar/result found for the removed bars:
+        // 当我们返回为已删除柱找到的第一个柱/结果时：
+
         // -> Approximated values for ClosePrice cache: 2, 2, 2, 3, 4, 5, 6, 7
+        // -> ClosePrice 缓存的近似值：2、2、2、3、4、5、6、7
+
         // -> Approximated values for SMA(2) cache: 2, 2, 2, 2.5, 3.5, 4.5, 5.5, 6.5
+        // -> SMA(2) 缓存的近似值：2、2、2、2.5、3.5、4.5、5.5、6.5
 
         // Then enters/exits are also approximated:
+        // 然后进入/退出也是近似的：
+
         // -> shouldEnter results: false, false, false, false, true, true, true, true
+        // -> shouldEnter 结果: false, false, false, false, true, true, true, true
+
         // -> shouldExit results: true, true, true, true, false, false, false, false
+        // -> shouldExit 结果：真、真、真、真、假、假、假、假
 
         assertFalse(strategy.shouldEnter(0));
         assertTrue(strategy.shouldExit(0));
@@ -159,7 +171,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void recursiveCachedIndicatorOnMovingBarSeriesShouldNotCauseStackOverflow() {
         // Added to check issue #120: https://github.com/mdeverdelhan/ta4j/issues/120
+        // 添加到检查问题 #120：https://github.com/mdeverdelhan/ta4j/issues/120
         // See also: CachedIndicator#getValue(int index)
+        // 参见：CachedIndicator#getValue(int index)
         series = new MockBarSeries(numFunction);
         series.setMaximumBarCount(5);
         assertEquals(5, series.getBarCount());
@@ -188,6 +202,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
 
         // Add a forgotten trade, should be ignored in the cached indicator
+        // 添加一个被遗忘的交易，在缓存指标中应该被忽略
         assertNumEquals(2, closePrice.getValue(1));
         barSeries.getBar(1).addTrade(numOf(10), numOf(5));
         assertNumEquals(2, closePrice.getValue(1));

@@ -32,8 +32,8 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion total
- * return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
+ * Reward risk ratio criterion, defined as the {@link GrossReturnCriterion total return} over the {@link MaximumDrawdownCriterion maximum drawdown}.
+ * * 回报风险比率标准，定义为 {@link GrossReturnCriterion 总回报} 超过 {@link MaximumDrawdownCriterion 最大回撤}。
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 

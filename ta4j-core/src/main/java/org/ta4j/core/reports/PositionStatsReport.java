@@ -27,6 +27,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * This class represents report with statistics for positions.
+ * This class represents report with statistics for positions.
  */
 public class PositionStatsReport {
 
@@ -38,8 +39,13 @@ public class PositionStatsReport {
      * Constructor.
      * 
      * @param profitCount    the number of positions making a profit
+     *                       获利的头寸数量
+     *
      * @param lossCount      the number of positions making a loss
+     *                       亏损的头寸数量
+     *
      * @param breakEvenCount the number of positions with a break even
+     *                       盈亏平衡的头寸数量
      */
     public PositionStatsReport(Num profitCount, Num lossCount, Num breakEvenCount) {
         this.profitCount = profitCount;

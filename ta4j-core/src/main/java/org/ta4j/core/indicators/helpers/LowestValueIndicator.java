@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Lowest value indicator.
+ * 最低值指标。
  */
 public class LowestValueIndicator extends CachedIndicator<Num> {
 

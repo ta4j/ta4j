@@ -51,6 +51,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     public void returnSize() {
         for (Returns.ReturnType type : Returns.ReturnType.values()) {
             // No return at index 0
+            // 在索引 0 处没有返回
             BarSeries sampleBarSeries = new MockBarSeries(numFunction, 1d, 2d, 3d, 4d, 5d);
             Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), type);
             assertEquals(4, returns.getSize());

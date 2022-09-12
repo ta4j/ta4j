@@ -32,15 +32,25 @@ import org.ta4j.core.num.Num;
 
 /**
  * A trade.
+ * 一笔交易。
  *
  * The trade is defined by:
+ * * 交易定义为：
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) it is executed
  * <li>a {@link TradeType type} (BUY or SELL)
  * <li>a pricePerAsset (optional)
  * <li>a trade amount (optional)
  * </ul>
+ * * <ul>
+ *   * <li>执行的索引（在 {@link BarSeries bar series} 中）
+ *   * <li>a {@link TradeType type}（买入或卖出）
+ *   * <li>pricePerAsset（可选）
+ *   * <li>交易金额（可选）
+ *   * </ul>
+ *
  * A {@link Position position} is a pair of complementary trades.
+ * * {@link Position position} 是一对互补交易。
  */
 public class Trade implements Serializable {
 
@@ -48,9 +58,10 @@ public class Trade implements Serializable {
 
     /**
      * The type of an {@link Trade trade}.
+     * {@link Trade trade} 的类型。
      *
-     * A BUY corresponds to a <i>BID</i> trade. A SELL corresponds to an <i>ASK</i>
-     * trade.
+     * A BUY corresponds to a BID trade. A SELL corresponds to an ASK  trade.
+     * * 买入对应于买入交易。 SELL 对应于 ASK 交易。
      */
     public enum TradeType {
 
@@ -69,42 +80,50 @@ public class Trade implements Serializable {
 
         /**
          * @return the complementary trade type
+         * * @return 互补交易类型
          */
         public abstract TradeType complementType();
     }
 
     /**
      * Type of the trade
+     * * 交易类型
      */
     private TradeType type;
 
     /**
      * The index the trade was executed
+     * * 交易执行的指数
      */
     private int index;
 
     /**
      * the trade price per asset
+     * * 每项资产的交易价格
      */
     private Num pricePerAsset;
 
     /**
      * The net price for the trade, net transaction costs
+     * * 交易的净价，净交易成本
      */
     private Num netPrice;
 
     /**
      * the trade amount
+     * * 交易金额
      */
     private Num amount;
 
     /**
      * The cost for executing the trade
+     * * 执行交易的成本
      */
     private Num cost;
 
     /**
      * The cost model for trade execution
+     * * 交易执行的成本模型
      */
     private CostModel costModel;
 
@@ -112,8 +131,12 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index  the index the trade is executed
+     *               交易执行的指数
      * @param series the bar series
+     *               酒吧系列
+     *
      * @param type   the trade type
+     *               交易类型
      */
     protected Trade(int index, BarSeries series, TradeType type) {
         this(index, series, type, series.numOf(1));
@@ -123,9 +146,16 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param series the bar series
+     *               酒吧系列
+     *
      * @param type   the trade type
+     *               交易类型
+     *
      * @param amount the trade amount
+     *               交易金额
      */
     protected Trade(int index, BarSeries series, TradeType type, Num amount) {
         this(index, series, type, amount, new ZeroCostModel());
@@ -135,10 +165,19 @@ public class Trade implements Serializable {
      * Constructor.
      * 
      * @param index                the index the trade is executed
+     *                             交易执行的指数
+     *
      * @param series               the bar series
+     *                             酒吧系列
+     *
      * @param type                 the trade type
+     *                             交易类型
+     *
      * @param amount               the trade amount
+     *                             交易金额
+     *
      * @param transactionCostModel the cost model for trade execution cost
+     *                             交易执行成本的成本模型
      */
     protected Trade(int index, BarSeries series, TradeType type, Num amount, CostModel transactionCostModel) {
         this.type = type;
@@ -151,8 +190,13 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index         the index the trade is executed
+     *                      交易执行的指数
+     *
      * @param type          the trade type
+     *                      交易类型
+     *
      * @param pricePerAsset the trade price per asset
+     *                      每项资产的交易价格
      */
     protected Trade(int index, TradeType type, Num pricePerAsset) {
         this(index, type, pricePerAsset, pricePerAsset.numOf(1));
@@ -162,9 +206,16 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index         the index the trade is executed
+     *                      交易执行的指数
+     *
      * @param type          the trade type
+     *                      交易类型
+     *
      * @param pricePerAsset the trade price per asset
+     *                      每项资产的交易价格
+     *
      * @param amount        the trade amount
+     *                      交易金额
      */
     protected Trade(int index, TradeType type, Num pricePerAsset, Num amount) {
         this(index, type, pricePerAsset, amount, new ZeroCostModel());
@@ -174,10 +225,19 @@ public class Trade implements Serializable {
      * Constructor.
      *
      * @param index                the index the trade is executed
+     *                             交易执行的指数
+     *
      * @param type                 the trade type
+     *                             交易类型
+     *
      * @param pricePerAsset        the trade price per asset
+     *                             每项资产的交易价格
+     *
      * @param amount               the trade amount
+     *                             交易金额
+     *
      * @param transactionCostModel the cost model for trade execution
+     *                             交易执行的成本模型
      */
     protected Trade(int index, TradeType type, Num pricePerAsset, Num amount, CostModel transactionCostModel) {
         this.type = type;
@@ -189,6 +249,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the trade type (BUY or SELL)
+     * * @return 交易类型（买入或卖出）
      */
     public TradeType getType() {
         return type;
@@ -196,6 +257,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the costs of the trade
+     * * @return 交易成本
      */
     public Num getCost() {
         return cost;
@@ -203,6 +265,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the index the trade is executed
+     * * @return 交易执行的索引
      */
     public int getIndex() {
         return index;
@@ -210,14 +273,15 @@ public class Trade implements Serializable {
 
     /**
      * @return the trade price per asset
+     * * @return 每个资产的交易价格
      */
     public Num getPricePerAsset() {
         return pricePerAsset;
     }
 
     /**
-     * @return the trade price per asset, or, if <code>NaN</code>, the close price
-     *         from the supplied {@link BarSeries}.
+     * @return the trade price per asset, or, if <code>NaN</code>, the close price  from the supplied {@link BarSeries}.
+     * * @return 每个资产的交易价格，或者，如果是 <code>NaN</code>，则返回提供的 {@link BarSeries} 的收盘价。
      */
     public Num getPricePerAsset(BarSeries barSeries) {
         if (pricePerAsset.isNaN()) {
@@ -228,6 +292,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the trade price per asset, net transaction costs
+     * * @return 每个资产的交易价格，净交易成本
      */
     public Num getNetPrice() {
         return netPrice;
@@ -235,6 +300,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the trade amount
+     * @return 交易金额
      */
     public Num getAmount() {
         return amount;
@@ -242,6 +308,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the cost model for trade execution
+     * * @return 交易执行的成本模型
      */
     public CostModel getCostModel() {
         return costModel;
@@ -249,10 +316,16 @@ public class Trade implements Serializable {
 
     /**
      * Sets the raw and net prices of the trade
+     * * 设置交易的原始价格和净价格
      *
      * @param pricePerAsset        the raw price of the asset
+     *                             资产的原始价格
+     *
      * @param amount               the amount of assets ordered
+     *                             订购的资产数量
+     *
      * @param transactionCostModel the cost model for trade execution
+     *                             交易执行的成本模型
      */
     private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel) {
         this.costModel = transactionCostModel;
@@ -261,6 +334,7 @@ public class Trade implements Serializable {
 
         Num costPerAsset = cost.dividedBy(amount);
         // add transaction costs to the pricePerAsset at the trade
+        // 将交易成本添加到交易的 pricePerAsset
         if (type.equals(TradeType.BUY)) {
             this.netPrice = this.pricePerAsset.plus(costPerAsset);
         } else {
@@ -270,6 +344,7 @@ public class Trade implements Serializable {
 
     /**
      * @return true if this is a BUY trade, false otherwise
+     * * @return 如果这是买入交易，则返回 true，否则返回 false
      */
     public boolean isBuy() {
         return type == TradeType.BUY;
@@ -277,6 +352,7 @@ public class Trade implements Serializable {
 
     /**
      * @return true if this is a SELL trade, false otherwise
+     * * @return 如果这是卖出交易，则返回 true，否则返回 false
      */
     public boolean isSell() {
         return type == TradeType.SELL;
@@ -305,8 +381,13 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param series the bar series
+     *               酒吧系列
+     *
      * @return a BUY trade
+     *          买入交易
      */
     public static Trade buyAt(int index, BarSeries series) {
         return new Trade(index, series, TradeType.BUY);
@@ -314,10 +395,18 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
+     *                             交易执行的指数
+     *
      * @param price                the trade price
+     *                             交易价格
+     *
      * @param amount               the trade amount
+     *                             交易金额
+     *
      * @param transactionCostModel the cost model for trade execution
+     *                             交易执行的成本模型
      * @return a BUY trade
+     *                       @return 买入交易
      */
     public static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
         return new Trade(index, TradeType.BUY, price, amount, transactionCostModel);
@@ -325,9 +414,16 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param price  the trade price
+     *               交易价格
+     *
      * @param amount the trade amount
+     *               交易金额
+     *
      * @return a BUY trade
+     *  * @return 买入交易
      */
     public static Trade buyAt(int index, Num price, Num amount) {
         return new Trade(index, TradeType.BUY, price, amount);
@@ -335,9 +431,16 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param series the bar series
+     *               酒吧系列
+     *
      * @param amount the trade amount
+     *               交易金额
+     *
      * @return a BUY trade
+     *          * @return 买入交易
      */
     public static Trade buyAt(int index, BarSeries series, Num amount) {
         return new Trade(index, series, TradeType.BUY, amount);
@@ -345,10 +448,18 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
+     *                             交易执行的指数
+     *
      * @param series               the bar series
+     *                             酒吧系列
+     *
      * @param amount               the trade amount
+     *                             交易金额
+     *
      * @param transactionCostModel the cost model for trade execution
+     *                             交易执行的成本模型
      * @return a BUY trade
+     *          买入交易
      */
     public static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
         return new Trade(index, series, TradeType.BUY, amount, transactionCostModel);
@@ -356,8 +467,13 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param series the bar series
+     *               酒吧系列
+     *
      * @return a SELL trade
+     *          卖出交易
      */
     public static Trade sellAt(int index, BarSeries series) {
         return new Trade(index, series, TradeType.SELL);
@@ -365,9 +481,16 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param price  the trade price
+     *               交易价格
+     *
      * @param amount the trade amount
+     *               交易金额
+     *
      * @return a SELL trade
+     *          卖出交易
      */
     public static Trade sellAt(int index, Num price, Num amount) {
         return new Trade(index, TradeType.SELL, price, amount);
@@ -375,10 +498,18 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
+     *                             交易执行的指数
+     *
      * @param price                the trade price
+     *                             交易价格
+     *
      * @param amount               the trade amount
+     *                             交易金额
+     *
      * @param transactionCostModel the cost model for trade execution
+     *                             交易执行的成本模型
      * @return a SELL trade
+     *      * @return 卖出交易
      */
     public static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
         return new Trade(index, TradeType.SELL, price, amount, transactionCostModel);
@@ -386,9 +517,16 @@ public class Trade implements Serializable {
 
     /**
      * @param index  the index the trade is executed
+     *               交易执行的指数
+     *
      * @param series the bar series
+     *               酒吧系列
+     *
      * @param amount the trade amount
+     *               交易金额
+     *
      * @return a SELL trade
+     * @return 卖出交易
      */
     public static Trade sellAt(int index, BarSeries series, Num amount) {
         return new Trade(index, series, TradeType.SELL, amount);
@@ -396,10 +534,18 @@ public class Trade implements Serializable {
 
     /**
      * @param index                the index the trade is executed
+     *                             交易执行的指数
+     *
      * @param series               the bar series
+     *                             酒吧系列
+     *
      * @param amount               the trade amount
+     *                             * @param amount 交易金额
      * @param transactionCostModel the cost model for trade execution
+     *                             交易执行的成本模型
+     *
      * @return a SELL trade
+     * @return 卖出交易
      */
     public static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
         return new Trade(index, series, TradeType.SELL, amount, transactionCostModel);
@@ -407,6 +553,7 @@ public class Trade implements Serializable {
 
     /**
      * @return the value of a trade (without transaction cost)
+     * * @return 交易的价值（不含交易成本）
      */
     public Num getValue() {
         return pricePerAsset.multipliedBy(amount);

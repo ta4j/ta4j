@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Kijun-sen (Base line) indicator
+ * Ichimoku clouds (Ichimoku云): Kijun-sen（基线）指标
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -48,6 +49,7 @@ public class IchimokuKijunSenIndicator extends IchimokuLineIndicator {
      * 
      * @param series   the series
      * @param barCount the time frame (usually 26)
+     *                 时间范围（通常为 26）
      */
     public IchimokuKijunSenIndicator(BarSeries series, int barCount) {
         super(series, barCount);

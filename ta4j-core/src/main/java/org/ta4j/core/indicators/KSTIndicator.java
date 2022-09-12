@@ -28,9 +28,14 @@ import org.ta4j.core.num.Num;
 
 /**
  * Know Sure Thing (KST) RCMA1 = X1-Period SMA of Y1-Period Rate-of-Change RCMA2
- * = X2-Period SMA of Y2-Period Rate-of-Change RCMA3 = X3-Period SMA of
- * Y3-Period Rate-of-Change RCMA4 = X4-Period SMA of Y4-Period Rate-of-Change
- * KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
+ = X2-Period SMA of Y2-Period Rate-of-Change RCMA3 = X3-Period SMA of
+  Y3-Period Rate-of-Change RCMA4 = X4-Period SMA of Y4-Period Rate-of-Change
+  KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
+
+ Know Sure Thing (KST) RCMA1 = Y1 周期变化率 RCMA2 的 X1 周期 SMA
+ = X2-周期 SMA Y2-周期变化率 RCMA3 = X3-周期 SMA
+ Y3-周期变化率 RCMA4 = Y4-周期变化率的 X4-周期 SMA
+ KST = (RCMA1 x 1) + (RCMA2 x 2) + (RCMA3 x 3) + (RCMA4 x 4)
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:know_sure_thing_kst">
@@ -46,10 +51,15 @@ public class KSTIndicator extends CachedIndicator<Num> {
     /**
      *
      * @param indicator the indicator. Default parameters: RCMA1 = 10-Period SMA of
-     *                  10-Period Rate-of-Change RCMA2 = 10-Period SMA of 15-Period
-     *                  Rate-of-Change RCMA3 = 10-Period SMA of 20-Period
-     *                  Rate-of-Change RCMA4 = 15-Period SMA of 30-Period
-     *                  Rate-of-Change
+                       10-Period Rate-of-Change RCMA2 = 10-Period SMA of 15-Period
+                      Rate-of-Change RCMA3 = 10-Period SMA of 20-Period
+                        Rate-of-Change RCMA4 = 15-Period SMA of 30-Period
+                       Rate-of-Change
+                指标。 默认参数：RCMA1 = 10-Period SMA
+                10 周期变化率 RCMA2 = 15 周期的 10 周期 SMA
+                变化率 RCMA3 = 20 周期的 10 周期 SMA
+                变化率 RCMA4 = 30 周期的 15 周期 SMA
+                变化率
      */
     public KSTIndicator(Indicator<Num> indicator) {
         super(indicator);
@@ -62,14 +72,31 @@ public class KSTIndicator extends CachedIndicator<Num> {
     /**
      *
      * @param indicator        the indicator.
+     *                         指标。
+     *
      * @param rcma1SMABarCount RCMA1 SMA period.
+     *                         RCMA1 SMA 周期。
+     *
      * @param rcma1ROCBarCount RCMA1 ROC period.
+     *                         RCMA1 ROC 周期。
+     *
      * @param rcma2SMABarCount RCMA2 SMA period.
+     *                         RCMA2 SMA 周期。
+     *
      * @param rcma2ROCBarCount RCMA2 ROC period.
+     *                         RCMA2 ROC 周期。
+     *
      * @param rcma3SMABarCount RCMA3 SMA period.
+     *                         RCMA3 SMA 周期。
+     *
      * @param rcma3ROCBarCount RCMA3 ROC period.
+     *                         RCMA3 ROC 时期。
+     *
      * @param rcma4SMABarCount RCMA4 SMA period.
+     *                         RCMA4 SMA 周期。
+     *
      * @param rcma4ROCBarCount RCMA4 ROC period.
+     *                         RCMA4 ROC 时期。
      */
     public KSTIndicator(Indicator<Num> indicator, int rcma1SMABarCount, int rcma1ROCBarCount, int rcma2SMABarCount,
             int rcma2ROCBarCount, int rcma3SMABarCount, int rcma3ROCBarCount, int rcma4SMABarCount,

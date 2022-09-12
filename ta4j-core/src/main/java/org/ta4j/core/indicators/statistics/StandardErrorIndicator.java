@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Standard error indicator.
+ * 标准错误指示器。
  */
 public class StandardErrorIndicator extends CachedIndicator<Num> {
 
@@ -39,8 +40,8 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator the indicator 指標
+     * @param barCount  the time frame 時間範圍
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

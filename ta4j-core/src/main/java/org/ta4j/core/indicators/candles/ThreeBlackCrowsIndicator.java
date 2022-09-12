@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Three black crows indicator.
+ * 三只黑乌鸦指標。
  *
  * @see <a href="http://www.investopedia.com/terms/t/three_black_crows.asp">
  *      http://www.investopedia.com/terms/t/three_black_crows.asp</a>
@@ -39,14 +40,17 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Lower shadow
+     * 下阴影
      */
     private final LowerShadowIndicator lowerShadowInd;
     /**
      * Average lower shadow
+     * 平均下影线
      */
     private final SMAIndicator averageLowerShadowInd;
     /**
      * Factor used when checking if a candle has a very short lower shadow
+     * 检查蜡烛是否有非常短的下影线时使用的因素
      */
     private final Num factor;
 
@@ -56,9 +60,11 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      * Constructor.
      *
      * @param series   the bar series
+     *                 酒吧系列
      * @param barCount the number of bars used to calculate the average lower shadow
-     * @param factor   the factor used when checking if a candle has a very short
-     *                 lower shadow
+     *                 用于计算平均下影线的柱数
+     * @param factor   the factor used when checking if a candle has a very short  lower shadow
+     *                 检查蜡烛是否有很短的下影线时使用的因素
      */
     public ThreeBlackCrowsIndicator(BarSeries series, int barCount, double factor) {
         super(series);
@@ -71,6 +77,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
     protected Boolean calculate(int index) {
         if (index < 3) {
             // We need 4 candles: 1 white, 3 black
+            //我们需要 4 支蜡烛：1 支白色，3 支黑色
             return false;
         }
         whiteCandleIndex = index - 3;
@@ -80,11 +87,14 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
     /**
      * @param index the bar/candle index
+     *              柱/蜡烛指数
      * @return true if the bar/candle has a very short lower shadow, false otherwise
+     *          如果柱/蜡烛的下影线很短，则为 true，否则为 false
      */
     private boolean hasVeryShortLowerShadow(int index) {
         Num currentLowerShadow = lowerShadowInd.getValue(index);
         // We use the white candle index to remove to bias of the previous crows
+        // 我们使用白色蜡烛指数来消除先前乌鸦的偏见
         Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
 
         return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
@@ -92,7 +102,9 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
     /**
      * @param index the current bar/candle index
+     *              当前柱/蜡烛指数
      * @return true if the current bar/candle is declining, false otherwise
+     * 如果当前柱/蜡烛正在下降，则为 true，否则为 false
      */
     private boolean isDeclining(int index) {
         Bar prevBar = getBarSeries().getBar(index - 1);
@@ -103,14 +115,18 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         final Num currClosePrice = currBar.getClosePrice();
 
         // Opens within the body of the previous candle
+        // 在前一根蜡烛的主体内开盘
         return currOpenPrice.isLessThan(prevOpenPrice) && currOpenPrice.isGreaterThan(prevClosePrice)
         // Closes below the previous close price
+                // 收盘价低于前一个收盘价
                 && currClosePrice.isLessThan(prevClosePrice);
     }
 
     /**
      * @param index the current bar/candle index
+     *              当前柱/蜡烛指数
      * @return true if the current bar/candle is a black crow, false otherwise
+     *          如果当前柱/蜡烛是黑色乌鸦，则为 true，否则为 false
      */
     private boolean isBlackCrow(int index) {
         Bar prevBar = getBarSeries().getBar(index - 1);
@@ -118,6 +134,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         if (currBar.isBearish()) {
             if (prevBar.isBullish()) {
                 // First crow case
+                // 第一个乌鸦案例
                 return hasVeryShortLowerShadow(index) && currBar.getOpenPrice().isLessThan(prevBar.getHighPrice());
             } else {
                 return hasVeryShortLowerShadow(index) && isDeclining(index);

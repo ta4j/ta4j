@@ -34,6 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Value at Risk criterion.
+ * 风险价值标准。
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>
@@ -41,13 +42,16 @@ import org.ta4j.core.num.Num;
 public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     /**
      * Confidence level as absolute value (e.g. 0.95)
+     * 绝对值的置信水平（例如 0.95）
      */
     private final Double confidence;
 
     /**
      * Constructor
+     * 构造函数
      *
      * @param confidence the confidence level
+     *                   * @param confidence 置信水平
      */
     public ValueAtRiskCriterion(Double confidence) {
         this.confidence = confidence;
@@ -70,26 +74,34 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the VaR on the return series
+     * * 计算收益系列的 VaR
      * 
      * @param returns    the corresponding returns
+     *                   * @param 返回对应的返回值
      * @param confidence the confidence level
+     *                   * @param confidence 置信水平
      * @return the relative Value at Risk
+     * * @return 相对风险价值
      */
     private static Num calculateVaR(Returns returns, double confidence) {
         Num zero = returns.numOf(0);
         // select non-NaN returns
+        // 选择非 NaN 返回
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         Num var = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)
+            // F(x_var) >= alpha (=1-置信度)
             int nInBody = (int) (returns.getSize() * confidence);
             int nInTail = returns.getSize() - nInBody;
 
             // The series is not empty, nInTail > 0
+            // 系列不为空，nInTail > 0
             Collections.sort(returnRates);
             var = returnRates.get(nInTail - 1);
 
             // VaR is non-positive
+            // VaR 是非正的
             if (var.isGreaterThan(zero)) {
                 var = zero;
             }
@@ -100,6 +112,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         // because it represents a loss, VaR is non-positive
+        // 因为它代表损失，VaR 是非正的
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 }

@@ -82,8 +82,8 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         }
         MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(bigSeries), 10);
-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
+        // 如果此处抛出 StackOverflowError，则 RecursiveCachedIndicator 无法按预期工作。
         assertNumEquals(9994.5, indicator.getValue(9999));
     }
 

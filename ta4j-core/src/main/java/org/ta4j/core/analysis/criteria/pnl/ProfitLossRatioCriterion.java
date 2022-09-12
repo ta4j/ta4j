@@ -30,8 +30,8 @@ import org.ta4j.core.analysis.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Ratio Profit Loss Criterion = Average gross profit (with commissions) /
- * Average gross loss (with commissions)
+ * Ratio Profit Loss Criterion = Average gross profit (with commissions) / Average gross loss (with commissions)
+ * 比率利润损失标准 = 平均毛利润（含佣金）/平均毛亏损（含佣金）
  */
 public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
 
@@ -43,11 +43,13 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         Num averageProfit = averageProfitCriterion.calculate(series, position);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
+            // 只有失去头寸意味着比率为 0
             return series.numOf(0);
         }
         Num averageLoss = averageLossCriterion.calculate(series, position);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
+            // 只有获胜位置意味着比率为 1
             return series.numOf(1);
         }
         return averageProfit.dividedBy(averageLoss).abs();
@@ -58,11 +60,13 @@ public class ProfitLossRatioCriterion extends AbstractAnalysisCriterion {
         Num averageProfit = averageProfitCriterion.calculate(series, tradingRecord);
         if (averageProfit.isZero()) {
             // only loosing positions means a ratio of 0
+            // 只有失去头寸意味着比率为 0
             return series.numOf(0);
         }
         Num averageLoss = averageLossCriterion.calculate(series, tradingRecord);
         if (averageLoss.isZero()) {
             // only winning positions means a ratio of 1
+            // 只有获胜位置意味着比率为 1
             return series.numOf(1);
         }
         return averageProfit.dividedBy(averageLoss).abs();

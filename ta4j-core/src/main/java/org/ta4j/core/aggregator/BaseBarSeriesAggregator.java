@@ -31,6 +31,7 @@ import org.ta4j.core.BaseBarSeries;
 
 /**
  * Bar series aggregator based on provided bar aggregator.
+ * 基于提供的酒吧聚合器的酒吧系列聚合器。
  */
 public class BaseBarSeriesAggregator implements BarSeriesAggregator {
 

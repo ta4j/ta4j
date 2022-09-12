@@ -27,6 +27,7 @@ import org.ta4j.core.AnalysisCriterion;
 
 /**
  * An abstract analysis criterion.
+ * * 一个抽象的分析标准。
  */
 public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
 

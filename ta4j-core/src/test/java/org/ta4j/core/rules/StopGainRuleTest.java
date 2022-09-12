@@ -59,20 +59,24 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Num tradedAmount = numOf(1);
 
         // 30% stop-gain
+        // 30% 止损
         StopGainRule rule = new StopGainRule(closePrice, numOf(30));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
         // Enter at 108
+        // 在 108 处输入
         tradingRecord.enter(2, numOf(108), tradedAmount);
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertFalse(rule.isSatisfied(3, tradingRecord));
         assertTrue(rule.isSatisfied(4, tradingRecord));
         // Exit
+        // 出口
         tradingRecord.exit(5);
 
         // Enter at 118
+        // 在 118 处输入
         tradingRecord.enter(5, numOf(118), tradedAmount);
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
@@ -85,20 +89,24 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Num tradedAmount = numOf(1);
 
         // 30% stop-gain
+        // 30% 止损
         StopGainRule rule = new StopGainRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
         // Enter at 178
+        // 在 178 处输入
         tradingRecord.enter(7, numOf(178), tradedAmount);
         assertFalse(rule.isSatisfied(7, tradingRecord));
         assertFalse(rule.isSatisfied(8, tradingRecord));
         assertTrue(rule.isSatisfied(9, tradingRecord));
         // Exit
+        // 出口
         tradingRecord.exit(10);
 
         // Enter at 119
+        // 在 119 处输入
         tradingRecord.enter(3, numOf(119), tradedAmount);
         assertFalse(rule.isSatisfied(3, tradingRecord));
         assertFalse(rule.isSatisfied(2, tradingRecord));

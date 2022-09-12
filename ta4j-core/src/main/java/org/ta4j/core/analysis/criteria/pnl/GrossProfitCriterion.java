@@ -31,10 +31,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gross profit criterion (with commissions).
+ * 毛利润标准（含佣金）。
  *
  * <p>
- * The gross profit of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * The gross profit of the provided {@link Position position(s)} over the provided {@link BarSeries series}.
+ * 提供的 {@link Position Position(s)} 相对于提供的 {@link BarSeries series} 的毛利润。
  */
 public class GrossProfitCriterion extends AbstractAnalysisCriterion {
 

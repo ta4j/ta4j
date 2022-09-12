@@ -31,9 +31,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Net profit criterion (without commissions).
+ * 净利润标准（不含佣金）。
  *
  * <p>
  * The net profit of the provided {@link Position position(s)} over the provided
+ * 提供的 {@link Position Position(s)} 的净利润超过提供的
  * {@link BarSeries series}.
  */
 public class NetProfitCriterion extends AbstractAnalysisCriterion {

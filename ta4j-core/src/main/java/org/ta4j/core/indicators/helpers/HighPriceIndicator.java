@@ -28,6 +28,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * High price indicator.
+ * 高价指标。
  */
 public class HighPriceIndicator extends PriceIndicator {
 

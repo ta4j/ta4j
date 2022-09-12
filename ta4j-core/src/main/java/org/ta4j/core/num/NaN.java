@@ -27,8 +27,10 @@ import java.util.function.Function;
 
 /**
  * Representation of an undefined or unrepresentable value: NaN (not a number)
+ * * 表示未定义或不可表示的值：NaN（不是数字）
  * <br>
  * Special behavior in methods such as:
+ * * 方法中的特殊行为，例如：
  * <ul>
  * <li>{@link NaN#plus(Num)} => NaN</li>
  * <li>{@link NaN#isEqual(Num)} => true</li>
@@ -45,17 +47,19 @@ public class NaN implements Num {
 
     private static final long serialVersionUID = 9161474401436305600L;
 
-    /** static Not-a-Number instance */
+    /** static Not-a-Number instance
+     * 静态非数字实例 */
+
     public static final Num NaN = new NaN();
 
     private NaN() {
     }
 
     /**
-     * Returns a {@code Num} version of the given {@code Number}. Warning: This
-     * method turns the number into NaN.
+     * Returns a {@code Num} version of the given {@code Number}. Warning: This method turns the number into NaN.
+     * * 返回给定 {@code Number} 的 {@code Num} 版本。 警告：此方法将数字转换为 NaN。
      *
-     * @param val the number
+     * @param val the number  号码
      * @return {@link #NaN}
      */
     public static Num valueOf(Number val) {
@@ -69,12 +73,12 @@ public class NaN implements Num {
 
     @Override
     public int intValue() {
-        throw new UnsupportedOperationException("No NaN represantation for int");
+        throw new UnsupportedOperationException("No NaN represantation for int int 没有 NaN 表示");
     }
 
     @Override
     public long longValue() {
-        throw new UnsupportedOperationException("No NaN represantation for long");
+        throw new UnsupportedOperationException("No NaN represantation for long 长时间没有 NaN 表示");
     }
 
     @Override
@@ -199,9 +203,13 @@ public class NaN implements Num {
 
     /**
      * NaN.isEqual(NaN) -> true
+     * NaN.isEqual(NaN) -> 真
      * 
      * @param other the other value, not null
+     *              另一个值，不为空
+     *
      * @return flase if both values are not NaN
+     *              如果两个值都不是 NaN，则为 false
      */
     @Override
     public boolean isEqual(Num other) {

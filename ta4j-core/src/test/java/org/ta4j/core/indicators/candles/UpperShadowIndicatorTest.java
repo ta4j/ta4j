@@ -50,6 +50,7 @@ public class UpperShadowIndicatorTest extends AbstractIndicatorTest<BarSeries, N
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
+        // 开、关、高、低
         bars.add(new MockBar(10, 18, 20, 10, numFunction));
         bars.add(new MockBar(17, 20, 21, 17, numFunction));
         bars.add(new MockBar(15, 15, 16, 14, numFunction));

@@ -29,9 +29,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Rate of change of volume (ROCVIndicator) indicator. Aka. Momentum of Volume
+ * * 交易量变化率 (ROCVIndicator) 指标。 阿卡。 成交量的动量
  *
- * The ROCVIndicator calculation compares the current volume with the volume "n"
- * periods ago.
+ * The ROCVIndicator calculation compares the current volume with the volume "n" periods ago.
+ * * ROCVIndicator 计算将当前交易量与“n”个周期前的交易量进行比较。
  */
 public class ROCVIndicator extends CachedIndicator<Num> {
 
@@ -42,7 +43,9 @@ public class ROCVIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series   the bar series
+     *                 酒吧系列
      * @param barCount the time frame
+     *                 时间范围
      */
     public ROCVIndicator(BarSeries series, int barCount) {
         super(series);

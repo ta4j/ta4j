@@ -47,6 +47,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a CSV file containing values from indicators.
+ * * 此类构建一个包含指标值的 CSV 文件。
  */
 public class IndicatorsToCsv {
 
@@ -54,45 +55,60 @@ public class IndicatorsToCsv {
 
         /*
          * Getting bar series
+         * * 获取酒吧系列
          */
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         /*
          * Creating indicators
+         * * 创建指标
          */
         // Close price
+        //收盘价
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         // Typical price
+        // 典型价格
         TypicalPriceIndicator typicalPrice = new TypicalPriceIndicator(series);
         // Price variation
+        // 价格变化
         PriceVariationIndicator priceVariation = new PriceVariationIndicator(series);
         // Simple moving averages
+        // 简单移动平均线
         SMAIndicator shortSma = new SMAIndicator(closePrice, 8);
         SMAIndicator longSma = new SMAIndicator(closePrice, 20);
         // Exponential moving averages
+        // 指数移动平均线
         EMAIndicator shortEma = new EMAIndicator(closePrice, 8);
         EMAIndicator longEma = new EMAIndicator(closePrice, 20);
         // Percentage price oscillator
+        // 百分比价格振荡器
         PPOIndicator ppo = new PPOIndicator(closePrice, 12, 26);
         // Rate of change
+        // 变化率
         ROCIndicator roc = new ROCIndicator(closePrice, 100);
         // Relative strength index
+        // 相对强弱指数
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
         // Williams %R
+        // 威廉姆斯 %R
         WilliamsRIndicator williamsR = new WilliamsRIndicator(series, 20);
         // Average true range
+        // 平均真实范围
         ATRIndicator atr = new ATRIndicator(series, 20);
         // Standard deviation
+        // 标准差
         StandardDeviationIndicator sd = new StandardDeviationIndicator(closePrice, 14);
 
         /*
          * Building header
+         * * 建筑标题
          */
         StringBuilder sb = new StringBuilder(
                 "timestamp,close,typical,variation,sma8,sma20,ema8,ema20,ppo,roc,rsi,williamsr,atr,sd\n");
 
         /*
          * Adding indicators values
+         * * 添加指标值
          */
         final int nbBars = series.getBarCount();
         for (int i = 0; i < nbBars; i++) {
@@ -107,13 +123,14 @@ public class IndicatorsToCsv {
 
         /*
          * Writing CSV file
+         * * 写入 CSV 文件
          */
         BufferedWriter writer = null;
         try {
             writer = new BufferedWriter(new FileWriter(new File("target", "indicators.csv")));
             writer.write(sb.toString());
         } catch (IOException ioe) {
-            Logger.getLogger(IndicatorsToCsv.class.getName()).log(Level.SEVERE, "Unable to write CSV file", ioe);
+            Logger.getLogger(IndicatorsToCsv.class.getName()).log(Level.SEVERE, "Unable to write CSV file 无法写入 CSV 文件", ioe);
         } finally {
             try {
                 if (writer != null) {

@@ -32,6 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A mock bar with sample data.
+ * * 带有样本数据的模拟栏。
  */
 public class MockBar extends BaseBar {
 

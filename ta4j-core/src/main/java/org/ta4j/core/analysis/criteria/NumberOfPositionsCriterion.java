@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Number of position criterion.
+ * 位置标准的数量。
  */
 public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 

@@ -110,6 +110,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
     /**
      * @param values values
      * @return a simple linear regression based on provided values
+     * * @return 基于提供的值的简单线性回归
      */
     private static SimpleRegression buildSimpleRegression(double... values) {
         SimpleRegression simpleReg = new SimpleRegression();

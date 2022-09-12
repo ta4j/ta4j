@@ -33,28 +33,39 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-in-slope rule.
+ * 斜率指标规则。
  *
  * Satisfied when the difference of the value of the {@link Indicator indicator}
- * and the previous (n-th) value of the {@link Indicator indicator} is between
- * the values of maxSlope or/and minSlope. It can test both, positive and
- * negative slope.
+  and the previous (n-th) value of the {@link Indicator indicator} is between
+  the values of maxSlope or/and minSlope. It can test both, positive and
+  negative slope.
+ 当 {@link Indicator indicator} 的值的差异时满足
+ {@link Indicator indicator} 的前一个（第 n 个）值介于
+ maxSlope 或/和 minSlope 的值。 它可以同时测试，阳性和
+ 负斜率。
  */
 public class InSlopeRule extends AbstractRule {
 
-    /** The actual indicator */
+    /** The actual indicator
+     * 实际指标 */
     private Indicator<Num> ref;
-    /** The previous n-th value of ref */
+    /** The previous n-th value of ref
+     * ref 的前 n 个值 */
     private PreviousValueIndicator prev;
-    /** The minimum slope between ref and prev */
+    /** The minimum slope between ref and prev
+     * ref 和 prev 之间的最小斜率 */
     private Num minSlope;
-    /** The maximum slope between ref and prev */
+    /** The maximum slope between ref and prev
+     * ref 和 prev 之间的最大斜率 */
     private Num maxSlope;
 
     /**
      * Constructor.
      * 
      * @param ref      the reference indicator
+     *                 参考指标
      * @param minSlope minumum slope between reference and previous indicator
+     *                 参考指标和前一个指标之间的最小斜率
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope) {
         this(ref, 1, minSlope, NaN);
@@ -64,10 +75,12 @@ public class InSlopeRule extends AbstractRule {
      * Constructor.
      * 
      * @param ref      the reference indicator
-     * @param minSlope minumum slope between value of reference and previous
-     *                 indicator
-     * @param maxSlope maximum slope between value of reference and previous
-     *                 indicator
+     *                 参考指标
+     * @param minSlope minumum slope between value of reference and previous    indicator
+     *                 参考值与前一个指标之间的最小斜率
+     *
+     * @param maxSlope maximum slope between value of reference and previous   indicator
+     *                 参考值与前一个指标之间的最大斜率
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope, Num maxSlope) {
         this(ref, 1, minSlope, maxSlope);
@@ -77,9 +90,11 @@ public class InSlopeRule extends AbstractRule {
      * Constructor.
      * 
      * @param ref         the reference indicator
+     *                    参考指标
      * @param nthPrevious defines the previous n-th indicator
-     * @param maxSlope    maximum slope between value of reference and previous
-     *                    indicator
+     *                    定义前第 n 个指标
+     * @param maxSlope    maximum slope between value of reference and previous  indicator
+     *                    参考值与前一个指标之间的最大斜率
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num maxSlope) {
         this(ref, nthPrevious, NaN, maxSlope);
@@ -89,11 +104,14 @@ public class InSlopeRule extends AbstractRule {
      * Constructor.
      * 
      * @param ref         the reference indicator
+     *                    参考指标
      * @param nthPrevious defines the previous n-th indicator
-     * @param minSlope    minumum slope between value of reference and previous
-     *                    indicator
-     * @param maxSlope    maximum slope between value of reference and previous
-     *                    indicator
+     *                    定义前第 n 个指标
+     * @param minSlope    minumum slope between value of reference and previous   indicator
+     *                    参考值与前一个指标之间的最小斜率
+     *
+     * @param maxSlope    maximum slope between value of reference and previous  indicator
+     *                    参考值与前一个指标之间的最大斜率
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num minSlope, Num maxSlope) {
         this.ref = ref;

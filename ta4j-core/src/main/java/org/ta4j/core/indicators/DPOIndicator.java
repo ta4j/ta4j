@@ -32,15 +32,23 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Detrended Price Oscillator (DPO) indicator.
+ * 去趋势价格振荡器 (DPO) 指标。
  *
  * The Detrended Price Oscillator (DPO) is an indicator designed to remove trend
- * from price and make it easier to identify cycles. DPO does not extend to the
- * last date because it is based on a displaced moving average. However,
- * alignment with the most recent is not an issue because DPO is not a momentum
- * oscillator. Instead, DPO is used to identify cycles highs/lows and estimate
- * cycle length.
+  from price and make it easier to identify cycles. DPO does not extend to the
+  last date because it is based on a displaced moving average. However,
+  alignment with the most recent is not an issue because DPO is not a momentum
+  oscillator. Instead, DPO is used to identify cycles highs/lows and estimate
+  cycle length.
+     去趋势价格振荡器 (DPO) 是一种旨在消除趋势的指标
+     从价格和更容易识别周期。 DPO 不延伸到
+     最后日期，因为它是基于位移的移动平均线。 然而，
+     与最近的一致不是问题，因为 DPO 不是动力
+     振荡器。 相反，DPO 用于识别周期高点/低点并估计
+     周期长度。
  *
  * In short, DPO(20) equals price 11 days ago less the 20-day SMA.
+ * 简而言之，DPO(20) 等于 11 天前的价格减去 20 天 SMA。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:detrended_price_osci">
@@ -54,8 +62,8 @@ public class DPOIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param series   the series
-     * @param barCount the time frame
+     * @param series   the series  该系列
+     * @param barCount the time frame  时间范围
      */
     public DPOIndicator(BarSeries series, int barCount) {
         this(new ClosePriceIndicator(series), barCount);
@@ -64,8 +72,8 @@ public class DPOIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param price    the price
-     * @param barCount the time frame
+     * @param price    the price  价格
+     * @param barCount the time frame 時間範圍
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);

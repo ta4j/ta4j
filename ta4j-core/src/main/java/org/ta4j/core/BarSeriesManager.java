@@ -32,19 +32,23 @@ import org.ta4j.core.num.Num;
 
 /**
  * A manager for {@link BarSeries} objects.
+ * * {@link BarSeries} 对象的管理器。
  *
- * Used for backtesting. Allows to run a {@link Strategy trading strategy} over
- * the managed bar series.
+ * Used for backtesting. Allows to run a {@link Strategy trading strategy} over the managed bar series.
+ * * 用于回测。 允许在托管柱系列上运行 {@link Strategy 交易策略}。
  */
 public class BarSeriesManager {
 
-    /** The logger */
+    /** The logger
+     * 记录器*/
     private static final Logger log = LoggerFactory.getLogger(BarSeriesManager.class);
 
-    /** The managed bar series */
+    /** The managed bar series
+     * 托管柱形系列 */
     private BarSeries barSeries;
 
-    /** The trading cost models */
+    /** The trading cost models
+     * 交易成本模型*/
     private CostModel transactionCostModel;
     private CostModel holdingCostModel;
 
@@ -59,6 +63,7 @@ public class BarSeriesManager {
      * Constructor.
      * 
      * @param barSeries the bar series to be managed
+     *                  要管理的酒吧系列
      */
     public BarSeriesManager(BarSeries barSeries) {
         this(barSeries, new ZeroCostModel(), new ZeroCostModel());
@@ -68,8 +73,11 @@ public class BarSeriesManager {
      * Constructor.
      * 
      * @param barSeries            the bar series to be managed
+     *                             要管理的酒吧系列
      * @param transactionCostModel the cost model for transactions of the asset
+     *                             资产交易的成本模型
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     *                             持有资产的成本模型（例如借款）
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
         this.barSeries = barSeries;
@@ -79,6 +87,7 @@ public class BarSeriesManager {
 
     /**
      * @param barSeries the bar series to be managed
+     *                  要管理的酒吧系列
      */
     public void setBarSeries(BarSeries barSeries) {
         this.barSeries = barSeries;
@@ -86,6 +95,7 @@ public class BarSeriesManager {
 
     /**
      * @return the managed bar series
+     * 管理酒吧系列
      */
     public BarSeries getBarSeries() {
         return barSeries;
@@ -93,25 +103,36 @@ public class BarSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series.
+     * 在托管系列上运行提供的策略。
      *
      * Opens the position with a {@link TradeType} BUY trade.
+     * 以 {@link TradeType} 买入交易开仓。
      * 
      * @return the trading record coming from the run
+     *      来自运行的交易记录
      */
     public TradingRecord run(Strategy strategy) {
         return run(strategy, TradeType.BUY);
     }
 
     /**
-     * Runs the provided strategy over the managed series (from startIndex to
-     * finishIndex).
+     * Runs the provided strategy over the managed series (from startIndex to finishIndex).
+     *  在托管系列上运行提供的策略（从 startIndex 到 finishIndex）。
      *
      * Opens the position with a {@link TradeType} BUY trade.
+     *  以 {@link TradeType} 买入交易开仓。
      * 
      * @param strategy    the trading strategy
+     *                    交易策略
+     *
      * @param startIndex  the start index for the run (included)
+     *                    运行的开始索引（包括）
+     *
      * @param finishIndex the finish index for the run (included)
+     *                    运行的完成索引（包括）
+     *
      * @return the trading record coming from the run
+     *          来自运行的交易记录
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
         return run(strategy, TradeType.BUY, barSeries.numOf(1), startIndex, finishIndex);
@@ -119,28 +140,45 @@ public class BarSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series.
+     * 在托管系列上运行提供的策略。
      *
      * Opens the position with a trade of {@link TradeType tradeType}.
-     * 
+     *  * 以 {@link TradeType tradeType} 的交易开仓。
+     *
      * @param strategy  the trading strategy
+     *                  交易策略
+     *
      * @param tradeType the {@link TradeType} used to open the position
+     *                  用于开仓的 {@link TradeType}
+     *
      * @return the trading record coming from the run
+     *      来自运行的交易记录
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType) {
         return run(strategy, tradeType, barSeries.numOf(1));
     }
 
     /**
-     * Runs the provided strategy over the managed series (from startIndex to
-     * finishIndex).
+     * Runs the provided strategy over the managed series (from startIndex to finishIndex).
+     * 在托管系列上运行提供的策略（从 startIndex 到 finishIndex）。
      *
      * Opens the position with a trade of {@link TradeType tradeType}.
+     * 以 {@link TradeType tradeType} 的交易开仓。
      * 
      * @param strategy    the trading strategy
+     *                    交易策略
+     *
      * @param tradeType   the {@link TradeType} used to open the position
+     *                    用于开仓的 {@link TradeType}
+     *
      * @param startIndex  the start index for the run (included)
+     *                    运行的开始索引（包括）
+     *
      * @param finishIndex the finish index for the run (included)
+     *                    运行的完成索引（包括）
+     *
      * @return the trading record coming from the run
+     *              来自运行的交易记录
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, int startIndex, int finishIndex) {
         return run(strategy, tradeType, barSeries.numOf(1), startIndex, finishIndex);
@@ -148,37 +186,57 @@ public class BarSeriesManager {
 
     /**
      * Runs the provided strategy over the managed series.
+     * 在托管系列上运行提供的策略。
      *
      * @param strategy  the trading strategy
+     *                  交易策略
+     *
      * @param tradeType the {@link TradeType} used to open the position
+     *                  用于开仓的 {@link TradeType}
+     *
      * @param amount    the amount used to open/close the trades
+     *                  用于打开/关闭交易的金额
+     *
      * @return the trading record coming from the run
+     * @return 来自运行的交易记录
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount) {
         return run(strategy, tradeType, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
     }
 
     /**
-     * Runs the provided strategy over the managed series (from startIndex to
-     * finishIndex).
+     * Runs the provided strategy over the managed series (from startIndex to finishIndex).
+     * * 在托管系列上运行提供的策略（从 startIndex 到 finishIndex）。
      *
      * @param strategy    the trading strategy
+     *                    交易策略
+     *
      * @param tradeType   the {@link TradeType} used to open the trades
+     *                    用于打开交易的 {@link TradeType}
+     *
      * @param amount      the amount used to open/close the trades
+     *                    用于打开/关闭交易的金额
+     *
      * @param startIndex  the start index for the run (included)
+     *                    运行的开始索引（包括）
+     *
      * @param finishIndex the finish index for the run (included)
+     *                    运行的完成索引（包括）
+     *
      * @return the trading record coming from the run
+     *                  * @return 来自运行的交易记录
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
 
         int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
 
-        log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex, strategy,
+        log.trace("Running strategy (indexes 运行策略（索引: {} -> {}): {} (starting with 从...开始 {})", runBeginIndex, runEndIndex, strategy,
                 tradeType);
         TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
+            // 对于两个索引之间的每个柱...
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
             }
@@ -186,12 +244,15 @@ public class BarSeriesManager {
 
         if (!tradingRecord.isClosed()) {
             // If the last position is still opened, we search out of the run end index.
-            // May works if the end index for this run was inferior to the actual number of
-            // bars
+            // 如果最后一个仓位仍然开仓，我们在运行结束索引之外搜索。
+            // May works if the end index for this run was inferior to the actual number of bars
+            // 如果此运行的结束索引低于实际柱数，则可能有效
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
+                // 对于本次运行结束索引之后的每个柱...
                 // --> Trying to close the last position
+                // --> 试图关闭最后一个位置
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradingRecord.operate(i, barSeries.getBar(i).getClosePrice(), amount);
                     break;

@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Simple moving average (SMA) indicator.
+ * 简单移动平均线 (SMA) 指标。
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/s/sma.asp">https://www.investopedia.com/terms/s/sma.asp</a>

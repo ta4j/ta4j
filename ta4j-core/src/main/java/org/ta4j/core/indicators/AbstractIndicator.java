@@ -31,11 +31,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Abstract {@link Indicator indicator}.
+ * * 摘要 {@link 指标指标}。
  */
 public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     /**
      * The logger
+     * 记录器
      */
     protected final transient Logger log = LoggerFactory.getLogger(getClass());
 
@@ -45,6 +47,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
      * Constructor.
      *
      * @param series the related bar series
+     *               相关酒吧系列
      */
     protected AbstractIndicator(BarSeries series) {
         this.series = series;

@@ -27,13 +27,16 @@ import org.ta4j.core.BarSeries;
 
 /**
  * A fixed boolean indicator.
+ * 一个固定的布尔指标。
  */
 public class FixedBooleanIndicator extends FixedIndicator<Boolean> {
 
     /**
      * Constructor.
+     * 构造函数
      * 
      * @param values the values to be returned by this indicator
+     *               该指标要返回的值
      */
     public FixedBooleanIndicator(BarSeries series, Boolean... values) {
         super(series, values);

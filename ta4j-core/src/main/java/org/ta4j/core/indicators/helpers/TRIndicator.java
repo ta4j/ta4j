@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * True range indicator.
+ * 真实范围指示器。
  */
 public class TRIndicator extends CachedIndicator<Num> {
 

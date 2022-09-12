@@ -32,9 +32,10 @@ import org.ta4j.core.indicators.DateTimeIndicator;
 
 /**
  * Time range rule.
+ * 时间范围规则。
  *
- * Satisfied when the local time value of the DateTimeIndicator is within a time
- * range specified in the TimeRange list.
+ * Satisfied when the local time value of the DateTimeIndicator is within a time range specified in the TimeRange list.
+ * * 当 DateTimeIndicator 的本地时间值在 TimeRange 列表中指定的时间范围内时满足。
  */
 public class TimeRangeRule extends AbstractRule {
 

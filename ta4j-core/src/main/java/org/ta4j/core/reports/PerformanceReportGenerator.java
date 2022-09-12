@@ -33,8 +33,8 @@ import org.ta4j.core.analysis.criteria.pnl.ProfitLossPercentageCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * This class generates PerformanceReport basis on provided trading report and
- * bar series
+ * This class generates PerformanceReport basis on provided trading report and bar series
+ * 该类根据提供的交易报告和柱系列生成性能报告
  *
  * @see PerformanceReport
  */

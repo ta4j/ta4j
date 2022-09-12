@@ -50,6 +50,7 @@ public class DecimalNumTest {
     private static final int NUMBARS = 10000;
 
     // 120 digit precision
+    // 120 位精度
     private static final String SUPER_PRECISION_STRING = "1.234567890" + // 10
             "1234567890" + // 20
             "1234567890" + // 30
@@ -63,6 +64,7 @@ public class DecimalNumTest {
             "1234567890" + // 110
             "1234567890"; // 120
     // 120 digit precision
+    // 120 位精度
     private static final String SUPER_PRECISION_LARGE_STRING = "1234567890" + // 10
             "1234567890" + // 20
             "1234567890" + // 30
@@ -77,10 +79,11 @@ public class DecimalNumTest {
             "1234567890"; // 120
     private static final Num FIRST_SUPER_PRECISION_NUM = DecimalNum.valueOf(SUPER_PRECISION_STRING);
 
-    // override the auto-precision based on length of SUPER_PRECISION_STRING by
-    // passing a precision to valueOf()
+    // override the auto-precision based on length of SUPER_PRECISION_STRING by passing a precision to valueOf()
+    // 通过将精度传递给 valueOf() 来覆盖基于 SUPER_PRECISION_STRING 长度的自动精度
     private Function<Number, Num> superPrecisionFunc = (number -> DecimalNum.valueOf(number.toString(), 256));
     // auto-set precision based on length of SUPER_PRECISION_STRING (120)
+    // 根据 SUPER_PRECISION_STRING (120) 的长度自动设置精度
     private Function<Number, Num> precisionFunc = DecimalNum::valueOf;
     private Function<Number, Num> precision32Func = (number -> DecimalNum.valueOf(number.toString(), 32));
     private Function<Number, Num> doubleFunc = DoubleNum::valueOf;
@@ -168,8 +171,10 @@ public class DecimalNumTest {
     public void test() {
         Num num = superPrecisionFunc.apply(new BigDecimal(SUPER_PRECISION_STRING));
         // get the max precision from the MathContext
+        // 从 MathContext 中获取最大精度
         assertEquals(256, ((DecimalNum) num).getMathContext().getPrecision());
         // get the auto precision from the delegate
+        // 从委托中获取自动精度
         assertEquals(120, ((BigDecimal) num.getDelegate()).precision());
 
         assertEquals(120, ((BigDecimal) FIRST_SUPER_PRECISION_NUM.getDelegate()).precision());
@@ -210,6 +215,7 @@ public class DecimalNumTest {
         calculateLowPrecision();
 
         // accuracies relative to SuperPrecision
+        // 相对于 SuperPrecision 的精度
         assertIndicatorEquals(superPrecisionIndicator, precisionIndicator, DecimalNum.valueOf(
                 "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"));
         assertIndicatorNotEquals(superPrecisionIndicator, precisionIndicator, DecimalNum.valueOf(
@@ -223,6 +229,7 @@ public class DecimalNumTest {
         assertIndicatorEquals(superPrecisionIndicator, lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
         assertIndicatorNotEquals(superPrecisionIndicator, lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
         // accuracies relative to Precision
+        // 相对于 Precision 的准确度
         assertIndicatorEquals(precisionIndicator, precision32Indicator,
                 DecimalNum.valueOf("0.0000000000000000000000000001"));
         assertIndicatorNotEquals(precisionIndicator, precision32Indicator,
@@ -232,19 +239,22 @@ public class DecimalNumTest {
         assertIndicatorEquals(precisionIndicator, lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
         assertIndicatorNotEquals(precisionIndicator, lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
         // accuracies relative to Precision32
+        // 相对于 Precision32 的精度
         assertIndicatorEquals(precision32Indicator, doubleIndicator, DecimalNum.valueOf("0.000000000001"));
         assertIndicatorNotEquals(precision32Indicator, doubleIndicator, DecimalNum.valueOf("0.0000000000001"));
         assertIndicatorEquals(precision32Indicator, lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
         assertIndicatorNotEquals(precision32Indicator, lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
         // accuracies relative to Double
+        // 相对于 Double 的精度
         assertIndicatorEquals(doubleIndicator, lowPrecisionIndicator, DecimalNum.valueOf("3.5"));
         assertIndicatorNotEquals(doubleIndicator, lowPrecisionIndicator, DecimalNum.valueOf("3.4"));
 
-        // This helps for doing a memory snapshot
-        // Thread.sleep(1000000);
+        // This helps for doing a memory snapshot Thread.sleep(1000000);
+        // 这有助于做内存快照 Thread.sleep(1000000);
     }
 
     // use separate methods for each of these for memory/CPU profiling
+    // 对每个内存/CPU 分析使用单独的方法
 
     private void calculateSuperPrecision() {
         Indicator<Num> indicator = superPrecisionIndicator;

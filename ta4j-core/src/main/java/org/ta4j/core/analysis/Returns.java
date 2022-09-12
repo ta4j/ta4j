@@ -36,8 +36,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * The return rates.
+ * 返回比率。
  *
  * This class allows to compute the return rate of a price time-series
+ * * 这个类允许计算价格时间序列的回报率
  */
 public class Returns implements Indicator<Num> {
 
@@ -59,6 +61,7 @@ public class Returns implements Indicator<Num> {
 
         /**
          * @return calculate a single return rate
+         * * @return 计算单次退货率
          */
         public abstract Num calculate(Num xNew, Num xOld);
     }
@@ -67,30 +70,37 @@ public class Returns implements Indicator<Num> {
 
     /**
      * The bar series
+     * * 酒吧系列
      */
     private final BarSeries barSeries;
 
     /**
      * The return rates
+     * * 退货率
      */
     private List<Num> values;
 
     /**
      * Unit element for efficient arithmetic return computation
+     * * 用于高效算术返回计算的单元元素
      */
     private static Num one;
 
     /**
      * Constructor.
+     * 构造函数。
      *
      * @param barSeries the bar series
+     *                  bar系列
      * @param position  a single position
+     *                  单一职位
      */
     public Returns(BarSeries barSeries, Position position, ReturnType type) {
         one = barSeries.numOf(1);
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
+        // 在索引 0 处，没有返回
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
         calculate(position);
 
@@ -98,16 +108,19 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * Constructor.
+     * Constructor. 构造函数。
      *
      * @param barSeries     the bar series
+     *                      bar系列
      * @param tradingRecord the trading record
+     *                      交易记录
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnType type) {
         one = barSeries.numOf(1);
         this.barSeries = barSeries;
         this.type = type;
         // at index 0, there is no return
+        // 在索引 0 处，没有返回
         values = new ArrayList<>(Collections.singletonList(NaN.NaN));
         calculate(tradingRecord);
 
@@ -120,7 +133,9 @@ public class Returns implements Indicator<Num> {
 
     /**
      * @param index the bar index
+     *              条形索引
      * @return the return rate value at the index-th position
+     * @return 返回第 index 个位置的回报率值
      */
     @Override
     public Num getValue(int index) {
@@ -139,6 +154,7 @@ public class Returns implements Indicator<Num> {
 
     /**
      * @return the size of the return series.
+     * @return 返回系列的大小。
      */
     public int getSize() {
         return barSeries.getBarCount() - 1;
@@ -149,11 +165,13 @@ public class Returns implements Indicator<Num> {
     }
 
     /**
-     * Calculates the cash flow for a single position (including accrued cashflow
-     * for open positions).
+     * Calculates the cash flow for a single position (including accrued cashflow for open positions).
+     * * 计算单个头寸的现金流（包括未平仓头寸的应计现金流）。
      *
      * @param position   a single position
+     *                   单一职位
      * @param finalIndex index up until cash flow of open positions is considered
+     *                   索引直到考虑未平仓头寸的现金流
      */
     public void calculate(Position position, int finalIndex) {
         boolean isLongTrade = position.getEntry().isBuy();
@@ -170,8 +188,8 @@ public class Returns implements Indicator<Num> {
         Num holdingCost = position.getHoldingCost(endIndex);
         Num avgCost = holdingCost.dividedBy(holdingCost.numOf(nPeriods));
 
-        // returns are per period (iterative). Base price needs to be updated
-        // accordingly
+        // returns are per period (iterative). Base price needs to be updated accordingly
+        // 返回每个周期（迭代）。 基价需要相应更新
         Num lastPrice = position.getEntry().getNetPrice();
         for (int i = startingIndex; i < endIndex; i++) {
             Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
@@ -185,10 +203,12 @@ public class Returns implements Indicator<Num> {
             }
             values.add(strategyReturn);
             // update base price
+            // 更新基准价格
             lastPrice = barSeries.getBar(i).getClosePrice();
         }
 
         // add net return at exit position
+        // 在退出位置添加净收益
         Num exitPrice;
         if (position.getExit() != null) {
             exitPrice = position.getExit().getNetPrice();
@@ -208,16 +228,20 @@ public class Returns implements Indicator<Num> {
 
     /**
      * Calculates the returns for a trading record.
+     * * 计算交易记录的回报。
      *
      * @param tradingRecord the trading record
+     *                      交易记录
      */
     private void calculate(TradingRecord tradingRecord) {
         // For each position...
+        // 对于每个位置...
         tradingRecord.getPositions().forEach(this::calculate);
     }
 
     /**
      * Fills with zeroes until the end of the series.
+     * * 用零填充，直到系列结束。
      */
     private void fillToTheEnd() {
         if (barSeries.getEndIndex() >= values.size()) {

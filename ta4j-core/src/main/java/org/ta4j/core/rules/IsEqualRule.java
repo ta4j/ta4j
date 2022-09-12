@@ -30,18 +30,21 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-equal-indicator rule.
+ * 指标-等于-指标规则。
  *
- * Satisfied when the value of the first {@link Indicator indicator} is equal to
- * the value of the second one.
+ * Satisfied when the value of the first {@link Indicator indicator} is equal to the value of the second one.
+ * * 当第一个 {@link Indicator indicator} 的值等于第二个的值时满足。
  */
 public class IsEqualRule extends AbstractRule {
 
     /**
      * The first indicator
+     * 第一个指标
      */
     private final Indicator<Num> first;
     /**
      * The second indicator
+     * 第二个指标
      */
     private final Indicator<Num> second;
 
@@ -49,7 +52,9 @@ public class IsEqualRule extends AbstractRule {
      * Constructor.
      *
      * @param indicator the indicator
+     *                  指标
      * @param value     the value to check
+     *                  要检查的值
      */
     public IsEqualRule(Indicator<Num> indicator, Number value) {
         this(indicator, indicator.numOf(value));
@@ -59,7 +64,9 @@ public class IsEqualRule extends AbstractRule {
      * Constructor.
      *
      * @param indicator the indicator
+     *                  指标
      * @param value     the value to check
+     *                  要检查的值
      */
     public IsEqualRule(Indicator<Num> indicator, Num value) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), value));
@@ -69,7 +76,9 @@ public class IsEqualRule extends AbstractRule {
      * Constructor.
      *
      * @param first  the first indicator
+     *               第一个指标
      * @param second the second indicator
+     *               第二个指标
      */
     public IsEqualRule(Indicator<Num> first, Indicator<Num> second) {
         this.first = first;

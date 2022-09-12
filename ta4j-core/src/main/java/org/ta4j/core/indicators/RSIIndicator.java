@@ -30,8 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Relative strength index indicator.
+ * 相对强弱指数指标。
  *
  * Computed using original Welles Wilder formula.
+ * 使用原始 Welles Wilder 公式计算。
  */
 public class RSIIndicator extends CachedIndicator<Num> {
 
@@ -47,6 +49,7 @@ public class RSIIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         // compute relative strength
+        // 计算相对强度
         Num averageGain = averageGainIndicator.getValue(index);
         Num averageLoss = averageLossIndicator.getValue(index);
         if (averageLoss.isZero()) {
@@ -58,6 +61,7 @@ public class RSIIndicator extends CachedIndicator<Num> {
         }
         Num relativeStrength = averageGain.dividedBy(averageLoss);
         // compute relative strength index
+        // 计算相对强度指数
         return numOf(100).minus(numOf(100).dividedBy(numOf(1).plus(relativeStrength)));
     }
 }

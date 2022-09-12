@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Fibonacci Reversal Indicator.
+ * 斐波那契反转指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
@@ -50,6 +51,7 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Standard Fibonacci factors
+     * 标准斐波那契因子
      */
     public enum FibonacciFactor {
         FACTOR_1(0.382), FACTOR_2(0.618), FACTOR_3(1);
@@ -70,11 +72,14 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates a (fibonacci) reversal
+     * 计算（斐波那契）反转
      *
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
+     *                            此反转的 {@link PivotPointIndicator}
      * @param fibonacciFactor     the fibonacci factor for this reversal
-     * @param fibReversalTyp      the FibonacciReversalIndicator.FibReversalTyp of
-     *                            the reversal (SUPPORT, RESISTANCE)
+     *                            这种反转的斐波那契因子
+     * @param fibReversalTyp      the FibonacciReversalIndicator.FibReversalTyp of  the reversal (SUPPORT, RESISTANCE)
+     *                            反转的 FibonacciReversalIndicator.FibReversalTyp (SUPPORT, RESISTANCE)
      */
     public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, double fibonacciFactor,
             FibReversalTyp fibReversalTyp) {
@@ -88,12 +93,14 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates a (fibonacci) reversal
+     * 计算（斐波那契）反转
      *
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
-     * @param fibonacciFactor     the {@link FibonacciFactor} factor for this
-     *                            reversal
-     * @param fibReversalTyp      the FibonacciReversalIndicator.FibReversalTyp of
-     *                            the reversal (SUPPORT, RESISTANCE)
+     *                            此反转的 {@link PivotPointIndicator}
+     * @param fibonacciFactor     the {@link FibonacciFactor} factor for this  reversal
+     *                            此反转的 {@link 斐波那契因子} 因子
+     * @param fibReversalTyp      the FibonacciReversalIndicator.FibReversalTyp of  the reversal (SUPPORT, RESISTANCE)
+     *                            反转的 FibonacciReversalIndicator.FibReversalTyp (SUPPORT, RESISTANCE)
      */
     public FibonacciReversalIndicator(PivotPointIndicator pivotPointIndicator, FibonacciFactor fibonacciFactor,
             FibReversalTyp fibReversalTyp) {

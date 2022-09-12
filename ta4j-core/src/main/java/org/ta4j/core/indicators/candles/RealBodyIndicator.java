@@ -30,9 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Real (candle) body height indicator.
+ * 真实（蜡烛）身高指示器。
  *
- * Provides the (relative) difference between the open price and the close price
- * of a bar. I.e.: close price - open price
+ * Provides the (relative) difference between the open price and the close price of a bar. I.e.: close price - open price
+ * * 提供柱的开盘价和收盘价之间的（相对）差异。 即：收盘价 - 开盘价
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">

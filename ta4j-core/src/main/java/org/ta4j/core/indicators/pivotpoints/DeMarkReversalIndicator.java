@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * DeMark Reversal Indicator.
+ * DeMark 反转指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
@@ -52,11 +53,10 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates the DeMark reversal for the corresponding pivot level
+     * * 计算相应枢轴水平的 DeMark 反转
      * 
-     * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this
-     *                            reversal
-     * @param level               the {@link DeMarkPivotLevel} for this reversal
-     *                            (RESISTANT, SUPPORT)
+     * @param pivotPointIndicator the {@link DeMarkPivotPointIndicator} for this    reversal  此反转的 {@link DeMarkPivotPointIndicator}
+     * @param level               the {@link DeMarkPivotLevel} for this reversal   (RESISTANT, SUPPORT)  此逆转的 {@link DeMarkPivotLevel} (RESISTANT, SUPPORT)
      */
     public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
         super(pivotPointIndicator);

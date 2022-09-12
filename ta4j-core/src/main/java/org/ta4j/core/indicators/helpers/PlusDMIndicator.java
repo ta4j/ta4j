@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * +DM indicator.
+ * +DM 指标。
  */
 public class PlusDMIndicator extends CachedIndicator<Num> {
 

@@ -30,9 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Lower shadow height indicator.
+ * 下阴影高度指示器。
  *
- * Provides the (absolute) difference between the low price and the lowest price
- * of the candle body. I.e.: low price - min(open price, close price)
+ * Provides the (absolute) difference between the low price and the lowest price of the candle body. I.e.: low price - min(open price, close price)
+ * * 提供蜡烛实体的最低价和最低价之间的（绝对）差值。 即：低价 - 最低（开盘价，收盘价）
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">
@@ -56,9 +57,11 @@ public class LowerShadowIndicator extends CachedIndicator<Num> {
         final Num closePrice = t.getClosePrice();
         if (closePrice.isGreaterThan(openPrice)) {
             // Bullish
+            //看涨
             return openPrice.minus(t.getLowPrice());
         } else {
             // Bearish
+            //看跌
             return closePrice.minus(t.getLowPrice());
         }
     }

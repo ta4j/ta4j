@@ -38,6 +38,7 @@ public class ZeroCostModelTest {
     @Test
     public void calculatePerPosition() {
         // calculate costs per position
+        //计算每个位置的成本
         ZeroCostModel model = new ZeroCostModel();
 
         int holdingPeriod = 2;
@@ -54,6 +55,7 @@ public class ZeroCostModelTest {
     @Test
     public void calculatePerPrice() {
         // calculate costs per position
+        //计算每个位置的成本
         ZeroCostModel model = new ZeroCostModel();
         Num cost = model.calculate(DoubleNum.valueOf(100), DoubleNum.valueOf(1));
 

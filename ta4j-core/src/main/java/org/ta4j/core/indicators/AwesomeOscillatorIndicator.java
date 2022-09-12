@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Awesome oscillator. (AO)
+ * 很棒的振荡器。 (AO)
  *
  * see https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)
  */
@@ -43,8 +44,11 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator    (normally {@link MedianPriceIndicator})
+     *                     （通常是 {@link MedianPriceIndicator}）
      * @param barCountSma1 (normally 5)
+     *                     （通常为 5 个）
      * @param barCountSma2 (normally 34)
+     *                     （通常为 34）
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator, int barCountSma1, int barCountSma2) {
         super(indicator);
@@ -56,6 +60,7 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator (normally {@link MedianPriceIndicator})
+     *                  （通常是 {@link MedianPriceIndicator}）
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator) {
         this(indicator, 5, 34);

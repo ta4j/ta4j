@@ -32,6 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Mass index indicator.
+ * 质量指数指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:mass_index">
@@ -47,15 +48,20 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series      the bar series
+     *                    酒吧系列
      * @param emaBarCount the time frame for EMAs (usually 9)
+     *                    EMA 的时间范围（通常为 9）
      * @param barCount    the time frame
+     *                    时间范围
      */
     public MassIndexIndicator(BarSeries series, int emaBarCount, int barCount) {
         super(series);
         Indicator<Num> highLowDifferential = new DifferenceIndicator(new HighPriceIndicator(series),
                 new LowPriceIndicator(series));
         singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
-        doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
+        // Not the same formula as DoubleEMAIndicator
+        // 与 DoubleEMAIndicator 的公式不同
+        doubleEma = new EMAIndicator(singleEma, emaBarCount);
         this.barCount = barCount;
     }
 

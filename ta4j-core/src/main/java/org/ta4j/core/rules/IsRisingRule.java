@@ -29,24 +29,31 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-rising-indicator rule.
+ * * 指标上升指标规则。
  *
- * Satisfied when the values of the {@link Indicator indicator} increase within
- * the barCount.
+ * Satisfied when the values of the {@link Indicator indicator} increase within the barCount.
+ * * 当{@link Indicator indicator} 的值在 barCount 内增加时满足。
  */
 public class IsRisingRule extends AbstractRule {
 
-    /** The actual indicator */
+    /** The actual indicator
+     * 实际指标 */
     private final Indicator<Num> ref;
-    /** The barCount */
+    /** The barCount
+     * 酒吧计数*/
     private final int barCount;
-    /** The minimum required strenght of the rising */
+    /** The minimum required strenght of the rising
+     * 上升所需的最低强度 */
     private double minStrenght;
 
     /**
      * Constructor for strict rising.
+     * 严格上升的构造函数。
      * 
      * @param ref      the indicator
+     *                 指标
      * @param barCount the time frame
+     *                 时间范围
      */
     public IsRisingRule(Indicator<Num> ref, int barCount) {
         this(ref, barCount, 1);
@@ -55,10 +62,10 @@ public class IsRisingRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param ref         the indicator
-     * @param barCount    the time frame
-     * @param minStrenght the minimum required rising strenght (between '0' and '1',
-     *                    e.g. '1' for strict rising)
+     * @param ref         the indicator 指標
+     * @param barCount    the time frame 時間範圍
+     * @param minStrenght the minimum required rising strenght (between '0' and '1',   e.g. '1' for strict rising)
+     *                    所需的最小上升强度（在“0”和“1”之间，例如“1”表示严格上升）
      */
     public IsRisingRule(Indicator<Num> ref, int barCount, double minStrenght) {
         this.ref = ref;

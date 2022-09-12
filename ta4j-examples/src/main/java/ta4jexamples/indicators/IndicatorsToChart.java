@@ -50,16 +50,23 @@ import ta4jexamples.loaders.CsvBarsLoader;
 
 /**
  * This class builds a graphical chart showing values from indicators.
+ * 此类构建一个显示指标值的图形图表。
  */
 public class IndicatorsToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     * * 从 Ta4j 条形序列和指标构建 JFreeChart 时间序列。
      *
      * @param barSeries the ta4j bar series
+     *                  ta4j 酒吧系列
+     *
      * @param indicator the indicator
+     *                  指标
      * @param name      the name of the chart time series
+     *                  图表时间序列的名称
      * @return the JFreeChart time series
+     * * @return JFreeChart 时间序列
      */
     private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
             String name) {
@@ -73,17 +80,20 @@ public class IndicatorsToChart {
 
     /**
      * Displays a chart in a frame.
+     * * 在框架中显示图表。
      *
      * @param chart the chart to be displayed
      */
     private static void displayChart(JFreeChart chart) {
         // Chart panel
+        // 图表面板
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setPreferredSize(new java.awt.Dimension(500, 270));
         // Application frame
-        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Indicators to chart");
+        // 应用框架
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Indicators to chart Ta4j 示例 - 图表指标");
         frame.setContentPane(panel);
         frame.pack();
         RefineryUtilities.centerFrameOnScreen(frame);
@@ -94,40 +104,46 @@ public class IndicatorsToChart {
 
         /*
          * Getting bar series
+         * * 获取酒吧系列
          */
         BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         /*
          * Creating indicators
+         * * 创建指标
          */
         // Close price
+        //收盘价
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         EMAIndicator avg14 = new EMAIndicator(closePrice, 14);
         StandardDeviationIndicator sd14 = new StandardDeviationIndicator(closePrice, 14);
 
         // Bollinger bands
+        //博林格/布林带
         BollingerBandsMiddleIndicator middleBBand = new BollingerBandsMiddleIndicator(avg14);
         BollingerBandsLowerIndicator lowBBand = new BollingerBandsLowerIndicator(middleBBand, sd14);
         BollingerBandsUpperIndicator upBBand = new BollingerBandsUpperIndicator(middleBBand, sd14);
 
         /*
          * Building chart dataset
+         * * 构建图表数据集
          */
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        dataset.addSeries(buildChartBarSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS"));
-        dataset.addSeries(buildChartBarSeries(series, lowBBand, "Low Bollinger Band"));
-        dataset.addSeries(buildChartBarSeries(series, upBBand, "High Bollinger Band"));
+        dataset.addSeries(buildChartBarSeries(series, closePrice, "Apple Inc. (AAPL) - NASDAQ GS 苹果公司 (AAPL) - 纳斯达克 GS"));
+        dataset.addSeries(buildChartBarSeries(series, lowBBand, "Low Bollinger Band 低布林带"));
+        dataset.addSeries(buildChartBarSeries(series, upBBand, "High Bollinger Band 高布林带"));
 
         /*
          * Creating the chart
+         * * 创建图表
          */
-        JFreeChart chart = ChartFactory.createTimeSeriesChart("Apple Inc. 2013 Close Prices", // title
-                "Date", // x-axis label
-                "Price Per Unit", // y-axis label
-                dataset, // data
-                true, // create legend?
-                true, // generate tooltips?
-                false // generate URLs?
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Apple Inc. 2013 Close Prices 苹果公司 2013 年收盘价", // title // 标题
+                "Date", // x-axis label // x轴标签
+                "Price Per Unit", // y-axis label // y轴标签
+                dataset, // data 數據
+                true, // create legend? 创造传奇？
+                true, // generate tooltips? 生成工具提示？
+                false // generate URLs? 生成网址？
         );
         XYPlot plot = (XYPlot) chart.getPlot();
         DateAxis axis = (DateAxis) plot.getDomainAxis();
@@ -135,6 +151,7 @@ public class IndicatorsToChart {
 
         /*
          * Displaying the chart
+         * * 显示图表
          */
         displayChart(chart);
     }

@@ -50,6 +50,7 @@ public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("NaN test").build();
         int i = 20;
         // open, close, max, min
+        // 打开，关闭，最大值，最小值
         series.addBar(
                 new MockBar(ZonedDateTime.now().minusSeconds(i--), 44.98, 45.05, 45.17, 44.96, 0, 1, 0, numFunction));
         series.addBar(

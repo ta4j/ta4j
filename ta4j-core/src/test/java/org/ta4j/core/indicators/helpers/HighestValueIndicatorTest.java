@@ -103,10 +103,11 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
         HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 2);
 
         // index is the biggest of (index, index-1)
+        // index是(index, index-1)中最大的
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            if (i % 2 != 0) // current is NaN take the previous as highest
+            if (i % 2 != 0) // current is NaN take the previous as highest // 当前为 NaN 取前一个为最高
                 assertEquals(series.getBar(i - 1).getClosePrice().toString(), highestValue.getValue(i).toString());
-            else // current is not NaN but previous, take the current
+            else // current is not NaN but previous, take the current // 当前不是 NaN 而是上一个，取当前
                 assertEquals(series.getBar(i).getClosePrice().toString(), highestValue.getValue(i).toString());
         }
     }

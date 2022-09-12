@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Gain indicator.
+ * 增益指标。
  */
 public class LossIndicator extends CachedIndicator<Num> {
 

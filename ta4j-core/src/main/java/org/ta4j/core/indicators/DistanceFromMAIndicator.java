@@ -34,6 +34,7 @@ import java.util.Set;
 
 /**
  * Distance From Moving Average (close - MA)/MA
+ * 与移动平均线的距离（收盘价 - MA）/MA
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:distance_from_ma">
@@ -50,13 +51,15 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     /**
      *
      * @param series        the bar series {@link BarSeries}.
+     *                      酒吧系列{@link BarSeries}。
      * @param movingAverage the moving average.
+     *                      移动平均线。
      */
     public DistanceFromMAIndicator(BarSeries series, CachedIndicator movingAverage) {
         super(series);
         if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
             throw new IllegalArgumentException(
-                    "Passed indicator must be a moving average based indicator. " + movingAverage.toString());
+                    "Passed indicator must be a moving average based indicator. 通过的指标必须是基于移动平均线的指标。 " + movingAverage.toString());
         }
         this.movingAverage = movingAverage;
     }

@@ -30,18 +30,21 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-highest-indicator rule.
+ * 指标-最高-指标规则。
  *
- * Satisfied when the value of the {@link Indicator indicator} is the highest
- * within the barCount.
+ * Satisfied when the value of the {@link Indicator indicator} is the highest within the barCount.
+ * * 当 {@link Indicator indicator} 的值在 barCount 内最高时满足。
  */
 public class IsHighestRule extends AbstractRule {
 
     /**
      * The actual indicator
+     * 实际指标
      */
     private final Indicator<Num> ref;
     /**
      * The barCount
+     * 酒吧计数
      */
     private final int barCount;
 
@@ -49,7 +52,9 @@ public class IsHighestRule extends AbstractRule {
      * Constructor.
      *
      * @param ref      the indicator
+     *                 指标
      * @param barCount the time frame
+     *                 时间范围
      */
     public IsHighestRule(Indicator<Num> ref, int barCount) {
         this.ref = ref;

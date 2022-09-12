@@ -44,6 +44,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * ADX indicator based strategy
+ * * 基于 ADX 指标的策略
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:average_directional_index_adx">
@@ -52,12 +53,13 @@ import ta4jexamples.loaders.CsvTradesLoader;
 public class ADXStrategy {
 
     /**
-     * @param series a bar series
+     * @param series a bar series 酒吧系列
      * @return an adx indicator based strategy
+     * * @return 一个基于 adx 指标的策略
      */
     public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
-            throw new IllegalArgumentException("Series cannot be null");
+            throw new IllegalArgumentException("Series cannot be null 系列不能为空");
         }
 
         final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
@@ -84,18 +86,22 @@ public class ADXStrategy {
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        System.out.println("Number of positions for the strategy 策略的职位数: " + tradingRecord.getPositionCount());
 
         // Analysis
+        // 分析
         System.out.println(
-                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy 策略的总回报: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 }

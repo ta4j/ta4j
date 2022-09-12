@@ -30,8 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the percentage of positions which are not profitable.
+ * * 计算不盈利的头寸百分比。
  *
  * Defined as <code># of losing positions / total # of positions</code>.
+ * * 定义为<code>亏损头寸数/总头寸数</code>。
  */
 public class LosingPositionsRatioCriterion extends AbstractAnalysisCriterion {
 

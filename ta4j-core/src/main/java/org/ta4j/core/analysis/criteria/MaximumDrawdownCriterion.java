@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Maximum drawdown criterion.
+ * 最大回撤标准。
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">http://en.wikipedia.org/wiki/Drawdown_%28economics%29</a>
@@ -59,16 +60,21 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the maximum drawdown from a cash flow over a series.
+     * 计算一系列现金流的最大回撤。
      *
      * @param series   the bar series
+     *                 酒吧系列
      * @param cashFlow the cash flow
+     *                 现金流
      * @return the maximum drawdown from a cash flow over a series
+     * @return 一系列现金流的最大回撤
      */
     private Num calculateMaximumDrawdown(BarSeries series, CashFlow cashFlow) {
         Num maximumDrawdown = series.numOf(0);
         Num maxPeak = series.numOf(0);
         if (!series.isEmpty()) {
             // The series is not empty
+            // 系列不为空
             for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
                 Num value = cashFlow.getValue(i);
                 if (value.isGreaterThan(maxPeak)) {

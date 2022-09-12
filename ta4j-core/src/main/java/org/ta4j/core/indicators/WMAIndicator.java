@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * WMA indicator.
+ * WMA 指标。
  */
 public class WMAIndicator extends CachedIndicator<Num> {
 

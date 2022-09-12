@@ -31,8 +31,8 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 
 /**
- * This class enables backtesting of multiple strategies and comparing them to
- * see which is the best.
+ * This class enables backtesting of multiple strategies and comparing them to see which is the best.
+ * * 此类可以对多种策略进行回测并进行比较，看看哪个是最好的。
  */
 public class BacktestExecutor {
 
@@ -50,21 +50,30 @@ public class BacktestExecutor {
 
     /**
      * Executes given strategies and returns trading statements.
+     * * 执行给定的策略并返回交易报表。
      * 
      * @param strategies the strategies
+     *                   策略
+     *
      * @param amount     the amount used to open/close the position
+     *                   用于开仓/平仓的金额
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
         return execute(strategies, amount, Trade.TradeType.BUY);
     }
 
     /**
-     * Executes given strategies with specified trade type to open the position and
-     * return the trading statements.
+     * Executes given strategies with specified trade type to open the position and return the trading statements.
+     * 执行具有指定交易类型的给定策略以开仓并返回交易报表。
      * 
      * @param strategies the strategies
+     *                   策略
+     *
      * @param amount     the amount used to open/close the position
+     *                   用于开仓/平仓的金额
+     *
      * @param tradeType  the {@link Trade.TradeType} used to open the position
+     *                   用于开仓的 {@link Trade.TradeType}
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
         final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());

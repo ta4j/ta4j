@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-Pearson-Correlation
+ * 指标-皮尔逊相关
  *
  * @see <a href=
  *      "http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/">
@@ -46,8 +47,11 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator1 the first indicator
+     *                   第一个指标
      * @param indicator2 the second indicator
+     *                   第二个指标
      * @param barCount   the time frame
+     *                   時間範圍
      */
     public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);
@@ -57,7 +61,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     @Override
-    protected Num calculate(int index) {
+    protected Num calculate(int index) { //計算
 
         Num n = numOf(barCount);
 

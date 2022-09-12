@@ -32,9 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Versus "buy and hold" criterion.
+ * * 相对于“买入并持有”标准。
  *
- * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of a {@link BuyAndHoldReturnCriterion "buy and hold" criterion}.
+ * Compares the value of a provided {@link AnalysisCriterion criterion} with the value of a {@link BuyAndHoldReturnCriterion "buy and hold" criterion}.
+ * * 将提供的 {@link AnalysisCriterion 标准} 的值与 {@link BuyAndHoldReturnCriterion "买入并持有" 标准} 的值进行比较。
  */
 public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
@@ -42,8 +43,10 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Constructor.
+     * 构造函数。
      * 
      * @param criterion an analysis criterion to be compared
+     *                  * @param criteria 要比较的分析标准
      */
     public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
         this.criterion = criterion;

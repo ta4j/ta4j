@@ -28,10 +28,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Buy - Occurs when the price line crosses from below to above the Lower
- * Bollinger Band. Sell - Occurs when the price line crosses from above to below
- * the Upper Bollinger Band.
- * 
+ * Buy - Occurs when the price line crosses from below to above the Lower Bollinger Band. Sell - Occurs when the price line crosses from above to below the Upper Bollinger Band.
+ * * 买入 - 当价格线从下布林带下方穿越到上方布林带时发生。 卖出 - 当价格线从上布林带上方向下穿过时发生。
  */
 public class BollingerBandsMiddleIndicator extends CachedIndicator<Num> {
 
@@ -39,8 +37,10 @@ public class BollingerBandsMiddleIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数。
      * 
      * @param indicator the indicator that gives the values of the middle band
+     *                  * @param indicator 给出中间波段值的指标
      *
      */
     public BollingerBandsMiddleIndicator(Indicator<Num> indicator) {

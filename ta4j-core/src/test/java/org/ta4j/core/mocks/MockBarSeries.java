@@ -34,6 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * A bar series with sample data. TODO: add Builder
+ * * 带有样本数据的条形系列。 TODO：添加生成器
  */
 public class MockBarSeries extends BaseBarSeries {
 

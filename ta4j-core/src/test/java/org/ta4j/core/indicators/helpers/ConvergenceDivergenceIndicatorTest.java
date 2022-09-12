@@ -90,6 +90,7 @@ public class ConvergenceDivergenceIndicatorTest {
                 ConvergenceDivergenceType.negativeDivergent);
 
         // for strict convergence and divergence
+        // 严格收敛和发散
         isPosConStrict = new ConvergenceDivergenceIndicator(refPosCon, otherPosDiv, 3,
                 ConvergenceDivergenceStrictType.positiveConvergentStrict);
 

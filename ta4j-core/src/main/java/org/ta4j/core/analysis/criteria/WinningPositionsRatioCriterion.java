@@ -30,8 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the percentage of positions which are profitable.
+ * 计算有利可图的头寸百分比。
  *
  * Defined as <code># of winning positions / total # of positions</code>.
+ * * 定义为<code>获胜位置数/总位置数</code>。
  */
 public class WinningPositionsRatioCriterion extends AbstractAnalysisCriterion {
 

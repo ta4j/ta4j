@@ -34,6 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * An abstract class for Ichimoku clouds indicators.
+ * Ichimoku 云指标的抽象类。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -41,10 +42,12 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuLineIndicator extends CachedIndicator<Num> {
 
-    /** The period high */
+    /** The period high
+     * 期高*/
     private final Indicator<Num> periodHigh;
 
-    /** The period low */
+    /** The period low
+     * 期间低*/
     private final Indicator<Num> periodLow;
 
     /**
@@ -52,6 +55,7 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
      * 
      * @param series   the series
      * @param barCount the time frame
+     *                 时间范围
      */
     public IchimokuLineIndicator(BarSeries series, int barCount) {
         super(series);

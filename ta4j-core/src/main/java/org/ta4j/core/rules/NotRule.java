@@ -28,9 +28,12 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * An opposite (logical operator: NOT) rule.
+ * * 相反（逻辑运算符：NOT）规则。
  *
  * Satisfied when provided rule is not satisfied.<br>
+ * * 不满足提供的规则时满足。<br>
  * Not satisfied when provided rule is satisfied.
+ * 满足提供的规则时不满足。
  */
 public class NotRule extends AbstractRule {
 
@@ -40,6 +43,7 @@ public class NotRule extends AbstractRule {
      * Constructor.
      *
      * @param ruleToNegate a trading rule to negate
+     *                     否定的交易规则
      */
     public NotRule(Rule ruleToNegate) {
         this.ruleToNegate = ruleToNegate;

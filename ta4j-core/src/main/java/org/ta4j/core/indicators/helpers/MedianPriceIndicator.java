@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average high-low indicator.
+ * 平均高低指标。
  */
 public class MedianPriceIndicator extends CachedIndicator<Num> {
 

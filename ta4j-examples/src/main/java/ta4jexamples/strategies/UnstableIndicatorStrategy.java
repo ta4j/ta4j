@@ -70,24 +70,29 @@ public class UnstableIndicatorStrategy {
 
     public static void inappropriateTrade() {
         // Should not trade
-        test("Inappropriate trade", Stream.of(10d, 2d, 6d, 16d, 8d));
+        // 不应该交易
+        test("Inappropriate trade 不当交易", Stream.of(10d, 2d, 6d, 16d, 8d));
     }
 
     public static void appropriateTrade() {
         // Should trade
-        test("Appropriate trade", Stream.of(10d, 8d, 6d, 16d, 8d));
+        // 应该交易
+        test("Appropriate trade 适当的贸易", Stream.of(10d, 8d, 6d, 16d, 8d));
     }
 
     public static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = new BaseBarSeriesBuilder().withBars(
                 closePrices.map(close -> new BaseBar(MINUTE, TIME, 0, 0, 0, close, 0)).collect(Collectors.toList()))
                 .build();
 
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
 

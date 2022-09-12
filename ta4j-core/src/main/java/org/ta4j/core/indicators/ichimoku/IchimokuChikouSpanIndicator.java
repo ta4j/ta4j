@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ichimoku clouds: Chikou Span indicator
+ * 一目(均衡线) 云:赤口跨度指标
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -40,18 +41,22 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
     /**
      * The close price
+     * * 收盘价
      */
     private final ClosePriceIndicator closePriceIndicator;
 
     /**
      * The time delay
+     * * 时间延迟
      */
     private final int timeDelay;
 
     /**
      * Constructor.
+     * 构造函数。
      *
      * @param series the series
+     *               该系列
      */
     public IchimokuChikouSpanIndicator(BarSeries series) {
         this(series, 26);
@@ -59,9 +64,12 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数
      *
      * @param series    the series
+     *                  该系列
      * @param timeDelay the time delay (usually 26)
+     *                  时间延迟（通常为 26）
      */
     public IchimokuChikouSpanIndicator(BarSeries series, int timeDelay) {
         super(series);

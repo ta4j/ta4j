@@ -28,9 +28,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Rate of change (ROCIndicator) indicator. Aka. Momentum
+ * 变化率 (ROCIndicator) 指标。 阿卡。 势头
  *
- * The ROCIndicator calculation compares the current value with the value "n"
- * periods ago.
+ * The ROCIndicator calculation compares the current value with the value "n" periods ago.
+ * ROCIndicator 计算将当前值与“n”个周期前的值进行比较。
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/pricerateofchange.asp">https://www.investopedia.com/terms/p/pricerateofchange.asp</a>
@@ -44,7 +45,10 @@ public class ROCIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator
+     *                  指标
+     *
      * @param barCount  the time frame
+     *                  时间范围
      */
     public ROCIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

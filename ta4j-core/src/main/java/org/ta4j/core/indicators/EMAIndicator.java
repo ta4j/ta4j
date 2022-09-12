@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Exponential moving average indicator.
+ * 指数移动平均线指标。
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/e/ema.asp">https://www.investopedia.com/terms/e/ema.asp</a>
@@ -38,7 +39,9 @@ public class EMAIndicator extends AbstractEMAIndicator {
      * Constructor.
      *
      * @param indicator an indicator
+     *                  一个指标
      * @param barCount  the EMA time frame
+     *                  EMA时间框架
      */
     public EMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator, barCount, (2.0 / (barCount + 1)));

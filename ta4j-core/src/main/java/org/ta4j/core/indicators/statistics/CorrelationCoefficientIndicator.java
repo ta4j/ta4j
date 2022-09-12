@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Correlation coefficient indicator.
+ * 相关系数指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:correlation_coeffici">
@@ -44,8 +45,11 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator1 the first indicator
+     *                   第一个指标
      * @param indicator2 the second indicator
+     *                   第二个指标
      * @param barCount   the time frame
+     *                   时间范围
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);

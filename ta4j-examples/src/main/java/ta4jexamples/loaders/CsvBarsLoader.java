@@ -41,6 +41,7 @@ import com.opencsv.CSVReader;
 
 /**
  * This class build a Ta4j bar series from a CSV file containing bars.
+ * * 此类从包含条形的 CSV 文件构建 Ta4j 条形系列。
  */
 public class CsvBarsLoader {
 
@@ -48,6 +49,7 @@ public class CsvBarsLoader {
 
     /**
      * @return the bar series from Apple Inc. bars.
+     * * @return 来自 Apple Inc. 酒吧的酒吧系列。
      */
     public static BarSeries loadAppleIncSeries() {
         return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
@@ -73,9 +75,9 @@ public class CsvBarsLoader {
                 series.addBar(date, open, high, low, close, volume);
             }
         } catch (IOException ioe) {
-            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV 无法从 CSV 加载条形图", ioe);
         } catch (NumberFormatException nfe) {
-            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value", nfe);
+            Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Error while parsing value 解析值时出错", nfe);
         }
         return series;
     }
@@ -84,8 +86,8 @@ public class CsvBarsLoader {
         BarSeries series = CsvBarsLoader.loadAppleIncSeries();
 
         System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-        System.out.println("Number of bars: " + series.getBarCount());
-        System.out.println("First bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
+        System.out.println("Number of bars 条数: " + series.getBarCount());
+        System.out.println("First bar 第一个bar: \n" + "\tVolume: " + series.getBar(0).getVolume() + "\n" + "\tOpen price: "
                 + series.getBar(0).getOpenPrice() + "\n" + "\tClose price: " + series.getBar(0).getClosePrice());
     }
 }

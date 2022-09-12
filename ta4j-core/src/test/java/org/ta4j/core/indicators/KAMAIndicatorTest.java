@@ -39,6 +39,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Class KAMAIndicatorTest.
+ * * KAMAIndicatorTest 类。
  *
  * @see <a
  *      href="http://stockcharts.com/school/data/media/chart_school/technical_indicators_and_overlays/kaufman_s_adaptive_moving_average/cs-kama.xls>

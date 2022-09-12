@@ -78,6 +78,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
 
     /**
      * Tests if the bars are upscaled correctly from 1day to 5day
+     * * 测试条形图是否从 1 天到 5 天正确放大
      */
     @Test
     public void upscaledTo5DayBars() {
@@ -86,9 +87,11 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 3 bars
+        // 必须是 3 个柱
         assertEquals(3, bars.size());
 
         // bar 1 must have ohlcv (1, 6, 4, 9, 25)
+        // 柱 1 必须有 ohlcv (1, 6, 4, 9, 25)
         final Bar bar1 = bars.get(0);
         final Num num1 = bar1.getOpenPrice();
         TestUtils.assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
@@ -98,6 +101,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         TestUtils.assertNumEquals(num1.numOf(33), bar1.getVolume());
 
         // bar 2 must have ohlcv (6, 91, 4, 10, 260)
+        // 柱 2 必须有 ohlcv (6, 91, 4, 10, 260)
         final Bar bar2 = bars.get(1);
         final Num num2 = bar2.getOpenPrice();
         TestUtils.assertNumEquals(num2.numOf(6), bar2.getOpenPrice());
@@ -107,6 +111,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         TestUtils.assertNumEquals(num2.numOf(260), bar2.getVolume());
 
         // bar 3 must have ohlcv (1d, 6d, 4d, 9d, 25)
+        // 柱 3 必须有 ohlcv (1d, 6d, 4d, 9d, 25)
         Bar bar3 = bars.get(2);
         Num num3 = bar3.getOpenPrice();
         TestUtils.assertNumEquals(num3.numOf(4), bar3.getOpenPrice());
@@ -118,6 +123,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
 
     /**
      * Tests if the bars are upscaled correctly from 1day to 10day
+     * * 测试条形图从 1 天到 10 天是否正确放大
      */
     @Test
     public void upscaledTo10DayBars() {
@@ -125,9 +131,11 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 1 bars
+        // 必须是 1 个柱
         assertEquals(1, bars.size());
 
         // bar 1 must have ohlcv (1, 91, 4, 10, 293)
+        // 柱 1 必须有 ohlcv (1, 91, 4, 10, 293)
         final Bar bar1 = bars.get(0);
         final Num num1 = bar1.getOpenPrice();
         TestUtils.assertNumEquals(num1.numOf(1), bar1.getOpenPrice());
@@ -138,8 +146,8 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
     }
 
     /**
-     * Tests if the bars are upscaled correctly from 1day to 10day, allowed not
-     * final bars too
+     * Tests if the bars are upscaled correctly from 1day to 10day, allowed not final bars too
+     * * 测试条形图是否从 1 天到 10 天正确放大，不允许最终条形图
      */
     @Test
     public void upscaledTo10DayBarsNotOnlyFinalBars() {
@@ -147,6 +155,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         final List<Bar> bars = barAggregator.aggregate(getOneDayBars());
 
         // must be 2 bars
+        // 必须是 2 个柱
         assertEquals(2, bars.size());
     }
 

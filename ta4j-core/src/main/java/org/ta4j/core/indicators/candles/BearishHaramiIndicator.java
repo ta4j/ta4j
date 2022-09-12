@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Bearish Harami pattern indicator.
+ * 看跌 Harami 形态指标。
  *
  * @see <a href="http://www.investopedia.com/terms/b/bearishharami.asp">
  *      http://www.investopedia.com/terms/b/bearishharami.asp</a>
@@ -49,6 +50,7 @@ public class BearishHaramiIndicator extends CachedIndicator<Boolean> {
     protected Boolean calculate(int index) {
         if (index < 1) {
             // Harami is a 2-candle pattern
+            // Harami 是一个 2 蜡烛形态
             return false;
         }
         Bar prevBar = getBarSeries().getBar(index - 1);

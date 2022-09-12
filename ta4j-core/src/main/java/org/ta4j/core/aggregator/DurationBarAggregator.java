@@ -34,20 +34,23 @@ import org.ta4j.core.num.Num;
 
 /**
  * Bar aggregator basing on duration.
+ * 基于持续时间的条形聚合器。
  */
 public class DurationBarAggregator implements BarAggregator {
 
     /**
      * Target time period to aggregate
+     * 要聚合的目标时间段
      */
     private final Duration timePeriod;
     private final boolean onlyFinalBars;
 
     /**
-     * Duration basing bar aggregator. Only bars with elapsed time (final bars) will
-     * be created.
+     * Duration basing bar aggregator. Only bars with elapsed time (final bars) will be created.
+     * 基于持续时间的条形聚合器。 只会创建经过时间的柱（最终柱）。
      *
      * @param timePeriod time period to aggregate
+     *                   @param timePeriod 要聚合的时间段
      */
     public DurationBarAggregator(Duration timePeriod) {
         this(timePeriod, true);
@@ -55,10 +58,12 @@ public class DurationBarAggregator implements BarAggregator {
 
     /**
      * Duration basing bar aggregator
+     * 基于持续时间的条形聚合器
      *
      * @param timePeriod    time period to aggregate
-     * @param onlyFinalBars if true only bars with elapsed time (final bars) will be
-     *                      created, otherwise also pending bars
+     *                      @param timePeriod 要聚合的时间段
+     * @param onlyFinalBars if true only bars with elapsed time (final bars) will be  created, otherwise also pending bars
+     *                      @param onlyFinalBars 如果为 true，则只会创建经过时间的柱（最终柱），否则也会创建待处理柱
      */
     public DurationBarAggregator(Duration timePeriod, boolean onlyFinalBars) {
         this.timePeriod = timePeriod;
@@ -68,9 +73,13 @@ public class DurationBarAggregator implements BarAggregator {
     /**
      * Aggregates a list of bars by <code>timePeriod</code>.The new
      * <code>timePeriod</code> must be a multiplication of the actual time period.
+     ** 按 <code>timePeriod</code> 聚合柱形列表。新的
+     *       * <code>timePeriod</code> 必须是实际时间段的乘积。
      *
      * @param bars the actual bars
+     *             @param 酒吧实际酒吧
      * @return the aggregated bars with new <code>timePeriod</code>
+     * @return 带有新 <code>timePeriod</code> 的聚合柱
      */
     @Override
     public List<Bar> aggregate(List<Bar> bars) {
@@ -80,12 +89,14 @@ public class DurationBarAggregator implements BarAggregator {
         }
         final Bar firstBar = bars.get(0);
         // get the actual time period
+        // 获取实际时间段
         final Duration actualDur = firstBar.getTimePeriod();
         // check if new timePeriod is a multiplication of actual time period
+        // 检查新的 timePeriod 是否是实际时间段的乘积
         final boolean isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
         if (!isMultiplication) {
             throw new IllegalArgumentException(
-                    "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
+                    "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod. 无法聚合条形：新时间段必须是实际时间段的乘积。");
         }
 
         int i = 0;

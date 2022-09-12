@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Chaikin Money Flow (CMF) indicator.
+ * 柴金资金流向 (CMF) 指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:chaikin_money_flow_cmf">
@@ -66,7 +67,9 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
     /**
      * @param index the bar index
+     *              条形索引
      * @return the money flow volume for the i-th period/bar
+     * @return 第 i 个周期/柱的资金流量
      */
     private Num getMoneyFlowVolume(int index) {
         return clvIndicator.getValue(index).multipliedBy(getBarSeries().getBar(index).getVolume());

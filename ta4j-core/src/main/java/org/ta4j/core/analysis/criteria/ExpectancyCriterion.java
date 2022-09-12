@@ -31,10 +31,12 @@ import org.ta4j.core.num.Num;
 
 /**
  * Expectancy criterion (Kelly Criterion).
+ * * 期望标准（Kelly Criterion）。
  *
  * Measures the positive or negative expectancy. The higher the positive number,
- * the better a winning expectation. A negative number means there is only
- * losing expectations.
+ * * 衡量积极或消极的期望。 正数越高，
+ * the better a winning expectation. A negative number means there is only losing expectations.
+ * * 获胜的期望越高。 负数意味着只有失去预期。
  *
  * @see <a href=
  *      "https://www.straightforex.com/advanced-forex-course/money-management/two-important-things-to-be-considered/</a>
@@ -74,6 +76,7 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
             return series.numOf(0);
         }
         // Expectancy = (1 + AW/AL) * (ProbabilityToWinOnePosition - 1)
+        // 期望 = (1 + AW/AL) * (ProbabilityToWinOnePosition - 1)
         Num probabiltyToWinOnePosition = numberOfWinningPositions.dividedBy(numberOfAllPositions);
         return (one.plus(profitLossRatio)).multipliedBy((probabiltyToWinOnePosition).minus(one));
     }

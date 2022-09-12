@@ -28,11 +28,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Triple exponential moving average indicator.
+ * 三重指数移动平均线指标。
  *
  * a.k.a TRIX
+ * 又名TRIX
  *
- * TEMA needs "3 * period - 2" of data to start producing values in contrast to
- * the period samples needed by a regular EMA.
+ * TEMA needs "3 * period - 2" of data to start producing values in contrast to the period samples needed by a regular EMA.
+ * * 与常规 EMA 所需的周期样本相比，TEMA 需要“3 * 周期 - 2”的数据才能开始生成值。
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Triple_exponential_moving_average">https://en.wikipedia.org/wiki/Triple_exponential_moving_average</a>
@@ -49,8 +51,8 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator the indicator 指標
+     * @param barCount  the time frame 時間範圍
      */
     public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -62,6 +64,7 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        // trix = 3 * ( ema - emaEma ) + emaEmaEma
         // trix = 3 * ( ema - emaEma ) + emaEmaEma
         return numOf(3).multipliedBy(ema.getValue(index).minus(emaEma.getValue(index))).plus(emaEmaEma.getValue(index));
     }

@@ -34,6 +34,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Tests for {@link Indicator}.
+ * * 测试 {@link Indicator}。
  *
  * @author Johnny Lim
  */

@@ -91,12 +91,14 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         PeriodicalGrowthRateIndicator gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);
 
         // Rules
+        // 规则
         Rule buyingRule = new CrossedUpIndicatorRule(gri, 0);
         Rule sellingRule = new CrossedDownIndicatorRule(gri, 0);
 
         Strategy strategy = new BaseStrategy(buyingRule, sellingRule);
 
         // Check positions
+        // 检查位置
         int result = seriesManager.run(strategy).getPositionCount();
         int expResult = 3;
 

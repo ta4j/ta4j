@@ -82,8 +82,8 @@ public class MMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         MockBarSeries bigSeries = new MockBarSeries(bigListOfBars);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(bigSeries);
         Indicator<Num> actualIndicator = getIndicator(closePrice, 10);
-        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
-        // does not work as intended.
+        // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator does not work as intended.
+        // 如果此处抛出 StackOverflowError，则 RecursiveCachedIndicator 无法按预期工作。
         assertEquals(9990.0, actualIndicator.getValue(9999).doubleValue(), TestUtils.GENERAL_OFFSET);
     }
 

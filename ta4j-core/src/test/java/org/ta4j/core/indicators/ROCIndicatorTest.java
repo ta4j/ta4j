@@ -56,12 +56,14 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         ROCIndicator roc = new ROCIndicator(closePrice, 12);
 
         // Incomplete time frame
+        // 不完整的时间范围
         assertNumEquals(0, roc.getValue(0));
         assertNumEquals(1.105, roc.getValue(1));
         assertNumEquals(-0.3319, roc.getValue(2));
         assertNumEquals(0.9648, roc.getValue(3));
 
         // Complete time frame
+        // 完成时间范围
         double[] results13to20 = new double[] { -3.8488, -4.8489, -4.5206, -6.3439, -7.8592, -6.2083, -4.3131,
                 -3.2434 };
         for (int i = 0; i < results13to20.length; i++) {

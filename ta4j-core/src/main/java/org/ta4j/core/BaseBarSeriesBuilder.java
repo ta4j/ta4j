@@ -35,6 +35,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
     /**
      * Default Num type function
+     * * 默认 Num 类型函数
      **/
     private static Function<Number, Num> defaultFunction = DecimalNum::valueOf;
     private List<Bar> bars;
@@ -69,7 +70,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         }
         BaseBarSeries series = new BaseBarSeries(name, bars, beginIndex, endIndex, constrained, numFunction);
         series.setMaximumBarCount(maxBarCount);
-        initValues(); // reinitialize values for next series
+        initValues(); // reinitialize values for next series  // 重新初始化下一个系列的值
         return series;
     }
 

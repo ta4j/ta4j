@@ -28,7 +28,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Percentage price oscillator (PPO) indicator. <br/>
- * Aka. MACD Percentage Price Oscillator (MACD-PPO).
+  Aka. MACD Percentage Price Oscillator (MACD-PPO).
+ 百分比价格振荡器 (PPO) 指标。 <br/>
+ 阿卡。 MACD 百分比价格震荡指标 (MACD-PPO)。
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/ppo.asp">https://www.investopedia.com/terms/p/ppo.asp</a>
@@ -40,8 +42,10 @@ public class PPOIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor with shortBarCount "12" and longBarCount "26".
+     * shortBarCount "12" 和 longBarCount "26" 的构造函数。
      *
      * @param indicator the indicator
+     *                  指标
      */
     public PPOIndicator(Indicator<Num> indicator) {
         this(indicator, 12, 26);
@@ -51,13 +55,16 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator     the indicator
+     *                      指标
      * @param shortBarCount the short time frame
+     *                      短时间(範圍)框架
      * @param longBarCount  the long time frame
+     *                      长時間(範圍)框架
      */
     public PPOIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
         super(indicator);
         if (shortBarCount > longBarCount) {
-            throw new IllegalArgumentException("Long term period count must be greater than short term period count");
+            throw new IllegalArgumentException("Long term period count must be greater than short term period count 长期周期计数必须大于短期周期计数");
         }
         this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
         this.longTermEma = new EMAIndicator(indicator, longBarCount);

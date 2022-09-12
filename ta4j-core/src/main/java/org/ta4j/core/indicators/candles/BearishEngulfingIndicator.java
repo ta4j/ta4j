@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Bearish engulfing pattern indicator.
+ * * 看跌吞没形态指标。
  *
  * @see <a href="http://www.investopedia.com/terms/b/bearishengulfingp.asp">
  *      http://www.investopedia.com/terms/b/bearishengulfingp.asp</a>
@@ -38,8 +39,9 @@ public class BearishEngulfingIndicator extends CachedIndicator<Boolean> {
 
     /**
      * Constructor.
+     * 构造函数。
      *
-     * @param series a bar series
+     * @param series a bar series series a bar系列
      */
     public BearishEngulfingIndicator(BarSeries series) {
         super(series);
@@ -49,6 +51,7 @@ public class BearishEngulfingIndicator extends CachedIndicator<Boolean> {
     protected Boolean calculate(int index) {
         if (index < 1) {
             // Engulfing is a 2-candle pattern
+            // 吞没是一个 2 蜡烛形态
             return false;
         }
         Bar prevBar = getBarSeries().getBar(index - 1);

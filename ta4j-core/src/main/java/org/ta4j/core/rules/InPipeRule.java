@@ -30,25 +30,32 @@ import org.ta4j.core.num.Num;
 
 /**
  * Indicator-between-indicators rule.
+ * * 指标间指标规则。
  *
- * Satisfied when the value of the {@link Indicator indicator} is between the
- * values of the boundary (up/down) indicators.
+ * Satisfied when the value of the {@link Indicator indicator} is between the values of the boundary (up/down) indicators.
+ * * 当 {@link Indicator indicator} 的值在边界（上/下）指标的值之间时满足。
  */
 public class InPipeRule extends AbstractRule {
 
-    /** The upper indicator */
+    /** The upper indicator
+     * 上指标 */
     private Indicator<Num> upper;
-    /** The lower indicator */
+    /** The lower indicator
+     * 较低的指标*/
     private Indicator<Num> lower;
-    /** The evaluated indicator */
+    /** The evaluated indicator
+     * 评估指标 */
     private Indicator<Num> ref;
 
     /**
      * Constructor.
      * 
      * @param ref   the reference indicator
+     *              参考指标
      * @param upper the upper threshold
+     *              上限
      * @param lower the lower threshold
+     *              下限
      */
     public InPipeRule(Indicator<Num> ref, Number upper, Number lower) {
         this(ref, ref.numOf(upper), ref.numOf(lower));
@@ -58,8 +65,11 @@ public class InPipeRule extends AbstractRule {
      * Constructor.
      * 
      * @param ref   the reference indicator
+     *              参考指标
      * @param upper the upper threshold
+     *              上限
      * @param lower the lower threshold
+     *              下限
      */
     public InPipeRule(Indicator<Num> ref, Num upper, Num lower) {
         this(ref, new ConstantIndicator<>(ref.getBarSeries(), upper),
@@ -70,8 +80,11 @@ public class InPipeRule extends AbstractRule {
      * Constructor.
      * 
      * @param ref   the reference indicator
+     *              参考指标
      * @param upper the upper indicator
+     *              上指标
      * @param lower the lower indicator
+     *              较低的指标
      */
     public InPipeRule(Indicator<Num> ref, Indicator<Num> upper, Indicator<Num> lower) {
         this.upper = upper;

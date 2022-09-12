@@ -78,7 +78,7 @@
 
 	<profiles>
 
-		<!-- Only when performing a release (i.e. not for snapshots) -->
+		<!-- Only when performing a release (i.e. not for snapshots) 仅在执行发布时（即不用于快照） -->
 		<profile>
 			<id>sonatype-oss-release</id>
 			<build>
@@ -90,8 +90,10 @@
 						<extensions>true</extensions>
 						<configuration>
 							<!-- The Base URL of Nexus instance where we want to stage -->
+							<!-- 我们要暂存的 Nexus 实例的基本 URL -->
 							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
 							<!-- The server "id" element from settings to use authentication from -->
+							<!-- 设置中的服务器“id”元素使用来自 --> 的身份验证
 							<serverId>sonatype-nexus-staging</serverId>
 						</configuration>
 					</plugin>
@@ -114,6 +116,7 @@
 					</plugin>
 
 					<!-- Artifact signing -->
+					<!-- 工件签名 -->
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
@@ -138,6 +141,7 @@
 		<plugins>
 
 			<!-- Build source and target -->
+			<!-- 构建源和目标 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -150,6 +154,7 @@
 				</configuration>
 			</plugin>
 			<!-- Package sources -->
+			<!-- 包源 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
@@ -165,6 +170,7 @@
 			</plugin>
 
 			<!-- License headers -->
+			<!-- 许可证头 -->
 			<plugin>
 				<groupId>com.mycila</groupId>
 				<artifactId>license-maven-plugin</artifactId>
@@ -178,6 +184,7 @@
 			</plugin>
 
 			<!-- Source formatter -->
+			<!-- 源格式化程序 -->
 			<plugin>
 				<groupId>net.revelc.code.formatter</groupId>
 				<artifactId>formatter-maven-plugin</artifactId>
@@ -188,6 +195,7 @@
 			</plugin>
 
 			<!-- Releases -->
+			<!-- 发布 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-release-plugin</artifactId>

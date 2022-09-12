@@ -46,37 +46,42 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class displays an example of the transaction cost calculation.
+ * * 此类显示交易成本计算的示例。
  */
 public class TradeCost {
 
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the short selling trading strategy
+        // 建立卖空交易策略
         Strategy strategy = buildShortSellingMomentumStrategy(series);
 
         // Setting the trading cost models
+        // 设置交易成本模型
         double feePerTrade = 0.0005;
         double borrowingFee = 0.00001;
         CostModel transactionCostModel = new LinearTransactionCostModel(feePerTrade);
         CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
         Trade.TradeType entryTrade = Trade.TradeType.SELL;
         TradingRecord tradingRecord = seriesManager.run(strategy, entryTrade);
 
         DecimalFormat df = new DecimalFormat("##.##");
-        System.out.println("------------ Borrowing Costs ------------");
+        System.out.println("------------ Borrowing Costs 借贷成本 ------------");
         tradingRecord.getPositions()
-                .forEach(position -> System.out.println("Borrowing cost for "
-                        + df.format(position.getExit().getIndex() - position.getEntry().getIndex()) + " periods is: "
+                .forEach(position -> System.out.println("Borrowing cost for 借款费用为 "
+                        + df.format(position.getExit().getIndex() - position.getEntry().getIndex()) + " periods is 期间是: "
                         + df.format(position.getHoldingCost().doubleValue())));
-        System.out.println("------------ Transaction Costs ------------");
+        System.out.println("------------ Transaction Costs  交易成本------------");
         tradingRecord.getPositions()
-                .forEach(position -> System.out.println("Transaction cost for selling: "
-                        + df.format(position.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying: "
+                .forEach(position -> System.out.println("Transaction cost for selling 销售的交易成本: "
+                        + df.format(position.getEntry().getCost().doubleValue()) + " -- Transaction cost for buying 购买的交易成本: "
                         + df.format(position.getExit().getCost().doubleValue())));
     }
 
@@ -87,7 +92,7 @@ public class TradeCost {
         Rule shortOverLongRule = new OverIndicatorRule(shortEma, longEma);
         Rule shortUnderLongRule = new UnderIndicatorRule(shortEma, longEma);
 
-        String strategyName = "Momentum short-selling strategy";
+        String strategyName = "Momentum short-selling strategy 动量卖空策略";
         return new BaseStrategy(strategyName, shortOverLongRule, shortUnderLongRule);
     }
 }

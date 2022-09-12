@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Ichimoku clouds: Tenkan-sen (Conversion line) indicator
+ * Ichimoku clouds: Tenkan-sen (Conversion line) indicator
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -48,6 +49,7 @@ public class IchimokuTenkanSenIndicator extends IchimokuLineIndicator {
      * 
      * @param series   the series
      * @param barCount the time frame (usually 9)
+     *                 时间范围（通常为 9）
      */
     public IchimokuTenkanSenIndicator(BarSeries series, int barCount) {
         super(series, barCount);

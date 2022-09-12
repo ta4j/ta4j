@@ -32,9 +32,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Calculates the average return per bar criterion.
+ * 计算每条柱的平均回报标准。
  *
- * The {@link GrossReturnCriterion total return} raised to the power of 1
- * divided by {@link NumberOfBarsCriterion number of bars}.
+ * The {@link GrossReturnCriterion total return} raised to the power of 1 divided by {@link NumberOfBarsCriterion number of bars}.
+ * * {@link GrossReturnCriterion 总回报} 的 1 次方除以 {@link NumberOfBarsCriterion 柱数}。
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 

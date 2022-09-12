@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Aroon Oscillator.
+ * * 阿隆指标 振荡器。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:aroon_oscillator">

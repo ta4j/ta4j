@@ -36,6 +36,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Pivot Point indicator.
+ * 枢轴点指示器。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">chart_school:
@@ -49,29 +50,51 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates the pivot point based on the time level parameter.
+     * 根据时间级别参数计算枢轴点。
      *
-     * @param series    the bar series with adequate endTime of each bar for the
-     *                  given time level.
+     * @param series    the bar series with adequate endTime of each bar for the  given time level.
+     *                  对于给定时间级别，每个柱具有足够的 endTime 的柱系列。
      * @param timeLevel the corresponding {@link TimeLevel} for pivot calculation:
+     *                  用于枢轴计算的相应 {@link TimeLevel}：
      *                  <ul>
-     *                  <li>1-, 5-, 10- and 15-minute charts use the prior days
-     *                  high, low and close: <b>timeLevelId</b> = TimeLevel.DAY</li>
-     *                  <li>30- 60- and 120-minute charts use the prior week's high,
-     *                  low, and close: <b>timeLevelId</b> = TimeLevel.WEEK</li>
-     *                  <li>Pivot Points for daily charts use the prior month's
-     *                  high, low and close: <b>timeLevelId</b> =
-     *                  TimeLevel.MONTH</li>
-     *                  <li>Pivot Points for weekly and monthly charts use the prior
-     *                  year's high, low and close: <b>timeLevelId</b> =
-     *                  TimeLevel.YEAR (= 4)</li>
-     *                  <li>If you want to use just the last bar data:
-     *                  <b>timeLevelId</b> = TimeLevel.BARBASED</li>
-     *                  </ul>
-     *                  The user has to make sure that there are enough previous
-     *                  bars to calculate correct pivots at the first bar that
-     *                  matters. For example for PIVOT_TIME_LEVEL_ID_MONTH there
-     *                  will be only correct pivot point values (and reversals)
-     *                  after the first complete month
+                       <li>1-, 5-, 10- and 15-minute charts use the prior days
+                       high, low and close: <b>timeLevelId</b> = TimeLevel.DAY</li>
+                       <li>30- 60- and 120-minute charts use the prior week's high,
+                       low, and close: <b>timeLevelId</b> = TimeLevel.WEEK</li>
+                       <li>Pivot Points for daily charts use the prior month's
+                       high, low and close: <b>timeLevelId</b> =
+                       TimeLevel.MONTH</li>
+                       <li>Pivot Points for weekly and monthly charts use the prior
+                       year's high, low and close: <b>timeLevelId</b> =
+                       TimeLevel.YEAR (= 4)</li>
+                       <li>If you want to use just the last bar data:
+                       <b>timeLevelId</b> = TimeLevel.BARBASED</li>
+                       </ul>
+                       The user has to make sure that there are enough previous
+                       bars to calculate correct pivots at the first bar that
+                       matters. For example for PIVOT_TIME_LEVEL_ID_MONTH there
+                       will be only correct pivot point values (and reversals)
+                       after the first complete month
+
+                        <ul>
+                        <li>1、5、10 和 15 分钟图表使用前几天
+                        最高价、最低价和收盘价：<b>timeLevelId</b> = TimeLevel.DAY</li>
+                        <li>30-60 和 120 分钟图表使用前一周的高点，
+                        低，收盘：<b>timeLevelId</b> = TimeLevel.WEEK</li>
+                        <li>日线图的枢轴点使用上个月的
+                        最高价、最低价和收盘价：<b>timeLevelId</b> =
+                        TimeLevel.MONTH</li>
+                        <li>每周和每月图表的枢轴点使用先前的
+                        年度最高价、最低价和收盘价：<b>timeLevelId</b> =
+                        TimeLevel.YEAR (= 4)</li>
+                        <li>如果您只想使用最后一根柱线数据：
+                        <b>timeLevelId</b> = TimeLevel.BARBASED</li>
+                        </ul>
+                        用户必须确保有足够的先前
+                        条来计算第一个条的正确枢轴
+                        很重要。例如对于 PIVOT_TIME_LEVEL_ID_MONTH 那里
+                        将仅是正确的枢轴点值（和反转）
+                        第一个完整月后
      */
     public PivotPointIndicator(BarSeries series, TimeLevel timeLevel) {
         super(series);
@@ -99,9 +122,12 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Calculates the indices of the bars of the previous period
+     * 计算上一时期柱线的指数
      *
      * @param index index of the current bar
+     *              当前柱的索引
      * @return list of indices of the bars of the previous period
+     * 上一时期柱线的指数列表
      */
     public List<Integer> getBarsOfPreviousPeriod(int index) {
         List<Integer> previousBars = new ArrayList<>();
@@ -117,15 +143,17 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
         final Bar currentBar = getBarSeries().getBar(index);
 
         // step back while bar-1 in same period (day, week, etc):
+        // 当 bar-1 在同一时期（日、周等）时后退：
         while (index - 1 > getBarSeries().getBeginIndex()
                 && getPeriod(getBarSeries().getBar(index - 1)) == getPeriod(currentBar)) {
             index--;
         }
 
         // index = last bar in same period, index-1 = first bar in previous period
+        // index = 同一时期的最后一根柱线，index-1 = 上一时期的第一根柱线
         long previousPeriod = getPreviousPeriod(currentBar, index - 1);
         while (index - 1 >= getBarSeries().getBeginIndex()
-                && getPeriod(getBarSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period
+                && getPeriod(getBarSeries().getBar(index - 1)) == previousPeriod) { // while bar-n in previous period // while bar-n 在上一周期
             index--;
             previousBars.add(index);
         }
@@ -134,32 +162,32 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
 
     private long getPreviousPeriod(Bar bar, int indexOfPreviousBar) {
         switch (timeLevel) {
-        case DAY: // return previous day
+        case DAY: // return previous day  // 返回前一天
             int prevCalendarDay = bar.getEndTime().minusDays(1).getDayOfYear();
-            // skip weekend and holidays:
+            // skip weekend and holidays: // 跳过周末和节假日：
             while (getBarSeries().getBar(indexOfPreviousBar).getEndTime().getDayOfYear() != prevCalendarDay
                     && indexOfPreviousBar > 0 && prevCalendarDay >= 0) {
                 prevCalendarDay--;
             }
             return prevCalendarDay;
-        case WEEK: // return previous week
+        case WEEK: // return previous week  // 返回前一周
             return bar.getEndTime().minusWeeks(1).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-        case MONTH: // return previous month
+        case MONTH: // return previous month  // 返回上个月
             return bar.getEndTime().minusMonths(1).getMonthValue();
-        default: // return previous year
+        default: // return previous year  // 返回上一年
             return bar.getEndTime().minusYears(1).getYear();
         }
     }
 
     private long getPeriod(Bar bar) {
         switch (timeLevel) {
-        case DAY: // return previous day
+        case DAY: // return previous day  // 返回前一天
             return bar.getEndTime().getDayOfYear();
-        case WEEK: // return previous week
+        case WEEK: // return previous week  // 返回前一周
             return bar.getEndTime().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-        case MONTH: // return previous month
+        case MONTH: // return previous month  // 返回上个月
             return bar.getEndTime().getMonthValue();
-        default: // return previous year
+        default: // return previous year   // 返回上一年
             return bar.getEndTime().getYear();
         }
     }

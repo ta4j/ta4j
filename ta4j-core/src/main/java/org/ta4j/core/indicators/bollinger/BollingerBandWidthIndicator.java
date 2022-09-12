@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Bollinger BandWidth indicator.
+ * 博林格带宽度指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_width">
@@ -42,10 +43,14 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数。
      *
      * @param bbu the upper band Indicator.
+     *            上带指标。
      * @param bbm the middle band Indicator. Typically an SMAIndicator is used.
+     *            中带指标。 通常使用 SMAIndicator。
      * @param bbl the lower band Indicator.
+     *            低频段指标。
      */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm,
             BollingerBandsLowerIndicator bbl) {

@@ -34,9 +34,10 @@ import org.ta4j.core.indicators.DateTimeIndicator;
 
 /**
  * Day of the week rule.
+ * 星期几规则。
  *
- * Satisfied when the day of the week value of the DateTimeIndicator is equal to
- * one of the DayOfWeek varargs
+ * Satisfied when the day of the week value of the DateTimeIndicator is equal to one of the DayOfWeek varargs
+ * * 当 DateTimeIndicator 的星期几值等于 DayOfWeek 可变参数之一时满足
  */
 public class DayOfWeekRule extends AbstractRule {
 

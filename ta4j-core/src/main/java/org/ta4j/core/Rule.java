@@ -30,18 +30,21 @@ import org.ta4j.core.rules.XorRule;
 
 /**
  * A rule for strategy building.
+ * * 建立策略的规则。
  *
  * A trading rule may be composed of a combination of other rules.
+ * * 一条交易规则可能由其他规则组合而成。
  *
- * A {@link Strategy trading strategy} is a pair of complementary (entry and
- * exit) rules.
+ * A {@link Strategy trading strategy} is a pair of complementary (entry and exit) rules.
+ * * {@link Strategy 交易策略} 是一对互补的（进入和退出）规则。
  */
 public interface Rule {
 
     /**
      * @param rule another trading rule
-     * @return a rule which is the AND combination of this rule with the provided
-     *         one
+     *             另一个交易规则
+     * @return a rule which is the AND combination of this rule with the provided   one
+     * * @return 一个规则，它是该规则与提供的规则的 AND 组合
      */
     default Rule and(Rule rule) {
         return new AndRule(this, rule);
@@ -49,7 +52,10 @@ public interface Rule {
 
     /**
      * @param rule another trading rule
+     *             另一个交易规则
+     *
      * @return a rule which is the OR combination of this rule with the provided one
+     *          一条规则，它是该规则与提供的规则的 OR 组合
      */
     default Rule or(Rule rule) {
         return new OrRule(this, rule);
@@ -57,8 +63,10 @@ public interface Rule {
 
     /**
      * @param rule another trading rule
-     * @return a rule which is the XOR combination of this rule with the provided
-     *         one
+     *             另一个交易规则
+     *
+     * @return a rule which is the XOR combination of this rule with the provided  one
+     *      * @return 一个规则，它是该规则与提供的规则的 XOR 组合
      */
     default Rule xor(Rule rule) {
         return new XorRule(this, rule);
@@ -66,6 +74,7 @@ public interface Rule {
 
     /**
      * @return a rule which is the logical negation of this rule
+     * * @return 一个规则，它是这个规则的逻辑否定
      */
     default Rule negation() {
         return new NotRule(this);
@@ -73,8 +82,10 @@ public interface Rule {
 
     /**
      * @param index the bar index
-     * @return true if this rule is satisfied for the provided index, false
-     *         otherwise
+     *              条形索引
+     *
+     * @return true if this rule is satisfied for the provided index, false  otherwise
+     * * @return 如果提供的索引满足此规则，则返回 true，否则返回 false
      */
     default boolean isSatisfied(int index) {
         return isSatisfied(index, null);
@@ -82,9 +93,13 @@ public interface Rule {
 
     /**
      * @param index         the bar index
+     *                      条形索引
+     *
      * @param tradingRecord the potentially needed trading history
-     * @return true if this rule is satisfied for the provided index, false
-     *         otherwise
+     *                      可能需要的交易历史
+     *
+     * @return true if this rule is satisfied for the provided index, false  otherwise
+     * * @return 如果提供的索引满足此规则，则返回 true，否则返回 false
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);
 }

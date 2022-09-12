@@ -58,6 +58,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     /**
      * Tests if the previous bar is replaced by newBar
+     * * 测试前一个柱是否被新柱替换
      */
     @Test
     public void replaceBarIfChangedTest() {
@@ -87,25 +88,31 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         final Bar newBar5 = new MockBar(bar5.getEndTime(), 1d, 1d, 1d, 1d, 1d, 1d, 55, numFunction);
 
         // newBar3 must be replaced with bar3
+        // newBar3 必须替换为 bar3
         Bar replacedBar3 = BarSeriesUtils.replaceBarIfChanged(series, newBar3);
         // newBar5 must be replaced with bar5
+        // newBar5 必须替换为 bar5
         Bar replacedBar5 = BarSeriesUtils.replaceBarIfChanged(series, newBar5);
 
         // the replaced bar must be the same as the previous bar
+        // 被替换的柱必须与前一个柱相同
         assertEquals(bar3, replacedBar3);
         assertEquals(bar5, replacedBar5);
         assertNotEquals(bar2, replacedBar3);
         assertNotEquals(bar6, replacedBar5);
 
         // the replaced bar must removed from the series
+        // 被替换的柱必须从系列中移除
         assertNotEquals(series.getBar(3), replacedBar3);
         assertNotEquals(series.getBar(5), replacedBar5);
 
         // the new bar must be stored in the series
+        // 新柱必须存储在系列中
         assertEquals(series.getBar(3), newBar3);
         assertEquals(series.getBar(5), newBar5);
 
         // no bar was added
+        // 没有添加柱
         assertEquals(7, series.getBarData().size());
         assertEquals(7, series.getBarCount());
     }
@@ -135,13 +142,16 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).withName("Series Name").withBars(bars).build();
 
         // return the beginTime of each missing bar
+        // 返回每个缺失柱的开始时间
         List<ZonedDateTime> missingBars = BarSeriesUtils.findMissingBars(series, false);
 
         // there must be 3 missing bars (bar2, bar3, bar6)
+        // 必须有 3 个缺失的柱 (bar2, bar3, bar6)
         assertEquals(missingBars.get(0), time.plusDays(2));
         assertEquals(missingBars.get(1), time.plusDays(3));
         assertEquals(missingBars.get(2), time.plusDays(6));
         // there must be 1 bar with invalid data (e.g. price, volume)
+        // 必须有 1 个包含无效数据的柱（例如价格、交易量）
         assertEquals(missingBars.get(3), bar8.getEndTime());
     }
 
@@ -162,13 +172,16 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .withNumTypeOf(DecimalNum.class).withName("useDecimalNum").build();
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
+        // 将带有 DecimalNum 的 barSeries 转换为带有 DoubleNum 的 barSeries
         final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNumFunction);
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
+        // 将带有 DoubleNum 的 barSeries 转换为带有 DecimalNum 的 barSeries
         final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
                 decimalNumFunction);
 
         // convert barSeries with DoubleNum to barSeries with NaNNum
+        // 将带有 DoubleNum 的 barSeries 转换为带有 NaNNum 的 barSeries
         final BarSeries doubleToNaNSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, nanNumFunction);
 
         assertEquals(decimalBarSeries.getFirstBar().getClosePrice().getClass(), DecimalNum.class);
@@ -197,6 +210,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(series);
 
         // there must be 1 overlapping bars (bar1)
+        // 必须有 1 个重叠条 (bar1)
         assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
     }
 
@@ -214,6 +228,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.add(bar1);
 
         // add 3 bars to empty barSeries
+        // 向空 barSeries 添加 3 个柱
         BarSeriesUtils.addBars(barSeries, bars);
 
         assertEquals(bar0.getEndTime(), barSeries.getFirstBar().getEndTime());
@@ -223,6 +238,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         bars.add(bar3);
 
         // add 1 bar to non empty barSeries
+        // 向非空 barSeries 添加 1 个柱
         BarSeriesUtils.addBars(barSeries, bars);
         assertEquals(bar3.getEndTime(), barSeries.getLastBar().getEndTime());
     }

@@ -31,10 +31,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Net loss criterion (without commissions).
+ * 净亏损标准（不含佣金）。
  *
  * <p>
  * The net loss of the provided {@link Position position(s)} over the provided
+ * 提供的 {@link Position position(s)} 超过提供的净损失
  * {@link BarSeries series}.
+ * {@link BarSeries 系列}。
  */
 public class NetLossCriterion extends AbstractAnalysisCriterion {
 

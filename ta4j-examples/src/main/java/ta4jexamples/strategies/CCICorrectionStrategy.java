@@ -39,6 +39,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * CCI Correction Strategy
+ * * CCI 修正策略
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:cci_correction">
@@ -48,11 +49,13 @@ public class CCICorrectionStrategy {
 
     /**
      * @param series a bar series
+     *               酒吧系列
      * @return a CCI correction strategy
+     * * @return 一个 CCI 修正策略
      */
     public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
-            throw new IllegalArgumentException("Series cannot be null");
+            throw new IllegalArgumentException("Series cannot be null 系列不能为空");
         }
 
         CCIIndicator longCci = new CCIIndicator(series, 200);
@@ -60,11 +63,11 @@ public class CCICorrectionStrategy {
         Num plus100 = series.numOf(100);
         Num minus100 = series.numOf(-100);
 
-        Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend
-                .and(new UnderIndicatorRule(shortCci, minus100)); // Signal
+        Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend  // 牛市趋势
+                .and(new UnderIndicatorRule(shortCci, minus100)); // Signal  // 信号
 
-        Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend
-                .and(new OverIndicatorRule(shortCci, plus100)); // Signal
+        Rule exitRule = new UnderIndicatorRule(longCci, minus100) // Bear trend // 熊市趋势
+                .and(new OverIndicatorRule(shortCci, plus100)); // Signal // 信号
 
         Strategy strategy = new BaseStrategy(entryRule, exitRule);
         strategy.setUnstablePeriod(5);
@@ -74,18 +77,22 @@ public class CCICorrectionStrategy {
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        System.out.println("Number of positions for the strategy 策略的职位数: " + tradingRecord.getPositionCount());
 
         // Analysis
+        // 分析
         System.out.println(
-                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy 策略的总回报: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 }

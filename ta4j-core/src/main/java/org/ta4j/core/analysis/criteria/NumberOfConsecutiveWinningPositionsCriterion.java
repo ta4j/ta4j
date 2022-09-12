@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Number of maximum consecutive winning position criterion.
+ * 最大连续获胜位置标准的数量。
  */
 public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalysisCriterion {
 
@@ -54,6 +55,7 @@ public class NumberOfConsecutiveWinningPositionsCriterion extends AbstractAnalys
         }
 
         // in case all positions are winning positions
+        // 如果所有位置都是获胜位置
         if (maxConsecutiveWins < consecutiveWins) {
             maxConsecutiveWins = consecutiveWins;
         }

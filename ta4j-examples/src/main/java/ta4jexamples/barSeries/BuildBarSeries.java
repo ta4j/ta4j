@@ -40,10 +40,11 @@ import org.ta4j.core.num.DoubleNum;
 public class BuildBarSeries {
 
     /**
-     * Calls different functions that shows how a BaseBarSeries could be created and
-     * how Bars could be added
+     * Calls different functions that shows how a BaseBarSeries could be created and how Bars could be added
+     * * 调用显示如何创建 BaseBarSeries 以及如何添加 Bars 的不同函数
      *
      * @param args command line arguments (ignored)
+     *             命令行参数（忽略）
      */
     @SuppressWarnings("unused")
     public static void main(String[] args) {
@@ -96,7 +97,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManually() {
-        BarSeries series = new BaseBarSeries("mySeries"); // uses BigDecimalNum
+        BarSeries series = new BaseBarSeries("mySeries"); // uses BigDecimalNum 使用 BigDecimalNum
 
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
@@ -108,7 +109,7 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyDoubleNum() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum // 使用双数
         ZonedDateTime endTime = ZonedDateTime.now();
         series.addBar(endTime, 105.42, 112.99, 104.01, 111.42, 1337);
         series.addBar(endTime.plusDays(1), 111.43, 112.83, 107.77, 107.99, 1234);
@@ -119,10 +120,10 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildManuallyAndAddBarManually() {
-        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum
+        BarSeries series = new BaseBarSeries("mySeries", DoubleNum::valueOf); // uses DoubleNum // 使用双数
 
-        // create bars and add them to the series. The bars must have the same Num type
-        // as the series
+        // create bars and add them to the series. The bars must have the same Num type as the series
+        // 创建条形并将它们添加到系列中。 条形必须具有与系列相同的 Num 类型
         ZonedDateTime endTime = ZonedDateTime.now();
         Bar b1 = BaseBar.builder(DoubleNum::valueOf, Double.class).timePeriod(Duration.ofDays(1)).endTime(endTime)
                 .openPrice(105.42).highPrice(112.99).lowPrice(104.01).closePrice(111.42).volume(1337.0).build();
@@ -142,8 +143,8 @@ public class BuildBarSeries {
     }
 
     private static BarSeries buildAndAddBarsFromList() {
-        // Store Bars in a list and add them later. The bars must have the same Num type
-        // as the series
+        // Store Bars in a list and add them later. The bars must have the same Num type as the series
+        // 将 Bars 存储在列表中并稍后添加。 条形必须具有与系列相同的 Num 类型
         ZonedDateTime endTime = ZonedDateTime.now();
         Bar b1 = barBuilderFromString().timePeriod(Duration.ofDays(1)).endTime(endTime).openPrice("105.42")
                 .highPrice("112.99").lowPrice("104.01").closePrice("111.42").volume("1337").build();

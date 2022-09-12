@@ -30,23 +30,28 @@ import org.ta4j.core.num.Num;
 
 /**
  * A stop-gain rule.
+ ** 止损规则。
  *
  * Satisfied when the close price reaches the gain threshold.
+ * 当收盘价达到收益阈值时满足。
  */
 public class StopGainRule extends AbstractRule {
 
     /**
      * Constant value for 100
+     * 100 的常数值
      */
     private final Num HUNDRED;
 
     /**
      * The close price indicator
+     * 收盘价指标
      */
     private final ClosePriceIndicator closePrice;
 
     /**
      * The gain percentage
+     * 增益百分比
      */
     private final Num gainPercentage;
 
@@ -54,7 +59,10 @@ public class StopGainRule extends AbstractRule {
      * Constructor.
      *
      * @param closePrice     the close price indicator
+     *                       收盘价指标
+     *
      * @param gainPercentage the gain percentage
+     *                       增益百分比
      */
     public StopGainRule(ClosePriceIndicator closePrice, Number gainPercentage) {
         this(closePrice, closePrice.numOf(gainPercentage));
@@ -64,7 +72,10 @@ public class StopGainRule extends AbstractRule {
      * Constructor.
      *
      * @param closePrice     the close price indicator
+     *                       增益百分比
+     *
      * @param gainPercentage the gain percentage
+     *                       增益百分比
      */
     public StopGainRule(ClosePriceIndicator closePrice, Num gainPercentage) {
         this.closePrice = closePrice;
@@ -76,6 +87,7 @@ public class StopGainRule extends AbstractRule {
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
         // No trading history or no position opened, no loss
+        // 无交易历史或未开仓，无亏损
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {

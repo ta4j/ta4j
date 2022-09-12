@@ -48,14 +48,18 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * This class builds a traditional candlestick chart.
+ * * 本课程构建传统烛台图。
  */
 public class CandlestickChart {
 
     /**
      * Builds a JFreeChart OHLC dataset from a ta4j bar series.
+     * * 从 ta4j bar 系列构建 JFreeChart OHLC 数据集。
      *
      * @param series the bar series
+     *               酒吧系列
      * @return an Open-High-Low-Close dataset
+     * * @return 一个开-高-低-关数据集
      */
     private static OHLCDataset createOHLCDataset(BarSeries series) {
         final int nbBars = series.getBarCount();
@@ -82,9 +86,9 @@ public class CandlestickChart {
 
     /**
      * Builds an additional JFreeChart dataset from a ta4j bar series.
-     *
-     * @param series the bar series
-     * @return an additional dataset
+     *       从 ta4j 条形系列构建额外的 JFreeChart 数据集。     *
+     * @param series the bar series 酒吧系列
+     * @return an additional dataset 额外的数据集
      */
     private static TimeSeriesCollection createAdditionalDataset(BarSeries series) {
         ClosePriceIndicator indicator = new ClosePriceIndicator(series);
@@ -101,17 +105,21 @@ public class CandlestickChart {
 
     /**
      * Displays a chart in a frame.
+     * * 在框架中显示图表。
      *
      * @param chart the chart to be displayed
+     *              要显示的图表
      */
     private static void displayChart(JFreeChart chart) {
         // Chart panel
+        // 图表面板
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setPreferredSize(new java.awt.Dimension(740, 300));
         // Application frame
-        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Candlestick chart");
+        // 应用框架
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Candlestick chart Ta4j 示例 - 烛台图");
         frame.setContentPane(panel);
         frame.pack();
         RefineryUtilities.centerFrameOnScreen(frame);
@@ -121,29 +129,35 @@ public class CandlestickChart {
     public static void main(String[] args) {
         /*
          * Getting bar series
+         * * 获取酒吧系列
          */
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         /*
          * Creating the OHLC dataset
+         * * 创建 OHLC 数据集
          */
         OHLCDataset ohlcDataset = createOHLCDataset(series);
 
         /*
          * Creating the additional dataset
+         * * 创建附加数据集
          */
         TimeSeriesCollection xyDataset = createAdditionalDataset(series);
 
         /*
          * Creating the chart
+         * * 创建图表
          */
         JFreeChart chart = ChartFactory.createCandlestickChart("Bitstamp BTC price", "Time", "USD", ohlcDataset, true);
         // Candlestick rendering
+        //烛台渲染
         CandlestickRenderer renderer = new CandlestickRenderer();
         renderer.setAutoWidthMethod(CandlestickRenderer.WIDTHMETHOD_SMALLEST);
         XYPlot plot = chart.getXYPlot();
         plot.setRenderer(renderer);
         // Additional dataset
+        // 附加数据集
         int index = 1;
         plot.setDataset(index, xyDataset);
         plot.mapDatasetToRangeAxis(index, 0);
@@ -151,6 +165,8 @@ public class CandlestickChart {
         renderer2.setSeriesPaint(index, Color.blue);
         plot.setRenderer(index, renderer2);
         // Misc
+        // 杂项
+
         plot.setRangeGridlinePaint(Color.lightGray);
         plot.setBackgroundPaint(Color.white);
         NumberAxis numberAxis = (NumberAxis) plot.getRangeAxis();
@@ -159,6 +175,7 @@ public class CandlestickChart {
 
         /*
          * Displaying the chart
+         * 显示图表
          */
         displayChart(chart);
     }

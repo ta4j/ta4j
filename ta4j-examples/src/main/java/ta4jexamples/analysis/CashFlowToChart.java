@@ -54,16 +54,22 @@ import ta4jexamples.strategies.MovingMomentumStrategy;
 
 /**
  * This class builds a graphical chart showing the cash flow of a strategy.
+ * * 本课程构建了一个显示策略现金流的图形图表。
  */
 public class CashFlowToChart {
 
     /**
      * Builds a JFreeChart time series from a Ta4j bar series and an indicator.
+     * * 从 Ta4j 条形序列和指标构建 JFreeChart 时间序列。
      *
      * @param barSeries the ta4j bar series
+     *                  ta4j 酒吧系列
      * @param indicator the indicator
+     *                  指标
      * @param name      the name of the chart time series
+     *                  图表时间序列的名称
      * @return the JFreeChart time series
+     * * @return JFreeChart 时间序列
      */
     private static org.jfree.data.time.TimeSeries buildChartBarSeries(BarSeries barSeries, Indicator<Num> indicator,
             String name) {
@@ -78,9 +84,12 @@ public class CashFlowToChart {
 
     /**
      * Adds the cash flow axis to the plot.
+     * * 将现金流轴添加到绘图中。
      *
      * @param plot    the plot
+     *                剧情
      * @param dataset the cash flow dataset
+     *                现金流数据集
      */
     private static void addCashFlowAxis(XYPlot plot, TimeSeriesCollection dataset) {
         final NumberAxis cashAxis = new NumberAxis("Cash Flow Ratio");
@@ -95,17 +104,21 @@ public class CashFlowToChart {
 
     /**
      * Displays a chart in a frame.
+     * * 在框架中显示图表。
      *
      * @param chart the chart to be displayed
+     *              * @param chart 要显示的图表
      */
     private static void displayChart(JFreeChart chart) {
         // Chart panel
+        // 图表面板
         ChartPanel panel = new ChartPanel(chart);
         panel.setFillZoomRectangle(true);
         panel.setMouseWheelEnabled(true);
         panel.setPreferredSize(new Dimension(1024, 400));
         // Application frame
-        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Cash flow to chart");
+        // 应用框架
+        ApplicationFrame frame = new ApplicationFrame("Ta4j example - Cash flow to chart Ta4j 示例 - 现金流量图表");
         frame.setContentPane(panel);
         frame.pack();
         RefineryUtilities.centerFrameOnScreen(frame);
@@ -115,17 +128,22 @@ public class CashFlowToChart {
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = MovingMomentumStrategy.buildStrategy(series);
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
         // Getting the cash flow of the resulting positions
+        // 获取结果头寸的现金流
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
         /*
          * Building chart datasets
+         * * 构建图表数据集
          */
         TimeSeriesCollection datasetAxis1 = new TimeSeriesCollection();
         datasetAxis1.addSeries(buildChartBarSeries(series, new ClosePriceIndicator(series), "Bitstamp Bitcoin (BTC)"));
@@ -134,14 +152,15 @@ public class CashFlowToChart {
 
         /*
          * Creating the chart
+         * * 创建图表
          */
-        JFreeChart chart = ChartFactory.createTimeSeriesChart("Bitstamp BTC", // title
-                "Date", // x-axis label
-                "Price", // y-axis label
-                datasetAxis1, // data
-                true, // create legend?
-                true, // generate tooltips?
-                false // generate URLs?
+        JFreeChart chart = ChartFactory.createTimeSeriesChart("Bitstamp BTC", // title // 标题
+                "Date", // x-axis label // x轴标签
+                "Price", // y-axis label // y轴标签
+                datasetAxis1, // data    // 数据
+                true, // create legend?  // 创建图例？
+                true, // generate tooltips? // 生成工具提示？
+                false // generate URLs?  // 生成网址？
         );
         XYPlot plot = (XYPlot) chart.getPlot();
         DateAxis axis = (DateAxis) plot.getDomainAxis();
@@ -149,11 +168,13 @@ public class CashFlowToChart {
 
         /*
          * Adding the cash flow axis (on the right)
+         * * 添加现金流轴（右侧）
          */
         addCashFlowAxis(plot, datasetAxis2);
 
         /*
          * Displaying the chart
+         * * 显示图表
          */
         displayChart(chart);
     }

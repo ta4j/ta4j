@@ -32,12 +32,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Transform indicator.
+ * 变换指标。
  * <p>
  * Transforms the Num of any indicator by using common math operations.
+ * 使用常用数学运算转换任何指标的 Num。
  *
- * @apiNote Minimal deviations in last decimal places possible. During some
- *          calculations this indicator converts {@link Num DecimalNum} to
- *          {@link Double double}
+ * @apiNote Minimal deviations in last decimal places possible. During some  calculations this indicator converts {@link Num DecimalNum} to  {@link Double double}
+ * * @apiNote 最后一位小数的偏差可能最小。 在某些计算过程中，该指标将 {@link Num DecimalNum} 转换为 {@link Double double}
  */
 public class TransformIndicator extends CachedIndicator<Num> {
 
@@ -46,9 +47,12 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数
      * 
      * @param indicator      the indicator
+     *                       指标
      * @param transformation a {@link Function} describing the transformation
+     *                       描述转换的 {@link Function}
      */
     public TransformIndicator(Indicator<Num> indicator, UnaryOperator<Num> transformation) {
         super(indicator);
@@ -63,6 +67,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.plus(coefficient).
+     * 通过 indicator.plus(coefficient) 转换输入指标。
      */
     public static TransformIndicator plus(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
@@ -71,6 +76,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.minus(coefficient).
+     * 通过 indicator.minus(coefficient) 转换输入指标。
      */
     public static TransformIndicator minus(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
@@ -79,6 +85,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.dividedBy(coefficient).
+     * 通过 indicator.divided By(coefficient) 转换输入指标。
      */
     public static TransformIndicator divide(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
@@ -87,6 +94,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.multipliedBy(coefficient).
+     * 通过 indicator.multipliedBy(coefficient) 转换输入指标。
      */
     public static TransformIndicator multiply(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
@@ -95,6 +103,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.max(coefficient).
+     * 通过 indicator.max(coefficient) 转换输入指标。
      */
     public static TransformIndicator max(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
@@ -103,6 +112,7 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.min(coefficient).
+     * 通过 indicator.min(coefficient) 转换输入指标。
      */
     public static TransformIndicator min(Indicator<Num> indicator, Number coefficient) {
         Num numCoefficient = indicator.numOf(coefficient);
@@ -111,13 +121,16 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.abs().
+     * 通过 indicator.abs() 转换输入指标。
      */
+
     public static TransformIndicator abs(Indicator<Num> indicator) {
         return new TransformIndicator(indicator, Num::abs);
     }
 
     /**
      * Transforms the input indicator by indicator.sqrt().
+     * 通过 indicator.sqrt() 转换输入指标。
      */
     public static TransformIndicator sqrt(Indicator<Num> indicator) {
         return new TransformIndicator(indicator, Num::sqrt);
@@ -125,9 +138,10 @@ public class TransformIndicator extends CachedIndicator<Num> {
 
     /**
      * Transforms the input indicator by indicator.log().
-     * 
-     * @apiNote precision may be lost, because this implementation is using the
-     *          underlying doubleValue method
+     * 通过 indicator.log() 转换输入指标。
+     *
+     * @apiNote precision may be lost, because this implementation is using the  underlying doubleValue method
+     * * @apiNote 精度可能会丢失，因为这个实现是使用底层的 doubleValue 方法
      */
     public static TransformIndicator log(Indicator<Num> indicator) {
         return new TransformIndicator(indicator, val -> val.numOf(Math.log(val.doubleValue())));

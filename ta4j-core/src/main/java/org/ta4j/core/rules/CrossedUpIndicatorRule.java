@@ -31,20 +31,22 @@ import org.ta4j.core.num.Num;
 
 /**
  * Crossed-up indicator rule.
+ * * 交叉指标规则。
  *
- * Satisfied when the value of the first {@link Indicator indicator} crosses-up
- * the value of the second one.
+ * Satisfied when the value of the first {@link Indicator indicator} crosses-up the value of the second one.
+ * * 当第一个 {@link Indicator indicator} 的值与第二个的值交叉时满足。
  */
 public class CrossedUpIndicatorRule extends AbstractRule {
 
-    /** The cross indicator */
+    /** The cross indicator
+     * 交叉指标 */
     private final CrossIndicator cross;
 
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param threshold a threshold
+     * @param indicator the indicator 指标
+     * @param threshold a threshold  阈值
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Number threshold) {
         this(indicator, indicator.numOf(threshold));
@@ -53,8 +55,8 @@ public class CrossedUpIndicatorRule extends AbstractRule {
     /**
      * Constructor.
      * 
-     * @param indicator the indicator
-     * @param threshold a threshold
+     * @param indicator the indicator  指标
+     * @param threshold a threshold  阈值
      */
     public CrossedUpIndicatorRule(Indicator<Num> indicator, Num threshold) {
         this(indicator, new ConstantIndicator<>(indicator.getBarSeries(), threshold));
@@ -64,7 +66,9 @@ public class CrossedUpIndicatorRule extends AbstractRule {
      * Constructor.
      * 
      * @param first  the first indicator
+     *               第一个指标
      * @param second the second indicator
+     *               第二个指标
      */
     public CrossedUpIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
         this.cross = new CrossIndicator(second, first);
@@ -79,6 +83,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * @return the initial lower indicator
+     * @return 初始下限指标
      */
     public Indicator<Num> getLow() {
         return cross.getLow();
@@ -86,6 +91,7 @@ public class CrossedUpIndicatorRule extends AbstractRule {
 
     /**
      * @return the initial upper indicator
+     * @return 初始上限指标
      */
     public Indicator<Num> getUp() {
         return cross.getUp();

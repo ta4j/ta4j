@@ -44,10 +44,16 @@ public class XLSCriterionTest implements ExternalCriterionTest {
      * Constructor.
      * 
      * @param clazz           class containing the file resources
+     *                        包含文件资源的类
+     *
      * @param fileName        file name of the file containing the workbook
-     * @param criterionColumn column number containing the calculated criterion
-     *                        values
+     *                        包含工作簿的文件的文件名
+     *
+     * @param criterionColumn column number containing the calculated criterion    values
+     *                        包含计算的标准值的列号
+     *
      * @param statesColumn    column number containing the trading record states
+     *                        包含交易记录状态的列号
      */
     public XLSCriterionTest(Class<?> clazz, String fileName, int criterionColumn, int statesColumn,
             Function<Number, Num> numFunction) {
@@ -59,11 +65,14 @@ public class XLSCriterionTest implements ExternalCriterionTest {
     }
 
     /**
-     * Gets the BarSeries from the XLS file. The BarSeries is cached so that
-     * subsequent calls do not execute getSeries.
+     * Gets the BarSeries from the XLS file. The BarSeries is cached so that subsequent calls do not execute getSeries.
+     * * 从 XLS 文件中获取 BarSeries。 BarSeries 被缓存，因此后续调用不会执行 getSeries。
      * 
      * @return BarSeries from the file
+     *          文件中的 BarSeries
+     *
      * @throws Exception if getSeries throws IOException or DataFormatException
+     * * @throws Exception 如果 getSeries 抛出 IOException 或 DataFormatException
      */
     public BarSeries getSeries() throws Exception {
         if (cachedSeries == null) {
@@ -74,11 +83,14 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Gets the final criterion value from the XLS file given the parameters.
+     * * 从给定参数的 XLS 文件中获取最终标准值。
      * 
      * @param params criterion parameters
-     * @return Num final criterion value
-     * @throws Exception if getFinalCriterionValue throws IOException or
-     *                   DataFormatException
+     *               标准参数
+     *
+     * @return Num final criterion value Num 最终标准值
+     * @throws Exception if getFinalCriterionValue throws IOException or  DataFormatException
+     *          如果 getFinalCriterionValue 抛出 IOException 或 DataFormatException
      */
     public Num getFinalCriterionValue(Object... params) throws Exception {
         return XlsTestsUtils.getFinalCriterionValue(clazz, fileName, criterionColumn, getSeries().function(), params);
@@ -86,8 +98,10 @@ public class XLSCriterionTest implements ExternalCriterionTest {
 
     /**
      * Gets the trading record from the XLS file.
+     * * 从 XLS 文件中获取交易记录。
      * 
      * @return TradingRecord from the file
+     * * @return 来自文件的交易记录
      */
     public TradingRecord getTradingRecord() throws Exception {
         return XlsTestsUtils.getTradingRecord(clazz, fileName, statesColumn, getSeries().function());

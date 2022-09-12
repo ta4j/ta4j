@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
+ *  * Ichimoku clouds: Senkou Span B (Leading Span B) indicator
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -38,10 +39,12 @@ import org.ta4j.core.num.Num;
 public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
     // ichimoku avg line indicator
+    // ichimoku 平均线指标
     IchimokuLineIndicator lineIndicator;
 
     /**
      * Displacement on the chart (usually 26)
+     * 图表上的位移（通常为 26）
      */
     private final int offset;
 
@@ -60,6 +63,7 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * 
      * @param series   the series
      * @param barCount the time frame (usually 52)
+     *                 时间范围（通常为 52）
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount) {
 
@@ -71,7 +75,9 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * 
      * @param series   the series
      * @param barCount the time frame (usually 52)
+     *                 时间范围（通常为 52）
      * @param offset   displacement on the chart
+     *                 图表上的位移
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
 

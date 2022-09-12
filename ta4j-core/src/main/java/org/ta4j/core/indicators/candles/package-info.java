@@ -23,5 +23,6 @@
  */
 /**
  * Indicators analyzing candle sticks and patterns
+ * * 分析烛台和形态的指标
  */
 package org.ta4j.core.indicators.candles;

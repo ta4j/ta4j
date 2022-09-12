@@ -29,9 +29,10 @@ import java.util.function.Function;
 
 /**
  * Representation of Double. High performance, lower precision.
+ * * 双倍的表示。 高性能，低精度。
  *
- * @apiNote the delegate should never become a NaN value. No self NaN checks
- *          provided
+ * @apiNote the delegate should never become a NaN value. No self NaN checks    provided
+ * * @apiNote 委托永远不应该成为 NaN 值。 没有提供自我 NaN 检查
  */
 public class DoubleNum implements Num {
 
@@ -193,9 +194,13 @@ public class DoubleNum implements Num {
 
     /**
      * Checks if this value is greater than another.
+     * * 检查此值是否大于另一个值。
      *
      * @param other the other value, not null
+     *              另一个值，不为空
+     *
      * @return true is this is greater than the specified value, false otherwise
+     * * @return true 是否大于指定值，否则为 false
      */
     public boolean isGreaterThan(Num other) {
         return !other.isNaN() && compareTo(other) > 0;
@@ -203,10 +208,13 @@ public class DoubleNum implements Num {
 
     /**
      * Checks if this value is greater than or equal to another.
+     * 检查此值是否大于或等于另一个值。
      *
      * @param other the other value, not null
-     * @return true is this is greater than or equal to the specified value, false
-     *         otherwise
+     *              另一个值，不为空
+     *
+     * @return true is this is greater than or equal to the specified value, false  otherwise
+     * * @return true 是否大于等于指定值，否则为 false
      */
     public boolean isGreaterThanOrEqual(Num other) {
         return !other.isNaN() && compareTo(other) > -1;
@@ -214,9 +222,13 @@ public class DoubleNum implements Num {
 
     /**
      * Checks if this value is less than another.
+     * 检查此值是否小于另一个值。
      *
      * @param other the other value, not null
+     *              另一个值，不为空
+     *
      * @return true is this is less than the specified value, false otherwise
+     *          如果小于指定值，则为 true，否则为 false
      */
     public boolean isLessThan(Num other) {
         return !other.isNaN() && compareTo(other) < 0;

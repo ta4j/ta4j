@@ -73,6 +73,7 @@ public class PreviousValueIndicatorTest {
     public void shouldBePreviousValueFromIndicator() {
 
         // test 1 with openPrice-indicator
+        // 使用 openPrice-indicator 测试 1
         prevValueIndicator = new PreviousValueIndicator(openPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), openPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
@@ -80,6 +81,7 @@ public class PreviousValueIndicatorTest {
         }
 
         // test 2 with lowPrice-indicator
+        // 使用 lowPrice-indicator 测试 2
         prevValueIndicator = new PreviousValueIndicator(lowPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), lowPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
@@ -87,6 +89,7 @@ public class PreviousValueIndicatorTest {
         }
 
         // test 3 with highPrice-indicator
+        // 使用 highPrice-indicator 测试 3
         prevValueIndicator = new PreviousValueIndicator(highPriceIndicator);
         assertEquals(prevValueIndicator.getValue(0), highPriceIndicator.getValue(0));
         for (int i = 1; i < this.series.getBarCount(); i++) {
@@ -104,6 +107,7 @@ public class PreviousValueIndicatorTest {
     private void testWithN(int n) {
 
         // test 1 with volume-indicator
+        // 使用量指示器测试 1
         prevValueIndicator = new PreviousValueIndicator(volumeIndicator, n);
         for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), volumeIndicator.getValue(0));
@@ -113,6 +117,7 @@ public class PreviousValueIndicatorTest {
         }
 
         // test 2 with ema-indicator
+        // 用 ema-indicator 测试 2
         prevValueIndicator = new PreviousValueIndicator(emaIndicator, n);
         for (int i = 0; i < n; i++) {
             assertEquals(prevValueIndicator.getValue(i), emaIndicator.getValue(0));

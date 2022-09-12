@@ -28,6 +28,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Low price indicator.
+ * 低价指标。
  */
 public class LowPriceIndicator extends PriceIndicator {
 

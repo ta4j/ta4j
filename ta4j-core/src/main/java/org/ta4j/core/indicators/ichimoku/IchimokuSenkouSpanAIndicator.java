@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Ichimoku clouds: Senkou Span A (Leading Span A) indicator
+ * * Ichimoku 云：Senkou Span A (Leading Span A) 指标
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:ichimoku_cloud">
@@ -37,10 +38,12 @@ import org.ta4j.core.num.Num;
  */
 public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
 
-    /** The Tenkan-sen indicator */
+    /** The Tenkan-sen indicator
+     * Tenkan-sen 指标 */
     private final IchimokuTenkanSenIndicator conversionLine;
 
-    /** The Kijun-sen indicator */
+    /** The Kijun-sen indicator
+     * Kijun-sen指标 */
     private final IchimokuKijunSenIndicator baseLine;
 
     // Cloud offset
@@ -59,9 +62,10 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param series                 the series
-     * @param barCountConversionLine the time frame for the conversion line (usually
-     *                               9)
+     * @param barCountConversionLine the time frame for the conversion line (usually 9)
+     *                               转换线的时间范围（通常为 9）
      * @param barCountBaseLine       the time frame for the base line (usually 26)
+     *                               基线的时间范围（通常为 26）
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, int barCountConversionLine, int barCountBaseLine) {
         this(series, new IchimokuTenkanSenIndicator(series, barCountConversionLine),
@@ -73,8 +77,11 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
      * 
      * @param series         the series
      * @param conversionLine the conversion line
+     *                       转换线
      * @param baseLine       the base line
+     *                       基线
      * @param offset         kumo cloud displacement (offset) forward in time
+     *                       kumo 云位移（偏移）及时向前
      */
     public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
             IchimokuKijunSenIndicator baseLine, int offset) {
@@ -89,6 +96,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
 
         // at index=7 we need index=3 when offset=5
+        // 在 index=7 时，当 offset=5 时我们需要 index=3
         int spanIndex = index - offset + 1;
         if (spanIndex >= getBarSeries().getBeginIndex()) {
             return conversionLine.getValue(spanIndex).plus(baseLine.getValue(spanIndex)).dividedBy(numOf(2));

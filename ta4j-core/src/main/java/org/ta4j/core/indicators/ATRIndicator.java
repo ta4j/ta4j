@@ -29,7 +29,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average true range indicator.
+ * *平均真实范围指标。
  */
+
 public class ATRIndicator extends CachedIndicator<Num> {
 
     private final MMAIndicator averageTrueRangeIndicator;

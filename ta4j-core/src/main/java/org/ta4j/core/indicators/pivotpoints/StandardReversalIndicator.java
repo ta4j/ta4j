@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Pivot Reversal Indicator.
+ * *枢轴反转指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:pivot_points">
@@ -47,9 +48,12 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * Calculates the (standard) reversal for the corresponding pivot level
+     * * 计算相应枢轴水平的（标准）反转
      *
      * @param pivotPointIndicator the {@link PivotPointIndicator} for this reversal
+     *                           此反转的 {@link PivotPointIndicator}
      * @param level               the {@link PivotLevel} for this reversal
+     *                            此反转的 {@link PivotLevel}
      */
     public StandardReversalIndicator(PivotPointIndicator pivotPointIndicator, PivotLevel level) {
         super(pivotPointIndicator);

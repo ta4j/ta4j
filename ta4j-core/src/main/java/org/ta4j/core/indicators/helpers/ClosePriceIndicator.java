@@ -28,6 +28,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Close price indicator.
+ * 收盘价指标。
  */
 public class ClosePriceIndicator extends PriceIndicator {
 

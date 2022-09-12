@@ -48,6 +48,7 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
 
     public ExpectedShortfallCriterionTest(Function<Number, Num> numFunction) {
         // LOG returns requre DoubleNum implementation
+        // LOG 返回需要 Double eNum 实现
         super((params) -> new ExpectedShortfallCriterion(0.95), DoubleNum::valueOf);
     }
 
@@ -63,6 +64,7 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateWithASimplePosition() {
         // if only one position in tail, VaR = ES
+        // 如果尾部只有一个位置，VaR = ES
         series = new MockBarSeries(numFunction, 100d, 104d, 90d, 100d, 95d, 105d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
         AnalysisCriterion esCriterion = getCriterion();
@@ -72,6 +74,7 @@ public class ExpectedShortfallCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateOnlyWithLossPosition() {
         // regularly decreasing prices
+        // 定期降价
         List<Double> prices = IntStream.rangeClosed(1, 100).asDoubleStream().boxed().sorted(Collections.reverseOrder())
                 .collect(Collectors.toList());
         series = new MockBarSeries(numFunction, prices);

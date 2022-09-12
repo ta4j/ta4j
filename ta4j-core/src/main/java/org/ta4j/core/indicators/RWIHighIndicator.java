@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The RandomWalkIndexHighIndicator.
+ * 随机游走指数高指标。
  *
  * @see <a href=
  *      "http://https://rtmath.net/helpFinAnalysis/html/934563a8-9171-42d2-8444-486691234b1d.html">Source
@@ -42,7 +43,9 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series   the series
+     *                 该系列
      * @param barCount the time frame
+     *                 时间范围
      */
     public RWIHighIndicator(BarSeries series, int barCount) {
         super(series);

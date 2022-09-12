@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Mean deviation indicator.
+ * 平均偏差指标。
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Mean_absolute_deviation#Average_absolute_deviation">
@@ -43,9 +44,12 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造函数。
      *
      * @param indicator the indicator
+     *                  指标
      * @param barCount  the time frame
+     *                  時間範圍
      */
     public MeanDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
@@ -64,6 +68,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
         for (int i = startIndex; i <= index; i++) {
             // For each period...
+            // 对于每个周期...
             absoluteDeviations = absoluteDeviations.plus(indicator.getValue(i).minus(average).abs());
         }
         return absoluteDeviations.dividedBy(numOf(nbValues));

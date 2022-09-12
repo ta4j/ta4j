@@ -73,6 +73,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeries(numFunction, 100, 110, 120, 130, 117.00, 130, 116.99));
 
         // 10% trailing-stop-loss
+        // 10% 追踪止损
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
@@ -82,6 +83,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertNull(rule.getCurrentStopLossLimitActivation());
 
         // Enter at 114
+        // 在 114 处输入
         tradingRecord.enter(2, numOf(114), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertEquals(numOf(120).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
@@ -92,9 +94,11 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertTrue(rule.isSatisfied(4, tradingRecord));
         assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
         // Exit
+        // 出口
         tradingRecord.exit(5);
 
         // Enter at 128
+        // 在 128 处输入
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertEquals(numOf(130).multipliedBy(numOf(0.9)), rule.getCurrentStopLossLimitActivation());
@@ -109,12 +113,14 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeries(numFunction, 100, 110, 120, 130, 120, 117.00, 117.00, 130, 116.99));
 
         // 10% trailing-stop-loss
+        // 10% 追踪止损
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
         // Enter at 114
+        // 在 114 处输入
         tradingRecord.enter(2, numOf(114), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertFalse(rule.isSatisfied(3, tradingRecord));
@@ -122,9 +128,11 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertTrue(rule.isSatisfied(5, tradingRecord));
         assertFalse(rule.isSatisfied(6, tradingRecord));
         // Exit
+        // 出口
         tradingRecord.exit(7);
 
         // Enter at 128
+        // 在 128 处输入
         tradingRecord.enter(7, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(7, tradingRecord));
         assertTrue(rule.isSatisfied(8, tradingRecord));
@@ -137,6 +145,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeries(numFunction, 100, 90, 80, 70, 77.00, 120, 132.01));
 
         // 10% trailing-stop-loss
+        // 10% 追踪止损
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
 
         assertFalse(rule.isSatisfied(0, null));
@@ -146,6 +155,7 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertNull(rule.getCurrentStopLossLimitActivation());
 
         // Enter at 84
+        // 在 84 处输入
         tradingRecord.enter(2, numOf(84), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertEquals(numOf(80).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
@@ -155,10 +165,11 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
         assertTrue(rule.isSatisfied(4, tradingRecord));
         assertEquals(numOf(70).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
-        // Exit
+        // Exit 出口
         tradingRecord.exit(5);
 
         // Enter at 128
+        // 在 128 处输入
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertEquals(numOf(120).multipliedBy(numOf(1.1)), rule.getCurrentStopLossLimitActivation());
@@ -173,12 +184,14 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeries(numFunction, 100, 90, 80, 70, 70, 73, 77.00, 90, 120, 132.01));
 
         // 10% trailing-stop-loss and 2 bars back
+        // 10% 追踪止损和 2 根柱线
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10), 3);
 
         assertFalse(rule.isSatisfied(0, null));
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
         // Enter at 84
+        // 在 84 处输入
         tradingRecord.enter(2, numOf(84), numOf(1));
         assertFalse(rule.isSatisfied(2, tradingRecord));
         assertFalse(rule.isSatisfied(3, tradingRecord));
@@ -186,9 +199,11 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
         // Exit
+        //出口
         tradingRecord.exit(7);
 
         // Enter at 128
+        // 在 128 处输入
         tradingRecord.enter(7, numOf(91), numOf(1));
         assertFalse(rule.isSatisfied(7, tradingRecord));
         assertTrue(rule.isSatisfied(8, tradingRecord));

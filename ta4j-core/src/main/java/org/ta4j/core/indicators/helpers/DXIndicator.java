@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * DX indicator.
+ * DX 指标。
  */
 public class DXIndicator extends CachedIndicator<Num> {
 

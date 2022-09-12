@@ -31,15 +31,19 @@ import org.ta4j.core.num.Num;
 
 /**
  * Simple linear regression indicator.
+ * 简单的线性回归指标。
  *
  * A moving (i.e. over the time frame) simple linear regression (least squares).
+ * * 移动（即在时间范围内）简单线性回归（最小二乘）。
  * y = slope * x + intercept See also:
+ * y = 斜率 * x + 截距 另见：
  * http://introcs.cs.princeton.edu/java/97data/LinearRegression.java.html
  */
 public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * The type for the outcome of the {@link SimpleLinearRegressionIndicator}
+     * {@link SimpleLinearRegressionIndicator} 结果的类型
      */
     public enum SimpleLinearRegressionType {
         Y, SLOPE, INTERCEPT
@@ -53,9 +57,12 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor for the y-values of the formula (y = slope * x + intercept).
+     * * 公式 y 值的构造函数（y = 斜率 * x + 截距）。
      *
      * @param indicator the indicator for the x-values of the formula.
+     *                  公式的 x 值的指标。
      * @param barCount  the time frame
+     *                  时间范围
      */
     public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount) {
         this(indicator, barCount, SimpleLinearRegressionType.Y);
@@ -65,8 +72,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator the indicator for the x-values of the formula.
+     *                  公式的 x 值的指标。
      * @param barCount  the time frame
+     *                  时间范围
      * @param type      the type of the outcome value (y, slope, intercept)
+     *                  结果值的类型（y、斜率、截距）
      */
     public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount, SimpleLinearRegressionType type) {
         super(indicator);
@@ -80,6 +90,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         final int startIndex = Math.max(0, index - barCount + 1);
         if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
+            // 没有足够的观测值来计算回归线
             return NaN;
         }
         calculateRegressionLine(startIndex, index);
@@ -97,12 +108,16 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     /**
      * Calculates the regression line.
+     * 计算回归线。
      *
      * @param startIndex the start index (inclusive) in the bar series
+     *                   条形系列中的起始索引（包括）
      * @param endIndex   the end index (inclusive) in the bar series
+     *                   条形系列中的结束索引（包括）
      */
     private void calculateRegressionLine(int startIndex, int endIndex) {
         // First pass: compute xBar and yBar
+        // 第一遍：计算 xBar 和 yBar
         Num sumX = numOf(0);
         Num sumY = numOf(0);
         for (int i = startIndex; i <= endIndex; i++) {
@@ -114,6 +129,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         Num yBar = sumY.dividedBy(nbObservations);
 
         // Second pass: compute slope and intercept
+        // 第二遍：计算斜率和截距
         Num xxBar = numOf(0);
         Num xyBar = numOf(0);
         for (int i = startIndex; i <= endIndex; i++) {

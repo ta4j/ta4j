@@ -34,12 +34,13 @@ import org.ta4j.core.num.Num;
 
 /**
  * Testing the RWIHighIndicator
+ * * 测试 RWIHighIndicator
  */
 public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     /**
-     * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel
-     * formula needed
+     * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel formula needed
+     * * TODO：只是图形化的 Excel 表格验证，带有硬编码的结果。 需要Excel公式
      */
     private ExternalIndicatorTest xls;
 

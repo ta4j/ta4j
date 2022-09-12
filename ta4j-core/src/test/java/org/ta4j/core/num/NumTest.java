@@ -74,6 +74,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         if (num.getClass().equals(DecimalNum.class)) {
             assertEquals(97, fromNum.precision());
             // since precisions are the same, will match to any precision
+            // 由于精度相同，将匹配任何精度
             assertTrue(((DecimalNum) highPrecisionNum).matches(num, 10000));
         }
     }
@@ -82,12 +83,12 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     public void testDecimalNumOffset() {
         String highPrecisionString = "1.928749238479283749238472398472936872364823749823749238749238749283749238472983749238749832749274";
         Num num = numOf(highPrecisionString, HIGH_PRECISION);
-        // upconvert num to PrecisionNum so that we don't throw ClassCastException in
-        // minus() from
-        // PrecisionNum.matches()
+        // upconvert num to PrecisionNum so that we don't throw ClassCastException in minus() from  PrecisionNum.matches()
+        // 将 num 上转换为 PrecisionNum，这样我们就不会在 PrecisionNum.matches() 的 minus() 中抛出 ClassCastException
         Num lowerPrecisionNum = DecimalNum.valueOf(num.toString(), 128);
         Num highPrecisionNum = DecimalNum.valueOf(highPrecisionString, 128);
         // use HIGH_PRECISION PrecisionNums for delta because they are so small
+        // 对 delta 使用 HIGH PRECISION Precision Nums 因为它们太小了
         assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
                 highPrecisionNum.numOf("0.0000000000000001", HIGH_PRECISION)));
         if (num.getClass().equals(DoubleNum.class)) {
@@ -98,6 +99,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         }
         if (num.getClass().equals(DecimalNum.class)) {
             // since precisions are the same, will match to any precision
+            // 由于精度相同，将匹配任何精度
             assertTrue(((DecimalNum) highPrecisionNum).matches(lowerPrecisionNum,
                     highPrecisionNum.numOf(
                             "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
@@ -211,9 +213,9 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         assertNumEquals(hundredMillion.dividedBy(hundred), million);
         assertNumEquals(0, hundredMillion.remainder(hundred));
 
-        Num five = ten.numOf(5); // generate new value with NumFunction
-        Num zeroDotTwo = ten.numOf(0.2); // generate new value with NumFunction
-        Num fiveHundred54 = ten.numOf(554); // generate new value with NumFunction
+        Num five = ten.numOf(5); // generate new value with NumFunction  // 使用 NumFunction 生成新值
+        Num zeroDotTwo = ten.numOf(0.2); // generate new value with NumFunction  // 使用 NumFunction 生成新值
+        Num fiveHundred54 = ten.numOf(554); // generate new value with NumFunction   // 使用 NumFunction 生成新值
         assertNumEquals(0, hundredMillion.remainder(five));
 
         assertNumEquals(0.00032, zeroDotTwo.pow(5));
@@ -277,6 +279,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
             assertEquals("Infinity", sqrt.toString());
             /*
              * BigDecimalNum has been replaced by PrecisionNum
+             * * BigDecimalNum 已被 PrecisionNum 取代
              * 
              * } else if (numOf(0).getClass().equals(BigDecimalNum.class)) {
              * assertNumEquals("1.7976931348623157000000000000000E+308", sqrt);

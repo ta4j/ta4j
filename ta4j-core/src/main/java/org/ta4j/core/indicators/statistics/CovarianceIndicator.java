@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Covariance indicator.
+ * 协方差指标。
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 
@@ -43,8 +44,11 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator1 the first indicator
+     *                   第一个指标
      * @param indicator2 the second indicator
+     *                   第二个指标
      * @param barCount   the time frame
+     *                   时间范围
      */
     public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
         super(indicator1);

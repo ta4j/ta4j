@@ -28,8 +28,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 
 /**
- * This class generates TradingStatement basis on provided trading record and
- * bar series
+ * This class generates TradingStatement basis on provided trading record and bar series
+ * * 此类根据提供的交易记录和柱系列生成 TradingStatement
  *
  * @see TradingStatement
  */

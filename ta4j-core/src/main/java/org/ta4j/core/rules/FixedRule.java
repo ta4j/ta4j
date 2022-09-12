@@ -29,8 +29,12 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * An indexes-based rule.
+ * 基于索引的规则。
  *
  * Satisfied for provided indexes.
+ * 对提供的索引感到满意。
+ *
+ * 固定规则
  */
 public class FixedRule extends AbstractRule {
 

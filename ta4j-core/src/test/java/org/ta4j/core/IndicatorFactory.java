@@ -28,10 +28,14 @@ public interface IndicatorFactory<D, I> {
 
     /**
      * Applies parameters and data to an IndicatorFactory and returns the Indicator.
+     * 将参数和数据应用于 IndicatorFactory 并返回 Indicator。
      * 
      * @param data   source data for building the indicator
+     *               构建指标的源数据
      * @param params indicator parameters
+     *               指标参数
      * @return Indicator<I> with the indicator parameters applied
+     * * @return Indicator<I> 应用了指标参数
      */
     Indicator<I> getIndicator(D data, Object... params);
 

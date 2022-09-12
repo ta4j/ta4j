@@ -33,6 +33,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Intraday Intensity Index
+ * 日内强度指数
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/i/intradayintensityindex.asp">https://www.investopedia.com/terms/i/intradayintensityindex.asp</a>

@@ -32,6 +32,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Average gross loss (with commissions).
+ * 平均总损失（含佣金）。
  */
 public class AverageLossCriterion extends AbstractAnalysisCriterion {
 

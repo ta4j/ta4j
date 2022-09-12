@@ -28,6 +28,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Zero-lag exponential moving average indicator.
+ * 零滞后指数移动平均线指标。
  *
  * @see <a href=
  *      "http://www.fmlabs.com/reference/default.htm?url=ZeroLagExpMA.htm">
@@ -52,10 +53,12 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
     protected Num calculate(int index) {
         if (index + 1 < barCount) {
             // Starting point of the ZLEMA
+            // ZLEMA 的起点
             return new SMAIndicator(indicator, barCount).getValue(index);
         }
         if (index == 0) {
             // If the barCount is bigger than the indicator's value count
+            // 如果 barCount 大于指标的值计数
             return indicator.getValue(0);
         }
         Num zlemaPrev = getValue(index - 1);

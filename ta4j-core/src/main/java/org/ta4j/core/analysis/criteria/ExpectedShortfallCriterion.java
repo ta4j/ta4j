@@ -34,8 +34,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Expected Shortfall criterion.
+ * * 预期短缺标准。
  *
  * Measures the expected shortfall of the strategy log-return time-series.
+ * * 衡量策略日志返回时间序列的预期缺口。
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Expected_shortfall">https://en.wikipedia.org/wiki/Expected_shortfall</a>
@@ -44,13 +46,16 @@ import org.ta4j.core.num.Num;
 public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
     /**
      * Confidence level as absolute value (e.g. 0.95)
+     * * 绝对值的置信水平（例如 0.95）
      */
     private final double confidence;
 
     /**
      * Constructor
+     * 构造函数
      *
      * @param confidence the confidence level
+     *                   * @param confidence 置信水平
      */
     public ExpectedShortfallCriterion(double confidence) {
         this.confidence = confidence;
@@ -73,22 +78,29 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
 
     /**
      * Calculates the Expected Shortfall on the return series
+     * * 计算回报系列的预期缺口
      * 
      * @param returns    the corresponding returns
+     *                   * @param 返回对应的返回值
      * @param confidence the confidence level
+     *                   * @param confidence 置信水平
      * @return the relative Expected Shortfall
+     * * @return 相对预期缺口
      */
     private static Num calculateES(Returns returns, double confidence) {
         // select non-NaN returns
+        // 选择非 NaN 返回
         List<Num> returnRates = returns.getValues().subList(1, returns.getSize() + 1);
         Num zero = returns.numOf(0);
         Num expectedShortfall = zero;
         if (!returnRates.isEmpty()) {
             // F(x_var) >= alpha (=1-confidence)
+            // F(x_var) >= alpha (=1-置信度)
             int nInBody = (int) (returns.getSize() * confidence);
             int nInTail = returns.getSize() - nInBody;
 
             // calculate average tail loss
+            // 计算平均尾部损失
             Collections.sort(returnRates);
             List<Num> tailEvents = returnRates.subList(0, nInTail);
             Num sum = zero;
@@ -98,6 +110,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
             expectedShortfall = sum.dividedBy(returns.numOf(nInTail));
 
             // ES is non-positive
+            // ES 是非正数
             if (expectedShortfall.isGreaterThan(zero)) {
                 expectedShortfall = zero;
             }

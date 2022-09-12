@@ -28,8 +28,10 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A XOR combination of two {@link Rule rules}.
+ * * 两个 {@link Rule 规则} 的 XOR 组合。
  *
  * Satisfied when only of the two provided rules is satisfied.
+ * 仅满足两个提供的规则时满足。
  */
 public class XorRule extends AbstractRule {
 
@@ -40,7 +42,9 @@ public class XorRule extends AbstractRule {
      * Constructor.
      *
      * @param rule1 a trading rule
+     *              交易规则
      * @param rule2 another trading rule
+     *              另一个交易规则
      */
     public XorRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;

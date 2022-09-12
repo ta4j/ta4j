@@ -28,8 +28,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Chande's Range Action Verification Index (RAVI) indicator.
+ * Chande 的范围行动验证指数 (RAVI) 指标。
  * 
  * To preserve trend direction, default calculation does not use absolute value.
+ * 为了保持趋势方向，默认计算不使用绝对值。
  */
 public class RAVIIndicator extends CachedIndicator<Num> {
 
@@ -40,8 +42,13 @@ public class RAVIIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param price            the price
+     *                         价格
+     *
      * @param shortSmaBarCount the time frame for the short SMA (usually 7)
+     *                         短 SMA 的时间框架（通常为 7）
+     *
      * @param longSmaBarCount  the time frame for the long SMA (usually 65)
+     *                         多头 SMA 的时间框架（通常为 65）
      */
     public RAVIIndicator(Indicator<Num> price, int shortSmaBarCount, int longSmaBarCount) {
         super(price);

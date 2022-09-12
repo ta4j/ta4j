@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Standard deviation indicator.
+ * 标准偏差指标。
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:standard_deviation_volatility">
@@ -41,8 +42,8 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator
-     * @param barCount  the time frame
+     * @param indicator the indicator 指標
+     * @param barCount  the time frame 時間範圍
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

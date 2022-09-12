@@ -30,8 +30,10 @@ import org.ta4j.core.num.Num;
 
 /**
  * Number of bars criterion.
+ * 条数标准。
  *
  * Returns the total number of bars in all the positions.
+ * 返回所有位置的柱总数。
  */
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 

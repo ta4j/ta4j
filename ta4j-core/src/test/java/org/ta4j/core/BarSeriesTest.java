@@ -95,6 +95,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     /**
      * Tests if the addBar(bar, boolean) function works correct.
+     * 测试 addBar(bar, boolean) 函数是否正常工作。
      */
     @Test
     public void replaceBarTest() {
@@ -116,16 +117,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void getEndGetBeginGetBarCountIsEmptyTest() {
 
         // Default series
+        // 默认系列
         assertEquals(0, defaultSeries.getBeginIndex());
         assertEquals(bars.size() - 1, defaultSeries.getEndIndex());
         assertEquals(bars.size(), defaultSeries.getBarCount());
         assertFalse(defaultSeries.isEmpty());
         // Constrained series
+        // 约束序列
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(2, subSeries.getEndIndex());
         assertEquals(3, subSeries.getBarCount());
         assertFalse(subSeries.isEmpty());
         // Empty series
+        // 空系列
         assertEquals(-1, emptySeries.getBeginIndex());
         assertEquals(-1, emptySeries.getEndIndex());
         assertEquals(0, emptySeries.getBarCount());
@@ -135,26 +139,32 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void getBarDataTest() {
         // Default series
+        // 默认系列
         assertEquals(bars, defaultSeries.getBarData());
         // Constrained series
+        // 约束序列
         assertNotEquals(bars, subSeries.getBarData());
         // Empty series
+        // 空系列
         assertEquals(0, emptySeries.getBarData().size());
     }
 
     @Test
     public void getSeriesPeriodDescriptionTest() {
         // Default series
+        // 默认系列
         assertTrue(defaultSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(defaultSeries.getEndIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         assertTrue(defaultSeries.getSeriesPeriodDescription().startsWith(
                 bars.get(defaultSeries.getBeginIndex()).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Constrained series
+        // 约束序列
         assertTrue(subSeries.getSeriesPeriodDescription()
                 .endsWith(bars.get(4).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         assertTrue(subSeries.getSeriesPeriodDescription()
                 .startsWith(bars.get(2).getEndTime().format(DateTimeFormatter.ISO_DATE_TIME)));
         // Empty series
+        // 空系列
         assertEquals("", emptySeries.getSeriesPeriodDescription());
     }
 
@@ -180,7 +190,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test(expected = IndexOutOfBoundsException.class)
     public void getBarOnMovingAndEmptySeriesShouldThrowExceptionTest() {
         defaultSeries.setMaximumBarCount(2);
-        bars.clear(); // Should not be used like this
+        bars.clear(); // Should not be used like this  // 不应该这样使用
         defaultSeries.getBar(1);
     }
 
@@ -303,22 +313,22 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         TestUtils.assertNumEquals(currentClose, defaultSeries.getLastBar().getClosePrice());
         defaultSeries.addPrice(adding1);
-        TestUtils.assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close
-        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
-        TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same
-        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
+        TestUtils.assertNumEquals(adding1, cp.getValue(defaultSeries.getEndIndex())); // adding1 is new close // 添加1是新的关闭
+        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max  // 添加1也新的最大值
+        TestUtils.assertNumEquals(currentMin, mnPrice.getValue(defaultSeries.getEndIndex())); // min stays same  // min 保持不变
+        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays // 前一个关闭停留
 
         Num adding2 = numOf(0);
         defaultSeries.addPrice(adding2);
-        TestUtils.assertNumEquals(adding2, cp.getValue(defaultSeries.getEndIndex())); // adding2 is new close
-        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100
-        TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2
-        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
+        TestUtils.assertNumEquals(adding2, cp.getValue(defaultSeries.getEndIndex())); // adding2 is new close  // 添加2是新的关闭
+        TestUtils.assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // max stays 100 // 最大值保持 100
+        TestUtils.assertNumEquals(adding2, mnPrice.getValue(defaultSeries.getEndIndex())); // min is new adding2 // min 是新的添加2
+        TestUtils.assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays // 前一个关闭停留
     }
 
     /**
-     * Tests if the {@link BaseBarSeries#addTrade(Number, Number)} method works
-     * correct.
+     * Tests if the {@link BaseBarSeries#addTrade(Number, Number)} method works correct.
+     * * 测试 {@link BaseBarSeries#addTrade(Number, Number)} 方法是否正常工作。
      */
     @Test
     public void addTradeTest() {
@@ -347,7 +357,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void subSeriesOfMaxBarCountSeriesTest() {
         final BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction)
-                .withName("Series with maxBar count").withMaxBarCount(20).build();
+                .withName("Series with maxBar count 具有 maxBar 计数的系列").withMaxBarCount(20).build();
         final int timespan = 5;
 
         IntStream.range(0, 100).forEach(i -> {

@@ -52,6 +52,7 @@ public class ThreeWhiteSoldiersIndicatorTest extends AbstractIndicatorTest<Indic
     public void setUp() {
         List<Bar> bars = new ArrayList<Bar>();
         // open, close, high, low
+        // 开、关、高、低
         bars.add(new MockBar(19, 19, 22, 15, numFunction));
         bars.add(new MockBar(10, 18, 20, 8, numFunction));
         bars.add(new MockBar(17, 16, 21, 15, numFunction));

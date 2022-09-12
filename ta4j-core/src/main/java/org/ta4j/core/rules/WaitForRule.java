@@ -29,20 +29,23 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 
 /**
- * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after a
- * trade.
+ * A {@link org.ta4j.core.Rule} which waits for a number of {@link Bar} after a trade.
+ * * 一个 {@link org.ta4j.core.Rule} 在交易后等待多个 {@link Bar}。
  *
  * Satisfied after a fixed number of bars since the last trade.
+ * * 自上次交易以来，在固定数量的柱线后满足。
  */
 public class WaitForRule extends AbstractRule {
 
     /**
      * The type of the trade since we have to wait for
+     * * 交易的类型，因为我们必须等待
      */
     private final TradeType tradeType;
 
     /**
      * The number of bars to wait for
+     * 等待的柱数
      */
     private final int numberOfBars;
 
@@ -50,7 +53,9 @@ public class WaitForRule extends AbstractRule {
      * Constructor.
      *
      * @param tradeType    the type of the trade since we have to wait for
+     *                     交易的类型，因为我们必须等待
      * @param numberOfBars the number of bars to wait for
+     *                     等待的柱数
      */
     public WaitForRule(TradeType tradeType, int numberOfBars) {
         this.tradeType = tradeType;
@@ -61,6 +66,7 @@ public class WaitForRule extends AbstractRule {
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
         // No trading history, no need to wait
+        // 无交易记录，无需等待
         if (tradingRecord != null) {
             Trade lastTrade = tradingRecord.getLastTrade(tradeType);
             if (lastTrade != null) {

@@ -51,6 +51,7 @@ public class IsRisingRuleTest {
         assertFalse(rule.isSatisfied(1));
         assertFalse(rule.isSatisfied(2));
         // First time to have at least 3 rising values.
+        // 第一次至少有 3 个上升值。
         assertTrue(rule.isSatisfied(3));
         assertTrue(rule.isSatisfied(4));
         assertTrue(rule.isSatisfied(5));

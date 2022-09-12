@@ -31,6 +31,7 @@ import org.ta4j.core.BarSeries;
 
 /**
  * DateTime indicator.
+ * 日期时间指示器。
  */
 public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
 

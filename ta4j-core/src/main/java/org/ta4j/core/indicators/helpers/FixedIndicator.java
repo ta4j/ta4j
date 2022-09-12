@@ -32,8 +32,10 @@ import org.ta4j.core.indicators.AbstractIndicator;
 
 /**
  * A fixed indicator.
+ * 一个固定的指标。
  * 
  * @param <T> the type of returned value (Double, Boolean, etc.)
+ *           返回值的类型（Double、Boolean 等）
  */
 public class FixedIndicator<T> extends AbstractIndicator<T> {
 
@@ -41,8 +43,10 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Constructor.
+     * 构造函数
      * 
      * @param values the values to be returned by this indicator
+     *               该指标要返回的值
      */
     @SafeVarargs
     public FixedIndicator(BarSeries series, T... values) {

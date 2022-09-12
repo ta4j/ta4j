@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Volume indicator.
+ * 体积 /卷 /容量指示器。
  */
 public class VolumeIndicator extends CachedIndicator<Num> {
 

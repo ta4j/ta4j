@@ -26,38 +26,49 @@ package org.ta4j.core;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator over a {@link BarSeries bar series}. <p/p> For each index of the
- * bar series, returns a value of type <b>T</b>.
+ * Indicator over a {@link BarSeries bar series}. <p/p> For each index of the bar series, returns a value of type <b>T</b>.
+ * * {@link BarSeries bar series} 上的指标。 <p/p> 对于条形系列的每个索引，返回一个 <b>T</b> 类型的值。
  *
  * @param <T> the type of returned value (Double, Boolean, etc.)
+ *           * @param <T> 返回值的类型（Double、Boolean 等）
  */
 public interface Indicator<T> {
 
     /**
      * @param index the bar index
+     *              条形索引
+     *
      * @return the value of the indicator
+     * * @return 指标的值
      */
     T getValue(int index);
 
     /**
      * @return the related bar series
+     * * @return 相关栏系列
      */
     BarSeries getBarSeries();
 
     /**
      * @return the {@link Num Num extending class} for the given {@link Number}
+     * * @return 给定 {@link Number} 的 {@link Num Num 扩展类}
      */
     Num numOf(Number number);
 
     /**
-     * Returns all values from an {@link Indicator} as an array of Doubles. The
-     * returned doubles could have a minor loss of precise, if {@link Indicator} was
-     * based on {@link Num Num}.
+     * Returns all values from an {@link Indicator} as an array of Doubles. The returned doubles could have a minor loss of precise, if {@link Indicator} was based on {@link Num Num}.
+     * * 将 {@link Indicator} 中的所有值作为双精度数组返回。 如果 {@link Indicator} 基于 {@link Num Num}，则返回的双精度值可能会有轻微的损失。
      *
      * @param ref      the indicator
+     *                 指标
+     *
      * @param index    the index
+     *                 索引
+     *
      * @param barCount the barCount
+     *                 柱计数
      * @return array of Doubles within the barCount
+     * * @return barCount 内的 Doubles 数组
      */
     static Double[] toDouble(Indicator<Num> ref, int index, int barCount) {
 

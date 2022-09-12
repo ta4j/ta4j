@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * %B indicator.
+ * %B 指标。
  * 
  * @see <a
  *      href="http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:bollinger_band_perce>
@@ -46,10 +47,14 @@ public class PercentBIndicator extends CachedIndicator<Num> {
 
     /**
      * Constructor.
+     * 构造器
      * 
      * @param indicator an indicator (usually close price)
+     *                  一个指标（通常是收盘价）
      * @param barCount  the time frame
+     *                  时间框架
      * @param k         the K multiplier (usually 2.0)
+     *                  K 乘数（通常为 2.0）
      */
     public PercentBIndicator(Indicator<Num> indicator, int barCount, double k) {
         super(indicator);

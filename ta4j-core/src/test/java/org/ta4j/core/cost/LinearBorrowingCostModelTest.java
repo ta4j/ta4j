@@ -46,6 +46,7 @@ public class LinearBorrowingCostModelTest {
     @Test
     public void calculateZeroTest() {
         // Price - Amount calculation Test
+        // 价格 - 金额计算测试
         Num price = DoubleNum.valueOf(100);
         Num amount = DoubleNum.valueOf(2);
         Num cost = borrowingModel.calculate(price, amount);
@@ -56,6 +57,7 @@ public class LinearBorrowingCostModelTest {
     @Test
     public void calculateBuyPosition() {
         // Holding a bought asset should not incur borrowing costs
+        // 持有购买的资产不应产生借贷成本
         int holdingPeriod = 2;
         Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
         Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
@@ -72,6 +74,7 @@ public class LinearBorrowingCostModelTest {
     @Test
     public void calculateSellPosition() {
         // Short selling incurs borrowing costs
+        // 卖空会产生借贷成本
         int holdingPeriod = 2;
         Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
         Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
@@ -87,8 +90,8 @@ public class LinearBorrowingCostModelTest {
 
     @Test
     public void calculateOpenSellPosition() {
-        // Short selling incurs borrowing costs. Since position is still open, accounted
-        // for until current index
+        // Short selling incurs borrowing costs. Since position is still open, accounted for until current index
+        // 卖空会产生借贷成本。 由于头寸仍然未平仓，占到当前指数
         int currentIndex = 4;
         Position position = new Position(Trade.TradeType.SELL, new ZeroCostModel(), borrowingModel);
         position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));

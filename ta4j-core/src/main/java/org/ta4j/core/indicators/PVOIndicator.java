@@ -27,8 +27,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 
 /**
- * Percentage Volume Oscillator (PVO): ((12-day EMA of Volume - 26-day EMA of
- * Volume)/26-day EMA of Volume) x 100
+ * Percentage Volume Oscillator (PVO): ((12-day EMA of Volume - 26-day EMA of Volume)/26-day EMA of Volume) x 100
+ * * 成交量振荡器百分比 (PVO): ((12 天成交量均线 - 26 天成交量均线)/26 天成交量均线) x 100
  *
  * @see <a href=
  *      "https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo">
@@ -38,8 +38,8 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 public class PVOIndicator extends PPOIndicator {
 
     /**
-     * @param series the bar series {@link BarSeries}. Will use PPO default
-     *               constructor with shortBarCount "12" and longBarCount "26".
+     * @param series the bar series {@link BarSeries}. Will use PPO default  constructor with shortBarCount "12" and longBarCount "26".
+     *               酒吧系列{@link BarSeries}。 将使用带有 shortBarCount "12" 和 longBarCount "26" 的 PPO 默认构造函数。
      */
     public PVOIndicator(BarSeries series) {
         super(new VolumeIndicator(series));
@@ -47,9 +47,9 @@ public class PVOIndicator extends PPOIndicator {
 
     /**
      * @param series         the bar series {@link BarSeries}.
-     * @param volumeBarCount Volume Indicator bar count. Will use PPO default
-     *                       constructor with shortBarCount "12" and longBarCount
-     *                       "26".
+     *                       酒吧系列{@link BarSeries}。
+     * @param volumeBarCount Volume Indicator bar count. Will use PPO default   constructor with shortBarCount "12" and longBarCount  "26".
+     *                       音量指示条计数。 将使用带有 shortBarCount "12" 和 longBarCount "26" 的 PPO 默认构造函数。
      */
     public PVOIndicator(BarSeries series, int volumeBarCount) {
         super(new VolumeIndicator(series, volumeBarCount));
@@ -57,8 +57,13 @@ public class PVOIndicator extends PPOIndicator {
 
     /**
      * @param series        the bar series {@link BarSeries}.
+     *                      酒吧系列{@link BarSeries}。
+     *
      * @param shortBarCount PPO short time frame.
+     *                      PPO 短时间(範圍)框架。
+     *
      * @param longBarCount  PPO long time frame.
+     *                      PPO 长時間(範圍)框架。
      */
     public PVOIndicator(BarSeries series, int shortBarCount, int longBarCount) {
         super(new VolumeIndicator(series), shortBarCount, longBarCount);
@@ -66,9 +71,15 @@ public class PVOIndicator extends PPOIndicator {
 
     /**
      * @param series         the bar series {@link BarSeries}.
+     *                       酒吧系列{@link BarSeries}。
+     *
      * @param volumeBarCount Volume Indicator bar count.
+     *                       |音量指示条计数。
+     *
      * @param shortBarCount  PPO short time frame.
+     *                       PPO 短时间(範圍)框架。
      * @param longBarCount   PPO long time frame.
+     *                       PPO 長時間範圍
      */
     public PVOIndicator(BarSeries series, int volumeBarCount, int shortBarCount, int longBarCount) {
         super(new VolumeIndicator(series, volumeBarCount), shortBarCount, longBarCount);

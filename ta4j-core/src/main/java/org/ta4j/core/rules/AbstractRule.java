@@ -29,20 +29,27 @@ import org.ta4j.core.Rule;
 
 /**
  * An abstract trading {@link Rule rule}.
+ * 抽象交易{@link Rule rule}。
  */
 public abstract class AbstractRule implements Rule {
 
-    /** The logger */
+    /** The logger
+     * 记录器*/
     protected final transient Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The class name */
+    /** The class name
+     * 班级名称 */
     private final String className = getClass().getSimpleName();
 
     /**
      * Traces the isSatisfied() method calls.
+     * 跟踪 isSatisfied() 方法调用。
      * 
      * @param index       the bar index
+     *                    条形索引
+     *
      * @param isSatisfied true if the rule is satisfied, false otherwise
+     *                    如果满足规则，则为 true，否则为 false
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         log.trace("{}#isSatisfied({}): {}", className, index, isSatisfied);

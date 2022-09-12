@@ -71,6 +71,7 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void wmaUsingBarCount9UsingClosePrice() {
         // Example from
+        // 示例来自
         // http://traders.com/Documentation/FEEDbk_docs/2010/12/TradingIndexesWithHullMA.xls
         BarSeries data = new MockBarSeries(numFunction, 84.53, 87.39, 84.55, 82.83, 82.58, 83.74, 83.33, 84.57, 86.98,
                 87.10, 83.11, 83.60, 83.66, 82.76, 79.22, 79.03, 78.18, 77.42, 74.65, 77.48, 76.87);

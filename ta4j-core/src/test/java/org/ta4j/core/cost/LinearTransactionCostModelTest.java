@@ -46,6 +46,7 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateSingleTradeCost() {
         // Price - Amount calculation Test
+        // 价格 - 金额计算测试
         Num price = DoubleNum.valueOf(100);
         Num amount = DoubleNum.valueOf(2);
         Num cost = transactionModel.calculate(price, amount);
@@ -56,6 +57,7 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateBuyPosition() {
         // Calculate the transaction costs of a closed long position
+        // 计算多头平仓的交易成本
         int holdingPeriod = 2;
         Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
         Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
@@ -74,6 +76,7 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateSellPosition() {
         // Calculate the transaction costs of a closed short position
+        // 计算平仓的交易成本
         int holdingPeriod = 2;
         Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), transactionModel);
         Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1), transactionModel);
@@ -92,6 +95,7 @@ public class LinearTransactionCostModelTest {
     @Test
     public void calculateOpenSellPosition() {
         // Calculate the transaction costs of an open position
+        // 计算未平仓头寸的交易成本
         int currentIndex = 4;
         Position position = new Position(Trade.TradeType.BUY, transactionModel, new ZeroCostModel());
         position.operate(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));

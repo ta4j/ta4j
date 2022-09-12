@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * The Moving volume weighted average price (MVWAP) Indicator.
+ * 移动量加权平均价格 (MVWAP) 指标。
  * 
  * @see <a href=
  *      "http://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp">
@@ -43,7 +44,9 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
      * Constructor.
      * 
      * @param vwap     the vwap
+     *                 vwap
      * @param barCount the time frame
+     *                 時間範圍
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);

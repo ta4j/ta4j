@@ -40,6 +40,7 @@ import ta4jexamples.strategies.CCICorrectionStrategy;
 
 /**
  * Strategy execution logging example.
+ * * 策略执行记录示例。
  */
 public class StrategyExecutionLogging {
 
@@ -47,9 +48,8 @@ public class StrategyExecutionLogging {
             .getResource("logback-traces.xml");
 
     /**
-     * Loads the Logback configuration from a resource file. Only here to avoid
-     * polluting other examples with logs. Could be replaced by a simple logback.xml
-     * file in the resource folder.
+     * Loads the Logback configuration from a resource file. Only here to avoid polluting other examples with logs. Could be replaced by a simple logback.xml file in the resource folder.
+     * * 从资源文件加载 Logback 配置。 仅在此处避免使用日志污染其他示例。 可以用资源文件夹中的简单 logback.xml 文件替换。
      */
     private static void loadLoggerConfiguration() {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
@@ -61,7 +61,7 @@ public class StrategyExecutionLogging {
             configurator.doConfigure(LOGBACK_CONF_FILE);
         } catch (JoranException je) {
             Logger.getLogger(StrategyExecutionLogging.class.getName()).log(Level.SEVERE,
-                    "Unable to load Logback configuration", je);
+                    "Unable to load Logback configuration 无法加载 Logback 配置", je);
         }
     }
 
@@ -74,19 +74,24 @@ public class StrategyExecutionLogging {
 
     public static void main(String[] args) {
         // Loading the Logback configuration
+        // 加载 Logback 配置
         loadLoggerConfiguration();
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = CCICorrectionStrategy.buildStrategy(series);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         seriesManager.run(strategy);
 
         // Unload the Logback configuration
+        // 卸载 Logback 配置
         unloadLoggerConfiguration();
     }
 }

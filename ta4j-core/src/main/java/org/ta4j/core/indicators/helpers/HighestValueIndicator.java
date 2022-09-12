@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Highest value indicator.
+ * 最高价值指标。
  */
 public class HighestValueIndicator extends CachedIndicator<Num> {
 

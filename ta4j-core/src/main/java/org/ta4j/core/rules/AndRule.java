@@ -28,9 +28,13 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * An AND combination of two {@link Rule rules}.
+ * * 两个 {@link Rule 规则} 的 AND 组合。
  *
  * Satisfied when the two provided rules are satisfied as well.<br>
+ * * 满足两个提供的规则时也满足。<br>
+ *
  * Warning: the second rule is not tested if the first rule is not satisfied.
+ * * 警告：如果不满足第一条规则，则不测试第二条规则。
  */
 public class AndRule extends AbstractRule {
 
@@ -41,7 +45,10 @@ public class AndRule extends AbstractRule {
      * Constructor
      *
      * @param rule1 a trading rule
+     *              交易规则
+     *
      * @param rule2 another trading rule
+     *              另一个交易规则
      */
     public AndRule(Rule rule1, Rule rule2) {
         this.rule1 = rule1;

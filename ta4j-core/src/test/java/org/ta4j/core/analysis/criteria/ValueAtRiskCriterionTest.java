@@ -44,6 +44,7 @@ public class ValueAtRiskCriterionTest extends AbstractCriterionTest {
 
     public ValueAtRiskCriterionTest(Function<Number, Num> numFunction) {
         // LOG returns requre DoubleNum implementation
+        // LOG 返回需要 Double eNum 实现
         super((params) -> new ValueAtRiskCriterion(0.95), DoubleNum::valueOf);
     }
 

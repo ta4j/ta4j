@@ -30,6 +30,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Sigma-Indicator (also called, "z-score" or "standard score").
+ * * Sigma-Indicator（也称为“z 分数”或“标准分数”）。
  *
  * see http://www.statisticshowto.com/probability-and-statistics/z-score/
  */
@@ -44,8 +45,8 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     /**
      * Constructor.
      * 
-     * @param ref      the indicator
-     * @param barCount the time frame
+     * @param ref      the indicator 指標
+     * @param barCount the time frame 時間範圍
      */
     public SigmaIndicator(Indicator<Num> ref, int barCount) {
         super(ref);

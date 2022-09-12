@@ -27,14 +27,18 @@ import org.ta4j.core.BarSeries;
 
 /**
  * Bar aggregator interface to aggregate list of bars into another list of bars.
+ * 条形聚合器接口将条形列表聚合到另一个条形列表中。
  */
 public interface BarSeriesAggregator {
 
     /**
      * Aggregates bar series.
+     * 聚合条系列。
      *
      * @param series series to aggregate
+     *               @param series 要聚合的系列
      * @return aggregated series
+     * @return 聚合系列
      */
     default BarSeries aggregate(BarSeries series) {
         return aggregate(series, series.getName());
@@ -42,10 +46,14 @@ public interface BarSeriesAggregator {
 
     /**
      * Aggregates bar series.
+     * 聚合条系列。
      *
      * @param series               series to aggregate
+     *                             要聚合的系列
      * @param aggregatedSeriesName name for aggregated series
+     *                             聚合系列的名称
      * @return aggregated series with specified name
+     *                          具有指定名称的聚合系列
      */
     BarSeries aggregate(BarSeries series, String aggregatedSeriesName);
 }

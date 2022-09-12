@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * ADX indicator. Part of the Directional Movement System.
+ * * ADX 指标。 定向运动系统的一部分。
  *
  * @see <a
  *      href="https://www.investopedia.com/terms/a/adx.asp>https://www.investopedia.com/terms/a/adx.asp</a>

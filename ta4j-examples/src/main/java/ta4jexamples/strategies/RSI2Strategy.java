@@ -42,6 +42,7 @@ import ta4jexamples.loaders.CsvTradesLoader;
 
 /**
  * 2-Period RSI Strategy
+ * * 2 期 RSI 策略
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:rsi2">
@@ -52,18 +53,19 @@ public class RSI2Strategy {
     /**
      * @param series a bar series
      * @return a 2-period RSI strategy
+     * * @return 2 周期 RSI 策略
      */
     public static Strategy buildStrategy(BarSeries series) {
         if (series == null) {
-            throw new IllegalArgumentException("Series cannot be null");
+            throw new IllegalArgumentException("Series cannot be null 系列不能为空");
         }
 
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         SMAIndicator shortSma = new SMAIndicator(closePrice, 5);
         SMAIndicator longSma = new SMAIndicator(closePrice, 200);
 
-        // We use a 2-period RSI indicator to identify buying
-        // or selling opportunities within the bigger trend.
+        // We use a 2-period RSI indicator to identify buying or selling opportunities within the bigger trend.
+        // 我们使用 2 周期 RSI 指标来识别更大趋势中的买入或卖出机会。
         RSIIndicator rsi = new RSIIndicator(closePrice, 2);
 
         // Entry rule
@@ -72,13 +74,14 @@ public class RSI2Strategy {
                 .and(new CrossedDownIndicatorRule(rsi, 5)) // Signal 1
                 .and(new OverIndicatorRule(shortSma, closePrice)); // Signal 2
 
-        // Exit rule
+        // Exit rule // 退出规则
         // The long-term trend is down when a security is below its 200-period SMA.
-        Rule exitRule = new UnderIndicatorRule(shortSma, longSma) // Trend
-                .and(new CrossedUpIndicatorRule(rsi, 95)) // Signal 1
-                .and(new UnderIndicatorRule(shortSma, closePrice)); // Signal 2
+        // 当证券低于其 200 周期 SMA 时，长期趋势下降。
+        Rule exitRule = new UnderIndicatorRule(shortSma, longSma) // Trend // 趋势
+                .and(new CrossedUpIndicatorRule(rsi, 95)) // Signal 1 信号 1
+                .and(new UnderIndicatorRule(shortSma, closePrice)); // Signal 2 信号 2
 
-        // TODO: Finalize the strategy
+        // TODO: Finalize the strategy  完成策略
 
         return new BaseStrategy(entryRule, exitRule);
     }
@@ -86,19 +89,23 @@ public class RSI2Strategy {
     public static void main(String[] args) {
 
         // Getting the bar series
+        // 获取柱状系列
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
 
         // Building the trading strategy
+        // 构建交易策略
         Strategy strategy = buildStrategy(series);
 
         // Running the strategy
+        // 运行策略
         BarSeriesManager seriesManager = new BarSeriesManager(series);
         TradingRecord tradingRecord = seriesManager.run(strategy);
-        System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
+        System.out.println("Number of positions for the strategy 策略的职位数: " + tradingRecord.getPositionCount());
 
         // Analysis
+        // 分析
         System.out.println(
-                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+                "Total return for the strategy 策略的总回报: " + new GrossReturnCriterion().calculate(series, tradingRecord));
     }
 
 }

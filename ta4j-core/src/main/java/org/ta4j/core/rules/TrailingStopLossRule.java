@@ -54,34 +54,43 @@ import org.ta4j.core.num.Num;
 
 /**
  * A trailing stop-loss rule
- *
+ * * 追踪止损规则
  * Satisfied when the price reaches the trailing loss threshold.
+ * 当价格达到追踪损失阈值时满足。
  */
 public class TrailingStopLossRule extends AbstractRule {
 
     /**
      * The price indicator
+     * * 价格指标
      */
     private final PriceIndicator priceIndicator;
     /**
      * the current price extremum
+     * * 当前价格极值
      */
     private Num currentExtremum = null;
     /**
      * the current stop loss price activation
+     * * 当前止损价格激活
      */
     private Num currentStopLossLimitActivation = null;
-    /** The barCount */
+    /** The barCount
+     * 酒吧计数*/
     private int barCount;
-    /** the loss-distance as percentage */
+    /** the loss-distance as percentage
+     * 损失距离百分比 */
     private final Num lossPercentage;
 
     /**
      * Constructor.
      * 
      * @param closePrice     the close price indicator
+     *                       收盘价指标
      * @param lossPercentage the loss percentage
+     *                       损失百分比
      * @param barCount       number of bars to look back for the calculation
+     *                       回溯计算的柱数
      */
     public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage, int barCount) {
         this.priceIndicator = priceIndicator;
@@ -93,7 +102,9 @@ public class TrailingStopLossRule extends AbstractRule {
      * Constructor.
      * 
      * @param closePrice     the close price indicator
+     *                       收盘价指标
      * @param lossPercentage the loss percentage
+     *                       损失百分比
      */
     public TrailingStopLossRule(PriceIndicator priceIndicator, Num lossPercentage) {
         this(priceIndicator, lossPercentage, Integer.MAX_VALUE);
@@ -103,6 +114,7 @@ public class TrailingStopLossRule extends AbstractRule {
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
         // No trading history or no position opened, no loss
+        // 无交易历史或未开仓，无亏损
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
@@ -149,7 +161,7 @@ public class TrailingStopLossRule extends AbstractRule {
     @Override
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
         if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}, Current stop loss activation: {}",
+            log.trace("{}#isSatisfied({}): {}. Current price 时价: {}, Current stop loss activation 当前止损激活: {}",
                     getClass().getSimpleName(), index, isSatisfied, priceIndicator.getValue(index),
                     currentStopLossLimitActivation);
         }

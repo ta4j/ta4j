@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 /**
  * Amount indicator.
+ * 总量指标
  *
  */
 public class AmountIndicator extends CachedIndicator<Num> {

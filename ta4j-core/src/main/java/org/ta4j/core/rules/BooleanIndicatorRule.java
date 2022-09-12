@@ -28,8 +28,10 @@ import org.ta4j.core.TradingRecord;
 
 /**
  * A boolean-indicator-based rule.
+ * 基于布尔指标的规则。
  *
  * Satisfied when the value of the {@link Indicator indicator} is true.
+ * * 当{@link Indicator indicator} 的值为真时满足。
  */
 public class BooleanIndicatorRule extends AbstractRule {
 
@@ -39,6 +41,7 @@ public class BooleanIndicatorRule extends AbstractRule {
      * Constructor.
      *
      * @param indicator a boolean indicator
+     *                  一个布尔指标
      */
     public BooleanIndicatorRule(Indicator<Boolean> indicator) {
         this.indicator = indicator;
