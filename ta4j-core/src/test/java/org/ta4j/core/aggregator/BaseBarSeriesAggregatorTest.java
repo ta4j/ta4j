@@ -98,6 +98,9 @@ public class BaseBarSeriesAggregatorTest extends AbstractIndicatorTest<BarSeries
      * last bar.
      */
     private static class BarAggregatorForTest implements BarAggregator {
+        BarAggregatorForTest() {
+        }
+
         @Override
         public List<Bar> aggregate(List<Bar> bars) {
             final List<Bar> aggregated = new ArrayList<>();

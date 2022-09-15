@@ -124,7 +124,7 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * Constructor.
-     * 
+     *
      * @param name        the name of the series
      * @param numFunction a {@link Function} to convert a {@link Number} to a
      *                    {@link Num Num implementation}
@@ -450,13 +450,13 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
-    public void addTrade(Number price, Number amount) {
-        addTrade(numOf(price), numOf(amount));
+    public void addTrade(Number amount, Number price) {
+        addTrade(numOf(amount), numOf(price));
     }
 
     @Override
-    public void addTrade(String price, String amount) {
-        addTrade(numOf(new BigDecimal(price)), numOf(new BigDecimal(amount)));
+    public void addTrade(String amount, String price) {
+        addTrade(numOf(new BigDecimal(amount)), numOf(new BigDecimal(price)));
     }
 
     @Override

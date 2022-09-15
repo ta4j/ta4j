@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -50,7 +51,7 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     @Test
     public void test() {
         ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
-        List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
+        List<Bar> bars = Collections.singletonList(new MockBar(expectedZonedDateTime, 1, numFunction));
         BarSeries series = new MockBarSeries(bars);
         DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
         assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));

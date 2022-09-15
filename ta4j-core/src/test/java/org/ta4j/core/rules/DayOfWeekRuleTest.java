@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.junit.Test;
@@ -57,8 +58,8 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
                                 ZonedDateTime.parse("2019-09-21T12:00:00-00:00", dtf), // 5, Sat
                                 ZonedDateTime.parse("2019-09-22T12:00:00-00:00", dtf) // 6, Sun
                         }), Bar::getEndTime);
-        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY);
+        DayOfWeekRule rule = new DayOfWeekRule(dateTime, EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY));
 
         assertTrue(rule.isSatisfied(0, null));
         assertTrue(rule.isSatisfied(1, null));
