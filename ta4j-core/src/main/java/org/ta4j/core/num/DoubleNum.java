@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2022 Ta4j Organization & respective
+ * Copyright (c) 2014-2017 Marc de Verdelhan, 2017-2021 Ta4j Organization & respective
  * authors (see AUTHORS)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -23,23 +23,45 @@
  */
 package org.ta4j.core.num;
 
-import static org.ta4j.core.num.NaN.NaN;
-
+import java.util.Map;
+import java.util.Objects;
+import java.util.WeakHashMap;
 import java.util.function.Function;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Representation of Double. High performance, lower precision.
  *
  * @apiNote the delegate should never become a NaN value. No self NaN checks
- *          provided
+ * provided
  */
 public class DoubleNum implements Num {
+    private static final DoubleNum DZERO = new DoubleNum(0d);
+    private static final DoubleNum DNZERO = new DoubleNum(-0.0d);
+    private static final DoubleNum D1_0 = new DoubleNum(1d);
+    private static final DoubleNum DHUNDRED = DoubleNum.valueOf(100d);
 
-    private static final DoubleNum ZERO = DoubleNum.valueOf(0);
-    private static final DoubleNum ONE = DoubleNum.valueOf(1);
-    private static final DoubleNum HUNDRED = DoubleNum.valueOf(100);
+    public static Map<Double, DoubleNum> cache = new WeakHashMap<>();
+    public static boolean useCache = Objects.equals(System.getenv("TA4J_DOUBLENUM_CACHE"), "true"); //false default
 
+    static DoubleNum bind(double delegate) {
+        if (0d == delegate) return DZERO;
+        if (1d == delegate) return D1_0;
+        if (-0.0d == delegate) return DNZERO;
+        if (!useCache) return new DoubleNum(delegate); //this should be a basic case for the C2 var profiler inlining
+
+        DoubleNum ref = cache.get(delegate);
+        if (null == ref) {
+            ref = new DoubleNum(delegate);
+            cache.put(delegate, ref);
+        }
+        return ref;
+    }
+
+    private static final long serialVersionUID = -2611177221813615070L;
     private final static double EPS = 0.00001; // precision
+    public static final long negativeZeroDoubleBits = Double.doubleToRawLongBits(-0.0d);
     private final double delegate;
 
     private DoubleNum(double val) {
@@ -47,24 +69,25 @@ public class DoubleNum implements Num {
     }
 
     public static DoubleNum valueOf(int i) {
-        return new DoubleNum((double) i);
+        return bind(i);
     }
 
     public static DoubleNum valueOf(long i) {
-        return new DoubleNum((double) i);
+        return bind((double) i);
     }
 
     public static DoubleNum valueOf(short i) {
-        return new DoubleNum((double) i);
+        return bind(i);
     }
 
     public static DoubleNum valueOf(float i) {
-        return new DoubleNum((double) i);
+        return bind(i);
     }
 
     public static DoubleNum valueOf(String i) {
-        return new DoubleNum(Double.parseDouble(i));
+        return bind(Double.parseDouble(i));
     }
+
 
     public static DoubleNum valueOf(Number i) {
         return new DoubleNum(i.doubleValue());
@@ -72,17 +95,17 @@ public class DoubleNum implements Num {
 
     @Override
     public Num zero() {
-        return ZERO;
+        return DZERO;
     }
 
     @Override
     public Num one() {
-        return ONE;
+        return D1_0;
     }
 
     @Override
     public Num hundred() {
-        return HUNDRED;
+        return DHUNDRED;
     }
 
     @Override
@@ -102,51 +125,66 @@ public class DoubleNum implements Num {
 
     @Override
     public Num plus(Num augend) {
-        return augend.isNaN() ? NaN : new DoubleNum(delegate + ((DoubleNum) augend).delegate);
+        if (augend.isNaN()) return NaN;
+
+        if (0d == delegate || -0d == delegate) return augend;
+        double v = augend.doubleValue();
+        if (0d == v || -0d == v) return this;
+        return bind(delegate + v);
     }
 
     @Override
     public Num minus(Num subtrahend) {
-        return subtrahend.isNaN() ? NaN : new DoubleNum(delegate - ((DoubleNum) subtrahend).delegate);
+        if (subtrahend.isNaN()) return NaN;
+        double v = subtrahend.doubleValue();
+        if (0d == v || -0d == v) return this;
+        if (v == delegate) return DZERO;
+        return bind(delegate - v);
     }
 
     @Override
     public Num multipliedBy(Num multiplicand) {
-        return multiplicand.isNaN() ? NaN : new DoubleNum(delegate * ((DoubleNum) multiplicand).delegate);
+        if (multiplicand.isNaN()) return NaN;
+        double v = multiplicand.doubleValue();
+        return 0d == v || 1d == delegate ? multiplicand : 1d == v || 0d == delegate ? this : bind(delegate * v);
     }
 
     @Override
     public Num dividedBy(Num divisor) {
-        if (divisor.isNaN() || divisor.isZero()) {
-            return NaN;
-        }
-        DoubleNum divisorD = (DoubleNum) divisor;
-        return new DoubleNum(delegate / divisorD.delegate);
+        if (divisor.isNaN() || divisor.isZero()) return NaN;
+        double v = divisor.doubleValue();
+        if (1d == v || 0d == delegate)
+            return this;
+
+        return bind(delegate / v);
     }
 
     @Override
     public Num remainder(Num divisor) {
-        return divisor.isNaN() ? NaN : new DoubleNum(delegate % ((DoubleNum) divisor).delegate);
+        if (divisor.isNaN()) return NaN;
+        double v = divisor.doubleValue();
+        return 1d == v ? this : bind(delegate % v);
     }
 
     @Override
     public Num floor() {
-        return new DoubleNum(Math.floor(delegate));
+        return bind(Math.floor(delegate));
     }
 
     @Override
     public Num ceil() {
-        return new DoubleNum(Math.ceil(delegate));
+        return bind(Math.ceil(delegate));
     }
 
     @Override
     public Num pow(int n) {
-        return new DoubleNum(Math.pow(delegate, n));
+        return bind(Math.pow(delegate, n));
     }
 
     @Override
     public Num pow(Num n) {
-        return new DoubleNum(Math.pow(delegate, n.doubleValue()));
+        double b = n.doubleValue();
+        return 1d == b ? this : bind(Math.pow(delegate, b));
     }
 
     @Override
@@ -154,7 +192,7 @@ public class DoubleNum implements Num {
         if (delegate < 0) {
             return NaN;
         }
-        return new DoubleNum(Math.sqrt(delegate));
+        return bind(Math.sqrt(delegate));
     }
 
     @Override
@@ -164,12 +202,12 @@ public class DoubleNum implements Num {
 
     @Override
     public Num abs() {
-        return new DoubleNum(Math.abs(delegate));
+        return bind(Math.abs(delegate));
     }
 
     @Override
     public Num negate() {
-        return new DoubleNum(-delegate);
+        return bind(-delegate);
     }
 
     @Override
@@ -206,7 +244,7 @@ public class DoubleNum implements Num {
         if (delegate <= 0) {
             return NaN;
         }
-        return new DoubleNum(Math.log(delegate));
+        return bind(Math.log(delegate));
     }
 
     /**
@@ -224,7 +262,7 @@ public class DoubleNum implements Num {
      *
      * @param other the other value, not null
      * @return true is this is greater than or equal to the specified value, false
-     *         otherwise
+     * otherwise
      */
     public boolean isGreaterThanOrEqual(Num other) {
         return !other.isNaN() && compareTo(other) > -1;
@@ -247,12 +285,34 @@ public class DoubleNum implements Num {
 
     @Override
     public Num min(Num other) {
-        return other.isNaN() ? NaN : new DoubleNum(Math.min(delegate, ((DoubleNum) other).delegate));
+        double a = delegate;
+        //noinspection ConstantConditions
+        if (a != a)
+            return NaN;   // a is NaN
+        double b = other.getDelegate().doubleValue();
+        if ((a == 0d) &&
+                (b == 0d) &&
+                (Double.doubleToRawLongBits(b) == negativeZeroDoubleBits)) {
+            // Raw conversion ok since NaN can't map to -0d.
+            return other;
+        }
+        return (a <= b) ? this : other;
+
     }
 
     @Override
     public Num max(Num other) {
-        return other.isNaN() ? NaN : new DoubleNum(Math.max(delegate, ((DoubleNum) other).delegate));
+        double a = delegate;
+        //noinspection ConstantConditions
+        if (a != a) return NaN;
+        double b = (double) other.getDelegate();
+        if ((a == 0d) &&
+                (b == 0d) &&
+                (Double.doubleToRawLongBits(a) == negativeZeroDoubleBits)) {
+            // Raw conversion ok since NaN can't map to -0d.
+            return other;
+        }
+        return (a >= b) ? this : other;
     }
 
     @Override
