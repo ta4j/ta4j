@@ -34,7 +34,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * Representation of Double. High performance, lower precision.
  *
  * @apiNote the delegate should never become a NaN value. No self NaN checks
- * provided
+ *          provided
  */
 public class DoubleNum implements Num {
     private static final DoubleNum DZERO = new DoubleNum(0d);
@@ -43,13 +43,17 @@ public class DoubleNum implements Num {
     private static final DoubleNum DHUNDRED = DoubleNum.valueOf(100d);
 
     public static Map<Double, DoubleNum> cache = new WeakHashMap<>();
-    public static boolean useCache = Objects.equals(System.getenv("TA4J_DOUBLENUM_CACHE"), "true"); //false default
+    public static boolean useCache = Objects.equals(System.getenv("TA4J_DOUBLENUM_CACHE"), "true"); // false default
 
     static DoubleNum bind(double delegate) {
-        if (0d == delegate) return DZERO;
-        if (1d == delegate) return D1_0;
-        if (-0.0d == delegate) return DNZERO;
-        if (!useCache) return new DoubleNum(delegate); //this should be a basic case for the C2 var profiler inlining
+        if (0d == delegate)
+            return DZERO;
+        if (1d == delegate)
+            return D1_0;
+        if (-0.0d == delegate)
+            return DNZERO;
+        if (!useCache)
+            return new DoubleNum(delegate); // this should be a basic case for the C2 var profiler inlining
 
         DoubleNum ref = cache.get(delegate);
         if (null == ref) {
@@ -88,7 +92,6 @@ public class DoubleNum implements Num {
         return bind(Double.parseDouble(i));
     }
 
-
     public static DoubleNum valueOf(Number i) {
         return new DoubleNum(i.doubleValue());
     }
@@ -125,33 +128,41 @@ public class DoubleNum implements Num {
 
     @Override
     public Num plus(Num augend) {
-        if (augend.isNaN()) return NaN;
+        if (augend.isNaN())
+            return NaN;
 
-        if (0d == delegate || -0d == delegate) return augend;
+        if (0d == delegate || -0d == delegate)
+            return augend;
         double v = augend.doubleValue();
-        if (0d == v || -0d == v) return this;
+        if (0d == v || -0d == v)
+            return this;
         return bind(delegate + v);
     }
 
     @Override
     public Num minus(Num subtrahend) {
-        if (subtrahend.isNaN()) return NaN;
+        if (subtrahend.isNaN())
+            return NaN;
         double v = subtrahend.doubleValue();
-        if (0d == v || -0d == v) return this;
-        if (v == delegate) return DZERO;
+        if (0d == v || -0d == v)
+            return this;
+        if (v == delegate)
+            return DZERO;
         return bind(delegate - v);
     }
 
     @Override
     public Num multipliedBy(Num multiplicand) {
-        if (multiplicand.isNaN()) return NaN;
+        if (multiplicand.isNaN())
+            return NaN;
         double v = multiplicand.doubleValue();
         return 0d == v || 1d == delegate ? multiplicand : 1d == v || 0d == delegate ? this : bind(delegate * v);
     }
 
     @Override
     public Num dividedBy(Num divisor) {
-        if (divisor.isNaN() || divisor.isZero()) return NaN;
+        if (divisor.isNaN() || divisor.isZero())
+            return NaN;
         double v = divisor.doubleValue();
         if (1d == v || 0d == delegate)
             return this;
@@ -161,7 +172,8 @@ public class DoubleNum implements Num {
 
     @Override
     public Num remainder(Num divisor) {
-        if (divisor.isNaN()) return NaN;
+        if (divisor.isNaN())
+            return NaN;
         double v = divisor.doubleValue();
         return 1d == v ? this : bind(delegate % v);
     }
@@ -262,7 +274,7 @@ public class DoubleNum implements Num {
      *
      * @param other the other value, not null
      * @return true is this is greater than or equal to the specified value, false
-     * otherwise
+     *         otherwise
      */
     public boolean isGreaterThanOrEqual(Num other) {
         return !other.isNaN() && compareTo(other) > -1;
@@ -286,13 +298,11 @@ public class DoubleNum implements Num {
     @Override
     public Num min(Num other) {
         double a = delegate;
-        //noinspection ConstantConditions
+        // noinspection ConstantConditions
         if (a != a)
-            return NaN;   // a is NaN
+            return NaN; // a is NaN
         double b = other.getDelegate().doubleValue();
-        if ((a == 0d) &&
-                (b == 0d) &&
-                (Double.doubleToRawLongBits(b) == negativeZeroDoubleBits)) {
+        if ((a == 0d) && (b == 0d) && (Double.doubleToRawLongBits(b) == negativeZeroDoubleBits)) {
             // Raw conversion ok since NaN can't map to -0d.
             return other;
         }
@@ -303,12 +313,11 @@ public class DoubleNum implements Num {
     @Override
     public Num max(Num other) {
         double a = delegate;
-        //noinspection ConstantConditions
-        if (a != a) return NaN;
+        // noinspection ConstantConditions
+        if (a != a)
+            return NaN;
         double b = (double) other.getDelegate();
-        if ((a == 0d) &&
-                (b == 0d) &&
-                (Double.doubleToRawLongBits(a) == negativeZeroDoubleBits)) {
+        if ((a == 0d) && (b == 0d) && (Double.doubleToRawLongBits(a) == negativeZeroDoubleBits)) {
             // Raw conversion ok since NaN can't map to -0d.
             return other;
         }
