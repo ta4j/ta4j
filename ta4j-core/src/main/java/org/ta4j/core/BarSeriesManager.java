@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
 public class BarSeriesManager {
 
     /** The logger */
-    private static final Logger log = LoggerFactory.getLogger(BarSeriesManager.class);
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     /** The managed bar series */
     private final BarSeries barSeries;
