@@ -2,6 +2,7 @@
 .project
 .settings/
 .idea/
+.vscode/
 .svn/
 nb-configuration.xml
 nbactions.xml
