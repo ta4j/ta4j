@@ -37,23 +37,40 @@ import static org.ta4j.core.num.NaN.NaN;
  *          provided
  */
 public class DoubleNum implements Num {
-    private static final DoubleNum DZERO = new DoubleNum(0d);
-    private static final DoubleNum DNZERO = new DoubleNum(-0.0d);
-    private static final DoubleNum D1_0 = new DoubleNum(1d);
-    private static final DoubleNum DHUNDRED = DoubleNum.valueOf(100d);
 
+    private final static double EPS = 0.00001; // the maximum precision
+    public static final long negativeZeroDoubleBits = Double.doubleToRawLongBits(-0.0d);
+    private final double delegate;
+
+    private static final DoubleNum ZERO = new DoubleNum(0d);
+    private static final DoubleNum NEGATIVE_ZERO = new DoubleNum(-0.0d);
+    private static final DoubleNum ONE = new DoubleNum(1d);
+    private static final DoubleNum HUNDRED = DoubleNum.valueOf(100d);
+
+    // The optional cache to do short-term dupe handling specifically for tight use
+    // cases. According to observations, certain low-entropy pool operations can be
+    // performed faster by a (benchmark) task, while the amortized heap cost (e.g.
+    // wall time) increases. To use the cache, it must be explicitly enabled through
+    // the environment variable. By default, no cache is used:
     public static Map<Double, DoubleNum> cache = new WeakHashMap<>();
-    public static boolean useCache = Objects.equals(System.getenv("TA4J_DOUBLENUM_CACHE"), "true"); // false default
+    public static boolean useCache = Objects.equals(System.getenv("TA4J_DOUBLENUM_CACHE"), "true");
 
+    /**
+     * Binds the delegate to either a predefined constant, a cached value from
+     * {@link #cache} or to a new DoubleNum.
+     * 
+     * @param delegate the delegate
+     * @return the delegate converted to DoubleNum
+     */
     static DoubleNum bind(double delegate) {
-        if (0d == delegate)
-            return DZERO;
-        if (1d == delegate)
-            return D1_0;
-        if (-0.0d == delegate)
-            return DNZERO;
+        if (delegate == 0d)
+            return ZERO;
+        if (delegate == 1d)
+            return ONE;
+        if (delegate == -0.0d)
+            return NEGATIVE_ZERO;
         if (!useCache)
-            return new DoubleNum(delegate); // this should be a basic case for the C2 var profiler inlining
+            return new DoubleNum(delegate);
 
         DoubleNum ref = cache.get(delegate);
         if (null == ref) {
@@ -63,52 +80,71 @@ public class DoubleNum implements Num {
         return ref;
     }
 
-    private static final long serialVersionUID = -2611177221813615070L;
-    private final static double EPS = 0.00001; // precision
-    public static final long negativeZeroDoubleBits = Double.doubleToRawLongBits(-0.0d);
-    private final double delegate;
-
     private DoubleNum(double val) {
         delegate = val;
     }
 
-    public static DoubleNum valueOf(int i) {
-        return bind(i);
+    /**
+     * @param number
+     * @return number converted to DoubleNum
+     */
+    public static DoubleNum valueOf(int number) {
+        return bind(number);
     }
 
-    public static DoubleNum valueOf(long i) {
-        return bind((double) i);
+    /**
+     * @param number
+     * @return number converted to DoubleNum
+     */
+    public static DoubleNum valueOf(long number) {
+        return bind((double) number);
     }
 
-    public static DoubleNum valueOf(short i) {
-        return bind(i);
+    /**
+     * @param number
+     * @return number converted to DoubleNum
+     */
+    public static DoubleNum valueOf(short number) {
+        return bind(number);
     }
 
-    public static DoubleNum valueOf(float i) {
-        return bind(i);
+    /**
+     * @param number
+     * @return number converted to DoubleNum
+     */
+    public static DoubleNum valueOf(float number) {
+        return bind(number);
     }
 
-    public static DoubleNum valueOf(String i) {
-        return bind(Double.parseDouble(i));
+    /**
+     * @param number
+     * @return number converted to DoubleNum
+     */
+    public static DoubleNum valueOf(String number) {
+        return bind(Double.parseDouble(number));
     }
 
-    public static DoubleNum valueOf(Number i) {
-        return new DoubleNum(i.doubleValue());
+    /**
+     * @param number
+     * @return number converted to DoubleNum
+     */
+    public static DoubleNum valueOf(Number number) {
+        return new DoubleNum(number.doubleValue());
     }
 
     @Override
     public Num zero() {
-        return DZERO;
+        return ZERO;
     }
 
     @Override
     public Num one() {
-        return D1_0;
+        return ONE;
     }
 
     @Override
     public Num hundred() {
-        return DHUNDRED;
+        return HUNDRED;
     }
 
     @Override
@@ -130,7 +166,6 @@ public class DoubleNum implements Num {
     public Num plus(Num augend) {
         if (augend.isNaN())
             return NaN;
-
         if (0d == delegate || -0d == delegate)
             return augend;
         double v = augend.doubleValue();
@@ -147,7 +182,7 @@ public class DoubleNum implements Num {
         if (0d == v || -0d == v)
             return this;
         if (v == delegate)
-            return DZERO;
+            return ZERO;
         return bind(delegate - v);
     }
 
@@ -166,7 +201,6 @@ public class DoubleNum implements Num {
         double v = divisor.doubleValue();
         if (1d == v || 0d == delegate)
             return this;
-
         return bind(delegate / v);
     }
 
