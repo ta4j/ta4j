@@ -173,8 +173,9 @@ public class BarSeriesManager {
         }
 
         if (!tradingRecord.isClosed() && finishIndex == barSeries.getEndIndex()) {
-            // If the last position is still opened, we search out of the run end index.
-            // It may work if the end index for this run was inferior to the actual number of bars.
+            // If the last position is still open and there are still bars after the
+            // endIndex of the barSeries, then we execute the strategy on these bars
+            // to give an opportunity to close this position.
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 // For each bar after the end index of this run...
