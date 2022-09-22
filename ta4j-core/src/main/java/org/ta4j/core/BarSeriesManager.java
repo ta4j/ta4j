@@ -164,6 +164,7 @@ public class BarSeriesManager {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
                     strategy, tradeType);
         }
+
         TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
