@@ -21,35 +21,52 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria;
+package org.ta4j.core.indicators.numeric;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import java.util.function.UnaryOperator;
 
-import java.util.function.Function;
-
-import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
-public class OpenedPositionUtils {
+/**
+ * Objects of this class defer the evaluation of a unary operator, like sqrt().
+ * 
+ * There may be other unary operations on Num that could be added here.
+ */
+class UnaryOperation implements Indicator<Num> {
 
-    public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
-            AnalysisCriterion criterion, Num expectedValue) {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-
-        Position trade = new Position(Trade.TradeType.BUY);
-        trade.operate(0, series.numOf(2.5), series.numOf(1));
-
-        final Num value = criterion.calculate(series, trade);
-
-        assertNumEquals(expectedValue, value);
+    public static UnaryOperation sqrt(Indicator<Num> operand) {
+        return new UnaryOperation(Num::sqrt, operand);
     }
 
-    public void testCalculateOneOpenPositionShouldReturnExpectedValue(Function<Number, Num> numFunction,
-            AnalysisCriterion criterion, int expectedValue) {
-        this.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, criterion,
-                numFunction.apply(expectedValue));
+    public static UnaryOperation abs(Indicator<Num> operand) {
+        return new UnaryOperation(Num::abs, operand);
     }
+
+    private final UnaryOperator<Num> operator;
+    private final Indicator<Num> operand;
+
+    private UnaryOperation(UnaryOperator<Num> operator, Indicator<Num> operand) {
+        this.operator = operator;
+        this.operand = operand;
+    }
+
+    @Override
+    public Num getValue(int index) {
+        Num n = operand.getValue(index);
+        return operator.apply(n);
+    }
+
+    @Override
+    public BarSeries getBarSeries() {
+        return operand.getBarSeries();
+    }
+
+    // make this a default method in the Indicator interface...
+    @Override
+    public Num numOf(Number number) {
+        return operand.numOf(number);
+    }
+
 }

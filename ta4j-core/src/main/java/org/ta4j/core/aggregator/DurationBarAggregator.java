@@ -103,10 +103,12 @@ public class DurationBarAggregator implements BarAggregator {
             long trades = 0;
             Duration sumDur = Duration.ZERO;
 
-            while (sumDur.compareTo(timePeriod) < 0) {
+            while (isInDuration(sumDur)) {
                 if (i < bars.size()) {
+                    if (!beginTimesInDuration(beginTime, bars.get(i).getBeginTime())) {
+                        break;
+                    }
                     bar = bars.get(i);
-
                     if (high == null || bar.getHighPrice().isGreaterThan(high)) {
                         high = bar.getHighPrice();
                     }
@@ -124,8 +126,8 @@ public class DurationBarAggregator implements BarAggregator {
                     if (bar.getTrades() != 0) {
                         trades = trades + bar.getTrades();
                     }
-
                 }
+
                 sumDur = sumDur.plus(actualDur);
                 i++;
             }
@@ -138,5 +140,13 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         return aggregated;
+    }
+
+    private boolean beginTimesInDuration(ZonedDateTime startTime, ZonedDateTime endTime) {
+        return Duration.between(startTime, endTime).compareTo(timePeriod) < 0;
+    }
+
+    private boolean isInDuration(Duration duration) {
+        return duration.compareTo(timePeriod) < 0;
     }
 }

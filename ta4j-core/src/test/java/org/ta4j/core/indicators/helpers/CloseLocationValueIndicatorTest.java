@@ -37,6 +37,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -75,7 +76,7 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
     @Test
     public void returnZeroIfHighEqualsLow() {
         CloseLocationValueIndicator clv = new CloseLocationValueIndicator(series);
-        assertNumEquals(0, clv.getValue(5));
+        assertNumEquals(NaN.NaN, clv.getValue(5));
         assertNumEquals(1, clv.getValue(6));
         assertNumEquals(0, clv.getValue(7));
     }
