@@ -172,7 +172,7 @@ public class BarSeriesManager {
             }
         }
 
-        if (!tradingRecord.isClosed()) {
+        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
