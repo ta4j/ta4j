@@ -164,6 +164,7 @@ public class BarSeriesManager {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
                     strategy, tradeType);
         }
+
         TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
@@ -172,7 +173,7 @@ public class BarSeriesManager {
             }
         }
 
-        if (!tradingRecord.isClosed()) {
+        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
