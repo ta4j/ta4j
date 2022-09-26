@@ -31,12 +31,12 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Versus "buy and hold" criterion.
+ * Versus "enter and hold" criterion.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of a "buy and hold".
+ * value of an "enter and hold".
  */
-public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
+public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     private final AnalysisCriterion criterion;
 
@@ -45,7 +45,7 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
      * 
      * @param criterion an analysis criterion to be compared
      */
-    public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
+    public VersusEnterAndHoldCriterion(AnalysisCriterion criterion) {
         this.criterion = criterion;
     }
 
