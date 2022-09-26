@@ -40,10 +40,10 @@ import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class VersusBuyAndHoldCriterionTest extends AbstractCriterionTest {
+public class VersusEnterAndHoldCriterionTest extends AbstractCriterionTest {
 
-    public VersusBuyAndHoldCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new VersusBuyAndHoldCriterion((AnalysisCriterion) params[0]), numFunction);
+    public VersusEnterAndHoldCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new VersusEnterAndHoldCriterion((AnalysisCriterion) params[0]), numFunction);
     }
 
     @Test
