@@ -1,8 +1,22 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
-## 0.15 (unreleased)
+## 0.16 (unreleased)
+
+### Fixed
+- **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
+- **Fixed** **Returns** fixed calculation with custom startIndex and endIndex
+- **Fixed** **ExpectedShortfallCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **MaximumDrawDownCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
+
+### Added
+- added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
+
+## 0.15 (released September 11, 2022)
 
 ### Breaking
+- **NumberOfConsecutiveWinningPositions** renamed to **`NumberOfConsecutivePositions`**
 - **DifferencePercentage** renamed to **`DifferencePercentageIndicator`**
 - **BuyAndHoldCriterion** renamed to **`EnterAndHoldCriterion`**
 - **DXIndicator** moved to adx-package
@@ -10,7 +24,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **MinusDMIndicator** moved to adx-package
 - `analysis/criterion`-package moved to root
 - `cost`-package moved to `analysis/cost`-package
-- **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
 - **AroonXXX** indicators moved to aroon package
 
 ### Fixed
@@ -19,12 +32,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **`ChaikinOscillatorIndicatorTest`**
 - **DecimalNum#remainder()** adds NaN-check 
 - **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice
-- **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
-- **Fixed** **Returns** fixed calculation with custom startIndex and endIndex
-- **Fixed** **ExpectedShortfallCriterion** fixed calculation with custom startIndex and endIndex
-- **Fixed** **MaximumDrawDownCriterion** fixed calculation with custom startIndex and endIndex
-- **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
-- **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
 - **UlcerIndexIndicator** using the max price of current period instead of the highest value of last n bars
 - **DurationBarAggregator** fixed aggregation of bars with gaps
 
@@ -37,7 +44,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **DifferenceIndicator(i1,i2)** replaced by the more flexible CombineIndicator.minus(i1,i2)
 - **DoubleNum** replace redundant `toString()` call in `DoubleNum.valueOf(Number i)` with `i.doubleValue()`
 - **ZeroCostModel** now extends from `FixedTransactionCostModel`
-- added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
 
 ### Removed/Deprecated
 - **Num** removed Serializable
@@ -65,6 +71,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - :tada: **Enhancement** added javadoc for all rules to make clear which rule makes use of a TradingRecord
 - **Enhancement** prevent Object[] allocation for varargs log.trace and log.debug calls by wrapping them in `if` blocks
 - :tada: **Enhancement** added **`FixedTransactionCostModel`**
+- :tada: **Enhancement** added **`AnalysisCriterion.PositionFilter`** to handle both sides within one Criterion.
 
 ## 0.14 (released April 25, 2021)
 
