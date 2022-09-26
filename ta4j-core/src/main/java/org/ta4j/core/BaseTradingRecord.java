@@ -51,7 +51,7 @@ public class BaseTradingRecord implements TradingRecord {
     private final Integer startIndex;
 
     /**
-     * The start of the recording (included)
+     * The end of the recording (included)
      */
     private final Integer endIndex;
 
