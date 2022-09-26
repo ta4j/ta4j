@@ -66,3 +66,10 @@ Here are some ways for you to contribute to ta4j:
   * Take a look at [How to contribute](https://ta4j.github.io/ta4j-wiki/How-to-contribute)
 
 See also: the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md)
+
+&nbsp;
+&nbsp;
+
+<a href = https://github.com/ta4j/ta4j/graphs/contributors>
+  <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
+</a>
