@@ -129,15 +129,27 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     @Test
     public void runBetweenIndexes() {
 
-        List<Position> positions = manager.run(strategy, 0, 3).getPositions();
+        // only 1 entry happened within [0-3]
+        TradingRecord tradingRecord = manager.run(strategy, 0, 3);
+        List<Position> positions = tradingRecord.getPositions();
+        assertEquals(0, tradingRecord.getPositions().size());
+        assertEquals(2, tradingRecord.getCurrentPosition().getEntry().getIndex());
+
+        // 1 entry and 1 exit happened within [0-4]
+        tradingRecord = manager.run(strategy, 0, 4);
+        positions = tradingRecord.getPositions();
         assertEquals(1, positions.size());
         assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
         assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
-        positions = manager.run(strategy, 4, 4).getPositions();
+        // no trades happened within [4-4]
+        tradingRecord = manager.run(strategy, 4, 4);
+        positions = tradingRecord.getPositions();
         assertTrue(positions.isEmpty());
 
-        positions = manager.run(strategy, 5, 8).getPositions();
+        // 1 entry and 1 exit happened within [5-8]
+        tradingRecord = manager.run(strategy, 5, 8);
+        positions = tradingRecord.getPositions();
         assertEquals(1, positions.size());
         assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getEntry());
         assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getExit());
@@ -155,29 +167,35 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         Strategy aStrategy = new BaseStrategy(new FixedRule(0, 3, 5, 7), new FixedRule(2, 4, 6, 9));
 
-        List<Position> positions = manager.run(aStrategy, 0, 1).getPositions();
-        assertEquals(1, positions.size());
-        assertEquals(Trade.buyAt(0, series.getBar(0).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(2, series.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        // only 1 entry happened within [0-1]
+        TradingRecord tradingRecord = manager.run(aStrategy, 0, 1);
+        List<Position> positions = tradingRecord.getPositions();
+        assertEquals(0, positions.size());
+        assertEquals(0, tradingRecord.getCurrentPosition().getEntry().getIndex());
 
-        positions = manager.run(aStrategy, 2, 3).getPositions();
-        assertEquals(1, positions.size());
-        assertEquals(Trade.buyAt(3, series.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(4, series.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        // only 1 entry happened within [2-3]
+        tradingRecord = manager.run(aStrategy, 2, 3);
+        positions = tradingRecord.getPositions();
+        assertEquals(0, positions.size());
+        assertEquals(3, tradingRecord.getCurrentPosition().getEntry().getIndex());
 
+        // 1 entry and 1 exit happened within [4-6]
         positions = manager.run(aStrategy, 4, 6).getPositions();
         assertEquals(1, positions.size());
         assertEquals(Trade.buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), positions.get(0).getEntry());
         assertEquals(Trade.sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
-        positions = manager.run(aStrategy, 7, 7).getPositions();
-        assertEquals(1, positions.size());
-        assertEquals(Trade.buyAt(7, series.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(9, series.getBar(9).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        // 1 entry happened within [7-7]
+        tradingRecord = manager.run(aStrategy, 7, 7);
+        positions = tradingRecord.getPositions();
+        assertEquals(0, positions.size());
+        assertEquals(7, tradingRecord.getCurrentPosition().getEntry().getIndex());
 
+        // no trade happened within [8-8]
         positions = manager.run(aStrategy, 8, 8).getPositions();
         assertTrue(positions.isEmpty());
 
+        // no trade happened within [9-9]
         positions = manager.run(aStrategy, 9, 9).getPositions();
         assertTrue(positions.isEmpty());
     }
