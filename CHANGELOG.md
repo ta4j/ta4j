@@ -1,6 +1,8 @@
 Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangelog.com/en/1.0.0/) from version 0.9 onwards.
 
 ## 0.16 (unreleased)
+### Fixed
+- **BarSeriesManager** consider finishIndex when running backtest
 
 ## 0.15 (released September 11, 2022)
 
