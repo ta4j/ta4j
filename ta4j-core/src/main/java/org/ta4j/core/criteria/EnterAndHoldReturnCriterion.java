@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
 /**
  * Enter and hold criterion.
  *
- * Calculates the return if a enter-and-hold strategy was used:
+ * Calculates the return if an enter-and-hold strategy was used:
  * 
  * <ul>
  * <li>For {@link #tradeType} = {@link TradeType#BUY}: buying on the first bar
@@ -75,17 +75,15 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return createEnterAndHoldTrade(series).getGrossReturn(series);
+        int beginIndex = tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord.getEndIndex(series);
+        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
     }
 
     /** The higher the criterion value the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
-    private Position createEnterAndHoldTrade(BarSeries series) {
-        return createEnterAndHoldTrade(series, series.getBeginIndex(), series.getEndIndex());
     }
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {

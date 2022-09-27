@@ -4,6 +4,18 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **BarSeriesManager** consider finishIndex when running backtest
 
+### Fixed
+- **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
+- **Fixed** **Returns** fixed calculation with custom startIndex and endIndex
+- **Fixed** **ExpectedShortfallCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **MaximumDrawDownCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
+
+### Added
+- added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
+
+
 ## 0.15 (released September 11, 2022)
 
 ### Breaking

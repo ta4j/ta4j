@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * Variance criterion.
  * 
  * <p>
- * Calculates the standard deviation for a Criterion.
+ * Calculates the variance for a Criterion.
  */
 public class VarianceCriterion extends AbstractAnalysisCriterion {
 

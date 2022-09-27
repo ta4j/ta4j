@@ -413,15 +413,11 @@ public class BaseBar implements Bar {
     /**
      * @param timePeriod the time period
      * @param endTime    the end time of the bar
-     * @throws IllegalArgumentException if one of the arguments is null
+     * @throws NullPointerException if one of the arguments is null
      */
     private static void checkTimeArguments(Duration timePeriod, ZonedDateTime endTime) {
-        if (timePeriod == null) {
-            throw new IllegalArgumentException("Time period cannot be null");
-        }
-        if (endTime == null) {
-            throw new IllegalArgumentException("End time cannot be null");
-        }
+        Objects.requireNonNull(timePeriod, "Time period cannot be null");
+        Objects.requireNonNull(endTime, "End time cannot be null");
     }
 
     @Override

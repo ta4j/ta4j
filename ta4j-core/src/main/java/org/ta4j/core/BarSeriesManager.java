@@ -165,7 +165,9 @@ public class BarSeriesManager {
                     strategy, tradeType);
         }
 
-        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, transactionCostModel, holdingCostModel);
+        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, runBeginIndex, runEndIndex, transactionCostModel,
+                holdingCostModel);
+
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {

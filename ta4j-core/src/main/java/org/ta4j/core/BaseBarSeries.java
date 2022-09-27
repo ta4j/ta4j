@@ -387,10 +387,11 @@ public class BaseBarSeries implements BarSeries {
      * @param bar the <code>Bar</code> to be added
      * @apiNote to add bar data directly use #addBar(Duration, ZonedDateTime, Num,
      *          Num, Num, Num, Num)
+     * @throws NullPointerException if bar is null
      */
     @Override
     public void addBar(Bar bar, boolean replace) {
-        Objects.requireNonNull(bar);
+        Objects.requireNonNull(bar, "bar must not be null");
         if (!checkBar(bar)) {
             throw new IllegalArgumentException(
                     String.format("Cannot add Bar with data type: %s to series with data" + "type: %s",

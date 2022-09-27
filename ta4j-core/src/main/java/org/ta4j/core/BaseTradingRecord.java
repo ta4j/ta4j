@@ -25,6 +25,7 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -43,6 +44,16 @@ public class BaseTradingRecord implements TradingRecord {
      * The name of the trading record
      */
     private String name;
+
+    /**
+     * The start of the recording (included)
+     */
+    private final Integer startIndex;
+
+    /**
+     * The end of the recording (included)
+     */
+    private final Integer endIndex;
 
     /**
      * The recorded trades
@@ -138,10 +149,27 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public BaseTradingRecord(TradeType entryTradeType, CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (entryTradeType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
-        }
+        this(entryTradeType, null, null, transactionCostModel, holdingCostModel);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param entryTradeType       the {@link TradeType trade type} of entries in
+     *                             the trading session
+     * @param startIndex           the start of the recording (included)
+     * @param endIndex             the end of the recording (included)
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @throws NullPointerException if entryTradeType is null
+     */
+    public BaseTradingRecord(TradeType entryTradeType, Integer startIndex, Integer endIndex,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
+        Objects.requireNonNull(entryTradeType, "Starting type must not be null");
+
         this.startingType = entryTradeType;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         currentPosition = new Position(entryTradeType, transactionCostModel, holdingCostModel);
@@ -263,16 +291,25 @@ public class BaseTradingRecord implements TradingRecord {
         return null;
     }
 
+    @Override
+    public Integer getStartIndex() {
+        return startIndex;
+    }
+
+    @Override
+    public Integer getEndIndex() {
+        return endIndex;
+    }
+
     /**
      * Records a trade and the corresponding position (if closed).
      *
      * @param trade   the trade to be recorded
      * @param isEntry true if the trade is an entry, false otherwise (exit)
+     * @throws NullPointerException if trade is null
      */
     private void recordTrade(Trade trade, boolean isEntry) {
-        if (trade == null) {
-            throw new IllegalArgumentException("Trade should not be null");
-        }
+        Objects.requireNonNull(trade, "Trade should not be null");
 
         // Storing the new trade in entries/exits lists
         if (isEntry) {

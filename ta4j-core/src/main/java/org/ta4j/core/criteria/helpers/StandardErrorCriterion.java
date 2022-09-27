@@ -35,7 +35,7 @@ import org.ta4j.core.num.Num;
  * Standard error criterion.
  * 
  * <p>
- * Calculates the standard deviation for a Criterion.
+ * Calculates the standard error for a Criterion.
  */
 public class StandardErrorCriterion extends AbstractAnalysisCriterion {
 

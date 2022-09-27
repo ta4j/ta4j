@@ -60,8 +60,9 @@ public class CashFlow implements Indicator<Num> {
     public CashFlow(BarSeries barSeries, Position position) {
         this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
+
         calculate(position);
-        fillToTheEnd();
+        fillToTheEnd(barSeries.getEndIndex());
     }
 
     /**
@@ -73,9 +74,9 @@ public class CashFlow implements Indicator<Num> {
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
         this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
-        calculate(tradingRecord);
 
-        fillToTheEnd();
+        calculate(tradingRecord);
+        fillToTheEnd(barSeries.getEndIndex());
     }
 
     /**
@@ -89,9 +90,9 @@ public class CashFlow implements Indicator<Num> {
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
-        calculate(tradingRecord, finalIndex);
 
-        fillToTheEnd();
+        calculate(tradingRecord, finalIndex);
+        fillToTheEnd(tradingRecord.getEndIndex(barSeries));
     }
 
     /**
@@ -239,10 +240,10 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Fills with last value till the end of the series.
+     * Fills with last value till the endIndex.
      */
-    private void fillToTheEnd() {
-        if (barSeries.getEndIndex() >= values.size()) {
+    private void fillToTheEnd(int endIndex) {
+        if (endIndex >= values.size()) {
             Num lastValue = values.get(values.size() - 1);
             values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, lastValue));
         }
