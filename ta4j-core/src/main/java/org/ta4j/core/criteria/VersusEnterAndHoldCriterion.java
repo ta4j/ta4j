@@ -27,8 +27,8 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
@@ -71,9 +71,8 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, series.getBeginIndex(),
+                series.getEndIndex());
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
@@ -89,4 +88,5 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
         fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
         return fakeRecord;
     }
+
 }
