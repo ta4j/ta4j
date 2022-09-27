@@ -32,6 +32,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 - **LosingPositionsRatioCriterion** correct betterThan
 - **VersusBuyAndHoldCriterionTest** NaN-Error.
+- **Fixed** **`Returns.class`** include endIndex in calculation
 - **Fixed** **`ChaikinOscillatorIndicatorTest`**
 - **DecimalNum#remainder()** adds NaN-check 
 - **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice

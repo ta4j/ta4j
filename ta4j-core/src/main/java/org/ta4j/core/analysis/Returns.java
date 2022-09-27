@@ -169,7 +169,7 @@ public class Returns implements Indicator<Num> {
         // returns are per period (iterative). Base price needs to be updated
         // accordingly
         Num lastPrice = position.getEntry().getNetPrice();
-        for (int i = startingIndex; i < endIndex; i++) {
+        for (int i = startingIndex; i <= endIndex; i++) {
             Num intermediateNetPrice = CashFlow.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
             Num assetReturn = type.calculate(intermediateNetPrice, lastPrice);
 
