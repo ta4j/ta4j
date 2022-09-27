@@ -27,37 +27,54 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Versus "buy and hold" criterion.
+ * Versus "enter and hold" criterion.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of a "buy and hold".
+ * value of an "enter and hold".
  */
-public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
+public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
+    private final TradeType tradeType;
     private final AnalysisCriterion criterion;
+
+    /**
+     * Constructor for buy-and-hold strategy.
+     * 
+     * @param criterion an analysis criterion to be compared
+     */
+    public VersusEnterAndHoldCriterion(AnalysisCriterion criterion) {
+        this(TradeType.BUY, criterion);
+    }
 
     /**
      * Constructor.
      * 
-     * @param criterion an analysis criterion to be compared
+     * @param tradeType the {@link TradeType} used to open the position
+     * @param criterion the analysis criterion to be compared
      */
-    public VersusBuyAndHoldCriterion(AnalysisCriterion criterion) {
+    public VersusEnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
+        this.tradeType = tradeType;
         this.criterion = criterion;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
+        int beginIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex();
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        TradingRecord fakeRecord = createBuyAndHoldTradingRecord(series);
+        int beginIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex();
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
@@ -67,14 +84,11 @@ public class VersusBuyAndHoldCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private TradingRecord createBuyAndHoldTradingRecord(BarSeries series) {
-        return createBuyAndHoldTradingRecord(series, series.getBeginIndex(), series.getEndIndex());
-    }
-
-    private TradingRecord createBuyAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
-        TradingRecord fakeRecord = new BaseTradingRecord();
+    private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
+        TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
         fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
         fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
         return fakeRecord;
     }
+
 }
