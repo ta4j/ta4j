@@ -64,15 +64,17 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, series.getBeginIndex(),
-                series.getEndIndex());
+        int beginIndex = position.getEntry().getIndex();
+        int endIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, series.getBeginIndex(),
-                series.getEndIndex());
+        int beginIndex = tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord.getEndIndex(series);
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
@@ -84,6 +86,9 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     private TradingRecord createEnterAndHoldTradingRecord(BarSeries series, int beginIndex, int endIndex) {
         TradingRecord fakeRecord = new BaseTradingRecord(tradeType);
+        if (endIndex > series.getEndIndex()) {
+            endIndex = series.getEndIndex();
+        }
         fakeRecord.enter(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
         fakeRecord.exit(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
         return fakeRecord;
