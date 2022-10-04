@@ -36,15 +36,11 @@ import org.ta4j.core.num.Num;
  * used:
  * 
  * <ul>
- * <li>For {@link #tradeType} = {@link TradeType#BUY}: buying on the first bar
- * and selling on the last bar.
- * <li>For {@link #tradeType} = {@link TradeType#SELL}: selling on the first bar
- * and buying on the last bar.
+ * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
+ * of the first bar and sell with the close price of the last bar.
+ * <li>For {@link #tradeType} = {@link TradeType#SELL}: Sell with the close
+ * price of the first bar and buy with the close price of the last bar.
  * </ul>
- * 
- * <p>
- * The entry is at the closing price of the first bar. The exit is at the
- * closing price of the last bar.
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
