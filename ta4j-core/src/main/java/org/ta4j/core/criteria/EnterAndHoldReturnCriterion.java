@@ -32,8 +32,7 @@ import org.ta4j.core.num.Num;
 /**
  * Enter and hold criterion.
  *
- * Calculates the gross return (in percent) if an enter-and-hold strategy was
- * used:
+ * Calculates the gross return (in percent) of an enter-and-hold strategy:
  * 
  * <ul>
  * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
