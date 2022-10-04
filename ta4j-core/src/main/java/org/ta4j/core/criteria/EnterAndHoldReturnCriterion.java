@@ -32,7 +32,8 @@ import org.ta4j.core.num.Num;
 /**
  * Enter and hold criterion.
  *
- * Calculates the return if an enter-and-hold strategy was used:
+ * Calculates the gross return (in percent) if an enter-and-hold strategy was
+ * used:
  * 
  * <ul>
  * <li>For {@link #tradeType} = {@link TradeType#BUY}: buying on the first bar
@@ -40,6 +41,10 @@ import org.ta4j.core.num.Num;
  * <li>For {@link #tradeType} = {@link TradeType#SELL}: selling on the first bar
  * and buying on the last bar.
  * </ul>
+ * 
+ * <p>
+ * The entry is at the closing price of the first bar. The exit is at the
+ * closing price of the last bar.
  *
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Buy_and_hold">http://en.wikipedia.org/wiki/Buy_and_hold</a>
