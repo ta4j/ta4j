@@ -97,8 +97,7 @@ public class RSI2Strategy {
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
-        System.out.println(
-                "Total return for the strategy: " + new ReturnCriterion().calculate(series, tradingRecord));
+        System.out.println("Total return for the strategy: " + new ReturnCriterion().calculate(series, tradingRecord));
     }
 
 }
