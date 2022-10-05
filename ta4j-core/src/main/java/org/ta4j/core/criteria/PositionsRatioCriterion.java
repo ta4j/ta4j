@@ -46,6 +46,20 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
     private final AnalysisCriterion numberOfPositionsCriterion;
 
     /**
+     * @return {@link PositionsRatioCriterion} with {@link PositionFilter#PROFIT}
+     */
+    public static PositionsRatioCriterion WinningPositionsRatioCriterion() {
+        return new PositionsRatioCriterion(PositionFilter.PROFIT);
+    }
+
+    /**
+     * @return {@link PositionsRatioCriterion} with {@link PositionFilter#LOSS}
+     */
+    public static PositionsRatioCriterion LosingPositionsRatioCriterion() {
+        return new PositionsRatioCriterion(PositionFilter.LOSS);
+    }
+
+    /**
      * Constructor.
      * 
      * @param positionFilter consider either the winning or losing positions
