@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
 public class ProfitCriterion extends AbstractAnalysisCriterion {
 
     private final boolean excludeTradingCosts;
-    
+
     /**
      * Constructor for GrossProfit (includes trading costs)
      */
