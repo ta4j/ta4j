@@ -47,7 +47,7 @@ public class CashFlow implements Indicator<Num> {
     private final BarSeries barSeries;
 
     /**
-     * The cash flow values
+     * The (accrued) cash flow sequence (without trading costs).
      */
     private List<Num> values;
 
@@ -72,11 +72,7 @@ public class CashFlow implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(numOf(1)));
-
-        calculate(tradingRecord);
-        fillToTheEnd(barSeries.getEndIndex());
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries));
     }
 
     /**
@@ -92,7 +88,7 @@ public class CashFlow implements Indicator<Num> {
         values = new ArrayList<>(Collections.singletonList(numOf(1)));
 
         calculate(tradingRecord, finalIndex);
-        fillToTheEnd(tradingRecord.getEndIndex(barSeries));
+        fillToTheEnd(finalIndex);
     }
 
     /**
@@ -192,6 +188,7 @@ public class CashFlow implements Indicator<Num> {
         } else {
             ratio = entryPrice.numOf(2).minus(exitPrice.dividedBy(entryPrice));
         }
+
         return ratio;
     }
 
@@ -250,7 +247,7 @@ public class CashFlow implements Indicator<Num> {
     }
 
     /**
-     * Determines the the valid final index to be considered.
+     * Determines the valid final index to be considered.
      *
      * @param position   the position
      * @param finalIndex index up until cash flows of open positions are considered
