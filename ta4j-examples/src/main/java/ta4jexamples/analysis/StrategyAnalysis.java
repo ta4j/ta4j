@@ -73,8 +73,8 @@ public class StrategyAnalysis {
         // Number of positions
         System.out.println("Number of positions: " + new NumberOfPositionsCriterion().calculate(series, tradingRecord));
         // Profitable position ratio
-        System.out.println(
-                "Winning positions ratio: " + new PositionsRatioCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord));
+        System.out.println("Winning positions ratio: "
+                + new PositionsRatioCriterion(PositionFilter.PROFIT).calculate(series, tradingRecord));
         // Maximum drawdown
         System.out.println("Maximum drawdown: " + new MaximumDrawdownCriterion().calculate(series, tradingRecord));
         // Reward-risk ratio
