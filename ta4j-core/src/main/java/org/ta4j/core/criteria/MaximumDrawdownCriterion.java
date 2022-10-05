@@ -76,15 +76,18 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      * </pre>
      *
      * @param series        the bar series
-     * @param tradingRecord the trading record
+     * @param tradingRecord the trading record (optional)
      * @param cashFlow      the cash flow
      * @return the maximum drawdown from a cash flow over a series
      */
     private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
-        Num maximumDrawdown = series.numOf(0);
+
         Num maxPeak = series.numOf(0);
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
+        Num maximumDrawdown = series.numOf(0);
+
+        int beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
+
         if (!series.isEmpty()) {
             for (int i = beginIndex; i <= endIndex; i++) {
 
@@ -99,6 +102,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
                 }
             }
         }
+
         return maximumDrawdown;
     }
 }
