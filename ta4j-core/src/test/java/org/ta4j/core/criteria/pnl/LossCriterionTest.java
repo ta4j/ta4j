@@ -50,7 +50,7 @@ public class LossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion(false);
+        AnalysisCriterion loss = getCriterion(true);
         assertNumEquals(0, loss.calculate(series, tradingRecord));
     }
 
@@ -60,7 +60,7 @@ public class LossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion loss = getCriterion(false);
+        AnalysisCriterion loss = getCriterion(true);
         assertNumEquals(-35, loss.calculate(series, tradingRecord));
     }
 
@@ -70,19 +70,19 @@ public class LossCriterionTest extends AbstractCriterionTest {
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion loss = getCriterion(false);
+        AnalysisCriterion loss = getCriterion(true);
         assertNumEquals(-35, loss.calculate(series, tradingRecord));
     }
 
     @Test
     public void betterThan() {
-        AnalysisCriterion criterion = getCriterion(false);
+        AnalysisCriterion criterion = getCriterion(true);
         assertTrue(criterion.betterThan(numOf(2.0), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.5), numOf(2.0)));
     }
 
     @Test
     public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(false), 0);
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(true), 0);
     }
 }
