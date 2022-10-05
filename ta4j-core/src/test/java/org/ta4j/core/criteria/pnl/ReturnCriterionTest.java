@@ -39,10 +39,10 @@ import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class GrossReturnCriterionTest extends AbstractCriterionTest {
+public class ReturnCriterionTest extends AbstractCriterionTest {
 
-    public GrossReturnCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new GrossReturnCriterion(), numFunction);
+    public ReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new ReturnCriterion(), numFunction);
     }
 
     @Test

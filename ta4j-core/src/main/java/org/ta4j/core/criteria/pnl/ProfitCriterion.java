@@ -30,18 +30,30 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Gross profit criterion (includes trading costs).
+ * Profit criterion with trading costs (= Gross profit) or without ( = Net
+ * profit).
  *
  * <p>
- * The gross profit of the provided {@link Position position(s)} over the
- * provided {@link BarSeries series}.
+ * The profit of the provided {@link Position position(s)} over the provided
+ * {@link BarSeries series}.
  */
-public class GrossProfitCriterion extends AbstractAnalysisCriterion {
+public class ProfitCriterion extends AbstractAnalysisCriterion {
+
+    private final boolean includeTradingCosts;
+
+    /**
+     * Constructor.
+     * 
+     * @param includeTradingCosts set to true to include trading costs
+     */
+    public ProfitCriterion(boolean includeTradingCosts) {
+        this.includeTradingCosts = includeTradingCosts;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num profit = position.getGrossProfit();
+            Num profit = includeTradingCosts ? position.getGrossProfit() : position.getProfit();
             return profit.isPositive() ? profit : series.numOf(0);
         }
         return series.numOf(0);

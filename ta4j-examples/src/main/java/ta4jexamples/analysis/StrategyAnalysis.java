@@ -36,7 +36,7 @@ import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.WinningPositionsRatioCriterion;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 
 import ta4jexamples.loaders.CsvTradesLoader;
 import ta4jexamples.strategies.MovingMomentumStrategy;
@@ -62,7 +62,7 @@ public class StrategyAnalysis {
          */
 
         // Total profit
-        GrossReturnCriterion totalReturn = new GrossReturnCriterion();
+        ReturnCriterion totalReturn = new ReturnCriterion();
         System.out.println("Total return: " + totalReturn.calculate(series, tradingRecord));
         // Number of bars
         System.out.println("Number of bars: " + new NumberOfBarsCriterion().calculate(series, tradingRecord));
