@@ -82,8 +82,9 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      */
     private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
 
-        Num maxPeak = series.numOf(0);
-        Num maximumDrawdown = series.numOf(0);
+        Num zero = series.numOf(0);
+        Num maxPeak = zero;
+        Num maximumDrawdown = zero;
 
         int beginIndex = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
