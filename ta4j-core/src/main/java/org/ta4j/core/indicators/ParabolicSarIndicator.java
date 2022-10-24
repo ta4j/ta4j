@@ -32,6 +32,9 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Parabolic SAR indicator.
  *
@@ -43,16 +46,14 @@ import org.ta4j.core.num.Num;
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
+    private final Map<Integer, Boolean> is_up_trend_map = new HashMap<>();
+    private final Map<Integer, Num> last_extreme = new HashMap<>();
+    private final Map<Integer, Num> last_af = new HashMap<>();
     private final Num maxAcceleration;
     private final Num accelerationIncrement;
     private final Num accelerationStart;
-    private Num accelerationFactor;
-    private boolean currentTrend; // true if uptrend, false otherwise
-    private int startTrendIndex = 0; // index of start bar of the current trend
     private LowPriceIndicator lowPriceIndicator;
     private HighPriceIndicator highPriceIndicator;
-    private Num currentExtremePoint; // the extreme point of the current calculation
-    private Num minMaxExtremePoint; // depending on trend the maximum or minimum extreme point value of trend
 
     /**
      * Constructor with default parameters
@@ -61,7 +62,6 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      */
     public ParabolicSarIndicator(BarSeries series) {
         this(series, series.numOf(0.02), series.numOf(0.2), series.numOf(0.02));
-
     }
 
     /**
@@ -88,7 +88,6 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         highPriceIndicator = new HighPriceIndicator(series);
         lowPriceIndicator = new LowPriceIndicator(series);
         maxAcceleration = maxA;
-        accelerationFactor = aF;
         accelerationIncrement = increment;
         accelerationStart = aF;
     }
@@ -96,90 +95,101 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num sar = NaN;
+        boolean is_up_trend = false;
+
         if (index == getBarSeries().getBeginIndex()) {
+            last_extreme.put(0, getBarSeries().getBar(index).getClosePrice());
+            last_af.put(0, sar.numOf(0));
+            is_up_trend_map.put(0, false);
             return sar; // no trend detection possible for the first value
         } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection
-            currentTrend = getBarSeries().getBar(getBarSeries().getBeginIndex())
+            is_up_trend = getBarSeries().getBar(index - 1)
                     .getClosePrice()
                     .isLessThan(getBarSeries().getBar(index).getClosePrice());
-            if (!currentTrend) { // down trend
-                sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index); // put the highest high value of
-                                                                                        // two first bars
-                currentExtremePoint = sar;
-                minMaxExtremePoint = currentExtremePoint;
-            } else { // up trend
-                sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index); // put the lowest low value of two
-                                                                                      // first bars
-                currentExtremePoint = sar;
-                minMaxExtremePoint = currentExtremePoint;
 
+            last_af.put(index, accelerationStart);
+            is_up_trend_map.put(index, is_up_trend);
+            if (is_up_trend) { // up trend
+                sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1); // put the lowest low value of
+                                                                                          // two
+                last_extreme.put(index, new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1));
+            } else { // down trend
+                sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1); // put the highest high
+                                                                                            // value of
+                last_extreme.put(index, new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1));
             }
             return sar;
         }
 
         Num priorSar = getValue(index - 1);
-        if (currentTrend) { // if up trend
-            sar = priorSar.plus(accelerationFactor.multipliedBy((currentExtremePoint.minus(priorSar))));
-            currentTrend = lowPriceIndicator.getValue(index).isGreaterThan(sar);
-            if (!currentTrend) { // check if sar touches the low price
-                if (minMaxExtremePoint.isGreaterThan(highPriceIndicator.getValue(index)))
-                    sar = minMaxExtremePoint; // sar starts at the highest extreme point of previous up trend
-                else
-                    sar = highPriceIndicator.getValue(index);
-                currentTrend = false; // switch to down trend and reset values
-                startTrendIndex = index;
-                accelerationFactor = accelerationStart;
-                currentExtremePoint = getBarSeries().getBar(index).getLowPrice(); // put point on max
-                minMaxExtremePoint = currentExtremePoint;
-            } else { // up trend is going on
-                Num lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator,
-                        Math.min(2, index - startTrendIndex)).getValue(index - 1);
-                if (sar.isGreaterThan(lowestPriceOfTwoPreviousBars))
-                    sar = lowestPriceOfTwoPreviousBars;
-                currentExtremePoint = new HighestValueIndicator(highPriceIndicator, index - startTrendIndex + 1)
-                        .getValue(index);
-                if (currentExtremePoint.isGreaterThan(minMaxExtremePoint)) {
-                    incrementAcceleration();
-                    minMaxExtremePoint = currentExtremePoint;
-                }
 
+        is_up_trend = is_up_trend_map.get(index - 1);
+
+        Num currentExtremePoint = last_extreme.get(index - 1);
+        Num cur_high = highPriceIndicator.getValue(index);
+        Num cur_low = lowPriceIndicator.getValue(index);
+        Num cur_af = last_af.get(index - 1);
+        sar = priorSar.plus(cur_af.multipliedBy((currentExtremePoint.minus(priorSar))));
+
+        if (is_up_trend) { // if up trend
+            if (cur_low.isLessThan(sar)) { // check if sar touches the low price
+                sar = currentExtremePoint;
+
+                last_af.put(index, accelerationStart);
+                last_extreme.put(index, cur_low);
+                is_up_trend = false;
+
+            } else { // up trend is going on
+                if (cur_high.isGreaterThan(currentExtremePoint)) {
+                    currentExtremePoint = cur_high;
+                    cur_af = incrementAcceleration(index);
+                }
+                last_extreme.put(index, currentExtremePoint);
+                last_af.put(index, cur_af);
             }
         } else { // downtrend
-            sar = priorSar.minus(accelerationFactor.multipliedBy(((priorSar.minus(currentExtremePoint)))));
-            currentTrend = highPriceIndicator.getValue(index).isGreaterThanOrEqual(sar);
-            if (currentTrend) { // check if switch to up trend
-                if (minMaxExtremePoint.isLessThan(lowPriceIndicator.getValue(index)))
-                    sar = minMaxExtremePoint; // sar starts at the lowest extreme point of previous down trend
-                else
-                    sar = lowPriceIndicator.getValue(index);
-                accelerationFactor = accelerationStart;
-                startTrendIndex = index;
-                currentExtremePoint = getBarSeries().getBar(index).getHighPrice();
-                minMaxExtremePoint = currentExtremePoint;
+            if (cur_high.isGreaterThanOrEqual(sar)) { // check if switch to up trend
+                sar = currentExtremePoint;
+
+                last_af.put(index, accelerationStart);
+                last_extreme.put(index, cur_high);
+                is_up_trend = true;
+
             } else { // down trend io going on
-                Num highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator,
-                        Math.min(2, index - startTrendIndex)).getValue(index - 1);
-                if (sar.isLessThan(highestPriceOfTwoPreviousBars))
-                    sar = highestPriceOfTwoPreviousBars;
-                currentExtremePoint = new LowestValueIndicator(lowPriceIndicator, index - startTrendIndex + 1)
-                        .getValue(index);
-                if (currentExtremePoint.isLessThan(minMaxExtremePoint)) {
-                    incrementAcceleration();
-                    minMaxExtremePoint = currentExtremePoint;
+                if (cur_low.isLessThan(currentExtremePoint)) {
+                    currentExtremePoint = cur_low;
+                    cur_af = incrementAcceleration(index);
                 }
+                last_extreme.put(index, currentExtremePoint);
+                last_af.put(index, cur_af);
+
             }
         }
+
+        if (is_up_trend) {
+            Num lowestPriceOfTwoPreviousBars = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index - 1);
+            if (sar.isGreaterThan(lowestPriceOfTwoPreviousBars)) {
+                sar = lowestPriceOfTwoPreviousBars;
+            }
+        } else {
+            Num highestPriceOfTwoPreviousBars = new HighestValueIndicator(highPriceIndicator, 2).getValue(index - 1);
+            if (sar.isLessThan(highestPriceOfTwoPreviousBars)) {
+                sar = highestPriceOfTwoPreviousBars;
+            }
+        }
+        is_up_trend_map.put(index, is_up_trend);
         return sar;
     }
 
     /**
      * Increments the acceleration factor.
      */
-    private void incrementAcceleration() {
-        if (accelerationFactor.isGreaterThanOrEqual(maxAcceleration)) {
-            accelerationFactor = maxAcceleration;
-        } else {
-            accelerationFactor = accelerationFactor.plus(accelerationIncrement);
+    private Num incrementAcceleration(int index) {
+        Num cur_af = last_af.get(index - 1);
+        cur_af = cur_af.plus(accelerationIncrement);
+        if (cur_af.isGreaterThan(maxAcceleration)) {
+            cur_af = maxAcceleration;
         }
+        return cur_af;
     }
 }
