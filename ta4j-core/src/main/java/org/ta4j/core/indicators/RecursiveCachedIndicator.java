@@ -25,6 +25,7 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Recursive cached {@link Indicator indicator}.
@@ -36,7 +37,7 @@ import org.ta4j.core.Indicator;
  * old/far, the computation of all the values between the last cached and the
  * asked one is executed iteratively.
  */
-public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
+public abstract class RecursiveCachedIndicator<T extends Num> extends CachedIndicator<Num> {
 
     /**
      * The recursion threshold for which an iterative calculation is executed. TODO
@@ -63,7 +64,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     }
 
     @Override
-    public T getValue(int index) {
+    public Num getValue(int index) {
         BarSeries series = getBarSeries();
         if (series != null) {
             final int seriesEndIndex = series.getEndIndex();

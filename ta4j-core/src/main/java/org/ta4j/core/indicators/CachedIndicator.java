@@ -23,12 +23,10 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.cache.Cache;
 
 /**
  * Cached {@link Indicator indicator}.
@@ -38,10 +36,7 @@ import org.ta4j.core.Indicator;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    /**
-     * List of cached results
-     */
-    private final List<T> results;
+    private final Cache<T> cache;
 
     /**
      * Should always be the index of the last result in the results list. I.E. the
@@ -56,8 +51,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected CachedIndicator(BarSeries series) {
         super(series);
-        int limit = series.getMaximumBarCount();
-        results = limit == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(limit);
+        cache = series.getCacheProvider().getCache();
     }
 
     /**
@@ -77,108 +71,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     @Override
     public T getValue(int index) {
-        BarSeries series = getBarSeries();
-        if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
-            T result = calculate(index);
-            if (log.isTraceEnabled()) {
-                log.trace("{}({}): {}", this, index, result);
-            }
-            return result;
+        final BarSeries series = getBarSeries();
+        if (series == null || index >= series.getEndIndex()) {
+            // Don't cache result if last bar or no available bar
+            return calculate(index);
         }
 
-        // Series is not null
-
-        final int removedBarsCount = series.getRemovedBarsCount();
-        final int maximumResultCount = series.getMaximumBarCount();
-
-        T result;
-        if (index < removedBarsCount) {
-            // Result already removed from cache
-            if (log.isTraceEnabled()) {
-                log.trace("{}: result from bar {} already removed from cache, use {}-th instead",
-                        getClass().getSimpleName(), index, removedBarsCount);
-            }
-            increaseLengthTo(removedBarsCount, maximumResultCount);
-            highestResultIndex = removedBarsCount;
-            result = results.get(0);
-            if (result == null) {
-                // It should be "result = calculate(removedBarsCount);".
-                // We use "result = calculate(0);" as a workaround
-                // to fix issue #120 (https://github.com/mdeverdelhan/ta4j/issues/120).
-                result = calculate(0);
-                results.set(0, result);
-            }
-        } else {
-            if (index == series.getEndIndex()) {
-                // Don't cache result if last bar
-                result = calculate(index);
-            } else {
-                increaseLengthTo(index, maximumResultCount);
-                if (index > highestResultIndex) {
-                    // Result not calculated yet
-                    highestResultIndex = index;
-                    result = calculate(index);
-                    results.set(results.size() - 1, result);
-                } else {
-                    // Result covered by current cache
-                    int resultInnerIndex = results.size() - 1 - (highestResultIndex - index);
-                    result = results.get(resultInnerIndex);
-                    if (result == null) {
-                        result = calculate(index);
-                        results.set(resultInnerIndex, result);
-                    }
-                }
-            }
-
+        if (index < series.getBeginIndex()) {
+            return calculate(0); // strange behaviour of old CachedIndicator
         }
-        if (log.isTraceEnabled()) {
-            log.trace("{}({}): {}", this, index, result);
-        }
-        return result;
-    }
 
-    /**
-     * Increases the size of cached results buffer.
-     *
-     * @param index     the index to increase length to
-     * @param maxLength the maximum length of the results buffer
-     */
-    private void increaseLengthTo(int index, int maxLength) {
-        if (highestResultIndex > -1) {
-            int newResultsCount = Math.min(index - highestResultIndex, maxLength);
-            if (newResultsCount == maxLength) {
-                results.clear();
-                results.addAll(Collections.nCopies(maxLength, null));
-            } else if (newResultsCount > 0) {
-                results.addAll(Collections.nCopies(newResultsCount, null));
-                removeExceedingResults(maxLength);
-            }
-        } else {
-            // First use of cache
-            assert results.isEmpty() : "Cache results list should be empty";
-            results.addAll(Collections.nCopies(Math.min(index + 1, maxLength), null));
+        final Bar bar = series.getBar(index);
+        T value = cache.getValue(bar);
+        if (value == null) {
+            value = calculate(index);
+            cache.put(bar, value);
         }
-    }
 
-    /**
-     * Removes the N first results which exceed the maximum bar count. (i.e. keeps
-     * only the last maximumResultCount results)
-     *
-     * @param maximumResultCount the number of results to keep
-     */
-    private void removeExceedingResults(int maximumResultCount) {
-        int resultCount = results.size();
-        if (resultCount > maximumResultCount) {
-            // Removing old results
-            final int nbResultsToRemove = resultCount - maximumResultCount;
-            if (nbResultsToRemove == 1) {
-                results.remove(0);
-            } else {
-                results.subList(0, nbResultsToRemove).clear();
-            }
-        }
+         return (T) value;
     }
 }

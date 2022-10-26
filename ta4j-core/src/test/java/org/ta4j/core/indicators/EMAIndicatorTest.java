@@ -24,6 +24,7 @@
 package org.ta4j.core.indicators;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -76,7 +77,10 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void stackOverflowError() throws Exception {
+        fail("fix this!");
+        /*
         List<Bar> bigListOfBars = new ArrayList<Bar>();
+
         for (int i = 0; i < 10000; i++) {
             bigListOfBars.add(new MockBar(i, numFunction));
         }
@@ -85,6 +89,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.
         assertNumEquals(9994.5, indicator.getValue(9999));
+        */
     }
 
     @Test
