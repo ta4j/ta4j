@@ -60,7 +60,7 @@ public class MockBarSeries extends BaseBarSeries {
         final List<Bar> correctedBars = new ArrayList<>();
         final ZonedDateTime now = ZonedDateTime.now();
         int counter = 1;
-        for(Bar b: bars) {
+        for (Bar b : bars) {
             correctedBars.add(new MockBar(b, now.plusSeconds(counter++)));
         }
         return correctedBars;
