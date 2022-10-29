@@ -9,6 +9,17 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **NetLossCriterion** and **GrossLossCriterion** replaced by **`LossCriterion`**
 
 ### Fixed
+-  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
+
+### Changed
+- **BarSeriesManager** consider finishIndex when running backtest
+
+### Removed/Deprecated
+
+### Added
+- added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
+
+### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
 - **Fixed** **Returns** fixed calculation with custom startIndex and endIndex
 - **Fixed** **ExpectedShortfallCriterion** fixed calculation with custom startIndex and endIndex
@@ -16,10 +27,6 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
 - **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
 - **Fixed** **BarSeriesManager** consider finishIndex when running backtest
-
-### Added
-- added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
-
 
 ## 0.15 (released September 11, 2022)
 

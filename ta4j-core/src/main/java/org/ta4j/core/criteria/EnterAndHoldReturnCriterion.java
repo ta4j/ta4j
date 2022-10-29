@@ -32,13 +32,13 @@ import org.ta4j.core.num.Num;
 /**
  * Enter and hold criterion.
  *
- * Calculates the return if an enter-and-hold strategy was used:
+ * Calculates the gross return (in percent) of an enter-and-hold strategy:
  * 
  * <ul>
- * <li>For {@link #tradeType} = {@link TradeType#BUY}: buying on the first bar
- * and selling on the last bar.
- * <li>For {@link #tradeType} = {@link TradeType#SELL}: selling on the first bar
- * and buying on the last bar.
+ * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
+ * of the first bar and sell with the close price of the last bar.
+ * <li>For {@link #tradeType} = {@link TradeType#SELL}: Sell with the close
+ * price of the first bar and buy with the close price of the last bar.
  * </ul>
  *
  * @see <a href=
@@ -69,8 +69,9 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return createEnterAndHoldTrade(series, position.getEntry().getIndex(), position.getExit().getIndex())
-                .getGrossReturn(series);
+        int beginIndex = position.getEntry().getIndex();
+        int endIndex = series.getEndIndex();
+        return createEnterAndHoldTrade(series, beginIndex, endIndex).getGrossReturn(series);
     }
 
     @Override
