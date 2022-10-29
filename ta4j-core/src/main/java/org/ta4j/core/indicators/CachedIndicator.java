@@ -23,10 +23,13 @@
  */
 package org.ta4j.core.indicators;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.cache.Cache;
+
+import java.time.ZonedDateTime;
 
 /**
  * Cached {@link Indicator indicator}.
@@ -36,7 +39,7 @@ import org.ta4j.core.cache.Cache;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    private final Cache<T> cache;
+    private final Cache<Bar, T> cache;
 
     /**
      * Should always be the index of the last result in the results list. I.E. the
@@ -51,7 +54,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected CachedIndicator(BarSeries series) {
         super(series);
-        cache = series.getCacheProvider().getCache();
+        cache = Caffeine.newBuilder().maximumSize(series.getMaximumBarCount()).build();
     }
 
     /**
@@ -70,7 +73,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     protected abstract T calculate(int index);
 
     @Override
-    public T getValue(int index) {
+    public T getValue(final int index) {
         final BarSeries series = getBarSeries();
         if (series == null || index >= series.getEndIndex()) {
             // Don't cache result if last bar or no available bar
@@ -82,12 +85,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         final Bar bar = series.getBar(index);
-        T value = cache.getValue(bar);
-        if (value == null) {
-            value = calculate(index);
-            cache.put(bar, value);
+        T result = cache.getIfPresent(bar);
+        if (result == null) {
+            result = calculate(index);
+            cache.put(bar, result);
         }
-
-         return (T) value;
+        return result;
     }
 }

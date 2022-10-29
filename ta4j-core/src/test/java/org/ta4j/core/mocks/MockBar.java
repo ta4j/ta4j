@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.function.Function;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.num.Num;
 
@@ -39,6 +40,14 @@ public class MockBar extends BaseBar {
 
     private long trades = 0;
 
+    public MockBar(Bar bar, ZonedDateTime endTime) {
+        this(endTime,
+                bar.getOpenPrice().doubleValue(),
+                bar.getClosePrice().doubleValue(),
+                bar.getHighPrice().doubleValue(),
+                bar.getLowPrice().doubleValue(),
+                bar.getAmount().doubleValue(), bar.getVolume().doubleValue(), bar.getTrades(), bar.getAmount().function());
+    }
     public MockBar(double closePrice, Function<Number, Num> numFunction) {
         this(ZonedDateTime.now(), closePrice, numFunction);
     }

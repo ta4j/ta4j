@@ -77,8 +77,6 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void stackOverflowError() throws Exception {
-        fail("fix this!");
-        /*
         List<Bar> bigListOfBars = new ArrayList<Bar>();
 
         for (int i = 0; i < 10000; i++) {
@@ -89,7 +87,6 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // if a StackOverflowError is thrown here, then the RecursiveCachedIndicator
         // does not work as intended.
         assertNumEquals(9994.5, indicator.getValue(9999));
-        */
     }
 
     @Test

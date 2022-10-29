@@ -51,7 +51,7 @@ public class DateTimeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     public void test() {
         ZonedDateTime expectedZonedDateTime = ZonedDateTime.parse("2019-09-17T00:04:00-00:00", DATE_TIME_FORMATTER);
         List<Bar> bars = Arrays.asList(new MockBar(expectedZonedDateTime, 1, numFunction));
-        BarSeries series = new MockBarSeries(bars);
+        BarSeries series = new MockBarSeries(bars, true);
         DateTimeIndicator dateTimeIndicator = new DateTimeIndicator(series, Bar::getEndTime);
         assertEquals(expectedZonedDateTime, dateTimeIndicator.getValue(0));
     }

@@ -35,8 +35,6 @@ import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.cache.BaseCacheProvider;
-import org.ta4j.core.cache.CacheProvider;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
@@ -59,8 +57,6 @@ public class BaseBarSeries implements BarSeries {
      * The logger
      */
     private final transient Logger log = LoggerFactory.getLogger(getClass());
-
-    private final CacheProvider cacheProvider;
 
     /**
      * Name of the series
@@ -145,7 +141,7 @@ public class BaseBarSeries implements BarSeries {
      * @param bars the list of bars of the series
      */
     public BaseBarSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
-        this(name, bars, 0, bars.size() - 1, false, numFunction, new BaseCacheProvider(1000));
+        this(name, bars, 0, bars.size() - 1, false, numFunction);
     }
 
     /**
@@ -162,7 +158,7 @@ public class BaseBarSeries implements BarSeries {
      *                         change), false otherwise
      */
     private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum::valueOf, new BaseCacheProvider(1000));
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum::valueOf);
     }
 
     /**
@@ -178,26 +174,8 @@ public class BaseBarSeries implements BarSeries {
      *                         {@link Num Num implementation}
      */
     BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-                  Function<Number, Num> numFunction) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFunction, new BaseCacheProvider(1000));
-    }
-    /**
-     * Constructor.
-     *
-     * @param name             the name of the series
-     * @param bars             the list of bars of the series
-     * @param seriesBeginIndex the begin index (inclusive) of the bar series
-     * @param seriesEndIndex   the end index (inclusive) of the bar series
-     * @param constrained      true to constrain the bar series (i.e. indexes cannot
-     *                         change), false otherwise
-     * @param numFunction      a {@link Function} to convert a {@link Number} to a
-     *                         {@link Num Num implementation}
-     * @param cacheProvider    a provider for the caching system for calculations of indicator values
-     */
-    BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-            Function<Number, Num> numFunction, CacheProvider cacheProvider) {
+            Function<Number, Num> numFunction) {
         this.name = name;
-        this.cacheProvider = cacheProvider;
         this.bars = bars;
         if (bars.isEmpty()) {
             // Bar list empty
@@ -293,11 +271,6 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public Function<Number, Num> function() {
         return numFunction;
-    }
-
-    @Override
-    public CacheProvider getCacheProvider() {
-        return this.cacheProvider;
     }
 
     /**

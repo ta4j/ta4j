@@ -113,8 +113,6 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void getValueOnDeepIndicesShouldNotCauseStackOverflow() {
-        fail("fix this!");
-        /*
         BarSeries series = new MockBarSeries(numFunction);
         series.setMaximumBarCount(5000);
         assertEquals(5000, series.getBarCount());
@@ -125,6 +123,5 @@ public class KAMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         } catch (Throwable t) {
             fail(t.getMessage());
         }
-        */
     }
 }

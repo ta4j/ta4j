@@ -31,7 +31,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
-import org.ta4j.core.cache.CacheProvider;
 import org.ta4j.core.num.Num;
 
 /**
@@ -357,6 +356,4 @@ public interface BarSeries extends Serializable {
      * @return a function Number -> Num
      */
     Function<Number, Num> function();
-
-    CacheProvider getCacheProvider();
 }
