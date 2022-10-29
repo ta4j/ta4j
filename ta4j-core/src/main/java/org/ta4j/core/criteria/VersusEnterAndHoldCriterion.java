@@ -35,7 +35,15 @@ import org.ta4j.core.num.Num;
  * Versus "enter and hold" criterion.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
- * value of an "enter and hold".
+ * value of an "enter and hold". The "enter and hold"-strategy is done as
+ * follows:
+ * 
+ * <ul>
+ * <li>For {@link #tradeType} = {@link TradeType#BUY}: Buy with the close price
+ * of the first bar and sell with the close price of the last bar.
+ * <li>For {@link #tradeType} = {@link TradeType#SELL}: Sell with the close
+ * price of the first bar and buy with the close price of the last bar.
+ * </ul>
  */
 public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
@@ -64,15 +72,17 @@ public class VersusEnterAndHoldCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, series.getBeginIndex(),
-                series.getEndIndex());
+        int beginIndex = position.getEntry().getIndex();
+        int endIndex = series.getEndIndex();
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, position).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, series.getBeginIndex(),
-                series.getEndIndex());
+        int beginIndex = tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord.getEndIndex(series);
+        TradingRecord fakeRecord = createEnterAndHoldTradingRecord(series, beginIndex, endIndex);
         return criterion.calculate(series, tradingRecord).dividedBy(criterion.calculate(series, fakeRecord));
     }
 
