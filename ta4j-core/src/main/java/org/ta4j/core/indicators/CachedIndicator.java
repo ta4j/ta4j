@@ -34,18 +34,15 @@ import java.time.ZonedDateTime;
 /**
  * Cached {@link Indicator indicator}.
  *
- * Caches the constructor of the indicator. Avoid to calculate the same index of
- * the indicator twice.
+ * <p>
+ * Caches the calculated results of the indicator to avoid calculating the same
+ * index of the indicator twice. The caching drastically speeds up access to
+ * indicator values. Caching is especially recommended when indicators calculate
+ * their values based on the values of other indicators. Such nested indicators
+ * can call {@link #getValue(int)} multiple times without the need to
+ * {@link #calculate(int)} again.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
-
-    private final Cache<ZonedDateTime, T> cache;
-
-    /**
-     * Should always be the index of the last result in the results list. I.E. the
-     * last calculated result.
-     */
-    protected int highestResultIndex = -1;
 
     /**
      * Constructor.
@@ -81,7 +78,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         if (index < series.getBeginIndex()) {
-            return calculate(0); // strange behaviour of old CachedIndicator
+            return calculate(0);
         }
 
         final Bar bar = series.getBar(index);
