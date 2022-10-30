@@ -29,6 +29,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -45,7 +47,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startUpAndDownTrendTest() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<Bar> bars = new ArrayList<>();
 
         bars.add(new MockBar(74.5, 75.1, 75.11, 74.06, numFunction));
         bars.add(new MockBar(75.09, 75.9, 76.030000, 74.640000, numFunction));
@@ -96,7 +98,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void startWithDownAndUpTrendTest() {
-        List<Bar> bars = new ArrayList<Bar>();
+        List<Bar> bars = new ArrayList<>();
         bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction)); // The first daily candle of BTCUSDT in
                                                                                 // the Binance cryptocurrency exchange.
                                                                                 // 17 Aug 2017
@@ -122,6 +124,40 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(3400.00000000, sar.getValue(7));
         assertNumEquals(3419.43360000, sar.getValue(8));
         assertNumEquals(3460.81265600, sar.getValue(9));
+    }
+
+    @Test
+    public void testSameValueForSameIndex() {
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBar(4261.48, 4285.08, 4485.39, 4200.74, numFunction));
+        bars.add(new MockBar(4285.08, 4108.37, 4371.52, 3938.77, numFunction));
+        bars.add(new MockBar(4108.37, 4139.98, 4184.69, 3850.00, numFunction));
+        bars.add(new MockBar(4120.98, 4086.29, 4211.08, 4032.62, numFunction));
+        bars.add(new MockBar(4069.13, 4016.00, 4119.62, 3911.79, numFunction));
+        bars.add(new MockBar(4016.00, 4040.00, 4104.82, 3400.00, numFunction));
+        bars.add(new MockBar(4040.00, 4114.01, 4265.80, 4013.89, numFunction));
+        bars.add(new MockBar(4147.00, 4316.01, 4371.68, 4085.01, numFunction));
+        bars.add(new MockBar(4316.01, 4280.68, 4453.91, 4247.48, numFunction));
+        bars.add(new MockBar(4280.71, 4337.44, 4367.00, 4212.41, numFunction));
+
+        final ParabolicSarIndicator parabolicSarIndicator = new ParabolicSarIndicator(new MockBarSeries(bars));
+
+        final List<Num> values = IntStream.range(0, bars.size())
+                .mapToObj(parabolicSarIndicator::getValue)
+                .collect(Collectors.toList());
+
+        assertNumEquals(values.get(0), parabolicSarIndicator.getValue(0));
+        assertNumEquals(values.get(5), parabolicSarIndicator.getValue(5));
+        assertNumEquals(values.get(1), parabolicSarIndicator.getValue(1));
+        assertNumEquals(values.get(4), parabolicSarIndicator.getValue(4));
+        assertNumEquals(values.get(2), parabolicSarIndicator.getValue(2));
+        assertNumEquals(values.get(3), parabolicSarIndicator.getValue(3));
+        assertNumEquals(values.get(1), parabolicSarIndicator.getValue(1));
+        assertNumEquals(values.get(9), parabolicSarIndicator.getValue(9));
+        assertNumEquals(values.get(9), parabolicSarIndicator.getValue(9));
+        assertNumEquals(values.get(8), parabolicSarIndicator.getValue(8));
+        assertNumEquals(values.get(7), parabolicSarIndicator.getValue(7));
+        assertNumEquals(values.get(6), parabolicSarIndicator.getValue(6));
     }
 
 }
