@@ -33,19 +33,24 @@ import org.ta4j.core.Indicator;
 /**
  * Cached {@link Indicator indicator}.
  *
- * Caches the constructor of the indicator. Avoid to calculate the same index of
- * the indicator twice.
+ * <p>
+ * Caches the calculated results of the indicator to avoid calculating the same
+ * index of the indicator twice. The caching drastically speeds up access to
+ * indicator values. Caching is especially recommended when indicators calculate
+ * their values based on the values of other indicators. Such nested indicators
+ * can call {@link #getValue(int)} multiple times without the need to
+ * {@link #calculate(int)} again.
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
-     * List of cached results
+     * List of cached results.
      */
     private final List<T> results;
 
     /**
-     * Should always be the index of the last result in the results list. I.E. the
-     * last calculated result.
+     * Should always be the index of the last (calculated) result in
+     * {@link #results}.
      */
     protected int highestResultIndex = -1;
 
@@ -141,7 +146,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
-     * Increases the size of cached results buffer.
+     * Increases the size of the cached results buffer.
      *
      * @param index     the index to increase length to
      * @param maxLength the maximum length of the results buffer

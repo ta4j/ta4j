@@ -220,7 +220,7 @@ public interface Num extends Comparable<Num> {
      * Checks if this value is equal to another.
      * 
      * @param other the other value, not null
-     * @return true if this is greater than the specified value, false otherwise
+     * @return true if this is equal to the specified value, false otherwise
      */
     boolean isEqual(Num other);
 
