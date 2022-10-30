@@ -57,7 +57,7 @@ public class CCICorrectionStrategy {
 
         CCIIndicator longCci = new CCIIndicator(series, 200);
         CCIIndicator shortCci = new CCIIndicator(series, 5);
-        Num plus100 = series.numOf(100);
+        Num plus100 = series.hundred();
         Num minus100 = series.numOf(-100);
 
         Rule entryRule = new OverIndicatorRule(longCci, plus100) // Bull trend

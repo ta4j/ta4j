@@ -103,7 +103,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         BarSeries series = new BaseBarSeriesBuilder().withNumTypeOf(numFunction).build();
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()), 1d, numFunction), true);
         assertEquals(1, series.getBarCount());
-        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.numOf(1));
+        TestUtils.assertNumEquals(series.getLastBar().getClosePrice(), series.one());
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(1), 2d, numFunction), false);
         series.addBar(new MockBar(ZonedDateTime.now(ZoneId.systemDefault()).plusMinutes(2), 3d, numFunction), false);
         assertEquals(3, series.getBarCount());

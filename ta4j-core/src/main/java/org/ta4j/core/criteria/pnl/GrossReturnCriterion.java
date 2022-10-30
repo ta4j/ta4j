@@ -48,7 +48,7 @@ public class GrossReturnCriterion extends AbstractAnalysisCriterion {
         return tradingRecord.getPositions()
                 .stream()
                 .map(position -> calculateProfit(series, position))
-                .reduce(series.numOf(1), Num::multipliedBy);
+                .reduce(series.one(), Num::multipliedBy);
     }
 
     /** The higher the criterion value, the better. */
@@ -68,6 +68,6 @@ public class GrossReturnCriterion extends AbstractAnalysisCriterion {
         if (position.isClosed()) {
             return position.getGrossReturn(series);
         }
-        return series.numOf(1);
+        return series.one();
     }
 }

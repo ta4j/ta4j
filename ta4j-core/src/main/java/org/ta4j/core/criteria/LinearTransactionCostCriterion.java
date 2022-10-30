@@ -79,7 +79,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num totalCosts = series.numOf(0);
+        Num totalCosts = series.zero();
         Num tradedAmount = series.numOf(initialAmount);
 
         for (Position position : tradingRecord.getPositions()) {
@@ -115,7 +115,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute trade cost
      */
     private Num getTradeCost(Trade trade, Num tradedAmount) {
-        Num tradeCost = tradedAmount.numOf(0);
+        Num tradeCost = tradedAmount.zero();
         if (trade != null) {
             return tradedAmount.numOf(a).multipliedBy(tradedAmount).plus(tradedAmount.numOf(b));
         }
@@ -129,7 +129,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @return the absolute total cost of all trades in the position
      */
     private Num getTradeCost(BarSeries series, Position position, Num initialAmount) {
-        Num totalTradeCost = series.numOf(0);
+        Num totalTradeCost = series.zero();
         if (position != null) {
             if (position.getEntry() != null) {
                 totalTradeCost = getTradeCost(position.getEntry(), initialAmount);

@@ -61,7 +61,7 @@ public class StandardErrorCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.numOf(0);
+            return series.zero();
         }
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(numberOfPositions.sqrt());

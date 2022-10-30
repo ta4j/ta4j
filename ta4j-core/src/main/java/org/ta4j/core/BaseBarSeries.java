@@ -316,7 +316,7 @@ public class BaseBarSeries implements BarSeries {
         }
         // all other constructors initialize at least the close price, check if Num
         // implementation fits to numFunction
-        Class<? extends Num> f = numOf(1).getClass();
+        Class<? extends Num> f = one().getClass();
         return f == bar.getClosePrice().getClass() || bar.getClosePrice().equals(NaN);
     }
 
@@ -406,7 +406,7 @@ public class BaseBarSeries implements BarSeries {
         if (!checkBar(bar)) {
             throw new IllegalArgumentException(
                     String.format("Cannot add Bar with data type: %s to series with data" + "type: %s",
-                            bar.getClosePrice().getClass(), numOf(1).getClass()));
+                            bar.getClosePrice().getClass(), one().getClass()));
         }
         if (!bars.isEmpty()) {
             if (replace) {
@@ -439,7 +439,7 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
         this.addBar(
-                new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
+                new BaseBar(Duration.ofDays(1), endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero()));
     }
 
     @Override
@@ -452,7 +452,7 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addBar(Duration timePeriod, ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume) {
-        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0)));
+        this.addBar(new BaseBar(timePeriod, endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero()));
     }
 
     @Override

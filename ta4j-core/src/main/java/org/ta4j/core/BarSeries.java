@@ -230,8 +230,7 @@ public interface BarSeries extends Serializable {
     void addBar(Duration timePeriod, ZonedDateTime endTime);
 
     default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice) {
-        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), numOf(0),
-                numOf(0));
+        this.addBar(endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice), zero(), zero());
     }
 
     default void addBar(ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice, Number closePrice,
@@ -248,7 +247,7 @@ public interface BarSeries extends Serializable {
     default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
             Number closePrice, Number volume) {
         this.addBar(timePeriod, endTime, numOf(openPrice), numOf(highPrice), numOf(lowPrice), numOf(closePrice),
-                numOf(volume), numOf(0));
+                numOf(volume), zero());
     }
 
     default void addBar(Duration timePeriod, ZonedDateTime endTime, Number openPrice, Number highPrice, Number lowPrice,
@@ -259,14 +258,14 @@ public interface BarSeries extends Serializable {
 
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice) {
         this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
-                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(0), numOf(0));
+                numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), zero(), zero());
     }
 
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
             String volume) {
         this.addBar(endTime, numOf(new BigDecimal(openPrice)), numOf(new BigDecimal(highPrice)),
                 numOf(new BigDecimal(lowPrice)), numOf(new BigDecimal(closePrice)), numOf(new BigDecimal(volume)),
-                numOf(0));
+                zero());
     }
 
     default void addBar(ZonedDateTime endTime, String openPrice, String highPrice, String lowPrice, String closePrice,
@@ -277,7 +276,7 @@ public interface BarSeries extends Serializable {
     }
 
     default void addBar(ZonedDateTime endTime, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume) {
-        this.addBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, numOf(0));
+        this.addBar(endTime, openPrice, highPrice, lowPrice, closePrice, volume, zero());
     }
 
     /**

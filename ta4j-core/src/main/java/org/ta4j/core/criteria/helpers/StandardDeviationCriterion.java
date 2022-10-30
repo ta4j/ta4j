@@ -58,7 +58,7 @@ public class StandardDeviationCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         if (tradingRecord.getPositions().isEmpty()) {
-            return series.numOf(0);
+            return series.zero();
         }
         return varianceCriterion.calculate(series, tradingRecord).sqrt();
     }

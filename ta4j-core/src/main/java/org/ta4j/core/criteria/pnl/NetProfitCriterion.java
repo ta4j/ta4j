@@ -42,9 +42,9 @@ public class NetProfitCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num profit = position.getProfit();
-            return profit.isPositive() ? profit : series.numOf(0);
+            return profit.isPositive() ? profit : series.zero();
         }
-        return series.numOf(0);
+        return series.zero();
 
     }
 
@@ -54,7 +54,7 @@ public class NetProfitCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .reduce(series.zero(), Num::plus);
     }
 
     /** The higher the criterion value, the better. */

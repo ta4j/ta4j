@@ -35,7 +35,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return series.numOf(1);
+        return series.one();
     }
 
     @Override

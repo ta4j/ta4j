@@ -48,9 +48,9 @@ public class StandardErrorCriterionTest extends AbstractCriterionTest {
     @Test
     public void calculateStandardErrorPnL() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.numOf(1)),
-                Trade.sellAt(2, series, series.numOf(1)), Trade.buyAt(3, series, series.numOf(1)),
-                Trade.sellAt(5, series, series.numOf(1)));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series, series.one()),
+                Trade.sellAt(2, series, series.one()), Trade.buyAt(3, series, series.one()),
+                Trade.sellAt(5, series, series.one()));
 
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
         assertNumEquals(1.7677669529663687, criterion.calculate(series, tradingRecord));

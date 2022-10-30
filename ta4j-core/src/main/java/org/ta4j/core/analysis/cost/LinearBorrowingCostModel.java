@@ -46,7 +46,7 @@ public class LinearBorrowingCostModel implements CostModel {
 
     public Num calculate(Num price, Num amount) {
         // borrowing costs depend on borrowed period
-        return price.numOf(0);
+        return price.zero();
     }
 
     /**
@@ -73,7 +73,7 @@ public class LinearBorrowingCostModel implements CostModel {
     public Num calculate(Position position, int currentIndex) {
         Trade entryTrade = position.getEntry();
         Trade exitTrade = position.getExit();
-        Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
+        Num borrowingCost = position.getEntry().getNetPrice().zero();
 
         // borrowing costs apply for short positions only
         if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {

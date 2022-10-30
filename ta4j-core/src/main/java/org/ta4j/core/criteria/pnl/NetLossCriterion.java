@@ -42,9 +42,9 @@ public class NetLossCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num loss = position.getProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+            return loss.isNegative() ? loss : series.zero();
         }
-        return series.numOf(0);
+        return series.zero();
 
     }
 
@@ -54,7 +54,7 @@ public class NetLossCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .reduce(series.zero(), Num::plus);
     }
 
     /** The higher the criterion value, the better. */

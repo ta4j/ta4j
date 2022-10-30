@@ -89,7 +89,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().numOf(0);
+        final Num zero = firstBar.getOpenPrice().zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final ZonedDateTime beginTime = bar.getBeginTime();

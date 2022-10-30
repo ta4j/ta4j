@@ -44,10 +44,10 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num entryPrice = position.getEntry().getValue();
-            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.numOf(100));
+            Num pnl = position.getProfit().dividedBy(entryPrice).multipliedBy(series.hundred());
             return pnl;
         }
-        return series.numOf(0);
+        return series.zero();
     }
 
     @Override
@@ -56,7 +56,7 @@ public class ProfitLossPercentageCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .reduce(series.zero(), Num::plus);
     }
 
     /** The higher the criterion value, the better. */
