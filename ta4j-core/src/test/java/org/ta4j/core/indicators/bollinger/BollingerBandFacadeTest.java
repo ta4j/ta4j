@@ -49,7 +49,6 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void testCreation() {
         final BarSeries data = new MockBarSeries(numFunction, 1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2);
-        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
         final int barCount = 3;
 
         final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);

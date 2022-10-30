@@ -53,6 +53,49 @@ public interface BarSeries extends Serializable {
     String getName();
 
     /**
+     * @return any instance of Num to determine its Num type and function.
+     */
+    Num num();
+
+    /**
+     * Returns the underlying function to transform a Number into the Num
+     * implementation used by this bar series
+     *
+     * @return a function Number -> Num
+     */
+    Function<Number, Num> function();
+
+    /**
+     * @return the Num of 0
+     */
+    default Num zero() {
+        return num().zero();
+    }
+
+    /**
+     * @return the Num of 1
+     */
+    default Num one() {
+        return num().one();
+    }
+
+    /**
+     * @return the Num of 100
+     */
+    default Num hundred() {
+        return num().hundred();
+    }
+
+    /**
+     * Transforms a {@link Number} into the {@link Num implementation} used by this
+     * bar series
+     *
+     * @param number a {@link Number} implementing object.
+     * @return the corresponding value as a Num implementing object
+     */
+    Num numOf(Number number);
+
+    /**
      * @param i an index
      * @return the bar at the i-th position
      */
@@ -339,22 +382,5 @@ public interface BarSeries extends Serializable {
      * @throws IllegalArgumentException if endIndex <= startIndex or startIndex < 0
      */
     BarSeries getSubSeries(int startIndex, int endIndex);
-
-    /**
-     * Transforms a {@link Number} into the {@link Num implementation} used by this
-     * bar series
-     *
-     * @param number a {@link Number} implementing object.
-     * @return the corresponding value as a Num implementing object
-     */
-    Num numOf(Number number);
-
-    /**
-     * Returns the underlying function to transform a Number into the Num
-     * implementation used by this bar series
-     *
-     * @return a function Number -> Num
-     */
-    Function<Number, Num> function();
 
 }

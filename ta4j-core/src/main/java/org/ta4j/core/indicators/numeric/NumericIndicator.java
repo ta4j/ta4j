@@ -236,11 +236,6 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
-    public Num numOf(Number number) {
-        return delegate.numOf(number);
-    }
-
-    @Override
     public String toString() {
         return delegate.toString();
     }

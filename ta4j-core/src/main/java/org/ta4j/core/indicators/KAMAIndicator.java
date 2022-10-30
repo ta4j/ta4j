@@ -86,7 +86,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
          */
         int startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
         Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
-        Num volatility = numOf(0);
+        Num volatility = zero();
         for (int i = startChangeIndex; i < index; i++) {
             volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
         }

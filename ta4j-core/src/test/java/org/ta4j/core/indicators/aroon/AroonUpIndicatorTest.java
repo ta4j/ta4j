@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.indicators.aroon.AroonUpIndicator;
 import org.ta4j.core.num.Num;
 
 public class AroonUpIndicatorTest {

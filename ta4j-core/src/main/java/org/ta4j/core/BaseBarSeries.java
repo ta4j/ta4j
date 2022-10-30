@@ -45,18 +45,22 @@ import org.ta4j.core.num.Num;
 public class BaseBarSeries implements BarSeries {
 
     private static final long serialVersionUID = -1878027009398790126L;
-    /**
-     * Name for unnamed series
-     */
-    private static final String UNNAMED_SERIES_NAME = "unnamed_series";
-    /**
-     * Num type function
-     **/
-    protected final transient Function<Number, Num> numFunction;
+
     /**
      * The logger
      */
     private final transient Logger log = LoggerFactory.getLogger(getClass());
+
+    /**
+     * Name for unnamed series
+     */
+    private static final String UNNAMED_SERIES_NAME = "unnamed_series";
+
+    /**
+     * Any instance of Num to determine its Num type.
+     */
+    protected final transient Num num;
+
     /**
      * Name of the series
      */
@@ -125,12 +129,12 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Constructor.
      * 
-     * @param name        the name of the series
-     * @param numFunction a {@link Function} to convert a {@link Number} to a
-     *                    {@link Num Num implementation}
+     * @param name the name of the series
+     * @param num  any instance of Num to determine its Num function; with this, we
+     *             can convert a {@link Number} to a {@link Num Num implementation}
      */
-    public BaseBarSeries(String name, Function<Number, Num> numFunction) {
-        this(name, new ArrayList<>(), numFunction);
+    public BaseBarSeries(String name, Num num) {
+        this(name, new ArrayList<>(), num);
     }
 
     /**
@@ -138,9 +142,11 @@ public class BaseBarSeries implements BarSeries {
      *
      * @param name the name of the series
      * @param bars the list of bars of the series
+     * @param num  any instance of Num to determine its Num function; with this, we
+     *             can convert a {@link Number} to a {@link Num Num implementation}
      */
-    public BaseBarSeries(String name, List<Bar> bars, Function<Number, Num> numFunction) {
-        this(name, bars, 0, bars.size() - 1, false, numFunction);
+    public BaseBarSeries(String name, List<Bar> bars, Num num) {
+        this(name, bars, 0, bars.size() - 1, false, num);
     }
 
     /**
@@ -157,7 +163,7 @@ public class BaseBarSeries implements BarSeries {
      *                         change), false otherwise
      */
     private BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum::valueOf);
+        this(name, bars, seriesBeginIndex, seriesEndIndex, constrained, DecimalNum.ZERO);
     }
 
     /**
@@ -169,11 +175,11 @@ public class BaseBarSeries implements BarSeries {
      * @param seriesEndIndex   the end index (inclusive) of the bar series
      * @param constrained      true to constrain the bar series (i.e. indexes cannot
      *                         change), false otherwise
-     * @param numFunction      a {@link Function} to convert a {@link Number} to a
+     * @param num              any instance of Num to determine its Num function;
+     *                         with this, we can convert a {@link Number} to a
      *                         {@link Num Num implementation}
      */
-    BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-            Function<Number, Num> numFunction) {
+    BaseBarSeries(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained, Num num) {
         this.name = name;
 
         this.bars = bars;
@@ -182,16 +188,16 @@ public class BaseBarSeries implements BarSeries {
             this.seriesBeginIndex = -1;
             this.seriesEndIndex = -1;
             this.constrained = false;
-            this.numFunction = numFunction;
+            this.num = num;
             return;
         }
         // Bar list not empty: take Function of first bar
-        this.numFunction = bars.get(0).getClosePrice().function();
+        this.num = bars.get(0).getClosePrice();
         // Bar list not empty: checking num types
         if (!checkBars(bars)) {
             throw new IllegalArgumentException(String.format(
                     "Num implementation of bars: %s" + " does not match to Num implementation of bar series: %s",
-                    bars.get(0).getClosePrice().getClass(), numFunction));
+                    bars.get(0).getClosePrice().getClass(), num.function()));
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
@@ -257,20 +263,25 @@ public class BaseBarSeries implements BarSeries {
         if (!bars.isEmpty()) {
             int start = Math.max(startIndex - getRemovedBarsCount(), this.getBeginIndex());
             int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
-            return new BaseBarSeries(getName(), cut(bars, start, end), numFunction);
+            return new BaseBarSeries(getName(), cut(bars, start, end), num);
         }
-        return new BaseBarSeries(name, numFunction);
+        return new BaseBarSeries(name, num);
 
+    }
+
+    @Override
+    public Num num() {
+        return num;
     }
 
     @Override
     public Num numOf(Number number) {
-        return this.numFunction.apply(number);
+        return num.function().apply(number);
     }
 
     @Override
     public Function<Number, Num> function() {
-        return numFunction;
+        return num.function();
     }
 
     /**

@@ -56,7 +56,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num absoluteDeviations = numOf(0);
+        Num absoluteDeviations = zero();
 
         final Num average = sma.getValue(index);
         final int startIndex = Math.max(0, index - barCount + 1);

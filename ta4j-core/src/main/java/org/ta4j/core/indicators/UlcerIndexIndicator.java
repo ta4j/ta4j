@@ -53,8 +53,8 @@ public class UlcerIndexIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        this.zero = numOf(0);
-        this.hundred = numOf(100);
+        this.zero = zero();
+        this.hundred = hundred();
     }
 
     @Override

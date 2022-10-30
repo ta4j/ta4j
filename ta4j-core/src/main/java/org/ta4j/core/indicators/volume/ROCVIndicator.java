@@ -47,7 +47,7 @@ public class ROCVIndicator extends CachedIndicator<Num> {
     public ROCVIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
-        this.hundred = numOf(100);
+        this.hundred = hundred();
     }
 
     @Override

@@ -155,8 +155,9 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void convertBarSeriesTest() {
 
         final Function<Number, Num> decimalNumFunction = DecimalNum::valueOf;
-        final Function<Number, Num> doubleNumFunction = DoubleNum::valueOf;
-        final Function<Number, Num> nanNumFunction = NaN::valueOf;
+        final Num decimalNum = DecimalNum.ZERO;
+        final Num doubleNum = DoubleNum.ZERO;
+        final Num nanNum = NaN.NaN;
 
         final List<Bar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());
@@ -171,14 +172,13 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .build();
 
         // convert barSeries with DecimalNum to barSeries with DoubleNum
-        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNumFunction);
+        final BarSeries decimalToDoubleSeries = BarSeriesUtils.convertBarSeries(decimalBarSeries, doubleNum);
 
         // convert barSeries with DoubleNum to barSeries with DecimalNum
-        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries,
-                decimalNumFunction);
+        final BarSeries doubleToDecimalSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, decimalNum);
 
         // convert barSeries with DoubleNum to barSeries with NaNNum
-        final BarSeries doubleToNaNSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, nanNumFunction);
+        final BarSeries doubleToNaNSeries = BarSeriesUtils.convertBarSeries(decimalToDoubleSeries, nanNum);
 
         assertEquals(decimalBarSeries.getFirstBar().getClosePrice().getClass(), DecimalNum.class);
         assertEquals(decimalToDoubleSeries.getFirstBar().getClosePrice().getClass(), DoubleNum.class);
@@ -217,7 +217,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void addBars() {
-        BarSeries barSeries = new BaseBarSeries("1day", numFunction);
+        BarSeries barSeries = new BaseBarSeries("1day", numFunction.apply(0));
 
         List<Bar> bars = new ArrayList<>();
         time = ZonedDateTime.of(2019, 6, 1, 1, 1, 0, 0, ZoneId.systemDefault());

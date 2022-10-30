@@ -156,7 +156,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
             @Override
             protected Num calculate(int index) {
                 if (index <= 0) {
-                    return numOf(0);
+                    return zero();
                 }
 
                 // Value = (alpha * 2 * ((ref - MinL) / (MaxH - MinL) - 0.5) + beta *
@@ -175,7 +175,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index <= 0) {
-            return numOf(0);
+            return zero();
         }
 
         Num value = intermediateValue.getValue(index);

@@ -53,7 +53,7 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
         this.bbu = bbu;
         this.bbm = bbm;
         this.bbl = bbl;
-        this.hundred = bbm.getBarSeries().numOf(100);
+        this.hundred = bbm.getBarSeries().hundred();
     }
 
     @Override

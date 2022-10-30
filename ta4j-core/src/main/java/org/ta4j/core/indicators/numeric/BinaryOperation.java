@@ -82,9 +82,4 @@ class BinaryOperation implements Indicator<Num> {
         return left.getBarSeries();
     }
 
-    @Override
-    public Num numOf(Number number) {
-        return left.numOf(number);
-    }
-
 }

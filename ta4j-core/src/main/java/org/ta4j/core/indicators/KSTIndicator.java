@@ -83,7 +83,7 @@ public class KSTIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Num RCMA1Multiplier = numOf(1);
+        Num RCMA1Multiplier = one();
         Num RCMA2Multiplier = numOf(2);
         Num RCMA3Multiplier = numOf(3);
         Num RCMA4Multiplier = numOf(4);
