@@ -39,7 +39,7 @@ import java.time.ZonedDateTime;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
-    private final Cache<Bar, T> cache;
+    private final Cache<ZonedDateTime, T> cache;
 
     /**
      * Should always be the index of the last result in the results list. I.E. the
@@ -85,10 +85,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         final Bar bar = series.getBar(index);
-        T result = cache.getIfPresent(bar);
+        T result = cache.getIfPresent(bar.getEndTime());
         if (result == null) {
             result = calculate(index);
-            cache.put(bar, result);
+            cache.put(bar.getEndTime(), result);
         }
         return result;
     }

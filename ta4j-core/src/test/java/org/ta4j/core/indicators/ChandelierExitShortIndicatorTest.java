@@ -36,6 +36,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 public class ChandelierExitShortIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -66,7 +67,7 @@ public class ChandelierExitShortIndicatorTest extends AbstractIndicatorTest<Indi
         bars.add(new MockBar(45.45, 45.01, 45.55, 44.80, numFunction));
         bars.add(new MockBar(45.03, 44.23, 45.04, 44.17, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test

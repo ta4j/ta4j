@@ -36,6 +36,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 public class StochasticOscillatorKIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -65,7 +66,7 @@ public class StochasticOscillatorKIndicatorTest extends AbstractIndicatorTest<In
         bars.add(new MockBar(45.58, 119.13, 119.13, 116.88, numFunction));
         bars.add(new MockBar(45.58, 115.38, 119.44, 114.56, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test

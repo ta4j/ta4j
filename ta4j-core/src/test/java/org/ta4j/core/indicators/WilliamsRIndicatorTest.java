@@ -39,6 +39,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBar;
+import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
 public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -50,8 +51,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Before
     public void setUp() {
-
-        List<Bar> bars = new ArrayList<Bar>();
+        List<Bar> bars = new ArrayList<>();
         bars.add(new MockBar(44.98, 45.05, 45.17, 44.96, numFunction));
         bars.add(new MockBar(45.05, 45.10, 45.15, 44.99, numFunction));
         bars.add(new MockBar(45.11, 45.19, 45.32, 45.11, numFunction));
@@ -66,7 +66,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         bars.add(new MockBar(45.43, 45.55, 45.60, 45.35, numFunction));
         bars.add(new MockBar(45.58, 45.55, 45.61, 45.39, numFunction));
 
-        data = new BaseBarSeries(bars);
+        data = new MockBarSeries(bars);
     }
 
     @Test
