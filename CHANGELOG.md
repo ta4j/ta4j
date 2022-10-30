@@ -7,6 +7,8 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **GrossReturnCriterion** renamed to **`ReturnCriterion`**
 - **NetProfitCriterion** and **GrossProfitCriterion** replaced by **`ProfitCriterion`**
 - **NetLossCriterion** and **GrossLossCriterion** replaced by **`LossCriterion`**
+- **LosingPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
+- **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
