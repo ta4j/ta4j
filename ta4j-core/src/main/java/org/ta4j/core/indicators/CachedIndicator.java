@@ -44,6 +44,8 @@ import java.time.ZonedDateTime;
  */
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
+    private final Cache<ZonedDateTime, T> cache;
+
     /**
      * Constructor.
      *

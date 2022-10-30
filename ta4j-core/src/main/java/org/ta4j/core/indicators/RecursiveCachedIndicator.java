@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * old/far, the computation of all the values between the last cached and the
  * asked one is executed iteratively.
  */
-public abstract class RecursiveCachedIndicator<T extends Num> extends CachedIndicator<Num> {
+public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * The recursion threshold for which an iterative calculation is executed. TODO
@@ -64,18 +64,16 @@ public abstract class RecursiveCachedIndicator<T extends Num> extends CachedIndi
     }
 
     @Override
-    public Num getValue(int index) {
+    public T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series != null) {
             final int seriesEndIndex = series.getEndIndex();
             if (index <= seriesEndIndex) {
                 // We are not after the end of the series
-                final int removedBarsCount = series.getRemovedBarsCount();
-                int startIndex = Math.max(removedBarsCount, highestResultIndex);
-                if (index - startIndex > RECURSION_THRESHOLD) {
+                if (index - series.getRemovedBarsCount() > RECURSION_THRESHOLD) {
                     // Too many uncalculated values; the risk for a StackOverflowError becomes high.
                     // Calculating the previous values iteratively
-                    for (int prevIdx = startIndex; prevIdx < index; prevIdx++) {
+                    for (int prevIdx = series.getRemovedBarsCount(); prevIdx < index; prevIdx++) {
                         super.getValue(prevIdx);
                     }
                 }
