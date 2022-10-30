@@ -4,20 +4,17 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Breaking
 - **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
-<<<<<<< HEAD
 - **GrossReturnCriterion** renamed to **`ReturnCriterion`**
 - **NetProfitCriterion** and **GrossProfitCriterion** replaced by **`ProfitCriterion`**
 - **NetLossCriterion** and **GrossLossCriterion** replaced by **`LossCriterion`**
 - **LosingPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
-=======
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
->>>>>>> refs/heads/simplify_criteria
 
 ### Removed/Deprecated
 
