@@ -58,7 +58,7 @@ public class CsvTradesLoader {
                 .getResourceAsStream("bitstamp_trades_from_20131125_usd.csv");
         List<String[]> lines = null;
         assert stream != null;
-        try(CSVReader csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
+        try (CSVReader csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line
         } catch (Exception ioe) {

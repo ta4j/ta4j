@@ -51,11 +51,11 @@ public class CsvBarsLoader {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        /**
-         * @return the bar series from Apple Inc. bars.
-         */
+    /**
+     * @return the bar series from Apple Inc. bars.
+     */
 
-        public static BarSeries loadAppleIncSeries() {
+    public static BarSeries loadAppleIncSeries() {
         return loadCsvSeries("appleinc_bars_from_20130101_usd.csv");
     }
 
@@ -66,14 +66,12 @@ public class CsvBarsLoader {
         BarSeries series = new BaseBarSeries("apple_bars");
 
         // new CSVReader(, ',', '"',
-        //                1)
+        // 1)
 
         try {
             assert stream != null;
             try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8))
-                    .withCSVParser(new CSVParserBuilder()
-                            .withSeparator(',')
-                            .build())
+                    .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                     .withSkipLines(1)
                     .build()) {
                 String[] line;
@@ -88,7 +86,8 @@ public class CsvBarsLoader {
                     series.addBar(date, open, high, low, close, volume);
                 }
             } catch (CsvValidationException e) {
-                Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV. File is not valid csv.", e);
+                Logger.getLogger(CsvBarsLoader.class.getName())
+                        .log(Level.SEVERE, "Unable to load bars from CSV. File is not valid csv.", e);
             }
         } catch (IOException ioe) {
             Logger.getLogger(CsvBarsLoader.class.getName()).log(Level.SEVERE, "Unable to load bars from CSV", ioe);
