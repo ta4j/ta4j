@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  */
 public class ProfitCriterion extends AbstractAnalysisCriterion {
 
-    private final boolean excludeTradingCosts;
+    private final boolean excludeCosts;
 
     /**
      * Constructor for GrossProfit (includes trading costs)
@@ -53,14 +53,14 @@ public class ProfitCriterion extends AbstractAnalysisCriterion {
      * 
      * @param excludeTradingCosts set to true to exclude trading costs
      */
-    public ProfitCriterion(boolean excludeTradingCosts) {
-        this.excludeTradingCosts = excludeTradingCosts;
+    public ProfitCriterion(boolean excludeCosts) {
+        this.excludeCosts = excludeCosts;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num profit = excludeTradingCosts ? position.getProfit() : position.getGrossProfit();
+            Num profit = excludeCosts ? position.getProfit() : position.getGrossProfit();
             return profit.isPositive() ? profit : series.numOf(0);
         }
         return series.numOf(0);
