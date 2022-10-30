@@ -48,12 +48,21 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param defaultNum any instance of Num to determine its Num function; with
-     *                   this, we can convert a {@link Number} to a {@link Num Num
-     *                   implementation}
+     * @param defaultNum any instance of Num to be used as default to determine its
+     *                   Num function; with this, we can convert a {@link Number} to
+     *                   a {@link Num Num implementation}
      */
     public static void setDefaultNum(Num defaultNum) {
         BaseBarSeriesBuilder.defaultNum = defaultNum;
+    }
+
+    /**
+     * @param defaultFunction a Num function to be used as default; with this, we
+     *                        can convert a {@link Number} to a {@link Num Num
+     *                        implementation}
+     */
+    public static void setDefaultNum(Function<Number, Num> defaultFunction) {
+        BaseBarSeriesBuilder.defaultNum = defaultFunction.apply(0);
     }
 
     private void initValues() {
