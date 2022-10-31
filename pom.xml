@@ -99,7 +99,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>3.2.0</version>
+						<version>3.4.1</version>
 						<configuration>
 							<doclint>none</doclint>
 						</configuration>
@@ -117,7 +117,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.5</version>
+						<version>3.0.1</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -141,7 +141,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.7.0</version>
+				<version>3.10.1</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -153,7 +153,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>2.2.1</version>
+				<version>3.2.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -168,7 +168,7 @@
 			<plugin>
 				<groupId>com.mycila</groupId>
 				<artifactId>license-maven-plugin</artifactId>
-				<version>3.0</version>
+				<version>4.1</version>
 				<configuration>
 					<header>LICENSE</header>
 					<includes>
@@ -181,7 +181,7 @@
 			<plugin>
 				<groupId>net.revelc.code.formatter</groupId>
 				<artifactId>formatter-maven-plugin</artifactId>
-				<version>2.10.0</version>
+				<version>2.19.0</version>
 					<configuration>
 						<configFile>${project.basedir}/code-formatter.xml</configFile>
 					</configuration>
@@ -191,7 +191,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-release-plugin</artifactId>
-				<version>2.5.1</version>
+				<version>3.0.0-M6</version>
 				<configuration>
 					<tagNameFormat>@{project.version}</tagNameFormat>
 				</configuration>
@@ -199,7 +199,7 @@
 					<dependency>
 						<groupId>org.apache.maven.shared</groupId>
 						<artifactId>maven-invoker</artifactId>
-						<version>2.2</version>
+						<version>3.2.0</version>
 					</dependency>
 				</dependencies>
 			</plugin>
