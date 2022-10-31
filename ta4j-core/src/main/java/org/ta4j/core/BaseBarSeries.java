@@ -274,16 +274,6 @@ public class BaseBarSeries implements BarSeries {
         return num;
     }
 
-    @Override
-    public Num numOf(Number number) {
-        return num.function().apply(number);
-    }
-
-    @Override
-    public Function<Number, Num> function() {
-        return num.function();
-    }
-
     /**
      * Checks if all {@link Bar bars} of a list fits to the {@link Num NumFunction}
      * used by this bar series.

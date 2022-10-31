@@ -63,7 +63,9 @@ public interface BarSeries extends Serializable {
      *
      * @return a function Number -> Num
      */
-    Function<Number, Num> function();
+    default Function<Number, Num> function() {
+        return num().function();
+    }
 
     /**
      * @return the Num of 0
@@ -93,7 +95,9 @@ public interface BarSeries extends Serializable {
      * @param number a {@link Number} implementing object.
      * @return the corresponding value as a Num implementing object
      */
-    Num numOf(Number number);
+    default Num numOf(Number number) {
+        return num().function().apply(number);
+    }
 
     /**
      * @param i an index
