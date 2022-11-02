@@ -41,13 +41,12 @@
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.2.9</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.github.ben-manes.caffeine</groupId>
 			<artifactId>caffeine</artifactId>
-			<version>2.9.0</version>
+			<version>3.1.1</version>
 		</dependency>
 	</dependencies>
 	<build>
