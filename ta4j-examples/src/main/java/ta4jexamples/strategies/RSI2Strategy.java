@@ -29,7 +29,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -97,8 +97,7 @@ public class RSI2Strategy {
         System.out.println("Number of positions for the strategy: " + tradingRecord.getPositionCount());
 
         // Analysis
-        System.out.println(
-                "Total return for the strategy: " + new GrossReturnCriterion().calculate(series, tradingRecord));
+        System.out.println("Total return for the strategy: " + new ReturnCriterion().calculate(series, tradingRecord));
     }
 
 }

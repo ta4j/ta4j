@@ -30,22 +30,40 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net loss criterion (excludes trading costs).
+ * Profit criterion with trading costs (= Gross profit) or without ( = Net
+ * profit).
  *
  * <p>
- * The net loss of the provided {@link Position position(s)} over the provided
+ * The profit of the provided {@link Position position(s)} over the provided
  * {@link BarSeries series}.
  */
-public class NetLossCriterion extends AbstractAnalysisCriterion {
+public class ProfitCriterion extends AbstractAnalysisCriterion {
+
+    private final boolean excludeCosts;
+
+    /**
+     * Constructor for GrossProfit (includes trading costs)
+     */
+    public ProfitCriterion() {
+        this(false);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param excludeTradingCosts set to true to exclude trading costs
+     */
+    public ProfitCriterion(boolean excludeCosts) {
+        this.excludeCosts = excludeCosts;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
-            Num loss = position.getProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+            Num profit = excludeCosts ? position.getProfit() : position.getGrossProfit();
+            return profit.isPositive() ? profit : series.numOf(0);
         }
         return series.numOf(0);
-
     }
 
     @Override
@@ -57,9 +75,10 @@ public class NetLossCriterion extends AbstractAnalysisCriterion {
                 .reduce(series.numOf(0), Num::plus);
     }
 
-    /** The higher the criterion value, the better. */
+    /** The higher the criterion value (= the higher the profit), the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
+
 }

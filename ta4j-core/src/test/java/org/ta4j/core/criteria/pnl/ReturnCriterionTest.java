@@ -32,46 +32,75 @@ import java.util.function.Function;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 
-public class NetProfitCriterionTest extends AbstractCriterionTest {
+public class ReturnCriterionTest extends AbstractCriterionTest {
 
-    public NetProfitCriterionTest(Function<Number, Num> numFunction) {
-        super((params) -> new NetProfitCriterion(), numFunction);
+    public ReturnCriterionTest(Function<Number, Num> numFunction) {
+        super((params) -> new ReturnCriterion(), numFunction);
     }
 
     @Test
-    public void calculateOnlyWithProfitPositions() {
+    public void calculateWithWinningLongPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 110, 100, 95, 105);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series),
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(15, profit.calculate(series, tradingRecord));
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(1.10 * 1.05, ret.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateOnlyWithProfitPositions2() {
-        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 120);
+    public void calculateWithLosingLongPositions() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(25, profit.calculate(series, tradingRecord));
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(0.95 * 0.7, ret.calculate(series, tradingRecord));
     }
 
     @Test
-    public void calculateProfitWithShortPositions() {
-        MockBarSeries series = new MockBarSeries(numFunction, 95, 100, 70, 80, 85, 100);
+    public void calculateReturnWithWinningShortPositions() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
-        AnalysisCriterion profit = getCriterion();
-        assertNumEquals(0, profit.calculate(series, tradingRecord));
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(1.05 * 1.30, ret.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateReturnWithLosingShortPositions() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 105, 100, 80, 85, 130);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(5, series));
+
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(0.95 * 0.70, ret.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithNoPositionsShouldReturn1() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+
+        AnalysisCriterion ret = getCriterion();
+        assertNumEquals(1d, ret.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
+    public void calculateWithOpenedPositionShouldReturn1() {
+        MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 100, 80, 85, 70);
+        AnalysisCriterion ret = getCriterion();
+        Position position = new Position();
+        assertNumEquals(1d, ret.calculate(series, position));
+        position.operate(0);
+        assertNumEquals(1d, ret.calculate(series, position));
     }
 
     @Test
@@ -82,7 +111,7 @@ public class NetProfitCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void testCalculateOneOpenPositionShouldReturnZero() {
-        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 0);
+    public void testCalculateOneOpenPositionShouldReturnOne() {
+        openedPositionUtils.testCalculateOneOpenPositionShouldReturnExpectedValue(numFunction, getCriterion(), 1);
     }
 }
