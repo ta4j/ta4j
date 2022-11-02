@@ -45,11 +45,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         Y, SLOPE, INTERCEPT
     }
 
-    private Indicator<Num> indicator;
-    private int barCount;
+    private final Indicator<Num> indicator;
+    private final int barCount;
     private Num slope;
     private Num intercept;
-    private SimpleLinearRegressionType type;
+    private final SimpleLinearRegressionType type;
 
     /**
      * Constructor for the y-values of the formula (y = slope * x + intercept).

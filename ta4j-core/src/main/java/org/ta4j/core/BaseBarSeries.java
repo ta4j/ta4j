@@ -85,7 +85,7 @@ public class BaseBarSeries implements BarSeries {
      * True if the current series is constrained (i.e. its indexes cannot change),
      * false otherwise
      */
-    private boolean constrained;
+    private final boolean constrained;
 
     /**
      * Constructor of an unnamed series.

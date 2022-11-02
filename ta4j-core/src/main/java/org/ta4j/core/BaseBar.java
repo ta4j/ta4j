@@ -41,11 +41,11 @@ public class BaseBar implements Bar {
 
     private static final long serialVersionUID = 8038383777467488147L;
     /** Time period (e.g. 1 day, 15 min, etc.) of the bar */
-    private Duration timePeriod;
+    private final Duration timePeriod;
     /** End time of the bar */
-    private ZonedDateTime endTime;
+    private final ZonedDateTime endTime;
     /** Begin time of the bar */
-    private ZonedDateTime beginTime;
+    private final ZonedDateTime beginTime;
     /** Open price of the period */
     private Num openPrice = null;
     /** Close price of the period */
@@ -238,7 +238,7 @@ public class BaseBar implements Bar {
         this(timePeriod, endTime, numFunction.apply(new BigDecimal(openPrice)),
                 numFunction.apply(new BigDecimal(highPrice)), numFunction.apply(new BigDecimal(lowPrice)),
                 numFunction.apply(new BigDecimal(closePrice)), numFunction.apply(new BigDecimal(volume)),
-                numFunction.apply(new BigDecimal(amount)), Integer.valueOf(trades));
+                numFunction.apply(new BigDecimal(amount)), Integer.parseInt(trades));
     }
 
     /**

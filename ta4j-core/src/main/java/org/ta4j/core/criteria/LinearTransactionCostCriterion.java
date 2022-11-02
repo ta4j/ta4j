@@ -38,10 +38,10 @@ import org.ta4j.core.num.Num;
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
-    private double initialAmount;
+    private final double initialAmount;
 
-    private double a;
-    private double b;
+    private final double a;
+    private final double b;
 
     private ReturnCriterion grossReturn;
 

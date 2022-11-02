@@ -111,10 +111,10 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
         isZero
     }
 
-    private Indicator<Num> indicator;
-    private Num coefficient;
-    private BooleanTransformType type;
-    private BooleanTransformSimpleType simpleType;
+    private final Indicator<Num> indicator;
+    private final Num coefficient;
+    private final BooleanTransformType type;
+    private final BooleanTransformSimpleType simpleType;
 
     /**
      * Constructor.
@@ -128,6 +128,7 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
         this.indicator = indicator;
         this.coefficient = coefficient;
         this.type = type;
+        this.simpleType = null;
     }
 
     /**
@@ -140,6 +141,8 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
         super(indicator);
         this.indicator = indicator;
         this.simpleType = type;
+        this.coefficient = null;
+        this.type = null;
     }
 
     @Override

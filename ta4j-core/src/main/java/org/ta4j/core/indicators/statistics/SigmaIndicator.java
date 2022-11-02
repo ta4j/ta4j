@@ -35,11 +35,11 @@ import org.ta4j.core.num.Num;
  */
 public class SigmaIndicator extends CachedIndicator<Num> {
 
-    private Indicator<Num> ref;
-    private int barCount;
+    private final Indicator<Num> ref;
+    private final int barCount;
 
-    private SMAIndicator mean;
-    private StandardDeviationIndicator sd;
+    private final SMAIndicator mean;
+    private final StandardDeviationIndicator sd;
 
     /**
      * Constructor.
