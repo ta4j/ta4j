@@ -25,8 +25,8 @@ package ta4jexamples.loaders;
 
 import java.io.IOException;
 import java.io.InputStream;
+
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -56,22 +56,13 @@ public class CsvTradesLoader {
         // Reading all lines of the CSV file
         InputStream stream = CsvTradesLoader.class.getClassLoader()
                 .getResourceAsStream("bitstamp_trades_from_20131125_usd.csv");
-        CSVReader csvReader = null;
         List<String[]> lines = null;
-        try {
-            csvReader = new CSVReader(new InputStreamReader(stream, Charset.forName("UTF-8")), ',');
+        assert stream != null;
+        try (CSVReader csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line
-        } catch (IOException ioe) {
+        } catch (Exception ioe) {
             Logger.getLogger(CsvTradesLoader.class.getName()).log(Level.SEVERE, "Unable to load trades from CSV", ioe);
-        } finally {
-            if (csvReader != null) {
-                try {
-                    csvReader.close();
-                } catch (IOException ioe) {
-                    ioe.printStackTrace();
-                }
-            }
         }
 
         BarSeries series = new BaseBarSeries();

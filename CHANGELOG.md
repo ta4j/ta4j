@@ -3,6 +3,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.16 (unreleased)
 
 ### Breaking
+- **Upgraded to Java 11**
 - **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
 - **GrossReturnCriterion** renamed to **`ReturnCriterion`**
 - **NetProfitCriterion** and **GrossProfitCriterion** replaced by **`ProfitCriterion`**
