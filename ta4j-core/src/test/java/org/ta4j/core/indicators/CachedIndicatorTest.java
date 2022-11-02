@@ -23,15 +23,14 @@
  */
 package org.ta4j.core.indicators;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -179,6 +178,28 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(5000, closePrice.getValue(barSeries.getEndIndex()));
         barSeries.getLastBar().addTrade(numOf(10), numOf(5));
         assertNumEquals(5, closePrice.getValue(barSeries.getEndIndex()));
+    }
+
+    @Test
+    public void getCachedValuesTest() {
+        var barSeries = new MockBarSeries(numFunction);
+        var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
+        var cachedValues = smaIndicator.getCachedValues();
+
+        assertTrue(cachedValues.isEmpty());
+
+        IntStream.range(0, 4).forEach(smaIndicator::getValue);
+
+        assertFalse(cachedValues.isEmpty());
+        assertEquals(4, cachedValues.size());
+        assertNumEquals(1, cachedValues.get(barSeries.getBar(0).getEndTime()));
+        assertNumEquals(1.5, cachedValues.get(barSeries.getBar(1).getEndTime()));
+        assertNumEquals(2, cachedValues.get(barSeries.getBar(2).getEndTime()));
+        assertNumEquals(2.5, cachedValues.get(barSeries.getBar(3).getEndTime()));
+
+        var key = barSeries.getBar(1).getEndTime();
+        assertThrows(UnsupportedOperationException.class, () -> cachedValues.put(key, numOf(1000)));
+        assertThrows(UnsupportedOperationException.class, () -> cachedValues.remove(key));
     }
 
 }

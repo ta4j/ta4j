@@ -30,6 +30,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 
 import java.time.ZonedDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Cached {@link Indicator indicator}.
@@ -90,5 +93,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             cache.put(bar.getEndTime(), result);
         }
         return result;
+    }
+
+    public Map<ZonedDateTime, T> getCachedValues() {
+        return Collections.unmodifiableMap(this.cache.asMap());
     }
 }
