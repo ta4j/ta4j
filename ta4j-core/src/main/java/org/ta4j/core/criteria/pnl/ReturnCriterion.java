@@ -30,36 +30,44 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Net profit criterion (excludes trading costs).
+ * Return (in percentage) criterion (includes trading costs).
  *
  * <p>
- * The net profit of the provided {@link Position position(s)} over the provided
+ * The return of the provided {@link Position position(s)} over the provided
  * {@link BarSeries series}.
  */
-public class NetProfitCriterion extends AbstractAnalysisCriterion {
+public class ReturnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position.isClosed()) {
-            Num profit = position.getProfit();
-            return profit.isPositive() ? profit : series.zero();
-        }
-        return series.zero();
-
+        return calculateProfit(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         return tradingRecord.getPositions()
                 .stream()
-                .filter(Position::isClosed)
-                .map(position -> calculate(series, position))
-                .reduce(series.zero(), Num::plus);
+                .map(position -> calculateProfit(series, position))
+                .reduce(series.one(), Num::multipliedBy);
     }
 
     /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    /**
+     * Calculates the gross return of a position (Buy and sell).
+     *
+     * @param series   a bar series
+     * @param position a position
+     * @return the gross return of the position
+     */
+    private Num calculateProfit(BarSeries series, Position position) {
+        if (position.isClosed()) {
+            return position.getGrossReturn(series);
+        }
+        return series.one();
     }
 }

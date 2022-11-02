@@ -3,8 +3,14 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ## 0.16 (unreleased)
 
 ### Breaking
+- **Upgraded to Java 11**
 - **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
 - **BarSeries** constructors use any instance of Num instead of Num-Function
+- **GrossReturnCriterion** renamed to **`ReturnCriterion`**
+- **NetProfitCriterion** and **GrossProfitCriterion** replaced by **`ProfitCriterion`**
+- **NetLossCriterion** and **GrossLossCriterion** replaced by **`LossCriterion`**
+- **LosingPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
+- **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
@@ -25,6 +31,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **MaximumDrawDownCriterion** fixed calculation with custom startIndex and endIndex
 - **Fixed** **EnterAndHoldReturnCriterion** fixed calculation with custom startIndex and endIndex
 - **Fixed** **VersusEnterAndHoldCriterion** fixed calculation with custom startIndex and endIndex
+- **Fixed** **BarSeriesManager** consider finishIndex when running backtest
 
 ## 0.15 (released September 11, 2022)
 

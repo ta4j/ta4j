@@ -35,10 +35,10 @@ import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
+import org.jfree.chart.ui.ApplicationFrame;
+import org.jfree.chart.ui.UIUtils;
 import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeriesCollection;
-import org.jfree.ui.ApplicationFrame;
-import org.jfree.ui.RefineryUtilities;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeriesManager;
@@ -108,7 +108,7 @@ public class CashFlowToChart {
         ApplicationFrame frame = new ApplicationFrame("Ta4j example - Cash flow to chart");
         frame.setContentPane(panel);
         frame.pack();
-        RefineryUtilities.centerFrameOnScreen(frame);
+        UIUtils.centerFrameOnScreen(frame);
         frame.setVisible(true);
     }
 

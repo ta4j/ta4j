@@ -26,19 +26,19 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
  * Calculates the average return per bar criterion.
  *
  * <p>
- * The {@link GrossReturnCriterion gross return} raised to the power of 1
- * divided by {@link NumberOfBarsCriterion number of bars}.
+ * The {@link ReturnCriterion gross return} raised to the power of 1 divided by
+ * {@link NumberOfBarsCriterion number of bars}.
  */
 public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
-    private final GrossReturnCriterion grossReturn = new GrossReturnCriterion();
+    private final ReturnCriterion grossReturn = new ReturnCriterion();
     private final NumberOfBarsCriterion numberOfBars = new NumberOfBarsCriterion();
 
     @Override
