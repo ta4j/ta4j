@@ -32,9 +32,9 @@ import org.ta4j.core.num.Num;
  */
 public class StandardErrorIndicator extends CachedIndicator<Num> {
 
-    private int barCount;
+    private final int barCount;
 
-    private StandardDeviationIndicator sdev;
+    private final StandardDeviationIndicator sdev;
 
     /**
      * Constructor.

@@ -48,7 +48,7 @@ public class StopLossRule extends AbstractRule {
     /**
      * The loss percentage
      */
-    private Num lossPercentage;
+    private final Num lossPercentage;
 
     /**
      * Constructor.

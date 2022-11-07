@@ -38,13 +38,13 @@ public class BaseStrategy implements Strategy {
     private final String className = getClass().getSimpleName();
 
     /** Name of the strategy */
-    private String name;
+    private final String name;
 
     /** The entry rule */
-    private Rule entryRule;
+    private final Rule entryRule;
 
     /** The exit rule */
-    private Rule exitRule;
+    private final Rule exitRule;
 
     /**
      * The unstable period (number of bars).<br>

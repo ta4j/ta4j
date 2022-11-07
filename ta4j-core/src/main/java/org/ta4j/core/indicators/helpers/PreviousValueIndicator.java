@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
 public class PreviousValueIndicator extends CachedIndicator<Num> {
 
     private final int n;
-    private Indicator<Num> indicator;
+    private final Indicator<Num> indicator;
 
     /**
      * Constructor.

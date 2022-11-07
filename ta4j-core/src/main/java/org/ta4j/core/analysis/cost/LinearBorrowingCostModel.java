@@ -33,7 +33,7 @@ public class LinearBorrowingCostModel implements CostModel {
     /**
      * Slope of the linear model - fee per period
      */
-    private double feePerPeriod;
+    private final double feePerPeriod;
 
     /**
      * Constructor. (feePerPeriod * nPeriod)

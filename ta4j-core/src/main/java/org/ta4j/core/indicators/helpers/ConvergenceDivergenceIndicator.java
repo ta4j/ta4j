@@ -130,7 +130,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     private final ConvergenceDivergenceStrictType strictType;
 
     /** The minimum strength for convergence or divergence. **/
-    private Num minStrength;
+    private final Num minStrength;
 
     /** The minimum slope for convergence or divergence. **/
     private final Num minSlope;
@@ -171,7 +171,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
         this.barCount = barCount;
         this.type = type;
         this.strictType = null;
-        this.minStrength = numOf(minStrength).abs();
+        this.minStrength = numOf(Math.min(1, Math.abs(minStrength)));
         this.minSlope = numOf(minSlope);
     }
 
@@ -220,10 +220,6 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
         if (minStrength != null && minStrength.isZero()) {
             return false;
-        }
-
-        if (minStrength != null && minStrength.isGreaterThan(numOf(1))) {
-            minStrength = numOf(1);
         }
 
         if (type != null) {

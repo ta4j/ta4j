@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  */
 public class VolumeIndicator extends CachedIndicator<Num> {
 
-    private int barCount;
+    private final int barCount;
 
     public VolumeIndicator(BarSeries series) {
         this(series, 1);

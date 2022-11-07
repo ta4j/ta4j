@@ -49,7 +49,7 @@ public class CashFlow implements Indicator<Num> {
     /**
      * The (accrued) cash flow sequence (without trading costs).
      */
-    private List<Num> values;
+    private final List<Num> values;
 
     /**
      * Constructor for cash flows of a closed position.

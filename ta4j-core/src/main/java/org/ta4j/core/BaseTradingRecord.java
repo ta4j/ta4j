@@ -58,37 +58,37 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * The recorded trades
      */
-    private List<Trade> trades = new ArrayList<>();
+    private final List<Trade> trades = new ArrayList<>();
 
     /**
      * The recorded BUY trades
      */
-    private List<Trade> buyTrades = new ArrayList<>();
+    private final List<Trade> buyTrades = new ArrayList<>();
 
     /**
      * The recorded SELL trades
      */
-    private List<Trade> sellTrades = new ArrayList<>();
+    private final List<Trade> sellTrades = new ArrayList<>();
 
     /**
      * The recorded entry trades
      */
-    private List<Trade> entryTrades = new ArrayList<>();
+    private final List<Trade> entryTrades = new ArrayList<>();
 
     /**
      * The recorded exit trades
      */
-    private List<Trade> exitTrades = new ArrayList<>();
+    private final List<Trade> exitTrades = new ArrayList<>();
 
     /**
      * The entry type (BUY or SELL) in the trading session
      */
-    private TradeType startingType;
+    private final TradeType startingType;
 
     /**
      * The recorded positions
      */
-    private List<Position> positions = new ArrayList<>();
+    private final List<Position> positions = new ArrayList<>();
 
     /**
      * The current non-closed position (there's always one)
@@ -98,8 +98,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Trading cost models
      */
-    private CostModel transactionCostModel;
-    private CostModel holdingCostModel;
+    private final CostModel transactionCostModel;
+    private final CostModel holdingCostModel;
 
     /**
      * Constructor.
@@ -121,9 +121,9 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param name           the name of the trading record
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param name      the name of the trading record
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(String name, TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -133,8 +133,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param entryTradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -337,9 +337,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("BaseTradingRecord: " + (name == null ? "" : name));
-        sb.append(System.lineSeparator());
+        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
+                .append(name == null ? "" : name)
+                .append(System.lineSeparator());
         for (Trade trade : trades) {
             sb.append(trade.toString()).append(System.lineSeparator());
         }
