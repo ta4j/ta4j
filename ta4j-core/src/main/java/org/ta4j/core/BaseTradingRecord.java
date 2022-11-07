@@ -121,9 +121,9 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param name           the name of the trading record
-     * @param tradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param name      the name of the trading record
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(String name, TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -133,8 +133,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
-     * @param tradeType the {@link TradeType trade type} of entries in the
-     *                       trading session
+     * @param tradeType the {@link TradeType trade type} of entries in the trading
+     *                  session
      */
     public BaseTradingRecord(TradeType tradeType) {
         this(tradeType, new ZeroCostModel(), new ZeroCostModel());
@@ -337,8 +337,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder()
-                .append("BaseTradingRecord: ")
+        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
                 .append(name == null ? "" : name)
                 .append(System.lineSeparator());
         for (Trade trade : trades) {
