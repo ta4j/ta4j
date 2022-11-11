@@ -85,7 +85,7 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this.barSeries = barSeries;
-        values = new ArrayList<>(Collections.singletonList(numOf(1)));
+        values = new ArrayList<>(Collections.singletonList(one()));
 
         calculate(tradingRecord, finalIndex);
         fillToTheEnd(finalIndex);

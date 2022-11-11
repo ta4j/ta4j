@@ -296,8 +296,26 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * Returns BaseBarBuilder
+     * Returns BaseBarBuilder.
      * 
+     * @param <T>   the type of the clazz
+     * @param num   any instance of Num to determine its Num function; with this, we
+     *              can convert a {@link Number} to a {@link Num Num implementation}
+     * @param clazz any type convertable to Num
+     * @return builder of class BaseBarBuilder
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> ConvertibleBaseBarBuilder<T> builder(Num num, Class<T> clazz) {
+        return new ConvertibleBaseBarBuilder<>((Function<T, Num>) num.function());
+    }
+
+    /**
+     * Returns BaseBarBuilder.
+     * 
+     * @param <T>   the type of the clazz
+     * @param num   any Num function; with this, we can convert a {@link Number} to
+     *              a {@link Num Num implementation}
+     * @param clazz any type convertable to Num
      * @return builder of class BaseBarBuilder
      */
     public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {

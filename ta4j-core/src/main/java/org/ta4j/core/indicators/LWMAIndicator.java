@@ -37,7 +37,7 @@ public class LWMAIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num zero = numOf(0);
+    private final Num zero = zero();
 
     public LWMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);

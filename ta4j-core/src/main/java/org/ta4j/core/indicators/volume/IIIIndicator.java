@@ -57,7 +57,7 @@ public class IIIIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         if (index == getBarSeries().getBeginIndex()) {
-            return numOf(0);
+            return zero();
         }
         final Num doubledClosePrice = two.multipliedBy(closePriceIndicator.getValue(index));
         final Num high = highPriceIndicator.getValue(index);

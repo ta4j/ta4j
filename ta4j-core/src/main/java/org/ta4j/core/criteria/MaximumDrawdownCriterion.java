@@ -45,7 +45,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
-            return series.numOf(0);
+            return series.zero();
         }
         CashFlow cashFlow = new CashFlow(series, position);
         return calculateMaximumDrawdown(series, null, cashFlow);
@@ -82,7 +82,7 @@ public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
      */
     private Num calculateMaximumDrawdown(BarSeries series, TradingRecord tradingRecord, CashFlow cashFlow) {
 
-        Num zero = series.numOf(0);
+        Num zero = series.zero();
         Num maxPeak = zero;
         Num maximumDrawdown = zero;
 

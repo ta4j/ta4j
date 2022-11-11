@@ -35,7 +35,7 @@ public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriteri
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return isBreakEvenPosition(position) ? series.numOf(1) : series.numOf(0);
+        return isBreakEvenPosition(position) ? series.one() : series.zero();
     }
 
     @Override

@@ -99,7 +99,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
         if (index == getBarSeries().getBeginIndex()) {
             lastExtreme.put(0, getBarSeries().getBar(index).getClosePrice());
-            lastAf.put(0, sar.numOf(0));
+            lastAf.put(0, zero());
             isUpTrendMap.put(0, false);
             return sar; // no trend detection possible for the first value
         } else if (index == getBarSeries().getBeginIndex() + 1) {// start trend detection

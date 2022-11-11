@@ -74,7 +74,7 @@ public final class DecimalNum implements Num {
     private static final int DEFAULT_PRECISION = 32;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
 
-    private static final DecimalNum ZERO = DecimalNum.valueOf(0);
+    public static final DecimalNum ZERO = DecimalNum.valueOf(0);
     private static final DecimalNum ONE = DecimalNum.valueOf(1);
     private static final DecimalNum HUNDRED = DecimalNum.valueOf(100);
 
@@ -136,17 +136,17 @@ public final class DecimalNum implements Num {
 
     @Override
     public Num zero() {
-        return ZERO;
+        return mathContext.getPrecision() == DEFAULT_PRECISION ? ZERO : function().apply(0);
     }
 
     @Override
     public Num one() {
-        return ONE;
+        return mathContext.getPrecision() == DEFAULT_PRECISION ? ONE : function().apply(1);
     }
 
     @Override
     public Num hundred() {
-        return HUNDRED;
+        return mathContext.getPrecision() == DEFAULT_PRECISION ? HUNDRED : function().apply(100);
     }
 
     /**
@@ -163,9 +163,9 @@ public final class DecimalNum implements Num {
     }
 
     /**
-     * Returns a {@code Num) version of the given {@code String} with a precision.
+     * Returns a {@code Num} version of the given {@code String} with a precision.
      *
-     * @param val the number
+     * @param val       the number
      * 
      * @param precision the precision
      * @return the {@code Num}

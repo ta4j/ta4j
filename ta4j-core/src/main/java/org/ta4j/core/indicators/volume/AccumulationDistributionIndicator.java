@@ -43,7 +43,7 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
     @Override
     protected Num calculate(int index) {
         if (index == 0) {
-            return numOf(0);
+            return zero();
         }
 
         // Calculating the money flow multiplier

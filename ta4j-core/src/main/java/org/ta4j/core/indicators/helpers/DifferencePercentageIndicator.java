@@ -46,7 +46,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     private Num lastNotification;
 
     public DifferencePercentageIndicator(Indicator<Num> indicator) {
-        this(indicator, indicator.numOf(0));
+        this(indicator, indicator.zero());
     }
 
     public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
@@ -57,7 +57,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.percentageThreshold = percentageThreshold;
-        hundred = numOf(100);
+        hundred = hundred();
     }
 
     @Override

@@ -29,11 +29,6 @@ import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.keltner.KeltnerChannelFacade;
-import org.ta4j.core.indicators.keltner.KeltnerChannelLowerIndicator;
-import org.ta4j.core.indicators.keltner.KeltnerChannelMiddleIndicator;
-import org.ta4j.core.indicators.keltner.KeltnerChannelUpperIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 

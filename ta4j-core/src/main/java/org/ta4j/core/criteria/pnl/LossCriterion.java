@@ -60,9 +60,9 @@ public class LossCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, Position position) {
         if (position.isClosed()) {
             Num loss = excludeCosts ? position.getProfit() : position.getGrossProfit();
-            return loss.isNegative() ? loss : series.numOf(0);
+            return loss.isNegative() ? loss : series.zero();
         }
-        return series.numOf(0);
+        return series.zero();
 
     }
 
@@ -72,7 +72,7 @@ public class LossCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .reduce(series.numOf(0), Num::plus);
+                .reduce(series.zero(), Num::plus);
     }
 
     /** The higher the criterion value (= the less the loss), the better. */

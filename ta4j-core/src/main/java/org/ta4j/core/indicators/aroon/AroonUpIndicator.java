@@ -57,7 +57,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         super(highPriceIndicator);
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
-        this.hundred = numOf(100);
+        this.hundred = hundred();
         this.barCountNum = numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);

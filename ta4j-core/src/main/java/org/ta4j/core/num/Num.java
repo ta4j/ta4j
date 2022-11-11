@@ -327,14 +327,29 @@ public interface Num extends Comparable<Num> {
         return getDelegate().doubleValue();
     }
 
+    /**
+     * Converts this {@code num} to an {@code integer}.
+     * 
+     * @return this {@code num} converted to an {@code integer}
+     */
     default int intValue() {
         return getDelegate().intValue();
     }
 
+    /**
+     * Converts this {@code num} to a {@code long}.
+     * 
+     * @return this {@code num} converted to a {@code loong}
+     */
     default long longValue() {
         return getDelegate().longValue();
     }
 
+    /**
+     * Converts this {@code num} to a {@code float}.
+     * 
+     * @return this {@code num} converted to a {@code float}
+     */
     default float floatValue() {
         return getDelegate().floatValue();
     }

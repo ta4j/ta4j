@@ -89,8 +89,8 @@ public class EnterAndHoldReturnCriterion extends AbstractAnalysisCriterion {
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
         Position position = new Position(this.tradeType);
-        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.numOf(1));
-        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.numOf(1));
+        position.operate(beginIndex, series.getBar(beginIndex).getClosePrice(), series.one());
+        position.operate(endIndex, series.getBar(endIndex).getClosePrice(), series.one());
         return position;
     }
 }

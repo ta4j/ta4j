@@ -55,7 +55,7 @@ public class RWILowIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num minRWIL = numOf(0);
+        Num minRWIL = zero();
         for (int n = 2; n <= barCount; n++) {
             minRWIL = minRWIL.max(calcRWIHFor(index, n));
         }

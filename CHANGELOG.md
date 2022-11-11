@@ -5,6 +5,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Breaking
 - **Upgraded to Java 11**
 - **VersusBuyAndHoldCriterion** renamed to **`VersusEnterAndHoldCriterion`**
+- **BarSeries** constructors use any instance of Num instead of Num-Function
 - **GrossReturnCriterion** renamed to **`ReturnCriterion`**
 - **NetProfitCriterion** and **GrossProfitCriterion** replaced by **`ProfitCriterion`**
 - **NetLossCriterion** and **GrossLossCriterion** replaced by **`LossCriterion`**

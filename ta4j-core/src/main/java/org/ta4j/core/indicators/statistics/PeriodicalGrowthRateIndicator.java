@@ -73,7 +73,7 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
-        one = numOf(1);
+        one = one();
     }
 
     /**

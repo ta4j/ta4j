@@ -100,7 +100,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, TradeType.BUY, barSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, TradeType.BUY, barSeries.one(), startIndex, finishIndex);
     }
 
     /**
@@ -113,7 +113,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType) {
-        return run(strategy, tradeType, barSeries.numOf(1));
+        return run(strategy, tradeType, barSeries.one());
     }
 
     /**
@@ -129,7 +129,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, int startIndex, int finishIndex) {
-        return run(strategy, tradeType, barSeries.numOf(1), startIndex, finishIndex);
+        return run(strategy, tradeType, barSeries.one(), startIndex, finishIndex);
     }
 
     /**

@@ -57,7 +57,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         super(lowPriceIndicator);
         this.barCount = barCount;
         this.lowPriceIndicator = lowPriceIndicator;
-        this.hundred = numOf(100);
+        this.hundred = hundred();
         this.barCountNum = numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
