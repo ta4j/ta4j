@@ -39,4 +39,9 @@ public class TradeCountIndicator extends CachedIndicator<Long> {
     protected Long calculate(int index) {
         return getBarSeries().getBar(index).getTrades();
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

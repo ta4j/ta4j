@@ -51,7 +51,6 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * @param series the series
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series) {
-
         this(series, 52, 26);
     }
 
@@ -62,7 +61,6 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame (usually 52)
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount) {
-
         this(series, barCount, 26);
     }
 
@@ -74,7 +72,6 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      * @param offset   displacement on the chart
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
-
         super(series);
         lineIndicator = new IchimokuLineIndicator(series, barCount);
         this.offset = offset;
@@ -88,5 +85,10 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
         } else {
             return NaN.NaN;
         }
+    }
+
+    @Override
+    public int getUnstablePeriod() {
+        return offset;
     }
 }

@@ -60,6 +60,11 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
+    @Override
     protected Num calculate(int index) {
         return periodHigh.getValue(index).plus(periodLow.getValue(index)).dividedBy(numOf(2));
     }

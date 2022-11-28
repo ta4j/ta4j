@@ -181,6 +181,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         return sar;
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     /**
      * Increments the acceleration factor.
      */

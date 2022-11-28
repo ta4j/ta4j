@@ -97,6 +97,11 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
         return (high.plus(low).plus(close)).dividedBy(numOf(3));
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     /**
      * Calculates the indices of the bars of the previous period
      *

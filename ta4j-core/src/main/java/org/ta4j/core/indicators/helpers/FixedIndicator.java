@@ -59,4 +59,9 @@ public class FixedIndicator<T> extends AbstractIndicator<T> {
         return values.get(index);
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
 }

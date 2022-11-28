@@ -82,4 +82,9 @@ public class ChopIndicator extends CachedIndicator<Num> {
         // TODO: implement Num.log10(Num)
         return scaleUpTo.multipliedBy(numOf(Math.log10(a.doubleValue()))).dividedBy(log10n);
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return timeFrame;
+    }
 }

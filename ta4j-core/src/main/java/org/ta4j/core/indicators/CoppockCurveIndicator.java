@@ -69,4 +69,9 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return wma.getValue(index);
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

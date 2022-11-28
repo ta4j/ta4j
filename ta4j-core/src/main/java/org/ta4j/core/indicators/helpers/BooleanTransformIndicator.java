@@ -190,6 +190,11 @@ public class BooleanTransformIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
+    @Override
     public String toString() {
         if (type != null) {
             return getClass().getSimpleName() + " Coefficient: " + coefficient + " Transform(" + type.name() + ")";

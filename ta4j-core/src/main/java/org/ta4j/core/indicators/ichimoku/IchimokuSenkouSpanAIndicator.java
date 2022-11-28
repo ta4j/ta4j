@@ -96,4 +96,9 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

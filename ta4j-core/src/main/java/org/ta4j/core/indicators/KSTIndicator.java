@@ -93,4 +93,9 @@ public class KSTIndicator extends CachedIndicator<Num> {
                 .plus(RCMA3.getValue(index).multipliedBy(RCMA3Multiplier))
                 .plus(RCMA4.getValue(index).multipliedBy(RCMA4Multiplier)));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

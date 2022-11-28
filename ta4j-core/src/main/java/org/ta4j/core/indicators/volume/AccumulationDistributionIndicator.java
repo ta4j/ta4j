@@ -54,4 +54,9 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
 
         return moneyFlowVolume.plus(getValue(index - 1));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

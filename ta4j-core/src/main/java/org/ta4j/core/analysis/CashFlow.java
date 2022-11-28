@@ -265,4 +265,9 @@ public class CashFlow implements Indicator<Num> {
         }
         return idx;
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

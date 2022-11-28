@@ -68,4 +68,9 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return high.getValue(index).minus(atr.getValue(index).multipliedBy(k));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

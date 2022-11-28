@@ -69,4 +69,9 @@ public class CMOIndicator extends CachedIndicator<Num> {
         }
         return sumOfGains.minus(sumOfLosses).dividedBy(sumOfGains.plus(sumOfLosses)).multipliedBy(hundred());
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
 }

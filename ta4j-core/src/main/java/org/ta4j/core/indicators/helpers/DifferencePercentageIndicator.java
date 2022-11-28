@@ -78,6 +78,11 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         return changePercentage;
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     private Num fractionToPercentage(Num changeFraction) {
         return changeFraction.multipliedBy(hundred).minus(hundred);
     }

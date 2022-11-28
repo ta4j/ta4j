@@ -65,6 +65,11 @@ public class CombineIndicator extends CachedIndicator<Num> {
         return combineFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     /**
      * Combines the two input indicators by indicatorLeft.plus(indicatorRight).
      */

@@ -62,4 +62,9 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
 }

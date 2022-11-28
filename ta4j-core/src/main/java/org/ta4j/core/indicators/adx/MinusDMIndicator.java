@@ -53,4 +53,9 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
             return numOf(0);
         }
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

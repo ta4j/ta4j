@@ -79,7 +79,11 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
         default:
             return NaN;
         }
+    }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
     }
 
     private Num calculateR3(List<Integer> barsOfPreviousPeriod, int index) {

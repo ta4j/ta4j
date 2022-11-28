@@ -78,6 +78,11 @@ class BinaryOperation implements Indicator<Num> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
+    @Override
     public BarSeries getBarSeries() {
         return left.getBarSeries();
     }

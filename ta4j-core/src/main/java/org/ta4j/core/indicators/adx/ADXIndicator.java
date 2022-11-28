@@ -60,4 +60,9 @@ public class ADXIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " diBarCount: " + diBarCount + " adxBarCount: " + adxBarCount;
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return Math.max(diBarCount, adxBarCount);
+    }
 }

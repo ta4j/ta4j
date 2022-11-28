@@ -75,6 +75,11 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
         return bbm.getValue(index).plus(deviation.getValue(index).multipliedBy(k));
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     /**
      * @return the K multiplier
      */

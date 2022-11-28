@@ -54,4 +54,9 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
         final int numberOfObservations = index - startIndex + 1;
         return sdev.getValue(index).dividedBy(numOf(numberOfObservations).sqrt());
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
 }

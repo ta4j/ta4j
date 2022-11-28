@@ -48,4 +48,9 @@ public class UnstableIndicator extends CachedIndicator<Num> {
         }
         return indicator.getValue(index);
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return unstablePeriod;
+    }
 }

@@ -61,6 +61,11 @@ public class TransformIndicator extends CachedIndicator<Num> {
         return transformationFunction.apply(indicator.getValue(index));
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     /**
      * Transforms the input indicator by indicator.plus(coefficient).
      */

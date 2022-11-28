@@ -50,4 +50,9 @@ public class GainIndicator extends CachedIndicator<Num> {
             return zero();
         }
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

@@ -63,6 +63,11 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
         return maxRWIH;
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
+
     private Num calcRWIHFor(final int index, final int n) {
         BarSeries series = getBarSeries();
         Num high = series.getBar(index).getHighPrice();

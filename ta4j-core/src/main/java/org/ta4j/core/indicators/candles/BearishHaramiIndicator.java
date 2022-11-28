@@ -63,4 +63,9 @@ public class BearishHaramiIndicator extends CachedIndicator<Boolean> {
         }
         return false;
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

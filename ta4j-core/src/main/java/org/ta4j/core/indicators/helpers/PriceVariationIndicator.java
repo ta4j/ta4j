@@ -42,4 +42,9 @@ public class PriceVariationIndicator extends CachedIndicator<Num> {
         Num currentBarClosePrice = getBarSeries().getBar(index).getClosePrice();
         return currentBarClosePrice.dividedBy(previousBarClosePrice);
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

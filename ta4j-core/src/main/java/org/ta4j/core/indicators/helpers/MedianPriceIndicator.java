@@ -42,4 +42,9 @@ public class MedianPriceIndicator extends CachedIndicator<Num> {
         final Bar bar = getBarSeries().getBar(index);
         return bar.getHighPrice().plus(bar.getLowPrice()).dividedBy(numOf(2));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

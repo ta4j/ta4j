@@ -231,6 +231,11 @@ public class NumericIndicator implements Indicator<Num> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
+    @Override
     public BarSeries getBarSeries() {
         return delegate.getBarSeries();
     }

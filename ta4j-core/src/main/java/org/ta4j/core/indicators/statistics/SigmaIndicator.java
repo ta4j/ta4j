@@ -62,6 +62,11 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }

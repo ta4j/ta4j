@@ -43,4 +43,9 @@ public class EMAIndicator extends AbstractEMAIndicator {
     public EMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator, barCount, (2.0 / (barCount + 1)));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

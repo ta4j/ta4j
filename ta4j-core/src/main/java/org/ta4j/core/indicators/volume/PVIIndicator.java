@@ -62,4 +62,9 @@ public class PVIIndicator extends RecursiveCachedIndicator<Num> {
         return previousValue;
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
 }

@@ -118,4 +118,9 @@ public class FibonacciReversalIndicator extends RecursiveCachedIndicator<Num> {
         }
         return pivotPointIndicator.getValue(index).minus(fibonacciFactor.multipliedBy(high.minus(low)));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

@@ -74,4 +74,9 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return sma5.getValue(index).minus(sma34.getValue(index));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

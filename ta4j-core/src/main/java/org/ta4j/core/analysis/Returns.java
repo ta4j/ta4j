@@ -221,4 +221,9 @@ public class Returns implements Indicator<Num> {
             values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.zero()));
         }
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

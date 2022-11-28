@@ -69,4 +69,9 @@ public class PPOIndicator extends CachedIndicator<Num> {
         Num longEmaValue = longTermEma.getValue(index);
         return shortEmaValue.minus(longEmaValue).dividedBy(longEmaValue).multipliedBy(hundred());
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

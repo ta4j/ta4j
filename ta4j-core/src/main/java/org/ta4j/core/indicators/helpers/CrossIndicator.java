@@ -70,6 +70,11 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
         return (i != 0) && (up.getValue(i).isGreaterThan(low.getValue(i)));
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
     /**
      * @return the initial lower indicator
      */

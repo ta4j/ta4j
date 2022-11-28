@@ -51,6 +51,11 @@ public class StochasticOscillatorDIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + " " + indicator;
     }

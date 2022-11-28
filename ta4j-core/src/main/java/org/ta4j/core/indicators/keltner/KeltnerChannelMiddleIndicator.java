@@ -55,6 +55,11 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
         return emaIndicator.getValue(index);
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return getBarCount();
+    }
+
     public int getBarCount() {
         return emaIndicator.getBarCount();
     }

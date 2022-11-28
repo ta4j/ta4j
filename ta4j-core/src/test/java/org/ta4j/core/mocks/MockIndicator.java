@@ -69,4 +69,9 @@ public class MockIndicator implements Indicator<Num> {
         return series.numOf(number);
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
 }

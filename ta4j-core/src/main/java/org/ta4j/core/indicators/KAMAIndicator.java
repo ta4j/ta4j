@@ -103,4 +103,9 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         return priorKAMA.plus(sc.multipliedBy(currentPrice.minus(priorKAMA)));
     }
 
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
 }

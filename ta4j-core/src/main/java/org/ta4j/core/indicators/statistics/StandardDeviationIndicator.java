@@ -53,4 +53,9 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return variance.getValue(index).sqrt();
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

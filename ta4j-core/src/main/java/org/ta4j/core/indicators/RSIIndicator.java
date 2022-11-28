@@ -60,4 +60,9 @@ public class RSIIndicator extends CachedIndicator<Num> {
         // compute relative strength index
         return hundred().minus(hundred().dividedBy(one().plus(relativeStrength)));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

@@ -66,4 +66,9 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return emaShort.getValue(index).minus(emaLong.getValue(index));
     }
+
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
 }

@@ -75,6 +75,11 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
