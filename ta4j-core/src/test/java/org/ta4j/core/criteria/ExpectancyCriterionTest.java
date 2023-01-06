@@ -50,7 +50,7 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion avgLoss = getCriterion();
-        assertNumEquals(0, avgLoss.calculate(series, tradingRecord));
+        assertNumEquals(1.0, avgLoss.calculate(series, tradingRecord));
     }
 
     @Test
@@ -60,9 +60,9 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(5, series));
 
         AnalysisCriterion avgLoss = getCriterion();
-        assertNumEquals(-1.25, avgLoss.calculate(series, tradingRecord));
+        assertNumEquals(0.25, avgLoss.calculate(series, tradingRecord));
     }
-
+    
     @Test
     public void calculateOnlyWithLossPositions() {
         MockBarSeries series = new MockBarSeries(numFunction, 100, 95, 80, 70, 60, 50);
@@ -80,7 +80,7 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
         AnalysisCriterion avgLoss = getCriterion();
-        assertNumEquals(0, avgLoss.calculate(series, tradingRecord));
+        assertNumEquals(1.0, avgLoss.calculate(series, tradingRecord));
     }
 
     @Test
@@ -90,7 +90,7 @@ public class ExpectancyCriterionTest extends AbstractCriterionTest {
                 Trade.sellAt(2, series), Trade.buyAt(5, series));
 
         AnalysisCriterion avgLoss = getCriterion();
-        assertNumEquals(-1.25, avgLoss.calculate(series, tradingRecord));
+        assertNumEquals(0.25, avgLoss.calculate(series, tradingRecord));
     }
 
     @Test
