@@ -46,6 +46,6 @@ public class EMAIndicator extends AbstractEMAIndicator {
 
     @Override
     public int getUnstablePeriod() {
-        return barCount;
+        return getBarCount();
     }
 }
