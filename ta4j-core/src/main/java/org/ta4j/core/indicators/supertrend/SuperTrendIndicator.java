@@ -83,4 +83,12 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         }
         return "Buy";
     }
+
+    public LowerBandIndicator getLowerBandIndicator() {
+        return lowerBandIndicator;
+    }
+
+    public UpperBandIndicator getUpperBandIndicator() {
+        return upperBandIndicator;
+    }
 }
