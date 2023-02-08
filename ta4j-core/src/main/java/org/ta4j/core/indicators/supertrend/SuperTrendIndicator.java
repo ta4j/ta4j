@@ -25,20 +25,21 @@ package org.ta4j.core.indicators.supertrend;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
-    private final UpperBandIndicator upperBandIndicator;
-    private final LowerBandIndicator lowerBandIndicator;
+    private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
+    private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
 
     public SuperTrendIndicator(final BarSeries series, int length, final Integer multiplier) {
         super(series);
         ATRIndicator atrIndicator = new ATRIndicator(series, length);
-        this.upperBandIndicator = new UpperBandIndicator(series, atrIndicator, multiplier);
-        this.lowerBandIndicator = new LowerBandIndicator(series, atrIndicator, multiplier);
+        this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
+        this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
     }
 
     public SuperTrendIndicator(final BarSeries series) {
@@ -52,26 +53,21 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         if (i == 0)
             return value;
         Bar bar = getBarSeries().getBar(i);
-        /*
-         * if(bar.getClosePrice().isLessThanOrEqual(this.upperBandIndicator.getValue(i))
-         * ) value = this.upperBandIndicator.getValue(i); else value =
-         * this.lowerBandIndicator.getValue(i);
-         */
 
-        if (this.getValue(i - 1).isEqual(this.upperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThanOrEqual(this.upperBandIndicator.getValue(i))) {
-            value = this.upperBandIndicator.getValue(i);
+        if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
+                && bar.getClosePrice().isLessThanOrEqual(this.superTrendUpperBandIndicator.getValue(i))) {
+            value = this.superTrendUpperBandIndicator.getValue(i);
         }
 
-        if (this.getValue(i - 1).isEqual(this.upperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThan(this.upperBandIndicator.getValue(i))) {
-            value = this.lowerBandIndicator.getValue(i);
-        } else if (this.getValue(i - 1).isEqual(this.lowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThanOrEqual(this.lowerBandIndicator.getValue(i))) {
-            value = this.lowerBandIndicator.getValue(i);
-        } else if (this.getValue(i - 1).isEqual(this.lowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThan(this.upperBandIndicator.getValue(i))) {
-            value = this.upperBandIndicator.getValue(i);
+        if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
+                && bar.getClosePrice().isGreaterThan(this.superTrendUpperBandIndicator.getValue(i))) {
+            value = this.superTrendLowerBandIndicator.getValue(i);
+        } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
+                && bar.getClosePrice().isGreaterThanOrEqual(this.superTrendLowerBandIndicator.getValue(i))) {
+            value = this.superTrendLowerBandIndicator.getValue(i);
+        } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
+                && bar.getClosePrice().isLessThan(this.superTrendUpperBandIndicator.getValue(i))) {
+            value = this.superTrendUpperBandIndicator.getValue(i);
         }
 
         return value;
@@ -79,16 +75,16 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     public String getSignal(int index) {
         if (getBarSeries().getBar(index).getClosePrice().isLessThanOrEqual(this.getValue(index))) {
-            return "Sell";
+            return Trade.TradeType.SELL.name();
         }
-        return "Buy";
+        return Trade.TradeType.BUY.name();
     }
 
-    public LowerBandIndicator getLowerBandIndicator() {
-        return lowerBandIndicator;
+    public SuperTrendLowerBandIndicator getSuperTrendLowerBandIndicator() {
+        return superTrendLowerBandIndicator;
     }
 
-    public UpperBandIndicator getUpperBandIndicator() {
-        return upperBandIndicator;
+    public SuperTrendUpperBandIndicator getSuperTrendUpperBandIndicator() {
+        return superTrendUpperBandIndicator;
     }
 }

@@ -31,16 +31,18 @@ import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
-public class UpperBandIndicator extends RecursiveCachedIndicator<Num> {
+public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> {
+
     private final ATRIndicator atrIndicator;
     private final Integer multiplier;
     private final MedianPriceIndicator medianPriceIndicator;
 
-    public UpperBandIndicator(final BarSeries barSeries) {
+    public SuperTrendLowerBandIndicator(final BarSeries barSeries) {
         this(barSeries, new ATRIndicator(barSeries, 10), 3);
     }
 
-    public UpperBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator, final Integer multiplier) {
+    public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator,
+            final Integer multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
         this.multiplier = multiplier;
@@ -49,19 +51,18 @@ public class UpperBandIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-
-        Num currentBasic = this.medianPriceIndicator.getValue(index)
-                .plus(DoubleNum.valueOf(this.multiplier).multipliedBy(this.atrIndicator.getValue(index)));
-
         if (index == 0)
-            return currentBasic;
+            return DoubleNum.valueOf(0);
 
         Bar bar = getBarSeries().getBar(index - 1);
 
-        if (currentBasic.isLessThan(this.getValue(index - 1))
-                || bar.getClosePrice().isGreaterThan(this.getValue(index - 1)))
+        Num currentBasic = this.medianPriceIndicator.getValue(index)
+                .minus(DoubleNum.valueOf(this.multiplier).multipliedBy(this.atrIndicator.getValue(index)));
+
+        if (currentBasic.isGreaterThan(this.getValue(index - 1))
+                || bar.getClosePrice().isLessThan(this.getValue(index - 1))) {
             return currentBasic;
-        else
+        } else
             return this.getValue(index - 1);
     }
 }

@@ -40,11 +40,11 @@ import java.util.function.Function;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-public class LowerBandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     BarSeries data;
 
-    public LowerBandIndicatorTest(Function<Number, DoubleNum> numFunction) {
+    public SuperTrendLowerBandIndicatorTest(Function<Number, DoubleNum> numFunction) {
         super((d) -> DoubleNum.valueOf(d));
     }
 
@@ -72,11 +72,11 @@ public class LowerBandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void testLowerBandIndicator() {
-        LowerBandIndicator lowerBandIndicator = new LowerBandIndicator(data);
+    public void testSuperTrendLowerBandIndicator() {
+        SuperTrendLowerBandIndicator superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(data);
 
-        assertNumEquals(this.numOf(15.730621000000003), lowerBandIndicator.getValue(4));
-        assertNumEquals(this.numOf(17.602360938100002), lowerBandIndicator.getValue(9));
-        assertNumEquals(this.numOf(2.4620527443048026), lowerBandIndicator.getValue(14));
+        assertNumEquals(this.numOf(15.730621000000003), superTrendLowerBandIndicator.getValue(4));
+        assertNumEquals(this.numOf(17.602360938100002), superTrendLowerBandIndicator.getValue(9));
+        assertNumEquals(this.numOf(2.4620527443048026), superTrendLowerBandIndicator.getValue(14));
     }
 }

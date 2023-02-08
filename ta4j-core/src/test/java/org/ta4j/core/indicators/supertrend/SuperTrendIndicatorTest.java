@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
@@ -80,9 +81,9 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(this.numOf(8.106659807956113), superTrendIndicator.getValue(9));
         assertNumEquals(this.numOf(35.88334019204388), superTrendIndicator.getValue(14));
 
-        assertEquals("Buy", superTrendIndicator.getSignal(4));
-        assertEquals("Buy", superTrendIndicator.getSignal(9));
-        assertEquals("Sell", superTrendIndicator.getSignal(14));
+        assertEquals(Trade.TradeType.BUY.name(), superTrendIndicator.getSignal(4));
+        assertEquals(Trade.TradeType.BUY.name(), superTrendIndicator.getSignal(9));
+        assertEquals(Trade.TradeType.SELL.name(), superTrendIndicator.getSignal(14));
 
     }
 }
