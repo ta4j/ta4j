@@ -81,9 +81,5 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(this.numOf(8.106659807956113), superTrendIndicator.getValue(9));
         assertNumEquals(this.numOf(35.88334019204388), superTrendIndicator.getValue(14));
 
-        assertEquals(Trade.TradeType.BUY.name(), superTrendIndicator.getSignal(4));
-        assertEquals(Trade.TradeType.BUY.name(), superTrendIndicator.getSignal(9));
-        assertEquals(Trade.TradeType.SELL.name(), superTrendIndicator.getSignal(14));
-
     }
 }

@@ -72,14 +72,6 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
         return value;
     }
-
-    public String getSignal(int index) {
-        if (getBarSeries().getBar(index).getClosePrice().isLessThanOrEqual(this.getValue(index))) {
-            return Trade.TradeType.SELL.name();
-        }
-        return Trade.TradeType.BUY.name();
-    }
-
     public SuperTrendLowerBandIndicator getSuperTrendLowerBandIndicator() {
         return superTrendLowerBandIndicator;
     }
