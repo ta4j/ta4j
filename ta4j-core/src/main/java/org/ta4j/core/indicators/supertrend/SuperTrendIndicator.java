@@ -72,6 +72,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
         return value;
     }
+
     public SuperTrendLowerBandIndicator getSuperTrendLowerBandIndicator() {
         return superTrendLowerBandIndicator;
     }
