@@ -52,7 +52,7 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
     @Override
     protected Num calculate(int index) {
         if (index == 0)
-            return DoubleNum.valueOf(0);
+            return zero();
 
         Bar bar = getBarSeries().getBar(index - 1);
 

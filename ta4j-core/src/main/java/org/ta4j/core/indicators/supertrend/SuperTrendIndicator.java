@@ -25,10 +25,8 @@ package org.ta4j.core.indicators.supertrend;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
@@ -48,7 +46,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int i) {
-        Num value = DoubleNum.valueOf(0);
+        Num value = zero();
 
         if (i == 0)
             return value;
