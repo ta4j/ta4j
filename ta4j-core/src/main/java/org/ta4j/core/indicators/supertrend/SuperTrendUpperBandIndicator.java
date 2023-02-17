@@ -28,12 +28,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> {
     private final ATRIndicator atrIndicator;
-    private final Integer multiplier;
+    private final Num multiplier;
     private final MedianPriceIndicator medianPriceIndicator;
 
     public SuperTrendUpperBandIndicator(final BarSeries barSeries) {
@@ -44,7 +43,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
             final Integer multiplier) {
         super(barSeries);
         this.atrIndicator = atrIndicator;
-        this.multiplier = multiplier;
+        this.multiplier = numOf(multiplier);
         this.medianPriceIndicator = new MedianPriceIndicator(barSeries);
     }
 
@@ -52,7 +51,7 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
     protected Num calculate(int index) {
 
         Num currentBasic = this.medianPriceIndicator.getValue(index)
-                .plus(DoubleNum.valueOf(this.multiplier).multipliedBy(this.atrIndicator.getValue(index)));
+                .plus(this.multiplier.multipliedBy(this.atrIndicator.getValue(index)));
 
         if (index == 0)
             return currentBasic;
