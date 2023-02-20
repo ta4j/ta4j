@@ -43,7 +43,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     public SuperTrendIndicator(final BarSeries series) {
-        this(series, 3, 10);
+        this(series, 10, 3);
     }
 
     @Override
