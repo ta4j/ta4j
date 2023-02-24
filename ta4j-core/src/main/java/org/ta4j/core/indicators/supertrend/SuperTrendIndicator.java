@@ -56,7 +56,7 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         Bar bar = getBarSeries().getBar(i);
 
         if (this.getValue(i - 1).isEqual(this.superTrendUpperBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThanOrEqual(this.superTrendUpperBandIndicator.getValue(i))) {
+                && bar.getClosePrice().isLessThan(this.superTrendUpperBandIndicator.getValue(i))) {
             value = this.superTrendUpperBandIndicator.getValue(i);
         }
 
@@ -64,10 +64,10 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
                 && bar.getClosePrice().isGreaterThan(this.superTrendUpperBandIndicator.getValue(i))) {
             value = this.superTrendLowerBandIndicator.getValue(i);
         } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isGreaterThanOrEqual(this.superTrendLowerBandIndicator.getValue(i))) {
+                && bar.getClosePrice().isGreaterThan(this.superTrendLowerBandIndicator.getValue(i))) {
             value = this.superTrendLowerBandIndicator.getValue(i);
         } else if (this.getValue(i - 1).isEqual(this.superTrendLowerBandIndicator.getValue(i - 1))
-                && bar.getClosePrice().isLessThan(this.superTrendUpperBandIndicator.getValue(i))) {
+                && bar.getClosePrice().isLessThan(this.superTrendLowerBandIndicator.getValue(i))) {
             value = this.superTrendUpperBandIndicator.getValue(i);
         }
 
