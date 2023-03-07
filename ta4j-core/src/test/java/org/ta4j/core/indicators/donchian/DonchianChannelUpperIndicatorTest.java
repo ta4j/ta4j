@@ -53,14 +53,22 @@ public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<Bar
         List<Bar> bars = new ArrayList<>();
 
         bars.add(new BaseBar(Duration.ofHours(1), startDateTime, 100d, 105d, 95d, 100d, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(1), 105, 110, 100, 105, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(2), 110, 115, 105, 110, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(3), 115, 120, 110, 115, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(4), 120, 125, 115, 120, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(5), 115, 120, 110, 115, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(6), 110, 115, 105, 110, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(7), 105, 110, 100, 105, 0d, 0, 0, this::numOf));
-        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(8), 100, 105, 95, 100, 0d, 0, 0, this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(1), 105, 110, 100, 105, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(2), 110, 115, 105, 110, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(3), 115, 120, 110, 115, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(4), 120, 125, 115, 120, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(5), 115, 120, 110, 115, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(6), 110, 115, 105, 110, 0d, 0, 0,
+                this::numOf));
+        bars.add(new BaseBar(Duration.ofHours(1), startDateTime.plusHours(7), 105, 110, 100, 105, 0d, 0, 0,
+                this::numOf));
+        bars.add(
+                new BaseBar(Duration.ofHours(1), startDateTime.plusHours(8), 100, 105, 95, 100, 0d, 0, 0, this::numOf));
 
         this.series = new BaseBarSeries("DonchianChannelUpperIndicatorTestSeries", bars);
     }
@@ -83,7 +91,7 @@ public class DonchianChannelUpperIndicatorTest extends AbstractIndicatorTest<Bar
         assertEquals(numOf(120), subject.getValue(7));
         assertEquals(numOf(115), subject.getValue(8));
     }
-    
+
     @Test
     public void testGetValueWhenBarCountIs1() {
         DonchianChannelUpperIndicator subject = new DonchianChannelUpperIndicator(series, 1);

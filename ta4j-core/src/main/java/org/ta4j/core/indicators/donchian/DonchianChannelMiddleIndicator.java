@@ -28,8 +28,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * *
- * https://www.investopedia.com/terms/d/donchianchannels.asp
+ * * https://www.investopedia.com/terms/d/donchianchannels.asp
  */
 public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
