@@ -36,14 +36,14 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
     private final LowestValueIndicator lowestPrice;
     private final LowPriceIndicator lowPrice;
-    private final int timePeriod;
+    private final int barCount;
 
-    public DonchianChannelLowerIndicator(BarSeries series, int timePeriod) {
+    public DonchianChannelLowerIndicator(BarSeries series, int barCount) {
         super(series);
 
-        this.timePeriod = timePeriod;
+        this.barCount = barCount;
         this.lowPrice = new LowPriceIndicator(series);
-        this.lowestPrice = new LowestValueIndicator(this.lowPrice, timePeriod);
+        this.lowestPrice = new LowestValueIndicator(this.lowPrice, barCount);
     }
 
     @Override
@@ -53,6 +53,6 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "timePeriod: " + timePeriod;
+        return getClass().getSimpleName() + "barCount: " + barCount;
     }
 }
