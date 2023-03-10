@@ -34,14 +34,14 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
     private final DonchianChannelLowerIndicator lower;
     private final DonchianChannelUpperIndicator upper;
-    private final int timePeriod;
+    private final int barCount;
 
-    public DonchianChannelMiddleIndicator(BarSeries series, int timePeriod) {
+    public DonchianChannelMiddleIndicator(BarSeries series, int barCount) {
         super(series);
 
-        this.timePeriod = timePeriod;
-        this.lower = new DonchianChannelLowerIndicator(series, timePeriod);
-        this.upper = new DonchianChannelUpperIndicator(series, timePeriod);
+        this.barCount = barCount;
+        this.lower = new DonchianChannelLowerIndicator(series, barCount);
+        this.upper = new DonchianChannelUpperIndicator(series, barCount);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "timePeriod: " + timePeriod;
+        return getClass().getSimpleName() + "barCount: " + barCount;
     }
 
 }
