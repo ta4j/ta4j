@@ -23,7 +23,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
-
+- added **SuperTrendIndicator**
+- added **SuperTrendUpperBandIndicator**
+- added **SuperTrendLowerBandIndicator**
+- added **Donchian Channel indicators (Upper, Lower, and Middle)**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex

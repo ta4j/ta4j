@@ -616,7 +616,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is equal to another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     @Override
     public boolean isEqual(Num other) {
@@ -628,7 +628,7 @@ public final class DecimalNum implements Num {
      *
      * @param other     the other value, not null
      * @param precision the int precision
-     * @return true is this matches the specified value to a precision, false
+     * @return true if this matches the specified value to a precision, false
      *         otherwise
      */
     public boolean matches(Num other, int precision) {
@@ -649,7 +649,7 @@ public final class DecimalNum implements Num {
      *
      * @param other the other value, not null
      * @param delta the {@link Num} offset
-     * @return true is this matches the specified value within an offset, false
+     * @return true if this matches the specified value within an offset, false
      *         otherwise
      */
     public boolean matches(Num other, Num delta) {
@@ -668,7 +668,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is greater than another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than the specified value, false otherwise
+     * @return true if this is greater than the specified value, false otherwise
      */
     @Override
     public boolean isGreaterThan(Num other) {
@@ -679,7 +679,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is greater than or equal to another.
      *
      * @param other the other value, not null
-     * @return true is this is greater than or equal to the specified value, false
+     * @return true if this is greater than or equal to the specified value, false
      *         otherwise
      */
     @Override
@@ -691,7 +691,7 @@ public final class DecimalNum implements Num {
      * Checks if this value is less than another.
      *
      * @param other the other value, not null
-     * @return true is this is less than the specified value, false otherwise
+     * @return true if this is less than the specified value, false otherwise
      */
     @Override
     public boolean isLessThan(Num other) {
