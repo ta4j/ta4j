@@ -74,9 +74,9 @@ public class ExpectancyCriterion extends AbstractAnalysisCriterion {
         if (numberOfAllPositions.isZero() || profitLossRatio.isZero()) {
             return series.zero();
         }
-        // Expectancy = (1 + AW/AL) * (ProbabilityToWinOnePosition - 1)
+        // Expectancy = ((1 + AW/AL) * ProbabilityToWinOnePosition) - 1
         Num probabiltyToWinOnePosition = numberOfWinningPositions.dividedBy(numberOfAllPositions);
-        return (one.plus(profitLossRatio)).multipliedBy((probabiltyToWinOnePosition).minus(one));
+        return (one.plus(profitLossRatio)).multipliedBy(probabiltyToWinOnePosition).minus(one);
     }
 
 }

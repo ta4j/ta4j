@@ -14,6 +14,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
+- **ExpectancyCriterion** fixed calculation
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
@@ -23,6 +24,10 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Added
 - added `TradingRecord.getStartIndex()` and `TradingRecord.getEndIndex()` to track start and end of the recording
 - added `Indicator.getUnstablePeriod()` 
+- added **SuperTrendIndicator**
+- added **SuperTrendUpperBandIndicator**
+- added **SuperTrendLowerBandIndicator**
+- added **Donchian Channel indicators (Upper, Lower, and Middle)**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
@@ -54,6 +59,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **Fixed** **ParabolicSarIndicatorTest** fixed openPrice always 0 and highPrice lower than lowPrice
 - **UlcerIndexIndicator** using the max price of current period instead of the highest value of last n bars
 - **DurationBarAggregator** fixed aggregation of bars with gaps
+
 
 ### Changed
 - **KeltnerChannelMiddleIndicator** changed superclass to AbstractIndicator; add GetBarCount() and toString()
