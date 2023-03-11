@@ -48,7 +48,7 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return (this.lower.getValue(index).plus(this.upper.getValue(index))).dividedBy(numOf(2));
     }
-    
+
     @Override
     public int getUnstablePeriod() {
         return barCount;
