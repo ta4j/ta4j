@@ -50,7 +50,7 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return this.lowestPrice.getValue(index);
     }
-    
+
     @Override
     public int getUnstablePeriod() {
         return barCount;
