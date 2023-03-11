@@ -36,14 +36,14 @@ public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final HighestValueIndicator highestPrice;
     private final HighPriceIndicator highPrice;
-    private final int timePeriod;
+    private final int barCount;
 
-    public DonchianChannelUpperIndicator(BarSeries series, int timePeriod) {
+    public DonchianChannelUpperIndicator(BarSeries series, int barCount) {
         super(series);
 
-        this.timePeriod = timePeriod;
+        this.barCount = barCount;
         this.highPrice = new HighPriceIndicator(series);
-        this.highestPrice = new HighestValueIndicator(this.highPrice, timePeriod);
+        this.highestPrice = new HighestValueIndicator(this.highPrice, barCount);
     }
 
     @Override
@@ -53,6 +53,6 @@ public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "timePeriod: " + timePeriod;
+        return getClass().getSimpleName() + "barCount: " + barCount;
     }
 }
