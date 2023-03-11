@@ -50,6 +50,11 @@ public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         return this.highestPrice.getValue(index);
     }
+    
+    @Override
+    public int getUnstablePeriod() {
+        return barCount;
+    }
 
     @Override
     public String toString() {
