@@ -81,4 +81,10 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     public SuperTrendUpperBandIndicator getSuperTrendUpperBandIndicator() {
         return superTrendUpperBandIndicator;
     }
+    
+    @Override
+    public int getUnstablePeriod() {
+        return 0;
+    }
+
 }
