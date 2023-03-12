@@ -300,7 +300,7 @@ public class BaseBar implements Bar {
      * 
      * @return builder of class BaseBarBuilder
      */
-    public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction, Class<T> clazz) {
+    public static <T> ConvertibleBaseBarBuilder<T> builder(Function<T, Num> conversionFunction) {
         return new ConvertibleBaseBarBuilder<>(conversionFunction);
     }
 
