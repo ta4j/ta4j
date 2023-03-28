@@ -67,7 +67,7 @@ public class CCICorrectionStrategy {
                 .and(new OverIndicatorRule(shortCci, plus100)); // Signal
 
         Strategy strategy = new BaseStrategy(entryRule, exitRule);
-        strategy.setUnstablePeriod(5);
+        strategy.setUnstableBars(5);
         return strategy;
     }
 

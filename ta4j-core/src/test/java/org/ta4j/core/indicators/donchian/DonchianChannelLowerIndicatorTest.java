@@ -23,13 +23,15 @@
  */
 package org.ta4j.core.indicators.donchian;
 
+import static org.junit.Assert.assertEquals;
+
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;

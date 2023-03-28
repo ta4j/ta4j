@@ -28,22 +28,28 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator that returns NaN in unstable period
+ * Indicator that returns NaN in unstable bars
  */
 public class UnstableIndicator extends CachedIndicator<Num> {
 
-    private final int unstablePeriod;
+    private final int unstableBars;
     private final Indicator<Num> indicator;
 
-    public UnstableIndicator(Indicator<Num> indicator, int unstablePeriod) {
+    /**
+     * Constructor.
+     * 
+     * @param indicator    the indicator
+     * @param unstableBars the number of first bars of the barSeries to be unstable
+     */
+    public UnstableIndicator(Indicator<Num> indicator, int unstableBars) {
         super(indicator);
         this.indicator = indicator;
-        this.unstablePeriod = unstablePeriod;
+        this.unstableBars = unstableBars;
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index < unstablePeriod) {
+        if (index < unstableBars) {
             return NaN.NaN;
         }
         return indicator.getValue(index);

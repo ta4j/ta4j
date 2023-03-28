@@ -60,20 +60,22 @@ public interface Strategy {
     Strategy or(Strategy strategy);
 
     /**
-     * @param name           the name of the strategy
-     * @param strategy       the other strategy
-     * @param unstablePeriod number of bars that will be strip off for this strategy
+     * @param name         the name of the strategy
+     * @param strategy     the other strategy
+     * @param unstableBars the number of first bars in a bar series that this
+     *                     strategy ignores
      * @return the AND combination of two {@link Strategy strategies}
      */
-    Strategy and(String name, Strategy strategy, int unstablePeriod);
+    Strategy and(String name, Strategy strategy, int unstableBars);
 
     /**
-     * @param name           the name of the strategy
-     * @param strategy       the other strategy
-     * @param unstablePeriod number of bars that will be strip off for this strategy
+     * @param name         the name of the strategy
+     * @param strategy     the other strategy
+     * @param unstableBars the number of first bars in a bar series that this
+     *                     strategy ignores
      * @return the OR combination of two {@link Strategy strategies}
      */
-    Strategy or(String name, Strategy strategy, int unstablePeriod);
+    Strategy or(String name, Strategy strategy, int unstableBars);
 
     /**
      * @return the opposite of the {@link Strategy strategy}
@@ -81,15 +83,16 @@ public interface Strategy {
     Strategy opposite();
 
     /**
-     * @param unstablePeriod number of bars that will be strip off for this strategy
+     * @param unstableBars the number of first bars in a bar series that this
+     *                     strategy ignores
      */
-    void setUnstablePeriod(int unstablePeriod);
+    void setUnstableBars(int unstableBars);
 
     /**
-     * @return unstablePeriod number of bars that will be strip off for this
-     *         strategy
+     * @return unstableBars the number of first bars in a bar series that this
+     *         strategy ignores
      */
-    int getUnstablePeriod();
+    int getUnstableBars();
 
     /**
      * @param index a bar index

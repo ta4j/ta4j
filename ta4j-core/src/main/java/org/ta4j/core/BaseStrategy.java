@@ -47,12 +47,12 @@ public class BaseStrategy implements Strategy {
     private final Rule exitRule;
 
     /**
-     * The unstable period (number of bars).<br>
-     * During the unstable period of the strategy any trade placement will be
+     * The number of first bars in a bar series that this strategy ignores.<br>
+     * During the unstable bars of the strategy any trade placement will be
      * cancelled.<br>
-     * I.e. no entry/exit signal will be fired before index == unstablePeriod.
+     * I.e. no entry/exit signal will be fired before index == unstableBars.
      */
-    private int unstablePeriod;
+    private int unstableBars;
 
     /**
      * Constructor.
@@ -67,13 +67,13 @@ public class BaseStrategy implements Strategy {
     /**
      * Constructor.
      * 
-     * @param entryRule      the entry rule
-     * @param exitRule       the exit rule
-     * @param unstablePeriod strategy will ignore possible signals at
-     *                       <code>index</code> < <code>unstablePeriod</code>
+     * @param entryRule    the entry rule
+     * @param exitRule     the exit rule
+     * @param unstableBars strategy will ignore possible signals at
+     *                     <code>index</code> < <code>unstableBars</code>
      */
-    public BaseStrategy(Rule entryRule, Rule exitRule, int unstablePeriod) {
-        this(null, entryRule, exitRule, unstablePeriod);
+    public BaseStrategy(Rule entryRule, Rule exitRule, int unstableBars) {
+        this(null, entryRule, exitRule, unstableBars);
     }
 
     /**
@@ -90,24 +90,24 @@ public class BaseStrategy implements Strategy {
     /**
      * Constructor.
      * 
-     * @param name           the name of the strategy
-     * @param entryRule      the entry rule
-     * @param exitRule       the exit rule
-     * @param unstablePeriod strategy will ignore possible signals at
-     *                       <code>index</code> < <code>unstablePeriod</code>
+     * @param name         the name of the strategy
+     * @param entryRule    the entry rule
+     * @param exitRule     the exit rule
+     * @param unstableBars strategy will ignore possible signals at
+     *                     <code>index</code> < <code>unstableBars</code>
      * @throws IllegalArgumentException if entryRule or exitRule is null
      */
-    public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstablePeriod) {
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars) {
         if (entryRule == null || exitRule == null) {
             throw new IllegalArgumentException("Rules cannot be null");
         }
-        if (unstablePeriod < 0) {
-            throw new IllegalArgumentException("Unstable period bar count must be >= 0");
+        if (unstableBars < 0) {
+            throw new IllegalArgumentException("Unstable bars must be >= 0");
         }
         this.name = name;
         this.entryRule = entryRule;
         this.exitRule = exitRule;
-        this.unstablePeriod = unstablePeriod;
+        this.unstableBars = unstableBars;
     }
 
     @Override
@@ -126,18 +126,18 @@ public class BaseStrategy implements Strategy {
     }
 
     @Override
-    public int getUnstablePeriod() {
-        return unstablePeriod;
+    public int getUnstableBars() {
+        return unstableBars;
     }
 
     @Override
-    public void setUnstablePeriod(int unstablePeriod) {
-        this.unstablePeriod = unstablePeriod;
+    public void setUnstableBars(int unstableBars) {
+        this.unstableBars = unstableBars;
     }
 
     @Override
     public boolean isUnstableAt(int index) {
-        return index < unstablePeriod;
+        return index < unstableBars;
     }
 
     @Override
@@ -157,32 +157,32 @@ public class BaseStrategy implements Strategy {
     @Override
     public Strategy and(Strategy strategy) {
         String andName = "and(" + name + "," + strategy.getName() + ")";
-        int unstable = Math.max(unstablePeriod, strategy.getUnstablePeriod());
+        int unstable = Math.max(unstableBars, strategy.getUnstableBars());
         return and(andName, strategy, unstable);
     }
 
     @Override
     public Strategy or(Strategy strategy) {
         String orName = "or(" + name + "," + strategy.getName() + ")";
-        int unstable = Math.max(unstablePeriod, strategy.getUnstablePeriod());
+        int unstable = Math.max(unstableBars, strategy.getUnstableBars());
         return or(orName, strategy, unstable);
     }
 
     @Override
     public Strategy opposite() {
-        return new BaseStrategy("opposite(" + name + ")", exitRule, entryRule, unstablePeriod);
+        return new BaseStrategy("opposite(" + name + ")", exitRule, entryRule, unstableBars);
     }
 
     @Override
-    public Strategy and(String name, Strategy strategy, int unstablePeriod) {
+    public Strategy and(String name, Strategy strategy, int unstableBars) {
         return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()),
-                unstablePeriod);
+                unstableBars);
     }
 
     @Override
-    public Strategy or(String name, Strategy strategy, int unstablePeriod) {
+    public Strategy or(String name, Strategy strategy, int unstableBars) {
         return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()),
-                unstablePeriod);
+                unstableBars);
     }
 
     /**
