@@ -30,7 +30,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Before;
@@ -42,6 +44,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.mocks.MockBar;
 import org.ta4j.core.mocks.MockBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.OverIndicatorRule;
@@ -184,4 +187,35 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     }
 
+    @Test
+    public void testRecalculateRT() {
+        BarSeries barSeries = new MockBarSeries(new ArrayList<>(List.of(
+                new MockBar(0, numFunction))
+        ));
+        CachedIndicator<Num> testIndicator = new CachedIndicator<>(barSeries) {
+
+            private Num maxPrice;
+
+            @Override
+            protected Num calculate(int index) {
+                Num closePrice = getBarSeries().getBar(index).getClosePrice();
+                if (maxPrice == null) {
+                    maxPrice = closePrice;
+                    return maxPrice;
+                }
+                maxPrice = maxPrice.max(closePrice);
+                return maxPrice;
+            }
+        };
+
+        barSeries.addBar(new MockBar(75.09, numFunction));
+        assertNumEquals(75.09, testIndicator.getValue(barSeries.getEndIndex()));
+
+        barSeries.addBar(new MockBar(80.00, numFunction));
+        assertNumEquals(80.00, testIndicator.getValue(barSeries.getEndIndex()));
+        assertNumEquals(75.09, testIndicator.getValue(barSeries.getEndIndex() - 1));  // Pre index result can't change
+
+        barSeries.addBar(new MockBar(75.30, numFunction));
+        assertNumEquals(80.00, testIndicator.getValue(barSeries.getEndIndex()));
+    }
 }
