@@ -1,5 +1,4 @@
 /**
-
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2022 Ta4j Organization & respective
