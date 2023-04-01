@@ -27,7 +27,6 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.AnalysisCriterion.PositionFilter;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,7 +35,7 @@ import org.ta4j.core.num.Num;
  * <ul>
  * <li>For {@link #positionFilter} = {@link PositionFilter#PROFIT}:
  * <code>number of winning positions / total number of positions</code>
- * <li>For {@link #tradeType} = {@link TradeType#SELL}:
+ * <li>For {@link #positionFilter} = {@link PositionFilter#LOSS}:
  * <code>number of losing positions / total number of positions</code>
  * </ul>
  */

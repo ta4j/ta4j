@@ -11,6 +11,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **NetLossCriterion** and **GrossLossCriterion** replaced by **`LossCriterion`**
 - **LosingPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
+- **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices

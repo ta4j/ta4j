@@ -71,7 +71,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         manager = new BarSeriesManager(seriesForRun);
 
         strategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8));
-        strategy.setUnstablePeriod(2); // Strategy would need a real test class
+        strategy.setUnstableBars(2); // Strategy would need a real test class
     }
 
     @Test
