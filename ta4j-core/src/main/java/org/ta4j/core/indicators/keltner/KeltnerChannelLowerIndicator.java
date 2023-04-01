@@ -59,6 +59,11 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
                 .minus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
 
+    @Override
+    public int getUnstableBars() {
+        return getBarCount();
+    }
+
     public int getBarCount() {
         return keltnerMiddleIndicator.getBarCount();
     }

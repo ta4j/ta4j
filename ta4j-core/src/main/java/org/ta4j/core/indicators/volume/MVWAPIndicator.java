@@ -1,4 +1,5 @@
 /**
+
  * The MIT License (MIT)
  *
  * Copyright (c) 2017-2022 Ta4j Organization & respective
@@ -53,6 +54,11 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         return sma.getValue(index);
+    }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
 }

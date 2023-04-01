@@ -77,7 +77,11 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         return result;
+    }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 
     private Num calculateResistance(Num x, int index) {

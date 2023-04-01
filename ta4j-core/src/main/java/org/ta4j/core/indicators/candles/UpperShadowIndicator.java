@@ -62,4 +62,9 @@ public class UpperShadowIndicator extends CachedIndicator<Num> {
             return t.getHighPrice().minus(openPrice);
         }
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

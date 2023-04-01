@@ -95,6 +95,11 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         return slope.multipliedBy(numOf(index)).plus(intercept);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
+
     /**
      * Calculates the regression line.
      *

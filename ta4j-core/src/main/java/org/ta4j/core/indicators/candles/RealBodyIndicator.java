@@ -54,4 +54,9 @@ public class RealBodyIndicator extends CachedIndicator<Num> {
         Bar t = getBarSeries().getBar(index);
         return t.getClosePrice().minus(t.getOpenPrice());
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }
