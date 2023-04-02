@@ -117,6 +117,14 @@ public class TransformIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Transforms the input indicator by indicator.pow(coefficient).
+     */
+    public static TransformIndicator pow(Indicator<Num> indicator, Number coefficient) {
+        Num numCoefficient = indicator.numOf(coefficient);
+        return new TransformIndicator(indicator, val -> val.pow(numCoefficient));
+    }
+
+    /**
      * Transforms the input indicator by indicator.sqrt().
      */
     public static TransformIndicator sqrt(Indicator<Num> indicator) {
