@@ -92,4 +92,9 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
         return NaN;
     }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
 }

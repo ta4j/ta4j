@@ -64,4 +64,9 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
         }
         return false;
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

@@ -73,6 +73,11 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
         return bbm.getValue(index).minus(indicator.getValue(index).multipliedBy(k));
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     /**
      * @return the K multiplier
      */

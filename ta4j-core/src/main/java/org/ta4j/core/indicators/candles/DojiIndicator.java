@@ -79,4 +79,9 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
 
         return currentBodyHeight.isLessThan(averageBodyHeight.multipliedBy(factor));
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

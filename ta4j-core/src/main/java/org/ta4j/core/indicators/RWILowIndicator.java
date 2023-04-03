@@ -63,6 +63,11 @@ public class RWILowIndicator extends CachedIndicator<Num> {
         return minRWIL;
     }
 
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
+
     private Num calcRWIHFor(final int index, final int n) {
         BarSeries series = getBarSeries();
         Num low = series.getBar(index).getLowPrice();

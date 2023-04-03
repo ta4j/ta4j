@@ -69,4 +69,9 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
         }
         return massIndex;
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

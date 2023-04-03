@@ -64,6 +64,11 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
         return sumOfMoneyFlowVolume.dividedBy(sumOfVolume);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
+
     /**
      * @param index the bar index
      * @return the money flow volume for the i-th period/bar

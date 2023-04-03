@@ -131,6 +131,10 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         }
 
         return timeframedReturn;
+    }
 
+    @Override
+    public int getUnstableBars() {
+        return barCount;
     }
 }

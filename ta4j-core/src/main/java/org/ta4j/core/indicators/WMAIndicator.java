@@ -58,6 +58,11 @@ public class WMAIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }

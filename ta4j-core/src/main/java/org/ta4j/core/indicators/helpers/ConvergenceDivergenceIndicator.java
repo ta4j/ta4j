@@ -255,6 +255,11 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
         return false;
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     /**
      * @param index the actual index
      * @return true, if strict positive convergent

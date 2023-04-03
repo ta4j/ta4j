@@ -68,4 +68,9 @@ public class IIIIndicator extends CachedIndicator<Num> {
         return doubledClosePrice.minus(highPlusLow)
                 .dividedBy(highMinusLow.multipliedBy(volumeIndicator.getValue(index)));
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

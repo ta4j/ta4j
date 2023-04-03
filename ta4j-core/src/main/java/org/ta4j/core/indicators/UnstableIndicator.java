@@ -54,4 +54,9 @@ public class UnstableIndicator extends CachedIndicator<Num> {
         }
         return indicator.getValue(index);
     }
+
+    @Override
+    public int getUnstableBars() {
+        return unstableBars;
+    }
 }

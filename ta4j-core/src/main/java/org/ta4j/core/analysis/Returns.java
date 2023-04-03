@@ -128,6 +128,11 @@ public class Returns implements Indicator<Num> {
     }
 
     @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
+    @Override
     public BarSeries getBarSeries() {
         return barSeries;
     }
