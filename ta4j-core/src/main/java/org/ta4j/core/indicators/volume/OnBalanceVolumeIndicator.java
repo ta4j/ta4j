@@ -56,4 +56,9 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
             return obvPrev;
         }
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

@@ -78,6 +78,11 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
                 && isBlackCrow(index);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     /**
      * @param index the bar/candle index
      * @return true if the bar/candle has a very short lower shadow, false otherwise

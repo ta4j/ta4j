@@ -43,6 +43,11 @@ public interface Indicator<T> {
     T getValue(int index);
 
     /**
+     * @return the number of bars up to which the indicator calculates wrong values
+     */
+    int getUnstableBars();
+
+    /**
      * @return the related bar series
      */
     BarSeries getBarSeries();

@@ -89,4 +89,9 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

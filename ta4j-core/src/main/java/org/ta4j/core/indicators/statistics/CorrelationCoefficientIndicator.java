@@ -61,6 +61,10 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
         Num var2 = variance2.getValue(index);
         Num multipliedSqrt = var1.multipliedBy(var2).sqrt();
         return cov.dividedBy(multipliedSqrt);
+    }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
     }
 }

@@ -56,4 +56,9 @@ public class SumIndicator extends CachedIndicator<Num> {
         }
         return sum;
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

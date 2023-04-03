@@ -65,4 +65,9 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
         return previousValue;
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
 }

@@ -50,4 +50,9 @@ public class DateTimeIndicator extends CachedIndicator<ZonedDateTime> {
         Bar bar = getBarSeries().getBar(index);
         return this.action.apply(bar);
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

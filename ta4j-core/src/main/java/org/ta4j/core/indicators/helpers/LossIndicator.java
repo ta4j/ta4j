@@ -50,4 +50,9 @@ public class LossIndicator extends CachedIndicator<Num> {
             return zero();
         }
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

@@ -53,6 +53,11 @@ public class BollingerBandsMiddleIndicator extends CachedIndicator<Num> {
         return indicator.getValue(index);
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     public Indicator<Num> getIndicator() {
         return indicator;
     }

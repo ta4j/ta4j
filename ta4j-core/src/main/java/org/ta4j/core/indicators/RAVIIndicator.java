@@ -55,4 +55,9 @@ public class RAVIIndicator extends CachedIndicator<Num> {
         Num longMA = longSma.getValue(index);
         return shortMA.minus(longMA).dividedBy(longMA).multipliedBy(hundred());
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

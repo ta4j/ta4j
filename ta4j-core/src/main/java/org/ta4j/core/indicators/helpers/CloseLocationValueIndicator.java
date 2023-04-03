@@ -53,4 +53,9 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
         return diffHighLow.isNaN() ? zero : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

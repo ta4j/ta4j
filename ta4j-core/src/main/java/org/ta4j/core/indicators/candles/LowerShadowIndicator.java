@@ -62,4 +62,9 @@ public class LowerShadowIndicator extends CachedIndicator<Num> {
             return closePrice.minus(t.getLowPrice());
         }
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

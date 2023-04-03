@@ -63,4 +63,9 @@ public class BullishHaramiIndicator extends CachedIndicator<Boolean> {
         }
         return false;
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

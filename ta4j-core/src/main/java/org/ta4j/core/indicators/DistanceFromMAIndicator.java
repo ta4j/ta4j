@@ -69,4 +69,9 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
         Num maValue = (Num) movingAverage.getValue(index);
         return (closePrice.minus(maValue)).dividedBy(maValue);
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

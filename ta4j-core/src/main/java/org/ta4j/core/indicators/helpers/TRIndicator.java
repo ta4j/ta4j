@@ -45,4 +45,9 @@ public class TRIndicator extends CachedIndicator<Num> {
                 : getBarSeries().getBar(index - 1).getClosePrice().minus(getBarSeries().getBar(index).getLowPrice());
         return ts.abs().max(ys.abs()).max(yst.abs());
     }
+
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
 }

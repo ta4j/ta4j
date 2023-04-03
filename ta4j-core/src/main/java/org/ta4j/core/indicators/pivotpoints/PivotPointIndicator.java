@@ -83,6 +83,11 @@ public class PivotPointIndicator extends RecursiveCachedIndicator<Num> {
         return calcPivotPoint(getBarsOfPreviousPeriod(index));
     }
 
+    @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
     private Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())
             return NaN;

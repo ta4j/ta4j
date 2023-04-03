@@ -58,6 +58,11 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public int getUnstableBars() {
+        return 0;
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }

@@ -52,4 +52,9 @@ public class VolumeIndicator extends CachedIndicator<Num> {
         }
         return sumOfVolume;
     }
+
+    @Override
+    public int getUnstableBars() {
+        return barCount;
+    }
 }
