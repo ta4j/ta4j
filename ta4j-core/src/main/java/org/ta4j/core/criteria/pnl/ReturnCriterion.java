@@ -30,7 +30,8 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Return (in percentage) criterion (includes trading costs).
+ * Return (in percentage) criterion (includes trading costs), presented in
+ * decimal format.
  *
  * <p>
  * The return of the provided {@link Position position(s)} over the provided
