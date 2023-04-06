@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -375,6 +376,20 @@ public class BaseBar implements Bar {
     }
 
     /**
+     * @return a human-friendly string of the end timestamp
+     */
+    public String getDateName() {
+        return getEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    /**
+     * @return a even more human-friendly string of the end timestamp
+     */
+    public String getSimpleDateName() {
+        return getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
+    /**
      * Adds a trade at the end of bar period.
      * 
      * @param tradeVolume the traded volume
@@ -443,4 +458,5 @@ public class BaseBar implements Bar {
                 && Objects.equals(closePrice, other.closePrice) && Objects.equals(volume, other.volume)
                 && Objects.equals(amount, other.amount) && trades == other.trades;
     }
+
 }

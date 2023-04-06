@@ -99,20 +99,6 @@ public interface Bar extends Serializable {
     }
 
     /**
-     * @return a human-friendly string of the end timestamp
-     */
-    default String getDateName() {
-        return getEndTime().format(DateTimeFormatter.ISO_DATE_TIME);
-    }
-
-    /**
-     * @return a even more human-friendly string of the end timestamp
-     */
-    default String getSimpleDateName() {
-        return getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    }
-
-    /**
      * @return true if this is a bearish bar, false otherwise
      */
     default boolean isBearish() {
