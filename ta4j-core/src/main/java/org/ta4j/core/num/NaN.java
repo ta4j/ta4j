@@ -91,11 +91,6 @@ public class NaN implements Num {
     }
 
     @Override
-    public String getName() {
-        return toString();
-    }
-
-    @Override
     public String toString() {
         return "NaN";
     }

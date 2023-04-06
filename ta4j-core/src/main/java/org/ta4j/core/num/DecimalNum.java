@@ -289,11 +289,6 @@ public final class DecimalNum implements Num {
     }
 
     @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
-    }
-
-    @Override
     public Num plus(Num augend) {
         if (augend.isNaN()) {
             return NaN;

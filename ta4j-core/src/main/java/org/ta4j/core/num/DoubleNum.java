@@ -96,11 +96,6 @@ public class DoubleNum implements Num {
     }
 
     @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
-    }
-
-    @Override
     public Num plus(Num augend) {
         return augend.isNaN() ? NaN : new DoubleNum(delegate + ((DoubleNum) augend).delegate);
     }

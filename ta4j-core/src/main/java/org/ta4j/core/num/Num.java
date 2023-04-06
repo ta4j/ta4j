@@ -68,10 +68,12 @@ public interface Num extends Comparable<Num> {
 
     /**
      * Returns the name/description of this Num implementation
-     * 
+     *
      * @return the name/description
      */
-    String getName();
+    default String getName(){
+        return this.getClass().getSimpleName();
+    }
 
     /**
      * Returns a {@code num} whose value is {@code (this + augend)},
