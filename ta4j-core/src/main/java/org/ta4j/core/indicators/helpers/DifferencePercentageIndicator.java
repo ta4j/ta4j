@@ -69,7 +69,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         }
 
         Num changeFraction = value.dividedBy(lastNotification);
-        Num changePercentage = fractionToPercentage(changeFraction);
+        Num changePercentage = changeFraction.fractionToPercentage(hundred);
 
         if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
             lastNotification = value;
@@ -78,7 +78,4 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         return changePercentage;
     }
 
-    private Num fractionToPercentage(Num changeFraction) {
-        return changeFraction.multipliedBy(hundred).minus(hundred);
-    }
 }

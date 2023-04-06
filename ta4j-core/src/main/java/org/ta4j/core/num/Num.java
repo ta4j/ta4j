@@ -353,4 +353,13 @@ public interface Num extends Comparable<Num> {
     @Override
     boolean equals(Object obj);
 
+    /**
+     * returns percentage of this {@code Num} instance
+     *
+     * @param hundred the {@code Num} instance representing 100
+     * @return percentage of this {@code Num} instance
+     */
+    default Num fractionToPercentage(Num hundred){
+        return multipliedBy(hundred).minus(hundred);
+    }
 }
