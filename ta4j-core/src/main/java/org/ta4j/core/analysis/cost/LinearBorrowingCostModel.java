@@ -76,7 +76,7 @@ public class LinearBorrowingCostModel implements CostModel {
         Num borrowingCost = position.getEntry().getNetPrice().numOf(0);
 
         // borrowing costs apply for short positions only
-        if (entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null) {
+        if (isValidEntryTrade(position.getEntry())) {
             int tradingPeriods = 0;
             if (position.isClosed()) {
                 tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
@@ -86,6 +86,14 @@ public class LinearBorrowingCostModel implements CostModel {
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }
         return borrowingCost;
+    }
+
+    /**
+     * @param entryTrade the entry trade
+     * @return true if the trade is a valid entry trade
+     */
+    private boolean isValidEntryTrade(Trade entryTrade) {
+        return entryTrade != null && entryTrade.getType().equals(Trade.TradeType.SELL) && entryTrade.getAmount() != null;
     }
 
     /**

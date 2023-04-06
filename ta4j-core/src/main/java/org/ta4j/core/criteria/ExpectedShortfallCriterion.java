@@ -58,11 +58,21 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position != null && position.getEntry() != null && position.getExit() != null) {
+        if (isValidPosition(position)) {
             Returns returns = new Returns(series, position, Returns.ReturnType.LOG);
             return calculateES(returns, confidence);
         }
         return series.numOf(0);
+    }
+
+    /**
+     * Checks if the position is valid.
+     *
+     * @param position    the corresponding returns
+     * @return true if the position is valid
+     */
+    private boolean isValidPosition(Position position) {
+        return position != null && position.getEntry() != null && position.getExit() != null;
     }
 
     @Override

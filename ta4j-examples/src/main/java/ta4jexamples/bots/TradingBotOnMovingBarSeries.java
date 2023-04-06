@@ -63,7 +63,7 @@ public class TradingBotOnMovingBarSeries {
     private static BarSeries initMovingBarSeries(int maxBarCount) {
         BarSeries series = CsvTradesLoader.loadBitstampSeries();
         System.out.print("Initial bar count: " + series.getBarCount());
-        // Limitating the number of bars to maxBarCount
+        // Limiting the number of bars to maxBarCount
         series.setMaximumBarCount(maxBarCount);
         LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).getClosePrice();
         System.out.println(" (limited to " + maxBarCount + "), close price = " + LAST_BAR_CLOSE_PRICE);
@@ -99,12 +99,23 @@ public class TradingBotOnMovingBarSeries {
      */
     private static Num randDecimal(Num min, Num max) {
         Num randomDecimal = null;
-        if (min != null && max != null && min.isLessThan(max)) {
+        if (isValidMinMax(min, max)) {
             Num range = max.minus(min);
             Num position = range.multipliedBy(DecimalNum.valueOf(Math.random()));
             randomDecimal = min.plus(position);
         }
         return randomDecimal;
+    }
+
+    /**
+     * Checks if min and max values are valid.
+     *
+     * @param min the minimum bound
+     * @param max the maximum bound
+     * @return true if min and max are valid, false otherwise
+     */
+    private static boolean isValidMinMax(Num min, Num max) {
+        return min != null && max != null && min.isLessThan(max);
     }
 
     /**

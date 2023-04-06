@@ -105,15 +105,12 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
             if (!currentTrend) { // down trend
                 sar = new HighestValueIndicator(highPriceIndicator, 2).getValue(index); // put the highest high value of
                                                                                         // two first bars
-                currentExtremePoint = sar;
-                minMaxExtremePoint = currentExtremePoint;
             } else { // up trend
                 sar = new LowestValueIndicator(lowPriceIndicator, 2).getValue(index); // put the lowest low value of two
                                                                                       // first bars
-                currentExtremePoint = sar;
-                minMaxExtremePoint = currentExtremePoint;
-
             }
+            currentExtremePoint = sar;
+            minMaxExtremePoint = currentExtremePoint;
             return sar;
         }
 

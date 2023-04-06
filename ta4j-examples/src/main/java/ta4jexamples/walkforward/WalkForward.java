@@ -142,14 +142,22 @@ public class WalkForward {
      */
     public static List<BarSeries> splitSeries(BarSeries series, Duration splitDuration, Duration sliceDuration) {
         ArrayList<BarSeries> subseries = new ArrayList<>();
-        if (splitDuration != null && !splitDuration.isZero() && sliceDuration != null && !sliceDuration.isZero()) {
-
+        if (areDurationsCompatible(splitDuration, sliceDuration)) {
             List<Integer> beginIndexes = getSplitBeginIndexes(series, splitDuration);
-            for (Integer subseriesBegin : beginIndexes) {
-                subseries.add(subseries(series, subseriesBegin, sliceDuration));
+            for (Integer subSeriesBegin : beginIndexes) {
+                subseries.add(subseries(series, subSeriesBegin, sliceDuration));
             }
         }
         return subseries;
+    }
+
+    /**
+     * @param splitDuration the duration between 2 splits
+     * @param sliceDuration the duration of each sub-series
+     * @return true if the durations are compatible (not null and not zero)
+     */
+    private static boolean areDurationsCompatible(Duration splitDuration, Duration sliceDuration) {
+        return splitDuration != null && !splitDuration.isZero() && sliceDuration != null && !sliceDuration.isZero();
     }
 
     /**
@@ -189,7 +197,7 @@ public class WalkForward {
                 System.out.println("\tProfit for " + name + ": " + profit);
             }
             Strategy bestStrategy = returnCriterion.chooseBest(sliceManager, TradeType.BUY,
-                    new ArrayList<Strategy>(strategies.keySet()));
+                    new ArrayList<>(strategies.keySet()));
             System.out.println("\t\t--> Best strategy: " + strategies.get(bestStrategy) + "\n");
         }
     }

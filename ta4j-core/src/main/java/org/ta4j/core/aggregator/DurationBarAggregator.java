@@ -109,13 +109,17 @@ public class DurationBarAggregator implements BarAggregator {
                         break;
                     }
                     bar = bars.get(i);
-                    if (high == null || bar.getHighPrice().isGreaterThan(high)) {
+                    close = bar.getClosePrice();
+
+                    boolean isHigher = bar.getHighPrice().isGreaterThan(high);
+                    if (high == null || isHigher) {
                         high = bar.getHighPrice();
                     }
-                    if (low == null || bar.getLowPrice().isLessThan(low)) {
+
+                    boolean isLower = bar.getLowPrice().isLessThan(low);
+                    if (low == null || isLower) {
                         low = bar.getLowPrice();
                     }
-                    close = bar.getClosePrice();
 
                     if (bar.getVolume() != null) {
                         volume = volume.plus(bar.getVolume());

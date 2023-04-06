@@ -221,7 +221,8 @@ public class Returns implements Indicator<Num> {
      */
     private void fillToTheEnd() {
         if (barSeries.getEndIndex() >= values.size()) {
-            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, barSeries.numOf(0)));
+            int totalZeros = barSeries.getEndIndex() - values.size() + 1;
+            values.addAll(Collections.nCopies(totalZeros, barSeries.numOf(0)));
         }
     }
 }
