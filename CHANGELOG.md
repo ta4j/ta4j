@@ -12,6 +12,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - **LosingPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **WinningPositionsRatioCriterion** replaced by **`PositionsRatioCriterion`**
 - **Strategy#unstablePeriod** renamed to **`Strategy#unstableBars*`**
+- **DateTimeIndicator** moved to package **`indicators/helpers`**
 
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
