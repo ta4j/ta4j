@@ -58,7 +58,8 @@ public class MovingAverageCrossOverRangeBacktest {
     private static final Logger LOG = LoggerFactory.getLogger(MovingAverageCrossOverRangeBacktest.class);
 
     public static void main(String[] args) {
-        Path jsonFilePath = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "ETH-USD-PT5M-2023-3-13_2023-3-15.json");
+        Path jsonFilePath = Paths.get(System.getProperty("user.dir"), "src", "main", "resources",
+                "ETH-USD-PT5M-2023-3-13_2023-3-15.json");
         if (!Files.exists(jsonFilePath)) {
             LOG.error("File not found: {}", jsonFilePath);
             return;
@@ -72,17 +73,22 @@ public class MovingAverageCrossOverRangeBacktest {
 
         final List<Strategy> strategies = new ArrayList<>();
         for (int shortBarCount = barCountStart; shortBarCount <= barCountStop; shortBarCount += barCountStep) {
-            for (int longBarCount = shortBarCount + barCountStep; longBarCount <= barCountStop; longBarCount += barCountStep) {
+            for (int longBarCount = shortBarCount
+                    + barCountStep; longBarCount <= barCountStop; longBarCount += barCountStep) {
                 String strategyName = String.format("Sma(%d) CrossOver Sma(%d)", shortBarCount, longBarCount);
-                strategies.add(new BaseStrategy(strategyName, createSmaCrossEntryRule(series, shortBarCount, longBarCount), createSmaCrossExitRule(series, shortBarCount, longBarCount)));
+                strategies.add(
+                        new BaseStrategy(strategyName, createSmaCrossEntryRule(series, shortBarCount, longBarCount),
+                                createSmaCrossExitRule(series, shortBarCount, longBarCount)));
             }
         }
 
         Instant startInstant = Instant.now();
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50), Trade.TradeType.BUY);
+        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
+                Trade.TradeType.BUY);
 
-        LOG.debug("Back-tested {} strategies on {}-bar series in {}", strategies.size(), series.getBarCount(), Duration.between(startInstant, Instant.now()));
+        LOG.debug("Back-tested {} strategies on {}-bar series in {}", strategies.size(), series.getBarCount(),
+                Duration.between(startInstant, Instant.now()));
         LOG.info(printReport(tradingStatements));
     }
 
