@@ -23,8 +23,8 @@
  */
 package org.ta4j.core;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -33,7 +33,7 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 
 /**
- * This class enables backtesting of multiple strategies and comparing them to
+ * This class enables back-testing of multiple strategies and comparing them to
  * see which is the best.
  */
 public class BacktestExecutor {
@@ -63,28 +63,28 @@ public class BacktestExecutor {
      * Executes given strategies and returns trading statements.
      *
      * @param strategies the strategies
-     * @param amount     the amount used to open/close the position
+     * @param amount the amount used to open/close the position
+     * @return
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
         return execute(strategies, amount, Trade.TradeType.BUY);
     }
 
     /**
-     * Executes given strategies with specified trade type to open the position and
-     * return the trading statements.
+     * Executes given strategies with specified trade type to open the position
+     * and return the trading statements.
      *
      * @param strategies the strategies
-     * @param amount     the amount used to open/close the position
-     * @param tradeType  the {@link Trade.TradeType} used to open the position
+     * @param amount the amount used to open/close the position
+     * @param tradeType the {@link Trade.TradeType} used to open the position
+     * @return
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
-        final List<TradingStatement> tradingStatements = new ArrayList<>(strategies.size());
-        for (Strategy strategy : strategies) {
-            final TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
-            final TradingStatement tradingStatement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                    seriesManager.getBarSeries());
-            tradingStatements.add(tradingStatement);
-        }
+        List<TradingStatement> tradingStatements = strategies.parallelStream().map(strategy -> {
+            TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
+            return tradingStatementGenerator.generate(strategy, tradingRecord, seriesManager.getBarSeries());
+        }).collect(Collectors.toUnmodifiableList());
+
         return tradingStatements;
     }
 }
