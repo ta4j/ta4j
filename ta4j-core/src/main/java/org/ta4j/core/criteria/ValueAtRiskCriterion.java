@@ -33,7 +33,7 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 
 /**
- * Value at Risk criterion.
+ * Value at Risk criterion, presented in decimal format.
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Value_at_risk">https://en.wikipedia.org/wiki/Value_at_risk</a>

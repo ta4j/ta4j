@@ -33,7 +33,7 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 
 /**
- * Expected Shortfall criterion.
+ * Expected Shortfall criterion, presented in decimal format.
  *
  * Measures the expected shortfall of the strategy log-return time-series.
  *

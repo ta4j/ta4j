@@ -32,7 +32,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 /**
- * Versus "enter and hold" criterion.
+ * Versus "enter and hold" criterion, presented in decimal format.
  *
  * Compares the value of a provided {@link AnalysisCriterion criterion} with the
  * value of an "enter and hold". The "enter and hold"-strategy is done as

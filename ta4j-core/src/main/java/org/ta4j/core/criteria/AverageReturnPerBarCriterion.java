@@ -30,7 +30,7 @@ import org.ta4j.core.criteria.pnl.ReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Calculates the average return per bar criterion.
+ * Calculates the average return per bar criterion, presented in decimal format.
  *
  * <p>
  * The {@link ReturnCriterion gross return} raised to the power of 1 divided by
