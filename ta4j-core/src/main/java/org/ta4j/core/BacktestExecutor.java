@@ -63,7 +63,7 @@ public class BacktestExecutor {
      * Executes given strategies and returns trading statements.
      *
      * @param strategies the strategies
-     * @param amount the amount used to open/close the position
+     * @param amount     the amount used to open/close the position
      * @return
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount) {
@@ -71,12 +71,12 @@ public class BacktestExecutor {
     }
 
     /**
-     * Executes given strategies with specified trade type to open the position
-     * and return the trading statements.
+     * Executes given strategies with specified trade type to open the position and
+     * return the trading statements.
      *
      * @param strategies the strategies
-     * @param amount the amount used to open/close the position
-     * @param tradeType the {@link Trade.TradeType} used to open the position
+     * @param amount     the amount used to open/close the position
+     * @param tradeType  the {@link Trade.TradeType} used to open the position
      * @return
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
