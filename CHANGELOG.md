@@ -17,6 +17,7 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 ### Fixed
 -  **Fixed** **ParabolicSarIndicator** fixed calculation for sporadic indices
 - **ExpectancyCriterion** fixed calculation
+- **VarianceCriterion**, **StandardDeviationCriterion**, **RelativeStandardDeviationCriterion** fixed betterThan calculation
 
 ### Changed
 - **BarSeriesManager** consider finishIndex when running backtest
