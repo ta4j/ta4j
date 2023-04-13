@@ -60,8 +60,8 @@ public class RelativeStandardDeviationCriterionTest extends AbstractCriterionTes
     @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion(new ProfitLossCriterion());
-        assertTrue(criterion.betterThan(numOf(5000), numOf(4500)));
-        assertFalse(criterion.betterThan(numOf(4500), numOf(5000)));
+        assertTrue(criterion.betterThan(numOf(4500), numOf(5000)));
+        assertFalse(criterion.betterThan(numOf(5000), numOf(4500)));
     }
 
     @Test

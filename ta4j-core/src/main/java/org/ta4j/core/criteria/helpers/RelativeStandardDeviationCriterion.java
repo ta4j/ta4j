@@ -71,10 +71,10 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
         return standardDeviationCriterion.calculate(series, tradingRecord).dividedBy(average);
     }
 
-    /** The higher the criterion value, the better. */
+    /** The lower the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return criterionValue1.isLessThan(criterionValue2);
     }
 
 }
