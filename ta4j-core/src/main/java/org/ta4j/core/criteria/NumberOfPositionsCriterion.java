@@ -33,6 +33,29 @@ import org.ta4j.core.num.Num;
  */
 public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * If true, then the lower the criterion value the better, otherwise the higher
+     * the criterion value the better. This property is only used for
+     * {@link #betterThan(Num, Num)}.
+     */
+    private final boolean lessBetter;
+
+    /**
+     * Constructor with {@link #lessBetter} == true.
+     */
+    public NumberOfPositionsCriterion() {
+        this.lessBetter = true;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param lessBetter the {@link #lessBetter}
+     */
+    public NumberOfPositionsCriterion(boolean lessBetter) {
+        this.lessBetter = lessBetter;
+    }
+
     @Override
     public Num calculate(BarSeries series, Position position) {
         return series.one();
@@ -43,9 +66,13 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         return series.numOf(tradingRecord.getPositionCount());
     }
 
-    /** The lower the criterion value, the better. */
+    /**
+     * If {@link #lessBetter} == false, then the lower the criterion value, the
+     * better, otherwise the higher the criterion value the better.
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isLessThan(criterionValue2);
+        return lessBetter ? criterionValue1.isLessThan(criterionValue2)
+                : criterionValue1.isGreaterThan(criterionValue2);
     }
 }

@@ -40,16 +40,35 @@ import org.ta4j.core.num.Num;
  */
 public class AverageCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * If true, then the lower the criterion value the better, otherwise the higher
+     * the criterion value the better. This property is only used for
+     * {@link #betterThan(Num, Num)}.
+     */
+    private final boolean lessBetter;
+
     private final AnalysisCriterion criterion;
     private final NumberOfPositionsCriterion numberOfPositionsCriterion = new NumberOfPositionsCriterion();
 
     /**
-     * Constructor.
+     * Constructor with {@link #lessBetter} == false.
      * 
      * @param criterion the criterion from which the "average" is calculated
      */
     public AverageCriterion(AnalysisCriterion criterion) {
         this.criterion = criterion;
+        this.lessBetter = false;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param criterion  the criterion from which the "average" is calculated
+     * @param lessBetter the {@link #lessBetter}
+     */
+    public AverageCriterion(AnalysisCriterion criterion, boolean lessBetter) {
+        this.criterion = criterion;
+        this.lessBetter = lessBetter;
     }
 
     @Override
@@ -67,10 +86,14 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
         return criterion.calculate(series, tradingRecord).dividedBy(numberOfPositions);
     }
 
-    /** The higher the criterion value, the better. */
+    /**
+     * If {@link #lessBetter} == false, then the lower the criterion value, the
+     * better, otherwise the higher the criterion value the better.
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
+        return lessBetter ? criterionValue1.isLessThan(criterionValue2)
+                : criterionValue1.isGreaterThan(criterionValue2);
     }
 
 }

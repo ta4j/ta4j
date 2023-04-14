@@ -32,6 +32,12 @@ Changelog for `ta4j`, roughly following [keepachangelog.com](http://keepachangel
 - added `Indicator.getUnstableBars()`
 - added `TransformIndicator.pow()`
 - added javadoc improvements for percentage criteria
+- added "lessBetter"-property for **AverageCriterion**
+- added "lessBetter"-property for **RelativeStandardDeviation**
+- added "lessBetter"-property for **StandardDeviationCriterion**
+- added "lessBetter"-property for **StandardErrorCriterion**
+- added "lessBetter"-property for **VarianceCriterion**
+- added "lessBetter"-property for **NumberOfPositionsCriterion**
 
 ### Fixed
 - **Fixed** **CashFlow** fixed calculation with custom startIndex and endIndex
